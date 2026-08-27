@@ -1,4 +1,4 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, type RefObject } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
@@ -20,6 +20,7 @@ import {
   SearchIcon,
   SettingsIcon,
   ShareIcon,
+  SparklesIcon,
   SunIcon,
 } from '../ui/icons';
 import { useSidebarData } from '../../state/useCourseData';
@@ -40,6 +41,11 @@ interface SidebarProps {
    *  sheet wiring, where Review today falls back to the full-screen session. */
   onOpenStudySheet?: () => void;
   collapseControl?: boolean;
+  aiAction?: {
+    active: boolean;
+    onClick: () => void;
+    triggerRef: RefObject<HTMLButtonElement>;
+  };
 }
 
 function NavItem({
@@ -104,23 +110,29 @@ function ActionNavItem({
   label,
   collapsed,
   compact,
+  active = false,
+  buttonRef,
 }: {
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
   compact?: boolean;
+  active?: boolean;
+  buttonRef?: RefObject<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={onClick}
+      aria-pressed={active || undefined}
       title={collapsed ? label : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
         compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
         collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-        'text-ink-soft hover:bg-ink/5 hover:text-ink',
+        active ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
       )}
     >
       <span className="shrink-0">{icon}</span>
@@ -407,6 +419,7 @@ export function Sidebar({
   onOpenPalette,
   onOpenStudySheet,
   collapseControl = true,
+  aiAction,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const data = useSidebarData();
@@ -559,6 +572,19 @@ export function Sidebar({
               />
             ),
           )}
+        {aiAction && (
+          <div className="mt-2 border-t border-line pt-2">
+            <ActionNavItem
+              onClick={aiAction.onClick}
+              icon={<SparklesIcon />}
+              label="AI"
+              collapsed={collapsed}
+              compact={sidebarSettings.compactMode}
+              active={aiAction.active}
+              buttonRef={aiAction.triggerRef}
+            />
+          </div>
+        )}
       </nav>
 
       {/* Course list */}

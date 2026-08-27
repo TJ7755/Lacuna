@@ -1,0 +1,118 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import type { AiSession, AiSessionSnapshot } from '../../ai/session/types';
+import { AiPanel } from './AiPanel';
+
+function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
+  const snapshot: AiSessionSnapshot = {
+    revision: 0,
+    connection: { status: 'disconnected' },
+    conversationId: null,
+    items: [],
+    run: null,
+    activity: null,
+    approval: null,
+    draft: '',
+    queuedFollowUp: null,
+    ...patch,
+  };
+  return {
+    subscribe: () => () => {},
+    getSnapshot: () => snapshot,
+    send: vi.fn().mockResolvedValue({ ok: true, data: { messageId: 'message-1' } }),
+    stop: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+    decide: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+    resetConnection: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+  };
+}
+
+describe('AiPanel', () => {
+  it('shows actionable connection guidance and prevents messages while disconnected', () => {
+    render(<AiPanel session={sessionWith()} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: 'Waiting for AI' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+  });
+
+  it('sends a message from the composer and clears it', async () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'OpenCode' },
+        lastActivityAt: 1,
+      },
+      conversationId: 'conversation-1',
+    });
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    const composer = screen.getByRole('textbox', { name: 'Message AI' });
+    fireEvent.change(composer, { target: { value: 'Make a transfer question.' } });
+    fireEvent.keyDown(composer, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(session.send).toHaveBeenCalledWith('Make a transfer question.');
+      expect(composer).toHaveValue('');
+    });
+  });
+
+  it('keeps the conversation visible while working and stops the explicit run', () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Terminal agent' },
+        lastActivityAt: 1,
+      },
+      conversationId: 'conversation-1',
+      items: [
+        {
+          kind: 'assistant',
+          id: 'assistant-1',
+          content: 'Your current weak point is distinguishing stability from difficulty.',
+          createdAt: 2,
+          sources: [],
+        },
+      ],
+      activity: {
+        runId: 'run-1',
+        status: 'working',
+        summary: 'Comparing your recent answers',
+        updatedAt: 3,
+      },
+    });
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText(/Your current weak point/)).toBeInTheDocument();
+    expect(screen.getAllByText('Comparing your recent answers')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(session.stop).toHaveBeenCalledWith('run-1');
+  });
+
+  it('presents the exact pending approval as an explicit choice', () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Terminal agent' },
+        lastActivityAt: 1,
+      },
+      approval: {
+        approvalId: 'approval-1',
+        kind: 'destructive_call',
+        toolName: 'lacuna.delete_course',
+        targetLabel: 'Mechanics',
+        summary: 'Delete the Mechanics course and its learning content.',
+        requestedAt: 2,
+        status: 'pending',
+      },
+    });
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: 'Approve this action?' })).toBeInTheDocument();
+    expect(screen.getByText('Mechanics')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    expect(session.decide).toHaveBeenCalledWith('approval-1', false);
+  });
+});

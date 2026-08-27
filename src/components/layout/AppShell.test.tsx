@@ -7,14 +7,23 @@ vi.mock('./Sidebar', () => ({
   Sidebar: ({
     onToggleCollapsed,
     toggleLabel = 'Toggle navigation',
+    collapsed,
+    aiAction,
   }: {
     onToggleCollapsed: () => void;
     toggleLabel?: string;
+    collapsed: boolean;
+    aiAction?: { onClick: () => void };
   }) => (
-    <aside>
+    <aside data-collapsed={collapsed || undefined}>
       <button type="button" data-sidebar-close onClick={onToggleCollapsed} aria-label={toggleLabel}>
         {toggleLabel}
       </button>
+      {aiAction && (
+        <button type="button" onClick={aiAction.onClick}>
+          AI
+        </button>
+      )}
     </aside>
   ),
 }));
@@ -31,6 +40,19 @@ vi.mock('./LandingTransition', () => ({ consumeLandingArrival: () => false }));
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
   speedMultiplier: () => 0,
+}));
+vi.mock('../../ai/settings', () => ({
+  useAiSettings: () => [{ enabled: true, misconceptionFirstEnabled: true }, vi.fn()],
+}));
+vi.mock('../../ai/session/AiSessionContext', () => ({
+  useOptionalAiSession: () => ({}),
+}));
+vi.mock('../ai/AiPanel', () => ({
+  AiPanel: ({ onClose }: { onClose: () => void }) => (
+    <aside aria-label="AI conversation">
+      <button type="button" onClick={onClose}>Close AI</button>
+    </aside>
+  ),
 }));
 
 function RouteContent() {
@@ -122,5 +144,37 @@ describe('AppShell mobile navigation', () => {
       expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument(),
     );
     expect(screen.queryByRole('button', { name: 'Navigate page' })).not.toBeInTheDocument();
+  });
+});
+
+describe('AppShell AI workspace', () => {
+  it('opens beside a forced navigation rail and restores focus when closed', () => {
+    vi.mocked(window.matchMedia).mockImplementation((query) => ({
+      matches: query === '(min-width: 1024px)' || query === '(min-width: 1280px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    renderShell();
+
+    const trigger = screen.getByRole('button', { name: 'AI' });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    expect(screen.getByLabelText('AI conversation')).toBeInTheDocument();
+    expect(trigger.closest('aside')).toHaveAttribute('data-collapsed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
+    expect(screen.queryByLabelText('AI conversation')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('does not mount the AI control below the desktop breakpoint', () => {
+    renderShell();
+    expect(screen.queryByRole('button', { name: 'AI' })).not.toBeInTheDocument();
   });
 });
