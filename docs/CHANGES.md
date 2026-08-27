@@ -33,6 +33,10 @@
   orphaned AI objects and elapsed pairing-rate records after a 24-hour grace period; deployments must
   configure `CRON_SECRET` for that route. Elapsed pairing windows are atomically cleared to compact
   reset markers so cleanup cannot delete a counter concurrently refreshed by a pairing request.
+- Fixed live browser pairing through Vercel. Its function request omitted `Content-Length` from
+  the browser's JSON POST; the relay now reads request bodies through a bounded stream, retains its
+  4 KB JSON and 1 MB mailbox ceilings, and still rejects malformed declared lengths. The browser
+  acceptance fixture no longer describes the only supported shape.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the
