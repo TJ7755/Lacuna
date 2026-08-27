@@ -70,7 +70,7 @@ describe('browser AI relay client', () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(new Uint8Array([1, 2, 3]), {
         status: 200,
-        headers: { ETag: '"terminal-2"' },
+        headers: { ETag: '"platform"', 'X-Lacuna-Generation': '"terminal-2"' },
       }),
     );
 
@@ -86,9 +86,12 @@ describe('browser AI relay client', () => {
   });
 
   it('writes only the browser mailbox with bearer auth and compare-and-swap', async () => {
-    const fetchImpl = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response(null, { status: 204, headers: { ETag: '"browser-1"' } }));
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, {
+        status: 204,
+        headers: { ETag: '"platform"', 'X-Lacuna-Generation': '"browser-1"' },
+      }),
+    );
     const bytes = new Uint8Array([4, 5, 6]);
 
     await expect(

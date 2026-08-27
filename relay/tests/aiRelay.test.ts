@@ -133,6 +133,7 @@ describe('AI relay', () => {
     expect(browserPut.status).toBe(204);
     const browserGeneration = browserPut.headers.get('ETag');
     expect(browserGeneration).toMatch(/^"[^"]+"$/);
+    expect(browserPut.headers.get('X-Lacuna-Generation')).toBe(browserGeneration);
 
     const browserDenied = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
@@ -142,6 +143,7 @@ describe('AI relay', () => {
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(browserRead.status).toBe(200);
+    expect(browserRead.headers.get('X-Lacuna-Generation')).toBe(browserGeneration);
     expect(new Uint8Array(await browserRead.arrayBuffer())).toEqual(browserBody);
 
     const terminalPut = await pair.handle(

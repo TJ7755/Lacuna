@@ -103,11 +103,14 @@ describe('HttpTerminalRelayTransport', () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify(ENVELOPE), {
           status: 200,
-          headers: { ETag: '"browser-1"' },
+          headers: { ETag: '"platform"', 'X-Lacuna-Generation': '"browser-1"' },
         }),
       )
       .mockResolvedValueOnce(
-        new Response(null, { status: 204, headers: { ETag: '"terminal-1"' } }),
+        new Response(null, {
+          status: 204,
+          headers: { ETag: '"platform"', 'X-Lacuna-Generation': '"terminal-1"' },
+        }),
       );
     const crypto = cryptoOperations(browserMailbox);
     const transport = new HttpTerminalRelayTransport({ fetchImpl, crypto });

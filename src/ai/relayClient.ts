@@ -10,6 +10,8 @@ import {
   type RelayPeer,
 } from './relayProtocol';
 
+const GENERATION_HEADER = 'X-Lacuna-Generation';
+
 export interface RelayBrowserCredentials {
   sessionId: string;
   browserToken: string;
@@ -204,7 +206,7 @@ function requireRequestGeneration(value: string): string {
 }
 
 function requireResponseGeneration(response: Response, operation: 'pull' | 'push'): string {
-  const generation = response.headers.get('ETag');
+  const generation = response.headers.get(GENERATION_HEADER) ?? response.headers.get('ETag');
   if (!generation || generation.trim() === '' || generation.trim() === '""') {
     throw new RelayClientProtocolError(
       'The AI relay response did not include a mailbox generation.',

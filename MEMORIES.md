@@ -68,6 +68,13 @@ without `Content-Length`, returning 400 before pairing. The intercepted Playwrig
 this by inserting the header itself. Enforce relay body ceilings while reading the stream and treat
 a declared length as an additional integrity check, not as a prerequisite for accepting a body.
 
+## Vercel may rewrite ETag on empty responses
+
+Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the relay's `ETag` on a
+`204` mailbox write, so clients could not acknowledge the new compare-and-swap generation and their
+next write failed with 412. AI mailbox responses must also expose `X-Lacuna-Generation`; clients
+prefer it and retain `ETag` only for compatibility with older relay deployments.
+
 ## The Vercel Functions body ceiling measures below 4.5 MB
 
 The nominal request-body limit for Vercel Functions is 4,500,000 bytes, but
