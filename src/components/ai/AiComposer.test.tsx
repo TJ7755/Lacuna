@@ -7,6 +7,8 @@ function session(): AiSession {
   return {
     subscribe: () => () => {},
     getSnapshot: vi.fn(),
+    dispose: vi.fn(),
+    pair: vi.fn(),
     send: vi.fn().mockResolvedValue({ ok: true, data: { messageId: 'message-1' } }),
     stop: vi.fn(),
     decide: vi.fn(),
@@ -15,6 +17,23 @@ function session(): AiSession {
 }
 
 describe('AiComposer', () => {
+  it('uses an honest chat prompt while connected', () => {
+    render(
+      <AiComposer
+        session={session()}
+        disabled={false}
+        initialDraft=""
+        queuedFollowUp={null}
+        autoFocus={false}
+      />,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toHaveAttribute(
+      'placeholder',
+      'Message AI…',
+    );
+  });
+
   it('restores a changed session draft when the composer is untouched', () => {
     const aiSession = session();
     const { rerender } = render(

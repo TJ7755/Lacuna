@@ -2,6 +2,20 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Hash routing needs no SPA catch-all
+
+Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to
+`index.html` turns a missing content-hashed asset into cacheable `200 text/html`; Workbox can then
+preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
+and stale-chunk recovery must retain its one-reload guard.
+
+## Web AI chat is not the Electron data MCP server
+
+The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
+encrypted HTTP relay mailboxes. Its current four-tool companion carries chat, Stop and disconnect
+events only. The Electron `--mcp-companion` uses local IPC and exposes authorised Lacuna data tools;
+neither surface implies the capabilities of the other.
+
 ## Relay URLs must be HTTPS outside loopback
 
 `normaliseRelayUrl` in `src/sync/relay.ts` rejects plain HTTP for any host that is not a loopback
@@ -177,7 +191,7 @@ delivered incidentally by the next, so the document keeps describing work that n
 On 12 August 2026 all three follow-ups at the end of `plans/learn-screen-redesign.md` turned out to
 be already done — the study interstitial had been replaced by a bottom sheet, the landing-page pill
 overlap had been fixed by gating the pill behind a wheel event, and the dashboard study control had
-moved above the fold — while `next_plan.md` still recorded the plan itself as *ready*.
+moved above the fold — while `next_plan.md` still recorded the plan itself as _ready_.
 
 The same plan already carried two findings that were wrong because they were written from a browser
 session without reading the handler underneath. The rule that covers both: confirm against the

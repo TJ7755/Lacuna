@@ -4,6 +4,9 @@ import { LazyMotion, domAnimation } from 'motion/react';
 import { Analytics } from '@vercel/analytics/react';
 import './index.css';
 import { App } from './App';
+import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
+
+installStaleChunkRecovery();
 
 async function clearDevelopmentPwaState(): Promise<void> {
   if (!import.meta.env.DEV || !('serviceWorker' in navigator)) return;

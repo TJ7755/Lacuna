@@ -15,7 +15,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
         <div className="max-w-xs">
           <p className="font-display text-xl text-ink">What are you working on?</p>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
-            Ask about your learning, build course material, or change something in Lacuna.
+            Chat with your connected terminal agent.
           </p>
         </div>
       </div>

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { AiSession } from '../../ai/session/types';
 import { Button } from '../ui/Button';
 import { CloseIcon, SparklesIcon } from '../ui/icons';
 import { AiApprovalCard } from './AiApprovalCard';
 import { AiComposer } from './AiComposer';
+import { AiConnectionState } from './AiConnectionState';
 import { AiConversation } from './AiConversation';
 
 export function AiPanel({ session, onClose }: { session: AiSession; onClose: () => void }) {
@@ -13,19 +14,23 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
     session.getSnapshot,
   );
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [pairingBusy, setPairingBusy] = useState(false);
+  const [pairingError, setPairingError] = useState<string | null>(null);
   const connection = snapshot.connection;
-  const disconnected = connection.status === 'disconnected';
+  const disconnected = connection.status === 'disconnected' || connection.status === 'pairing';
   const pendingApproval = snapshot.approval?.status === 'pending';
   const connectionLabel =
     connection.status === 'disconnected'
       ? 'Not connected'
-      : connection.status === 'quiet'
-        ? 'Connection quiet'
-        : connection.client.name;
+      : connection.status === 'pairing'
+        ? 'Waiting for terminal'
+        : connection.status === 'quiet'
+          ? 'Connection quiet'
+          : connection.client.name;
 
   useEffect(() => {
-    if (disconnected) closeRef.current?.focus();
-  }, [disconnected]);
+    if (connection.status === 'disconnected') closeRef.current?.focus();
+  }, [connection.status]);
 
   return (
     <aside
@@ -51,20 +56,21 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
                 aria-hidden="true"
               />
             </div>
-            <p className="truncate text-xs text-ink-faint">
-              {connectionLabel}
-            </p>
+            <p className="truncate text-xs text-ink-faint">{connectionLabel}</p>
           </div>
-          {snapshot.activity && ['working', 'awaiting_approval', 'stop_requested'].includes(snapshot.activity.status) && (
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={snapshot.activity.status === 'stop_requested'}
-              onClick={() => void session.stop(snapshot.activity!.runId)}
-            >
-              {snapshot.activity.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
-            </Button>
-          )}
+          {snapshot.activity &&
+            ['working', 'awaiting_approval', 'stop_requested'].includes(
+              snapshot.activity.status,
+            ) && (
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={snapshot.activity.status === 'stop_requested'}
+                onClick={() => void session.stop(snapshot.activity!.runId)}
+              >
+                {snapshot.activity.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
+              </Button>
+            )}
           <button
             ref={closeRef}
             type="button"
@@ -76,37 +82,48 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
           </button>
         </div>
         {snapshot.activity && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink-soft">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-            <span className="truncate">{snapshot.activity.summary}</span>
+          <div className="mt-2 flex items-start gap-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink-soft">
+            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="truncate">{snapshot.activity.summary}</p>
+              {snapshot.activity.detail && (
+                <p className="mt-1 leading-5 text-ink-faint">{snapshot.activity.detail}</p>
+              )}
+            </div>
           </div>
         )}
         <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {snapshot.activity?.summary ?? ''}
+          {snapshot.activity
+            ? [snapshot.activity.summary, snapshot.activity.detail].filter(Boolean).join('. ')
+            : ''}
         </span>
       </header>
 
       {disconnected ? (
-        <div className="flex flex-1 flex-col justify-between overflow-y-auto p-5">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">Connection</p>
-            <h2 className="mt-2 font-display text-2xl text-ink">Waiting for AI</h2>
-            <p className="mt-3 text-sm leading-6 text-ink-soft">
-              Start a compatible browser-control session in your terminal and attach it to this Lacuna tab. The model and terminal harness are your choice.
-            </p>
-            {connection.status === 'disconnected' && connection.reason && (
-              <p className="mt-4 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative">
-                {connection.reason}
-              </p>
-            )}
-          </div>
-          <div className="mt-8 rounded-xl border border-line bg-surface p-4">
-            <p className="text-sm font-medium text-ink">Keep this tab open</p>
-            <p className="mt-1 text-xs leading-5 text-ink-soft">
-              Lacuna exposes the AI bridge only while this device-local feature is enabled.
-            </p>
-          </div>
-        </div>
+        <AiConnectionState
+          pairing={connection.status === 'pairing' ? connection : null}
+          busy={pairingBusy}
+          error={
+            pairingError ??
+            (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
+          }
+          onStartPairing={() => {
+            setPairingBusy(true);
+            setPairingError(null);
+            void session.pair().then((result) => {
+              setPairingBusy(false);
+              if (!result.ok) setPairingError(result.error.message);
+            });
+          }}
+          onCancel={() => {
+            setPairingBusy(true);
+            setPairingError(null);
+            void session.resetConnection().then((result) => {
+              setPairingBusy(false);
+              if (!result.ok) setPairingError(result.error.message);
+            });
+          }}
+        />
       ) : (
         <>
           <AiConversation items={snapshot.items} />

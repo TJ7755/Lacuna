@@ -1,10 +1,19 @@
 {
   "rewrites": [
+    { "source": "/ai/maintenance", "destination": "/api?__path=/ai/maintenance" },
+    { "source": "/ai/sessions", "destination": "/api?__path=/ai/sessions" },
+    { "source": "/ai/s/:id", "destination": "/api?__path=/ai/s/:id" },
+    { "source": "/ai/s/:id/:action", "destination": "/api?__path=/ai/s/:id/:action" },
+    { "source": "/api/ai/maintenance", "destination": "/api?__path=/api/ai/maintenance" },
+    { "source": "/api/ai/sessions", "destination": "/api?__path=/api/ai/sessions" },
+    { "source": "/api/ai/s/:id", "destination": "/api?__path=/api/ai/s/:id" },
+    { "source": "/api/ai/s/:id/:action", "destination": "/api?__path=/api/ai/s/:id/:action" },
     { "source": "/channel", "destination": "/api?__path=/channel" },
     { "source": "/c/:id", "destination": "/api?__path=/c/:id" },
     { "source": "/c/:id/:slot", "destination": "/api?__path=/c/:id/:slot" },
     { "source": "/api/channel", "destination": "/api?__path=/api/channel" },
     { "source": "/api/c/:id", "destination": "/api?__path=/api/c/:id" },
     { "source": "/api/c/:id/:slot", "destination": "/api?__path=/api/c/:id/:slot" }
-  ]
+  ],
+  "crons": [{ "path": "/api/ai/maintenance", "schedule": "0 3 * * *" }]
 }

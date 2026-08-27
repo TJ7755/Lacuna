@@ -9,6 +9,7 @@ import type {
 
 export type AiSessionConnection =
   | { status: 'disconnected'; reason?: string }
+  | { status: 'pairing'; code: string; expiresAt: number }
   | {
       status: 'connected' | 'quiet';
       connectionId: string;
@@ -71,6 +72,9 @@ export type AiSessionCommandResult<T = undefined> =
 export interface AiSession {
   subscribe(listener: () => void): () => void;
   getSnapshot(): AiSessionSnapshot;
+  /** Stop device-local background work without mutating persisted conversation state. */
+  dispose(): void;
+  pair(): Promise<AiSessionCommandResult<{ code: string; expiresAt: number }>>;
   send(content: string): Promise<AiSessionCommandResult<{ messageId: string }>>;
   stop(runId: string): Promise<AiSessionCommandResult>;
   decide(approvalId: string, approved: boolean): Promise<AiSessionCommandResult>;

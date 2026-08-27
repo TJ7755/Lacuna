@@ -1,5 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
+import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
+import { consumeAiPairingPermit, handleAiMaintenanceRoute } from './aiMaintenance.js';
+
+export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -35,6 +39,25 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 
       const route = parseRoute(request.url);
       switch (route.kind) {
+        case 'ai-maintenance':
+          return await handleAiMaintenanceRoute(store, request, now());
+        case 'ai-session-collection':
+          if (request.method === 'POST') {
+            const permit = await consumeAiPairingPermit(store, request, now());
+            if (permit === 'limited') {
+              return json(429, request, { error: 'too many requests' });
+            }
+            if (permit === 'unavailable') {
+              return json(503, request, { error: 'rate limit unavailable' });
+            }
+          }
+          return await handleAiRelayRoute(store, request, route, now);
+        case 'ai-session':
+        case 'ai-claim':
+        case 'ai-peer':
+        case 'ai-mailbox':
+        case 'ai-invalid':
+          return await handleAiRelayRoute(store, request, route, now);
         case 'channel':
           return await handleChannel(store, request);
         case 'item':
@@ -55,7 +78,8 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 
 const MINT_RATE_LIMIT = 10;
 const MINT_WINDOW_MS = 60 * 60 * 1000;
-const mintAttempts = new Map<string, { count: number; resetAt: number }>();
+type RateLimitAttempts = Map<string, { count: number; resetAt: number }>;
+const deviceSyncMintAttempts: RateLimitAttempts = new Map();
 
 function getClientIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -65,10 +89,10 @@ function getClientIp(request: Request): string {
   return 'unknown';
 }
 
-function isRateLimited(ip: string, now: number): boolean {
-  const entry = mintAttempts.get(ip);
+function isRateLimited(attempts: RateLimitAttempts, ip: string, now: number): boolean {
+  const entry = attempts.get(ip);
   if (!entry || now >= entry.resetAt) {
-    mintAttempts.set(ip, { count: 1, resetAt: now + MINT_WINDOW_MS });
+    attempts.set(ip, { count: 1, resetAt: now + MINT_WINDOW_MS });
     return false;
   }
   if (entry.count >= MINT_RATE_LIMIT) return true;
@@ -77,7 +101,7 @@ function isRateLimited(ip: string, now: number): boolean {
 }
 
 export function __resetMintRateLimitForTests(): void {
-  mintAttempts.clear();
+  deviceSyncMintAttempts.clear();
 }
 
 async function handleChannel(store: BlobStore, request: Request): Promise<Response> {
@@ -93,7 +117,7 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
     return json(401, request, { error: 'unauthorized' });
   } else if (!authHeader) {
     const ip = getClientIp(request);
-    if (isRateLimited(ip, Date.now())) {
+    if (isRateLimited(deviceSyncMintAttempts, ip, Date.now())) {
       return json(429, request, { error: 'too many requests' });
     }
   }
@@ -129,7 +153,8 @@ async function handleItem(
   }
 
   const auth = await authorize(store, id, request);
-  if (auth !== 'ok') return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
+  if (auth !== 'ok')
+    return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
 
   await sweep(store, id);
   return empty(204, request);
@@ -214,7 +239,8 @@ async function putSlot(
   }
 
   const auth = await authorize(store, id, request);
-  if (auth !== 'ok') return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
+  if (auth !== 'ok')
+    return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
 
   const ifMatch = request.headers.get('If-Match');
   if (ifMatch === null || ifMatch.trim() === '') {
@@ -295,6 +321,8 @@ function authorizeMint(request: Request, secret: string): boolean {
 }
 
 export type Route =
+  | AiRelayRoute
+  | { kind: 'ai-maintenance' }
   | { kind: 'channel' }
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
@@ -327,6 +355,13 @@ function matchPath(pathname: string): Route | null {
   const parts = pathname.split('/').filter(Boolean);
   if (parts[0] === 'api') parts.shift();
 
+  if (parts.length === 2 && parts[0] === 'ai' && parts[1] === 'maintenance') {
+    return { kind: 'ai-maintenance' };
+  }
+
+  const aiRoute = matchAiRelayPath(parts);
+  if (aiRoute) return aiRoute;
+
   if (parts.length === 1 && parts[0] === 'channel') return { kind: 'channel' };
   if (parts.length === 2 && parts[0] === 'c' && parts[1] !== undefined) {
     return { kind: 'item', id: parts[1] };
@@ -358,7 +393,9 @@ export function describeInternalError(err: unknown): string {
   let current: unknown = err;
   for (let depth = 0; current !== undefined && current !== null && depth < 4; depth += 1) {
     if (current instanceof Error) {
-      parts.push(current.name === 'Error' ? current.message : `${current.name}: ${current.message}`);
+      parts.push(
+        current.name === 'Error' ? current.message : `${current.name}: ${current.message}`,
+      );
       current = current.cause;
       continue;
     }

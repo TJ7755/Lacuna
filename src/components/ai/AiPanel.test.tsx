@@ -19,6 +19,11 @@ function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
   return {
     subscribe: () => () => {},
     getSnapshot: () => snapshot,
+    dispose: vi.fn(),
+    pair: vi.fn().mockResolvedValue({
+      ok: true,
+      data: { code: 'ABCD-EFGH-JKMN-PQRS-TVWZ', expiresAt: Date.now() + 60_000 },
+    }),
     send: vi.fn().mockResolvedValue({ ok: true, data: { messageId: 'message-1' } }),
     stop: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
     decide: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
@@ -27,12 +32,33 @@ function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
 }
 
 describe('AiPanel', () => {
-  it('shows actionable connection guidance and prevents messages while disconnected', () => {
-    render(<AiPanel session={sessionWith()} onClose={vi.fn()} />);
+  it('starts pairing from the disconnected state and prevents messages', async () => {
+    const session = sessionWith();
+    render(<AiPanel session={session} onClose={vi.fn()} />);
 
-    expect(screen.getByRole('heading', { name: 'Waiting for AI' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect terminal' }));
+    await waitFor(() => expect(session.pair).toHaveBeenCalledOnce());
     expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+  });
+
+  it('shows the short-lived code while pairing', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'pairing',
+            code: 'ABCD-EFGH-JKMN-PQRS-TVWZ',
+            expiresAt: Date.now() + 60_000,
+          },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('ABCD-EFGH-JKMN-PQRS-TVWZ')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy instruction' })).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
   });
 
   it('sends a message from the composer and clears it', async () => {
@@ -88,6 +114,33 @@ describe('AiPanel', () => {
     expect(screen.getAllByText('Comparing your recent answers')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     expect(session.stop).toHaveBeenCalledWith('run-1');
+  });
+
+  it('explains the boundary of a completed Stop request', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'connected',
+            connectionId: 'connection-1',
+            client: { name: 'Terminal agent' },
+            lastActivityAt: 1,
+          },
+          activity: {
+            runId: 'run-1',
+            status: 'completed',
+            summary: 'Stopped',
+            detail: 'Further AI bridge actions are blocked. Completed changes remain.',
+            updatedAt: 3,
+          },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Further AI bridge actions are blocked. Completed changes remain.'),
+    ).toBeVisible();
   });
 
   it('presents the exact pending approval as the initial focus target', async () => {

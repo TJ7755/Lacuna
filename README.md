@@ -10,12 +10,12 @@ timer to infer the FSRS grade. A separate, post-instruction **Questions** experi
 automatically marked numeric and working problems without mixing their schedules or evidence into
 Card recall.
 
-All data lives locally in **IndexedDB**. The web app sends none of it to an application server
-unless you explicitly pair it with an optional sync relay; that relay receives encrypted snapshots
-and cannot read your courses or review history. In the Electron build, an MCP client can access only
-the data you authorise for that local process; write and destructive access require explicit
-permission. Use **Settings → Full backup & recovery** to back up or move your data as a single
-JSON file.
+All study data lives locally in **IndexedDB**. The web app sends none of it to an application server
+unless you explicitly pair optional device sync. Optional AI chat separately sends encrypted
+conversation mailboxes through the relay after short-code pairing. The relay cannot read either
+payload. In the Electron build, an MCP client can access only the data you authorise for that local
+process; write and destructive access require explicit permission. Use **Settings → Full backup &
+recovery** to back up or move your data as a single JSON file.
 
 ## Highlights
 
@@ -100,6 +100,31 @@ bun run preview  # preview the production build
 
 Open the printed local URL. A small example course is seeded on first run (it can be deleted).
 
+### Optional desktop AI chat
+
+The web app has an optional desktop-only AI conversation panel, disabled by default. It pairs with
+a deliberately running terminal task through a standard stdio MCP companion and a short-lived code.
+The browser and terminal exchange encrypted mailbox records through the HTTPS relay; the relay
+cannot read the conversation. No browser extension, WebSocket, inbound local port or model
+credential in Lacuna is involved.
+
+Build the companion, then configure your chosen MCP-capable terminal harness to run it:
+
+```bash
+bun run build:ai-mcp
+node /absolute/path/to/Lacuna/tooling/lacuna-ai-mcp/dist/index.js
+```
+
+Enable **Settings → AI**, open **AI → Connect terminal**, and copy the displayed instruction into
+the running task. The task must keep calling `lacuna.wait_for_message`; a sidebar message cannot
+wake a terminal task which has already ended. See
+[`tooling/lacuna-ai-mcp/README.md`](tooling/lacuna-ai-mcp/README.md) for the four-tool contract.
+
+The current web companion carries chat messages, Stop acknowledgements and disconnects only. It
+does not yet expose Lacuna's course/Card tools, learner memories, approvals or
+misconception-first instructions. The Electron MCP companion below is a separate, local data-tool
+surface and should not be confused with the web AI chat transport.
+
 ### Electron (desktop build)
 
 Lacuna can be packaged as a standalone Windows desktop application via Electron.
@@ -165,6 +190,7 @@ The shipped MCP surface and its deliberate exclusions are specified in `docs/SPE
 | Occlusion generation & editor            | `src/db/occlusionGeneration.ts`, `src/pages/OcclusionEditor.tsx`                     |
 | Question domain, checking and scheduling | `src/questions/`, `src/items/verify.ts`, `src/items/markSchemeCompiler.ts`           |
 | MCP tool surface and Electron bridge     | `src/mcp/`, `electron/mcp/`                                                          |
+| Optional web AI chat and terminal relay  | `src/ai/`, `tooling/lacuna-ai-mcp/`, `relay/src/aiRelay.ts`                          |
 | Learn session                            | `src/pages/LearnMode.tsx`                                                            |
 | Analytics charts                         | `src/components/analytics/`                                                          |
 

@@ -12,14 +12,16 @@ export function AiSection() {
         <h2 className="font-display text-xl">AI</h2>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
-        Connect a terminal agent to this browser tab. Lacuna stores no model credentials and does not choose the model or terminal harness.
+        Pair a running terminal AI with Lacuna using an encrypted relay. Lacuna stores no model
+        credentials and does not choose the model or terminal harness.
       </p>
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm text-ink">Enable AI</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
-            Adds the desktop AI control and exposes the browser bridge. Disabled by default and unavailable on mobile.
+            Adds desktop AI chat and short-code terminal pairing. Disabled by default and
+            unavailable on mobile.
           </p>
         </div>
         <Toggle
@@ -33,7 +35,8 @@ export function AiSection() {
         <div className="min-w-0">
           <div className="text-sm text-ink">Use misconception-first teaching</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
-            Lets AI diagnose a likely misconception, create a useful conflict, then test whether the corrected model transfers.
+            Saves your preference for the planned teaching workflow. Memory and course or Card
+            actions are not connected to AI chat yet.
           </p>
         </div>
         <Toggle

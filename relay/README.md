@@ -1,8 +1,9 @@
 # Lacuna relay
 
-A private sync mailbox. It stores two opaque blobs per channel — `state` and
-`keybag` — and a hash of the write token. It never sees a key, never decrypts
-anything, and never parses a request body as JSON.
+A private sync and AI-session mailbox. Sync channels store two opaque blobs — `state` and `keybag`
+— plus a hash of the write token. AI sessions store public pairing metadata and two opaque,
+directional encrypted mailboxes. The relay never receives a private ECDH key and cannot decrypt
+conversation content.
 
 Knowledge of the channel id is the read capability. Writes need the bearer
 token minted with the channel. Creating a channel needs a separate shared
@@ -11,9 +12,43 @@ from clobbering each other on an occupied slot.
 
 ## What it cannot see
 
-The relay is a dumb blob store. It has no accounts, no user model, and no
-knowledge of Lacuna's schema. Request bodies are ciphertext. Channel ids are
-not logged.
+The relay has no accounts, user model or knowledge of Lacuna's study schema. Sync request bodies
+and AI mailbox bodies are ciphertext. Channel and AI-session identifiers are not logged.
+
+## AI terminal pairing
+
+`POST /ai/sessions` creates a ten-minute pairing session from the browser's ephemeral P-256 public
+key. It returns a human-copyable code and a browser bearer token. `POST /ai/s/:code/claim` admits
+exactly one terminal public key and returns a separate terminal bearer token. Both peers derive the
+same AES-GCM mailbox key without sending either private key to the relay.
+
+After pairing, the browser writes `/ai/s/:id/browser` and reads `/ai/s/:id/terminal`; the terminal
+does the reverse. Each direction has one writer and uses `ETag` / `If-Match`, avoiding a pointless
+multi-writer merge protocol for chat transport. `DELETE /ai/s/:id` with the browser token revokes
+the session. Claimed sessions expire after 24 hours in this prototype.
+
+The short-lived code is the terminal's pairing capability; do not paste it into an untrusted task.
+Both peers make ordinary outbound HTTPS requests. The AI transport does not use WebSockets, a
+browser extension or an inbound localhost listener. Its current encrypted payload contains chat
+claims, complete replies, Stop acknowledgements and disconnects; course/Card tools and learner
+memories are not part of this mailbox version.
+
+Pairing creation is limited to 10 requests per hour and client IP. The relay hashes Vercel's
+trusted client-address header before storing the shared compare-and-swap counter in Blob. These
+counters are separate from the device-sync mint limit.
+
+## AI maintenance
+
+Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. The job removes AI sessions 24
+hours after their pairing or claimed-session expiry, and removes corrupt or orphaned AI objects
+after the same 24-hour grace from their last upload. Expired pairing-rate records are atomically
+cleared to a compact marker, which the next pairing request replaces; this avoids deleting a fresh
+counter that raced with cleanup. Corrupt objects outside the pairing-rate keyspace are removed. The
+job scans only `ai/` and `ai-rate/`; it does not touch device-sync `c/` objects.
+
+The route requires `Authorization: Bearer <CRON_SECRET>`. Vercel adds that header automatically to
+configured Cron invocations. If `CRON_SECRET` is missing or blank, the route returns `401` and
+deletes nothing.
 
 ## Environment
 
@@ -42,6 +77,17 @@ Variables** → name `RELAY_MINT_SECRET`, paste the generated value, apply to
 Production (and Preview if you mint from previews). Redeploy after setting
 or removing it. With the variable absent the relay still mints publicly.
 
+Set a separate `CRON_SECRET` for the daily AI cleanup. This is required even when
+`RELAY_MINT_SECRET` is unset. Generate another independent value:
+
+```sh
+openssl rand -hex 32
+```
+
+In the Vercel dashboard: the relay project → **Settings** → **Environment Variables** → name
+`CRON_SECRET`, paste the generated value and apply it to Production. Cron jobs run only against the
+production deployment. Redeploy after adding or rotating it.
+
 To run the same functions **off Vercel** against a Blob store, set
 `BLOB_READ_WRITE_TOKEN` instead. The SDK uses OIDC when those variables are
 present, and falls back to the token when they are not. Do not commit a token.
@@ -59,8 +105,11 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
    Vercel project does not treat `api/[...path].ts` as a catch-all — that
    file matches one path segment, so `/c/:id/:slot` never reaches the
    handler. Do not put the handler back in a bracketed filename.
-5. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass. Minting works without it via the public path.
-6. Deploy.
+5. Set `CRON_SECRET` on the project so daily AI maintenance can authenticate and run. A missing
+   value fails closed.
+6. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass.
+   Minting works without it via the public path.
+7. Deploy.
 
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
 stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
@@ -114,7 +163,8 @@ not this; this is the panic button for every device on the channel.
 
 A channel with no write for 90 days is treated as gone, matching the app's
 tombstone window. A device offline longer than that will find its channel
-gone. There is no cron: expiry is checked on the next request.
+gone. There is no device-sync cron: channel expiry is checked on the next request. The daily AI
+maintenance job deliberately does not scan channel objects.
 
 ## Concurrency
 
