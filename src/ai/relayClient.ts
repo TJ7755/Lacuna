@@ -3,6 +3,7 @@ import { bindFetch, normaliseRelayUrl } from '../sync/relay';
 import {
   relayCreateSessionRequestSchema,
   relayCreateSessionResponseSchema,
+  relayMailboxWriteResponseSchema,
   relayPeerResponseSchema,
   relaySessionIdSchema,
   relayTokenSchema,
@@ -159,6 +160,9 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       });
       if (response.status === 412) throw new RelayStaleGenerationError(generation);
       if (!response.ok) throw await httpError('push', response);
+      if (response.status === 200) {
+        return parseJsonResponse(response, relayMailboxWriteResponseSchema, 'push');
+      }
       return { generation: requireResponseGeneration(response, 'push') };
     },
 
@@ -219,7 +223,7 @@ function requireResponseGeneration(response: Response, operation: 'pull' | 'push
 async function parseJsonResponse<T>(
   response: Response,
   schema: { safeParse(value: unknown): { success: true; data: T } | { success: false } },
-  operation: 'create' | 'peer',
+  operation: 'create' | 'peer' | 'push',
 ): Promise<T> {
   let value: unknown;
   try {

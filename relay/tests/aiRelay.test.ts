@@ -52,7 +52,10 @@ describe('AI relay', () => {
     );
 
     expect(terminal.terminalToken).toMatch(/^[0-9a-f]{64}$/);
-    expect(written.status).toBe(204);
+    expect(written.status).toBe(200);
+    const generation = written.headers.get('ETag');
+    expect(generation).toMatch(/^"[^"]+"$/);
+    expect(await written.json()).toEqual({ generation });
   });
 
   it('pairs one terminal client without exposing either private key', async () => {
@@ -130,10 +133,15 @@ describe('AI relay', () => {
     const browserPut = await pair.handle(
       mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, browserBody),
     );
-    expect(browserPut.status).toBe(204);
+    expect(browserPut.status).toBe(200);
     const browserGeneration = browserPut.headers.get('ETag');
     expect(browserGeneration).toMatch(/^"[^"]+"$/);
     expect(browserPut.headers.get('X-Lacuna-Generation')).toBe(browserGeneration);
+    expect(browserPut.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+    expect(browserPut.headers.get('Access-Control-Expose-Headers')).toContain(
+      'X-Lacuna-Generation',
+    );
+    expect(await browserPut.json()).toEqual({ generation: browserGeneration });
 
     const browserDenied = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
@@ -149,7 +157,11 @@ describe('AI relay', () => {
     const terminalPut = await pair.handle(
       mailboxPut(pair.sessionId, 'terminal', pair.terminalToken, EMPTY_SLOT_ETAG, terminalBody),
     );
-    expect(terminalPut.status).toBe(204);
+    expect(terminalPut.status).toBe(200);
+    const terminalGeneration = terminalPut.headers.get('ETag');
+    expect(terminalGeneration).toMatch(/^"[^"]+"$/);
+    expect(terminalPut.headers.get('X-Lacuna-Generation')).toBe(terminalGeneration);
+    expect(await terminalPut.json()).toEqual({ generation: terminalGeneration });
     const terminalDenied = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/terminal`, 'GET', pair.terminalToken),
     );

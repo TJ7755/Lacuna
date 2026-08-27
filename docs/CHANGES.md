@@ -39,8 +39,9 @@
   acceptance fixture no longer describes the only supported shape.
 - Fixed live mailbox acknowledgement through Vercel. The platform can replace or omit `ETag` on a
   `204` response, so the relay now also exposes the compare-and-swap generation through
-  `X-Lacuna-Generation`. Browser and terminal clients prefer that dedicated header while retaining
-  `ETag` compatibility with older relay deployments.
+  `X-Lacuna-Generation`. Successful mailbox writes now return the generation in a small JSON body,
+  avoiding header-only acknowledgement across consecutive browser writes. Browser and terminal
+  clients retain header compatibility with older relay deployments.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the

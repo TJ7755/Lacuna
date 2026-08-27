@@ -226,10 +226,12 @@ async function writeMailbox(
   if (!written.ok) return json(412, request, { error: 'precondition failed' });
   const generation = canonicalEtag(written.etag);
   if (generation === '') return json(500, request, { error: 'internal error' });
+  const quotedGeneration = `"${generation}"`;
   const headers = corsHeaders(request);
-  headers.set('ETag', `"${generation}"`);
-  headers.set(GENERATION_HEADER, `"${generation}"`);
-  return new Response(null, { status: 204, headers });
+  headers.set('Content-Type', 'application/json');
+  headers.set('ETag', quotedGeneration);
+  headers.set(GENERATION_HEADER, quotedGeneration);
+  return new Response(JSON.stringify({ generation: quotedGeneration }), { status: 200, headers });
 }
 
 async function deleteSession(

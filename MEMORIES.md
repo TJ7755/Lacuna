@@ -72,8 +72,15 @@ a declared length as an additional integrity check, not as a prerequisite for ac
 
 Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the relay's `ETag` on a
 `204` mailbox write, so clients could not acknowledge the new compare-and-swap generation and their
-next write failed with 412. AI mailbox responses must also expose `X-Lacuna-Generation`; clients
-prefer it and retain `ETag` only for compatibility with older relay deployments.
+next write failed with 412. Successful AI mailbox writes return the generation in a JSON body;
+`X-Lacuna-Generation` and `ETag` remain compatibility paths for older relay deployments.
+
+## Web AI relay sessions currently have one browser owner
+
+The persisted AI session has no tab lease or fencing token. A second Lacuna tab, a rapid AI
+disable/re-enable, or a reload while an old poll is still in flight can leave two session instances
+writing from the same browser-mailbox generation; one then fails closed with 412. Keep live testing
+to one tab until a browser-ownership lease is added.
 
 ## The Vercel Functions body ceiling measures below 4.5 MB
 

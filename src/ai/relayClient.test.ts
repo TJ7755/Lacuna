@@ -87,9 +87,9 @@ describe('browser AI relay client', () => {
 
   it('writes only the browser mailbox with bearer auth and compare-and-swap', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(null, {
-        status: 204,
-        headers: { ETag: '"platform"', 'X-Lacuna-Generation': '"browser-1"' },
+      new Response(JSON.stringify({ generation: '"browser-1"' }), {
+        status: 200,
+        headers: { ETag: '"platform"', 'Content-Type': 'application/json' },
       }),
     );
     const bytes = new Uint8Array([4, 5, 6]);
@@ -107,6 +107,23 @@ describe('browser AI relay client', () => {
       'If-Match': AI_RELAY_EMPTY_GENERATION,
     });
     expect(new Uint8Array(await new Response(init?.body).arrayBuffer())).toEqual(bytes);
+  });
+
+  it('accepts a legacy header-only mailbox write response', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, {
+        status: 204,
+        headers: { 'X-Lacuna-Generation': '"browser-legacy"' },
+      }),
+    );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).resolves.toEqual({ generation: '"browser-legacy"' });
   });
 
   it('reports stale mailbox generations and malformed successful responses', async () => {
@@ -127,6 +144,17 @@ describe('browser AI relay client', () => {
     const malformedFetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(201, { ok: true }));
     await expect(
       createRelayClient({ fetchImpl: malformedFetch }).create(PUBLIC_KEY),
+    ).rejects.toBeInstanceOf(RelayClientProtocolError);
+
+    const malformedPush = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(200, { generation: '""' }));
+    await expect(
+      createRelayClient({ fetchImpl: malformedPush }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
     ).rejects.toBeInstanceOf(RelayClientProtocolError);
   });
 
