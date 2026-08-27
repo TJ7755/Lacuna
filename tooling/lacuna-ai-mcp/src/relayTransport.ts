@@ -22,6 +22,7 @@ import {
 } from './client.js';
 
 const CONNECTION_AUTH = Symbol('terminal-relay-auth');
+const GENERATION_HEADER = 'X-Lacuna-Generation';
 
 export { normaliseRelayUrl };
 
@@ -167,8 +168,8 @@ async function readJsonResponse(response: Response): Promise<unknown> {
 }
 
 function requiredEtag(response: Response): string {
-  const etag = response.headers.get('ETag')?.trim();
-  if (!etag || etag === '""') throw new Error('The relay response is missing its ETag.');
+  const etag = (response.headers.get(GENERATION_HEADER) ?? response.headers.get('ETag'))?.trim();
+  if (!etag || etag === '""') throw new Error('The relay response is missing its generation.');
   return etag;
 }
 

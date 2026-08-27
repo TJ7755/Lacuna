@@ -6,6 +6,7 @@ export const AI_PAIRING_TTL_MS = 10 * 60 * 1000;
 export const AI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_AI_MAILBOX_BYTES = 1024 * 1024;
 const MAX_AI_JSON_BYTES = 4 * 1024;
+const GENERATION_HEADER = 'X-Lacuna-Generation';
 const SESSION_ID_RE = /^[A-HJ-KM-NP-TV-Z2-9]{20}$/;
 const PUBLIC_KEY_RE = /^[A-Za-z0-9_-]{80,100}$/;
 const TOKEN_RE = /^[0-9a-f]{64}$/;
@@ -204,6 +205,7 @@ async function readMailbox(
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
   headers.set('ETag', `"${generation}"`);
+  headers.set(GENERATION_HEADER, `"${generation}"`);
   return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 
@@ -226,6 +228,7 @@ async function writeMailbox(
   if (generation === '') return json(500, request, { error: 'internal error' });
   const headers = corsHeaders(request);
   headers.set('ETag', `"${generation}"`);
+  headers.set(GENERATION_HEADER, `"${generation}"`);
   return new Response(null, { status: 204, headers });
 }
 
@@ -433,7 +436,7 @@ function corsHeaders(request: Request): Headers {
     'Access-Control-Allow-Origin': origin && origin !== '' ? origin : '*',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
-    'Access-Control-Expose-Headers': 'ETag',
+    'Access-Control-Expose-Headers': `ETag, ${GENERATION_HEADER}`,
     'Access-Control-Max-Age': '86400',
     'Cross-Origin-Resource-Policy': 'cross-origin',
     Vary: 'Origin',
