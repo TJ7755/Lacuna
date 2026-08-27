@@ -2366,7 +2366,7 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 
 ## 15. Settings (`src/pages/Settings.tsx`)
 
-`Settings.tsx` is a thin page composition; the ten web setting groups live under
+`Settings.tsx` is a thin page composition; the web setting groups live under
 `src/pages/settings/` (with an additional Electron-only MCP group). Section ids and ordering remain centralised in the page so the
 scrollspy and its navigation cannot drift from the rendered sections.
 
@@ -2429,6 +2429,14 @@ scrollspy and its navigation cannot drift from the rendered sections.
   Delete and a two-step Restore confirmation.
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
+- **AI** (desktop web only): a device-local opt-in which is off by default, plus an independent
+  misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
+  navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the
+  existing navigation to its 72 px rail without changing the saved collapse preference; closing
+  restores focus to the trigger. Below the breakpoint the inactive surface is absent. The panel
+  reads every connection, conversation, activity, approval, receipt, error, Stop and composer state
+  through `AiSession`; the live terminal bridge and durable conversation repository remain part of
+  the in-progress prototype rather than the current shipped behaviour.
 - **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
   count, followed by process-scoped read/write/destructive grants for the whole database
   and each course. Grants can be raised, lowered or revoked and are discarded when Lacuna

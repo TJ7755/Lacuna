@@ -1,6 +1,6 @@
 # AI sidebar — one-week usable prototype
 
-**Status:** in progress — foundation complete
+**Status:** in progress — foundation complete; first AI UI checkpoint available
 
 **Written:** 27 August 2026
 

@@ -16,9 +16,14 @@ import { CloseIcon, LacunaIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useAiSettings } from '../../ai/settings';
+import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { AiPanel } from '../ai/AiPanel';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
+const AI_DESKTOP_QUERY = '(min-width: 1024px)';
 
 /** Sideways for a move between course sections, a crossfade otherwise.
  *  Fade must not write a transform, or `position: fixed` descendants pin to this wrapper. */
@@ -44,6 +49,10 @@ export function AppShell() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [aiSettings] = useAiSettings();
+  const aiSession = useOptionalAiSession();
+  const [aiOpen, setAiOpen] = useState(false);
+  const aiDesktop = useMediaQuery(AI_DESKTOP_QUERY);
   const [wideDesktop, setWideDesktop] = useState(
     () => window.matchMedia?.(WIDE_DESKTOP_QUERY).matches ?? true,
   );
@@ -59,6 +68,8 @@ export function AppShell() {
   const shellBodyRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileWasOpenRef = useRef(false);
+  const aiTriggerRef = useRef<HTMLButtonElement>(null);
+  const aiWasOpenRef = useRef(false);
   const mobileDrawerRef = useFocusTrap(mobileOpen, {
     autoFocusSelector: '[data-mobile-close]',
     returnFocus: false,
@@ -84,6 +95,19 @@ export function AppShell() {
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
   }, []);
+
+  useEffect(() => {
+    if (!aiDesktop) setAiOpen(false);
+  }, [aiDesktop]);
+
+  useEffect(() => {
+    if (!aiSettings.enabled || !aiSession) setAiOpen(false);
+  }, [aiSession, aiSettings.enabled]);
+
+  useEffect(() => {
+    if (aiWasOpenRef.current && !aiOpen) aiTriggerRef.current?.focus();
+    aiWasOpenRef.current = aiOpen;
+  }, [aiOpen]);
 
   // Debounce sidebar collapse writes so rapid toggles / drag-resize don't hammer localStorage.
   useEffect(() => {
@@ -178,13 +202,37 @@ export function AppShell() {
         {/* Desktop sidebar */}
         <div className="hidden md:block">
           <Sidebar
-            collapsed={!wideDesktop || collapsed}
+            collapsed={!wideDesktop || collapsed || aiOpen}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
             onOpenPalette={() => setPaletteOpen(true)}
             onOpenStudySheet={() => studySheet.value.openStudySheet()}
-            collapseControl={wideDesktop}
+            collapseControl={wideDesktop && !aiOpen}
+            aiAction={
+              aiSettings.enabled && aiSession && aiDesktop
+                ? {
+                    active: aiOpen,
+                    onClick: () => setAiOpen((open) => !open),
+                    triggerRef: aiTriggerRef,
+                  }
+                : undefined
+            }
           />
         </div>
+
+        <AnimatePresence initial={false}>
+          {aiOpen && aiSession && aiDesktop && (
+            <motion.div
+              key="ai-panel"
+              initial={motionEnabled ? { width: 0, opacity: 0 } : false}
+              animate={{ width: 400, opacity: 1 }}
+              exit={motionEnabled ? { width: 0, opacity: 0 } : undefined}
+              transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="hidden shrink-0 overflow-hidden lg:block"
+            >
+              <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mobile drawer */}
         <AnimatePresence>

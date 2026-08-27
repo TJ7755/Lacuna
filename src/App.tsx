@@ -17,12 +17,29 @@ import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { installSyncTriggers } from './sync/triggers';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
+import { useAiSettings } from './ai/settings';
+import { AiSessionProvider } from './ai/session/AiSessionContext';
+import { createInMemoryAiSession } from './ai/session/inMemory';
 
 export { router } from './routes/router';
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
   return <RouterProvider router={router} />;
+}
+
+function EnabledAiRouter() {
+  const [session] = useState(createInMemoryAiSession);
+  return (
+    <AiSessionProvider session={session}>
+      <RouterWithQuotaWarning />
+    </AiSessionProvider>
+  );
+}
+
+function RouterWithOptionalAi() {
+  const [settings] = useAiSettings();
+  return settings.enabled ? <EnabledAiRouter /> : <RouterWithQuotaWarning />;
 }
 
 const McpBridgeController = lazy(loadMcpBridgeController);
@@ -169,7 +186,7 @@ export function App() {
                   <McpBridgeController />
                 </Suspense>
               )}
-              <RouterWithQuotaWarning />
+              <RouterWithOptionalAi />
               <LandingTransition />
             </ToastProvider>
           </FontScaleProvider>
