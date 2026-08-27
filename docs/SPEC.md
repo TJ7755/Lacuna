@@ -2607,7 +2607,7 @@ Modern SDK v2 and legacy stdio negotiation are both accepted.
 | Lacuna companion protocol      | 1              | Authenticated native-IPC relay; independent of MCP protocol version |
 
 The tool contract is transport-independent and versioned separately from the Dexie schema
-(`MCP_TOOL_SURFACE_VERSION`, currently 2 — additive tools never bump it). It exposes:
+(`MCP_TOOL_SURFACE_VERSION`, currently 3 — additive tools never bump it). It exposes:
 
 - read/query tools for courses, lessons, cards, due and weak cards, statistics, sequences,
   occlusions, notes and diagnostics;
