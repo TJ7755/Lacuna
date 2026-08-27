@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'lacuna.aiSettings';
 const CHANGE_EVENT = 'lacuna:ai-settings';
+let unsavedSettings: AiSettings | null = null;
 
 export interface AiSettings {
   enabled: boolean;
@@ -13,7 +14,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   misconceptionFirstEnabled: true,
 };
 
-export function readAiSettings(): AiSettings {
+function readPersistedAiSettings(): AiSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_AI_SETTINGS };
@@ -31,12 +32,17 @@ export function readAiSettings(): AiSettings {
   }
 }
 
+export function readAiSettings(): AiSettings {
+  return unsavedSettings ? { ...unsavedSettings } : readPersistedAiSettings();
+}
+
 export function writeAiSettings(patch: Partial<AiSettings>): void {
   const next = { ...readAiSettings(), ...patch };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    unsavedSettings = null;
   } catch {
-    // The current page can still use the setting when device storage is unavailable.
+    unsavedSettings = next;
   }
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: next }));
 }
@@ -45,7 +51,10 @@ export function useAiSettings(): [AiSettings, (patch: Partial<AiSettings>) => vo
   const [settings, setSettings] = useState(readAiSettings);
 
   useEffect(() => {
-    const onStorage = () => setSettings(readAiSettings());
+    const onStorage = () => {
+      unsavedSettings = null;
+      setSettings(readPersistedAiSettings());
+    };
     const onChange = (event: Event) => {
       setSettings((event as CustomEvent<AiSettings>).detail);
     };

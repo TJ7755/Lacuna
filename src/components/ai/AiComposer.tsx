@@ -46,12 +46,17 @@ export function AiComposer({
     const message = content.trim();
     if (!message || disabled || sending) return;
     setSending(true);
-    const result = await session.send(message);
-    setSending(false);
-    if (result.ok) {
-      dirtyRef.current = false;
-      setEditingQueued(false);
-      setContent('');
+    try {
+      const result = await session.send(message);
+      if (result.ok) {
+        dirtyRef.current = false;
+        setEditingQueued(false);
+        setContent('');
+      }
+    } catch {
+      // Keep the draft available; session adapters surface connection errors in their snapshot.
+    } finally {
+      setSending(false);
     }
   }
 

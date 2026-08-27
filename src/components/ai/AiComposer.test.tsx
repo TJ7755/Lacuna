@@ -110,4 +110,23 @@ describe('AiComposer', () => {
       'min-w-11',
     );
   });
+
+  it('keeps the draft usable when the session rejects a send', async () => {
+    const aiSession = session();
+    vi.mocked(aiSession.send).mockRejectedValueOnce(new Error('Connection closed'));
+    render(
+      <AiComposer
+        session={aiSession}
+        disabled={false}
+        initialDraft="Keep this draft"
+        queuedFollowUp={null}
+        autoFocus={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled());
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toHaveValue('Keep this draft');
+  });
 });

@@ -45,5 +45,12 @@ describe('AI settings', () => {
 
     expect(setItem).toHaveBeenCalled();
     expect(result.current[0].enabled).toBe(true);
+
+    act(() => result.current[1]({ misconceptionFirstEnabled: false }));
+
+    expect(result.current[0]).toEqual({
+      enabled: true,
+      misconceptionFirstEnabled: false,
+    });
   });
 });
