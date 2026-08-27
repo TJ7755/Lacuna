@@ -1,5 +1,13 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — stale deployment recovery
+
+- Removed the unnecessary Vercel SPA catch-all from this hash-routed app. It returned `index.html`
+  with `200 OK` for deleted content-hashed JavaScript chunks, allowing the service worker to cache
+  HTML under a script URL and leaving lazy routes broken after a deployment. Vite preload failures
+  now clear stale service-worker/cache state and reload once; a repeated failure falls through to
+  the existing diagnostic boundary instead of entering a reload loop.
+
 ## Unreleased — AI sidebar foundation
 
 - Added the web AI chat transport: Lacuna creates a short-lived terminal pairing code, derives a

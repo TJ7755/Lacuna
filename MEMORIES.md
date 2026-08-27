@@ -2,6 +2,13 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Hash routing needs no SPA catch-all
+
+Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to
+`index.html` turns a missing content-hashed asset into cacheable `200 text/html`; Workbox can then
+preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
+and stale-chunk recovery must retain its one-reload guard.
+
 ## Web AI chat is not the Electron data MCP server
 
 The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
