@@ -1,8 +1,23 @@
+import { useEffect, useRef } from 'react';
 import type { AiApprovalState } from '../../ai/protocol';
 import type { AiSession } from '../../ai/session/types';
 import { Button } from '../ui/Button';
 
-export function AiApprovalCard({ approval, session }: { approval: AiApprovalState; session: AiSession }) {
+export function AiApprovalCard({
+  approval,
+  session,
+  autoFocus,
+}: {
+  approval: AiApprovalState;
+  session: AiSession;
+  autoFocus: boolean;
+}) {
+  const rejectRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (autoFocus && approval.status === 'pending') rejectRef.current?.focus();
+  }, [approval.approvalId, approval.status, autoFocus]);
+
   if (approval.status !== 'pending') return null;
 
   return (
@@ -19,7 +34,12 @@ export function AiApprovalCard({ approval, session }: { approval: AiApprovalStat
         <div className="mt-0.5 text-sm font-medium text-ink">{approval.targetLabel}</div>
       </div>
       <div className="mt-4 flex justify-end gap-2">
-        <Button size="sm" variant="ghost" onClick={() => void session.decide(approval.approvalId, false)}>
+        <Button
+          ref={rejectRef}
+          size="sm"
+          variant="ghost"
+          onClick={() => void session.decide(approval.approvalId, false)}
+        >
           Reject
         </Button>
         <Button size="sm" variant="primary" onClick={() => void session.decide(approval.approvalId, true)}>

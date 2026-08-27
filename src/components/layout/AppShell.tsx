@@ -18,6 +18,7 @@ import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAiSettings } from '../../ai/settings';
 import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AiPanel } from '../ai/AiPanel';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
@@ -51,9 +52,7 @@ export function AppShell() {
   const [aiSettings] = useAiSettings();
   const aiSession = useOptionalAiSession();
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiDesktop, setAiDesktop] = useState(
-    () => window.matchMedia?.(AI_DESKTOP_QUERY).matches ?? true,
-  );
+  const aiDesktop = useMediaQuery(AI_DESKTOP_QUERY);
   const [wideDesktop, setWideDesktop] = useState(
     () => window.matchMedia?.(WIDE_DESKTOP_QUERY).matches ?? true,
   );
@@ -98,17 +97,8 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
-    const query = window.matchMedia?.(AI_DESKTOP_QUERY);
-    if (!query) return;
-    const onChange = (event: MediaQueryListEvent) => {
-      setAiDesktop(event.matches);
-      if (!event.matches) setAiOpen(false);
-    };
-    setAiDesktop(query.matches);
-    if (!query.matches) setAiOpen(false);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
+    if (!aiDesktop) setAiOpen(false);
+  }, [aiDesktop]);
 
   useEffect(() => {
     if (!aiSettings.enabled || !aiSession) setAiOpen(false);

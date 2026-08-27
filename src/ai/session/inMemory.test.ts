@@ -65,4 +65,27 @@ describe('in-memory AI session', () => {
       expect.objectContaining({ status: 'stop_requested', summary: 'Stop requested' }),
     );
   });
+
+  it('returns a queued follow-up to the draft when stopping its active run', async () => {
+    const session = createInMemoryAiSession({
+      run: {
+        status: 'active',
+        runId: 'run-1',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        claimedAt: 1,
+        leaseExpiresAt: 10,
+      },
+      queuedFollowUp: 'Change direction and compare both theories.',
+    });
+
+    await session.stop('run-1');
+
+    expect(session.getSnapshot()).toEqual(
+      expect.objectContaining({
+        draft: 'Change direction and compare both theories.',
+        queuedFollowUp: null,
+      }),
+    );
+  });
 });

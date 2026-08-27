@@ -24,8 +24,8 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         : connection.client.name;
 
   useEffect(() => {
-    if (disconnected || pendingApproval) closeRef.current?.focus();
-  }, [disconnected, pendingApproval]);
+    if (disconnected) closeRef.current?.focus();
+  }, [disconnected]);
 
   return (
     <aside
@@ -110,7 +110,13 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
       ) : (
         <>
           <AiConversation items={snapshot.items} />
-          {snapshot.approval && <AiApprovalCard approval={snapshot.approval} session={session} />}
+          {snapshot.approval && (
+            <AiApprovalCard
+              approval={snapshot.approval}
+              session={session}
+              autoFocus={pendingApproval}
+            />
+          )}
         </>
       )}
 

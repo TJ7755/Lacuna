@@ -1,10 +1,10 @@
+import type { AiEntityReference } from '../../ai/protocol';
 import type { AiConversationItem } from '../../ai/session/types';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { CheckIcon } from '../ui/icons';
 
-function targetHref(kind: string, id: string): string | null {
-  if (kind === 'course') return `#/course/${id}`;
-  if (kind === 'lesson') return `#/lesson/${id}`;
+function targetHref(source: AiEntityReference): string | null {
+  if (source.kind === 'course') return `#/course/${source.id}`;
   return null;
 }
 
@@ -46,7 +46,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
               {item.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {item.sources.map((source) => {
-                    const href = targetHref(source.kind, source.id);
+                    const href = targetHref(source);
                     return href ? (
                       <a key={`${source.kind}-${source.id}`} href={href} className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft hover:border-accent/50 hover:text-accent">
                         {source.label}

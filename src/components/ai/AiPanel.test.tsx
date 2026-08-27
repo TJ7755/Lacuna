@@ -90,7 +90,7 @@ describe('AiPanel', () => {
     expect(session.stop).toHaveBeenCalledWith('run-1');
   });
 
-  it('presents the exact pending approval as an explicit choice', () => {
+  it('presents the exact pending approval as the initial focus target', async () => {
     const session = sessionWith({
       connection: {
         status: 'connected',
@@ -112,7 +112,9 @@ describe('AiPanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Approve this action?' })).toBeInTheDocument();
     expect(screen.getByText('Mechanics')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    const reject = screen.getByRole('button', { name: 'Reject' });
+    await waitFor(() => expect(reject).toHaveFocus());
+    fireEvent.click(reject);
     expect(session.decide).toHaveBeenCalledWith('approval-1', false);
   });
 });

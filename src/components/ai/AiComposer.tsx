@@ -19,6 +19,11 @@ export function AiComposer({
   const [content, setContent] = useState(initialDraft);
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dirtyRef = useRef(false);
+
+  useEffect(() => {
+    if (!dirtyRef.current) setContent(initialDraft);
+  }, [initialDraft]);
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
@@ -30,7 +35,10 @@ export function AiComposer({
     setSending(true);
     const result = await session.send(message);
     setSending(false);
-    if (result.ok) setContent('');
+    if (result.ok) {
+      dirtyRef.current = false;
+      setContent('');
+    }
   }
 
   return (
@@ -49,7 +57,10 @@ export function AiComposer({
           disabled={disabled}
           aria-label="Message AI"
           placeholder={disabled ? 'Connect an AI session to begin' : 'Ask about this course or change Lacuna…'}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={(event) => {
+            dirtyRef.current = true;
+            setContent(event.target.value);
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();
@@ -65,7 +76,7 @@ export function AiComposer({
             aria-label="Send message"
             disabled={disabled || sending || content.trim().length === 0}
             onClick={() => void send()}
-            className="flex min-h-8 min-w-8 items-center justify-center rounded-lg bg-accent px-2 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-accent px-2 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
           >
             Send
           </button>

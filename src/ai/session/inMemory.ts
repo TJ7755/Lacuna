@@ -12,17 +12,13 @@ const EMPTY_SNAPSHOT: AiSessionSnapshot = {
   queuedFollowUp: null,
 };
 
-export interface InMemoryAiSession extends AiSession {
-  replaceSnapshot(snapshot: AiSessionSnapshot): void;
-}
-
 function identifier(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
 export function createInMemoryAiSession(
   initial: Partial<AiSessionSnapshot> = {},
-): InMemoryAiSession {
+): AiSession {
   let snapshot: AiSessionSnapshot = { ...EMPTY_SNAPSHOT, ...initial };
   const listeners = new Set<() => void>();
 
@@ -38,11 +34,6 @@ export function createInMemoryAiSession(
     },
     getSnapshot() {
       return snapshot;
-    },
-    replaceSnapshot(next) {
-      if (next === snapshot) return;
-      snapshot = next;
-      listeners.forEach((listener) => listener());
     },
     async send(content) {
       if (snapshot.connection.status === 'disconnected') {
@@ -78,6 +69,8 @@ export function createInMemoryAiSession(
       const now = Date.now();
       publish({
         ...snapshot,
+        draft: snapshot.queuedFollowUp ?? snapshot.draft,
+        queuedFollowUp: null,
         run: { ...snapshot.run, status: 'stop_requested', stopRequestedAt: now },
         activity: {
           runId,
