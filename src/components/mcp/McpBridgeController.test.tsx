@@ -6,7 +6,13 @@ import type { McpConsentRequest, McpGrantNotice } from '../../mcp/bridge/protoco
 import type { RecordedUndo } from '../../mcp/bridge/undoRegistry';
 
 const mocks = vi.hoisted(() => ({
-  notify: vi.fn(), attach: vi.fn(), restoreCards: vi.fn(), resolveScopes: vi.fn(),
+  notify: vi.fn(),
+  attach: vi.fn(),
+  restoreCards: vi.fn(),
+  restoreConcept: vi.fn(),
+  restoreQuestion: vi.fn(),
+  restoreSequence: vi.fn(),
+  resolveScopes: vi.fn(),
 }));
 
 vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
@@ -14,7 +20,14 @@ vi.mock('../../mcp/bridge/renderer', () => ({ attachMcpBridge: mocks.attach }));
 vi.mock('../../mcp/bridge/scopeResolver', () => ({ resolveToolScopes: mocks.resolveScopes }));
 vi.mock('../../db/schema', () => ({ db: { courses: { get: vi.fn().mockResolvedValue({ name: 'Biology' }) } } }));
 vi.mock('../../db/repository', () => ({
-  restoreCards: mocks.restoreCards, restoreCourse: vi.fn(), restoreLesson: vi.fn(), restoreSequence: vi.fn(),
+  restoreCards: mocks.restoreCards,
+  restoreCourse: vi.fn(),
+  restoreLesson: vi.fn(),
+  restoreSequence: mocks.restoreSequence,
+}));
+vi.mock('../../questions/repository', () => ({
+  restoreConcept: mocks.restoreConcept,
+  restoreQuestion: mocks.restoreQuestion,
 }));
 
 describe('McpBridgeController', () => {
@@ -53,5 +66,51 @@ describe('McpBridgeController', () => {
     expect(options.actionLabel).toBe('Undo');
     options.onAction();
     await waitFor(() => expect(mocks.restoreCards).toHaveBeenCalledWith(['card']));
+  });
+
+  it('restores a deleted Concept through the Undo toast', async () => {
+    let undoAvailable: ((undo: RecordedUndo) => void) | undefined;
+    const snapshot = { id: 'concept-1' };
+    mocks.attach.mockImplementation((options: McpBridgeOptions) => {
+      undoAvailable = options.onUndoAvailable;
+      return vi.fn();
+    });
+    render(<McpBridgeController />);
+
+    act(() => undoAvailable?.({
+      requestId: 'concept-delete',
+      toolName: 'lacuna.delete_concept',
+      recordedAt: 1,
+      payload: { kind: 'restoreConcept', snapshot },
+    }));
+    const options = mocks.notify.mock.calls.at(-1)?.[2];
+    options.onAction();
+
+    await waitFor(() => expect(mocks.restoreConcept).toHaveBeenCalledWith(snapshot));
+    expect(mocks.restoreSequence).not.toHaveBeenCalled();
+    expect(mocks.notify).toHaveBeenCalledWith('MCP action undone.', 'positive');
+  });
+
+  it('restores a deleted Question through the Undo toast', async () => {
+    let undoAvailable: ((undo: RecordedUndo) => void) | undefined;
+    const snapshot = { question: { id: 'question-1' }, concepts: { questionId: 'question-1' } };
+    mocks.attach.mockImplementation((options: McpBridgeOptions) => {
+      undoAvailable = options.onUndoAvailable;
+      return vi.fn();
+    });
+    render(<McpBridgeController />);
+
+    act(() => undoAvailable?.({
+      requestId: 'question-delete',
+      toolName: 'lacuna.delete_question',
+      recordedAt: 1,
+      payload: { kind: 'restoreQuestion', snapshot },
+    }));
+    const options = mocks.notify.mock.calls.at(-1)?.[2];
+    options.onAction();
+
+    await waitFor(() => expect(mocks.restoreQuestion).toHaveBeenCalledWith(snapshot));
+    expect(mocks.restoreSequence).not.toHaveBeenCalled();
+    expect(mocks.notify).toHaveBeenCalledWith('MCP action undone.', 'positive');
   });
 });

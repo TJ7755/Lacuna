@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../ui/Toast';
 import { db } from '../../db/schema';
-import { restoreCards, restoreCourse, restoreLesson, restoreSequence, type CardSnapshot, type CourseSnapshot, type LessonSnapshot, type SequenceSnapshot } from '../../db/repository';
+import {
+  restoreCards,
+  restoreCourse,
+  restoreLesson,
+  restoreSequence,
+  type CardSnapshot,
+  type CourseSnapshot,
+  type LessonSnapshot,
+  type SequenceSnapshot,
+} from '../../db/repository';
 import { restoreOcclusion, type OcclusionSnapshot } from '../../db/occlusionRepository';
+import {
+  restoreConcept,
+  restoreQuestion,
+  type ConceptSnapshot,
+  type QuestionSnapshot,
+} from '../../questions/repository';
 import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
 import type { McpConsentRequest } from '../../mcp/bridge/protocol';
 import { attachMcpBridge } from '../../mcp/bridge/renderer';
@@ -11,16 +26,33 @@ import { McpConsentPrompt } from './McpConsentPrompt';
 import { resolveToolScopes } from '../../mcp/bridge/scopeResolver';
 
 async function restoreUndo(undo: RecordedUndo): Promise<void> {
-  if (undo.payload.kind === 'restoreCards') {
-    await restoreCards(undo.payload.snapshot as CardSnapshot);
-  } else if (undo.payload.kind === 'restoreCourse') {
-    await restoreCourse(undo.payload.snapshot as CourseSnapshot);
-  } else if (undo.payload.kind === 'restoreLesson') {
-    await restoreLesson(undo.payload.snapshot as LessonSnapshot);
-  } else if (undo.payload.kind === 'restoreOcclusion') {
-    await restoreOcclusion(undo.payload.snapshot as OcclusionSnapshot);
-  } else {
-    await restoreSequence(undo.payload.snapshot as SequenceSnapshot);
+  const { kind, snapshot } = undo.payload;
+  switch (kind) {
+    case 'restoreCards':
+      await restoreCards(snapshot as CardSnapshot);
+      return;
+    case 'restoreCourse':
+      await restoreCourse(snapshot as CourseSnapshot);
+      return;
+    case 'restoreLesson':
+      await restoreLesson(snapshot as LessonSnapshot);
+      return;
+    case 'restoreSequence':
+      await restoreSequence(snapshot as SequenceSnapshot);
+      return;
+    case 'restoreOcclusion':
+      await restoreOcclusion(snapshot as OcclusionSnapshot);
+      return;
+    case 'restoreConcept':
+      await restoreConcept(snapshot as ConceptSnapshot);
+      return;
+    case 'restoreQuestion':
+      await restoreQuestion(snapshot as QuestionSnapshot);
+      return;
+    default: {
+      const unhandledKind: never = kind;
+      throw new Error(`Unsupported MCP Undo kind: ${String(unhandledKind)}`);
+    }
   }
 }
 
