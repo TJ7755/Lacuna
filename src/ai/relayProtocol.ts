@@ -37,6 +37,9 @@ export const relayPairingCodeSchema = z
 export const relayTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
 export const relayTimestampSchema = z.number().int().nonnegative().finite();
 const relayRevisionSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const relayGenerationSchema = z
+  .string()
+  .regex(/^"[^"\r\n]+"$/, 'Expected a quoted mailbox generation.');
 const relayIdentifierSchema = z
   .string()
   .min(1)
@@ -94,6 +97,10 @@ export const relayPeerResponseSchema = z
     client: aiClientIdentitySchema,
     expiresAt: relayTimestampSchema,
   })
+  .strict();
+
+export const relayMailboxWriteResponseSchema = z
+  .object({ generation: relayGenerationSchema })
   .strict();
 
 export const relayEnvelopeSchema = z
@@ -196,6 +203,7 @@ export type RelayCreatedSession = z.infer<typeof relayCreateSessionResponseSchem
 export type RelayClaimRequest = z.infer<typeof relayClaimRequestSchema>;
 export type RelayClaimResponse = z.infer<typeof relayClaimResponseSchema>;
 export type RelayPeer = z.infer<typeof relayPeerResponseSchema>;
+export type RelayMailboxWriteResponse = z.infer<typeof relayMailboxWriteResponseSchema>;
 export type RelayEnvelope = z.infer<typeof relayEnvelopeSchema>;
 export type RelayBrowserMessage = z.infer<typeof relayBrowserMessageSchema>;
 export type RelayBrowserMailbox = z.infer<typeof relayBrowserMailboxSchema>;

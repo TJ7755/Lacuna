@@ -107,9 +107,9 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(
-        new Response(null, {
-          status: 204,
-          headers: { ETag: '"platform"', 'X-Lacuna-Generation': '"terminal-1"' },
+        new Response(JSON.stringify({ generation: '"terminal-1"' }), {
+          status: 200,
+          headers: { ETag: '"platform"', 'Content-Type': 'application/json' },
         }),
       );
     const crypto = cryptoOperations(browserMailbox);
@@ -215,6 +215,73 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
+  });
+
+  it('accepts the legacy 204 generation header for terminal mailbox writes', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 204,
+          headers: { 'X-Lacuna-Generation': '"terminal-legacy"' },
+        }),
+      );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).resolves.toBe('"terminal-legacy"');
+  });
+
+  it('requires reconnection when a 200 terminal PUT returns a non-strict generation body', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-1"', unexpected: true }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),

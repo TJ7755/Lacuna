@@ -10,6 +10,7 @@ import {
   relayBrowserMailboxSchema,
   relayClaimResponseSchema,
   relayEnvelopeSchema,
+  relayMailboxWriteResponseSchema,
   relayTerminalMailboxSchema,
   type RelayEnvelope,
   type RelayTerminalMailbox,
@@ -138,6 +139,15 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     }
     if (response.status === 412) {
       throw new Error('Another terminal writer changed this Lacuna AI session.');
+    }
+    if (response.status === 200) {
+      try {
+        const result = relayMailboxWriteResponseSchema.safeParse(await readJsonResponse(response));
+        if (!result.success) throw new TerminalRelayReconnectRequiredError();
+        return result.data.generation;
+      } catch {
+        throw new TerminalRelayReconnectRequiredError();
+      }
     }
     if (response.status !== 204) {
       throw relayHttpError('write the Lacuna AI terminal mailbox', response.status);
