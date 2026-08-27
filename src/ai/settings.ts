@@ -51,7 +51,13 @@ export function useAiSettings(): [AiSettings, (patch: Partial<AiSettings>) => vo
   const [settings, setSettings] = useState(readAiSettings);
 
   useEffect(() => {
-    const onStorage = () => {
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.storageArea !== localStorage ||
+        (event.key !== null && event.key !== STORAGE_KEY)
+      ) {
+        return;
+      }
       unsavedSettings = null;
       setSettings(readPersistedAiSettings());
     };

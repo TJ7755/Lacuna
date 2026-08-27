@@ -52,5 +52,19 @@ describe('AI settings', () => {
       enabled: true,
       misconceptionFirstEnabled: false,
     });
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'lacuna.unrelated-setting',
+          storageArea: window.localStorage,
+        }),
+      );
+    });
+
+    expect(result.current[0]).toEqual({
+      enabled: true,
+      misconceptionFirstEnabled: false,
+    });
   });
 });
