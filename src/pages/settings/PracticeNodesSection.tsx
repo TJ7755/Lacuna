@@ -8,10 +8,9 @@ export interface PracticeNodesSectionProps {
 }
 
 /**
- * Practice-node summary. The path is the canonical authoring surface because
- * placement is meaningless without seeing the curriculum around it. Settings
- * explains the automatic/manual distinction and links to that editor rather
- * than maintaining a second full editing workflow.
+ * Practice-node summary. Existing authored nodes remain editable on the path,
+ * where their placement has useful context; immediate course-wide practice is
+ * launched from the course header instead.
  */
 export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
   const navigate = useNavigate();
@@ -33,8 +32,8 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
     <div className="flex flex-col gap-3">
       <p className="text-xs text-ink-faint">
         Automatic practice appears when due work builds up and follows the thresholds above.
-        Manual practice is placed deliberately on the course path and can limit lessons, card count
-        and order. Custom card filters are not editable.
+        Existing manual practice nodes stay on the course path and can limit lessons, card count and
+        order. Use Practice Now in the course header for immediate course-wide practice.
       </p>
 
       {manualNodes?.length === 0 && (
@@ -60,15 +59,17 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
         </div>
       ))}
 
-      <Button
-        variant="secondary"
-        size="sm"
-        className="self-start"
-        onClick={() => navigate(`/course/${courseId}`)}
-      >
-        Manage on Path
-        <ChevronRightIcon width={16} height={16} />
-      </Button>
+      {manualNodes && manualNodes.length > 0 && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="self-start"
+          onClick={() => navigate(`/course/${courseId}`)}
+        >
+          Edit on Path
+          <ChevronRightIcon width={16} height={16} />
+        </Button>
+      )}
     </div>
   );
 }

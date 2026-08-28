@@ -415,16 +415,18 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] The path header shows the course name, exam date and live progress without overflow.
 - [ ] Study opens the persistent course study flow and exposes progression, starting the next lesson, due
       review and relevant named revision as distinct choices.
+- [ ] Practice Now sits beside Study, starts course-wide ad-hoc practice when eligible and is
+      disabled when there is no eligible reached material.
 - [ ] Review today in the default sidebar opens the cross-course review session.
 - [ ] Study mode renders the curriculum without authoring controls.
-- [ ] Edit mode exposes lesson and practice-node authoring controls.
+- [ ] Edit mode exposes lesson authoring and existing practice-node editing controls.
 - [ ] Add a lesson at the beginning, middle and end; each appears in the intended order.
 - [ ] Rename, reorder and delete a disposable lesson; cancellation and Undo behave as labelled.
 - [ ] Semi-linear unlocking exposes the next lesson only after the current lesson is taught and any
       gating manual practice node is complete.
 - [ ] Open mode exposes all lessons; linear mode follows its anchor date and cadence.
 - [ ] Auto-practice nodes appear only when the configured thresholds require them.
-- [ ] Add, edit, reposition and remove a manual practice node.
+- [ ] Edit, reposition and remove an existing manual practice node.
 - [ ] Manual practice filters and randomisation are reflected when its session starts.
 - [ ] Checkpoints appear at their configured lesson position and open the correct assessment detail.
 - [ ] Upcoming assessments show useful dates and do not cover excluded or future material.
@@ -657,7 +659,8 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Auto-practice toggle and far/near threshold, urgent-window and max-gap values alter path nodes.
 - [ ] Default lesson view persists.
 - [ ] Add, rename, reorder and delete assessments with prefix/custom coverage and card exclusions.
-- [ ] Add, rename, reorder and delete lessons and manual practice nodes.
+- [ ] Add, rename, reorder and delete lessons; existing manual practice nodes can be renamed,
+      repositioned and deleted.
 - [ ] Published/shared course controls show revision state; Detach preserves local content and enables
       local editing.
 - [ ] Deleting a disposable course removes its dependent content and Undo restores it.

@@ -1,7 +1,6 @@
-// Modal editor for a manual practice node, opened directly from the course path
-// (see CoursePath.tsx's insertion "+" affordance and the edit badge on PracticeNode).
-// Mirrors the chrome of CardEditOverlay. The course path is the canonical editor;
-// Settings links back here instead of maintaining a competing management surface.
+// Modal editor for a manual practice node, opened from its edit badge on the
+// course path. Mirrors the chrome of CardEditOverlay. Settings links back here
+// instead of maintaining a competing management surface.
 //
 // British English throughout.
 

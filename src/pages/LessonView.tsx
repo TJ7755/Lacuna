@@ -51,12 +51,15 @@ interface LessonViewProps {
   lessonId?: string;
   /** The single course-level Study action for the inline one-lesson course. */
   showStudyNow?: boolean;
+  /** Whether the inline one-lesson course has reached cards eligible for immediate practice. */
+  practiceNowEnabled?: boolean;
 }
 
 export function LessonView({
   courseId: courseIdProp,
   lessonId: lessonIdProp,
   showStudyNow = false,
+  practiceNowEnabled = false,
 }: LessonViewProps) {
   const params = useParams<{ courseId: string; lessonId: string }>();
   // Props take precedence over route params (single-lesson inline branch).
@@ -222,6 +225,14 @@ export function LessonView({
               >
                 <PlayIcon width={18} height={18} />
                 Study
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={!practiceNowEnabled}
+                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+              >
+                Practice Now
               </Button>
               {/* The due count already leads the stat pills above, so this line
                 only speaks when there is something the pills don't say. */}

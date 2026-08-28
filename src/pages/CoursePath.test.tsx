@@ -28,6 +28,7 @@ const {
   mockUpdatePracticeNode,
   mockDeletePracticeNode,
   mockReorderLessons,
+  mockLessonViewProps,
 } = vi.hoisted(() => ({
   mockCreateLesson: vi.fn(),
   mockUpdateCourse: vi.fn(),
@@ -35,6 +36,7 @@ const {
   mockUpdatePracticeNode: vi.fn(),
   mockDeletePracticeNode: vi.fn(),
   mockReorderLessons: vi.fn(),
+  mockLessonViewProps: vi.fn(),
 }));
 
 let mockCourse: Course | null | undefined;
@@ -91,6 +93,13 @@ vi.mock('../state/useCourseData', () => ({
   useCourseSummary: () => mockSummary,
   usePracticeNodes: () => mockPracticeNodes,
   usePendingMergeReview: () => mockPendingMerge,
+}));
+
+vi.mock('./LessonView', () => ({
+  LessonView: (props: unknown) => {
+    mockLessonViewProps(props);
+    return null;
+  },
 }));
 
 vi.mock('../db/repository', () => ({
@@ -253,9 +262,40 @@ beforeEach(() => {
   mockUpdatePracticeNode.mockReset();
   mockDeletePracticeNode.mockReset();
   mockReorderLessons.mockReset();
+  mockLessonViewProps.mockReset();
 });
 
 describe('CoursePath Read mode', () => {
+  it('starts course-wide practice from the header', () => {
+    const card = makeCard('card-1', 'lesson-1');
+    mockCourseCards = [card];
+    live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Practice Now' }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
+  });
+
+  it('disables course-wide practice when no reached card is eligible', () => {
+    renderPage();
+    expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+  });
+
+  it('exposes course-wide practice in a single-lesson course header', async () => {
+    const card = makeCard('card-1', 'lesson-1');
+    mockLessons = [lesson1];
+    mockCourseCards = [card];
+    live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
+
+    renderPage();
+    await waitFor(() => {
+      expect(mockLessonViewProps).toHaveBeenCalledWith(
+        expect.objectContaining({ practiceNowEnabled: true }),
+      );
+    });
+  });
+
   it('hides start, end and mid-path Manual practice', () => {
     renderPage();
     expect(
@@ -298,29 +338,11 @@ describe('CoursePath Edit mode', () => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
   });
 
-  it('opens the editor from the start Manual practice gap', () => {
+  it('keeps manual-practice insertion controls off the curriculum path', () => {
     renderPage();
-    const inserts = screen.getAllByRole('button', { name: 'Add manual practice here' });
-    expect(inserts).toHaveLength(3);
-    fireEvent.click(inserts[0]);
-    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Position on the path')).toHaveValue('');
-  });
-
-  it('opens the editor from the mid-path insert', () => {
-    renderPage();
-    const inserts = screen.getAllByRole('button', { name: 'Add manual practice here' });
-    fireEvent.click(inserts[1]);
-    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Position on the path')).toHaveValue('0');
-  });
-
-  it('opens the editor from the end Manual practice gap', () => {
-    renderPage();
-    const inserts = screen.getAllByRole('button', { name: 'Add manual practice here' });
-    fireEvent.click(inserts[2]);
-    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Position on the path')).toHaveValue('1');
+    expect(
+      screen.queryByRole('button', { name: 'Add manual practice here' }),
+    ).not.toBeInTheDocument();
   });
 
   it('opens the editor from the practice-node pencil', () => {

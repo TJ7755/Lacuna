@@ -1,7 +1,6 @@
-// Path-segment rendering for CoursePath.tsx: a single node, its connecting
-// line, and the labelled affordances for inserting a manual
-// practice node. Extracted out of the page so CoursePath.tsx stays focused on
-// data loading and layout.
+// Path-segment rendering for CoursePath.tsx: a single node and its connecting
+// line. Extracted out of the page so CoursePath.tsx stays focused on data
+// loading and layout.
 //
 // British English throughout.
 
@@ -11,41 +10,8 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonNodeDetail } from './LessonNode';
 import { PathNodeView } from './PathNodeView';
 import { PathLine } from './PathLine';
-import { PlusIcon } from '../ui/icons';
 import { formatDate } from '../../utils/datetime';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
-
-/** Whether the line/gap right after `nodes[i]` should offer a practice-node insertion point. */
-export interface LineInsert {
-  insertable: boolean;
-  position?: number;
-}
-
-/**
- * Precomputes, for the line following each node, whether inserting a manual
- * practice node there is meaningful and which `position` it should carry.
- *
- * A gap is only ever meaningful at a lesson boundary (manual placement keys off
- * lesson `orderIndex`, see buildPath/practiceGateAfterLesson), so this only marks
- * the line immediately preceding the *next* lesson node as insertable — even when
- * several checkpoint/practice nodes sit between two lessons, only one insertion
- * point renders for that whole stretch.
- */
-export function computeLineInserts(nodes: PathNode[]): LineInsert[] {
-  const result: LineInsert[] = [];
-  let lastLessonOrder: number | undefined;
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (node.nodeType === 'lesson') lastLessonOrder = node.lesson.orderIndex;
-    const next = nodes[i + 1];
-    result.push(
-      next && next.nodeType === 'lesson'
-        ? { insertable: true, position: lastLessonOrder }
-        : { insertable: false },
-    );
-  }
-  return result;
-}
 
 /**
  * A quiet hint for why a locked lesson isn't available yet, shown as its
@@ -73,14 +39,11 @@ export function lockHintFor(
 /**
  * Renders a single path node followed by its connecting line (if not the last node).
  * The connecting line is accent-tinted when the preceding node is a completed lesson,
- * indicating the student has already cleared that stretch of the path. When
- * `lineInsert.insertable` and `authoring`, the line also carries a labelled
- * affordance for inserting a manual practice node at that gap.
+ * indicating the student has already cleared that stretch of the path.
  */
 export function PathNodeWithLine({
   node,
   isLast,
-  lineInsert,
   current,
   lockHint,
   lessonDetail,
@@ -91,13 +54,11 @@ export function PathNodeWithLine({
   onPracticeAssessmentClick,
   onCheckpointClick,
   onPracticeEdit,
-  onInsertOnLine,
   authoring,
   lessonReorder,
 }: {
   node: PathNode;
   isLast: boolean;
-  lineInsert: LineInsert;
   current: boolean;
   lockHint?: string;
   lessonDetail?: LessonNodeDetail;
@@ -108,7 +69,6 @@ export function PathNodeWithLine({
   onPracticeAssessmentClick: (assessmentId: string) => void;
   onCheckpointClick: (assessmentId: string) => void;
   onPracticeEdit?: (node: PracticePathNode) => void;
-  onInsertOnLine: (position: number | undefined) => void;
   authoring: boolean;
   lessonReorder?: LessonReorderInteraction;
 }) {
@@ -154,38 +114,7 @@ export function PathNodeWithLine({
           }
         />
       )}
-      {!isLast && (
-        <div className="relative">
-          <PathLine completed={segmentCompleted} />
-          {authoring && lineInsert.insertable && (
-            <InsertButton onInsert={() => onInsertOnLine(lineInsert.position)} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A persistent control for inserting a manual practice node at a specific path gap. */
-function InsertButton({ onInsert }: { onInsert: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onInsert}
-      aria-label="Add manual practice here"
-      className="absolute left-1/2 top-1/2 z-10 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-line-strong bg-surface px-2 text-[0.65rem] font-medium text-ink-faint shadow-sm transition-colors hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-    >
-      <PlusIcon width={12} height={12} />
-      Manual practice
-    </button>
-  );
-}
-
-/** The start/end insertion points, where there is no existing connecting line to anchor to. */
-export function InsertGap({ onInsert }: { onInsert: () => void }) {
-  return (
-    <div className="relative h-8 w-1">
-      <InsertButton onInsert={onInsert} />
+      {!isLast && <PathLine completed={segmentCompleted} />}
     </div>
   );
 }

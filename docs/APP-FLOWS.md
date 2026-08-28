@@ -218,7 +218,9 @@ This deletion is less explicit than lesson, card, and shared-course destructive 
 
 ### Study entry from the path
 
-The header has one generic Study action. Depending on course state, the surrounding path can also show:
+The course header has Study and Practice Now actions. Practice Now begins due-card practice for
+reached, exposed cards and is disabled when none are eligible. Depending on course state, the
+surrounding path can also show:
 
 - Review updates.
 - Add cards to begin studying.
@@ -242,13 +244,13 @@ Lessons can also be created in Course Settings. In Edit mode, lessons can be reo
 The path shows:
 
 - Automatic practice nodes, calculated from course state.
-- Manual practice nodes, placed by the user.
+- Existing manual practice nodes, previously placed by the user.
 - Checkpoints and the final assessment.
 - Linked assessment labels such as Prioritise [assessment].
 
 Selecting a practice node enters the course study conductor with the node identifier. Selecting an assessment opens its detail sheet or assessment revision flow.
 
-In Edit mode, manual nodes can be added in path gaps at the beginning, between lessons, and at the end. A persistent labelled Manual practice control sits in each insertable gap and opens the Practice node editor. The controls are absent in Read mode.
+In Edit mode, existing manual nodes can be edited, repositioned or deleted from their pencil badges. New course-wide practice starts from Practice Now in the course header and does not create a path node.
 
 ## 7. Exam date and assessment flows
 
@@ -479,28 +481,25 @@ Image selection is permission-dependent. The split editor has a desktop-oriented
 
 ## 12. Practice-node flows
 
-### Add a manual practice node from the path
+### Practise a course immediately from the path
 
-1. Switch the course path to Edit mode.
-2. Choose the plus control at the start, between lessons, or at the end.
-3. Enter an optional name; the default is Practice.
-4. Choose Start of course or After lesson.
-5. Choose lesson sources, or choose none to include all lessons.
-6. Optionally set a positive card limit.
-7. Choose whether to randomise order.
-8. Save.
+1. Open a course with eligible cards from reached lessons.
+2. Choose Practice Now beside Study in the course header.
+3. Complete or leave the course-wide ad-hoc Practice session.
 
-The node appears on the path. Selecting it launches the course study conductor.
+Practice Now creates no path node or milestone. It is disabled when no reached, exposed card is
+eligible.
 
 ### Find manual practice management from Settings
 
 1. Open Course Settings.
 2. Open Content and Practice nodes.
 3. Review the explanation of automatic and manual nodes and the list of existing manual nodes.
-4. Choose Manage on Path.
-5. Add, edit, reposition, or delete manual practice from the course path.
+4. When a manual node exists, choose Edit on Path.
+5. Edit, reposition or delete that manual practice node from the course path.
 
-The path is the canonical editor. Settings does not maintain a second version of the same form.
+The path remains the editor for existing manual nodes. The current UI has no manual-node creation
+affordance; immediate course-wide practice uses Practice Now instead.
 
 ### Automatic practice
 
@@ -1127,17 +1126,17 @@ These are boundaries of the current product, not implementation instructions.
 5. Complete lesson study, practice, or revision.
 6. Review the Session report.
 
-### Create a custom practice node
+### Edit an existing custom practice node
 
 1. Course path → Edit.
-2. Choose a plus gap control.
-3. Set name, position, lesson scope, limit, and randomisation.
+2. Choose the pencil badge on an existing manual practice node.
+3. Change its name, position, lesson scope, limit, or randomisation.
 4. Save.
-5. Choose the node on the path.
-6. Complete or exit the resulting study session.
+5. Choose the node on the path to complete or exit its study session.
 
 Course Settings → Content → Practice nodes explains the model and links back to this canonical
-path editor.
+path editor when a manual node exists. Practice Now is the only current way to start new
+course-wide practice.
 
 ### Publish a course and receive an update
 

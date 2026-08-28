@@ -36,12 +36,7 @@ import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmentsStrip';
 import { AddLessonControl } from '../components/course/AddLessonControl';
-import {
-  PathNodeWithLine,
-  InsertGap,
-  computeLineInserts,
-  lockHintFor,
-} from '../components/course/CoursePathSegment';
+import { PathNodeWithLine, lockHintFor } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { useStudySheet } from '../components/learn/StudySheetContext';
@@ -86,12 +81,8 @@ export function CoursePath() {
   const { openStudySheet } = useStudySheet();
   const { notify } = useToast();
 
-  // State for the manual practice-node editor modal (see PracticeNodeEditor):
-  // 'new' with a seeded position when opened from a "+" insertion point, or an
-  // existing PracticeNode when opened from a node's edit badge.
-  const [editorState, setEditorState] = useState<
-    { mode: 'new'; defaultPosition?: number } | { mode: 'edit'; node: PracticeNode } | null
-  >(null);
+  // Existing manual practice nodes remain editable from their path badges.
+  const [editingPracticeNode, setEditingPracticeNode] = useState<PracticeNode | null>(null);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
@@ -327,15 +318,16 @@ export function CoursePath() {
   if (lessons.length === 1) {
     return (
       <Suspense fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}>
-        <LazyLessonView courseId={courseId} lessonId={lessons[0].id} showStudyNow />
+        <LazyLessonView
+          courseId={courseId}
+          lessonId={lessons[0].id}
+          showStudyNow
+          practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
+        />
       </Suspense>
     );
   }
 
-  // Precomputed for the manual practice-node insertion affordances (see InsertGap/
-  // InsertButton below): which lines on the path may host a "+", and the position
-  // value ("end of course") the trailing insertion point should seed a new node with.
-  const lineInserts = computeLineInserts(visibleNodes);
   // Release-date map for the "locked" hint (see lockHintFor below) — only
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
@@ -346,8 +338,6 @@ export function CoursePath() {
   );
   const currentNodeId = currentLessonNode?.id;
   const nextStudyLabel = studyTarget?.label;
-  const lastLessonOrderIndex = lessons[lessons.length - 1]?.orderIndex;
-
   // Curriculum position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.
   const { reached, total } = pathPosition(visibleNodes);
@@ -468,6 +458,14 @@ export function CoursePath() {
               <PlayIcon width={18} height={18} />
               Study
             </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              disabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0}
+              onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+            >
+              Practice Now
+            </Button>
             {pendingUpdate && (
               <Link
                 to={`/course/${courseId}/updates`}
@@ -518,15 +516,11 @@ export function CoursePath() {
         </div>
       ) : (
         <div className="flex flex-col items-center">
-          {authoring && (
-            <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
-          )}
           {visibleNodes.map((node, i) => (
             <PathNodeWithLine
               key={node.id}
               node={node}
               isLast={i === visibleNodes.length - 1}
-              lineInsert={lineInserts[i]}
               current={node.id === currentNodeId}
               lockHint={
                 node.nodeType === 'lesson'
@@ -560,12 +554,8 @@ export function CoursePath() {
               onCheckpointClick={setSelectedAssessmentId}
               onPracticeEdit={
                 authoring
-                  ? (pn) =>
-                      pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
+                  ? (pn) => pn.practiceNode && setEditingPracticeNode(pn.practiceNode)
                   : undefined
-              }
-              onInsertOnLine={(position) =>
-                setEditorState({ mode: 'new', defaultPosition: position })
               }
               authoring={authoring}
               lessonReorder={
@@ -575,11 +565,6 @@ export function CoursePath() {
               }
             />
           ))}
-          {authoring && (
-            <InsertGap
-              onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
-            />
-          )}
           {authoring && (
             <div className="mt-4 flex w-full justify-center">
               <AddLessonControl
@@ -608,14 +593,13 @@ export function CoursePath() {
               }
             />
           )}
-        {editorState && (
+        {editingPracticeNode && (
           <PracticeNodeEditor
             courseId={course.id}
             lessons={lessons}
-            node={editorState.mode === 'edit' ? editorState.node : undefined}
-            defaultPosition={editorState.mode === 'new' ? editorState.defaultPosition : undefined}
-            onSaved={() => setEditorState(null)}
-            onCancel={() => setEditorState(null)}
+            node={editingPracticeNode}
+            onSaved={() => setEditingPracticeNode(null)}
+            onCancel={() => setEditingPracticeNode(null)}
           />
         )}
       </AnimatePresence>

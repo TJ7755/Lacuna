@@ -142,11 +142,16 @@ function renderPage() {
   );
 }
 
-function renderInline(showStudyNow = false) {
+function renderInline(showStudyNow = false, practiceNowEnabled = false) {
   return render(
     <MemoryRouter initialEntries={['/']}>
       <ToastProvider>
-        <LessonView courseId="course-1" lessonId="lesson-1" showStudyNow={showStudyNow} />
+        <LessonView
+          courseId="course-1"
+          lessonId="lesson-1"
+          showStudyNow={showStudyNow}
+          practiceNowEnabled={practiceNowEnabled}
+        />
       </ToastProvider>
     </MemoryRouter>,
   );
@@ -203,6 +208,20 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 
     expect(screen.getByRole('button', { name: 'Study' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
+  });
+
+  it('starts course-wide practice from the header when eligible', () => {
+    renderInline(true, true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Practice Now' }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
+  });
+
+  it('disables course-wide practice when no reached card is eligible', () => {
+    renderInline(true);
+
+    expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
   });
 
   it('shows the course navigation with a Settings link', () => {
