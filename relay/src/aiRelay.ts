@@ -178,11 +178,16 @@ async function handleMailbox(
 
   const writerHash = mailbox === 'browser' ? metadata.browserTokenHash : metadata.terminalTokenHash;
   const peerHash = mailbox === 'browser' ? metadata.terminalTokenHash : metadata.browserTokenHash;
+  const digestQueries = new URL(request.url).searchParams.getAll('digest');
+  const writerReceiptRead =
+    request.method === 'GET' &&
+    digestQueries.length === 1 &&
+    DIGEST_RE.test(digestQueries[0] ?? '');
   const hasAccess =
     request.method === 'PUT'
       ? authorised(writerHash, request)
       : request.method === 'GET'
-        ? authorised(writerHash, request) || authorised(peerHash, request)
+        ? authorised(peerHash, request) || (writerReceiptRead && authorised(writerHash, request))
         : authorised(peerHash, request);
   if (!hasAccess) {
     return json(401, request, { error: 'unauthorised' });
