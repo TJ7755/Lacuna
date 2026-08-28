@@ -105,7 +105,7 @@ export function AiComposer({
         <div
           role="group"
           aria-label="Message actions"
-          className="flex items-center justify-between gap-2 border-t border-line px-2 py-1.5"
+          className="flex items-center justify-between gap-2 border-t border-line px-2 py-1"
         >
           <span className="px-1 text-[10px] text-ink-faint">Shift+Enter for a new line</span>
           <button
@@ -113,7 +113,7 @@ export function AiComposer({
             aria-label="Send message"
             disabled={disabled || sending || content.trim().length === 0}
             onClick={() => void send()}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-accent px-2 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
+            className="flex h-8 min-w-16 items-center justify-center rounded-lg bg-accent px-4 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
           >
             Send
           </button>

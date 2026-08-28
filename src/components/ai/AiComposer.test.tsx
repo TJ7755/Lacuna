@@ -114,7 +114,7 @@ describe('AiComposer', () => {
     });
   });
 
-  it('provides a 44 by 44 pixel minimum Send target', () => {
+  it('uses a shorter, wider Send target in the compact composer', () => {
     render(
       <AiComposer
         session={session()}
@@ -125,10 +125,7 @@ describe('AiComposer', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass(
-      'min-h-11',
-      'min-w-11',
-    );
+    expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass('h-8', 'min-w-16');
   });
 
   it('keeps message actions in document flow below multiline content', () => {
