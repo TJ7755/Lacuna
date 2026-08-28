@@ -242,13 +242,13 @@ Lessons can also be created in Course Settings. In Edit mode, lessons can be reo
 The path shows:
 
 - Automatic practice nodes, calculated from course state.
-- Manual practice nodes, placed by the user.
+- Existing manual practice nodes, previously placed by the user.
 - Checkpoints and the final assessment.
 - Linked assessment labels such as Prioritise [assessment].
 
 Selecting a practice node enters the course study conductor with the node identifier. Selecting an assessment opens its detail sheet or assessment revision flow.
 
-In Edit mode, manual nodes can be added in path gaps at the beginning, between lessons, and at the end. A persistent labelled Manual practice control sits in each insertable gap and opens the Practice node editor. The controls are absent in Read mode.
+In Edit mode, existing manual nodes can be edited, repositioned or deleted from their pencil badges. New course-wide practice starts from Practice Now in the course header and does not create a path node.
 
 ## 7. Exam date and assessment flows
 
@@ -1124,17 +1124,17 @@ These are boundaries of the current product, not implementation instructions.
 5. Complete lesson study, practice, or revision.
 6. Review the Session report.
 
-### Create a custom practice node
+### Edit an existing custom practice node
 
 1. Course path → Edit.
-2. Choose a plus gap control.
-3. Set name, position, lesson scope, limit, and randomisation.
+2. Choose the pencil badge on an existing manual practice node.
+3. Change its name, position, lesson scope, limit, or randomisation.
 4. Save.
-5. Choose the node on the path.
-6. Complete or exit the resulting study session.
+5. Choose the node on the path to complete or exit its study session.
 
 Course Settings → Content → Practice nodes explains the model and links back to this canonical
-path editor.
+path editor when a manual node exists. Practice Now is the only current way to start new
+course-wide practice.
 
 ### Publish a course and receive an update
 

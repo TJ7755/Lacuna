@@ -6,7 +6,8 @@
   header now places a secondary **Practice Now** action beside **Study** and sends eligible,
   reached course cards through the existing ad-hoc Practice conductor. The action is disabled when
   there is no eligible practice work. Existing authored practice nodes remain visible and editable
-  on the path; Settings links to the path only when there is an existing node to manage.
+  on the path; Settings links to the path only when there is an existing node to manage. Single-
+  lesson courses expose the same Practice Now action in their inline lesson header.
 
 ## Unreleased — AI domain-action vertical slice
 

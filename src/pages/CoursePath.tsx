@@ -318,7 +318,12 @@ export function CoursePath() {
   if (lessons.length === 1) {
     return (
       <Suspense fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}>
-        <LazyLessonView courseId={courseId} lessonId={lessons[0].id} showStudyNow />
+        <LazyLessonView
+          courseId={courseId}
+          lessonId={lessons[0].id}
+          showStudyNow
+          practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
+        />
       </Suspense>
     );
   }
