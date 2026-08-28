@@ -22,6 +22,7 @@ const ENVELOPE: RelayEnvelope = {
   ciphertext: Buffer.from(new Uint8Array(16)).toString('base64url'),
 };
 const ENCRYPTED_BODY_SHA256 = 'ee9696c083aaba5cbe3a1be2c7001dff4b5f7bb80a91b62dcf8f8ad39e97c045';
+const SYNTHETIC_GENERATION = `"sha256:${ENCRYPTED_BODY_SHA256}"`;
 const KEY = {} as CryptoKey;
 
 function cryptoOperations(opened: JsonValue): RelayCryptoOperations {
@@ -143,7 +144,7 @@ describe('HttpTerminalRelayTransport', () => {
     });
     const terminalMailbox: RelayTerminalMailbox = { version: 1, revision: 0, events: [] };
     await expect(transport.writeTerminalMailbox(connection, '"0"', terminalMailbox)).resolves.toBe(
-      '"terminal-1"',
+      SYNTHETIC_GENERATION,
     );
 
     expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
@@ -223,7 +224,7 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).resolves.toBe('"terminal-recovered"');
+    ).resolves.toBe(SYNTHETIC_GENERATION);
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
       'POST',
       'PUT',
@@ -261,7 +262,7 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).resolves.toBe('"terminal-recovered"');
+    ).resolves.toBe(SYNTHETIC_GENERATION);
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
       'POST',
       'PUT',
@@ -310,7 +311,7 @@ describe('HttpTerminalRelayTransport', () => {
       });
       await vi.advanceTimersByTimeAsync(250);
 
-      await expect(result).resolves.toBe('"terminal-recovered"');
+      await expect(result).resolves.toBe(SYNTHETIC_GENERATION);
       expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
         'POST',
         'PUT',
@@ -389,7 +390,7 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).resolves.toBe('"terminal-recovered"');
+    ).resolves.toBe(SYNTHETIC_GENERATION);
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
       'POST',
       'PUT',
@@ -433,10 +434,10 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).resolves.toBe('"terminal-recovered"');
+    ).resolves.toBe(SYNTHETIC_GENERATION);
   });
 
-  it('does not trust a platform ETag while reconciling an ambiguous terminal write', async () => {
+  it('derives a synthetic generation instead of trusting a platform ETag on a 200', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -447,11 +448,10 @@ describe('HttpTerminalRelayTransport', () => {
           expiresAt: 90_000,
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(
-        new Response('{}', {
+        new Response(null, {
           status: 200,
-          headers: { ETag: '"platform-rewritten"', 'Content-Type': 'application/json' },
+          headers: { ETag: '"platform-rewritten"' },
         }),
       );
     const transport = createTestTerminalRelayTransport({
@@ -470,7 +470,8 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
+    ).resolves.toBe(SYNTHETIC_GENERATION);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('accepts the legacy 204 generation header for terminal mailbox writes', async () => {
@@ -509,7 +510,7 @@ describe('HttpTerminalRelayTransport', () => {
     ).resolves.toBe('"terminal-legacy"');
   });
 
-  it('recovers an exact terminal mailbox write when a 200 PUT returns an invalid body', async () => {
+  it('derives a synthetic generation when a 200 PUT returns an invalid body', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -520,8 +521,7 @@ describe('HttpTerminalRelayTransport', () => {
           expiresAt: 90_000,
         }),
       )
-      .mockResolvedValueOnce(Response.json({ generation: '"terminal-1"', unexpected: true }))
-      .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-1"', unexpected: true }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -538,7 +538,8 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).resolves.toBe('"terminal-recovered"');
+    ).resolves.toBe(SYNTHETIC_GENERATION);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('requires reconnection when reconciliation finds no matching terminal write digest', async () => {
@@ -573,7 +574,7 @@ describe('HttpTerminalRelayTransport', () => {
     ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
   });
 
-  it('requires reconnection when the terminal write receipt has no generation', async () => {
+  it('does not depend on terminal digest receipt generation metadata', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -602,6 +603,6 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
+    ).resolves.toBe(SYNTHETIC_GENERATION);
   });
 });

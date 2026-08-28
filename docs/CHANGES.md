@@ -47,23 +47,33 @@
   reconnection invalidates delayed relay and crypto work before it can push or persist stale mailbox
   state. This fixes the same-tab reconnect race that surfaced as a `412` stale-generation failure.
 - Hardened browser mailbox acknowledgement when Vercel commits a `200` write but the browser cannot
-  use its response. The browser now prefers the validated JSON generation, falls back to
-  `X-Lacuna-Generation`, reserves `ETag` for legacy `204` responses, and fails closed without
-  retrying the previous generation after a rejected request or when no generation is trustworthy.
-  A later live run proved Vercel can make an arbitrary successful acknowledgement unreadable, not
-  merely the first one. Browser and terminal writers therefore reconcile a rejected request, an
-  unusable success or a server-side `5xx` through three bounded, authenticated read-only checks of
-  their own encrypted mailbox, accepting its exposed generation only when the stored bytes exactly
-  match the attempted ciphertext. Reads use absolute 0/250/650 ms offsets, a 250 ms per-read limit
-  and a one-second overall deadline. They never retry the PUT, never trust a modern platform `ETag`,
-  and still fail closed on a mismatch or an exhausted verification window. The relay permits each
-  writer to read its own opaque mailbox for this purpose without weakening PUT authorisation. If a
-  committed store write omits its ETag, the relay
+  use its response. A later live run proved Vercel can make an arbitrary successful acknowledgement
+  unreadable, not merely the first one. A `200` visible to either writer now derives the next
+  generation as `"sha256:<lowercase ciphertext digest>"` from the exact attempted bytes, so neither
+  writer depends on response metadata that Vercel can damage. Response generation metadata remains
+  compatibility for legacy non-`200` success responses only. The relay recognises that synthetic
+  generation in a later `If-Match`, verifies it against the current stored bytes, then uses the
+  backing store's current ETag for the atomic write; a changed mailbox still fails with `412`.
+  Browser and terminal writers reconcile a transport-rejected request, an unusable non-`200`
+  success or a server-side `5xx` through bounded, authenticated digest-receipt GETs on their own
+  mailbox. The relay returns success only when the stored ciphertext matches the supplied SHA-256
+  digest, and the writer derives the same synthetic generation without trusting the receipt's body
+  or headers.
+  Browser checks use absolute 0/650/1400 ms offsets, a 600 ms per-read limit and a 2.2-second overall
+  deadline so Vercel's cross-origin authorisation preflight has time to complete; terminal checks
+  retain 0/250/650 ms offsets, a 250 ms per-read limit and a one-second deadline. Neither retries the
+  PUT or trusts a modern platform `ETag`; a mismatch that persists through the receipt window fails
+  closed.
+  The relay permits each writer to request a digest receipt for its own opaque mailbox without
+  weakening PUT authorisation. If a committed store write omits its ETag, the relay
   re-reads and adopts the stored generation only when the ciphertext still matches exactly; an
   ETag-less read fails closed because an unconditional repair could overwrite a concurrent
   successor. Stale-writer conflicts and unverifiable relay acknowledgements now have distinct error
   messages instead of both claiming that the connection changed elsewhere; either condition also
-  clears terminal client state so it can reconnect safely.
+  clears terminal client state so it can reconnect safely. Fresh deployed-browser verification
+  completed two clean same-tab exchanges, recovered a claimed prompt through terminal replacement,
+  retained the transcript after disconnect and showed no late acknowledgement warning with the
+  corrected preflight-aware recovery window.
   Connected users can also disconnect a dead terminal directly from the AI panel; local reset no
   longer waits for relay revocation and recovers an active prompt or queued follow-up into the
   composer. A clean disconnect while a prompt is claimed follows the same recovery path. Ambiguous

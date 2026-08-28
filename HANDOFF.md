@@ -9,9 +9,9 @@ changing the code or repeating live tests.
 - Base: `master` at `2b4fdb2960f22b9f2666a2e78854fd85028659be`, the merge of PR #100.
 - This branch fixes the remaining live-browser failure discovered after PR #100 and adds manual
   recovery from a dead terminal.
-- The branch should be pushed as a normal PR but left unmerged tonight. The prompter explicitly said
-  not to wait for CI, CodeRabbit or Vercel checks; those are tomorrow's work.
-- Do not call the slice browser-verified until the fresh deployed-origin procedure below passes.
+- PR #101 is open and remains unmerged pending the final automated suite and review.
+- The deployed browser gate passed on 28 August 2026. The exact evidence and the remaining work are
+  recorded below.
 
 ## Current product boundary
 
@@ -61,8 +61,7 @@ the connection changed elsewhere and made the diagnosis more tedious than it nee
 ## Remaining live failure before this hotfix
 
 A corrected one-browser/one-terminal test used the fresh PR deployment
-`https://lacuna-io96hwy57-tj7755.vercel.app` and pairing code
-`96EG-EXHZ-MYWJ-PEY3-SA7S`. The browser sent `Corrected first exchange.`. The terminal received it,
+`https://lacuna-io96hwy57-tj7755.vercel.app`. The browser sent `Corrected first exchange.`. The terminal received it,
 called `reply(message.runId, message.messageId, "First corrected exchange passed.")`, logged
 `REPLIED`, then disconnected cleanly. The browser nevertheless showed:
 
@@ -112,28 +111,31 @@ relay evidence. It did expose the need for a manual connected-state reset.
 
 ## This branch's hotfix
 
-`src/ai/relayClient.ts` now treats the response to a successful mailbox push as follows:
+`src/ai/relayClient.ts` now treats the response to a mailbox push as follows:
 
-1. For `200`, prefer a schema-valid JSON `generation`.
-2. If the JSON is missing, empty, malformed or invalid, use a validated
-   `X-Lacuna-Generation` header.
-3. Trust a validated `ETag` only for a legacy `204`; Vercel can rewrite ordinary `ETag` values on
-   modern responses.
-4. If the PUT rejects, returns `5xx`, or no generation is trustworthy, GET the same browser mailbox
-   up to three times at absolute 0/250/650 ms offsets with the writer token. Each read is capped at
-   250 ms and the overall recovery deadline is one second.
-5. Recover only when the stored ciphertext exactly matches the attempted bytes and the response
-   exposes a schema-valid `X-Lacuna-Generation`.
+1. Hash the exact attempted ciphertext with SHA-256.
+2. A browser-visible `200` derives the next quoted generation locally as
+   `"sha256:<lowercase digest>"`; it does not depend on Vercel preserving the response body or
+   generation headers.
+3. Trust a validated generation header only for the legacy `204` response path.
+4. If the PUT rejects or returns `5xx`, GET the same mailbox with `?digest=<digest>` and the writer
+   token. The relay returns `404` before a mailbox exists, `409` while its opaque bytes differ and
+   `200` once they match.
+5. Browser recovery reads run at absolute 0/650/1,400 ms offsets, allow 600 ms per read and stop at
+   2.2 seconds. That window includes Vercel's observed OPTIONS-plus-GET latency. The terminal keeps
+   the shorter 0/250/650 ms, 250 ms/read, one-second schedule because Node has no browser preflight.
 6. Never retry the PUT or trust an ordinary platform `ETag`; throw
-   `RelayPushOutcomeUnknownError` when read-back cannot prove the write.
+   `RelayPushOutcomeUnknownError` when the digest receipt cannot prove the write.
 
-`tooling/lacuna-ai-mcp/src/relayTransport.ts` applies the same bounded recovery rule to terminal-mailbox
-writes. `relay/src/aiRelay.ts` allows each mailbox writer to GET its own opaque mailbox while
-retaining the existing peer read and writer-only PUT boundaries. If a committed store write omits
-its ETag, the relay re-reads and adopts the generation only when the stored ciphertext still matches;
-an ETag-less read fails closed rather than risking an overwrite of a concurrent successor. A real
-`412` now reports that another Lacuna tab or window changed the connection; an ambiguous outcome
-that still cannot be verified says the relay may have accepted the update. Both require
+`tooling/lacuna-ai-mcp/src/relayTransport.ts` applies the corresponding digest-receipt recovery rule
+to terminal-mailbox writes. `relay/src/aiRelay.ts` allows each writer to request a digest receipt for
+its own opaque mailbox while retaining the existing peer-read and writer-only PUT boundaries. On a
+subsequent synthetic `If-Match`, the relay verifies that the current bytes have the supplied digest,
+then uses that read's native store ETag for the actual compare-and-swap. If a committed store write
+omits its ETag, the relay re-reads and adopts the generation only when the stored ciphertext still
+matches; an ETag-less read fails closed rather than risking an overwrite of a concurrent successor.
+A real `412` now reports that another Lacuna tab or window changed the connection; an ambiguous
+outcome that still cannot be verified says the relay may have accepted the update. Both require
 reconnection, clear terminal client state, and no longer lie about why.
 
 `src/ai/session/relay.ts` also makes reset recovery synchronous from the UI's perspective. Reset:
@@ -154,11 +156,13 @@ It does not replace the existing Stop or Close controls.
 Regression coverage is in:
 
 - `src/ai/relayClient.test.ts` — JSON success, header fallbacks, bounded read scheduling, hung-read
-  abortion and unknown successful outcomes.
+  abortion, synthetic generations, Vercel preflight latency and unknown successful outcomes.
 - `tests/e2e/ai-terminal.spec.ts` — commits a browser PUT, strips its response body and custom
-  generation header, then proves exact-byte read-back advances the generation without a stale retry.
+  generation header, then proves the locally derived synthetic generation advances the next write
+  without trusting response metadata or retrying the ciphertext. Unit tests cover digest receipts.
 - `relay/tests/aiRelay.test.ts` — writer and peer read capabilities remain distinct from writer-only
-  PUT access, and missing write ETags reconcile without overwriting concurrent successors.
+  PUT access; synthetic digest generations advance through native store CAS; mismatches and races
+  fail without overwriting concurrent successors; missing write ETags reconcile safely.
 - `relay/tests/relay.test.ts` — the existing sync relay follows the same race-safe missing-write-ETag
   rule and fails closed on an ETag-less read.
 - `tooling/lacuna-ai-mcp/src/relayTransport.test.ts` — symmetric bounded terminal writer read-back,
@@ -187,48 +191,50 @@ Regression coverage is in:
 - Conversation and connection state are device-local. The chat transcript is not the planned durable
   learner-memory system.
 
-## Tomorrow's verification procedure
+## Final live verification on 28 August 2026
 
-1. Check out and pull `codex/ai-relay-response-recovery-hotfix`, then inspect the PR, CI and
-   CodeRabbit results. Fix concrete failures only; do not widen the slice.
-2. Wait for the PR's Vercel preview deployment.
-3. Use a fresh, unique deployment origin. Do not reuse the public alias or an old preview because
-   local storage and service-worker state would contaminate the result.
-4. In Settings, enable AI, open the panel and choose `Connect terminal`.
-5. Build the companion if necessary with `bun run build:ai-mcp`.
-6. Connect the terminal with the pairing code. For a direct Bun smoke test from the repository root,
-   replace `PAIRING_CODE` and run:
+The fresh immutable deployment `https://lacuna-9r5g2s96g-tj7755.vercel.app` completed two clean
+connect/send/reply/disconnect cycles in one browser tab. Drafts cleared, both replies rendered and
+the transcript remained visible. The same tab also recovered from a terminal that claimed a prompt
+and exited without disconnecting: manual Disconnect restored the prompt, replacement pairing
+succeeded, resend cleared the draft and the replacement reply rendered.
 
-   ```sh
-   bun -e 'import { TerminalAiClient } from "./tooling/lacuna-ai-mcp/src/client.ts"; import { HttpTerminalRelayTransport } from "./tooling/lacuna-ai-mcp/src/relayTransport.ts"; const client = new TerminalAiClient({ transport: new HttpTerminalRelayTransport() }); await client.connect("PAIRING_CODE", undefined, { name: "Live test" }); console.log("CONNECTED"); const message = await client.waitForMessage(25000); console.log("MESSAGE", message); if (message.type !== "message") throw new Error("No message received"); await client.reply(message.runId, message.messageId, "Live exchange passed."); console.log("REPLIED"); await new Promise((resolve) => setTimeout(resolve, 5000)); await client.disconnect(); console.log("DISCONNECTED");'
-   ```
+That deployment exposed one late warning after the final clean disconnect. Relay timings showed the
+PUT committed with `200`, then digest receipt reads returned `409`, `200`, `200`; each browser fetch
+was aborted because its 250 ms allowance was shorter than Vercel's OPTIONS-plus-GET latency. After
+the browser recovery window was corrected, immutable deployment
+`https://lacuna-ag59l1ojc-tj7755.vercel.app` passed the final exchange and disconnect check: reply
+rendered, draft cleared, transcript remained, reconnect returned and no warning appeared after the
+2.2-second recovery deadline.
 
-7. Send a first browser message. Assert the browser transcript receives `Live exchange passed.`, the
-   user message is completed, its text does not remain as a recovered draft, and no stale-generation
-   alert appears.
-8. Assert the clean terminal disconnect changes the browser to disconnected while retaining the
-   transcript.
-9. Pair again in the same tab and complete a second message/reply exchange. This checks same-tab
-   session replacement, not cross-tab ownership.
-10. Pair once more, send a prompt, let the terminal claim it, then kill the terminal without calling
-    disconnect. Use `Disconnect terminal` in the panel. Assert the UI resets immediately, the claimed
-    prompt returns to the composer, and a new terminal can pair successfully.
-11. Merge only after both exchanges and dead-terminal recovery pass on the fresh deployed origin.
+The machine exhausted the intended 10-pairings/hour limit during repeated live testing. The final
+verification therefore used a temporary limit of 100 on `codex/ai-relay-live-verify` only. That
+change affected session creation, not mailbox or acknowledgement behaviour, and was reverted in
+commit `3dcdcbf` immediately after the gate. The PR and production limit remain 10. Vercel
+Authentication was restored afterwards and verified as `Require Log In` with Standard Protection.
 
-If the first exchange still fails, collect the exact deployment URL, pairing/session identifier,
-browser-visible state, terminal output and relay request sequence before changing code. A `200`
-server log alone is not evidence that the browser accepted the response.
+The deferred automated gate then passed. The first full application run completed 287/288 files and
+2,422/2,423 tests; its only failure was the recovery fake-timer test still advancing the obsolete
+250 ms schedule. After fixing that test, the affected browser relay suite passed 29/29. Relay passed
+58/58 with typecheck and lint; the AI companion passed 32/32 with typecheck, lint and build; the AI
+Playwright file passed 5/5; web and Electron typecheck, application lint, changed-file formatting and
+`git diff --check` passed. The E2E build retained the repository's existing chunk-size warnings.
+
+Remaining work: review PR #101 and fix concrete review or CI failures only. Do not widen the slice or
+merge without explicit instruction.
 
 ## Completion criteria
 
-- `bun run typecheck` passes, including web and Electron projects.
-- Focused AI relay/session/panel tests pass without weakened assertions.
-- Focused ESLint, Prettier check and `git diff --check` pass.
-- A fresh deployed origin completes two connect/send/reply/disconnect cycles in one browser tab.
-- Killing a claimed terminal and using manual Disconnect immediately recovers the prompt and permits
-  re-pairing.
-- No `412` stale-generation alert appears during those single-tab scenarios.
-- Only then merge the PR.
+- Passed: web and Electron typecheck, application/relay/AI-companion lint, changed-file formatting,
+  `git diff --check`, relay tests, AI companion tests and AI Playwright E2E.
+- Passed after its isolated timing fix: browser relay client tests 29/29. The original full run's
+  other 2,422 tests passed.
+- Passed: a fresh deployed origin completed two connect/send/reply/disconnect cycles in one browser
+  tab.
+- Passed: killing a claimed terminal and using manual Disconnect immediately recovered the prompt
+  and permitted re-pairing.
+- Passed: no `412` or ambiguous-outcome alert appeared in the final single-tab scenarios.
+- Only then review the PR. Merge only with explicit instruction.
 
 ## Useful files
 

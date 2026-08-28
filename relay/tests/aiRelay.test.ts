@@ -262,6 +262,115 @@ describe('AI relay', () => {
     }
   });
 
+  it('accepts a matching synthetic digest generation for the next mailbox write', async () => {
+    const pair = await paired();
+    const current = new Uint8Array([1, 3, 5]);
+    const successor = new Uint8Array([2, 4, 6]);
+    const created = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, current),
+    );
+    expect(created.status).toBe(200);
+
+    const written = await pair.handle(
+      mailboxPut(
+        pair.sessionId,
+        'browser',
+        pair.browserToken,
+        syntheticGeneration(current),
+        successor,
+      ),
+    );
+
+    expect(written.status).toBe(200);
+    const read = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(successor);
+  });
+
+  it('rejects a mismatched synthetic digest without attempting a mailbox write', async () => {
+    const flaky = flakyMailboxStore(new MemoryStore());
+    const pair = await paired(flaky.store);
+    const current = new Uint8Array([7, 8, 9]);
+    const attempted = new Uint8Array([10, 11, 12]);
+    const created = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, current),
+    );
+    expect(created.status).toBe(200);
+
+    const written = await pair.handle(
+      mailboxPut(
+        pair.sessionId,
+        'browser',
+        pair.browserToken,
+        syntheticGeneration(new Uint8Array([0])),
+        attempted,
+      ),
+    );
+
+    expect(written.status).toBe(412);
+    expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
+    const read = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(current);
+  });
+
+  it('fails closed without writing when a matching synthetic generation has no store ETag', async () => {
+    const flaky = flakyMailboxStore(new MemoryStore());
+    const pair = await paired(flaky.store);
+    const current = new Uint8Array([22, 23, 24]);
+    const attempted = new Uint8Array([25, 26, 27]);
+    const created = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, current),
+    );
+    expect(created.status).toBe(200);
+    flaky.lost = true;
+
+    const written = await pair.handle(
+      mailboxPut(
+        pair.sessionId,
+        'browser',
+        pair.browserToken,
+        syntheticGeneration(current),
+        attempted,
+      ),
+    );
+
+    expect(written.status).toBe(500);
+    expect(await written.json()).toEqual({ error: 'internal error' });
+    expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
+  });
+
+  it('fails the synthetic digest CAS when a newer mailbox wins after its read', async () => {
+    const racing = racingMailboxStore(new MemoryStore());
+    const pair = await paired(racing.store);
+    const current = new Uint8Array([13, 14, 15]);
+    const competing = new Uint8Array([16, 17, 18]);
+    const attempted = new Uint8Array([19, 20, 21]);
+    const created = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, current),
+    );
+    expect(created.status).toBe(200);
+    racing.replaceAfterNextMailboxGet = competing;
+
+    const written = await pair.handle(
+      mailboxPut(
+        pair.sessionId,
+        'browser',
+        pair.browserToken,
+        syntheticGeneration(current),
+        attempted,
+      ),
+    );
+
+    expect(written.status).toBe(412);
+    const read = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(competing);
+  });
+
   it('recovers a committed mailbox write whose response omitted its ETag', async () => {
     const flaky = flakyMailboxStore(new MemoryStore());
     const pair = await paired(flaky.store);
@@ -565,6 +674,10 @@ function base64Url(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('base64url');
 }
 
+function syntheticGeneration(bytes: Uint8Array): string {
+  return `"sha256:${createHash('sha256').update(bytes).digest('hex')}"`;
+}
+
 class RateConflictStore extends MemoryStore {
   override async put(key: string, body: Uint8Array, opts: PutOptions) {
     if (key.startsWith('ai-rate/')) return { ok: false as const, reason: 'precondition' as const };
@@ -632,6 +745,37 @@ function flakyMailboxStore(inner: MemoryStore): {
     },
     set replaceNextEmptyPutWith(value: Uint8Array | null) {
       replaceNextEmptyPutWith = value;
+    },
+  };
+}
+
+function racingMailboxStore(inner: MemoryStore): {
+  store: BlobStore;
+  replaceAfterNextMailboxGet: Uint8Array | null;
+} {
+  let replaceAfterNextMailboxGet: Uint8Array | null = null;
+  return {
+    store: {
+      async get(key) {
+        const stored = await inner.get(key);
+        if (stored && isMailboxKey(key) && replaceAfterNextMailboxGet) {
+          const replacement = await inner.put(key, replaceAfterNextMailboxGet, {
+            ifMatch: stored.etag,
+          });
+          replaceAfterNextMailboxGet = null;
+          if (!replacement.ok) throw new Error('mailbox fixture race unexpectedly failed');
+        }
+        return stored;
+      },
+      put: (key, body, opts) => inner.put(key, body, opts),
+      del: (keys) => inner.del(keys),
+      list: (prefix) => inner.list(prefix),
+    },
+    get replaceAfterNextMailboxGet() {
+      return replaceAfterNextMailboxGet;
+    },
+    set replaceAfterNextMailboxGet(value: Uint8Array | null) {
+      replaceAfterNextMailboxGet = value;
     },
   };
 }

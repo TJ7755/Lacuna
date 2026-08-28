@@ -73,14 +73,21 @@ a declared length as an additional integrity check, not as a prerequisite for ac
 Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the relay's `ETag` on a
 `204` mailbox write, and a later browser run recorded a committed `200` whose JSON generation was
 not retained by the app. A server-side `200` proves the write committed; it does not prove the
-browser accepted the response. Modern `200` clients must prefer the validated JSON generation and
-then `X-Lacuna-Generation`; Vercel's ordinary `ETag` is trusted only for legacy `204` responses.
+browser accepted the response. Modern `200` clients derive a synthetic SHA-256 generation from the
+exact attempted ciphertext instead of trusting response metadata; Vercel's ordinary `ETag` is
+trusted only for legacy `204` responses.
 Observed again on 28 August: the first browser PUT was acknowledged, the second committed with `200`,
-but its response was unusable and no `412` occurred. A rejected, unreadable or `5xx` PUT may have
-committed. Never retry it. A single immediate read-back can still return non-verifying state after a
-successful `200`, even when Vercel Blob is read with `useCache: false`. Use a short, bounded series
-of authenticated GET-only checks and adopt `X-Lacuna-Generation` only when the bytes exactly match
-the attempted ciphertext; otherwise fail closed. Both browser and terminal writers need this rule.
+but its response was unusable and no `412` occurred. A transport-rejected, unreadable or `5xx` PUT
+may have committed. Never retry it. A single immediate read-back can still return non-verifying
+state after a successful `200`, even when Vercel Blob is read with `useCache: false`. Use a short,
+bounded series of authenticated digest-receipt GETs and never retry the PUT. A browser-visible `200`
+derives a synthetic `"sha256:<lowercase ciphertext digest>"` generation from the exact attempted
+bytes. For an ambiguous write, the relay confirms only whether its current stored bytes match that
+digest; the client derives the same generation without trusting response metadata. The relay
+validates a later synthetic `If-Match` against current bytes and uses the store's current ETag for
+the atomic write, so competing successors still fail closed. Browser receipt timing must accommodate
+Vercel's cross-origin authorisation preflight; its recovery window is deliberately longer than the
+terminal client's. Both writers need this rule.
 
 ## Monorepo preview deployments need the relay branch alias
 

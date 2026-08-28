@@ -253,6 +253,9 @@ async function writeMailbox(
       if (!current || sha256Hex(current.body) !== expectedDigest) {
         return json(412, request, { error: 'precondition failed' });
       }
+      if (canonicalEtag(current.etag) === '') {
+        return json(500, request, { error: 'internal error' });
+      }
       written = await store.put(key, body.bytes, { ifMatch: current.etag });
     } else {
       written = await store.put(key, body.bytes, { ifMatch: expected });

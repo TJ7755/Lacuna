@@ -98,7 +98,9 @@ describe('browser AI relay client', () => {
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({ generation: '"browser-1"' });
+    ).resolves.toEqual({
+      generation: '"sha256:787c798e39a5bc1910355bae6d0cd87a36b2e10fd0202a83e3bb6b005da83472"',
+    });
 
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe(`${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser`);
@@ -148,33 +150,40 @@ describe('browser AI relay client', () => {
   it.each([
     ['malformed', 'not-json', 'X-Lacuna-Generation'],
     ['empty', '', 'X-Lacuna-Generation'],
-  ])('falls back to the generation header for a %s JSON body', async (_case, body, header) => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(body, {
-        status: 200,
-        headers: { [header]: '"browser-fallback"' },
-      }),
-    );
+  ])(
+    'derives the generation locally for a 200 with a %s JSON body',
+    async (_case, body, header) => {
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(body, {
+          status: 200,
+          headers: { [header]: '"browser-fallback"' },
+        }),
+      );
 
-    await expect(
-      createTestRelayClient({ fetchImpl }).push(
-        CREDENTIALS,
-        new Uint8Array([1]),
-        AI_RELAY_EMPTY_GENERATION,
-      ),
-    ).resolves.toEqual({ generation: '"browser-fallback"' });
-  });
+      await expect(
+        createTestRelayClient({ fetchImpl }).push(
+          CREDENTIALS,
+          new Uint8Array([1]),
+          AI_RELAY_EMPTY_GENERATION,
+        ),
+      ).resolves.toEqual({
+        generation: '"sha256:4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"',
+      });
+    },
+  );
 
   it('recovers a committed push through its ciphertext digest', async () => {
     const bytes = new Uint8Array([7, 8, 9]);
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
       .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({ generation: '"browser-recovered"' });
+    ).resolves.toEqual({
+      generation: '"sha256:66a6757151f8ee55db127716c7e3dce0be8074b64e20eda542e5c1e46ca9c41e"',
+    });
 
     expect(fetchImpl.mock.calls[1]).toEqual([
       `${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser?digest=66a6757151f8ee55db127716c7e3dce0be8074b64e20eda542e5c1e46ca9c41e`,
@@ -191,13 +200,15 @@ describe('browser AI relay client', () => {
     const bytes = new Uint8Array([7, 8, 9]);
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
       .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({ generation: '"browser-recovered"' });
+    ).resolves.toEqual({
+      generation: '"sha256:66a6757151f8ee55db127716c7e3dce0be8074b64e20eda542e5c1e46ca9c41e"',
+    });
 
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET', 'GET']);
   });
@@ -209,7 +220,7 @@ describe('browser AI relay client', () => {
     const staleResponse = () => new Response(null, { status: 404 });
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
       .mockResolvedValueOnce(staleResponse())
       .mockResolvedValueOnce(staleResponse())
       .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
@@ -225,19 +236,24 @@ describe('browser AI relay client', () => {
           },
         },
       }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({ generation: '"browser-recovered"' });
+    ).resolves.toEqual({
+      generation: '"sha256:66a6757151f8ee55db127716c7e3dce0be8074b64e20eda542e5c1e46ca9c41e"',
+    });
 
-    expect(waits).toEqual([250, 400]);
+    expect(waits).toEqual([650, 750]);
   });
 
   it('aborts a hung reconciliation read before trying the next scheduled read', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
+    const digestSpy = vi
+      .spyOn(globalThis.crypto.subtle, 'digest')
+      .mockResolvedValue(new Uint8Array(32).buffer);
     try {
       const bytes = new Uint8Array([7, 8, 9]);
       const fetchImpl = vi
         .fn<typeof fetch>()
-        .mockResolvedValueOnce(new Response(null, { status: 200 }))
+        .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
         .mockImplementationOnce((_input, init) => {
           return new Promise<Response>((_resolve, reject) => {
             init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
@@ -249,12 +265,53 @@ describe('browser AI relay client', () => {
         fetchImpl,
         recovery: { now: () => Date.now() },
       }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION);
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(650);
 
-      await expect(result).resolves.toEqual({ generation: '"browser-recovered"' });
+      await expect(result).resolves.toEqual({
+        generation: `"sha256:${'0'.repeat(64)}"`,
+      });
       expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET', 'GET']);
       expect(fetchImpl.mock.calls[1]?.[1]?.signal?.aborted).toBe(true);
     } finally {
+      digestSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('accepts a recovery GET that completes after 250 ms but within its 600 ms timeout', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const digestSpy = vi
+      .spyOn(globalThis.crypto.subtle, 'digest')
+      .mockResolvedValue(new Uint8Array(32).buffer);
+    try {
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
+        .mockImplementationOnce(
+          () =>
+            new Promise<Response>((resolve) => {
+              setTimeout(() => resolve(new Response(null, { status: 200 })), 400);
+            }),
+        );
+
+      const result = createRelayClient({
+        fetchImpl,
+        recovery: { now: () => Date.now() },
+      }).push(CREDENTIALS, new Uint8Array([7, 8, 9]), AI_RELAY_EMPTY_GENERATION);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(399);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(result).resolves.toEqual({ generation: `"sha256:${'0'.repeat(64)}"` });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      digestSpy.mockRestore();
       vi.useRealTimers();
     }
   });
@@ -268,7 +325,9 @@ describe('browser AI relay client', () => {
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({ generation: '"browser-after-rejection"' });
+    ).resolves.toEqual({
+      generation: '"sha256:9909ec831e2cf6d0c73fb5480f31945a80987a13faee005704166cb53a26ceca"',
+    });
   });
 
   it('recovers a committed push after the mailbox PUT returns a server error', async () => {
@@ -280,7 +339,9 @@ describe('browser AI relay client', () => {
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({ generation: '"browser-after-server-error"' });
+    ).resolves.toEqual({
+      generation: '"sha256:d41470f8fe2547d6c4d4802d484fe7ff5a5bbecd5612eeeb1360df0c4781d95e"',
+    });
 
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
   });
@@ -352,11 +413,11 @@ describe('browser AI relay client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('requires schema-valid JSON while reconciling an ambiguous push', async () => {
+  it('derives the recovery generation without reading the receipt body or platform ETag', async () => {
     const bytes = new Uint8Array([10, 11, 12]);
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
       .mockResolvedValueOnce(
         new Response('not-json', {
           status: 200,
@@ -366,7 +427,9 @@ describe('browser AI relay client', () => {
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+    ).resolves.toEqual({
+      generation: '"sha256:9909ec831e2cf6d0c73fb5480f31945a80987a13faee005704166cb53a26ceca"',
+    });
   });
 
   it('reports an unknown push outcome when the recovery fetch rejects', async () => {
@@ -393,7 +456,7 @@ describe('browser AI relay client', () => {
   it('rejects recovery when the relay cannot find the attempted ciphertext digest', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
       .mockResolvedValueOnce(new Response(null, { status: 404 }));
 
     await expect(
@@ -406,7 +469,7 @@ describe('browser AI relay client', () => {
       expect.objectContaining({
         name: 'RelayPushOutcomeUnknownError',
         operation: 'push',
-        status: 200,
+        status: undefined,
       }),
     );
   });
@@ -414,20 +477,25 @@ describe('browser AI relay client', () => {
   it.each([
     ['missing', undefined],
     ['invalid', '""'],
-  ])('rejects recovery when the browser mailbox generation is %s', async (_case, generation) => {
-    const fetchImpl = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(jsonResponse(200, generation ? { generation } : {}));
+  ])(
+    'ignores a %s platform generation on a successful digest receipt',
+    async (_case, generation) => {
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockRejectedValueOnce(new TypeError('PUT response was unreadable'))
+        .mockResolvedValueOnce(jsonResponse(200, generation ? { generation } : {}));
 
-    await expect(
-      createTestRelayClient({ fetchImpl }).push(
-        CREDENTIALS,
-        new Uint8Array([1]),
-        AI_RELAY_EMPTY_GENERATION,
-      ),
-    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
-  });
+      await expect(
+        createTestRelayClient({ fetchImpl }).push(
+          CREDENTIALS,
+          new Uint8Array([1]),
+          AI_RELAY_EMPTY_GENERATION,
+        ),
+      ).resolves.toEqual({
+        generation: '"sha256:4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"',
+      });
+    },
+  );
 
   it('retries only read-back after an ambiguous mailbox PUT', async () => {
     const fetchImpl = vi
@@ -447,7 +515,7 @@ describe('browser AI relay client', () => {
     ]);
   });
 
-  it('reports an unknown push outcome when success has no trustworthy generation', async () => {
+  it('derives a trustworthy generation when a 200 has no usable response metadata', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
 
     await expect(
@@ -456,20 +524,9 @@ describe('browser AI relay client', () => {
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
       ),
-    ).rejects.toEqual(
-      expect.objectContaining({
-        name: 'RelayPushOutcomeUnknownError',
-        operation: 'push',
-        status: 200,
-      }),
-    );
-    await expect(
-      createTestRelayClient({ fetchImpl }).push(
-        CREDENTIALS,
-        new Uint8Array([1]),
-        AI_RELAY_EMPTY_GENERATION,
-      ),
-    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+    ).resolves.toEqual({
+      generation: '"sha256:4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"',
+    });
   });
 
   it('does not trust a platform ETag on a modern mailbox write response', async () => {
@@ -486,7 +543,9 @@ describe('browser AI relay client', () => {
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
       ),
-    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+    ).resolves.toEqual({
+      generation: '"sha256:4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"',
+    });
   });
 
   it('reports an unknown push outcome when the mailbox PUT rejects', async () => {
@@ -507,7 +566,7 @@ describe('browser AI relay client', () => {
     );
   });
 
-  it('reports stale mailbox generations and malformed successful responses', async () => {
+  it('reports stale generations, rejects malformed creates and derives 200 push generations', async () => {
     const staleFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 412 }));
     await expect(
       createTestRelayClient({ fetchImpl: staleFetch }).push(
@@ -544,7 +603,9 @@ describe('browser AI relay client', () => {
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
       ),
-    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+    ).resolves.toEqual({
+      generation: '"sha256:4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"',
+    });
   });
 
   it('revokes with the browser token and treats an absent session as revoked', async () => {

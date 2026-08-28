@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay.js';
 import { MemoryStore } from '../../relay/src/store.js';
@@ -10,6 +11,7 @@ const PAIRING_CODE_RE = /\b[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4
 interface BrowserPutRecord {
   attemptedGeneration: string;
   committedGeneration: string;
+  contentGeneration: string;
 }
 
 interface RelayRouteOptions {
@@ -130,7 +132,9 @@ test('recovers a committed browser write when Vercel strips the 200 acknowledgem
   ).toHaveCount(0);
   expect(browserPuts.length).toBeGreaterThanOrEqual(2);
   expect(browserPuts[0]?.attemptedGeneration).toBe('"0"');
-  expect(browserPuts[1]?.attemptedGeneration).toBe(browserPuts[0]?.committedGeneration);
+  expect(browserPuts[1]?.attemptedGeneration).toBe(browserPuts[0]?.contentGeneration);
+  expect(browserPuts[1]?.attemptedGeneration).not.toBe(browserPuts[0]?.committedGeneration);
+  expect(new Set(browserPuts.map((put) => put.contentGeneration)).size).toBe(browserPuts.length);
   expect(browserPuts.map((put) => put.attemptedGeneration)).not.toContain('"vercel-platform"');
 
   await terminal.disconnect();
@@ -283,9 +287,12 @@ async function relayRoute(
   let responseBody = Buffer.from(await response.arrayBuffer());
   const isBrowserPut = method === 'PUT' && new URL(intercepted.url()).pathname.endsWith('/browser');
   if (isBrowserPut && response.status === 200) {
+    if (!body) throw new Error('Expected the browser mailbox PUT to contain ciphertext.');
+    const contentDigest = createHash('sha256').update(body).digest('hex');
     options.browserPuts?.push({
       attemptedGeneration: headers.get('If-Match') ?? '',
       committedGeneration: responseHeaders.get('X-Lacuna-Generation') ?? '',
+      contentGeneration: `"sha256:${contentDigest}"`,
     });
     if (options.damageFirstBrowserPut && options.browserPuts?.length === 1) {
       responseHeaders.delete('X-Lacuna-Generation');
