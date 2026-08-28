@@ -2473,16 +2473,45 @@ scrollspy and its navigation cannot drift from the rendered sections.
   terminate inference already running in the model or terminal harness. The terminal task must
   remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
 
-  Mailbox protocol v2 also carries typed tool calls and browser-owned responses. The browser uses
+  Mailbox protocol v3 also carries typed tool calls, browser-owned responses and an immutable
+  instruction bundle on every queued message. `buildAiInstructionBundle()` emits `teaching-v1`
+  from the live Settings preference. Enabled conceptual requests diagnose the learner's model,
+  create a concrete failed prediction, delay resolution, explain the corrected model and test
+  transfer; operational work, novel material and explicit direct-answer requests bypass that
+  route. Every bundle retains grounding, conservative memory authorship, permission and Stop rules.
+
+  The browser uses
   the shared executor over the existing Electron MCP tool registry: registry lookup, validation,
   live scope resolution, repository execution and Undo capture have one implementation. Reads are
   implicit. Course-scoped writes require a connection/course grant; course creation uses a
   one-shot `write_call` approval bound to the exact call and validated-input digest; destructive
   calls use a consumed exact approval. Stable `callId` replay returns the recorded result and
-  receipt without repeating the mutation. Stop and disconnect reject later calls and clear grants,
-  approvals and replay state. Learner memories and misconception-first instructions remain future
-  slices. The Electron MCP server below is a separate local-IPC adapter with its own consent
-  coordinator.
+  receipt without repeating the mutation. A resumed approved call ignores an older response for
+  that same `callId` until the browser has acknowledged the terminal revision containing the retry.
+  Successful Course, Lesson, Card, fixed Question and assessment writes return selectable receipts
+  linked to their native surfaces. A receipt whose target was removed by peer sync renders the
+  historical label as **Unavailable**; the global pseudo-Course is never linked. Stop and disconnect
+  reject later calls and clear grants, approvals and replay state.
+
+  Schema v25 stores bounded `AgentMemory` records with immutable id, creation time and global or
+  Course scope; controlled tags; active, uncertain or resolved status; evidence basis; optional
+  provenance and expiry; and Course-owned references. Content is limited to 8,000 characters,
+  identifiers and provenance ids to 160, reference labels to 500, references to 25, queries to
+  1,000 and result limits to 50. `lacuna.search_memories` and `lacuna.create_memory` require an
+  explicit global or Course scope; update cannot move scope; delete is destructive with Undo.
+  Normal AI search excludes expired session memories. Settings → AI can inspect and search every
+  scope, include expired records, correct content and status, or delete a record. Resolved
+  misconceptions remain as learner-correctable evidence rather than being silently resurrected.
+
+  Full backup, replacement, recovery merge and encrypted peer sync include memories. Newest-write
+  and tombstone rules converge peer update, deletion and deliberate resurrection, while recovery
+  and peer merge reject conflicting scope movement. Course deletion cascades scoped memories in the
+  same snapshot/Undo boundary. AI writes and data application share `ReplacementLifecycle`:
+  peer/recovery application serialises snapshot, merge and import while preserving the session;
+  manual replacement synchronously invalidates new AI work, drains admitted writes, attempts relay
+  revocation, commits replacement and clears device-local transcript, connection, grants,
+  approvals and replay state only after success. The Electron MCP server below is a separate
+  local-IPC adapter with its own consent coordinator.
 
 - **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
   count, followed by process-scoped read/write/destructive grants for the whole database

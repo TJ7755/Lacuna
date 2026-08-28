@@ -907,7 +907,8 @@ Another device accepts a full-backup JSON file from a second installation:
 2. Confirm combining with that file (date and card count).
 3. Cards, Questions and evidence from either side are kept; a deletion on either is removed.
    Question Attempt receipts union by identity, conflicting immutable receipts fail, and Question
-   schedules are replayed from eligible evidence.
+   schedules are replayed from eligible evidence. Durable learner memories follow newest-write and
+   tombstone convergence; a newer live edit can deliberately resurrect one.
 4. A restore point is saved first. The success notice reports what was kept, added and removed.
 
 Recover this installation accepts a full-backup JSON file:
@@ -916,7 +917,9 @@ Recover this installation accepts a full-backup JSON file:
 2. Review lesson, Card, Question and date counts.
 3. Cancel, Add from backup, or Replace local data.
 4. Add from backup folds the file in; existing local rows are not deleted.
-5. Replace local data deletes current installation data and restores the backup.
+5. Replace local data deletes current installation data and restores the backup. It rejects new AI
+   writes, drains admitted work, attempts relay revocation and clears device-local AI state only
+   after replacement succeeds. Add-from-backup recovery preserves the connected AI session.
 
 Replacement requires a second explicit consequence confirmation and states that Lacuna has no
 account or cloud copy to delete.
@@ -945,7 +948,8 @@ AI is disabled by default and absent below 1024 CSS px. To use the current chat 
 4. Copy the displayed terminal instruction into the trusted running task. The agent calls
    `lacuna.connect` with that code; the code admits one terminal and expires after ten minutes.
 5. Send a message from the panel. The terminal repeatedly calls `lacuna.wait_for_message`, receives
-   one claimed message and returns one complete reply with the matching `runId` and `messageId`.
+   one claimed message with its `teaching-v1` instruction bundle and returns one complete reply with
+   the matching `runId` and `messageId`.
 6. Empty waits are normal and last no more than 25 seconds. The terminal task must call again;
    Lacuna cannot wake a task which has already ended.
 7. Choose **Stop** to record a cooperative stop request. The terminal checks the latest browser
@@ -959,10 +963,19 @@ The browser and terminal make outbound HTTPS requests to two encrypted direction
 relay cannot read message content. There is no browser extension, WebSocket, inbound localhost
 listener or model credential stored in Lacuna.
 
-This flow currently provides chat only. The saved misconception-first preference is not yet sent to
-the terminal, and AI chat cannot yet read or change Courses, Lessons, Cards, Questions or learner
-memories. The Electron-only MCP flow below is separate and already has its own local data tools and
-permission model.
+For an active run, the terminal can invoke Lacuna's typed domain tools. Reads are implicit. Course
+creation requires exact one-shot approval; the first write inside an existing Course requests a
+course-scoped grant which later writes may reuse. Successful Course, Lesson, Card, fixed Question
+and assessment writes append selectable receipts linked to their native surfaces, while stable
+`callId` replay returns the saved result without repeating the mutation. With misconception-first
+enabled, conceptual exchanges diagnose the learner's model, create a failed prediction, delay the
+resolution, test transfer and update memory only from evidence. The terminal can
+`search/create/update/delete_memory`; search and creation require explicit global or Course scope,
+writes use normal approval, and deletion uses one-shot destructive approval. Settings → AI exposes
+an all-scope **Teaching memory** inspector for correction, resolution and deletion. Missing memory
+references and activity-receipt targets render **Unavailable** rather than retaining stale links.
+Peer sync preserves the terminal session and transcript; full replacement clears them after a
+successful commit. The Electron-only MCP flow below is separate and has its own permission model.
 
 ### Electron-only MCP settings
 
@@ -1107,7 +1120,6 @@ The interface, product language, data model, or help implies these capabilities,
 - Parameterised generated practice instances and shared skill/template identities.
 - A structure-aware equation editor.
 - LLM-graded scheduling.
-- AI-driven Course, Lesson, Card, Question or memory actions from the optional web chat.
 - A unified two-sided card object editor for reverse pairs.
 - Media-preserving share codes. Media requires full backup.
 - A separate delete-all-local-data control.
@@ -1159,3 +1171,26 @@ Media is not carried by the share code.
 4. Confirm replacement of current local data.
 
 There is no account-level deletion or cloud restore.
+
+### Correct a misconception with teaching memory
+
+1. Enable misconception-first teaching in Settings → AI and pair a terminal.
+2. State a learner model. The agent searches the relevant explicit global or Course scope and asks
+   for write approval before saving uncertain evidence.
+3. Ask the conceptual question. The agent surfaces the model, requests a concrete prediction and
+   shows a counterexample before explaining the correction.
+4. Supply the result in the next message. The agent updates the memory to `resolved` from that
+   learner evidence and asks a transfer question.
+5. Review, correct or delete the record under Settings → AI → Teaching memory.
+
+### Keep AI coherent through sync and replacement
+
+1. Keep a terminal connected with a completed action receipt in the transcript.
+2. Delete that receipt's Course on a paired device and return focus to Lacuna.
+3. Peer sync applies behind the AI write fence without disconnecting the terminal or clearing the
+   transcript. The deleted target becomes **Unavailable** and cannot be opened.
+4. Send another message to confirm the terminal session remains usable.
+5. Export a full backup, choose it under Recover this installation and confirm **Replace local
+   data** twice.
+6. Successful full replacement disconnects the terminal and clears the local transcript, grants,
+   approvals and replay state.

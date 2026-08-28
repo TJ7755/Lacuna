@@ -9,6 +9,29 @@
   on the path; Settings links to the path only when there is an existing node to manage. Single-
   lesson courses expose the same Practice Now action in their inline lesson header.
 
+## Unreleased — AI teaching memory and replacement lifecycle
+
+- Upgraded the encrypted mailbox to protocol v3. Every queued prompt captures the live
+  `teaching-v1` instruction bundle, and terminal claims receive conditional misconception-first
+  routing plus grounding, conservative memory authorship, approval and Stop rules.
+- Added schema-v25 learner memories with bounded validation, immutable scope, controlled evidence
+  status and provenance, lexical search, Course cascade/Undo and a native Settings inspector.
+  `lacuna.search/create/update/delete_memory` reuse the existing approval and exact-call replay
+  boundaries; AI search and creation require explicit global or Course scope.
+- Included memories in full backup, replacement, recovery merge, encrypted peer sync, tombstones
+  and size attribution. Peer merge converges updates, deletion and deliberate resurrection while
+  rejecting an attempt to move one memory id between scopes.
+- Added `ReplacementLifecycle` around AI writes and every snapshot/merge/import operation. Peer and
+  recovery application preserve the AI session; manual replacement invalidates new work, drains
+  admitted writes, attempts remote revocation and clears the local transcript, connection, grants,
+  approvals and replay state only after a successful commit.
+- Made completed activity receipts re-check their native targets. A target deleted by peer sync is
+  shown as **Unavailable**, and the global memory pseudo-Course is never linked.
+- Browser scenario 4 passed with an approved uncertain misconception, failed prediction,
+  learner-evidence resolution and transfer check. Scenario 6 passed with focus-triggered peer sync
+  preserving the terminal and transcript, a deleted Course receipt becoming **Unavailable**, and a
+  full backup replacement revoking and clearing the AI session.
+
 ## Unreleased — AI domain-action vertical slice
 
 - Hardened the live terminal path after browser acceptance exposed failures hidden by the
@@ -33,18 +56,24 @@
   course-creation and destructive approvals, stable `callId` replay, Stop enforcement and
   disconnect revocation. Course creation no longer requests reusable global write access; approval
   is bound to the exact call, input digest and requested course name.
-- Added structured activity receipts from real repository results. Course receipts link to the
-  created course; replay returns the same receipt without appending or creating a duplicate.
+- Added structured activity receipts from real repository results. Course, Lesson, Card, fixed
+  Question and assessment receipts link to their native surfaces; replay returns the same receipt
+  without appending or creating a duplicate. Receipt and approval copy is bounded before protocol
+  validation, so a valid long entity name cannot turn a committed write into an internal error.
+- Fixed approved stable-call retries accepting the stale pre-approval response still present in the
+  browser mailbox. The terminal now waits until the browser has acknowledged the terminal revision
+  containing the retry before accepting a response with that `callId`.
 - Fixed successful relay writes to retain the real returned generation before falling back to a
   synthetic ciphertext digest. Using the digest unconditionally forced Vercel Blob through a
   read-after-write check and produced false `412` conflicts when that read was stale.
 - Fixed pending approvals and grants surviving disconnect/reconnect, and fixed the Stop control to
   follow active run state instead of disappearing whenever the latest tool activity completed.
-- Browser acceptance passed before automated verification: one live terminal run read courses,
-  obtained exact approval, created one course, replayed the call without duplication and rendered
-  the linked receipt. A local instance of the repository relay handler then proved that browser
-  Stop prevented the terminal from sending a later tool call after the production pairing limit
-  was exhausted.
+- Browser acceptance passed before automated verification: one live terminal run obtained exact
+  Course approval and one course-scoped grant, created a Course, Lesson, Concept, Card, fixed
+  Question and checkpoint assessment, replayed the assessment call without duplication, verified
+  saved record counts and rendered linked receipts. A local instance of the repository relay
+  handler also proved that browser Stop prevented the terminal from sending a later tool call after
+  the production pairing limit was exhausted.
 - Restricted writer-token mailbox GET access to authenticated digest receipts. Ordinary reads of a
   writer's own full ciphertext mailbox now return `401`; the opposite role remains the only peer
   reader.
