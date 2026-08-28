@@ -1,5 +1,9 @@
 # Next session plan — 18 August 2026
 
+> **Historical session record.** All sync phases P1–P9 are now delivered. Tom completed and
+> confirmed the live two- then three-device P9 pass on 28 August 2026. See `docs/next_plan.md` for
+> the current work queue; the remaining text records the state before P6 began.
+
 Written after Tom reviewed and merged PR #86. Supersedes the 15 August plan: P1 is live, P2 is
 reviewed, and the Arc 8 §7 gate is closed. PR #87 delivered P5 later the same day, so the next
 session is P6.
@@ -31,7 +35,7 @@ merges, not from `feat/sync-p5-transport`.
   platform guarantee. Pairing is not blocked on pre-create-at-mint.
 - **Tested but never run by a human:** the Combine flow, the reframed Settings section, and the
   motion changes from 13 August. Still the oldest unknown in the project.
-- **Never done at all:** a real two-device merge (P9).
+- **Not yet done at the time of writing:** a real two-device merge (P9). Completed 28 August 2026.
 
 ---
 

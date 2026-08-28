@@ -109,16 +109,17 @@
   This document rebases that plan onto the current codebase and sequences the work
   so the next implementation slice can be approved before anyone writes code.</p>
   <div class="meta">
-    <span class="tag b">Status: P1–P8 shipped; P9 manual pass remains — 20 August 2026</span>
+    <span class="tag b">Status: P1–P9 delivered — 28 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
     <span class="tag b">Relay gate answered yes — 14 August 2026</span>
     <span class="tag b">P2 review gate closed — 18 August 2026</span>
   </div>
   <p style="margin-top:1rem"><strong>Read this before working from the phase map below.</strong>
-  The phase map records status as of 20 August 2026: P1&ndash;P8 are shipped
-  and P9 (manual two- then three-device verification) remains. Wording inside the cards that still reads as gated is the
-  original plan of record rather than current state.</p>
+  P1&ndash;P8 shipped by 20 August 2026. Tom completed the real two- then
+  three-device P9 pass against the live relay on 28 August 2026 and confirmed it works. Wording
+  inside the cards that still reads as gated is the original plan of record rather than current
+  state.</p>
   <p><strong>One thing shipped ahead of its gate.</strong> A manual two-device
   merge now exists in Settings &mdash; a file picker that takes a forced restore
   point, runs <code>mergeSnapshots</code> against the current database and
@@ -143,7 +144,8 @@
   <code>src/sync/triggers.ts</code> sharing the in-session unlock, public mint
   on the default relay (<code>relay/src/relay.ts</code>) hiding the mint secret
   behind Advanced, a copyable pairing link and the Dashboard sync pill; P8
-  closed out SPEC/CHANGES/README/roadmap. Only P9 (manual device pass) remains.</p>
+  closed out SPEC/CHANGES/README/roadmap. P9 then completed the live two- and three-device manual
+  gate on 28 August 2026; no phase remains.</p>
   <p><strong>Deployment is Tom's.</strong> Agents write <code>relay/</code>; they
   have no Vercel credentials and must not attempt to authenticate or deploy.</p>
   <p><strong>The 4.5 MB transport ceiling is accepted, 14 August 2026.</strong>
@@ -385,8 +387,9 @@
   </div></div>
 
   <div class="phase"><div class="id">P9</div><div>
-    <h4>Three-device manual pass — gated</h4>
-    <p>Not automatable. Specified in Arc 8 §14. Not invented here.</p>
+    <h4>Three-device manual pass — completed 28 August 2026</h4>
+    <p>Tom completed the specified real two- then three-device pass against the live relay and
+    confirmed it works.</p>
   </div></div>
 </section>
 
@@ -783,7 +786,8 @@
       relay (10/hour/IP 429, mint secret hidden behind Advanced), copyable
       pairing link and Dashboard sync pill. Shipped 20 August 2026. Arc 8 §10.</li>
     <li><strong>P8 docs.</strong> SPEC/CHANGES/README/roadmap close-out. Shipped 20 August 2026. Arc 8 §12.</li>
-    <li><strong>P9 three-device pass.</strong> Manual two- then three-device verification. Still gated. Arc 8 §14.</li>
+    <li><strong>P9 three-device pass.</strong> Manual two- then three-device verification completed
+      successfully against the live relay on 28 August 2026. Arc 8 §14.</li>
   </ul>
   <p>Electron bundled relay URL versus start unconfigured waits with the
   relay decision. It is not a P3 question.</p>
@@ -830,8 +834,8 @@
       <em>Automated only</em> unless a debug hook is added; do not
       invent a UI for this.</li>
   </ol>
-  <p>Later phases: Arc 8 §14 and P9. No walkthrough is invented here
-  for a relay that this document does not authorise.</p>
+  <p>Historical note: this P3 walkthrough predates the relay authorisation. Arc 8 §14 and P9 were
+  completed later; current status is recorded at the head of this document.</p>
 </section>
 
 <section id="s11">

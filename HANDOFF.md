@@ -1,17 +1,18 @@
-# AI sidebar handoff
+# AI sidebar relay handoff
 
-This is the operational context for the AI sidebar relay work as of 28 August 2026. Read this before
-changing the code or repeating live tests.
+This is the closed operational record for the AI sidebar relay work as of 28 August 2026. Read it
+before changing the relay or repeating live tests; it is not the active product work queue.
 
-## Start here
+## Close-out status
 
-- Working branch: `codex/ai-relay-response-recovery-hotfix`.
-- Base: `master` at `2b4fdb2960f22b9f2666a2e78854fd85028659be`, the merge of PR #100.
-- This branch fixes the remaining live-browser failure discovered after PR #100 and adds manual
-  recovery from a dead terminal.
-- PR #101 is open and remains unmerged pending the final automated suite and review.
-- The deployed browser gate passed on 28 August 2026. The exact evidence and the remaining work are
-  recorded below.
+- PR #101, **Fix AI relay response and terminal recovery**, merged into `master` on 28 August 2026
+  as `5275266323b8cd16df68202bc3ef7dbda13fb1e6`.
+- The full GitHub application, relay, AI companion, typecheck, lint, production and browser-smoke
+  suite passed. Vercel deployments and CodeRabbit review also passed.
+- The deployed browser gate passed on 28 August 2026. The exact evidence is recorded below.
+- No implementation or verification work remains in this relay hotfix. The active product plan is
+  `docs/plans/ai-sidebar.md`; domain actions, teaching instructions and durable memories are
+  separate future slices and were deliberately not smuggled into this fix.
 
 ## Current product boundary
 
@@ -33,8 +34,12 @@ instructions. Do not imply otherwise in UI, documentation or testing.
   rewriting.
 - PR #100: moved restored polling behind the committed React lifecycle and added epoch fencing so a
   disposed or replaced same-tab session cannot continue writing.
+- PR #101: derived modern successful-write generations from the attempted ciphertext, added bounded
+  digest-receipt recovery, distinguished stale from ambiguous outcomes and added immediate manual
+  recovery from a dead terminal.
 
-PR #100 fixed a real race. It did not fix the remaining live-browser failure described below.
+PR #100 fixed a real race. PR #101 fixed and live-verified the remaining browser failure described
+below.
 
 ## PR #101 live result on 28 August
 
@@ -220,8 +225,9 @@ The deferred automated gate then passed. The first full application run complete
 Playwright file passed 5/5; web and Electron typecheck, application lint, changed-file formatting and
 `git diff --check` passed. The E2E build retained the repository's existing chunk-size warnings.
 
-Remaining work: review PR #101 and fix concrete review or CI failures only. Do not widen the slice or
-merge without explicit instruction.
+Close-out: PR #101 was reviewed, its full CI suite passed and it merged. Do not reopen this slice to
+add domain actions, memory sync or misconception-first instructions; those belong to the active AI
+sidebar plan.
 
 ## Completion criteria
 
@@ -234,7 +240,7 @@ merge without explicit instruction.
 - Passed: killing a claimed terminal and using manual Disconnect immediately recovered the prompt
   and permitted re-pairing.
 - Passed: no `412` or ambiguous-outcome alert appeared in the final single-tab scenarios.
-- Only then review the PR. Merge only with explicit instruction.
+- Passed: PR review, complete GitHub checks and merge into `master` as `5275266`.
 
 ## Useful files
 

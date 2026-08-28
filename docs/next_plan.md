@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 20 August 2026.
+Reviewed 28 August 2026.
 
 This file is the current decision surface: what is active, what follows it, and what is
 deliberately parked. Detailed specifications, implementation diaries and completed arcs do
@@ -13,39 +13,35 @@ archive.
 
 ## Now
 
-### Arc 14 — Flow simplification
+### AI sidebar — domain integration
 
-**Status:** delivered.
+**Status:** in progress.
 
-Course setup, study entry points, practice authoring, lesson navigation, creation controls,
-sharing/recovery language, archive management, destructive confirmations, shortcut conflicts,
-and release automation now follow one coherent product model.
+The implementation plan is [the AI sidebar prototype](plans/ai-sidebar.md). PRs #96–#101 delivered
+the optional desktop panel, encrypted relay pairing, chat-only terminal companion, cooperative Stop,
+reload continuity and recovery from ambiguous relay writes or a dead terminal. PR #101 merged on
+28 August 2026 as `5275266`; its full GitHub check suite and deployed-browser gate passed.
 
-The delivered implementation specifications are
-[course setup](plans/arc-14-course-setup.md),
-[study entry points](plans/arc-14-study-entry-points.md), and
-[the remaining flow repairs](plans/arc-14-remaining-slices.md).
+That checkpoint is transport, not completed AI integration. The web companion still cannot read or
+change Courses, Lessons, Cards, Questions or learning evidence; the saved misconception-first
+preference is not sent to the terminal; and durable learner memories do not exist.
 
-Arc 14 has no remaining slices.
+The remaining work stays inside the approved plan and lands in bounded slices:
 
-### Learn screen redesign
+1. shared domain-tool execution, scoped grants, one-shot destructive approvals and real receipts;
+2. versioned teaching instructions plus durable, learner-correctable memories with backup and sync;
+3. activity continuity, replacement/sync lifecycle coordination and browser acceptance scenarios
+   3, 4 and 6.
 
-**Status:** delivered.
-
-The implementation plan is
-[the learn screen redesign](plans/learn-screen-redesign.md): the study card view, its overloaded
-header and swipe-to-grade safety, ahead of phone-primary use from the 2026–27 academic year.
-Evidence for each fault was gathered in a browser pass on 12 August 2026 and is recorded in
-that plan.
-
-No verification debt remains. All three follow-ups are delivered; the last of them, an
-unconditional study control above the fold on the dashboard, landed on 12 August 2026.
+Lacuna remains model- and harness-agnostic. This is a terminal MCP integration, not an embedded LLM
+provider or permission to add model credentials to the app.
 
 ## Close-out queue
 
-No Arc 14 verification debt remains. Lines mode, image occlusion, the two-install classroom merge,
-and Electron MCP connection/grant/consent states were verified on 11 August 2026. Evidence and the
-limits of no-vision browser automation are recorded in `docs/WEBSITE_TEST_CHECKLIST.md`.
+No verification debt remains. The prompter completed the real two- then three-device P9 pass against
+the live sync relay on 28 August 2026 and confirmed it works. Multi-device sync P1–P9 is delivered.
+Arc 14, the learn screen redesign and Arc 11 are also delivered. Their detailed records remain in
+their plans, `docs/SPEC.md`, `docs/CHANGES.md` and the historical roadmap.
 
 ## Deployment status
 
@@ -63,57 +59,17 @@ Work whose payoff is measured in observed usage cannot report before September 2
 a usage experiment as though it can return an answer this summer, and do not treat an empty review
 corpus as a problem to be engineered around.
 
-## Next
-
-### Multi-device sync — P1–P8 delivered; P9 manual pass remains
-
-**Status:** delivered (P9 manual verification remains).
-
-The execution plan is [sync-implementation.html](plans/sync-implementation.html). Delivered: P3
-(schema v23, timestamps, tombstones, backup version 10), P4 (`mergeSnapshots`), the manual Combine
-in Settings, P1 (live relay at `lacuna-relay.vercel.app`), P2 (`src/sync/crypto.ts`, PR #86), P5
-(`src/sync/relay.ts`, `snapshot.ts` and `cycle.ts`), P6 (`src/sync/pairing.ts` and the
-Settings Device sync section), P7 (automatic triggers in `src/sync/triggers.ts` — pull on focus /
-visible and push after study via `lacuna:study-session-end` — debounced and single-flight; public
-relay mint without a stored secret at `relay/src/relay.ts` and `src/sync/pairing.ts`; in-session
-unlock reuse; Copy pairing link; Dashboard `Synced …` status) and P8 (SPEC/CHANGES/README/roadmap
-close-out). Tom reviewed and merged #86 on 18 August 2026; the Arc 8 §7 gate is closed.
-
-P5 provides the manual/HTTP transport seam and pull-merge-push cycle: encrypted snapshots,
-backup-before-apply through the existing `manualMerge` path, one stale-generation retry,
-single-flight protection, durable status and the accepted 4.4 MB platform-ceiling diagnostic. P6
-adds first-device minting, QR or passphrase pairing, a 16-character recovery-passphrase policy,
-explicit QR reveal/scanning, last-sync and size/error status, local unpairing and separate channel
-purging. P7 adds debounced automatic pull/push sharing the in-session unlock, rate-limited public
-mint on the default relay (10/hour/IP) hiding the mint secret behind Advanced, a copyable pairing
-link alongside the QR, and a Dashboard sync pill; pairing/unlock now persist a remembered
-credentials copy on device (`SyncState.remembered`), so reloads stay unlocked until Settings Lock.
-Relay generations remain compare-and-swap only;
-no phase provides rollback protection.
-
-**Remaining is P9** — a real two- then three-device pass against the live relay. It has never been
-done and is not automatable; it is the only sync verification not covered by automated tests.
-
-The paused Course/Deck boundary maintenance pass is documented in
-[course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
-removed the hidden Deck and Folder stores; that pass is not an active product arc.
-
-### No other arc is in flight
-
-Arc 14, the learn screen redesign and Arc 11 are all delivered with no verification debt.
-Everything under *Later candidates* still needs a fresh product decision before it becomes an arc.
-
 ## Later candidates
 
-These require a fresh product decision after the current sync increment:
+These require a fresh product decision after the current AI sidebar plan:
 
-| Candidate                               | Current position                                      | Decision gate                                                                                       |
-| --------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Mobile reminders and PWA installation   | Scoped only                                           | Verify platform behaviour; return rate is not measurable before September 2026                      |
-| Progress receipts and encrypted relay   | Detailed outline only                                 | Identify a real tutor/parent reporting workflow before infrastructure work                          |
-| Expanded MCP product surface            | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method                     |
-| Item-family and generated-practice work | Research direction                                    | Prove authored mark-scheme demand and define stable skill identity first                            |
-| Prediction calibration harness          | Considered 12 August 2026 and deferred; no data       | A real corpus cannot exist before September 2026; see below                                         |
+| Candidate                               | Current position                                | Decision gate                                                                   |
+| --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| Mobile reminders and PWA installation   | Scoped only                                     | Verify platform behaviour; return rate is not measurable before September 2026  |
+| Progress receipts and encrypted relay   | Detailed outline only                           | Identify a real tutor/parent reporting workflow before infrastructure work      |
+| Further MCP product expansion           | Current AI plan is deliberately bounded         | Prioritise concrete agent workflows instead of exposing every repository method |
+| Item-family and generated-practice work | Research direction                              | Prove authored mark-scheme demand and define stable skill identity first        |
+| Prediction calibration harness          | Considered 12 August 2026 and deferred; no data | A real corpus cannot exist before September 2026; see below                     |
 
 ### Calibration harness — deferred, not rejected
 
