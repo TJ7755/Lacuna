@@ -121,14 +121,38 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   const stateWritesBeforeImport = syncRelay.requests.filter(
     (request) => request.includes('PUT') && request.endsWith('/state'),
   ).length;
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  const imported = await terminal.invokeTool(
+  const stateReadsBeforeImport = syncRelay.requests.filter(
+    (request) => request.includes('GET') && request.endsWith('/state'),
+  ).length;
+  const cardsBeforeImport = await cardCount(page);
+  const importPromise = terminal.invokeTool(
     importRun.runId,
     'import-during-sync',
     'lacuna.import_cards',
     importInput,
     120_000,
   );
+  await expect.poll(() => cardCount(page), { timeout: 30_000, intervals: [50] }).toBeGreaterThan(
+    cardsBeforeImport,
+  );
+  expect(await cardCount(page)).toBeLessThan(cardsBeforeImport + importInput.items.length);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect
+    .poll(
+      () =>
+        syncRelay.requests.filter(
+          (request) => request.includes('GET') && request.endsWith('/state'),
+        ).length,
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThan(stateReadsBeforeImport);
+  expect(await cardCount(page)).toBeLessThan(cardsBeforeImport + importInput.items.length);
+  expect(
+    syncRelay.requests.filter(
+      (request) => request.includes('PUT') && request.endsWith('/state'),
+    ),
+  ).toHaveLength(stateWritesBeforeImport);
+  const imported = await importPromise;
   expect(imported).toMatchObject({ ok: true, result: { createdCount: 600 } });
   await terminal.reply(importRun.runId, importRun.messageId, 'The sync-fence import is complete.');
   await expect
@@ -235,6 +259,25 @@ async function ensureAiPanelOpen(page: import('@playwright/test').Page): Promise
 }
 
 type TerminalToolResponse = Awaited<ReturnType<TerminalAiClient['invokeTool']>>;
+
+async function cardCount(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open('lacuna');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const database = open.result;
+          const count = database.transaction('cards').objectStore('cards').count();
+          count.onerror = () => reject(count.error);
+          count.onsuccess = () => {
+            database.close();
+            resolve(count.result);
+          };
+        };
+      }),
+  );
+}
 
 function successfulId(response: TerminalToolResponse): string {
   expect(response.ok).toBe(true);
