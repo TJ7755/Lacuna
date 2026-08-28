@@ -234,8 +234,7 @@ async function recoverTerminalWrite(
         signal: controller.signal,
       });
       if (!response.ok) continue;
-      const receipt = await terminalRecoveryReceipt(response);
-      if (receipt) return receipt;
+      return `"sha256:${attemptedDigest}"`;
     } catch {
       // A read-only retry cannot overwrite a concurrent successor.
     } finally {
@@ -243,19 +242,6 @@ async function recoverTerminalWrite(
     }
   }
   throw new TerminalRelayReconnectRequiredError();
-}
-
-async function terminalRecoveryReceipt(response: Response): Promise<string | null> {
-  const headerReceipt = relayMailboxWriteResponseSchema.safeParse({
-    generation: response.headers.get(GENERATION_HEADER)?.trim(),
-  });
-  if (headerReceipt.success) return headerReceipt.data.generation;
-  try {
-    const bodyReceipt = relayMailboxWriteResponseSchema.safeParse(await readJsonResponse(response));
-    return bodyReceipt.success ? bodyReceipt.data.generation : null;
-  } catch {
-    return null;
-  }
 }
 
 function wait(milliseconds: number): Promise<void> {

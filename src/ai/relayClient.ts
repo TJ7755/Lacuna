@@ -331,8 +331,7 @@ async function recoverPushGeneration(
         signal: controller.signal,
       });
       if (!response.ok) continue;
-      const receipt = await readRecoveryReceipt(response);
-      if (receipt) return receipt;
+      return { generation: `"sha256:${digest}"` };
     } catch {
       // A read-only retry cannot overwrite a concurrent successor.
     } finally {
@@ -340,19 +339,6 @@ async function recoverPushGeneration(
     }
   }
   throw new RelayPushOutcomeUnknownError(status);
-}
-
-async function readRecoveryReceipt(response: Response): Promise<RelayMailboxPush | null> {
-  const headerReceipt = relayMailboxWriteResponseSchema.safeParse({
-    generation: response.headers.get(GENERATION_HEADER)?.trim(),
-  });
-  if (headerReceipt.success) return headerReceipt.data;
-  try {
-    const bodyReceipt = relayMailboxWriteResponseSchema.safeParse(await response.json());
-    return bodyReceipt.success ? bodyReceipt.data : null;
-  } catch {
-    return null;
-  }
 }
 
 async function sha256Hex(bytes: ArrayBuffer): Promise<string> {

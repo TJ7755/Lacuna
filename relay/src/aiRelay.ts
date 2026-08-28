@@ -211,7 +211,7 @@ async function readMailbox(
   if (generation === '') return json(500, request, { error: 'internal error' });
   const quotedGeneration = `"${generation}"`;
   if (digests.length === 1) {
-    const storedDigest = createHash('sha256').update(stored.body).digest('hex');
+    const storedDigest = sha256Hex(stored.body);
     if (!timingSafeEqual(Buffer.from(storedDigest, 'hex'), Buffer.from(digests[0]!, 'hex'))) {
       const response = json(409, request, { error: 'digest mismatch' });
       response.headers.set('Cache-Control', 'no-store');
@@ -243,10 +243,21 @@ async function writeMailbox(
   const body = await readBoundedBody(request, MAX_AI_MAILBOX_BYTES);
   if (!body.ok) return json(body.status, request, { error: body.error });
   const key = mailboxKey(id, mailbox);
-  const written =
-    expected === 'empty'
-      ? await store.put(key, body.bytes, { exclusive: true })
-      : await store.put(key, body.bytes, { ifMatch: expected });
+  let written;
+  if (expected === 'empty') {
+    written = await store.put(key, body.bytes, { exclusive: true });
+  } else {
+    const expectedDigest = digestGeneration(expected);
+    if (expectedDigest) {
+      const current = await store.get(key);
+      if (!current || sha256Hex(current.body) !== expectedDigest) {
+        return json(412, request, { error: 'precondition failed' });
+      }
+      written = await store.put(key, body.bytes, { ifMatch: current.etag });
+    } else {
+      written = await store.put(key, body.bytes, { ifMatch: expected });
+    }
+  }
   if (!written.ok) return json(412, request, { error: 'precondition failed' });
   let generation = canonicalEtag(written.etag);
   // The store may commit the bytes but omit the ETag from its write response.
@@ -435,6 +446,14 @@ function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
 
 function tokenHash(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex');
+}
+
+function sha256Hex(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function digestGeneration(value: string): string | null {
+  return /^sha256:([0-9a-f]{64})$/.exec(canonicalEtag(value))?.[1] ?? null;
 }
 
 function contentLength(request: Request): number | null {
