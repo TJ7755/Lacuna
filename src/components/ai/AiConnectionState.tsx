@@ -41,7 +41,7 @@ export function AiConnectionState({
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const pairingCode = pairing?.code ?? null;
   const instruction = pairingCode
-    ? `Connect to Lacuna with code ${pairingCode}, then wait for messages until I ask you to disconnect.`
+    ? `Connect to Lacuna with code ${pairingCode}. Keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`
     : '';
 
   useEffect(() => {

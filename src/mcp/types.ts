@@ -58,7 +58,8 @@ export interface ToolUndoPayload {
     | 'restoreSequence'
     | 'restoreOcclusion'
     | 'restoreConcept'
-    | 'restoreQuestion';
+    | 'restoreQuestion'
+    | 'restoreAgentMemory';
   /** The opaque snapshot blob accepted by that restore function. Never exposed to the agent. */
   snapshot: unknown;
 }

@@ -6,6 +6,7 @@ import { db } from './schema';
 import { exportDatabase, importBackup } from './portability';
 import type { BackupFile, BackupSnapshot } from './types';
 import { scheduleAssetGc } from './assets';
+import { replacementLifecycle } from './replacementLifecycle';
 
 const MAX_RESTORE_POINTS = 10;
 const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -16,8 +17,14 @@ type DirHandle = {
   name: string;
   queryPermission?: (o: { mode: string }) => Promise<PermissionState>;
   requestPermission?: (o: { mode: string }) => Promise<PermissionState>;
-  getFileHandle: (name: string, o?: { create?: boolean }) => Promise<{
-    createWritable: () => Promise<{ write: (d: string) => Promise<void>; close: () => Promise<void> }>;
+  getFileHandle: (
+    name: string,
+    o?: { create?: boolean },
+  ) => Promise<{
+    createWritable: () => Promise<{
+      write: (d: string) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
   }>;
   values?: () => AsyncIterableIterator<{ kind: 'file' | 'directory'; name: string }>;
   removeEntry?: (name: string) => Promise<void>;
@@ -25,7 +32,10 @@ type DirHandle = {
 
 /** Whether this browser supports the File System Access folder mirror. */
 export function folderMirrorSupported(): boolean {
-  return typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function';
+  return (
+    typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker ===
+    'function'
+  );
 }
 
 async function getFolderHandle(): Promise<DirHandle | null> {
@@ -42,9 +52,11 @@ export async function backupFolderName(): Promise<string | null> {
 /** Prompt the user to choose a folder for mirrored backups. Returns the folder name. */
 export async function chooseBackupFolder(): Promise<string | null> {
   if (!folderMirrorSupported()) return null;
-  const picker = (window as unknown as {
-    showDirectoryPicker: (o: { mode: string }) => Promise<DirHandle>;
-  }).showDirectoryPicker;
+  const picker = (
+    window as unknown as {
+      showDirectoryPicker: (o: { mode: string }) => Promise<DirHandle>;
+    }
+  ).showDirectoryPicker;
   const handle = await picker({ mode: 'readwrite' });
   await db.appState.put({ key: FOLDER_KEY, value: handle });
   return handle.name;
@@ -66,7 +78,11 @@ async function pruneFolderMirror(handle: DirHandle): Promise<void> {
   if (!handle.values || !handle.removeEntry) return;
   const names: string[] = [];
   for await (const entry of handle.values()) {
-    if (entry.kind === 'file' && entry.name.startsWith('lacuna-backup-') && entry.name.endsWith('.json')) {
+    if (
+      entry.kind === 'file' &&
+      entry.name.startsWith('lacuna-backup-') &&
+      entry.name.endsWith('.json')
+    ) {
       names.push(entry.name);
     }
   }
@@ -149,7 +165,7 @@ export async function autoBackupIfStale(): Promise<void> {
 export async function restoreBackup(id: number): Promise<void> {
   const snapshot = await db.backups.get(id);
   if (!snapshot) throw new Error('That restore point could not be found.');
-  await importBackup(snapshot.payload, 'replace');
+  await replacementLifecycle.replace('manual', () => importBackup(snapshot.payload, 'replace'));
 }
 
 /** Remove a stored restore point. */

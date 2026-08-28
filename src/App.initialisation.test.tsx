@@ -45,9 +45,12 @@ vi.mock('./components/layout/AppShell', () => ({ AppShell: () => null }));
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => null }));
 
 import { App } from './App';
+import { replacementLifecycle } from './db/replacementLifecycle';
 
 describe('App initialisation', () => {
   beforeEach(() => {
+    localStorage.removeItem('lacuna.aiSettings');
+    localStorage.removeItem('lacuna-ai-relay-session-v1');
     localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
     window.location.hash = '#/';
     dependencies.ensurePreMigrationSnapshot.mockResolvedValue(undefined);
@@ -79,5 +82,15 @@ describe('App initialisation', () => {
     await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
 
     persistence.reject(new Error('denied'));
+  });
+
+  it('clears persisted relay device state after replacement while AI is disabled', async () => {
+    localStorage.setItem('lacuna-ai-relay-session-v1', '{"persisted":true}');
+
+    render(<App />);
+
+    await act(() => replacementLifecycle.replace('manual', async () => undefined));
+
+    expect(localStorage.getItem('lacuna-ai-relay-session-v1')).toBeNull();
   });
 });

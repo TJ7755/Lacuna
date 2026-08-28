@@ -8,6 +8,7 @@ import { importBackup, validateBackup } from '../db/portability';
 import type { BackupFile } from '../db/types';
 import { mergeSnapshots } from './mergeSnapshots';
 import { normaliseQuestionBackup } from '../questions/backup';
+import { replacementLifecycle, type ReplacementKind } from '../db/replacementLifecycle';
 
 export interface MergeDelta {
   kept: number;
@@ -41,6 +42,8 @@ export class ManualMergeError extends Error {
 export interface ManualMergeOptions {
   /** Run after merging but before replace-import, while the database is untouched. */
   beforeApply?: (merged: BackupFile) => void | Promise<void>;
+  /** Manual device combination is recovery; automatic encrypted sync is peer application. */
+  kind?: Exclude<ReplacementKind, 'manual'>;
 }
 
 /** Combine the current local database with a backup exported from another device. */
@@ -54,6 +57,15 @@ export async function manualMerge(
     });
   }
 
+  return replacementLifecycle.replace(options.kind ?? 'recovery', () =>
+    executeManualMerge(remote, options),
+  );
+}
+
+async function executeManualMerge(
+  remote: BackupFile,
+  options: ManualMergeOptions,
+): Promise<ManualMergeSummary> {
   let local: BackupFile;
   try {
     const snapshot = await takeAutoBackup(true);

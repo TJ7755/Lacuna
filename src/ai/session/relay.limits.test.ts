@@ -8,6 +8,7 @@ import {
 import { applyTerminalEvent } from './relayEvents';
 import { relaySessionHarness } from './relay.testHarness';
 import type { AiSessionSnapshot } from './types';
+import { buildAiInstructionBundle } from '../instructions';
 
 describe('relay AI session bounds', () => {
   it('rejects messages longer than the AI protocol limit', async () => {
@@ -28,7 +29,7 @@ describe('relay AI session bounds', () => {
   });
 
   it('does not grow the browser mailbox beyond its protocol limit', async () => {
-    const { session, relay, tick } = relaySessionHarness();
+    const { session, relay, crypto, tick } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({
       terminalPublicKey: 'terminal-public',
       client: { name: 'Terminal agent' },
@@ -39,6 +40,10 @@ describe('relay AI session bounds', () => {
     for (let index = 0; index < MAX_AI_RELAY_MAILBOX_ENTRIES; index += 1) {
       const result = await session.send(`Queued message ${index}`);
       expect(result.ok).toBe(true);
+      // Retaining every progressively larger encrypted mailbox makes the spy consume
+      // quadratic memory while this test fills the queue to its protocol limit.
+      vi.mocked(relay.push).mockClear();
+      vi.mocked(crypto.seal).mockClear();
     }
 
     await expect(session.send('One message too many.')).resolves.toEqual({
@@ -62,7 +67,7 @@ describe('relay AI session bounds', () => {
       generation: '"terminal-1"',
     });
     const firstMailbox: RelayTerminalMailbox = {
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: Array.from({ length: MAX_AI_RELAY_MAILBOX_ENTRIES }, (_, index) => ({
@@ -77,7 +82,7 @@ describe('relay AI session bounds', () => {
     vi.mocked(crypto.open).mockResolvedValue(firstMailbox as JsonValue);
     await tick();
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -199,6 +204,7 @@ function claimedMessage(): RelayBrowserMessage {
     conversationId: 'conversation-1',
     content: 'Question.',
     createdAt: 1_000,
+    instructions: buildAiInstructionBundle({ misconceptionFirstEnabled: true }),
     delivery: 'claimed',
     runId: 'run-1',
   };

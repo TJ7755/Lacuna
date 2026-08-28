@@ -33,7 +33,8 @@ export type SnapshotTable =
   | 'questionConcepts'
   | 'questionAttempts'
   | 'lineageIdMappings'
-  | 'pendingMergeReviews';
+  | 'pendingMergeReviews'
+  | 'agentMemories';
 
 /** Compound LessonCardExposure key as a single tombstone record id. */
 export function lessonCardExposureId(lessonId: string, cardId: string): string {

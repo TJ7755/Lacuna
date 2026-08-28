@@ -19,7 +19,7 @@ describe('relay AI session follow-up identity', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -65,7 +65,7 @@ describe('relay AI session follow-up identity', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(first.crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [

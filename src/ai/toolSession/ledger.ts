@@ -15,7 +15,6 @@ export function bindingMatches(
   entry: AiToolLedgerEntry,
   request: AiToolInvokeRequest,
   toolName: string,
-  courseId: string,
   inputDigest: string,
 ): boolean {
   return (
@@ -23,7 +22,6 @@ export function bindingMatches(
     entry.runId === request.runId &&
     entry.callId === request.callId &&
     entry.toolName === toolName &&
-    entry.courseId === courseId &&
     entry.inputDigest === inputDigest
   );
 }

@@ -10,6 +10,7 @@ import {
   isAiBridgeRequest,
   isSupportedAiProtocolVersion,
   aiActionReceiptSchema,
+  aiInstructionBundleSchema,
   parseAiBridgeRequest,
 } from './protocol';
 
@@ -40,6 +41,19 @@ describe('AI browser protocol', () => {
     expect(unsupported).toMatchObject({ type: 'connect', protocolVersion: 2 });
     expect(isSupportedAiProtocolVersion(unsupported.protocolVersion)).toBe(false);
     expect(isSupportedAiProtocolVersion(LACUNA_AI_PROTOCOL_VERSION)).toBe(true);
+  });
+
+  it('validates a strict, versioned teaching instruction bundle', () => {
+    const bundle = {
+      type: 'instructions',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      instructionVersion: 'teaching-v1',
+      content: 'Ground every teaching response in evidence.',
+      misconceptionFirstEnabled: true,
+    } as const;
+
+    expect(aiInstructionBundleSchema.parse(bundle)).toEqual(bundle);
+    expect(aiInstructionBundleSchema.safeParse({ ...bundle, ignored: true }).success).toBe(false);
   });
 
   it('accepts every request kind used by the single-request bridge seam', () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ReplacementLifecycle } from '../../db/replacementLifecycle';
 import { RelayPushOutcomeUnknownError } from '../relayClient';
 import { createRelayAiSession } from './relay';
 import {
@@ -65,7 +66,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -174,7 +175,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -191,7 +192,7 @@ describe('relay AI session connection lifecycle', () => {
     await tick();
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -282,6 +283,89 @@ describe('relay AI session connection lifecycle', () => {
     await polling;
     releaseRevoke();
     await expect(resetting).resolves.toEqual({ ok: true, data: undefined });
+  });
+
+  it('cancels pending work before quiescing a manual replacement and preserves the transcript', async () => {
+    const { session, relay, tick, cancelPolling } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: TERMINAL_PUBLIC_KEY,
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Keep this after a failed replacement.');
+
+    session.replacementParticipant.invalidate();
+
+    expect(cancelPolling).toHaveBeenCalledOnce();
+    expect(relay.revoke).not.toHaveBeenCalled();
+    expect(session.getSnapshot()).toEqual(
+      expect.objectContaining({
+        connection: expect.objectContaining({ status: 'connected' }),
+        draft: 'Keep this after a failed replacement.',
+        items: [
+          expect.objectContaining({
+            kind: 'user',
+            content: 'Keep this after a failed replacement.',
+            delivery: 'stopped',
+          }),
+        ],
+      }),
+    );
+
+    await session.replacementParticipant.quiesce();
+
+    expect(relay.revoke).toHaveBeenCalledOnce();
+    expect(session.getSnapshot()).toEqual(
+      expect.objectContaining({
+        connection: { status: 'disconnected' },
+        items: [expect.objectContaining({ content: 'Keep this after a failed replacement.' })],
+      }),
+    );
+  });
+
+  it('does not let failed relay revocation block a manual replacement', async () => {
+    const { session, relay } = relaySessionHarness();
+    const lifecycle = new ReplacementLifecycle();
+    lifecycle.register(session.replacementParticipant);
+    const applyReplacement = vi.fn(async () => 'applied');
+    await session.pair();
+    vi.mocked(relay.revoke).mockRejectedValue(new Error('revoke unavailable'));
+
+    await expect(lifecycle.replace('manual', applyReplacement)).resolves.toBe('applied');
+    expect(relay.revoke).toHaveBeenCalledOnce();
+    expect(applyReplacement).toHaveBeenCalledOnce();
+    expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
+  });
+
+  it('retains local transcript and tool state when manual replacement fails', async () => {
+    const { session, relay, storage, tick } = relaySessionHarness();
+    const lifecycle = new ReplacementLifecycle();
+    lifecycle.register(session.replacementParticipant);
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: TERMINAL_PUBLIC_KEY,
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Preserve this failed replacement transcript.');
+
+    await expect(
+      lifecycle.replace('manual', async () => {
+        throw new Error('import failed');
+      }),
+    ).rejects.toThrow('import failed');
+
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ content: 'Preserve this failed replacement transcript.' }),
+    ]);
+    const saved = JSON.parse(storage.getItem('lacuna-ai-relay-session-v1') ?? 'null') as {
+      connection?: { credentials?: unknown; toolSessionState?: unknown };
+    };
+    expect(saved.connection?.credentials).toBeDefined();
+    expect(saved.connection?.toolSessionState).toBeDefined();
   });
 
   it('does not let a stale key derivation overwrite the replacement connection key', async () => {
@@ -393,7 +477,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -445,7 +529,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -491,7 +575,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -538,7 +622,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -578,7 +662,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -594,7 +678,7 @@ describe('relay AI session connection lifecycle', () => {
     });
     await tick();
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -641,7 +725,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-3"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 3,
       browserRevisionSeen: 0,
       events: [
@@ -706,7 +790,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -723,7 +807,7 @@ describe('relay AI session connection lifecycle', () => {
     await tick();
     await session.send('Recover this queued follow-up.');
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 3,
       browserRevisionSeen: 0,
       events: [
@@ -788,7 +872,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"old-terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -810,7 +894,7 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"new-terminal-2"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -892,7 +976,7 @@ describe('relay AI session connection lifecycle', () => {
     await replacement.send('Message from the replacement connection.');
     const pushesBeforeStaleCompletion = vi.mocked(first.relay.push).mock.calls.length;
     vi.mocked(first.crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [

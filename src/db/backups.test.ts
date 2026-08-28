@@ -15,12 +15,21 @@ import { createCard, createCourse } from './repository';
 import { PRE_V22_BACKUP_MESSAGE } from './portability';
 import type { BackupFile, ItemPayload } from './types';
 
+const replace = vi.hoisted(() =>
+  vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),
+);
+
+vi.mock('./replacementLifecycle', () => ({
+  replacementLifecycle: { replace },
+}));
+
 describe('backups', () => {
   beforeEach(async () => {
     // Wipe everything between tests so prior runs do not pollute state.
     await db.delete();
     await db.open();
     __resetBackupThrottleForTests();
+    replace.mockClear();
   });
 
   afterEach(() => {
@@ -50,6 +59,7 @@ describe('backups', () => {
 
     await restoreBackup(snapshot.id!);
 
+    expect(replace).toHaveBeenCalledWith('manual', expect.any(Function));
     const restored = await db.schedulingUnits.toArray();
     expect(restored).toHaveLength(1);
     expect(restored[0].name).toBe('Restoreable');
@@ -81,7 +91,9 @@ describe('backups', () => {
         throw error;
       }
       // Same narrowing the restore UI uses: the specific refusal must reach the caller.
-      expect(error instanceof Error ? error.message : 'Restore failed.').toBe(PRE_V22_BACKUP_MESSAGE);
+      expect(error instanceof Error ? error.message : 'Restore failed.').toBe(
+        PRE_V22_BACKUP_MESSAGE,
+      );
     }
     expect(await db.backups.count()).toBe(1);
     expect(await db.courses.count()).toBe(1);
@@ -208,10 +220,14 @@ describe('backups', () => {
       name: 'Backups',
       queryPermission: vi.fn(async () => 'granted' as PermissionState),
       getFileHandle: vi.fn(async () => ({
-        createWritable: async () => ({ write: vi.fn(async () => undefined), close: vi.fn(async () => undefined) }),
+        createWritable: async () => ({
+          write: vi.fn(async () => undefined),
+          close: vi.fn(async () => undefined),
+        }),
       })),
       async *values() {
-        for (const name of names) yield { kind: name === 'notes.txt' ? 'file' as const : 'file' as const, name };
+        for (const name of names)
+          yield { kind: name === 'notes.txt' ? ('file' as const) : ('file' as const), name };
       },
       removeEntry,
     };

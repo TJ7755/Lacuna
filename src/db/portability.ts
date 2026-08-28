@@ -24,7 +24,9 @@ import type {
   CoursePerformance,
   SchedulingPerformance,
   Tombstone,
+  AgentMemory,
 } from './types';
+import { isAgentMemory } from './agentMemoryRecord';
 import {
   mergeReviewHistoryEntries,
   resolveReviewHistoryCollisions,
@@ -90,6 +92,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     questionAttempts,
     lineageIdMappings,
     pendingMergeReviews,
+    agentMemories,
   ] = await Promise.all([
     db.cards.toArray(),
     db.sessionHistory.toArray(),
@@ -116,6 +119,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.questionAttempts.toArray(),
     db.lineageIdMappings.toArray(),
     db.pendingMergeReviews.toArray(),
+    db.agentMemories.toArray(),
   ]);
   const projectedCards = cards;
   const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
@@ -161,6 +165,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     questionAttempts,
     lineageIdMappings,
     pendingMergeReviews,
+    agentMemories,
   };
 }
 
@@ -212,7 +217,9 @@ export function validateBackup(data: unknown): data is BackupFile {
     Array.isArray(b.assets) &&
     Array.isArray(b.sessionHistory) &&
     Array.isArray(b.userPerformance) &&
-    (b.tombstones === undefined || Array.isArray(b.tombstones))
+    (b.tombstones === undefined || Array.isArray(b.tombstones)) &&
+    (b.agentMemories === undefined ||
+      (Array.isArray(b.agentMemories) && b.agentMemories.every(isAgentMemory)))
   );
 }
 
@@ -362,6 +369,15 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     Object.assign(row, withUpdatedAt(row, 0));
   }
   for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
+  const courseIds = new Set(courses.map((course) => course.id));
+  const agentMemories = backup.agentMemories ?? [];
+  if (mode === 'replace') {
+    for (const memory of agentMemories) {
+      if (memory.courseId !== null && !courseIds.has(memory.courseId)) {
+        throw new Error('A Course-scoped memory refers to a Course missing from the backup.');
+      }
+    }
+  }
   incomingQuestions = mergeQuestionCollections(
     { concepts: [], questions: [], questionConcepts: [], questionAttempts: [] },
     incomingQuestions,
@@ -424,6 +440,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.questionAttempts,
       db.lineageIdMappings,
       db.pendingMergeReviews,
+      db.agentMemories,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -458,6 +475,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.questionAttempts.clear(),
           db.lineageIdMappings.clear(),
           db.pendingMergeReviews.clear(),
+          db.agentMemories.clear(),
         ]);
         await db.cards.bulkAdd(cards);
         if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
@@ -536,6 +554,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         if (backup.pendingMergeReviews && backup.pendingMergeReviews.length > 0) {
           await db.pendingMergeReviews.bulkAdd(backup.pendingMergeReviews);
         }
+        if (agentMemories.length > 0) await db.agentMemories.bulkAdd(agentMemories);
         return;
       }
 
@@ -910,8 +929,40 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         for (const row of byKey.values()) merged.push(row);
         await db.tombstones.bulkPut(merged);
       }
+
+      if (agentMemories.length > 0) {
+        const local = new Map(
+          (await db.agentMemories.toArray()).map((memory) => [memory.id, memory]),
+        );
+        const merged: AgentMemory[] = [];
+        for (const incoming of agentMemories) {
+          if (incoming.courseId !== null && !(await db.courses.get(incoming.courseId))) continue;
+          const existing = local.get(incoming.id);
+          if (existing && existing.courseId !== incoming.courseId) {
+            throw new Error('A learner memory cannot move between global and Course scope.');
+          }
+          if (!existing || memoryWins(incoming, existing)) merged.push(incoming);
+        }
+        if (merged.length > 0) await db.agentMemories.bulkPut(merged);
+      }
     },
   );
+}
+
+function memoryWins(candidate: AgentMemory, current: AgentMemory): boolean {
+  if (candidate.updatedAt !== current.updatedAt) return candidate.updatedAt > current.updatedAt;
+  return canonicalMemory(candidate) > canonicalMemory(current);
+}
+
+function canonicalMemory(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalMemory).join(',')}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object)
+    .sort()
+    .filter((key) => object[key] !== undefined)
+    .map((key) => `${JSON.stringify(key)}:${canonicalMemory(object[key])}`)
+    .join(',')}}`;
 }
 
 /** Read and parse a user-selected JSON backup file. */

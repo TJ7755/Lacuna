@@ -103,7 +103,7 @@ describe('HttpTerminalRelayTransport', () => {
 
   it('reads the encrypted browser mailbox and writes the encrypted terminal mailbox with ETags', async () => {
     const browserMailbox: RelayBrowserMailbox = {
-      version: 2,
+      version: 3,
       revision: 0,
       terminalRevisionSeen: 0,
       toolResponses: [],
@@ -144,7 +144,7 @@ describe('HttpTerminalRelayTransport', () => {
       mailbox: browserMailbox,
     });
     const terminalMailbox: RelayTerminalMailbox = {
-      version: 2,
+      version: 3,
       revision: 0,
       events: [],
       browserRevisionSeen: 0,
@@ -189,7 +189,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"stale"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -227,7 +227,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -266,7 +266,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -314,7 +314,7 @@ describe('HttpTerminalRelayTransport', () => {
       );
 
       const result = transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -359,7 +359,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -397,7 +397,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -442,7 +442,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -479,7 +479,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -517,7 +517,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -549,7 +549,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -583,7 +583,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],
@@ -616,7 +616,7 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 2,
+        version: 3,
         revision: 0,
         browserRevisionSeen: 0,
         events: [],

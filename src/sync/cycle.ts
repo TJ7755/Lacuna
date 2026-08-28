@@ -21,6 +21,7 @@ import {
   type RelayProvider,
   StaleGenerationError,
 } from './relay';
+import { replacementLifecycle } from '../db/replacementLifecycle';
 
 /**
  * P5 authenticates state but has no authenticated monotonic clock. A valid old
@@ -124,8 +125,10 @@ async function executeSync(options: SyncCycleOptions): Promise<SyncResult> {
 async function executeAttempt(options: SyncCycleOptions, attempt: number): Promise<SyncResult> {
   const remote = await options.provider.pull('state');
   if (!remote) {
-    const local = await exportDatabase();
-    const sealed = await prepareSnapshot(local, options);
+    const sealed = await replacementLifecycle.replace('peer', async () => {
+      const local = await exportDatabase();
+      return prepareSnapshot(local, options);
+    });
     const pushed = await options.provider.push('state', sealed.bytes, EMPTY_GENERATION);
     await recordSuccess(options, pushed.generation, sealed);
     return resultFor(attempt, false, true, sealed, pushed.generation, null);
@@ -137,6 +140,7 @@ async function executeAttempt(options: SyncCycleOptions, attempt: number): Promi
 
   try {
     mergeSummary = await manualMerge(remoteSnapshot, {
+      kind: 'peer',
       beforeApply: async (candidate) => {
         mergedSnapshot = candidate;
         // Size-gate before the database is replaced. These sealed bytes are

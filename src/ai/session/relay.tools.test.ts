@@ -17,7 +17,7 @@ function mailbox(
   events: RelayTerminalEvent[],
   browserRevisionSeen = 0,
 ): RelayTerminalMailbox {
-  return { version: 2, revision, browserRevisionSeen, events };
+  return { version: 3, revision, browserRevisionSeen, events };
 }
 
 function responseFromLastSeal(crypto: RelaySessionCrypto): RelayBrowserMailbox {

@@ -111,6 +111,7 @@ const OPTIONAL_COLLECTIONS = [
   'questions',
   'questionConcepts',
   'questionAttempts',
+  'agentMemories',
 ] as const;
 
 function comparableSnapshot(snapshot: BackupFile): Record<string, unknown> {
@@ -199,6 +200,7 @@ function courseContributors(snapshot: BackupFile): string[] {
   for (const question of snapshot.questions ?? []) add(question, question.courseId);
   for (const set of snapshot.questionConcepts ?? []) add(set, set.courseId);
   for (const attempt of snapshot.questionAttempts ?? []) add(attempt, attempt.courseId);
+  for (const memory of snapshot.agentMemories ?? []) add(memory, memory.courseId ?? undefined);
 
   const assetOwners = assetOwnerMap(snapshot, lessonCourse, cardCourse);
   for (const asset of snapshot.assets ?? []) {

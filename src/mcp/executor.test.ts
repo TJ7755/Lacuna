@@ -6,7 +6,14 @@ import { executeToolCall } from './executor';
 import type { McpGrant } from './types';
 import { CREATE_COURSE_SCOPE_KEY } from './bridge/scopeResolver';
 
+const admitWrite = vi.hoisted(() => vi.fn((operation: () => Promise<unknown>) => operation()));
+
+vi.mock('../db/replacementLifecycle', () => ({
+  replacementLifecycle: { admitWrite },
+}));
+
 beforeEach(async () => {
+  admitWrite.mockClear();
   await db.delete();
   await db.open();
 });
@@ -99,6 +106,24 @@ describe('executeToolCall', () => {
         completedAt: 123,
       },
     });
+    expect(admitWrite).not.toHaveBeenCalled();
+  });
+
+  it('admits the complete live write sequence through the replacement lifecycle', async () => {
+    const outcome = await executeToolCall(
+      request(
+        'lacuna.create_course',
+        { name: 'Biology' },
+        {
+          courseId: CREATE_COURSE_SCOPE_KEY,
+          scope: 'write',
+          grantedAt: 1,
+        },
+      ),
+    );
+
+    expect(outcome).toMatchObject({ ok: true, result: { name: 'Biology' } });
+    expect(admitWrite).toHaveBeenCalledOnce();
   });
 
   it('uses the dedicated create-course scope rather than the global database scope', async () => {

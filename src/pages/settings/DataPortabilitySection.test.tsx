@@ -5,11 +5,16 @@ import { ManualMergeError } from '../../sync/manualMerge';
 import type * as ManualMergeModule from '../../sync/manualMerge';
 import { DataPortabilitySection } from './DataPortabilitySection';
 
-const { readBackupFile, importBackup, manualMerge, notify } = vi.hoisted(() => ({
+const { readBackupFile, importBackup, manualMerge, notify, replace } = vi.hoisted(() => ({
   readBackupFile: vi.fn(),
   importBackup: vi.fn(),
   manualMerge: vi.fn(),
   notify: vi.fn(),
+  replace: vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),
+}));
+
+vi.mock('../../db/replacementLifecycle', () => ({
+  replacementLifecycle: { replace },
 }));
 
 vi.mock('../../db/portability', () => ({
@@ -70,6 +75,7 @@ describe('DataPortabilitySection', () => {
     importBackup.mockReset();
     manualMerge.mockReset();
     notify.mockReset();
+    replace.mockClear();
   });
 
   it('requires explicit confirmation before replacing local data', async () => {
@@ -77,10 +83,25 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
+    expect(
+      screen.getByText(/local conversation is cleared after replacement succeeds/),
+    ).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Replace local data' }));
     expect(importBackup).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Replace local data' }));
     await waitFor(() => expect(importBackup).toHaveBeenCalledWith(expect.anything(), 'replace'));
+    expect(replace).toHaveBeenCalledWith('manual', expect.any(Function));
+  });
+
+  it('applies additive recovery exclusively without requesting manual AI shutdown', async () => {
+    readBackupFile.mockResolvedValue(backupStub());
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add from backup' }));
+
+    await waitFor(() => expect(importBackup).toHaveBeenCalledWith(expect.anything(), 'merge'));
+    expect(replace).toHaveBeenCalledWith('recovery', expect.any(Function));
   });
 
   it('describes add-from-backup without a recency rule', async () => {

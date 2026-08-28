@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol';
+import { buildAiInstructionBundle } from '../../../src/ai/instructions';
 import type { WaitForMessageResult } from './client';
 import { createLacunaAiMcpServer, type TerminalAiToolClient } from './server';
 
@@ -99,6 +100,32 @@ describe('Lacuna AI MCP server', () => {
     ).resolves.toMatchObject({ isError: true });
     expect(aiClient.waitForMessage).not.toHaveBeenCalled();
     expect(aiClient.reply).not.toHaveBeenCalled();
+  });
+
+  it('returns the versioned browser instruction bundle with a claimed message', async () => {
+    const aiClient = new FakeAiClient();
+    const instructions = buildAiInstructionBundle({ misconceptionFirstEnabled: true });
+    aiClient.waitForMessage.mockResolvedValueOnce({
+      type: 'message',
+      messageId: 'message-1',
+      conversationId: 'conversation-1',
+      runId: 'run-1',
+      content: 'Why do heavier objects fall faster?',
+      createdAt: 1,
+      leaseExpiresAt: 301_000,
+      instructions,
+    });
+    const { client } = await connectedServer(aiClient);
+
+    const result = await client.callTool({ name: 'lacuna.wait_for_message', arguments: {} });
+
+    expect(result.structuredContent).toMatchObject({
+      type: 'message',
+      instructions: {
+        instructionVersion: 'teaching-v1',
+        misconceptionFirstEnabled: true,
+      },
+    });
   });
 
   it('validates the lacuna namespace and returns structured tool outcomes', async () => {
