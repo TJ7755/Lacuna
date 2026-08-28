@@ -551,6 +551,60 @@ describe('relay AI session messages', () => {
     );
   });
 
+  it('does not let a slow terminal mailbox read block queuing a follow-up', async () => {
+    const { session, relay, crypto, tick } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Run this first.');
+    vi.mocked(relay.pull).mockResolvedValueOnce({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 1,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    await tick();
+
+    let releasePull!: (value: null) => void;
+    vi.mocked(relay.pull).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releasePull = resolve;
+        }),
+    );
+    const polling = tick();
+    await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(2));
+
+    const sending = session.send('Queue this next.');
+    const outcome = await Promise.race([
+      sending.then(() => 'sent' as const),
+      new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 50)),
+    ]);
+    releasePull(null);
+    await polling;
+    await sending;
+
+    expect(outcome).toBe('sent');
+    expect(session.getSnapshot().queuedFollowUp).toBe('Queue this next.');
+  });
+
   it('moves a claimed follow-up from the queue into the transcript', async () => {
     const { session, relay, crypto, tick } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({

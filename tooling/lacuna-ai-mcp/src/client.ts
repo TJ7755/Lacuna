@@ -166,8 +166,9 @@ export class TerminalAiClient {
 
     for (;;) {
       const read = await this.transport.readBrowserMailbox(connection);
-      if (read && read.generation !== this.browserGeneration) {
-        this.noteBrowserMailbox(read.mailbox);
+      if (read) {
+        const generationChanged = read.generation !== this.browserGeneration;
+        if (generationChanged) this.noteBrowserMailbox(read.mailbox);
         const stop = await this.acknowledgeRequestedStop(read.mailbox);
         if (stop) {
           this.browserGeneration = read.generation;
@@ -202,7 +203,7 @@ export class TerminalAiClient {
             leaseExpiresAt,
           };
         }
-        this.browserGeneration = read.generation;
+        if (generationChanged) this.browserGeneration = read.generation;
       }
 
       const remaining = deadline - this.now();

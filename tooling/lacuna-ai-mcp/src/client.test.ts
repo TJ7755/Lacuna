@@ -329,6 +329,50 @@ describe('TerminalAiClient', () => {
     await expect(client.waitForMessage(250)).rejects.toThrow('not connected');
   });
 
+  it('claims a queued follow-up already observed while publishing the preceding reply', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    let now = 1_000;
+    let sequence = 0;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => now,
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
+      createId: (prefix) => `${prefix}-${++sequence}`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+
+    const first = queuedMailbox().messages[0];
+    const followUp = {
+      ...first,
+      messageId: 'message-2',
+      content: 'Compare it with rereading.',
+      createdAt: 1_500,
+    };
+    const followUpMailbox: RelayBrowserMailbox = {
+      ...queuedMailbox(),
+      revision: 2,
+      terminalRevisionSeen: 1,
+      messages: [{ ...first, delivery: 'claimed', runId: claimed.runId }, followUp],
+    };
+    transport.reads.push({ generation: '"browser-2"', mailbox: followUpMailbox });
+    transport.fallbackRead = { generation: '"browser-2"', mailbox: followUpMailbox };
+
+    await client.reply(claimed.runId, claimed.messageId, 'Retrieval strengthens recall.');
+
+    await expect(client.waitForMessage(1_000)).resolves.toEqual(
+      expect.objectContaining({
+        type: 'message',
+        messageId: 'message-2',
+        content: 'Compare it with rereading.',
+      }),
+    );
+  });
+
   it('publishes one tool call and returns only its exact browser response', async () => {
     const transport = new FakeTransport();
     transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });

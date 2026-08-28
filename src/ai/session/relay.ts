@@ -2,6 +2,7 @@ import {
   RelayPushOutcomeUnknownError,
   RelayStaleGenerationError,
   type RelayClient,
+  type RelayMailbox,
 } from '../relayClient';
 import {
   createRelayKeyPair,
@@ -153,7 +154,16 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     if (epoch !== pollingEpoch || pollInFlightEpoch === epoch) return;
     pollInFlightEpoch = epoch;
     try {
-      await serialise(() => (epoch === pollingEpoch ? pollOnce(epoch) : Promise.resolve()));
+      const connection = persisted;
+      const pulled: RelayMailbox | null =
+        connection?.peerPublicKey &&
+        snapshot.connection.status !== 'disconnected' &&
+        !isExpiredPairing(snapshot, now())
+          ? await options.relay.pull(connection.credentials)
+          : null;
+      await serialise(() =>
+        epoch === pollingEpoch ? pollOnce(epoch, pulled) : Promise.resolve(),
+      );
     } catch (error) {
       const reason = mailboxGenerationReason(error);
       if (epoch === pollingEpoch && reason) {
@@ -165,7 +175,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     }
   }
 
-  async function pollOnce(epoch: number): Promise<void> {
+  async function pollOnce(epoch: number, pulled: RelayMailbox | null): Promise<void> {
     if (epoch !== pollingEpoch || !persisted || snapshot.connection.status === 'disconnected') {
       return;
     }
@@ -202,7 +212,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     let toolResponses = [...persisted.browserMailbox.toolResponses];
     let mailboxChanged = false;
 
-    const pulled = await options.relay.pull(persisted.credentials);
     if (epoch !== pollingEpoch) return;
     let terminalRevisionSeen = persisted.terminalRevisionSeen;
     const events: RelayTerminalEvent[] = [];
