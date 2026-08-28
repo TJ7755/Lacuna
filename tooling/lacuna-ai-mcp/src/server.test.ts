@@ -6,11 +6,14 @@ import type { WaitForMessageResult } from './client';
 import { createLacunaAiMcpServer, type TerminalAiToolClient } from './server';
 
 class FakeAiClient implements TerminalAiToolClient {
+  private static readonly connectionAuth = Symbol('connection-auth');
+
   readonly connect = vi.fn(
     async (_code: string, relayUrl: string | undefined, _identity: AiClientIdentity) => ({
       sessionId: 'ABCDEFGHJKMNPQRSTVW2',
       relayUrl: relayUrl ?? 'https://lacuna-relay.vercel.app',
       expiresAt: 90_000,
+      [FakeAiClient.connectionAuth]: { terminalToken: 'must-not-leak' },
     }),
   );
   readonly waitForMessage = vi.fn(
@@ -74,6 +77,7 @@ describe('Lacuna AI MCP server', () => {
       relayUrl: 'https://lacuna-relay.vercel.app',
       expiresAt: 90_000,
     });
+    expect(Object.getOwnPropertySymbols(result.structuredContent ?? {})).toHaveLength(0);
     expect(aiClient.connect).toHaveBeenCalledWith('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, {
       name: 'OpenCode',
       version: '1.2.3',

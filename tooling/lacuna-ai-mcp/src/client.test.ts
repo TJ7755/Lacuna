@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AiClientIdentity } from '../../../src/ai/protocol';
-import type { RelayBrowserMailbox, RelayTerminalMailbox } from '../../../src/ai/relayProtocol';
+import {
+  AI_RELAY_EMPTY_GENERATION,
+  type RelayBrowserMailbox,
+  type RelayTerminalMailbox,
+} from '../../../src/ai/relayProtocol';
 import {
   DEFAULT_AI_RELAY_URL,
   TerminalAiClient,
@@ -45,6 +49,55 @@ class FakeTransport implements TerminalRelayTransport {
     }
     this.writes.push(mailbox);
     return `"terminal-${mailbox.revision}"`;
+  }
+}
+
+class ConcurrentCallTransport implements TerminalRelayTransport {
+  readonly connect = vi.fn(
+    async (_code: string, _relayUrl: string, _client: AiClientIdentity) => CONNECTION,
+  );
+  private terminalGeneration = AI_RELAY_EMPTY_GENERATION;
+  private terminalWriteSequence = 0;
+  private readonly toolCalls = new Map<string, string>();
+
+  async readBrowserMailbox(): Promise<{
+    generation: string;
+    mailbox: RelayBrowserMailbox;
+  }> {
+    const responses = [...this.toolCalls].map(([callId, runId]) => ({
+      runId,
+      callId,
+      respondedAt: 1_100,
+      ok: true as const,
+      result: { callId },
+    }));
+    const runId = this.toolCalls.values().next().value as string | undefined;
+    return {
+      generation: `"browser-${responses.length + 1}"`,
+      mailbox: {
+        ...queuedMailbox(),
+        revision: responses.length + 1,
+        messages: runId
+          ? [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId }]
+          : queuedMailbox().messages,
+        toolResponses: responses,
+      },
+    };
+  }
+
+  async writeTerminalMailbox(
+    _connection: ConnectedTerminalRelay,
+    generation: string,
+    mailbox: RelayTerminalMailbox,
+  ): Promise<string> {
+    if (generation !== this.terminalGeneration) {
+      throw new TerminalRelayReconnectRequiredError('terminal_writer_changed');
+    }
+    this.terminalGeneration = `"terminal-${++this.terminalWriteSequence}"`;
+    for (const event of mailbox.events) {
+      if (event.type === 'tool_call') this.toolCalls.set(event.callId, event.runId);
+    }
+    return this.terminalGeneration;
   }
 }
 
@@ -101,7 +154,7 @@ describe('TerminalAiClient', () => {
       runId: 'run-1',
       content: 'Explain why this answer is wrong.',
       createdAt: 10,
-      leaseExpiresAt: 61_000,
+      leaseExpiresAt: 301_000,
     });
     expect(transport.writes).toEqual([
       {
@@ -115,7 +168,7 @@ describe('TerminalAiClient', () => {
             messageId: 'message-1',
             runId: 'run-1',
             claimedAt: 1_000,
-            leaseExpiresAt: 61_000,
+            leaseExpiresAt: 301_000,
           },
         ],
       },
@@ -313,6 +366,28 @@ describe('TerminalAiClient', () => {
       .flatMap((mailbox) => mailbox.events)
       .filter((event) => event.type === 'tool_call');
     expect(new Set(calls.map((event) => event.eventId))).toHaveLength(1);
+  });
+
+  it('serialises concurrent tool invocations through one terminal mailbox writer', async () => {
+    const transport = new ConcurrentCallTransport();
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      createId: (prefix) => prefix + '-1',
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+
+    await expect(
+      Promise.all([
+        client.invokeTool(claimed.runId, 'call-1', 'lacuna.list_courses', {}, 1_000),
+        client.invokeTool(claimed.runId, 'call-2', 'lacuna.list_courses', {}, 1_000),
+      ]),
+    ).resolves.toEqual([
+      { ok: true, result: { callId: 'call-1' } },
+      { ok: true, result: { callId: 'call-2' } },
+    ]);
   });
 
   it('refreshes Stop state before admitting a tool call', async () => {

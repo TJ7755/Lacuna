@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { AiEntityReference } from '../../ai/protocol';
 import type { AiConversationItem } from '../../ai/session/types';
 import { AiActivityReceipt } from './AiActivityReceipt';
@@ -9,6 +10,14 @@ function targetHref(source: AiEntityReference): string | null {
 }
 
 export function AiConversation({ items }: { items: readonly AiConversationItem[] }) {
+  const logRef = useRef<HTMLDivElement>(null);
+  const lastItemId = items[items.length - 1]?.id;
+
+  useEffect(() => {
+    const log = logRef.current;
+    if (lastItemId && log) log.scrollTop = log.scrollHeight;
+  }, [lastItemId]);
+
   if (items.length === 0) {
     return (
       <div className="grid flex-1 place-items-center px-8 py-12 text-center">
@@ -24,6 +33,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
 
   return (
     <div
+      ref={logRef}
       role="log"
       aria-live="polite"
       aria-relevant="additions text"

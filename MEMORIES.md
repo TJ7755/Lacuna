@@ -12,9 +12,17 @@ and stale-chunk recovery must retain its one-reload guard.
 ## Web AI chat is not the Electron data MCP server
 
 The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
-encrypted HTTP relay mailboxes. Its current four-tool companion carries chat, Stop and disconnect
-events only. The Electron `--mcp-companion` uses local IPC and exposes authorised Lacuna data tools;
-neither surface implies the capabilities of the other.
+encrypted HTTP relay mailboxes. Its five-tool companion carries chat, Stop and disconnect events
+and asks the browser to execute approved domain tools. The Electron `--mcp-companion` uses local
+IPC; neither surface implies the transport or trust model of the other.
+
+## AI tool results need a real JSON wire projection
+
+Repository records may contain own optional properties whose value is `undefined`; Cards do this
+for payloads. The browser tool handler has already committed a write before the AI ledger validates
+its result, so rejecting that raw record can report failure after success and make a retry duplicate
+data. Keep the AI result normalisation that omits optional object fields before receipt and ledger
+storage; do not weaken the validator or move validation after a reported failure.
 
 ## Relay URLs must be HTTPS outside loopback
 

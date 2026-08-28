@@ -624,7 +624,7 @@ describe('relay AI session messages', () => {
     );
   });
 
-  it('requeues an expired claim and ignores a late reply from its old run', async () => {
+  it('requeues an expired claim under the same identity and completes a later run', async () => {
     const { session, relay, crypto, tick, setNow } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({
       terminalPublicKey: 'terminal-public',
@@ -688,16 +688,15 @@ describe('relay AI session messages', () => {
     expect(expired.items).toEqual([
       expect.objectContaining({
         kind: 'user',
+        id: 'message-1',
         content: 'Try this message again after the lease.',
         delivery: 'queued',
       }),
     ]);
-    const retriedMessageId = expired.items[0]?.id;
-    expect(retriedMessageId).toEqual(expect.stringMatching(/^message-(?!1$).+/));
     expect(crypto.seal).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({
-        messages: [expect.objectContaining({ messageId: retriedMessageId, delivery: 'queued' })],
+        messages: [expect.objectContaining({ messageId: 'message-1', delivery: 'queued' })],
       }),
     );
 
@@ -709,7 +708,7 @@ describe('relay AI session messages', () => {
         {
           eventId: 'event-new-claim',
           type: 'claimed',
-          messageId: retriedMessageId,
+          messageId: 'message-1',
           runId: 'run-new',
           claimedAt: 2_100,
           leaseExpiresAt: 3_000,
@@ -718,7 +717,105 @@ describe('relay AI session messages', () => {
     });
     await tick();
     expect(session.getSnapshot().run).toEqual(
-      expect.objectContaining({ status: 'active', runId: 'run-new' }),
+      expect.objectContaining({ status: 'active', runId: 'run-new', messageId: 'message-1' }),
     );
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'claimed' }),
+    ]);
+
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 4,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-new-reply',
+          type: 'reply',
+          messageId: 'message-1',
+          runId: 'run-new',
+          content: 'This reply belongs to the retried run.',
+          createdAt: 2_200,
+        },
+      ],
+    });
+    await tick();
+
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'completed' }),
+      expect.objectContaining({
+        kind: 'assistant',
+        content: 'This reply belongs to the retried run.',
+      }),
+    ]);
+    expect(session.getSnapshot().run).toEqual(
+      expect.objectContaining({ status: 'completed', runId: 'run-new', messageId: 'message-1' }),
+    );
+  });
+
+  it('accepts a reply authored inside the lease when the browser polls after expiry', async () => {
+    const { session, relay, crypto, tick, setNow } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Finish before the lease, even if my browser polls late.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 1,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 2_000,
+        },
+      ],
+    });
+    await tick();
+
+    setNow(2_100);
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 2,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 2_000,
+        },
+        {
+          eventId: 'event-reply',
+          type: 'reply',
+          messageId: 'message-1',
+          runId: 'run-1',
+          content: 'This reply was authored in time.',
+          createdAt: 1_999,
+        },
+      ],
+    });
+
+    await tick();
+
+    expect(session.getSnapshot().run).toEqual(
+      expect.objectContaining({ status: 'completed', runId: 'run-1', messageId: 'message-1' }),
+    );
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'completed' }),
+      expect.objectContaining({ kind: 'assistant', content: 'This reply was authored in time.' }),
+    ]);
   });
 });

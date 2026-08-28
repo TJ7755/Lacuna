@@ -215,6 +215,57 @@ describe('AiToolSession', () => {
     });
   });
 
+  it('normalises optional card fields before returning create and list results', async () => {
+    let idIndex = 0;
+    const session = new AiToolSession({
+      now: () => 100,
+      createId: () => `generated-${++idIndex}`,
+      digest: async (input) => input,
+    });
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const createRequest = {
+      connectionId: 'connection-1',
+      runId: 'run-1',
+      runStatus: 'active' as const,
+      callId: 'create-card-1',
+      toolName: 'lacuna.create_card',
+      input: {
+        courseId: course.id,
+        lessonId: lesson.id,
+        type: 'front_back',
+        front: 'What is a cell?',
+        back: 'The basic structural unit of life.',
+      },
+    };
+
+    const pending = await session.invoke(createRequest);
+    expect(pending.response).toMatchObject({
+      ok: false,
+      error: { kind: 'approval_required', approvalKind: 'write_grant' },
+    });
+    await session.decide(pending.effects.approval!.approvalId, true);
+
+    const created = await session.invoke(createRequest);
+    expect(created.response).toMatchObject({
+      ok: true,
+      result: { courseId: course.id, primaryLessonId: lesson.id },
+    });
+    expect(created.effects.receipt).toMatchObject({ toolName: 'lacuna.create_card' });
+    expect(await db.cards.count()).toBe(1);
+
+    const listed = await session.invoke({
+      ...createRequest,
+      callId: 'list-cards-1',
+      toolName: 'lacuna.list_cards',
+      input: { courseId: course.id },
+    });
+    expect(listed.response).toMatchObject({
+      ok: true,
+      result: [{ courseId: course.id, primaryLessonId: lesson.id }],
+    });
+  });
+
   it('uses one-shot write approval for course creation and clears all capability state', async () => {
     const { session } = makeSession();
     const request = { toolName: 'lacuna.create_course', input: { name: 'Biology' } };

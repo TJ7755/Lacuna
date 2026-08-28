@@ -20,6 +20,58 @@ export function isJsonValue(value: unknown): value is JsonValue {
   return jsonValueSchema.safeParse(value).success;
 }
 
+const OMIT = Symbol('omit');
+const INVALID = Symbol('invalid');
+
+/**
+ * Convert repository results into their JSON wire representation without weakening the wire
+ * validator. Optional object fields are commonly represented as own `undefined` properties in
+ * database records; JSON omits those fields, so do the same before the result reaches the ledger.
+ */
+export function normaliseJsonValue(value: unknown): JsonValue | undefined {
+  const normalised = normalise(value, new Set());
+  return normalised === OMIT || normalised === INVALID ? undefined : normalised;
+}
+
+function normalise(
+  value: unknown,
+  ancestors: Set<object>,
+): JsonValue | typeof OMIT | typeof INVALID {
+  if (value === undefined) return OMIT;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : INVALID;
+  if (typeof value !== 'object' || ancestors.has(value)) return INVALID;
+
+  const nextAncestors = new Set(ancestors).add(value);
+  if (Array.isArray(value)) {
+    const result: JsonValue[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor?.enumerable || !('value' in descriptor)) return INVALID;
+      const item = normalise(descriptor.value, nextAncestors);
+      if (item === OMIT || item === INVALID) return INVALID;
+      result.push(item);
+    }
+    const ownKeys = Reflect.ownKeys(value).filter((key) => key !== 'length');
+    if (ownKeys.length !== value.length) return INVALID;
+    return result;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return INVALID;
+  const keys = Reflect.ownKeys(value);
+  const result: Record<string, JsonValue> = {};
+  for (const key of keys) {
+    if (typeof key !== 'string') return INVALID;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor?.enumerable || !('value' in descriptor)) return INVALID;
+    const property = normalise(descriptor.value, nextAncestors);
+    if (property === INVALID) return INVALID;
+    if (property !== OMIT) result[key] = property;
+  }
+  return result;
+}
+
 function cleanGrant(value: unknown): AiToolWriteGrant | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const grant = value as Partial<AiToolWriteGrant>;

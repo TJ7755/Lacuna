@@ -2,6 +2,18 @@
 
 ## Unreleased — AI domain-action vertical slice
 
+- Hardened the live terminal path after browser acceptance exposed failures hidden by the
+  in-memory tests. `lacuna.connect` now returns a JSON-safe public projection, companion operations
+  are serialised through its single mailbox writer, and five-minute claim leases leave practical
+  time for approval and multi-tool work. Expiry preserves the original message identity, accepts a
+  reply authored before the deadline even when the browser polls later, and ignores genuinely late
+  replies without duplicating the transcript.
+- Normalised successful domain-tool results at the AI wire boundary by omitting optional
+  `undefined` object fields while continuing to reject cycles, symbols, accessors, sparse arrays
+  and non-finite numbers. This fixes `lacuna.create_card` and `lacuna.list_cards`, which previously
+  committed or read a real Card and then reported the successful result as an internal JSON error.
+- Fixed the AI panel's composer actions overlapping multiline drafts, scrolled the transcript when
+  either side appends an item, and added a restrained accessible responding/stopping indicator.
 - Added mailbox protocol v2 tool calls and browser responses to the terminal AI companion. The
   companion now exposes `lacuna.invoke_tool`; the browser executes existing `lacuna.*` definitions
   through one transport-neutral executor shared with the Electron renderer adapter.

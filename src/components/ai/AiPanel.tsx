@@ -155,6 +155,21 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         <AiConversation items={snapshot.items} />
       )}
 
+      {stoppableRun && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-5 py-2 text-xs text-ink-soft"
+        >
+          <span
+            className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent"
+            aria-hidden="true"
+          />
+          {stoppableRun.status === 'stop_requested' ? 'Stopping response' : 'AI is responding'}
+        </div>
+      )}
+
       {!disconnected && snapshot.approval && (
         <AiApprovalCard
           approval={snapshot.approval}

@@ -201,8 +201,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     let messages = [...persisted.browserMailbox.messages];
     let toolResponses = [...persisted.browserMailbox.toolResponses];
     let mailboxChanged = false;
-    const expired = expireClaimLease(nextSnapshot, messages, now(), () => createId('message'));
-    if (expired) ({ snapshot: nextSnapshot, messages } = expired);
 
     const pulled = await options.relay.pull(persisted.credentials);
     if (epoch !== pollingEpoch) return;
@@ -225,6 +223,18 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       }
       events.push(...terminalMailbox.events.filter((event) => !processed.has(event.eventId)));
     }
+    const activeRun = nextSnapshot.run?.status === 'active' ? nextSnapshot.run : null;
+    const timelyReply =
+      activeRun !== null &&
+      events.some(
+        (event) =>
+          event.type === 'reply' &&
+          event.runId === activeRun.runId &&
+          event.messageId === activeRun.messageId &&
+          event.createdAt < activeRun.leaseExpiresAt,
+      );
+    const expired = timelyReply ? null : expireClaimLease(nextSnapshot, messages, now());
+    if (expired) ({ snapshot: nextSnapshot, messages } = expired);
     if (!expired && events.length === 0 && !mailboxChanged) return;
 
     for (const event of events) {

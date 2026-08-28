@@ -131,6 +131,22 @@ describe('AiComposer', () => {
     );
   });
 
+  it('keeps message actions in document flow below multiline content', () => {
+    render(
+      <AiComposer
+        session={session()}
+        disabled={false}
+        initialDraft={'First line\nSecond line\nThird line'}
+        queuedFollowUp={null}
+        autoFocus={false}
+      />,
+    );
+
+    const actions = screen.getByRole('group', { name: 'Message actions' });
+    expect(actions).not.toHaveClass('absolute');
+    expect(screen.getByRole('textbox', { name: 'Message AI' }).nextElementSibling).toBe(actions);
+  });
+
   it('keeps the draft usable when the session rejects a send', async () => {
     const aiSession = session();
     vi.mocked(aiSession.send).mockRejectedValueOnce(new Error('Connection closed'));

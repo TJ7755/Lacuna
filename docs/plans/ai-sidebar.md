@@ -211,11 +211,15 @@ invoke a domain tool, reply and disconnect. Mailbox protocol v2 carries `tool_ca
 browser-owned `toolResponses`; the encrypted envelope remains independently versioned at v1.
 
 `lacuna.wait_for_message` polls the encrypted browser mailbox for at most 25 seconds. A claim writes
-`messageId`, `runId` and lease expiry to the terminal mailbox and returns the browser-owned
-`conversationId` and content. `lacuna.reply` accepts only that active `runId`/`messageId` pair and
+`messageId`, `runId` and a five-minute lease expiry to the terminal mailbox and returns the
+browser-owned `conversationId` and content. `lacuna.reply` accepts only that active
+`runId`/`messageId` pair and
 refreshes the browser mailbox immediately before writing. If it finds `stop_requested`, it writes
 `stop_acknowledged`, removes the active run and refuses the late reply. Empty waits are ordinary;
-the terminal task must repeat them.
+the terminal task must repeat them. The companion serialises its public operations internally so
+parallel calls from an MCP host cannot race its single compare-and-swap mailbox writer. Expiry
+requeues the same stable `messageId`, and a reply authored within the lease remains valid if the
+browser processes it just after the deadline.
 
 The terminal receives display-safe approval errors but never the underlying grant or exact binding.
 It retries the same stable `callId` after the browser decision. The browser-owned result ledger

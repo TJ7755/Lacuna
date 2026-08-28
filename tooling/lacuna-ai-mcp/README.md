@@ -36,6 +36,11 @@ WebSocket, inbound localhost listener or terminal access to the browser profile.
 The task must remain running. MCP does not turn an idle terminal conversation into a background
 daemon.
 
+The companion serialises all public operations through its single terminal-mailbox writer. A host
+may issue calls concurrently without manufacturing a stale-generation race. Claimed messages use
+a five-minute lease so approval and ordinary multi-tool work do not expire while the user is still
+responding.
+
 ## Tools
 
 - `lacuna.connect`

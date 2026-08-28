@@ -277,6 +277,46 @@ describe('AiPanel', () => {
     },
   );
 
+  it.each([
+    ['active', 'AI is responding'],
+    ['stop_requested', 'Stopping response'],
+  ] as const)('shows an accessible progress indicator for a %s run', (status, label) => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'connected',
+            connectionId: 'connection-1',
+            client: { name: 'Terminal agent' },
+            lastActivityAt: 1,
+          },
+          run:
+            status === 'active'
+              ? {
+                  runId: 'run-1',
+                  conversationId: 'conversation-1',
+                  messageId: 'message-1',
+                  claimedAt: 1,
+                  leaseExpiresAt: 10_000,
+                  status,
+                }
+              : {
+                  runId: 'run-1',
+                  conversationId: 'conversation-1',
+                  messageId: 'message-1',
+                  claimedAt: 1,
+                  leaseExpiresAt: 10_000,
+                  status,
+                  stopRequestedAt: 2,
+                },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(label);
+  });
+
   it('presents the exact pending approval as the initial focus target', async () => {
     const session = sessionWith({
       connection: {

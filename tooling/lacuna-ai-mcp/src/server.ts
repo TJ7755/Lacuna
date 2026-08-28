@@ -62,9 +62,18 @@ export function createLacunaAiMcpServer(client: TerminalAiToolClient): McpServer
         .strict(),
     },
     async (input, context) =>
-      callTool(async () =>
-        client.connect(input.code, input.relayUrl, reportedIdentity(server, context)),
-      ),
+      callTool(async () => {
+        const connection = await client.connect(
+          input.code,
+          input.relayUrl,
+          reportedIdentity(server, context),
+        );
+        return {
+          sessionId: connection.sessionId,
+          relayUrl: connection.relayUrl,
+          expiresAt: connection.expiresAt,
+        };
+      }),
   );
 
   server.registerTool(

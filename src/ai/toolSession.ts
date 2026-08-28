@@ -12,7 +12,7 @@ import {
   MAX_APPROVALS,
   MAX_GRANTS,
   MAX_LEDGER_ENTRIES,
-  isJsonValue,
+  normaliseJsonValue,
   restoreState,
 } from './toolSession/state';
 import type {
@@ -496,7 +496,8 @@ export class AiToolSession {
         },
       };
     }
-    if (!isJsonValue(outcome.result)) {
+    const result = normaliseJsonValue(outcome.result);
+    if (result === undefined) {
       const response: AiToolWireResponse = {
         ok: false,
         error: internalError(new Error('Tool result is not JSON-safe.')),
@@ -528,13 +529,13 @@ export class AiToolSession {
             callId: request.callId,
             toolName: tool.name,
             input,
-            result: outcome.result,
+            result,
             target,
             completedAt: outcome.receipt.completedAt,
             createId: this.createId,
           })
         : undefined;
-    const response: AiToolWireResponse = { ok: true, result: outcome.result };
+    const response: AiToolWireResponse = { ok: true, result };
     storeLedger(
       this.ledger,
       request,

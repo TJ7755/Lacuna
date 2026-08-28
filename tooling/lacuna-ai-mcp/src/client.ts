@@ -12,7 +12,7 @@ import {
 export const DEFAULT_AI_RELAY_URL = 'https://lacuna-relay.vercel.app';
 const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
-const CLAIM_LEASE_MS = 60_000;
+const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
 
 export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
@@ -94,6 +94,7 @@ export class TerminalAiClient {
   private readonly now: () => number;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly createId: (prefix: 'event' | 'run') => string;
+  private operationQueue: Promise<void> = Promise.resolve();
   private connection: ConnectedTerminalRelay | null = null;
   private browserGeneration: string | null = null;
   private terminalGeneration = AI_RELAY_EMPTY_GENERATION;
@@ -116,7 +117,39 @@ export class TerminalAiClient {
     this.createId = options.createId ?? ((prefix) => `${prefix}-${randomUUID()}`);
   }
 
-  async connect(
+  connect(
+    code: string,
+    relayUrl: string | undefined,
+    client: AiClientIdentity,
+  ): Promise<ConnectedTerminalRelay> {
+    return this.runExclusive(() => this.connectExclusive(code, relayUrl, client));
+  }
+
+  waitForMessage(timeoutMs = DEFAULT_WAIT_MS): Promise<WaitForMessageResult> {
+    return this.runExclusive(() => this.waitForMessageExclusive(timeoutMs));
+  }
+
+  reply(runId: string, messageId: string, content: string): Promise<void> {
+    return this.runExclusive(() => this.replyExclusive(runId, messageId, content));
+  }
+
+  invokeTool(
+    runId: string,
+    callId: string,
+    toolName: string,
+    input: JsonValue,
+    timeoutMs = TOOL_CALL_TIMEOUT_MS,
+  ): Promise<TerminalToolResponse> {
+    return this.runExclusive(() =>
+      this.invokeToolExclusive(runId, callId, toolName, input, timeoutMs),
+    );
+  }
+
+  disconnect(): Promise<void> {
+    return this.runExclusive(() => this.disconnectExclusive());
+  }
+
+  private async connectExclusive(
     code: string,
     relayUrl: string | undefined,
     client: AiClientIdentity,
@@ -127,7 +160,7 @@ export class TerminalAiClient {
     return connection;
   }
 
-  async waitForMessage(timeoutMs = DEFAULT_WAIT_MS): Promise<WaitForMessageResult> {
+  private async waitForMessageExclusive(timeoutMs: number): Promise<WaitForMessageResult> {
     const connection = this.requireConnection();
     const deadline = this.now() + timeoutMs;
 
@@ -178,7 +211,7 @@ export class TerminalAiClient {
     }
   }
 
-  async reply(runId: string, messageId: string, content: string): Promise<void> {
+  private async replyExclusive(runId: string, messageId: string, content: string): Promise<void> {
     const connection = this.requireConnection();
     const active = this.activeRuns.get(runId);
     if (!active || active.messageId !== messageId || active.replyRevision !== undefined) {
@@ -204,12 +237,12 @@ export class TerminalAiClient {
     active.replyRevision = this.terminalMailbox.revision;
   }
 
-  async invokeTool(
+  private async invokeToolExclusive(
     runId: string,
     callId: string,
     toolName: string,
     input: JsonValue,
-    timeoutMs = TOOL_CALL_TIMEOUT_MS,
+    timeoutMs: number,
   ): Promise<TerminalToolResponse> {
     const connection = this.requireConnection();
     const active = this.activeRuns.get(runId);
@@ -272,7 +305,7 @@ export class TerminalAiClient {
     }
   }
 
-  async disconnect(): Promise<void> {
+  private async disconnectExclusive(): Promise<void> {
     if (!this.connection) return;
     try {
       await this.appendEvent({
@@ -375,6 +408,15 @@ export class TerminalAiClient {
   private requireConnection(): ConnectedTerminalRelay {
     if (!this.connection) throw new Error('Lacuna AI is not connected.');
     return this.connection;
+  }
+
+  private runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.operationQueue.then(operation, operation);
+    this.operationQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
   }
 
   private clearConnection(): void {

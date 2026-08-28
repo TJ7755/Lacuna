@@ -2465,11 +2465,14 @@ scrollspy and its navigation cannot drift from the rendered sections.
   stored ciphertext still matches exactly. A stored mailbox with no ETag fails closed; the relay
   never performs an unconditional repair that could overwrite a concurrent successor.
 
-  A queued message is claimed with an immutable `runId` and bounded lease. Replies are complete,
-  not streamed. Stop changes the browser record to `stop_requested`; the terminal refreshes that
-  record before replying, writes `stop_acknowledged`, and refuses a late reply. This is cooperative:
-  it cannot terminate inference already running in the model or terminal harness. The terminal task
-  must remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
+  A queued message is claimed with an immutable `runId` and a five-minute lease. Lease expiry
+  requeues the same stable `messageId`; it never manufactures a duplicate transcript identity. A
+  reply authored before the deadline remains valid if the browser's next poll lands after the
+  deadline, while a genuinely late reply is ignored. Replies are complete, not streamed. Stop
+  changes the browser record to `stop_requested`; the terminal refreshes that record before
+  replying, writes `stop_acknowledged`, and refuses a late reply. This is cooperative: it cannot
+  terminate inference already running in the model or terminal harness. The terminal task must
+  remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
 
   Mailbox protocol v2 also carries typed tool calls and browser-owned responses. The browser uses
   the shared executor over the existing Electron MCP tool registry: registry lookup, validation,
