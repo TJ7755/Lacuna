@@ -21,7 +21,7 @@ const ENVELOPE: RelayEnvelope = {
   nonce: Buffer.from(new Uint8Array(12)).toString('base64url'),
   ciphertext: Buffer.from(new Uint8Array(16)).toString('base64url'),
 };
-const ENCRYPTED_BODY = JSON.stringify(ENVELOPE);
+const ENCRYPTED_BODY_SHA256 = 'ee9696c083aaba5cbe3a1be2c7001dff4b5f7bb80a91b62dcf8f8ad39e97c045';
 const KEY = {} as CryptoKey;
 
 function cryptoOperations(opened: JsonValue): RelayCryptoOperations {
@@ -206,12 +206,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValueOnce(
-        new Response(ENCRYPTED_BODY, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -236,7 +231,7 @@ describe('HttpTerminalRelayTransport', () => {
     ]);
   });
 
-  it('recovers an exact terminal mailbox write after a stale reconciliation read', async () => {
+  it('recovers an exact terminal mailbox write after a missing digest receipt', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -248,18 +243,8 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValueOnce(
-        new Response('stale ciphertext', {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-stale"' },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(ENCRYPTED_BODY, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
     const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -306,12 +291,7 @@ describe('HttpTerminalRelayTransport', () => {
             init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
           });
         })
-        .mockResolvedValueOnce(
-          new Response(ENCRYPTED_BODY, {
-            status: 200,
-            headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
-          }),
-        );
+        .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
       const transport = new HttpTerminalRelayTransport({
         fetchImpl,
         crypto: cryptoOperations({}),
@@ -343,7 +323,7 @@ describe('HttpTerminalRelayTransport', () => {
     }
   });
 
-  it('requires reconnection when relay 500 reconciliation finds different bytes', async () => {
+  it('requires reconnection when relay 500 reconciliation finds no matching digest receipt', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -355,12 +335,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValueOnce(
-        new Response('different ciphertext', {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-other"' },
-        }),
-      );
+      .mockResolvedValue(new Response(null, { status: 404 }));
     const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -397,12 +372,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockRejectedValueOnce(new TypeError('socket closed'))
-      .mockResolvedValueOnce(
-        new Response(ENCRYPTED_BODY, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -426,7 +396,7 @@ describe('HttpTerminalRelayTransport', () => {
       'GET',
     ]);
     expect(fetchImpl.mock.calls[2]?.[0]).toBe(
-      'https://relay.example/ai/s/ABCDEFGHJKMNPQRSTVW2/terminal',
+      `https://relay.example/ai/s/ABCDEFGHJKMNPQRSTVW2/terminal?digest=${ENCRYPTED_BODY_SHA256}`,
     );
     expect(fetchImpl.mock.calls[2]?.[1]).toMatchObject({
       cache: 'no-store',
@@ -446,12 +416,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
-      .mockResolvedValueOnce(
-        new Response(ENCRYPTED_BODY, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -484,9 +449,9 @@ describe('HttpTerminalRelayTransport', () => {
       )
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(
-        new Response(ENCRYPTED_BODY, {
+        new Response('{}', {
           status: 200,
-          headers: { ETag: '"platform-rewritten"' },
+          headers: { ETag: '"platform-rewritten"', 'Content-Type': 'application/json' },
         }),
       );
     const transport = createTestTerminalRelayTransport({
@@ -556,12 +521,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockResolvedValueOnce(Response.json({ generation: '"terminal-1"', unexpected: true }))
-      .mockResolvedValueOnce(
-        new Response(ENCRYPTED_BODY, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-recovered"' }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -581,7 +541,7 @@ describe('HttpTerminalRelayTransport', () => {
     ).resolves.toBe('"terminal-recovered"');
   });
 
-  it('requires reconnection when reconciliation finds different terminal mailbox bytes', async () => {
+  it('requires reconnection when reconciliation finds no matching terminal write digest', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -593,12 +553,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockRejectedValueOnce(new TypeError('socket closed'))
-      .mockResolvedValueOnce(
-        new Response(`${ENCRYPTED_BODY}\n`, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"terminal-other"' },
-        }),
-      );
+      .mockResolvedValue(new Response(null, { status: 404 }));
     const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -618,7 +573,7 @@ describe('HttpTerminalRelayTransport', () => {
     ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
   });
 
-  it('requires reconnection when the reconciled terminal mailbox has no generation', async () => {
+  it('requires reconnection when the terminal write receipt has no generation', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -630,7 +585,7 @@ describe('HttpTerminalRelayTransport', () => {
         }),
       )
       .mockRejectedValueOnce(new TypeError('socket closed'))
-      .mockResolvedValueOnce(new Response(ENCRYPTED_BODY, { status: 200 }));
+      .mockResolvedValue(new Response('{}', { status: 200 }));
     const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),

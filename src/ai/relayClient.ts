@@ -304,7 +304,13 @@ async function recoverPushGeneration(
 ): Promise<RelayMailboxPush> {
   const startedAt = timing.now();
   const deadline = startedAt + RECOVERY_DEADLINE_MS;
-  const attemptedBytes = new Uint8Array(attemptedBody);
+  let digest: string;
+  try {
+    digest = await sha256Hex(attemptedBody);
+  } catch {
+    throw new RelayPushOutcomeUnknownError(status);
+  }
+  const recoveryUrl = `${mailboxUrl}?digest=${digest}`;
 
   for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
     const delayMs = startedAt + offsetMs - timing.now();
@@ -318,16 +324,15 @@ async function recoverPushGeneration(
       Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
     );
     try {
-      const response = await fetchImpl(mailboxUrl, {
+      const response = await fetchImpl(recoveryUrl, {
         method: 'GET',
         cache: 'no-store',
         headers: bearer(browserToken),
         signal: controller.signal,
       });
       if (!response.ok) continue;
-      const generation = requireRecoveryGeneration(response, status);
-      const returnedBody = new Uint8Array(await response.arrayBuffer());
-      if (sameBytes(attemptedBytes, returnedBody)) return { generation };
+      const parsed = relayMailboxWriteResponseSchema.safeParse(await response.json());
+      if (parsed.success) return parsed.data;
     } catch {
       // A read-only retry cannot overwrite a concurrent successor.
     } finally {
@@ -337,17 +342,9 @@ async function recoverPushGeneration(
   throw new RelayPushOutcomeUnknownError(status);
 }
 
-function requireRecoveryGeneration(response: Response, status?: number): string {
-  const parsed = relayMailboxWriteResponseSchema.safeParse({
-    generation: response.headers.get(GENERATION_HEADER)?.trim(),
-  });
-  if (!parsed.success) throw new RelayPushOutcomeUnknownError(status);
-  return parsed.data.generation;
-}
-
-function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
-  if (left.byteLength !== right.byteLength) return false;
-  return left.every((byte, index) => byte === right[index]);
+async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function wait(milliseconds: number): Promise<void> {

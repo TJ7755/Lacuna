@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   AI_PAIRING_TTL_MS,
@@ -203,6 +204,62 @@ describe('AI relay', () => {
       mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, browserBody),
     );
     expect(stale.status).toBe(412);
+  });
+
+  it('returns a generation receipt only when the stored mailbox matches the requested digest', async () => {
+    const pair = await paired();
+    const body = new Uint8Array([10, 20, 30]);
+    const written = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, body),
+    );
+    const generation = written.headers.get('ETag');
+    const digest = createHash('sha256').update(body).digest('hex');
+
+    const receipt = await pair.handle(
+      authorisedRequest(
+        `/ai/s/${pair.sessionId}/browser?digest=${digest}`,
+        'GET',
+        pair.browserToken,
+      ),
+    );
+
+    expect(receipt.status).toBe(200);
+    expect(receipt.headers.get('Content-Type')).toBe('application/json');
+    expect(receipt.headers.get('Cache-Control')).toBe('no-store');
+    expect(receipt.headers.get('ETag')).toBe(generation);
+    expect(receipt.headers.get('X-Lacuna-Generation')).toBe(generation);
+    expect(receipt.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+    expect(await receipt.json()).toEqual({ generation });
+
+    const mismatch = await pair.handle(
+      authorisedRequest(
+        `/ai/s/${pair.sessionId}/browser?digest=${'0'.repeat(64)}`,
+        'GET',
+        pair.terminalToken,
+      ),
+    );
+    expect(mismatch.status).toBe(409);
+    expect(mismatch.headers.get('Cache-Control')).toBe('no-store');
+    expect(await mismatch.json()).toEqual({ error: 'digest mismatch' });
+  });
+
+  it('rejects malformed or repeated mailbox receipt digests', async () => {
+    const pair = await paired();
+    const path = `/ai/s/${pair.sessionId}/browser`;
+
+    for (const query of [
+      '?digest=',
+      `?digest=${'A'.repeat(64)}`,
+      `?digest=${'0'.repeat(63)}`,
+      `?digest=${'0'.repeat(64)}&digest=${'0'.repeat(64)}`,
+    ]) {
+      const response = await pair.handle(
+        authorisedRequest(`${path}${query}`, 'GET', pair.browserToken),
+      );
+      expect(response.status).toBe(400);
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      expect(await response.json()).toEqual({ error: 'invalid digest' });
+    }
   });
 
   it('recovers a committed mailbox write whose response omitted its ETag', async () => {

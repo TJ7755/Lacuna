@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol.js';
 import {
   createRelayKeyPair,
@@ -211,7 +212,8 @@ async function recoverTerminalWrite(
 ): Promise<string> {
   const startedAt = timing.now();
   const deadline = startedAt + RECOVERY_DEADLINE_MS;
-  const attemptedBytes = new TextEncoder().encode(attemptedBody);
+  const attemptedDigest = createHash('sha256').update(attemptedBody, 'utf8').digest('hex');
+  const receiptUrl = `${mailboxUrl}?digest=${attemptedDigest}`;
 
   for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
     const delayMs = startedAt + offsetMs - timing.now();
@@ -225,16 +227,15 @@ async function recoverTerminalWrite(
       Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
     );
     try {
-      const response = await fetchImpl(mailboxUrl, {
+      const response = await fetchImpl(receiptUrl, {
         method: 'GET',
         cache: 'no-store',
         headers: { Authorization: `Bearer ${terminalToken}` },
         signal: controller.signal,
       });
       if (!response.ok) continue;
-      const generation = requiredMailboxGeneration(response);
-      const returnedBody = new Uint8Array(await response.arrayBuffer());
-      if (sameBytes(attemptedBytes, returnedBody)) return generation;
+      const receipt = relayMailboxWriteResponseSchema.safeParse(await readJsonResponse(response));
+      if (receipt.success) return receipt.data.generation;
     } catch {
       // A read-only retry cannot overwrite a concurrent successor.
     } finally {
@@ -242,19 +243,6 @@ async function recoverTerminalWrite(
     }
   }
   throw new TerminalRelayReconnectRequiredError();
-}
-
-function requiredMailboxGeneration(response: Response): string {
-  const parsed = relayMailboxWriteResponseSchema.safeParse({
-    generation: response.headers.get(GENERATION_HEADER)?.trim(),
-  });
-  if (parsed.success) return parsed.data.generation;
-  throw new TerminalRelayReconnectRequiredError();
-}
-
-function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
-  if (left.byteLength !== right.byteLength) return false;
-  return left.every((byte, index) => byte === right[index]);
 }
 
 function wait(milliseconds: number): Promise<void> {

@@ -10,6 +10,7 @@ const GENERATION_HEADER = 'X-Lacuna-Generation';
 const SESSION_ID_RE = /^[A-HJ-KM-NP-TV-Z2-9]{20}$/;
 const PUBLIC_KEY_RE = /^[A-Za-z0-9_-]{80,100}$/;
 const TOKEN_RE = /^[0-9a-f]{64}$/;
+const DIGEST_RE = /^[0-9a-f]{64}$/;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
 
 type AiMailbox = 'browser' | 'terminal';
@@ -197,16 +198,37 @@ async function readMailbox(
   id: string,
   mailbox: AiMailbox,
 ): Promise<Response> {
+  const digests = new URL(request.url).searchParams.getAll('digest');
+  if (digests.length > 1 || (digests.length === 1 && !DIGEST_RE.test(digests[0]!))) {
+    const response = json(400, request, { error: 'invalid digest' });
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  }
   const key = mailboxKey(id, mailbox);
   const stored = await store.get(key);
   if (!stored) return json(404, request, { error: 'not found' });
   const generation = canonicalEtag(stored.etag);
   if (generation === '') return json(500, request, { error: 'internal error' });
+  const quotedGeneration = `"${generation}"`;
+  if (digests.length === 1) {
+    const storedDigest = createHash('sha256').update(stored.body).digest('hex');
+    if (!timingSafeEqual(Buffer.from(storedDigest, 'hex'), Buffer.from(digests[0]!, 'hex'))) {
+      const response = json(409, request, { error: 'digest mismatch' });
+      response.headers.set('Cache-Control', 'no-store');
+      return response;
+    }
+    const headers = corsHeaders(request);
+    headers.set('Content-Type', 'application/json');
+    headers.set('Cache-Control', 'no-store');
+    headers.set('ETag', quotedGeneration);
+    headers.set(GENERATION_HEADER, quotedGeneration);
+    return new Response(JSON.stringify({ generation: quotedGeneration }), { status: 200, headers });
+  }
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
-  headers.set('ETag', `"${generation}"`);
-  headers.set(GENERATION_HEADER, `"${generation}"`);
+  headers.set('ETag', quotedGeneration);
+  headers.set(GENERATION_HEADER, quotedGeneration);
   return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 

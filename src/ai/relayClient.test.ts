@@ -165,24 +165,19 @@ describe('browser AI relay client', () => {
     ).resolves.toEqual({ generation: '"browser-fallback"' });
   });
 
-  it('recovers a committed push by reading back the exact attempted ciphertext', async () => {
+  it('recovers a committed push through its ciphertext digest', async () => {
     const bytes = new Uint8Array([7, 8, 9]);
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(bytes, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
     ).resolves.toEqual({ generation: '"browser-recovered"' });
 
     expect(fetchImpl.mock.calls[1]).toEqual([
-      `${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser`,
+      `${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser?digest=66a6757151f8ee55db127716c7e3dce0be8074b64e20eda542e5c1e46ca9c41e`,
       expect.objectContaining({
         method: 'GET',
         cache: 'no-store',
@@ -192,23 +187,13 @@ describe('browser AI relay client', () => {
     ]);
   });
 
-  it('retries reconciliation when the first read has not reached the committed ciphertext', async () => {
+  it('retries reconciliation while the relay has not indexed the committed digest', async () => {
     const bytes = new Uint8Array([7, 8, 9]);
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(new Uint8Array([7, 8, 0]), {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-previous"' },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(bytes, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
@@ -221,22 +206,13 @@ describe('browser AI relay client', () => {
     let now = 0;
     const waits: number[] = [];
     const bytes = new Uint8Array([7, 8, 9]);
-    const staleResponse = () =>
-      new Response(new Uint8Array([7, 8, 0]), {
-        status: 200,
-        headers: { 'X-Lacuna-Generation': '"browser-previous"' },
-      });
+    const staleResponse = () => new Response(null, { status: 404 });
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(staleResponse())
       .mockResolvedValueOnce(staleResponse())
-      .mockResolvedValueOnce(
-        new Response(bytes, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
-        }),
-      );
+      .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
 
     await expect(
       createRelayClient({
@@ -267,12 +243,7 @@ describe('browser AI relay client', () => {
             init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
           });
         })
-        .mockResolvedValueOnce(
-          new Response(bytes, {
-            status: 200,
-            headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
-          }),
-        );
+        .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-recovered"' }));
 
       const result = createRelayClient({
         fetchImpl,
@@ -293,12 +264,7 @@ describe('browser AI relay client', () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce(
-        new Response(bytes, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-after-rejection"' },
-        }),
-      );
+      .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-after-rejection"' }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
@@ -310,12 +276,7 @@ describe('browser AI relay client', () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValueOnce(
-        new Response(bytes, {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-after-server-error"' },
-        }),
-      );
+      .mockResolvedValueOnce(jsonResponse(200, { generation: '"browser-after-server-error"' }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
@@ -324,16 +285,11 @@ describe('browser AI relay client', () => {
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
   });
 
-  it('reports an unknown push outcome when server-error recovery finds different ciphertext', async () => {
+  it('reports an unknown push outcome when server-error recovery cannot find the digest', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(
-        new Response(new Uint8Array([21, 22, 24]), {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-other-server-body"' },
-        }),
-      );
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(
@@ -396,13 +352,13 @@ describe('browser AI relay client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
-  it('does not trust a platform ETag while reconciling an ambiguous push', async () => {
+  it('requires schema-valid JSON while reconciling an ambiguous push', async () => {
     const bytes = new Uint8Array([10, 11, 12]);
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(
-        new Response(bytes, {
+        new Response('not-json', {
           status: 200,
           headers: { ETag: '"platform-rewritten"' },
         }),
@@ -434,16 +390,11 @@ describe('browser AI relay client', () => {
     );
   });
 
-  it('rejects recovery when the browser mailbox contains different ciphertext', async () => {
+  it('rejects recovery when the relay cannot find the attempted ciphertext digest', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(
-        new Response(new Uint8Array([1, 2, 4]), {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-other-body"' },
-        }),
-      );
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(
@@ -464,11 +415,10 @@ describe('browser AI relay client', () => {
     ['missing', undefined],
     ['invalid', '""'],
   ])('rejects recovery when the browser mailbox generation is %s', async (_case, generation) => {
-    const headers = generation ? { 'X-Lacuna-Generation': generation } : undefined;
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200, headers }));
+      .mockResolvedValueOnce(jsonResponse(200, generation ? { generation } : {}));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(
@@ -483,12 +433,7 @@ describe('browser AI relay client', () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce(
-        new Response(new Uint8Array([2]), {
-          status: 200,
-          headers: { 'X-Lacuna-Generation': '"browser-other-body"' },
-        }),
-      );
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, new Uint8Array([1]), '"stale"'),
