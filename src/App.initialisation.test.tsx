@@ -1,5 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as RepositoryModule from './db/repository';
+import type * as SchemaModule from './db/schema';
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -21,7 +23,7 @@ const dependencies = vi.hoisted(() => ({
 }));
 
 vi.mock('./db/schema', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./db/schema')>()),
+  ...(await importOriginal<typeof SchemaModule>()),
   ensurePreMigrationSnapshot: dependencies.ensurePreMigrationSnapshot,
   openDatabase: dependencies.openDatabase,
 }));
@@ -29,7 +31,7 @@ vi.mock('./db/persistence', () => ({
   requestPersistentStorage: dependencies.requestPersistentStorage,
 }));
 vi.mock('./db/repository', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./db/repository')>()),
+  ...(await importOriginal<typeof RepositoryModule>()),
   stampMissingLessonViewModes: dependencies.stampMissingLessonViewModes,
 }));
 vi.mock('./db/seed', () => ({
