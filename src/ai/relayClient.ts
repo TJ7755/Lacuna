@@ -159,9 +159,10 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       const session = requireCredentials(credentials, 'push');
       const generation = requireRequestGeneration(ifMatch);
       const body = copyBytes(bytes);
+      const mailboxUrl = `${relayUrl}/ai/s/${session.sessionId}/browser`;
       let response: Response;
       try {
-        response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}/browser`, {
+        response = await fetchImpl(mailboxUrl, {
           method: 'PUT',
           headers: {
             ...bearer(session.browserToken),
@@ -171,11 +172,31 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
           body: new Blob([body], { type: 'application/octet-stream' }),
         });
       } catch {
-        throw new RelayPushOutcomeUnknownError();
+        return recoverPushGeneration(fetchImpl, mailboxUrl, session.browserToken, body);
       }
       if (response.status === 412) throw new RelayStaleGenerationError(generation);
+      if (response.status >= 500) {
+        return recoverPushGeneration(
+          fetchImpl,
+          mailboxUrl,
+          session.browserToken,
+          body,
+          response.status,
+        );
+      }
       if (!response.ok) throw await httpError('push', response);
-      return { generation: await readPushGeneration(response) };
+      try {
+        return { generation: await readPushGeneration(response) };
+      } catch (error) {
+        if (!(error instanceof RelayPushOutcomeUnknownError)) throw error;
+        return recoverPushGeneration(
+          fetchImpl,
+          mailboxUrl,
+          session.browserToken,
+          body,
+          response.status,
+        );
+      }
     },
 
     async revoke(credentials) {
@@ -252,6 +273,44 @@ async function readPushGeneration(response: Response): Promise<string> {
   }
 
   throw new RelayPushOutcomeUnknownError(response.status);
+}
+
+async function recoverPushGeneration(
+  fetchImpl: typeof fetch,
+  mailboxUrl: string,
+  browserToken: string,
+  attemptedBody: ArrayBuffer,
+  status?: number,
+): Promise<RelayMailboxPush> {
+  try {
+    const response = await fetchImpl(mailboxUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: bearer(browserToken),
+    });
+    if (!response.ok) throw new RelayPushOutcomeUnknownError(status);
+    const generation = requireRecoveryGeneration(response, status);
+    const returnedBody = new Uint8Array(await response.arrayBuffer());
+    if (!sameBytes(new Uint8Array(attemptedBody), returnedBody)) {
+      throw new RelayPushOutcomeUnknownError(status);
+    }
+    return { generation };
+  } catch {
+    throw new RelayPushOutcomeUnknownError(status);
+  }
+}
+
+function requireRecoveryGeneration(response: Response, status?: number): string {
+  const parsed = relayMailboxWriteResponseSchema.safeParse({
+    generation: response.headers.get(GENERATION_HEADER)?.trim(),
+  });
+  if (!parsed.success) throw new RelayPushOutcomeUnknownError(status);
+  return parsed.data.generation;
+}
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.byteLength !== right.byteLength) return false;
+  return left.every((byte, index) => byte === right[index]);
 }
 
 async function parseJsonResponse<T>(

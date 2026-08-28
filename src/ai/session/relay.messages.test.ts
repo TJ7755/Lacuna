@@ -69,13 +69,13 @@ describe('relay AI session messages', () => {
       ok: false,
       error: {
         kind: 'conflict',
-        message: 'The AI connection changed elsewhere. Reconnect the terminal.',
+        message: 'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.',
       },
     });
 
     expect(session.getSnapshot().connection).toEqual({
       status: 'disconnected',
-      reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
+      reason: 'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.',
     });
     expect(cancelPolling).toHaveBeenCalledOnce();
     expect(relay.push).toHaveBeenCalledOnce();
@@ -96,13 +96,15 @@ describe('relay AI session messages', () => {
       ok: false,
       error: {
         kind: 'conflict',
-        message: 'The AI connection changed elsewhere. Reconnect the terminal.',
+        message:
+          'The relay may have accepted this AI update, but Lacuna could not verify it. Reconnect the terminal.',
       },
     });
 
     expect(session.getSnapshot().connection).toEqual({
       status: 'disconnected',
-      reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
+      reason:
+        'The relay may have accepted this AI update, but Lacuna could not verify it. Reconnect the terminal.',
     });
     expect(cancelPolling).toHaveBeenCalledOnce();
     await tick();
@@ -144,7 +146,7 @@ describe('relay AI session messages', () => {
 
     expect(session.getSnapshot().connection).toEqual({
       status: 'disconnected',
-      reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
+      reason: 'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.',
     });
     expect(cancelPolling).toHaveBeenCalledOnce();
     expect(relay.push).toHaveBeenCalledTimes(2);

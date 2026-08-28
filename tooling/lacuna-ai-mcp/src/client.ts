@@ -12,10 +12,22 @@ const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 60_000;
 
+export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
+
+const TERMINAL_RECONNECT_MESSAGES: Record<TerminalRelayReconnectReason, string> = {
+  write_outcome_unknown:
+    'The terminal mailbox write outcome is unknown. Reconnect Lacuna AI before continuing.',
+  terminal_writer_changed:
+    'Another terminal writer changed this Lacuna AI session. Reconnect Lacuna AI before continuing.',
+};
+
 export class TerminalRelayReconnectRequiredError extends Error {
-  constructor() {
-    super('The terminal mailbox write outcome is unknown. Reconnect Lacuna AI before continuing.');
+  readonly reason: TerminalRelayReconnectReason;
+
+  constructor(reason: TerminalRelayReconnectReason = 'write_outcome_unknown') {
+    super(TERMINAL_RECONNECT_MESSAGES[reason]);
     this.name = 'TerminalRelayReconnectRequiredError';
+    this.reason = reason;
   }
 }
 

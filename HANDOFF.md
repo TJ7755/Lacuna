@@ -1,6 +1,6 @@
 # AI sidebar handoff
 
-This is the operational context for the AI sidebar relay work as of 27 August 2026. Read this before
+This is the operational context for the AI sidebar relay work as of 28 August 2026. Read this before
 changing the code or repeating live tests.
 
 ## Start here
@@ -35,6 +35,28 @@ instructions. Do not imply otherwise in UI, documentation or testing.
   disposed or replaced same-tab session cannot continue writing.
 
 PR #100 fixed a real race. It did not fix the remaining live-browser failure described below.
+
+## PR #101 live result on 28 August
+
+PR #101 reached commit `0d0369c` with every GitHub, relay, browser-smoke, Vercel and CodeRabbit
+check green. A fresh test used immutable preview
+`https://lacuna-nopqjnbss-tj7755.vercel.app` with one browser tab and terminal client
+`Live verification 1`. The terminal connected, claimed one message, replied and disconnected
+cleanly, but the browser showed the stale-generation wording and never rendered the reply.
+
+Production relay logs proved this was not a stale compare-and-swap:
+
+1. Browser mailbox PUT `200` at `1787910156761` — initial message committed.
+2. Terminal mailbox PUT `200` at `1787910157843` — claim committed.
+3. Browser GET terminal mailbox `200` at `1787910158223` — claim observed.
+4. Browser mailbox PUT `200` at `1787910158701` — acknowledgement committed.
+5. Terminal mailbox PUT `200` at `1787910158855` — reply committed.
+6. Terminal mailbox PUT `200` at `1787910164408` — clean disconnect committed.
+
+There was no `412` anywhere in the session. The first browser PUT generation was retained, proved by
+the second browser PUT succeeding. The second successful response was instead unverifiable in the
+browser, so polling stopped before the reply could be pulled. The shared error wording falsely said
+the connection changed elsewhere and made the diagnosis more tedious than it needed to be.
 
 ## Remaining live failure before this hotfix
 
@@ -97,11 +119,21 @@ relay evidence. It did expose the need for a manual connected-state reset.
    `X-Lacuna-Generation` header.
 3. Trust a validated `ETag` only for a legacy `204`; Vercel can rewrite ordinary `ETag` values on
    modern responses.
-4. If the PUT rejects or no generation is trustworthy, throw `RelayPushOutcomeUnknownError`.
+4. If the PUT rejects, returns `5xx`, or no generation is trustworthy, GET the same browser mailbox
+   once with the writer token.
+5. Recover only when the stored ciphertext exactly matches the attempted bytes and the response
+   exposes a schema-valid `X-Lacuna-Generation`.
+6. Never retry the PUT or trust an ordinary platform `ETag`; throw
+   `RelayPushOutcomeUnknownError` when read-back cannot prove the write.
 
-An unknown successful outcome is unsafe because the write may have committed. The session therefore
-fails closed immediately and never retries the previous generation. This deliberately favours a
-reconnect over duplicate or stale writes.
+`tooling/lacuna-ai-mcp/src/relayTransport.ts` applies the same recovery rule to terminal-mailbox
+writes. `relay/src/aiRelay.ts` allows each mailbox writer to GET its own opaque mailbox while
+retaining the existing peer read and writer-only PUT boundaries. If a committed store write omits
+its ETag, the relay re-reads and adopts the generation only when the stored ciphertext still matches;
+an ETag-less read fails closed rather than risking an overwrite of a concurrent successor. A real
+`412` now reports that another Lacuna tab or window changed the connection; an ambiguous outcome
+that still cannot be verified says the relay may have accepted the update. Both require
+reconnection, clear terminal client state, and no longer lie about why.
 
 `src/ai/session/relay.ts` also makes reset recovery synchronous from the UI's perspective. Reset:
 
@@ -118,6 +150,14 @@ It does not replace the existing Stop or Close controls.
 Regression coverage is in:
 
 - `src/ai/relayClient.test.ts` — JSON success, header fallbacks and unknown successful outcomes.
+- `tests/e2e/ai-terminal.spec.ts` — commits a browser PUT, strips its response body and custom
+  generation header, then proves exact-byte read-back advances the generation without a stale retry.
+- `relay/tests/aiRelay.test.ts` — writer and peer read capabilities remain distinct from writer-only
+  PUT access, and missing write ETags reconcile without overwriting concurrent successors.
+- `relay/tests/relay.test.ts` — the existing sync relay follows the same race-safe missing-write-ETag
+  rule and fails closed on an ETag-less read.
+- `tooling/lacuna-ai-mcp/src/relayTransport.test.ts` — symmetric terminal writer read-back,
+  server-error reconciliation and reconnect-required stale generations.
 - `src/ai/session/relay.messages.test.ts` — unknown outcomes disconnect without a stale retry.
 - `src/ai/session/relay.test.ts` — reset before slow revocation, epoch invalidation and draft recovery.
 - `src/components/ai/AiPanel.test.tsx` — connected Disconnect action without Stop/Close side effects.

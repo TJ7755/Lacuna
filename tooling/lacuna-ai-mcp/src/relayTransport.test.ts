@@ -17,6 +17,7 @@ const ENVELOPE: RelayEnvelope = {
   nonce: Buffer.from(new Uint8Array(12)).toString('base64url'),
   ciphertext: Buffer.from(new Uint8Array(16)).toString('base64url'),
 };
+const ENCRYPTED_BODY = JSON.stringify(ENVELOPE);
 const KEY = {} as CryptoKey;
 
 function cryptoOperations(opened: JsonValue): RelayCryptoOperations {
@@ -141,7 +142,7 @@ describe('HttpTerminalRelayTransport', () => {
     expect(crypto.seal).toHaveBeenCalledWith(KEY, terminalMailbox);
   });
 
-  it('reports a stale terminal generation as a competing writer conflict', async () => {
+  it('requires reconnection after a stale terminal generation', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -169,10 +170,15 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).rejects.toThrow('Another terminal writer changed this Lacuna AI session.');
+    ).rejects.toMatchObject({
+      name: 'TerminalRelayReconnectRequiredError',
+      reason: 'terminal_writer_changed',
+      message:
+        'Another terminal writer changed this Lacuna AI session. Reconnect Lacuna AI before continuing.',
+    });
   });
 
-  it('requires reconnection when a terminal mailbox PUT has an unknown network outcome', async () => {
+  it('recovers an exact terminal mailbox write after an ambiguous relay 500', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -183,7 +189,13 @@ describe('HttpTerminalRelayTransport', () => {
           expiresAt: 90_000,
         }),
       )
-      .mockRejectedValueOnce(new TypeError('socket closed'));
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+      .mockResolvedValueOnce(
+        new Response(ENCRYPTED_BODY, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
+        }),
+      );
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -200,10 +212,15 @@ describe('HttpTerminalRelayTransport', () => {
         revision: 0,
         events: [],
       }),
-    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
+    ).resolves.toBe('"terminal-recovered"');
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
+      'POST',
+      'PUT',
+      'GET',
+    ]);
   });
 
-  it('requires reconnection when a successful terminal PUT omits its generation', async () => {
+  it('requires reconnection when relay 500 reconciliation finds different bytes', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -214,7 +231,141 @@ describe('HttpTerminalRelayTransport', () => {
           expiresAt: 90_000,
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+      .mockResolvedValueOnce(
+        new Response('different ciphertext', {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-other"' },
+        }),
+      );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).rejects.toMatchObject({
+      name: 'TerminalRelayReconnectRequiredError',
+      reason: 'write_outcome_unknown',
+      message:
+        'The terminal mailbox write outcome is unknown. Reconnect Lacuna AI before continuing.',
+    });
+  });
+
+  it('recovers an exact terminal mailbox write after the PUT rejects without retrying it', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockRejectedValueOnce(new TypeError('socket closed'))
+      .mockResolvedValueOnce(
+        new Response(ENCRYPTED_BODY, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
+        }),
+      );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).resolves.toBe('"terminal-recovered"');
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
+      'POST',
+      'PUT',
+      'GET',
+    ]);
+    expect(fetchImpl.mock.calls[2]?.[0]).toBe(
+      'https://relay.example/ai/s/ABCDEFGHJKMNPQRSTVW2/terminal',
+    );
+    expect(fetchImpl.mock.calls[2]?.[1]).toMatchObject({
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+  });
+
+  it('recovers an exact terminal mailbox write when a successful PUT omits its generation', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        new Response(ENCRYPTED_BODY, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
+        }),
+      );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).resolves.toBe('"terminal-recovered"');
+  });
+
+  it('does not trust a platform ETag while reconciling an ambiguous terminal write', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(ENCRYPTED_BODY, {
+          status: 200,
+          headers: { ETag: '"platform-rewritten"' },
+        }),
+      );
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
@@ -270,7 +421,7 @@ describe('HttpTerminalRelayTransport', () => {
     ).resolves.toBe('"terminal-legacy"');
   });
 
-  it('requires reconnection when a 200 terminal PUT returns a non-strict generation body', async () => {
+  it('recovers an exact terminal mailbox write when a 200 PUT returns an invalid body', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -281,7 +432,82 @@ describe('HttpTerminalRelayTransport', () => {
           expiresAt: 90_000,
         }),
       )
-      .mockResolvedValueOnce(Response.json({ generation: '"terminal-1"', unexpected: true }));
+      .mockResolvedValueOnce(Response.json({ generation: '"terminal-1"', unexpected: true }))
+      .mockResolvedValueOnce(
+        new Response(ENCRYPTED_BODY, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
+        }),
+      );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).resolves.toBe('"terminal-recovered"');
+  });
+
+  it('requires reconnection when reconciliation finds different terminal mailbox bytes', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockRejectedValueOnce(new TypeError('socket closed'))
+      .mockResolvedValueOnce(
+        new Response(`${ENCRYPTED_BODY}\n`, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-other"' },
+        }),
+      );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
+  });
+
+  it('requires reconnection when the reconciled terminal mailbox has no generation', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockRejectedValueOnce(new TypeError('socket closed'))
+      .mockResolvedValueOnce(new Response(ENCRYPTED_BODY, { status: 200 }));
     const transport = new HttpTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),

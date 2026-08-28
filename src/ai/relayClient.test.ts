@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RELAY_URL } from '../sync/pairing';
 import { AI_RELAY_EMPTY_GENERATION } from './relayProtocol';
 import {
+  RelayClientHttpError,
   RelayClientProtocolError,
   RelayPushOutcomeUnknownError,
   RelayStaleGenerationError,
@@ -162,6 +163,237 @@ describe('browser AI relay client', () => {
         AI_RELAY_EMPTY_GENERATION,
       ),
     ).resolves.toEqual({ generation: '"browser-fallback"' });
+  });
+
+  it('recovers a committed push by reading back the exact attempted ciphertext', async () => {
+    const bytes = new Uint8Array([7, 8, 9]);
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+    ).resolves.toEqual({ generation: '"browser-recovered"' });
+
+    expect(fetchImpl.mock.calls[1]).toEqual([
+      `${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser`,
+      {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${BROWSER_TOKEN}` },
+      },
+    ]);
+  });
+
+  it('recovers a committed push after the mailbox PUT rejects', async () => {
+    const bytes = new Uint8Array([10, 11, 12]);
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-after-rejection"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+    ).resolves.toEqual({ generation: '"browser-after-rejection"' });
+  });
+
+  it('recovers a committed push after the mailbox PUT returns a server error', async () => {
+    const bytes = new Uint8Array([13, 14, 15]);
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-after-server-error"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+    ).resolves.toEqual({ generation: '"browser-after-server-error"' });
+
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
+  });
+
+  it('reports an unknown push outcome when server-error recovery finds different ciphertext', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([21, 22, 24]), {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-other-server-body"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([21, 22, 23]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayPushOutcomeUnknownError',
+        operation: 'push',
+        status: 503,
+      }),
+    );
+
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
+  });
+
+  it('reports an unknown push outcome when server-error recovery cannot read the mailbox', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 502 }))
+      .mockResolvedValueOnce(new Response(null, { status: 500 }));
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([31]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayPushOutcomeUnknownError',
+        operation: 'push',
+        status: 502,
+      }),
+    );
+  });
+
+  it('keeps definite client errors as HTTP errors without reconciling the mailbox', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse(400, {
+        error: 'Invalid mailbox payload',
+      }),
+    );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([41]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toBeInstanceOf(RelayClientHttpError);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not trust a platform ETag while reconciling an ambiguous push', async () => {
+    const bytes = new Uint8Array([10, 11, 12]);
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { ETag: '"platform-rewritten"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+  });
+
+  it('reports an unknown push outcome when the recovery fetch rejects', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError('PUT failed'))
+      .mockRejectedValueOnce(new TypeError('GET failed'));
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayPushOutcomeUnknownError',
+        operation: 'push',
+        status: undefined,
+      }),
+    );
+  });
+
+  it('rejects recovery when the browser mailbox contains different ciphertext', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([1, 2, 4]), {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-other-body"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1, 2, 3]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayPushOutcomeUnknownError',
+        operation: 'push',
+        status: 200,
+      }),
+    );
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['invalid', '""'],
+  ])('rejects recovery when the browser mailbox generation is %s', async (_case, generation) => {
+    const headers = generation ? { 'X-Lacuna-Generation': generation } : undefined;
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200, headers }));
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+  });
+
+  it('never retries an ambiguous mailbox PUT with the stale generation', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([2]), {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-other-body"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(CREDENTIALS, new Uint8Array([1]), '"stale"'),
+    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
   });
 
   it('reports an unknown push outcome when success has no trustworthy generation', async () => {

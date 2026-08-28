@@ -7,6 +7,16 @@ import { HttpTerminalRelayTransport } from '../../tooling/lacuna-ai-mcp/src/rela
 const RELAY_URL = 'https://lacuna-relay.vercel.app';
 const PAIRING_CODE_RE = /\b[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}\b/;
 
+interface BrowserPutRecord {
+  attemptedGeneration: string;
+  committedGeneration: string;
+}
+
+interface RelayRouteOptions {
+  damageFirstBrowserPut?: boolean;
+  browserPuts?: BrowserPutRecord[];
+}
+
 test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) => {
   const { composer, terminal } = await pairBrowserAndTerminal(page);
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -31,12 +41,52 @@ test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) 
   await terminal.disconnect();
 });
 
+test('recovers a committed browser write when Vercel strips the 200 acknowledgement', async ({
+  page,
+}) => {
+  const browserPuts: BrowserPutRecord[] = [];
+  const { composer, terminal } = await pairBrowserAndTerminal(page, {
+    damageFirstBrowserPut: true,
+    browserPuts,
+  });
+
+  await composer.fill('Keep this exchange after an ambiguous relay acknowledgement.');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  const claimed = await terminal.waitForMessage(2_000);
+  if (claimed.type !== 'message') throw new Error('Expected the terminal to claim the message.');
+
+  const reply = 'The committed browser write was recovered safely.';
+  await terminal.reply(claimed.runId, claimed.messageId, reply);
+
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(composer).toHaveValue('');
+  await expect(
+    page.getByText(
+      'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.',
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      'The relay may have accepted this AI update, but Lacuna could not verify it. Reconnect the terminal.',
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  expect(browserPuts.length).toBeGreaterThanOrEqual(2);
+  expect(browserPuts[0]?.attemptedGeneration).toBe('"0"');
+  expect(browserPuts[1]?.attemptedGeneration).toBe(browserPuts[0]?.committedGeneration);
+  expect(browserPuts.map((put) => put.attemptedGeneration)).not.toContain('"vercel-platform"');
+
+  await terminal.disconnect();
+});
+
 test('restores and claims an unclaimed message once after a browser reload', async ({ page }) => {
   const { composer, terminal } = await pairBrowserAndTerminal(page);
   const message = 'Keep this pending through a reload.';
 
   await composer.fill(message);
   await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(composer).toHaveValue('');
   await page.reload();
   const panel = page.getByRole('complementary', { name: 'AI conversation' });
   if (!(await panel.isVisible())) {
@@ -86,9 +136,12 @@ test('shows the terminal acknowledgement after Stop', async ({ page }) => {
 
 async function pairBrowserAndTerminal(
   page: Page,
+  routeOptions: RelayRouteOptions = {},
 ): Promise<{ composer: Locator; terminal: TerminalAiClient }> {
   const handleRelayRequest = createHandler(new MemoryStore());
-  await page.route(`${RELAY_URL}/**`, (route) => relayRoute(route, handleRelayRequest));
+  await page.route(`${RELAY_URL}/**`, (route) =>
+    relayRoute(route, handleRelayRequest, routeOptions),
+  );
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Create your first course' }).click();
@@ -129,6 +182,7 @@ async function pairBrowserAndTerminal(
 async function relayRoute(
   route: Route,
   handle: (request: Request) => Promise<Response>,
+  options: RelayRouteOptions = {},
 ): Promise<void> {
   const intercepted = route.request();
   const method = intercepted.method();
@@ -144,10 +198,24 @@ async function relayRoute(
       body: method === 'GET' || method === 'HEAD' ? undefined : body,
     }),
   );
+  const responseHeaders = new Headers(response.headers);
+  let responseBody = Buffer.from(await response.arrayBuffer());
+  const isBrowserPut = method === 'PUT' && new URL(intercepted.url()).pathname.endsWith('/browser');
+  if (isBrowserPut && response.status === 200) {
+    options.browserPuts?.push({
+      attemptedGeneration: headers.get('If-Match') ?? '',
+      committedGeneration: responseHeaders.get('X-Lacuna-Generation') ?? '',
+    });
+    if (options.damageFirstBrowserPut && options.browserPuts?.length === 1) {
+      responseHeaders.delete('X-Lacuna-Generation');
+      responseHeaders.set('ETag', '"vercel-platform"');
+      responseBody = Buffer.alloc(0);
+    }
+  }
   await route.fulfill({
     status: response.status,
-    headers: Object.fromEntries(response.headers.entries()),
-    body: Buffer.from(await response.arrayBuffer()),
+    headers: Object.fromEntries(responseHeaders.entries()),
+    body: responseBody,
   });
 }
 

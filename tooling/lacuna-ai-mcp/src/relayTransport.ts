@@ -120,44 +120,91 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
       parsedMailbox.data as unknown as JsonValue,
     );
     const body = JSON.stringify(envelope);
+    const mailboxUrl = `${connection.relayUrl}/ai/s/${connection.sessionId}/terminal`;
     let response: Response;
     try {
-      response = await this.fetchImpl(
-        `${connection.relayUrl}/ai/s/${connection.sessionId}/terminal`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${authenticated.terminalToken}`,
-            'Content-Type': 'application/octet-stream',
-            'If-Match': generation,
-          },
-          body,
+      response = await this.fetchImpl(mailboxUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${authenticated.terminalToken}`,
+          'Content-Type': 'application/octet-stream',
+          'If-Match': generation,
         },
-      );
+        body,
+      });
     } catch {
-      throw new TerminalRelayReconnectRequiredError();
+      return recoverTerminalWrite(this.fetchImpl, mailboxUrl, authenticated.terminalToken, body);
     }
     if (response.status === 412) {
-      throw new Error('Another terminal writer changed this Lacuna AI session.');
+      throw new TerminalRelayReconnectRequiredError('terminal_writer_changed');
     }
-    if (response.status === 200) {
-      try {
-        const result = relayMailboxWriteResponseSchema.safeParse(await readJsonResponse(response));
-        if (!result.success) throw new TerminalRelayReconnectRequiredError();
-        return result.data.generation;
-      } catch {
-        throw new TerminalRelayReconnectRequiredError();
+    if (!response.ok) {
+      if (response.status >= 500) {
+        return recoverTerminalWrite(this.fetchImpl, mailboxUrl, authenticated.terminalToken, body);
       }
-    }
-    if (response.status !== 204) {
       throw relayHttpError('write the Lacuna AI terminal mailbox', response.status);
     }
+    const responseGeneration = await terminalWriteGeneration(response);
+    if (responseGeneration) return responseGeneration;
+    return recoverTerminalWrite(this.fetchImpl, mailboxUrl, authenticated.terminalToken, body);
+  }
+}
+
+async function terminalWriteGeneration(response: Response): Promise<string | null> {
+  if (response.status === 200) {
     try {
-      return requiredEtag(response);
+      const result = relayMailboxWriteResponseSchema.safeParse(await readJsonResponse(response));
+      if (result.success) return result.data.generation;
     } catch {
-      throw new TerminalRelayReconnectRequiredError();
+      // A successful response may lose or corrupt its JSON body in transit.
     }
   }
+
+  const headerGenerations = [response.headers.get(GENERATION_HEADER)];
+  if (response.status === 204) headerGenerations.push(response.headers.get('ETag'));
+  for (const generation of headerGenerations) {
+    const parsed = relayMailboxWriteResponseSchema.safeParse({ generation: generation?.trim() });
+    if (parsed.success) return parsed.data.generation;
+  }
+  return null;
+}
+
+async function recoverTerminalWrite(
+  fetchImpl: typeof fetch,
+  mailboxUrl: string,
+  terminalToken: string,
+  attemptedBody: string,
+): Promise<string> {
+  try {
+    const response = await fetchImpl(mailboxUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${terminalToken}` },
+    });
+    if (!response.ok) throw new TerminalRelayReconnectRequiredError();
+    const generation = requiredMailboxGeneration(response);
+    const returnedBody = new Uint8Array(await response.arrayBuffer());
+    const attemptedBytes = new TextEncoder().encode(attemptedBody);
+    if (!sameBytes(attemptedBytes, returnedBody)) {
+      throw new TerminalRelayReconnectRequiredError();
+    }
+    return generation;
+  } catch {
+    throw new TerminalRelayReconnectRequiredError();
+  }
+}
+
+function requiredMailboxGeneration(response: Response): string {
+  const parsed = relayMailboxWriteResponseSchema.safeParse({
+    generation: response.headers.get(GENERATION_HEADER)?.trim(),
+  });
+  if (parsed.success) return parsed.data.generation;
+  throw new TerminalRelayReconnectRequiredError();
+}
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.byteLength !== right.byteLength) return false;
+  return left.every((byte, index) => byte === right[index]);
 }
 
 function authenticatedConnection(connection: ConnectedTerminalRelay): {

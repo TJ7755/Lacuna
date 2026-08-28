@@ -30,7 +30,10 @@ export type { RelaySessionStorage } from './relayPersistence';
 
 const POLL_INTERVAL_MS = 1_000;
 const PAIRING_EXPIRED_REASON = 'Pairing code expired. Connect the terminal again.';
-const STALE_GENERATION_REASON = 'The AI connection changed elsewhere. Reconnect the terminal.';
+const STALE_GENERATION_REASON =
+  'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.';
+const UNKNOWN_OUTCOME_REASON =
+  'The relay may have accepted this AI update, but Lacuna could not verify it. Reconnect the terminal.';
 
 const EMPTY_SNAPSHOT: AiSessionSnapshot = {
   revision: 0,
@@ -133,8 +136,9 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     try {
       await serialise(() => (epoch === pollingEpoch ? pollOnce(epoch) : Promise.resolve()));
     } catch (error) {
-      if (epoch === pollingEpoch && isUnsafeMailboxGeneration(error)) {
-        disconnectStaleGeneration();
+      const reason = mailboxGenerationReason(error);
+      if (epoch === pollingEpoch && reason) {
+        disconnectMailboxGeneration(reason);
       }
       // A later poll retries transient transport, persistence and crypto failures.
     } finally {
@@ -267,21 +271,22 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     return pushed.generation;
   }
 
-  function disconnectStaleGeneration(): void {
+  function disconnectMailboxGeneration(reason: string): void {
     stopPolling();
     encryptionKey = null;
     publish({
       ...snapshot,
-      connection: { status: 'disconnected', reason: STALE_GENERATION_REASON },
+      connection: { status: 'disconnected', reason },
       run: null,
       activity: null,
     });
   }
 
   function mailboxGenerationFailure(error: unknown): AiSessionCommandFailure | null {
-    if (!isUnsafeMailboxGeneration(error)) return null;
-    disconnectStaleGeneration();
-    return conflict(STALE_GENERATION_REASON);
+    const reason = mailboxGenerationReason(error);
+    if (!reason) return null;
+    disconnectMailboxGeneration(reason);
+    return conflict(reason);
   }
 
   return {
@@ -526,10 +531,10 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
   };
 }
 
-function isUnsafeMailboxGeneration(error: unknown): boolean {
-  return (
-    error instanceof RelayStaleGenerationError || error instanceof RelayPushOutcomeUnknownError
-  );
+function mailboxGenerationReason(error: unknown): string | null {
+  if (error instanceof RelayStaleGenerationError) return STALE_GENERATION_REASON;
+  if (error instanceof RelayPushOutcomeUnknownError) return UNKNOWN_OUTCOME_REASON;
+  return null;
 }
 
 function browserCrypto(): RelaySessionCrypto {

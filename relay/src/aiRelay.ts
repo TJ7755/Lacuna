@@ -175,15 +175,15 @@ async function handleMailbox(
   const metadata = stored.metadata;
   if (!metadata.terminalTokenHash) return json(409, request, { error: 'session not claimed' });
 
-  const expectedHash =
+  const writerHash = mailbox === 'browser' ? metadata.browserTokenHash : metadata.terminalTokenHash;
+  const peerHash = mailbox === 'browser' ? metadata.terminalTokenHash : metadata.browserTokenHash;
+  const hasAccess =
     request.method === 'PUT'
-      ? mailbox === 'browser'
-        ? metadata.browserTokenHash
-        : metadata.terminalTokenHash
-      : mailbox === 'browser'
-        ? metadata.terminalTokenHash
-        : metadata.browserTokenHash;
-  if (!authorised(expectedHash, request)) {
+      ? authorised(writerHash, request)
+      : request.method === 'GET'
+        ? authorised(writerHash, request) || authorised(peerHash, request)
+        : authorised(peerHash, request);
+  if (!hasAccess) {
     return json(401, request, { error: 'unauthorised' });
   }
   if (request.method === 'GET') return readMailbox(store, request, id, mailbox);
@@ -197,7 +197,8 @@ async function readMailbox(
   id: string,
   mailbox: AiMailbox,
 ): Promise<Response> {
-  const stored = await store.get(mailboxKey(id, mailbox));
+  const key = mailboxKey(id, mailbox);
+  const stored = await store.get(key);
   if (!stored) return json(404, request, { error: 'not found' });
   const generation = canonicalEtag(stored.etag);
   if (generation === '') return json(500, request, { error: 'internal error' });
@@ -219,13 +220,23 @@ async function writeMailbox(
   if (expected === null) return json(428, request, { error: 'if-match required' });
   const body = await readBoundedBody(request, MAX_AI_MAILBOX_BYTES);
   if (!body.ok) return json(body.status, request, { error: body.error });
+  const key = mailboxKey(id, mailbox);
   const written =
     expected === 'empty'
-      ? await store.put(mailboxKey(id, mailbox), body.bytes, { exclusive: true })
-      : await store.put(mailboxKey(id, mailbox), body.bytes, { ifMatch: expected });
+      ? await store.put(key, body.bytes, { exclusive: true })
+      : await store.put(key, body.bytes, { ifMatch: expected });
   if (!written.ok) return json(412, request, { error: 'precondition failed' });
-  const generation = canonicalEtag(written.etag);
-  if (generation === '') return json(500, request, { error: 'internal error' });
+  let generation = canonicalEtag(written.etag);
+  // The store may commit the bytes but omit the ETag from its write response.
+  // Reconcile without writing: an overwrite here could resurrect stale bytes.
+  if (generation === '') {
+    const recovered = await store.get(key);
+    if (!recovered || !equalBytes(recovered.body, body.bytes)) {
+      return json(500, request, { error: 'internal error' });
+    }
+    generation = canonicalEtag(recovered.etag);
+    if (generation === '') return json(500, request, { error: 'internal error' });
+  }
   const quotedGeneration = `"${generation}"`;
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/json');
@@ -394,6 +405,10 @@ function authorised(expectedHash: string, request: Request): boolean {
   const presented = Buffer.from(tokenHash(token), 'hex');
   const expected = Buffer.from(expectedHash, 'hex');
   return presented.length === expected.length && timingSafeEqual(presented, expected);
+}
+
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && timingSafeEqual(left, right);
 }
 
 function tokenHash(token: string): string {

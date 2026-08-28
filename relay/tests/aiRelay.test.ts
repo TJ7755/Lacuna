@@ -6,7 +6,7 @@ import {
   __resetMintRateLimitForTests,
   createHandler,
 } from '../src/relay.js';
-import { MemoryStore, type PutOptions } from '../src/store.js';
+import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
 const BROWSER_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(1));
@@ -143,16 +143,27 @@ describe('AI relay', () => {
     );
     expect(await browserPut.json()).toEqual({ generation: browserGeneration });
 
-    const browserDenied = await pair.handle(
+    const browserWriterRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
     );
-    expect(browserDenied.status).toBe(401);
+    expect(browserWriterRead.status).toBe(200);
+    expect(browserWriterRead.headers.get('ETag')).toBe(browserGeneration);
+    expect(browserWriterRead.headers.get('X-Lacuna-Generation')).toBe(browserGeneration);
+    expect(browserWriterRead.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+    expect(browserWriterRead.headers.get('Access-Control-Expose-Headers')).toContain(
+      'X-Lacuna-Generation',
+    );
+    expect(new Uint8Array(await browserWriterRead.arrayBuffer())).toEqual(browserBody);
     const browserRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(browserRead.status).toBe(200);
     expect(browserRead.headers.get('X-Lacuna-Generation')).toBe(browserGeneration);
     expect(new Uint8Array(await browserRead.arrayBuffer())).toEqual(browserBody);
+    const browserPeerPut = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.terminalToken, browserGeneration!, browserBody),
+    );
+    expect(browserPeerPut.status).toBe(401);
 
     const terminalPut = await pair.handle(
       mailboxPut(pair.sessionId, 'terminal', pair.terminalToken, EMPTY_SLOT_ETAG, terminalBody),
@@ -162,20 +173,103 @@ describe('AI relay', () => {
     expect(terminalGeneration).toMatch(/^"[^"]+"$/);
     expect(terminalPut.headers.get('X-Lacuna-Generation')).toBe(terminalGeneration);
     expect(await terminalPut.json()).toEqual({ generation: terminalGeneration });
-    const terminalDenied = await pair.handle(
+    const terminalWriterRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/terminal`, 'GET', pair.terminalToken),
     );
-    expect(terminalDenied.status).toBe(401);
+    expect(terminalWriterRead.status).toBe(200);
+    expect(terminalWriterRead.headers.get('ETag')).toBe(terminalGeneration);
+    expect(terminalWriterRead.headers.get('X-Lacuna-Generation')).toBe(terminalGeneration);
+    expect(new Uint8Array(await terminalWriterRead.arrayBuffer())).toEqual(terminalBody);
     const terminalRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/terminal`, 'GET', pair.browserToken),
     );
     expect(terminalRead.status).toBe(200);
     expect(new Uint8Array(await terminalRead.arrayBuffer())).toEqual(terminalBody);
+    const terminalPeerPut = await pair.handle(
+      mailboxPut(pair.sessionId, 'terminal', pair.browserToken, terminalGeneration!, terminalBody),
+    );
+    expect(terminalPeerPut.status).toBe(401);
+
+    const unrelatedRead = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', '0'.repeat(64)),
+    );
+    expect(unrelatedRead.status).toBe(401);
+    const malformedRead = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/terminal`, 'GET', 'not-a-token'),
+    );
+    expect(malformedRead.status).toBe(401);
 
     const stale = await pair.handle(
       mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, browserBody),
     );
     expect(stale.status).toBe(412);
+  });
+
+  it('recovers a committed mailbox write whose response omitted its ETag', async () => {
+    const flaky = flakyMailboxStore(new MemoryStore());
+    const pair = await paired(flaky.store);
+    const body = new Uint8Array([7, 8, 9]);
+    flaky.emptyNextPut = true;
+
+    const written = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, body),
+    );
+
+    expect(written.status).toBe(200);
+    const generation = written.headers.get('ETag');
+    expect(generation).toMatch(/^"[^"]+"$/);
+    expect(written.headers.get('X-Lacuna-Generation')).toBe(generation);
+    expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
+
+    const read = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+    expect(read.status).toBe(200);
+    expect(read.headers.get('ETag')).toBe(generation);
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(body);
+  });
+
+  it('fails closed when a mailbox read has no store ETag', async () => {
+    const flaky = flakyMailboxStore(new MemoryStore());
+    const pair = await paired(flaky.store);
+    const body = new Uint8Array([5, 6, 7]);
+    const created = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, body),
+    );
+    expect(created.status).toBe(200);
+    expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
+
+    flaky.lost = true;
+    const read = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+
+    expect(read.status).toBe(500);
+    expect(await read.json()).toEqual({ error: 'internal error' });
+    expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
+  });
+
+  it('never overwrites a newer mailbox while reconciling a missing write ETag', async () => {
+    const flaky = flakyMailboxStore(new MemoryStore());
+    const pair = await paired(flaky.store);
+    const attempted = new Uint8Array([1, 2, 3]);
+    const newer = new Uint8Array([4, 5, 6]);
+    flaky.emptyNextPut = true;
+    flaky.replaceNextEmptyPutWith = newer;
+
+    const written = await pair.handle(
+      mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, attempted),
+    );
+
+    expect(written.status).toBe(500);
+    expect(await written.json()).toEqual({ error: 'internal error' });
+    expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
+
+    const read = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+    expect(read.status).toBe(200);
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(newer);
   });
 
   it('enforces the mailbox limit when Content-Length is absent', async () => {
@@ -342,8 +436,8 @@ describe('AI relay', () => {
   });
 });
 
-async function paired() {
-  const handle = createHandler(new MemoryStore());
+async function paired(store: BlobStore = new MemoryStore()) {
+  const handle = createHandler(store);
   const created = await handle(
     jsonRequest('/ai/sessions', 'POST', {
       browserPublicKey: BROWSER_PUBLIC_KEY,
@@ -419,4 +513,76 @@ class RateConflictStore extends MemoryStore {
     if (key.startsWith('ai-rate/')) return { ok: false as const, reason: 'precondition' as const };
     return super.put(key, body, opts);
   }
+}
+
+function flakyMailboxStore(inner: MemoryStore): {
+  store: BlobStore;
+  puts: { key: string; opts: PutOptions }[];
+  lost: boolean;
+  emptyNextPut: boolean;
+  replaceNextEmptyPutWith: Uint8Array | null;
+} {
+  let lost = false;
+  let emptyNextPut = false;
+  let replaceNextEmptyPutWith: Uint8Array | null = null;
+  const puts: { key: string; opts: PutOptions }[] = [];
+  return {
+    store: {
+      async get(key) {
+        const stored = await inner.get(key);
+        if (stored && isMailboxKey(key) && lost) {
+          return { body: stored.body, uploadedAt: stored.uploadedAt, etag: '' };
+        }
+        return stored;
+      },
+      async put(key, body, opts) {
+        const result = await inner.put(key, body, opts);
+        if (!isMailboxKey(key)) return result;
+        puts.push({ key, opts });
+        if ('overwrite' in opts) lost = false;
+        if (emptyNextPut) {
+          emptyNextPut = false;
+          if (replaceNextEmptyPutWith) {
+            if (!result.ok) throw new Error('mailbox fixture write unexpectedly failed');
+            const replacement = await inner.put(key, replaceNextEmptyPutWith, {
+              ifMatch: result.etag,
+            });
+            replaceNextEmptyPutWith = null;
+            if (!replacement.ok) throw new Error('mailbox fixture race unexpectedly failed');
+          }
+          return { ok: true, etag: '' };
+        }
+        return result;
+      },
+      del: (keys) => inner.del(keys),
+      list: (prefix) => inner.list(prefix),
+    },
+    puts,
+    get lost() {
+      return lost;
+    },
+    set lost(value: boolean) {
+      lost = value;
+    },
+    get emptyNextPut() {
+      return emptyNextPut;
+    },
+    set emptyNextPut(value: boolean) {
+      emptyNextPut = value;
+    },
+    get replaceNextEmptyPutWith() {
+      return replaceNextEmptyPutWith;
+    },
+    set replaceNextEmptyPutWith(value: Uint8Array | null) {
+      replaceNextEmptyPutWith = value;
+    },
+  };
+}
+
+function mailboxPuts(store: { puts: { key: string; opts: PutOptions }[] }): PutOptions[] {
+  return store.puts.map((entry) => entry.opts);
+}
+
+function isMailboxKey(key: string): boolean {
+  return key.endsWith('/browser') || key.endsWith('/terminal');
 }

@@ -74,9 +74,12 @@ Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the 
 `204` mailbox write, and a later browser run recorded a committed `200` whose JSON generation was
 not retained by the app. A server-side `200` proves the write committed; it does not prove the
 browser accepted the response. Modern `200` clients must prefer the validated JSON generation and
-then `X-Lacuna-Generation`; Vercel's ordinary `ETag` is trusted only for legacy `204` responses. A
-rejected PUT may also have committed. If the outcome or generation is unknown, fail closed and never
-retry the old compare-and-swap generation.
+then `X-Lacuna-Generation`; Vercel's ordinary `ETag` is trusted only for legacy `204` responses.
+Observed again on 28 August: the first browser PUT was acknowledged, the second committed with `200`,
+but its response was unusable and no `412` occurred. A rejected, unreadable or `5xx` PUT may have
+committed. Never retry it. Read back the writer's own opaque mailbox once and adopt
+`X-Lacuna-Generation` only when its bytes exactly match the attempted ciphertext; otherwise fail
+closed.
 
 ## Web AI relay sessions currently support one browser tab
 
@@ -154,10 +157,11 @@ no etag in its Vercel Blob metadata, so the relay served `ETag: ""`. The app
 stored that quoted-empty `""` as its generation (a naive `trim() === ''` guard
 misses it) and the next push sent `If-Match: ""`, which the relay rejects as
 "invalid if-match" — "Relay push failed with HTTP 400" on every sync after the
-first. The relay now self-heals: when a store ETag canonicalises empty, it
-rewrites the same bytes once with an unconditional overwrite to regenerate
-one, on both read and write. Do not reintroduce a path that hands out an
-empty ETag, and keep the app's generation guard treating `""` as absent.
+first. The relay must not hand out an empty ETag. On an ETag-less read it fails
+closed; an unconditional rewrite could overwrite a concurrent successor. If
+only a successful write response omitted its ETag, the relay re-reads and
+accepts the generation when the stored bytes still match exactly. Keep the
+app's generation guard treating `""` as absent.
 
 ## Live Blob `allowOverwrite: false` was measured, not guaranteed
 
