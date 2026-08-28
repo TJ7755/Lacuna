@@ -7,7 +7,11 @@ import type {
   RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol';
 import { TerminalRelayReconnectRequiredError } from './client';
-import { HttpTerminalRelayTransport, type RelayCryptoOperations } from './relayTransport';
+import {
+  HttpTerminalRelayTransport,
+  type HttpTerminalRelayTransportOptions,
+  type RelayCryptoOperations,
+} from './relayTransport';
 
 const PUBLIC_KEY = Buffer.from(new Uint8Array(65).fill(1)).toString('base64url');
 const PEER_PUBLIC_KEY = Buffer.from(new Uint8Array(65).fill(2)).toString('base64url');
@@ -27,6 +31,18 @@ function cryptoOperations(opened: JsonValue): RelayCryptoOperations {
     seal: vi.fn().mockResolvedValue(ENVELOPE),
     open: vi.fn().mockResolvedValue(opened),
   };
+}
+
+function createTestTerminalRelayTransport(
+  options: HttpTerminalRelayTransportOptions,
+): HttpTerminalRelayTransport {
+  return new HttpTerminalRelayTransport({
+    ...options,
+    recovery: {
+      ...options.recovery,
+      wait: options.recovery?.wait ?? (async () => {}),
+    },
+  });
 }
 
 describe('HttpTerminalRelayTransport', () => {
@@ -220,6 +236,113 @@ describe('HttpTerminalRelayTransport', () => {
     ]);
   });
 
+  it('recovers an exact terminal mailbox write after a stale reconciliation read', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+      .mockResolvedValueOnce(
+        new Response('stale ciphertext', {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-stale"' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(ENCRYPTED_BODY, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
+        }),
+      );
+    const transport = createTestTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).resolves.toBe('"terminal-recovered"');
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
+      'POST',
+      'PUT',
+      'GET',
+      'GET',
+    ]);
+    expect(fetchImpl.mock.calls[2]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('aborts a hung terminal reconciliation read before trying the next scheduled read', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    try {
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({
+            sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+            browserPublicKey: PEER_PUBLIC_KEY,
+            terminalToken: TOKEN,
+            expiresAt: 90_000,
+          }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockImplementationOnce((_input, init) => {
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+          });
+        })
+        .mockResolvedValueOnce(
+          new Response(ENCRYPTED_BODY, {
+            status: 200,
+            headers: { 'X-Lacuna-Generation': '"terminal-recovered"' },
+          }),
+        );
+      const transport = new HttpTerminalRelayTransport({
+        fetchImpl,
+        crypto: cryptoOperations({}),
+        recovery: { now: () => Date.now() },
+      });
+      const connection = await transport.connect(
+        'ABCD-EFGH-JKMN-PQRS-TVW2',
+        'https://relay.example',
+        { name: 'Test client' },
+      );
+
+      const result = transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      });
+      await vi.advanceTimersByTimeAsync(250);
+
+      await expect(result).resolves.toBe('"terminal-recovered"');
+      expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? 'GET')).toEqual([
+        'POST',
+        'PUT',
+        'GET',
+        'GET',
+      ]);
+      expect(fetchImpl.mock.calls[2]?.[1]?.signal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('requires reconnection when relay 500 reconciliation finds different bytes', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
@@ -238,7 +361,7 @@ describe('HttpTerminalRelayTransport', () => {
           headers: { 'X-Lacuna-Generation': '"terminal-other"' },
         }),
       );
-    const transport = new HttpTerminalRelayTransport({
+    const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
     });
@@ -366,7 +489,7 @@ describe('HttpTerminalRelayTransport', () => {
           headers: { ETag: '"platform-rewritten"' },
         }),
       );
-    const transport = new HttpTerminalRelayTransport({
+    const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
     });
@@ -476,7 +599,7 @@ describe('HttpTerminalRelayTransport', () => {
           headers: { 'X-Lacuna-Generation': '"terminal-other"' },
         }),
       );
-    const transport = new HttpTerminalRelayTransport({
+    const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
     });
@@ -508,7 +631,7 @@ describe('HttpTerminalRelayTransport', () => {
       )
       .mockRejectedValueOnce(new TypeError('socket closed'))
       .mockResolvedValueOnce(new Response(ENCRYPTED_BODY, { status: 200 }));
-    const transport = new HttpTerminalRelayTransport({
+    const transport = createTestTerminalRelayTransport({
       fetchImpl,
       crypto: cryptoOperations({}),
     });

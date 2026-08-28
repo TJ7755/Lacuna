@@ -26,7 +26,7 @@ describe('browser AI relay client', () => {
       }),
     );
 
-    await expect(createRelayClient({ fetchImpl }).create(PUBLIC_KEY)).resolves.toEqual({
+    await expect(createTestRelayClient({ fetchImpl }).create(PUBLIC_KEY)).resolves.toEqual({
       sessionId: SESSION_ID,
       pairingCode: PAIRING_CODE,
       browserToken: BROWSER_TOKEN,
@@ -50,7 +50,7 @@ describe('browser AI relay client', () => {
           expiresAt: 200,
         }),
       );
-    const client = createRelayClient({ relayUrl: 'https://relay.example/', fetchImpl });
+    const client = createTestRelayClient({ relayUrl: 'https://relay.example/', fetchImpl });
 
     await expect(client.peer(CREDENTIALS)).resolves.toBeNull();
     await expect(client.peer(CREDENTIALS)).resolves.toEqual({
@@ -76,7 +76,7 @@ describe('browser AI relay client', () => {
       }),
     );
 
-    await expect(createRelayClient({ fetchImpl }).pull(CREDENTIALS)).resolves.toEqual({
+    await expect(createTestRelayClient({ fetchImpl }).pull(CREDENTIALS)).resolves.toEqual({
       bytes: new Uint8Array([1, 2, 3]),
       generation: '"terminal-2"',
     });
@@ -97,7 +97,7 @@ describe('browser AI relay client', () => {
     const bytes = new Uint8Array([4, 5, 6]);
 
     await expect(
-      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
     ).resolves.toEqual({ generation: '"browser-1"' });
 
     const [url, init] = fetchImpl.mock.calls[0]!;
@@ -120,7 +120,7 @@ describe('browser AI relay client', () => {
     );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -137,7 +137,7 @@ describe('browser AI relay client', () => {
     );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -157,7 +157,7 @@ describe('browser AI relay client', () => {
     );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -178,17 +178,114 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
     ).resolves.toEqual({ generation: '"browser-recovered"' });
 
     expect(fetchImpl.mock.calls[1]).toEqual([
       `${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser`,
-      {
+      expect.objectContaining({
         method: 'GET',
         cache: 'no-store',
         headers: { Authorization: `Bearer ${BROWSER_TOKEN}` },
-      },
+        signal: expect.any(AbortSignal),
+      }),
     ]);
+  });
+
+  it('retries reconciliation when the first read has not reached the committed ciphertext', async () => {
+    const bytes = new Uint8Array([7, 8, 9]);
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([7, 8, 0]), {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-previous"' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
+        }),
+      );
+
+    await expect(
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+    ).resolves.toEqual({ generation: '"browser-recovered"' });
+
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET', 'GET']);
+  });
+
+  it('schedules reconciliation reads at absolute offsets', async () => {
+    let now = 0;
+    const waits: number[] = [];
+    const bytes = new Uint8Array([7, 8, 9]);
+    const staleResponse = () =>
+      new Response(new Uint8Array([7, 8, 0]), {
+        status: 200,
+        headers: { 'X-Lacuna-Generation': '"browser-previous"' },
+      });
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(staleResponse())
+      .mockResolvedValueOnce(staleResponse())
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
+        }),
+      );
+
+    await expect(
+      createRelayClient({
+        fetchImpl,
+        recovery: {
+          now: () => now,
+          wait: async (milliseconds) => {
+            waits.push(milliseconds);
+            now += milliseconds;
+          },
+        },
+      }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+    ).resolves.toEqual({ generation: '"browser-recovered"' });
+
+    expect(waits).toEqual([250, 400]);
+  });
+
+  it('aborts a hung reconciliation read before trying the next scheduled read', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    try {
+      const bytes = new Uint8Array([7, 8, 9]);
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(new Response(null, { status: 200 }))
+        .mockImplementationOnce((_input, init) => {
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+          });
+        })
+        .mockResolvedValueOnce(
+          new Response(bytes, {
+            status: 200,
+            headers: { 'X-Lacuna-Generation': '"browser-recovered"' },
+          }),
+        );
+
+      const result = createRelayClient({
+        fetchImpl,
+        recovery: { now: () => Date.now() },
+      }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION);
+      await vi.advanceTimersByTimeAsync(250);
+
+      await expect(result).resolves.toEqual({ generation: '"browser-recovered"' });
+      expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET', 'GET']);
+      expect(fetchImpl.mock.calls[1]?.[1]?.signal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('recovers a committed push after the mailbox PUT rejects', async () => {
@@ -204,7 +301,7 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
     ).resolves.toEqual({ generation: '"browser-after-rejection"' });
   });
 
@@ -221,7 +318,7 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
     ).resolves.toEqual({ generation: '"browser-after-server-error"' });
 
     expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
@@ -239,7 +336,7 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([21, 22, 23]),
         AI_RELAY_EMPTY_GENERATION,
@@ -252,7 +349,12 @@ describe('browser AI relay client', () => {
       }),
     );
 
-    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual([
+      'PUT',
+      'GET',
+      'GET',
+      'GET',
+    ]);
   });
 
   it('reports an unknown push outcome when server-error recovery cannot read the mailbox', async () => {
@@ -262,7 +364,7 @@ describe('browser AI relay client', () => {
       .mockResolvedValueOnce(new Response(null, { status: 500 }));
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([31]),
         AI_RELAY_EMPTY_GENERATION,
@@ -284,7 +386,7 @@ describe('browser AI relay client', () => {
     );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([41]),
         AI_RELAY_EMPTY_GENERATION,
@@ -307,7 +409,7 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
     ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
   });
 
@@ -318,7 +420,7 @@ describe('browser AI relay client', () => {
       .mockRejectedValueOnce(new TypeError('GET failed'));
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -344,7 +446,7 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1, 2, 3]),
         AI_RELAY_EMPTY_GENERATION,
@@ -369,7 +471,7 @@ describe('browser AI relay client', () => {
       .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200, headers }));
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -377,7 +479,7 @@ describe('browser AI relay client', () => {
     ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
   });
 
-  it('never retries an ambiguous mailbox PUT with the stale generation', async () => {
+  it('retries only read-back after an ambiguous mailbox PUT', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
@@ -389,18 +491,22 @@ describe('browser AI relay client', () => {
       );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(CREDENTIALS, new Uint8Array([1]), '"stale"'),
+      createTestRelayClient({ fetchImpl }).push(CREDENTIALS, new Uint8Array([1]), '"stale"'),
     ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual(['PUT', 'GET']);
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method)).toEqual([
+      'PUT',
+      'GET',
+      'GET',
+      'GET',
+    ]);
   });
 
   it('reports an unknown push outcome when success has no trustworthy generation', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -413,7 +519,7 @@ describe('browser AI relay client', () => {
       }),
     );
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -430,7 +536,7 @@ describe('browser AI relay client', () => {
     );
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -442,7 +548,7 @@ describe('browser AI relay client', () => {
     const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch'));
 
     await expect(
-      createRelayClient({ fetchImpl }).push(
+      createTestRelayClient({ fetchImpl }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -459,7 +565,11 @@ describe('browser AI relay client', () => {
   it('reports stale mailbox generations and malformed successful responses', async () => {
     const staleFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 412 }));
     await expect(
-      createRelayClient({ fetchImpl: staleFetch }).push(CREDENTIALS, new Uint8Array([1]), '"old"'),
+      createTestRelayClient({ fetchImpl: staleFetch }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        '"old"',
+      ),
     ).rejects.toEqual(
       expect.objectContaining({
         name: 'RelayStaleGenerationError',
@@ -468,19 +578,23 @@ describe('browser AI relay client', () => {
       }),
     );
     await expect(
-      createRelayClient({ fetchImpl: staleFetch }).push(CREDENTIALS, new Uint8Array([1]), '"old"'),
+      createTestRelayClient({ fetchImpl: staleFetch }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        '"old"',
+      ),
     ).rejects.toBeInstanceOf(RelayStaleGenerationError);
 
     const malformedFetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(201, { ok: true }));
     await expect(
-      createRelayClient({ fetchImpl: malformedFetch }).create(PUBLIC_KEY),
+      createTestRelayClient({ fetchImpl: malformedFetch }).create(PUBLIC_KEY),
     ).rejects.toBeInstanceOf(RelayClientProtocolError);
 
     const malformedPush = vi
       .fn<typeof fetch>()
       .mockResolvedValue(jsonResponse(200, { generation: '""' }));
     await expect(
-      createRelayClient({ fetchImpl: malformedPush }).push(
+      createTestRelayClient({ fetchImpl: malformedPush }).push(
         CREDENTIALS,
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
@@ -493,7 +607,7 @@ describe('browser AI relay client', () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(new Response(null, { status: 404 }));
-    const client = createRelayClient({ fetchImpl });
+    const client = createTestRelayClient({ fetchImpl });
 
     await client.revoke(CREDENTIALS);
     await client.revoke(CREDENTIALS);
@@ -504,6 +618,18 @@ describe('browser AI relay client', () => {
     ]);
   });
 });
+
+function createTestRelayClient(
+  options: Parameters<typeof createRelayClient>[0] = {},
+): ReturnType<typeof createRelayClient> {
+  return createRelayClient({
+    ...options,
+    recovery: {
+      ...options.recovery,
+      wait: options.recovery?.wait ?? (async () => {}),
+    },
+  });
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {

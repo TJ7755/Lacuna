@@ -120,13 +120,14 @@ relay evidence. It did expose the need for a manual connected-state reset.
 3. Trust a validated `ETag` only for a legacy `204`; Vercel can rewrite ordinary `ETag` values on
    modern responses.
 4. If the PUT rejects, returns `5xx`, or no generation is trustworthy, GET the same browser mailbox
-   once with the writer token.
+   up to three times at absolute 0/250/650 ms offsets with the writer token. Each read is capped at
+   250 ms and the overall recovery deadline is one second.
 5. Recover only when the stored ciphertext exactly matches the attempted bytes and the response
    exposes a schema-valid `X-Lacuna-Generation`.
 6. Never retry the PUT or trust an ordinary platform `ETag`; throw
    `RelayPushOutcomeUnknownError` when read-back cannot prove the write.
 
-`tooling/lacuna-ai-mcp/src/relayTransport.ts` applies the same recovery rule to terminal-mailbox
+`tooling/lacuna-ai-mcp/src/relayTransport.ts` applies the same bounded recovery rule to terminal-mailbox
 writes. `relay/src/aiRelay.ts` allows each mailbox writer to GET its own opaque mailbox while
 retaining the existing peer read and writer-only PUT boundaries. If a committed store write omits
 its ETag, the relay re-reads and adopts the generation only when the stored ciphertext still matches;
@@ -142,6 +143,9 @@ reconnection, clear terminal client state, and no longer lie about why.
 - stops the claimed user item;
 - restores the queued follow-up first, otherwise the existing draft, otherwise the active claimed
   prompt into the composer;
+- preserves an already-reduced terminal reply when its browser acknowledgement is ambiguous;
+- persists the exact attempted outgoing text when its own write outcome is ambiguous, without
+  claiming that text entered the transcript;
 - prevents old pair/send/Stop/poll work from committing after reset.
 
 `src/components/ai/AiPanel.tsx` exposes an accessible `Disconnect terminal` action while connected.
@@ -149,18 +153,24 @@ It does not replace the existing Stop or Close controls.
 
 Regression coverage is in:
 
-- `src/ai/relayClient.test.ts` — JSON success, header fallbacks and unknown successful outcomes.
+- `src/ai/relayClient.test.ts` — JSON success, header fallbacks, bounded read scheduling, hung-read
+  abortion and unknown successful outcomes.
 - `tests/e2e/ai-terminal.spec.ts` — commits a browser PUT, strips its response body and custom
   generation header, then proves exact-byte read-back advances the generation without a stale retry.
 - `relay/tests/aiRelay.test.ts` — writer and peer read capabilities remain distinct from writer-only
   PUT access, and missing write ETags reconcile without overwriting concurrent successors.
 - `relay/tests/relay.test.ts` — the existing sync relay follows the same race-safe missing-write-ETag
   rule and fails closed on an ETag-less read.
-- `tooling/lacuna-ai-mcp/src/relayTransport.test.ts` — symmetric terminal writer read-back,
-  server-error reconciliation and reconnect-required stale generations.
-- `src/ai/session/relay.messages.test.ts` — unknown outcomes disconnect without a stale retry.
-- `src/ai/session/relay.test.ts` — reset before slow revocation, epoch invalidation and draft recovery.
+- `tooling/lacuna-ai-mcp/src/relayTransport.test.ts` — symmetric bounded terminal writer read-back,
+  stale first reads, hung-read abortion, server-error reconciliation and reconnect-required stale
+  generations.
+- `src/ai/session/relay.messages.test.ts` — unknown acknowledgements preserve already-reduced replies,
+  while claimed disconnects recover the prompt without a stale retry.
+- `src/ai/session/relay.test.ts` — reset before slow revocation, epoch invalidation, exact attempted
+  draft persistence and replacement-send draft clearing.
 - `src/components/ai/AiPanel.test.tsx` — connected Disconnect action without Stop/Close side effects.
+- `tests/e2e/ai-terminal.spec.ts` — complete dead-terminal replacement, resend, reply, draft clearing
+  and post-disconnect transcript retention through the intercepted relay.
 
 ## Known limitations
 

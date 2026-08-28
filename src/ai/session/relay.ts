@@ -200,8 +200,18 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     if (!expired && events.length === 0) return;
 
     for (const event of events) {
+      const beforeEvent = nextSnapshot;
       ({ snapshot: nextSnapshot, messages } = applyTerminalEvent(nextSnapshot, messages, event));
       if (event.type === 'claimed' && event.messageId === queuedFollowUpMessageId) {
+        queuedFollowUpMessageId = null;
+      }
+      if (
+        event.type === 'disconnected' &&
+        (beforeEvent.run?.status === 'active' ||
+          beforeEvent.run?.status === 'stop_requested' ||
+          beforeEvent.queuedFollowUp !== null)
+      ) {
+        nextSnapshot = { ...nextSnapshot, ...recoverDisconnectedState(beforeEvent) };
         queuedFollowUpMessageId = null;
       }
       processed.add(event.eventId);
@@ -225,7 +235,17 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       messages,
       terminalRevisionSeen,
     };
-    const browserGeneration = await pushMailbox(browserMailbox, epoch);
+    let browserGeneration: string | null;
+    try {
+      browserGeneration = await pushMailbox(browserMailbox, epoch);
+    } catch (error) {
+      const reason = mailboxGenerationReason(error);
+      if (epoch === pollingEpoch && reason) {
+        disconnectMailboxGeneration(reason, nextSnapshot);
+        return;
+      }
+      throw error;
+    }
     if (browserGeneration === null || epoch !== pollingEpoch) return;
     persisted = {
       ...persisted,
@@ -271,21 +291,50 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     return pushed.generation;
   }
 
-  function disconnectMailboxGeneration(reason: string): void {
+  function recoverDisconnectedState(
+    current: AiSessionSnapshot,
+  ): Pick<AiSessionSnapshot, 'items' | 'run' | 'activity' | 'draft' | 'queuedFollowUp'> {
+    const interruptedRun =
+      current.run?.status === 'active' || current.run?.status === 'stop_requested'
+        ? current.run
+        : null;
+    const interruptedPrompt = interruptedRun
+      ? current.items.find((item) => item.kind === 'user' && item.id === interruptedRun.messageId)
+      : null;
+    const interruptedPromptContent =
+      interruptedPrompt?.kind === 'user' ? interruptedPrompt.content : '';
+    return {
+      items: interruptedRun
+        ? current.items.map((item) =>
+            item.kind === 'user' && item.id === interruptedRun.messageId
+              ? { ...item, delivery: 'stopped' as const }
+              : item,
+          )
+        : current.items,
+      run: null,
+      activity: null,
+      draft: current.queuedFollowUp ?? (current.draft || interruptedPromptContent),
+      queuedFollowUp: null,
+    };
+  }
+
+  function disconnectMailboxGeneration(reason: string, current = snapshot): void {
     stopPolling();
     encryptionKey = null;
     publish({
-      ...snapshot,
+      ...current,
+      ...recoverDisconnectedState(current),
       connection: { status: 'disconnected', reason },
-      run: null,
-      activity: null,
     });
   }
 
-  function mailboxGenerationFailure(error: unknown): AiSessionCommandFailure | null {
+  function mailboxGenerationFailure(
+    error: unknown,
+    current = snapshot,
+  ): AiSessionCommandFailure | null {
     const reason = mailboxGenerationReason(error);
     if (!reason) return null;
-    disconnectMailboxGeneration(reason);
+    disconnectMailboxGeneration(reason, current);
     return conflict(reason);
   }
 
@@ -399,10 +448,11 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
           };
           publish(
             active
-              ? { ...snapshot, conversationId, queuedFollowUp: content }
+              ? { ...snapshot, conversationId, draft: '', queuedFollowUp: content }
               : {
                   ...snapshot,
                   conversationId,
+                  draft: '',
                   items: appendConversationItems(snapshot.items, {
                     kind: 'user',
                     id: messageId,
@@ -415,7 +465,11 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
           return { ok: true, data: { messageId } };
         } catch (error) {
           if (epoch !== pollingEpoch) return unavailable('AI connection was reset.');
-          const staleFailure = mailboxGenerationFailure(error);
+          const staleFailure = mailboxGenerationFailure(error, {
+            ...snapshot,
+            draft: content,
+            queuedFollowUp: null,
+          });
           if (staleFailure) return staleFailure;
           return internal('The AI message could not be queued.');
         }
@@ -482,26 +536,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     },
     resetConnection() {
       const credentials = persisted?.credentials ?? null;
-      const interruptedRun =
-        snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'
-          ? snapshot.run
-          : null;
-      const interruptedPrompt = interruptedRun
-        ? snapshot.items.find(
-            (item) => item.kind === 'user' && item.id === interruptedRun.messageId,
-          )
-        : null;
-      const interruptedPromptContent =
-        interruptedPrompt?.kind === 'user' ? interruptedPrompt.content : '';
-      const recoveredDraft =
-        snapshot.queuedFollowUp ?? (snapshot.draft || interruptedPromptContent);
-      const items = interruptedRun
-        ? snapshot.items.map((item) =>
-            item.kind === 'user' && item.id === interruptedRun.messageId
-              ? { ...item, delivery: 'stopped' as const }
-              : item,
-          )
-        : snapshot.items;
+      const recovered = recoverDisconnectedState(snapshot);
 
       stopPolling();
       pollInFlightEpoch = null;
@@ -510,12 +545,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       encryptionKey = null;
       publish({
         ...snapshot,
+        ...recovered,
         connection: { status: 'disconnected' },
-        items,
-        run: null,
-        activity: null,
-        draft: recoveredDraft,
-        queuedFollowUp: null,
       });
 
       return (async () => {

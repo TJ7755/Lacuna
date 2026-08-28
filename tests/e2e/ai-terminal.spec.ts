@@ -46,6 +46,57 @@ test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) 
   await expect(page.getByRole('button', { name: 'Send message' })).toBeDisabled();
 });
 
+test('recovers a claimed prompt through a dead terminal replacement', async ({ page }) => {
+  const { composer, terminal, handleRelayRequest } = await pairBrowserAndTerminal(page);
+  const prompt = 'Recover this prompt after the terminal disappears.';
+
+  await composer.fill(prompt);
+  await page.getByRole('button', { name: 'Send message' }).click();
+  const abandonedClaim = await terminal.waitForMessage(2_000);
+  expect(abandonedClaim).toEqual(expect.objectContaining({ type: 'message', content: prompt }));
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Disconnect terminal' }).click();
+  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('article').getByText(prompt, { exact: true })).toBeVisible();
+  await expect(composer).toBeDisabled();
+  await expect(composer).toHaveValue(prompt);
+
+  await page.getByRole('button', { name: 'Connect terminal' }).click();
+  const replacementCode = await pairingCodeFrom(page);
+  await expect(composer).toBeDisabled();
+  await expect(composer).toHaveValue(prompt);
+
+  const replacement = await connectTerminal(
+    handleRelayRequest,
+    replacementCode,
+    'Replacement Playwright terminal',
+    'replacement',
+  );
+  await expect(composer).toBeEnabled();
+  await expect(composer).toHaveValue(prompt);
+
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(composer).toHaveValue('');
+  const replacementClaim = await replacement.waitForMessage(2_000);
+  expect(replacementClaim).toEqual(expect.objectContaining({ type: 'message', content: prompt }));
+  if (replacementClaim.type !== 'message') {
+    throw new Error('Expected the replacement terminal to claim the recovered prompt.');
+  }
+
+  const reply = 'The replacement terminal completed the recovered prompt.';
+  await replacement.reply(replacementClaim.runId, replacementClaim.messageId, reply);
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(composer).toHaveValue('');
+
+  await replacement.disconnect();
+  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('article').getByText(prompt, { exact: true })).toHaveCount(2);
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(composer).toBeDisabled();
+  await expect(composer).toHaveValue('');
+});
+
 test('recovers a committed browser write when Vercel strips the 200 acknowledgement', async ({
   page,
 }) => {
@@ -142,7 +193,11 @@ test('shows the terminal acknowledgement after Stop', async ({ page }) => {
 async function pairBrowserAndTerminal(
   page: Page,
   routeOptions: RelayRouteOptions = {},
-): Promise<{ composer: Locator; terminal: TerminalAiClient }> {
+): Promise<{
+  composer: Locator;
+  terminal: TerminalAiClient;
+  handleRelayRequest: ReturnType<typeof createHandler>;
+}> {
   const handleRelayRequest = createHandler(new MemoryStore());
   await page.route(`${RELAY_URL}/**`, (route) =>
     relayRoute(route, handleRelayRequest, routeOptions),
@@ -156,16 +211,40 @@ async function pairBrowserAndTerminal(
   await expect(page.getByRole('complementary', { name: 'AI conversation' })).toBeVisible();
   await page.getByRole('button', { name: 'Connect terminal' }).click();
 
+  const pairingCode = await pairingCodeFrom(page);
   const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
-  const pairingCode = (await instruction.inputValue()).match(PAIRING_CODE_RE)?.[0];
-  expect(pairingCode).toBeTruthy();
-  await expect(page.locator('p').getByText(pairingCode!, { exact: true })).toBeVisible();
   await expect(instruction).toHaveValue(
     `Connect to Lacuna with code ${pairingCode}, then wait for messages until I ask you to disconnect.`,
   );
   const composer = page.getByRole('textbox', { name: 'Message AI' });
   await expect(composer).toBeDisabled();
 
+  const terminal = await connectTerminal(
+    handleRelayRequest,
+    pairingCode,
+    'Playwright terminal',
+    'initial',
+  );
+
+  await expect(composer).toBeEnabled();
+  await expect(page.getByText('Playwright terminal', { exact: true })).toBeVisible();
+  return { composer, terminal, handleRelayRequest };
+}
+
+async function pairingCodeFrom(page: Page): Promise<string> {
+  const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
+  const pairingCode = (await instruction.inputValue()).match(PAIRING_CODE_RE)?.[0];
+  expect(pairingCode).toBeTruthy();
+  await expect(page.locator('p').getByText(pairingCode!, { exact: true })).toBeVisible();
+  return pairingCode!;
+}
+
+async function connectTerminal(
+  handleRelayRequest: ReturnType<typeof createHandler>,
+  pairingCode: string,
+  name: string,
+  idScope: string,
+): Promise<TerminalAiClient> {
   let terminalNow = Date.now();
   let terminalSequence = 0;
   const terminal = new TerminalAiClient({
@@ -175,13 +254,10 @@ async function pairBrowserAndTerminal(
       terminalNow += milliseconds;
       await new Promise((resolve) => setTimeout(resolve, Math.min(milliseconds, 50)));
     },
-    createId: (prefix) => `${prefix}-playwright-${++terminalSequence}`,
+    createId: (prefix) => `${prefix}-playwright-${idScope}-${++terminalSequence}`,
   });
-  await terminal.connect(pairingCode!, RELAY_URL, { name: 'Playwright terminal' });
-
-  await expect(composer).toBeEnabled();
-  await expect(page.getByText('Playwright terminal', { exact: true })).toBeVisible();
-  return { composer, terminal };
+  await terminal.connect(pairingCode, RELAY_URL, { name });
+  return terminal;
 }
 
 async function relayRoute(

@@ -52,11 +52,13 @@
   retrying the previous generation after a rejected request or when no generation is trustworthy.
   A later live run proved Vercel can make an arbitrary successful acknowledgement unreadable, not
   merely the first one. Browser and terminal writers therefore reconcile a rejected request, an
-  unusable success or a server-side `5xx` by reading back their own encrypted mailbox and accepting
-  its exposed generation only when the stored bytes exactly match the attempted ciphertext. They
-  never retry the PUT, never trust a modern platform `ETag`, and still fail closed on a mismatch or
-  unverifiable read-back. The relay permits each writer to read its own opaque mailbox for this
-  purpose without weakening PUT authorisation. If a committed store write omits its ETag, the relay
+  unusable success or a server-side `5xx` through three bounded, authenticated read-only checks of
+  their own encrypted mailbox, accepting its exposed generation only when the stored bytes exactly
+  match the attempted ciphertext. Reads use absolute 0/250/650 ms offsets, a 250 ms per-read limit
+  and a one-second overall deadline. They never retry the PUT, never trust a modern platform `ETag`,
+  and still fail closed on a mismatch or an exhausted verification window. The relay permits each
+  writer to read its own opaque mailbox for this purpose without weakening PUT authorisation. If a
+  committed store write omits its ETag, the relay
   re-reads and adopts the stored generation only when the ciphertext still matches exactly; an
   ETag-less read fails closed because an unconditional repair could overwrite a concurrent
   successor. Stale-writer conflicts and unverifiable relay acknowledgements now have distinct error
@@ -64,7 +66,11 @@
   clears terminal client state so it can reconnect safely.
   Connected users can also disconnect a dead terminal directly from the AI panel; local reset no
   longer waits for relay revocation and recovers an active prompt or queued follow-up into the
-  composer.
+  composer. A clean disconnect while a prompt is claimed follows the same recovery path. Ambiguous
+  outgoing sends persist the exact attempted text for reconnection without falsely adding it to the
+  transcript, successful replacement sends clear the persisted draft, and a terminal event already
+  reduced before an ambiguous browser acknowledgement is retained rather than discarded. The panel
+  keeps completed conversation history visible after disconnect while disabling the composer.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the

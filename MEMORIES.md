@@ -77,9 +77,17 @@ browser accepted the response. Modern `200` clients must prefer the validated JS
 then `X-Lacuna-Generation`; Vercel's ordinary `ETag` is trusted only for legacy `204` responses.
 Observed again on 28 August: the first browser PUT was acknowledged, the second committed with `200`,
 but its response was unusable and no `412` occurred. A rejected, unreadable or `5xx` PUT may have
-committed. Never retry it. Read back the writer's own opaque mailbox once and adopt
-`X-Lacuna-Generation` only when its bytes exactly match the attempted ciphertext; otherwise fail
-closed.
+committed. Never retry it. A single immediate read-back can still return non-verifying state after a
+successful `200`, even when Vercel Blob is read with `useCache: false`. Use a short, bounded series
+of authenticated GET-only checks and adopt `X-Lacuna-Generation` only when the bytes exactly match
+the attempted ciphertext; otherwise fail closed. Both browser and terminal writers need this rule.
+
+## Monorepo preview deployments need the relay branch alias
+
+Every push to a Lacuna branch creates a new immutable web preview and a new immutable relay preview.
+A verification-only web build must target the relay's stable branch alias, not the immutable relay
+URL from an earlier commit, or the next push quietly tests mismatched revisions. Keep production
+configuration on the normal relay URL; this applies only to the live-verification branch.
 
 ## Web AI relay sessions currently support one browser tab
 

@@ -24,6 +24,9 @@ import {
 
 const CONNECTION_AUTH = Symbol('terminal-relay-auth');
 const GENERATION_HEADER = 'X-Lacuna-Generation';
+const RECOVERY_READ_OFFSETS_MS = [0, 250, 650] as const;
+const RECOVERY_READ_TIMEOUT_MS = 250;
+const RECOVERY_DEADLINE_MS = 1_000;
 
 export { normaliseRelayUrl };
 
@@ -41,6 +44,10 @@ export interface RelayCryptoOperations {
 export interface HttpTerminalRelayTransportOptions {
   fetchImpl?: typeof fetch;
   crypto?: RelayCryptoOperations;
+  recovery?: {
+    now?: () => number;
+    wait?: (milliseconds: number) => Promise<void>;
+  };
 }
 
 const defaultCrypto: RelayCryptoOperations = {
@@ -53,10 +60,18 @@ const defaultCrypto: RelayCryptoOperations = {
 export class HttpTerminalRelayTransport implements TerminalRelayTransport {
   private readonly fetchImpl: typeof fetch;
   private readonly crypto: RelayCryptoOperations;
+  private readonly recoveryTiming: {
+    now: () => number;
+    wait: (milliseconds: number) => Promise<void>;
+  };
 
   constructor(options: HttpTerminalRelayTransportOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.crypto = options.crypto ?? defaultCrypto;
+    this.recoveryTiming = {
+      now: options.recovery?.now ?? (() => performance.now()),
+      wait: options.recovery?.wait ?? wait,
+    };
   }
 
   async connect(
@@ -133,20 +148,38 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
         body,
       });
     } catch {
-      return recoverTerminalWrite(this.fetchImpl, mailboxUrl, authenticated.terminalToken, body);
+      return recoverTerminalWrite(
+        this.fetchImpl,
+        mailboxUrl,
+        authenticated.terminalToken,
+        body,
+        this.recoveryTiming,
+      );
     }
     if (response.status === 412) {
       throw new TerminalRelayReconnectRequiredError('terminal_writer_changed');
     }
     if (!response.ok) {
       if (response.status >= 500) {
-        return recoverTerminalWrite(this.fetchImpl, mailboxUrl, authenticated.terminalToken, body);
+        return recoverTerminalWrite(
+          this.fetchImpl,
+          mailboxUrl,
+          authenticated.terminalToken,
+          body,
+          this.recoveryTiming,
+        );
       }
       throw relayHttpError('write the Lacuna AI terminal mailbox', response.status);
     }
     const responseGeneration = await terminalWriteGeneration(response);
     if (responseGeneration) return responseGeneration;
-    return recoverTerminalWrite(this.fetchImpl, mailboxUrl, authenticated.terminalToken, body);
+    return recoverTerminalWrite(
+      this.fetchImpl,
+      mailboxUrl,
+      authenticated.terminalToken,
+      body,
+      this.recoveryTiming,
+    );
   }
 }
 
@@ -174,24 +207,41 @@ async function recoverTerminalWrite(
   mailboxUrl: string,
   terminalToken: string,
   attemptedBody: string,
+  timing: { now: () => number; wait: (milliseconds: number) => Promise<void> },
 ): Promise<string> {
-  try {
-    const response = await fetchImpl(mailboxUrl, {
-      method: 'GET',
-      cache: 'no-store',
-      headers: { Authorization: `Bearer ${terminalToken}` },
-    });
-    if (!response.ok) throw new TerminalRelayReconnectRequiredError();
-    const generation = requiredMailboxGeneration(response);
-    const returnedBody = new Uint8Array(await response.arrayBuffer());
-    const attemptedBytes = new TextEncoder().encode(attemptedBody);
-    if (!sameBytes(attemptedBytes, returnedBody)) {
-      throw new TerminalRelayReconnectRequiredError();
+  const startedAt = timing.now();
+  const deadline = startedAt + RECOVERY_DEADLINE_MS;
+  const attemptedBytes = new TextEncoder().encode(attemptedBody);
+
+  for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
+    const delayMs = startedAt + offsetMs - timing.now();
+    if (delayMs > 0) await timing.wait(delayMs);
+    const remainingMs = deadline - timing.now();
+    if (remainingMs <= 0) break;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
+    );
+    try {
+      const response = await fetchImpl(mailboxUrl, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${terminalToken}` },
+        signal: controller.signal,
+      });
+      if (!response.ok) continue;
+      const generation = requiredMailboxGeneration(response);
+      const returnedBody = new Uint8Array(await response.arrayBuffer());
+      if (sameBytes(attemptedBytes, returnedBody)) return generation;
+    } catch {
+      // A read-only retry cannot overwrite a concurrent successor.
+    } finally {
+      clearTimeout(timeout);
     }
-    return generation;
-  } catch {
-    throw new TerminalRelayReconnectRequiredError();
   }
+  throw new TerminalRelayReconnectRequiredError();
 }
 
 function requiredMailboxGeneration(response: Response): string {
@@ -205,6 +255,10 @@ function requiredMailboxGeneration(response: Response): string {
 function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   if (left.byteLength !== right.byteLength) return false;
   return left.every((byte, index) => byte === right[index]);
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function authenticatedConnection(connection: ConnectedTerminalRelay): {

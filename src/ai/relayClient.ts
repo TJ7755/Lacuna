@@ -12,6 +12,9 @@ import {
 } from './relayProtocol';
 
 const GENERATION_HEADER = 'X-Lacuna-Generation';
+const RECOVERY_READ_OFFSETS_MS = [0, 250, 650] as const;
+const RECOVERY_READ_TIMEOUT_MS = 250;
+const RECOVERY_DEADLINE_MS = 1_000;
 
 export interface RelayBrowserCredentials {
   sessionId: string;
@@ -45,6 +48,10 @@ export interface RelayClient {
 export interface RelayClientOptions {
   relayUrl?: string;
   fetchImpl?: typeof fetch;
+  recovery?: {
+    now?: () => number;
+    wait?: (milliseconds: number) => Promise<void>;
+  };
 }
 
 export type RelayClientOperation = 'create' | 'peer' | 'pull' | 'push' | 'revoke';
@@ -112,6 +119,10 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
     throw new RelayClientConfigurationError('This device does not provide fetch for the AI relay.');
   }
   const fetchImpl = bindFetch(fetcher);
+  const recoveryTiming = {
+    now: options.recovery?.now ?? (() => performance.now()),
+    wait: options.recovery?.wait ?? wait,
+  };
 
   return {
     async create(browserPublicKey) {
@@ -172,7 +183,13 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
           body: new Blob([body], { type: 'application/octet-stream' }),
         });
       } catch {
-        return recoverPushGeneration(fetchImpl, mailboxUrl, session.browserToken, body);
+        return recoverPushGeneration(
+          fetchImpl,
+          mailboxUrl,
+          session.browserToken,
+          body,
+          recoveryTiming,
+        );
       }
       if (response.status === 412) throw new RelayStaleGenerationError(generation);
       if (response.status >= 500) {
@@ -181,6 +198,7 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
           mailboxUrl,
           session.browserToken,
           body,
+          recoveryTiming,
           response.status,
         );
       }
@@ -194,6 +212,7 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
           mailboxUrl,
           session.browserToken,
           body,
+          recoveryTiming,
           response.status,
         );
       }
@@ -280,24 +299,42 @@ async function recoverPushGeneration(
   mailboxUrl: string,
   browserToken: string,
   attemptedBody: ArrayBuffer,
+  timing: { now: () => number; wait: (milliseconds: number) => Promise<void> },
   status?: number,
 ): Promise<RelayMailboxPush> {
-  try {
-    const response = await fetchImpl(mailboxUrl, {
-      method: 'GET',
-      cache: 'no-store',
-      headers: bearer(browserToken),
-    });
-    if (!response.ok) throw new RelayPushOutcomeUnknownError(status);
-    const generation = requireRecoveryGeneration(response, status);
-    const returnedBody = new Uint8Array(await response.arrayBuffer());
-    if (!sameBytes(new Uint8Array(attemptedBody), returnedBody)) {
-      throw new RelayPushOutcomeUnknownError(status);
+  const startedAt = timing.now();
+  const deadline = startedAt + RECOVERY_DEADLINE_MS;
+  const attemptedBytes = new Uint8Array(attemptedBody);
+
+  for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
+    const delayMs = startedAt + offsetMs - timing.now();
+    if (delayMs > 0) await timing.wait(delayMs);
+    const remainingMs = deadline - timing.now();
+    if (remainingMs <= 0) break;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
+    );
+    try {
+      const response = await fetchImpl(mailboxUrl, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: bearer(browserToken),
+        signal: controller.signal,
+      });
+      if (!response.ok) continue;
+      const generation = requireRecoveryGeneration(response, status);
+      const returnedBody = new Uint8Array(await response.arrayBuffer());
+      if (sameBytes(attemptedBytes, returnedBody)) return { generation };
+    } catch {
+      // A read-only retry cannot overwrite a concurrent successor.
+    } finally {
+      clearTimeout(timeout);
     }
-    return { generation };
-  } catch {
-    throw new RelayPushOutcomeUnknownError(status);
   }
+  throw new RelayPushOutcomeUnknownError(status);
 }
 
 function requireRecoveryGeneration(response: Response, status?: number): string {
@@ -311,6 +348,10 @@ function requireRecoveryGeneration(response: Response, status?: number): string 
 function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   if (left.byteLength !== right.byteLength) return false;
   return left.every((byte, index) => byte === right[index]);
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function parseJsonResponse<T>(

@@ -2445,14 +2445,16 @@ scrollspy and its navigation cannot drift from the rendered sections.
   outbound HTTPS polling, not a browser extension, WebSocket or inbound localhost service.
 
   A mailbox write whose HTTP acknowledgement is unreadable or returns a server-side `5xx` is not
-  retried because the relay may already have committed it. The writer instead reads back its own
-  opaque mailbox once and adopts the exposed `X-Lacuna-Generation` only when the stored bytes
-  exactly match the attempted ciphertext. A missing generation, different body or failed read-back
-  requires reconnection. The recovery path does not trust an ordinary platform `ETag`; that header
-  remains legacy `204` compatibility only. If a successful backing-store write omits its ETag, the
-  relay re-reads and accepts the generation only when the stored ciphertext still matches exactly.
-  A stored mailbox with no ETag fails closed; the relay never performs an unconditional repair that
-  could overwrite a concurrent successor.
+  retried because the relay may already have committed it. The writer instead performs up to three
+  authenticated, read-only checks of its own opaque mailbox at bounded absolute offsets. Each read
+  is time-limited, the complete recovery window is capped at one second, and the writer adopts the
+  exposed `X-Lacuna-Generation` only when the stored bytes exactly match the attempted ciphertext.
+  A missing generation, different body or exhausted read-back window requires reconnection. The
+  recovery path does not trust an ordinary platform `ETag`; that header remains legacy `204`
+  compatibility only. If a successful backing-store write omits its ETag, the relay re-reads and
+  accepts the generation only when the stored ciphertext still matches exactly. A stored mailbox
+  with no ETag fails closed; the relay never performs an unconditional repair that could overwrite
+  a concurrent successor.
 
   A queued message is claimed with an immutable `runId` and bounded lease. Replies are complete,
   not streamed. Stop changes the browser record to `stop_requested`; the terminal refreshes that
