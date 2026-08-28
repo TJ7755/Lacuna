@@ -218,7 +218,9 @@ This deletion is less explicit than lesson, card, and shared-course destructive 
 
 ### Study entry from the path
 
-The header has one generic Study action. Depending on course state, the surrounding path can also show:
+The course header has Study and Practice Now actions. Practice Now begins due-card practice for
+reached, exposed cards and is disabled when none are eligible. Depending on course state, the
+surrounding path can also show:
 
 - Review updates.
 - Add cards to begin studying.
