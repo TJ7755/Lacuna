@@ -1,5 +1,15 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — AI roadmap and sync verification close-out
+
+- Recorded PR #101 as merged after its complete GitHub and deployed-browser gates passed, and made
+  the AI sidebar plan the single active product plan. The delivered checkpoint remains encrypted
+  chat transport only; domain tools, approvals, teaching instructions and durable memories are the
+  approved next slices rather than current product claims.
+- Closed multi-device sync P9 after Tom completed and confirmed the real two- then three-device pass
+  against the live relay on 28 August 2026. Sync P1–P9 is now delivered with no outstanding
+  implementation or manual verification phase.
+
 ## Unreleased — stale deployment recovery
 
 - Removed the unnecessary Vercel SPA catch-all from this hash-routed app. It returned `index.html`

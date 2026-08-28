@@ -126,8 +126,9 @@ The relay's opaque ETag is a compare-and-swap generation, not a freshness clock.
 rollback protection against replay of an older valid ciphertext. Outgoing encrypted state is gated
 below the measured platform ceiling at 4.4 MB (nominal Vercel limit 4.5 MB, measured failure at
 4.49 MB); failures record the transport and plaintext sizes and name the contributing courses in
-`syncState`. Real two- and three-device verification remains the only outstanding sync work, so the
-web UI remains usable without a relay or network.
+`syncState`. The real two- then three-device P9 pass against the live relay was completed on
+28 August 2026; no sync implementation or verification phase remains outstanding. The web UI still
+remains usable without a relay or network.
 
 ---
 
