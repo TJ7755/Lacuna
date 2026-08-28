@@ -10,6 +10,7 @@ export interface AiConnectionStateProps {
   pairing: AiPairingState | null;
   busy: boolean;
   error: string | null;
+  compact?: boolean;
   onStartPairing: () => void;
   onCancel: () => void;
 }
@@ -31,6 +32,7 @@ export function AiConnectionState({
   pairing,
   busy,
   error,
+  compact = false,
   onStartPairing,
   onCancel,
 }: AiConnectionStateProps) {
@@ -55,6 +57,36 @@ export function AiConnectionState({
     } catch {
       setCopyStatus('failed');
     }
+  }
+
+  if (compact && !pairing) {
+    return (
+      <section
+        aria-label="AI connection"
+        aria-busy={busy}
+        className="border-b border-line bg-surface px-5 py-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-ink">Terminal disconnected</p>
+            {error && error !== 'Terminal disconnected' && (
+              <p role="alert" className="mt-1 text-xs leading-5 text-negative">
+                {error}
+              </p>
+            )}
+          </div>
+          <Button
+            ref={connectRef}
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={onStartPairing}
+          >
+            {busy ? 'Connecting…' : 'Connect terminal'}
+          </Button>
+        </div>
+      </section>
+    );
   }
 
   if (pairing) {

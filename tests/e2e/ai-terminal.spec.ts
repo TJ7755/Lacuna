@@ -39,6 +39,11 @@ test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) 
 
   await expect(page.getByText(reply, { exact: true })).toBeVisible();
   await terminal.disconnect();
+  await expect(page.getByText('Explain the testing effect.', { exact: true })).toBeVisible();
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(composer).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeDisabled();
 });
 
 test('recovers a committed browser write when Vercel strips the 200 acknowledgement', async ({

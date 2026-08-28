@@ -43,6 +43,44 @@ describe('AiPanel', () => {
     expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
   });
 
+  it('keeps completed messages visible when the terminal disconnects', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: { status: 'disconnected', reason: 'Terminal disconnected' },
+          conversationId: 'conversation-1',
+          items: [
+            {
+              kind: 'user',
+              id: 'message-1',
+              content: 'Explain the testing effect.',
+              createdAt: 1,
+              delivery: 'completed',
+            },
+            {
+              kind: 'assistant',
+              id: 'assistant-1',
+              content: 'Retrieval strengthens later access more than passive rereading.',
+              createdAt: 2,
+              sources: [],
+            },
+          ],
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Explain the testing effect.', { exact: true })).toBeVisible();
+    expect(
+      screen.getByText('Retrieval strengthens later access more than passive rereading.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+  });
+
   it('shows the short-lived code while pairing', () => {
     render(
       <AiPanel

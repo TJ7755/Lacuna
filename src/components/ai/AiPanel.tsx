@@ -129,7 +129,7 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         </span>
       </header>
 
-      {disconnected ? (
+      {disconnected && (
         <AiConnectionState
           pairing={connection.status === 'pairing' ? connection : null}
           busy={connectionBusy}
@@ -137,6 +137,7 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
             connectionError ??
             (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
           }
+          compact={connection.status === 'disconnected' && snapshot.items.length > 0}
           onStartPairing={() => {
             setConnectionBusy(true);
             setConnectionError(null);
@@ -147,17 +148,18 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
           }}
           onCancel={resetConnection}
         />
-      ) : (
-        <>
-          <AiConversation items={snapshot.items} />
-          {snapshot.approval && (
-            <AiApprovalCard
-              approval={snapshot.approval}
-              session={session}
-              autoFocus={pendingApproval}
-            />
-          )}
-        </>
+      )}
+
+      {(!disconnected || (connection.status === 'disconnected' && snapshot.items.length > 0)) && (
+        <AiConversation items={snapshot.items} />
+      )}
+
+      {!disconnected && snapshot.approval && (
+        <AiApprovalCard
+          approval={snapshot.approval}
+          session={session}
+          autoFocus={pendingApproval}
+        />
       )}
 
       <AiComposer
