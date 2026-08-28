@@ -46,40 +46,30 @@ const practiceNode: PracticePathNode = {
 };
 
 function renderSegment(overrides: Partial<ComponentProps<typeof PathNodeWithLine>> = {}) {
-  const onInsertOnLine = vi.fn();
   const onPracticeEdit = vi.fn();
   render(
     <PathNodeWithLine
       node={lessonNode}
       isLast={false}
-      lineInsert={{ insertable: true, position: 0 }}
       current={false}
       onLessonClick={vi.fn()}
       onPracticeClick={vi.fn()}
       onPracticeAssessmentClick={vi.fn()}
       onCheckpointClick={vi.fn()}
       onPracticeEdit={onPracticeEdit}
-      onInsertOnLine={onInsertOnLine}
       authoring={false}
       {...overrides}
     />,
   );
-  return { onInsertOnLine, onPracticeEdit };
+  return { onPracticeEdit };
 }
 
-describe('PathNodeWithLine mid-path insert', () => {
-  it('hides Manual practice in Read mode', () => {
-    const { onInsertOnLine } = renderSegment();
+describe('PathNodeWithLine connector', () => {
+  it('does not add a manual-practice authoring control to the path', () => {
+    renderSegment({ authoring: true });
     expect(
       screen.queryByRole('button', { name: 'Add manual practice here' }),
     ).not.toBeInTheDocument();
-    expect(onInsertOnLine).not.toHaveBeenCalled();
-  });
-
-  it('inserts Manual practice on the connecting line in Edit mode', () => {
-    const { onInsertOnLine } = renderSegment({ authoring: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Add manual practice here' }));
-    expect(onInsertOnLine).toHaveBeenCalledWith(0);
   });
 });
 

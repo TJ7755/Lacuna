@@ -479,28 +479,25 @@ Image selection is permission-dependent. The split editor has a desktop-oriented
 
 ## 12. Practice-node flows
 
-### Add a manual practice node from the path
+### Practise a course immediately from the path
 
-1. Switch the course path to Edit mode.
-2. Choose the plus control at the start, between lessons, or at the end.
-3. Enter an optional name; the default is Practice.
-4. Choose Start of course or After lesson.
-5. Choose lesson sources, or choose none to include all lessons.
-6. Optionally set a positive card limit.
-7. Choose whether to randomise order.
-8. Save.
+1. Open a course with eligible cards from reached lessons.
+2. Choose Practice Now beside Study in the course header.
+3. Complete or leave the course-wide ad-hoc Practice session.
 
-The node appears on the path. Selecting it launches the course study conductor.
+Practice Now creates no path node or milestone. It is disabled when no reached, exposed card is
+eligible.
 
 ### Find manual practice management from Settings
 
 1. Open Course Settings.
 2. Open Content and Practice nodes.
 3. Review the explanation of automatic and manual nodes and the list of existing manual nodes.
-4. Choose Manage on Path.
-5. Add, edit, reposition, or delete manual practice from the course path.
+4. When a manual node exists, choose Edit on Path.
+5. Edit, reposition or delete that manual practice node from the course path.
 
-The path is the canonical editor. Settings does not maintain a second version of the same form.
+The path remains the editor for existing manual nodes. The current UI has no manual-node creation
+affordance; immediate course-wide practice uses Practice Now instead.
 
 ### Automatic practice
 

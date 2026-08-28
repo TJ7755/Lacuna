@@ -1,8 +1,6 @@
 // Shared form fields for authoring a manual practice node: name, which gap on the
 // path it occupies, which lessons' cards it draws from, an optional card limit and
-// whether to randomise order. Used by both PracticeNodeEditor (the path-triggered
-// modal) and PracticeNodesSection (the course-settings management list) so the two
-// surfaces stay in lockstep.
+// whether to randomise order. Used by PracticeNodeEditor on the course path.
 //
 // Filters (CardFilter[]) are intentionally not exposed here: no filter-builder UI
 // exists elsewhere in the codebase to reuse, and the field stays supported in

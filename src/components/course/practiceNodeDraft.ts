@@ -1,7 +1,4 @@
-// Shared draft shape and helpers for authoring a manual PracticeNode, used by both
-// PracticeNodeEditor (the modal opened from the course path) and PracticeNodesSection
-// (the course-settings management list). Keeping the draft/parsing logic in one place
-// avoids the two surfaces drifting out of sync.
+// Draft shape and helpers for editing a manual PracticeNode on the course path.
 //
 // British English throughout.
 

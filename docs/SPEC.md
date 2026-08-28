@@ -500,11 +500,12 @@ when no due review competes with it, and otherwise offers due review separately.
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
-generic choice and enters that exact scope.
-Manual-practice insertion controls are persistently labelled at each path boundary. Path nodes
-show **Manual** or **Automatic** explicitly. The path is the sole manual-node editor; Course
-Settings explains the distinction, lists manual nodes, states that stored custom card filters are
-not authorable in the current UI, and links back to the path instead of duplicating the form.
+generic choice and enters that exact scope. A secondary **Practice Now** action beside **Study**
+enters course-wide ad-hoc Practice directly when reached, exposed cards are eligible. It creates no
+path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
+nodes remain editable on the path, but the path no longer displays repeated insertion controls.
+Course Settings explains the distinction, lists existing manual nodes and links back to the path
+instead of duplicating the editor.
 The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
 or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
@@ -680,14 +681,12 @@ authoring agents and button handlers can share the same layer without duplicatio
 
 `PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
 computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
-Manual nodes are teacher-authored and persisted: in Edit mode, a Manual practice control
-between lesson nodes on `CoursePath` inserts one at a specific gap (`position`), and an
-edit badge on existing manual nodes lets a teacher reposition, rename or delete them
-(`PracticeNodeEditor`, `src/components/course/`). Both are absent in Read mode.
-`PracticeNodesSection` in course settings mirrors the same create/edit/delete flow as a
-list (§15's Course settings section). Both surfaces share
-`practiceNodeDraft.ts`'s draft helpers. Filters (`CardFilter[]`) are supported in storage
-but intentionally left out of both forms — there is no existing filter-builder UI to reuse.
+Manual nodes are teacher-authored and persisted. In Edit mode, an edit badge on an existing manual
+node lets a teacher reposition, rename or delete it (`PracticeNodeEditor`,
+`src/components/course/`). The badge is absent in Read mode, and there is no manual-node creation
+affordance in the current UI. `PracticeNodesSection` in course settings lists existing nodes and
+links to the path for editing. Filters (`CardFilter[]`) remain supported in storage but are not
+authorable in the UI because there is no existing filter builder to reuse.
 
 `LessonCardExposure { lessonId, cardId, taughtAt }` records that one card has been
 introduced successfully in one lesson. The `(lessonId, cardId)` pair is unique. This is
@@ -2503,8 +2502,8 @@ threshold/action, daily review goal, session time limit), `UnlockModeSection`
 `PracticeSettingsSection` (auto-practice toggle and the four threshold/window/gap fields
 feeding `shouldInsertPractice`, §-linked to `src/fsrs/practice.ts`), `ExamDatesSection`
 (per-course exam-date list), `LessonManagementSection` (reorder/rename/delete lessons)
-and `PracticeNodesSection` (list/create/edit/delete teacher-authored manual practice
-nodes; see §5's Course architecture section), plus the `OptimisationPanel` (§8.1): a
+and `PracticeNodesSection` (list existing teacher-authored manual practice nodes and link to their
+path editor; see §5's Course architecture section), plus the `OptimisationPanel` (§8.1): a
 per-course on/off override for scheduling optimisation, a review-count gate, and an
 **Optimise now** action that runs in a Web Worker with a progress bar, then shows the
 before/after log loss; applying takes a restore-point snapshot first and **Reset to

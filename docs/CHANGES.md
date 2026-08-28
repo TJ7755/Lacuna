@@ -1,5 +1,13 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — course-wide Practice Now action
+
+- Removed the repeated manual-practice insertion controls from the curriculum path. The course
+  header now places a secondary **Practice Now** action beside **Study** and sends eligible,
+  reached course cards through the existing ad-hoc Practice conductor. The action is disabled when
+  there is no eligible practice work. Existing authored practice nodes remain visible and editable
+  on the path; Settings links to the path only when there is an existing node to manage.
+
 ## Unreleased — AI roadmap and sync verification close-out
 
 - Recorded PR #101 as merged after its complete GitHub and deployed-browser gates passed, and made
