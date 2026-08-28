@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { buildAiInstructionBundle } from '../../../src/ai/instructions';
 import type { AiClientIdentity } from '../../../src/ai/protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
+  AI_RELAY_PROTOCOL_VERSION,
   type RelayBrowserMailbox,
   type RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol';
@@ -77,6 +79,7 @@ class ConcurrentCallTransport implements TerminalRelayTransport {
       mailbox: {
         ...queuedMailbox(),
         revision: responses.length + 1,
+        terminalRevisionSeen: responses.length + 1,
         messages: runId
           ? [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId }]
           : queuedMailbox().messages,
@@ -103,7 +106,7 @@ class ConcurrentCallTransport implements TerminalRelayTransport {
 
 function queuedMailbox(): RelayBrowserMailbox {
   return {
-    version: 2,
+    version: AI_RELAY_PROTOCOL_VERSION,
     revision: 1,
     terminalRevisionSeen: 0,
     toolResponses: [],
@@ -114,6 +117,7 @@ function queuedMailbox(): RelayBrowserMailbox {
         conversationId: 'conversation-1',
         content: 'Explain why this answer is wrong.',
         createdAt: 10,
+        instructions: buildAiInstructionBundle({ misconceptionFirstEnabled: true }),
       },
     ],
   };
@@ -155,10 +159,11 @@ describe('TerminalAiClient', () => {
       content: 'Explain why this answer is wrong.',
       createdAt: 10,
       leaseExpiresAt: 301_000,
+      instructions: buildAiInstructionBundle({ misconceptionFirstEnabled: true }),
     });
     expect(transport.writes).toEqual([
       {
-        version: 2,
+        version: AI_RELAY_PROTOCOL_VERSION,
         revision: 1,
         browserRevisionSeen: 1,
         events: [
@@ -245,7 +250,7 @@ describe('TerminalAiClient', () => {
       {
         generation: '"browser-2"',
         mailbox: {
-          version: 2,
+          version: AI_RELAY_PROTOCOL_VERSION,
           revision: 2,
           terminalRevisionSeen: 0,
           toolResponses: [],
@@ -255,7 +260,7 @@ describe('TerminalAiClient', () => {
       {
         generation: '"browser-3"',
         mailbox: {
-          version: 2,
+          version: AI_RELAY_PROTOCOL_VERSION,
           revision: 3,
           terminalRevisionSeen: 1,
           toolResponses: [],
@@ -280,7 +285,7 @@ describe('TerminalAiClient', () => {
     await client.waitForMessage(25_000);
 
     expect(transport.writes.at(-1)).toEqual({
-      version: 2,
+      version: AI_RELAY_PROTOCOL_VERSION,
       revision: 3,
       browserRevisionSeen: 3,
       events: [
@@ -310,7 +315,7 @@ describe('TerminalAiClient', () => {
     await client.disconnect();
 
     expect(transport.writes.at(-1)).toEqual({
-      version: 2,
+      version: AI_RELAY_PROTOCOL_VERSION,
       revision: 3,
       browserRevisionSeen: 1,
       events: [
@@ -387,6 +392,7 @@ describe('TerminalAiClient', () => {
     const responseMailbox: RelayBrowserMailbox = {
       ...queuedMailbox(),
       revision: 3,
+      terminalRevisionSeen: 2,
       messages: [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId: claimed.runId }],
       toolResponses: [
         {
@@ -410,6 +416,62 @@ describe('TerminalAiClient', () => {
       .flatMap((mailbox) => mailbox.events)
       .filter((event) => event.type === 'tool_call');
     expect(new Set(calls.map((event) => event.eventId))).toHaveLength(1);
+  });
+
+  it('ignores a stale response when an approved call resumes with the same callId', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      createId: (prefix) => prefix + '-1',
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+    const staleMailbox: RelayBrowserMailbox = {
+      ...queuedMailbox(),
+      revision: 2,
+      terminalRevisionSeen: 1,
+      messages: [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId: claimed.runId }],
+      toolResponses: [
+        {
+          runId: claimed.runId,
+          callId: 'call-1',
+          respondedAt: 1_050,
+          ok: false,
+          error: {
+            kind: 'approval_required',
+            approvalId: 'approval-1',
+            approvalKind: 'write_call',
+            message: 'Approve this Course creation.',
+          },
+        },
+      ],
+    };
+    const approvedMailbox: RelayBrowserMailbox = {
+      ...staleMailbox,
+      revision: 3,
+      terminalRevisionSeen: 2,
+      toolResponses: [
+        {
+          runId: claimed.runId,
+          callId: 'call-1',
+          respondedAt: 1_100,
+          ok: true,
+          result: { id: 'course-1' },
+        },
+      ],
+    };
+    transport.reads.push(
+      { generation: '"browser-2"', mailbox: staleMailbox },
+      { generation: '"browser-2"', mailbox: staleMailbox },
+      { generation: '"browser-3"', mailbox: approvedMailbox },
+    );
+
+    await expect(
+      client.invokeTool(claimed.runId, 'call-1', 'lacuna.create_course', { name: 'Biology' }),
+    ).resolves.toEqual({ ok: true, result: { id: 'course-1' } });
   });
 
   it('serialises concurrent tool invocations through one terminal mailbox writer', async () => {
