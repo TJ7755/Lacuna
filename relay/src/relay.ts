@@ -196,22 +196,17 @@ async function getSlot(
     return json(404, request, { error: 'not found' });
   }
 
-  // A blob whose store metadata lost its ETag cannot anchor compare-and-swap:
-  // its generation would round-trip as the empty tag `""`, which the protocol
-  // rejects on the next push. Rewrite the same bytes once to regenerate one.
-  let etag = stored.etag;
-  if (canonicalEtag(etag) === '') {
-    const healed = await store.put(slotKey(id, slot), stored.body, { overwrite: true });
-    if (!healed.ok || canonicalEtag(healed.etag) === '') {
-      return json(500, request, { error: 'internal error' });
-    }
-    etag = healed.etag;
+  // Without a generation there is no safe compare-and-swap repair. An
+  // unconditional rewrite could overwrite a concurrent successor with these
+  // stale bytes, so fail closed instead.
+  if (canonicalEtag(stored.etag) === '') {
+    return json(500, request, { error: 'internal error' });
   }
 
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
-  headers.set('ETag', quoteEtag(etag));
+  headers.set('ETag', quoteEtag(stored.etag));
   return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 
@@ -265,15 +260,21 @@ async function putSlot(
     return json(412, request, { error: 'precondition failed' });
   }
 
-  // Regenerate the ETag if the store returned none: an empty generation would
-  // round-trip as `""` and be rejected by the protocol on the next push.
+  // A successful write whose response lost its ETag may still be recovered by
+  // reading it back. Accept only an exact byte match with a usable generation:
+  // a different body is a concurrent successor and must never be overwritten.
   let etag = written.etag;
   if (canonicalEtag(etag) === '') {
-    const healed = await store.put(slotKey(id, slot), body, { overwrite: true });
-    if (!healed.ok || canonicalEtag(healed.etag) === '') {
+    const stored = await store.get(slotKey(id, slot));
+    if (
+      !stored ||
+      canonicalEtag(stored.etag) === '' ||
+      stored.body.byteLength !== body.byteLength ||
+      !timingSafeEqual(stored.body, body)
+    ) {
       return json(500, request, { error: 'internal error' });
     }
-    etag = healed.etag;
+    etag = stored.etag;
   }
 
   const headers = corsHeaders(request);

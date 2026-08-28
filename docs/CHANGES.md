@@ -46,6 +46,41 @@
   replacement mounts. Restored polling now starts only after the owning UI commits, and disposal or
   reconnection invalidates delayed relay and crypto work before it can push or persist stale mailbox
   state. This fixes the same-tab reconnect race that surfaced as a `412` stale-generation failure.
+- Hardened browser mailbox acknowledgement when Vercel commits a `200` write but the browser cannot
+  use its response. A later live run proved Vercel can make an arbitrary successful acknowledgement
+  unreadable, not merely the first one. A `200` visible to either writer now derives the next
+  generation as `"sha256:<lowercase ciphertext digest>"` from the exact attempted bytes, so neither
+  writer depends on response metadata that Vercel can damage. Response generation metadata remains
+  compatibility for legacy non-`200` success responses only. The relay recognises that synthetic
+  generation in a later `If-Match`, verifies it against the current stored bytes, then uses the
+  backing store's current ETag for the atomic write; a changed mailbox still fails with `412`.
+  Browser and terminal writers reconcile a transport-rejected request, an unusable non-`200`
+  success or a server-side `5xx` through bounded, authenticated digest-receipt GETs on their own
+  mailbox. The relay returns success only when the stored ciphertext matches the supplied SHA-256
+  digest, and the writer derives the same synthetic generation without trusting the receipt's body
+  or headers.
+  Browser checks use absolute 0/650/1400 ms offsets, a 600 ms per-read limit and a 2.2-second overall
+  deadline so Vercel's cross-origin authorisation preflight has time to complete; terminal checks
+  retain 0/250/650 ms offsets, a 250 ms per-read limit and a one-second deadline. Neither retries the
+  PUT or trusts a modern platform `ETag`; a mismatch that persists through the receipt window fails
+  closed.
+  The relay permits each writer to request a digest receipt for its own opaque mailbox without
+  weakening PUT authorisation. If a committed store write omits its ETag, the relay
+  re-reads and adopts the stored generation only when the ciphertext still matches exactly; an
+  ETag-less read fails closed because an unconditional repair could overwrite a concurrent
+  successor. Stale-writer conflicts and unverifiable relay acknowledgements now have distinct error
+  messages instead of both claiming that the connection changed elsewhere; either condition also
+  clears terminal client state so it can reconnect safely. Fresh deployed-browser verification
+  completed two clean same-tab exchanges, recovered a claimed prompt through terminal replacement,
+  retained the transcript after disconnect and showed no late acknowledgement warning with the
+  corrected preflight-aware recovery window.
+  Connected users can also disconnect a dead terminal directly from the AI panel; local reset no
+  longer waits for relay revocation and recovers an active prompt or queued follow-up into the
+  composer. A clean disconnect while a prompt is claimed follows the same recovery path. Ambiguous
+  outgoing sends persist the exact attempted text for reconnection without falsely adding it to the
+  transcript, successful replacement sends clear the persisted draft, and a terminal event already
+  reduced before an ambiguous browser acknowledgement is retained rather than discarded. The panel
+  keeps completed conversation history visible after disconnect while disabling the composer.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the
@@ -185,7 +220,7 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
 
 - Vercel serves Blob objects with `content-encoding: br` as `W/"..."`. The relay rejected that as `400 invalid if-match` at `relay/src/relay.ts:342` (`W/` → `null`) and `canonicalEtag` at `relay/src/store.ts:35` returned `''` for weak validators, so every second `PUT` after the initial `"0"` failed. The relay now strips `W/` before canonicalising and always emits strong `"..."` via `quoteEtag` at `relay/src/relay.ts:365`, and the app at `src/sync/relay.ts:259` normalises any `W/"..."` from `pull`/`push` to `"..."` before persisting or sending `If-Match`.
 
-## Unreleased — Missing blob ETag self-heal
+## Unreleased — Missing blob ETag safe recovery
 
 - The live relay served `ETag: ""` for a channel's state slot: the blob's
   Vercel Blob metadata carried no etag (the same first-write path the README
@@ -194,10 +229,12 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
   the next push sent `If-Match: ""`, which the relay rejects as "invalid
   if-match". That produced "Relay push failed with HTTP 400. Invalid if-match"
   in Settings on every sync after the first, regardless of content size. The
-  relay now regenerates a missing store ETag by rewriting the same bytes once
-  on read or write (unconditional overwrite), so affected channels repair
-  themselves on the next pull, and the app rejects quoted-empty generations
-  on pull and push as protocol errors instead of sending them.
+  relay now fails closed when a read has no store ETag. If a successful write
+  response omits its ETag, the relay re-reads the slot and accepts a valid
+  generation only when the stored bytes still match the attempted body. It
+  never rewrites without a generation because that could overwrite a
+  concurrent successor. The app also rejects quoted-empty generations on pull
+  and push as protocol errors instead of sending them.
 
 ## Unreleased — Sync payload size gate hardening
 

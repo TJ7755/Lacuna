@@ -145,10 +145,19 @@ describe('TerminalAiClient', () => {
     expect(transport.writes).toHaveLength(1);
   });
 
-  it('requires reconnection after an ambiguous terminal mailbox write', async () => {
+  it.each([
+    {
+      reason: 'write_outcome_unknown' as const,
+      message: 'The terminal mailbox write outcome is unknown.',
+    },
+    {
+      reason: 'terminal_writer_changed' as const,
+      message: 'Another terminal writer changed this Lacuna AI session.',
+    },
+  ])('clears the connection after a $reason error and allows reconnection', async (testCase) => {
     const transport = new FakeTransport();
     transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
-    transport.writeError = new TerminalRelayReconnectRequiredError();
+    transport.writeError = new TerminalRelayReconnectRequiredError(testCase.reason);
     let now = 1_000;
     const client = new TerminalAiClient({
       transport,
@@ -159,8 +168,15 @@ describe('TerminalAiClient', () => {
     });
     await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
 
-    await expect(client.waitForMessage(25_000)).rejects.toThrow('Reconnect Lacuna AI');
+    await expect(client.waitForMessage(25_000)).rejects.toMatchObject({
+      name: 'TerminalRelayReconnectRequiredError',
+      reason: testCase.reason,
+      message: expect.stringContaining(testCase.message),
+    });
     await expect(client.waitForMessage(250)).rejects.toThrow('not connected');
+    await expect(
+      client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' }),
+    ).resolves.toEqual(CONNECTION);
   });
 
   it('compacts only the browser-acknowledged terminal event prefix', async () => {

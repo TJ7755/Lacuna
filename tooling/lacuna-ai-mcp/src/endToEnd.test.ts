@@ -32,6 +32,7 @@ describe('paired AI terminal vertical slice', () => {
       now: () => now,
       createId: (prefix) => `${prefix}-browser-${++browserSequence}`,
     });
+    browser.activate();
     const terminal = new TerminalAiClient({
       transport: new HttpTerminalRelayTransport({ fetchImpl }),
       now: () => now,

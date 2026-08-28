@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay.js';
 import { MemoryStore } from '../../relay/src/store.js';
@@ -6,6 +7,17 @@ import { HttpTerminalRelayTransport } from '../../tooling/lacuna-ai-mcp/src/rela
 
 const RELAY_URL = 'https://lacuna-relay.vercel.app';
 const PAIRING_CODE_RE = /\b[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}\b/;
+
+interface BrowserPutRecord {
+  attemptedGeneration: string;
+  committedGeneration: string;
+  contentGeneration: string;
+}
+
+interface RelayRouteOptions {
+  damageFirstBrowserPut?: boolean;
+  browserPuts?: BrowserPutRecord[];
+}
 
 test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) => {
   const { composer, terminal } = await pairBrowserAndTerminal(page);
@@ -29,6 +41,103 @@ test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) 
 
   await expect(page.getByText(reply, { exact: true })).toBeVisible();
   await terminal.disconnect();
+  await expect(page.getByText('Explain the testing effect.', { exact: true })).toBeVisible();
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(composer).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeDisabled();
+});
+
+test('recovers a claimed prompt through a dead terminal replacement', async ({ page }) => {
+  const { composer, terminal, handleRelayRequest } = await pairBrowserAndTerminal(page);
+  const prompt = 'Recover this prompt after the terminal disappears.';
+
+  await composer.fill(prompt);
+  await page.getByRole('button', { name: 'Send message' }).click();
+  const abandonedClaim = await terminal.waitForMessage(2_000);
+  expect(abandonedClaim).toEqual(expect.objectContaining({ type: 'message', content: prompt }));
+  await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Disconnect terminal' }).click();
+  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('article').getByText(prompt, { exact: true })).toBeVisible();
+  await expect(composer).toBeDisabled();
+  await expect(composer).toHaveValue(prompt);
+
+  await page.getByRole('button', { name: 'Connect terminal' }).click();
+  const replacementCode = await pairingCodeFrom(page);
+  await expect(composer).toBeDisabled();
+  await expect(composer).toHaveValue(prompt);
+
+  const replacement = await connectTerminal(
+    handleRelayRequest,
+    replacementCode,
+    'Replacement Playwright terminal',
+    'replacement',
+  );
+  await expect(composer).toBeEnabled();
+  await expect(composer).toHaveValue(prompt);
+
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(composer).toHaveValue('');
+  const replacementClaim = await replacement.waitForMessage(2_000);
+  expect(replacementClaim).toEqual(expect.objectContaining({ type: 'message', content: prompt }));
+  if (replacementClaim.type !== 'message') {
+    throw new Error('Expected the replacement terminal to claim the recovered prompt.');
+  }
+
+  const reply = 'The replacement terminal completed the recovered prompt.';
+  await replacement.reply(replacementClaim.runId, replacementClaim.messageId, reply);
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(composer).toHaveValue('');
+
+  await replacement.disconnect();
+  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('article').getByText(prompt, { exact: true })).toHaveCount(2);
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(composer).toBeDisabled();
+  await expect(composer).toHaveValue('');
+});
+
+test('recovers a committed browser write when Vercel strips the 200 acknowledgement', async ({
+  page,
+}) => {
+  const browserPuts: BrowserPutRecord[] = [];
+  const { composer, terminal } = await pairBrowserAndTerminal(page, {
+    damageFirstBrowserPut: true,
+    browserPuts,
+  });
+
+  await composer.fill('Keep this exchange after an ambiguous relay acknowledgement.');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  const claimed = await terminal.waitForMessage(2_000);
+  if (claimed.type !== 'message') throw new Error('Expected the terminal to claim the message.');
+
+  const reply = 'The committed browser write was recovered safely.';
+  await terminal.reply(claimed.runId, claimed.messageId, reply);
+
+  await expect(page.getByText(reply, { exact: true })).toBeVisible();
+  await expect(composer).toHaveValue('');
+  await expect(
+    page.getByText(
+      'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.',
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      'The relay may have accepted this AI update, but Lacuna could not verify it. Reconnect the terminal.',
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  expect(browserPuts.length).toBeGreaterThanOrEqual(2);
+  expect(browserPuts[0]?.attemptedGeneration).toBe('"0"');
+  expect(browserPuts[1]?.attemptedGeneration).toBe(browserPuts[0]?.contentGeneration);
+  expect(browserPuts[1]?.attemptedGeneration).not.toBe(browserPuts[0]?.committedGeneration);
+  expect(new Set(browserPuts.map((put) => put.contentGeneration)).size).toBe(browserPuts.length);
+  expect(browserPuts.map((put) => put.attemptedGeneration)).not.toContain('"vercel-platform"');
+
+  await terminal.disconnect();
 });
 
 test('restores and claims an unclaimed message once after a browser reload', async ({ page }) => {
@@ -37,6 +146,7 @@ test('restores and claims an unclaimed message once after a browser reload', asy
 
   await composer.fill(message);
   await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(composer).toHaveValue('');
   await page.reload();
   const panel = page.getByRole('complementary', { name: 'AI conversation' });
   if (!(await panel.isVisible())) {
@@ -86,9 +196,16 @@ test('shows the terminal acknowledgement after Stop', async ({ page }) => {
 
 async function pairBrowserAndTerminal(
   page: Page,
-): Promise<{ composer: Locator; terminal: TerminalAiClient }> {
+  routeOptions: RelayRouteOptions = {},
+): Promise<{
+  composer: Locator;
+  terminal: TerminalAiClient;
+  handleRelayRequest: ReturnType<typeof createHandler>;
+}> {
   const handleRelayRequest = createHandler(new MemoryStore());
-  await page.route(`${RELAY_URL}/**`, (route) => relayRoute(route, handleRelayRequest));
+  await page.route(`${RELAY_URL}/**`, (route) =>
+    relayRoute(route, handleRelayRequest, routeOptions),
+  );
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Create your first course' }).click();
@@ -98,16 +215,40 @@ async function pairBrowserAndTerminal(
   await expect(page.getByRole('complementary', { name: 'AI conversation' })).toBeVisible();
   await page.getByRole('button', { name: 'Connect terminal' }).click();
 
+  const pairingCode = await pairingCodeFrom(page);
   const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
-  const pairingCode = (await instruction.inputValue()).match(PAIRING_CODE_RE)?.[0];
-  expect(pairingCode).toBeTruthy();
-  await expect(page.locator('p').getByText(pairingCode!, { exact: true })).toBeVisible();
   await expect(instruction).toHaveValue(
     `Connect to Lacuna with code ${pairingCode}, then wait for messages until I ask you to disconnect.`,
   );
   const composer = page.getByRole('textbox', { name: 'Message AI' });
   await expect(composer).toBeDisabled();
 
+  const terminal = await connectTerminal(
+    handleRelayRequest,
+    pairingCode,
+    'Playwright terminal',
+    'initial',
+  );
+
+  await expect(composer).toBeEnabled();
+  await expect(page.getByText('Playwright terminal', { exact: true })).toBeVisible();
+  return { composer, terminal, handleRelayRequest };
+}
+
+async function pairingCodeFrom(page: Page): Promise<string> {
+  const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
+  const pairingCode = (await instruction.inputValue()).match(PAIRING_CODE_RE)?.[0];
+  expect(pairingCode).toBeTruthy();
+  await expect(page.locator('p').getByText(pairingCode!, { exact: true })).toBeVisible();
+  return pairingCode!;
+}
+
+async function connectTerminal(
+  handleRelayRequest: ReturnType<typeof createHandler>,
+  pairingCode: string,
+  name: string,
+  idScope: string,
+): Promise<TerminalAiClient> {
   let terminalNow = Date.now();
   let terminalSequence = 0;
   const terminal = new TerminalAiClient({
@@ -117,18 +258,16 @@ async function pairBrowserAndTerminal(
       terminalNow += milliseconds;
       await new Promise((resolve) => setTimeout(resolve, Math.min(milliseconds, 50)));
     },
-    createId: (prefix) => `${prefix}-playwright-${++terminalSequence}`,
+    createId: (prefix) => `${prefix}-playwright-${idScope}-${++terminalSequence}`,
   });
-  await terminal.connect(pairingCode!, RELAY_URL, { name: 'Playwright terminal' });
-
-  await expect(composer).toBeEnabled();
-  await expect(page.getByText('Playwright terminal', { exact: true })).toBeVisible();
-  return { composer, terminal };
+  await terminal.connect(pairingCode, RELAY_URL, { name });
+  return terminal;
 }
 
 async function relayRoute(
   route: Route,
   handle: (request: Request) => Promise<Response>,
+  options: RelayRouteOptions = {},
 ): Promise<void> {
   const intercepted = route.request();
   const method = intercepted.method();
@@ -144,10 +283,27 @@ async function relayRoute(
       body: method === 'GET' || method === 'HEAD' ? undefined : body,
     }),
   );
+  const responseHeaders = new Headers(response.headers);
+  let responseBody = Buffer.from(await response.arrayBuffer());
+  const isBrowserPut = method === 'PUT' && new URL(intercepted.url()).pathname.endsWith('/browser');
+  if (isBrowserPut && response.status === 200) {
+    if (!body) throw new Error('Expected the browser mailbox PUT to contain ciphertext.');
+    const contentDigest = createHash('sha256').update(body).digest('hex');
+    options.browserPuts?.push({
+      attemptedGeneration: headers.get('If-Match') ?? '',
+      committedGeneration: responseHeaders.get('X-Lacuna-Generation') ?? '',
+      contentGeneration: `"sha256:${contentDigest}"`,
+    });
+    if (options.damageFirstBrowserPut && options.browserPuts?.length === 1) {
+      responseHeaders.delete('X-Lacuna-Generation');
+      responseHeaders.set('ETag', '"vercel-platform"');
+      responseBody = Buffer.alloc(0);
+    }
+  }
   await route.fulfill({
     status: response.status,
-    headers: Object.fromEntries(response.headers.entries()),
-    body: Buffer.from(await response.arrayBuffer()),
+    headers: Object.fromEntries(responseHeaders.entries()),
+    body: responseBody,
   });
 }
 

@@ -28,13 +28,17 @@ describe('relay', () => {
     const state = new Uint8Array([0xde, 0xad, 0x01]);
     const keybag = new Uint8Array([0xbe, 0xef, 0x02]);
 
-    const putState = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, state));
+    const putState = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, state),
+    );
     expectCors(putState);
     expect(putState.status).toBe(204);
     const stateEtag = putState.headers.get('ETag');
     expect(stateEtag).toMatch(/^"[^"]+"$/);
 
-    const putKeybag = await ctx.handle(putRequest(ctx.channelId, 'keybag', ctx.writeToken, EMPTY_SLOT_ETAG, keybag));
+    const putKeybag = await ctx.handle(
+      putRequest(ctx.channelId, 'keybag', ctx.writeToken, EMPTY_SLOT_ETAG, keybag),
+    );
     expectCors(putKeybag);
     expect(putKeybag.status).toBe(204);
     const keybagEtag = putKeybag.headers.get('ETag');
@@ -56,7 +60,9 @@ describe('relay', () => {
     expect(new Uint8Array(await gotKeybag.arrayBuffer())).toEqual(keybag);
 
     const next = new Uint8Array([0xca, 0xfe]);
-    const putAgain = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, stateEtag, next));
+    const putAgain = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, stateEtag, next),
+    );
     expect(putAgain.status).toBe(204);
     const nextEtag = putAgain.headers.get('ETag');
     expect(nextEtag).toMatch(/^"[^"]+"$/);
@@ -92,7 +98,9 @@ describe('relay', () => {
     expectCors(missing);
     expect(missing.status).toBe(401);
 
-    const wrong = await ctx.handle(putRequest(ctx.channelId, 'state', 'ab'.repeat(32), EMPTY_SLOT_ETAG, body));
+    const wrong = await ctx.handle(
+      putRequest(ctx.channelId, 'state', 'ab'.repeat(32), EMPTY_SLOT_ETAG, body),
+    );
     expectCors(wrong);
     expect(wrong.status).toBe(401);
   });
@@ -101,16 +109,22 @@ describe('relay', () => {
     const ctx = await minted();
     const first = new Uint8Array([1, 2, 3]);
     const stale = new Uint8Array([9, 9, 9]);
-    const created = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, first));
+    const created = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, first),
+    );
     expect(created.status).toBe(204);
     const etag = created.headers.get('ETag');
     expect(etag).toBeTruthy();
 
-    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, stale));
+    const res = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, stale),
+    );
     expectCors(res);
     expect(res.status).toBe(412);
 
-    const stillStale = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"not-the-etag"', stale));
+    const stillStale = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, '"not-the-etag"', stale),
+    );
     expect(stillStale.status).toBe(412);
 
     const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
@@ -173,7 +187,9 @@ describe('relay', () => {
 
   it('rejects PUT with no If-Match', async () => {
     const ctx = await minted();
-    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, null, new Uint8Array([1])));
+    const res = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, null, new Uint8Array([1])),
+    );
     expectCors(res);
     expect(res.status).toBe(428);
   });
@@ -181,24 +197,32 @@ describe('relay', () => {
   it('accepts a weak If-Match as a strong validator', async () => {
     const ctx = await minted();
     // First write to get a real etag.
-    const first = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])));
+    const first = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+    );
     expect(first.status).toBe(204);
     const etag = first.headers.get('ETag');
     expect(etag).toMatch(/^"[^"]+"$/);
     // Weak form of the same bare etag should be accepted as equivalent to the strong form.
     const weak = `W/${etag}`;
-    const second = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, weak, new Uint8Array([2])));
+    const second = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, weak, new Uint8Array([2])),
+    );
     expectCors(second);
     expect(second.status).toBe(204);
     // A weak etag that does not match the current value is still a stale generation, not a syntax error.
-    const staleWeak = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, 'W/"not-the-etag"', new Uint8Array([3])));
+    const staleWeak = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, 'W/"not-the-etag"', new Uint8Array([3])),
+    );
     expectCors(staleWeak);
     expect(staleWeak.status).toBe(412);
   });
 
   it('rejects the quoted-empty If-Match that a missing ETag produces', async () => {
     const ctx = await minted();
-    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '""', new Uint8Array([1])));
+    const res = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, '""', new Uint8Array([1])),
+    );
     expectCors(res);
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: 'invalid if-match' });
@@ -224,7 +248,9 @@ describe('relay', () => {
 
   it('rejects an invalid slot', async () => {
     const ctx = await minted();
-    const res = await ctx.handle(putRequest(ctx.channelId, 'notes', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])));
+    const res = await ctx.handle(
+      putRequest(ctx.channelId, 'notes', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+    );
     expectCors(res);
     expect(res.status).toBe(400);
   });
@@ -236,7 +262,9 @@ describe('relay', () => {
     expectCors(got);
     expect(got.status).toBe(404);
 
-    const put = await ctx.handle(putRequest(missing, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])));
+    const put = await ctx.handle(
+      putRequest(missing, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+    );
     expectCors(put);
     expect(put.status).toBe(404);
   });
@@ -244,12 +272,18 @@ describe('relay', () => {
   it('DELETE removes both slots and requires the token', async () => {
     const ctx = await minted();
     expect(
-      (await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1]))))
-        .status,
+      (
+        await ctx.handle(
+          putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+        )
+      ).status,
     ).toBe(204);
     expect(
-      (await ctx.handle(putRequest(ctx.channelId, 'keybag', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2]))))
-        .status,
+      (
+        await ctx.handle(
+          putRequest(ctx.channelId, 'keybag', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])),
+        )
+      ).status,
     ).toBe(204);
 
     const denied = await ctx.handle(
@@ -317,10 +351,15 @@ describe('relay', () => {
     expectCors(noToken);
 
     expect(
-      (await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1]))))
-        .status,
+      (
+        await ctx.handle(
+          putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+        )
+      ).status,
     ).toBe(204);
-    const stale = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])));
+    const stale = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])),
+    );
     expect(stale.status).toBe(412);
     expectCors(stale);
   });
@@ -329,15 +368,20 @@ describe('relay', () => {
     let now = 1_000_000;
     const ctx = await minted(() => now);
     expect(
-      (await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1]))))
-        .status,
+      (
+        await ctx.handle(
+          putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+        )
+      ).status,
     ).toBe(204);
 
     now += CHANNEL_TTL_MS;
     const expired = await ctx.handle(getRequest(ctx.channelId, 'state'));
     expect(expired.status).toBe(404);
 
-    const put = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])));
+    const put = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])),
+    );
     expect(put.status).toBe(404);
   });
 
@@ -352,7 +396,14 @@ describe('relay', () => {
     expect(mintedOnApi.status).toBe(201);
     const body = (await mintedOnApi.json()) as { channelId: string; writeToken: string };
     const put = await ctx.handle(
-      putRequest(body.channelId, 'state', body.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([7]), '/api'),
+      putRequest(
+        body.channelId,
+        'state',
+        body.writeToken,
+        EMPTY_SLOT_ETAG,
+        new Uint8Array([7]),
+        '/api',
+      ),
     );
     expect(put.status).toBe(204);
     const got = await ctx.handle(
@@ -399,7 +450,7 @@ describe('relay', () => {
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([9]));
   });
 
-  it('heals a blob whose store ETag is missing, serving a fresh generation on read', async () => {
+  it('fails closed when a stored blob has no ETag without rewriting it', async () => {
     const inner = new MemoryStore();
     const flaky = flakyStore(inner);
     const ctx = await mintOn(createHandler(flaky.store));
@@ -411,31 +462,20 @@ describe('relay', () => {
     expect(created.status).toBe(204);
     expect(statePuts(flaky)).toEqual([{ exclusive: true }]);
 
-    // The blob's metadata loses its ETag; reads now report an empty one.
+    // The blob's metadata loses its ETag; there is no safe generation for a
+    // conditional repair write, so the relay must not touch the stored bytes.
     flaky.lost = true;
     const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
     expectCors(got);
-    expect(got.status).toBe(200);
-    const healedEtag = got.headers.get('ETag');
-    expect(healedEtag).toMatch(/^"[^"]+"$/);
-    expect(new Uint8Array(await got.arrayBuffer())).toEqual(body);
-    expect(statePuts(flaky)).toEqual([{ exclusive: true }, { overwrite: true }]);
+    expect(got.status).toBe(500);
+    expect(await got.json()).toEqual({ error: 'internal error' });
+    expect(statePuts(flaky)).toEqual([{ exclusive: true }]);
 
-    // The heal sticks: a second read serves the same generation without rewriting.
-    const again = await ctx.handle(getRequest(ctx.channelId, 'state'));
-    expect(again.status).toBe(200);
-    expect(again.headers.get('ETag')).toBe(healedEtag);
-    expect(statePuts(flaky)).toEqual([{ exclusive: true }, { overwrite: true }]);
-
-    // A push against the healed generation now succeeds (the recovery path).
-    flaky.lost = false;
-    const pushed = await ctx.handle(
-      putRequest(ctx.channelId, 'state', ctx.writeToken, healedEtag!, new Uint8Array([8])),
-    );
-    expect(pushed.status).toBe(204);
+    const stored = await inner.get(`c/${ctx.channelId}/state`);
+    expect(stored?.body).toEqual(body);
   });
 
-  it('regenerates a missing store ETag on write', async () => {
+  it('recovers a missing write ETag by verifying the stored bytes', async () => {
     const inner = new MemoryStore();
     const emptyFirst = emptyFirstStatePut(inner);
     const ctx = await mintOn(createHandler(emptyFirst.store));
@@ -447,30 +487,30 @@ describe('relay', () => {
     expect(res.status).toBe(204);
     const etag = res.headers.get('ETag');
     expect(etag).toMatch(/^"[^"]+"$/);
-    expect(statePuts(emptyFirst)).toEqual([{ exclusive: true }, { overwrite: true }]);
+    expect(statePuts(emptyFirst)).toEqual([{ exclusive: true }]);
 
     const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
     expect(got.status).toBe(200);
     expect(got.headers.get('ETag')).toBe(etag);
   });
 
-  it('returns 500 when a blob ETag cannot be regenerated', async () => {
+  it('does not overwrite a concurrent successor while recovering a missing write ETag', async () => {
     const inner = new MemoryStore();
-    const flaky = flakyStore(inner);
-    const ctx = await mintOn(createHandler(flaky.store));
-    const body = new Uint8Array([1, 2, 3]);
+    const newer = new Uint8Array([7, 8, 9]);
+    const racing = emptyFirstStatePut(inner, newer);
+    const ctx = await mintOn(createHandler(racing.store));
+    const attempted = new Uint8Array([1, 2, 3]);
 
-    const created = await ctx.handle(
-      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, body),
+    const response = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, attempted),
     );
-    expect(created.status).toBe(204);
+    expectCors(response);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'internal error' });
+    expect(statePuts(racing)).toEqual([{ exclusive: true }]);
 
-    flaky.lost = true;
-    flaky.putBroken = true;
-    const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
-    expectCors(got);
-    expect(got.status).toBe(500);
-    expect(await got.json()).toEqual({ error: 'internal error' });
+    const stored = await inner.get(`c/${ctx.channelId}/state`);
+    expect(stored?.body).toEqual(newer);
   });
 
   it('returns a generic 500 and logs a redacted cause when the store throws', async () => {
@@ -650,7 +690,9 @@ describe('relay', () => {
     expectCors(mintAsWrite);
     expect(mintAsWrite.status).toBe(401);
 
-    const put = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, payload));
+    const put = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, payload),
+    );
     expectCors(put);
     expect(put.status).toBe(204);
 
@@ -715,17 +757,14 @@ async function mintOn(handle: (request: Request) => Promise<Response>) {
 /**
  * A store wrapper that can report a missing ETag for the state slot, as if the
  * blob's metadata lost it. While `lost` is true, reads of the state slot carry
- * an empty ETag; while `putBroken` is true, writes return an empty one too, so
- * the relay's self-heal can be made to fail. Records every put it receives.
+ * an empty ETag. Records every put it receives.
  */
 function flakyStore(inner: MemoryStore): {
   store: BlobStore;
   puts: { key: string; opts: PutOptions }[];
   lost: boolean;
-  putBroken: boolean;
 } {
   let lost = false;
-  let putBroken = false;
   const puts: { key: string; opts: PutOptions }[] = [];
   return {
     store: {
@@ -738,11 +777,7 @@ function flakyStore(inner: MemoryStore): {
       },
       async put(key, body, opts) {
         puts.push({ key, opts });
-        const result = await inner.put(key, body, opts);
-        // An unconditional rewrite regenerates the metadata, so the loss ends.
-        if ('overwrite' in opts && key.endsWith('/state')) lost = false;
-        if (putBroken) return { ok: true, etag: '' };
-        return result;
+        return inner.put(key, body, opts);
       },
       async del(keys) {
         await inner.del(keys);
@@ -758,12 +793,6 @@ function flakyStore(inner: MemoryStore): {
     set lost(value: boolean) {
       lost = value;
     },
-    get putBroken() {
-      return putBroken;
-    },
-    set putBroken(value: boolean) {
-      putBroken = value;
-    },
   };
 }
 
@@ -772,8 +801,11 @@ function statePuts(store: { puts: { key: string; opts: PutOptions }[] }): PutOpt
   return store.puts.filter((entry) => entry.key.endsWith('/state')).map((entry) => entry.opts);
 }
 
-/** A store whose first write to the state slot returns no ETag, as if the blob was born without one. */
-function emptyFirstStatePut(inner: MemoryStore): {
+/** A store whose first state write returns no ETag, optionally followed by a concurrent successor. */
+function emptyFirstStatePut(
+  inner: MemoryStore,
+  successor?: Uint8Array,
+): {
   store: BlobStore;
   puts: { key: string; opts: PutOptions }[];
 } {
@@ -787,6 +819,9 @@ function emptyFirstStatePut(inner: MemoryStore): {
         const result = await inner.put(key, body, opts);
         if (first && key.endsWith('/state')) {
           first = false;
+          if (successor && result.ok) {
+            await inner.put(key, successor, { ifMatch: result.etag });
+          }
           return { ok: true, etag: '' };
         }
         return result;

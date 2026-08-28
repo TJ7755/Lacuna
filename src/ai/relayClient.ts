@@ -12,6 +12,9 @@ import {
 } from './relayProtocol';
 
 const GENERATION_HEADER = 'X-Lacuna-Generation';
+const RECOVERY_READ_OFFSETS_MS = [0, 650, 1_400] as const;
+const RECOVERY_READ_TIMEOUT_MS = 600;
+const RECOVERY_DEADLINE_MS = 2_200;
 
 export interface RelayBrowserCredentials {
   sessionId: string;
@@ -45,6 +48,10 @@ export interface RelayClient {
 export interface RelayClientOptions {
   relayUrl?: string;
   fetchImpl?: typeof fetch;
+  recovery?: {
+    now?: () => number;
+    wait?: (milliseconds: number) => Promise<void>;
+  };
 }
 
 export type RelayClientOperation = 'create' | 'peer' | 'pull' | 'push' | 'revoke';
@@ -95,6 +102,16 @@ export class RelayStaleGenerationError extends RelayClientError {
   }
 }
 
+export class RelayPushOutcomeUnknownError extends RelayClientError {
+  constructor(status?: number) {
+    super('The AI relay mailbox write outcome is unknown.', {
+      operation: 'push',
+      status,
+    });
+    this.name = 'RelayPushOutcomeUnknownError';
+  }
+}
+
 export function createRelayClient(options: RelayClientOptions = {}): RelayClient {
   const relayUrl = relayUrlFor(options.relayUrl ?? DEFAULT_RELAY_URL);
   const fetcher = options.fetchImpl ?? globalThis.fetch;
@@ -102,6 +119,10 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
     throw new RelayClientConfigurationError('This device does not provide fetch for the AI relay.');
   }
   const fetchImpl = bindFetch(fetcher);
+  const recoveryTiming = {
+    now: options.recovery?.now ?? (() => performance.now()),
+    wait: options.recovery?.wait ?? wait,
+  };
 
   return {
     async create(browserPublicKey) {
@@ -149,21 +170,55 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       const session = requireCredentials(credentials, 'push');
       const generation = requireRequestGeneration(ifMatch);
       const body = copyBytes(bytes);
-      const response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}/browser`, {
-        method: 'PUT',
-        headers: {
-          ...bearer(session.browserToken),
-          'Content-Type': 'application/octet-stream',
-          'If-Match': generation,
-        },
-        body: new Blob([body], { type: 'application/octet-stream' }),
-      });
+      const mailboxUrl = `${relayUrl}/ai/s/${session.sessionId}/browser`;
+      let response: Response;
+      try {
+        response = await fetchImpl(mailboxUrl, {
+          method: 'PUT',
+          headers: {
+            ...bearer(session.browserToken),
+            'Content-Type': 'application/octet-stream',
+            'If-Match': generation,
+          },
+          body: new Blob([body], { type: 'application/octet-stream' }),
+        });
+      } catch {
+        return recoverPushGeneration(
+          fetchImpl,
+          mailboxUrl,
+          session.browserToken,
+          body,
+          recoveryTiming,
+        );
+      }
       if (response.status === 412) throw new RelayStaleGenerationError(generation);
+      if (response.status >= 500) {
+        return recoverPushGeneration(
+          fetchImpl,
+          mailboxUrl,
+          session.browserToken,
+          body,
+          recoveryTiming,
+          response.status,
+        );
+      }
       if (!response.ok) throw await httpError('push', response);
       if (response.status === 200) {
-        return parseJsonResponse(response, relayMailboxWriteResponseSchema, 'push');
+        return { generation: `"sha256:${await sha256Hex(body)}"` };
       }
-      return { generation: requireResponseGeneration(response, 'push') };
+      try {
+        return { generation: await readPushGeneration(response) };
+      } catch (error) {
+        if (!(error instanceof RelayPushOutcomeUnknownError)) throw error;
+        return recoverPushGeneration(
+          fetchImpl,
+          mailboxUrl,
+          session.browserToken,
+          body,
+          recoveryTiming,
+          response.status,
+        );
+      }
     },
 
     async revoke(credentials) {
@@ -218,6 +273,84 @@ function requireResponseGeneration(response: Response, operation: 'pull' | 'push
     );
   }
   return generation;
+}
+
+async function readPushGeneration(response: Response): Promise<string> {
+  if (response.status === 200) {
+    try {
+      const parsed = relayMailboxWriteResponseSchema.safeParse(await response.json());
+      if (parsed.success) return parsed.data.generation;
+    } catch {
+      // Vercel may strip or replace a successful response body while preserving response headers.
+    }
+  }
+
+  const generationHeaders = [response.headers.get(GENERATION_HEADER)];
+  if (response.status === 204) generationHeaders.push(response.headers.get('ETag'));
+  for (const headerGeneration of generationHeaders) {
+    const parsedHeader = relayMailboxWriteResponseSchema.safeParse({
+      generation: headerGeneration?.trim(),
+    });
+    if (parsedHeader.success) return parsedHeader.data.generation;
+  }
+
+  throw new RelayPushOutcomeUnknownError(response.status);
+}
+
+async function recoverPushGeneration(
+  fetchImpl: typeof fetch,
+  mailboxUrl: string,
+  browserToken: string,
+  attemptedBody: ArrayBuffer,
+  timing: { now: () => number; wait: (milliseconds: number) => Promise<void> },
+  status?: number,
+): Promise<RelayMailboxPush> {
+  const startedAt = timing.now();
+  const deadline = startedAt + RECOVERY_DEADLINE_MS;
+  let digest: string;
+  try {
+    digest = await sha256Hex(attemptedBody);
+  } catch {
+    throw new RelayPushOutcomeUnknownError(status);
+  }
+  const recoveryUrl = `${mailboxUrl}?digest=${digest}`;
+
+  for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
+    const delayMs = startedAt + offsetMs - timing.now();
+    if (delayMs > 0) await timing.wait(delayMs);
+    const remainingMs = deadline - timing.now();
+    if (remainingMs <= 0) break;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
+    );
+    try {
+      const response = await fetchImpl(recoveryUrl, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: bearer(browserToken),
+        signal: controller.signal,
+      });
+      if (!response.ok) continue;
+      return { generation: `"sha256:${digest}"` };
+    } catch {
+      // A read-only retry cannot overwrite a concurrent successor.
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw new RelayPushOutcomeUnknownError(status);
+}
+
+async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function parseJsonResponse<T>(

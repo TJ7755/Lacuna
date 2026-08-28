@@ -68,12 +68,33 @@ without `Content-Length`, returning 400 before pairing. The intercepted Playwrig
 this by inserting the header itself. Enforce relay body ceilings while reading the stream and treat
 a declared length as an additional integrity check, not as a prerequisite for accepting a body.
 
-## Vercel may rewrite ETag on empty responses
+## A successful Vercel mailbox write can still be ambiguous in the browser
 
 Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the relay's `ETag` on a
-`204` mailbox write, so clients could not acknowledge the new compare-and-swap generation and their
-next write failed with 412. Successful AI mailbox writes return the generation in a JSON body;
-`X-Lacuna-Generation` and `ETag` remain compatibility paths for older relay deployments.
+`204` mailbox write, and a later browser run recorded a committed `200` whose JSON generation was
+not retained by the app. A server-side `200` proves the write committed; it does not prove the
+browser accepted the response. Modern `200` clients derive a synthetic SHA-256 generation from the
+exact attempted ciphertext instead of trusting response metadata; Vercel's ordinary `ETag` is
+trusted only for legacy `204` responses.
+Observed again on 28 August: the first browser PUT was acknowledged, the second committed with `200`,
+but its response was unusable and no `412` occurred. A transport-rejected, unreadable or `5xx` PUT
+may have committed. Never retry it. A single immediate read-back can still return non-verifying
+state after a successful `200`, even when Vercel Blob is read with `useCache: false`. Use a short,
+bounded series of authenticated digest-receipt GETs and never retry the PUT. A browser-visible `200`
+derives a synthetic `"sha256:<lowercase ciphertext digest>"` generation from the exact attempted
+bytes. For an ambiguous write, the relay confirms only whether its current stored bytes match that
+digest; the client derives the same generation without trusting response metadata. The relay
+validates a later synthetic `If-Match` against current bytes and uses the store's current ETag for
+the atomic write, so competing successors still fail closed. Browser receipt timing must accommodate
+Vercel's cross-origin authorisation preflight; its recovery window is deliberately longer than the
+terminal client's. Both writers need this rule.
+
+## Monorepo preview deployments need the relay branch alias
+
+Every push to a Lacuna branch creates a new immutable web preview and a new immutable relay preview.
+A verification-only web build must target the relay's stable branch alias, not the immutable relay
+URL from an earlier commit, or the next push quietly tests mismatched revisions. Keep production
+configuration on the normal relay URL; this applies only to the live-verification branch.
 
 ## Web AI relay sessions currently support one browser tab
 
@@ -151,10 +172,11 @@ no etag in its Vercel Blob metadata, so the relay served `ETag: ""`. The app
 stored that quoted-empty `""` as its generation (a naive `trim() === ''` guard
 misses it) and the next push sent `If-Match: ""`, which the relay rejects as
 "invalid if-match" — "Relay push failed with HTTP 400" on every sync after the
-first. The relay now self-heals: when a store ETag canonicalises empty, it
-rewrites the same bytes once with an unconditional overwrite to regenerate
-one, on both read and write. Do not reintroduce a path that hands out an
-empty ETag, and keep the app's generation guard treating `""` as absent.
+first. The relay must not hand out an empty ETag. On an ETag-less read it fails
+closed; an unconditional rewrite could overwrite a concurrent successor. If
+only a successful write response omitted its ETag, the relay re-reads and
+accepts the generation when the stored bytes still match exactly. Keep the
+app's generation guard treating `""` as absent.
 
 ## Live Blob `allowOverwrite: false` was measured, not guaranteed
 

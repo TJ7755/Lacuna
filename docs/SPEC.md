@@ -2441,8 +2441,28 @@ scrollspy and its navigation cannot drift from the rendered sections.
   stdio MCP server and calls `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.reply` and
   `lacuna.disconnect`. Browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
   the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
-  peer writes each mailbox and `ETag` / `If-Match` rejects a competing or stale writer. This is
-  outbound HTTPS polling, not a browser extension, WebSocket or inbound localhost service.
+  peer writes each mailbox. `If-Match` accepts either the backing-store ETag or a synthetic
+  `"sha256:<lowercase ciphertext digest>"` generation. For a synthetic generation, the relay first
+  verifies the current mailbox bytes against the digest and then writes against the current store
+  ETag, preserving compare-and-swap rejection of a competing or stale writer. This is outbound
+  HTTPS polling, not a browser extension, WebSocket or inbound localhost service.
+
+  A mailbox write whose HTTP acknowledgement is unreadable or returns a server-side `5xx` is not
+  retried because the relay may already have committed it. On a browser-visible `200`, the writer
+  derives the next synthetic SHA-256 generation directly from the exact attempted ciphertext rather
+  than depending on response metadata. For a transport-rejected request, an unusable non-`200`
+  success or a server-side `5xx`, the writer instead performs bounded, authenticated GETs with that
+  digest on its own mailbox. The relay returns a receipt only when the current stored ciphertext
+  matches; the writer then derives the same synthetic generation without trusting the receipt body
+  or headers.
+  Browser recovery uses absolute 0/650/1400 ms offsets, 600 ms per-read aborts and a 2.2-second
+  deadline to allow Vercel's cross-origin authorisation preflight to complete. Terminal recovery
+  uses 0/250/650 ms offsets, 250 ms per-read aborts and a one-second deadline. A mismatch that
+  persists through the receipt window requires reconnection. The recovery path does not trust an
+  ordinary platform `ETag`; that header remains legacy `204` compatibility only. If a successful
+  backing-store write omits its ETag, the relay re-reads and accepts the generation only when the
+  stored ciphertext still matches exactly. A stored mailbox with no ETag fails closed; the relay
+  never performs an unconditional repair that could overwrite a concurrent successor.
 
   A queued message is claimed with an immutable `runId` and bounded lease. Replies are complete,
   not streamed. Stop changes the browser record to `stop_requested`; the terminal refreshes that

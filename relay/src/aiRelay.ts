@@ -10,6 +10,7 @@ const GENERATION_HEADER = 'X-Lacuna-Generation';
 const SESSION_ID_RE = /^[A-HJ-KM-NP-TV-Z2-9]{20}$/;
 const PUBLIC_KEY_RE = /^[A-Za-z0-9_-]{80,100}$/;
 const TOKEN_RE = /^[0-9a-f]{64}$/;
+const DIGEST_RE = /^[0-9a-f]{64}$/;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
 
 type AiMailbox = 'browser' | 'terminal';
@@ -175,15 +176,15 @@ async function handleMailbox(
   const metadata = stored.metadata;
   if (!metadata.terminalTokenHash) return json(409, request, { error: 'session not claimed' });
 
-  const expectedHash =
+  const writerHash = mailbox === 'browser' ? metadata.browserTokenHash : metadata.terminalTokenHash;
+  const peerHash = mailbox === 'browser' ? metadata.terminalTokenHash : metadata.browserTokenHash;
+  const hasAccess =
     request.method === 'PUT'
-      ? mailbox === 'browser'
-        ? metadata.browserTokenHash
-        : metadata.terminalTokenHash
-      : mailbox === 'browser'
-        ? metadata.terminalTokenHash
-        : metadata.browserTokenHash;
-  if (!authorised(expectedHash, request)) {
+      ? authorised(writerHash, request)
+      : request.method === 'GET'
+        ? authorised(writerHash, request) || authorised(peerHash, request)
+        : authorised(peerHash, request);
+  if (!hasAccess) {
     return json(401, request, { error: 'unauthorised' });
   }
   if (request.method === 'GET') return readMailbox(store, request, id, mailbox);
@@ -197,15 +198,37 @@ async function readMailbox(
   id: string,
   mailbox: AiMailbox,
 ): Promise<Response> {
-  const stored = await store.get(mailboxKey(id, mailbox));
+  const digests = new URL(request.url).searchParams.getAll('digest');
+  if (digests.length > 1 || (digests.length === 1 && !DIGEST_RE.test(digests[0]!))) {
+    const response = json(400, request, { error: 'invalid digest' });
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  }
+  const key = mailboxKey(id, mailbox);
+  const stored = await store.get(key);
   if (!stored) return json(404, request, { error: 'not found' });
   const generation = canonicalEtag(stored.etag);
   if (generation === '') return json(500, request, { error: 'internal error' });
+  const quotedGeneration = `"${generation}"`;
+  if (digests.length === 1) {
+    const storedDigest = sha256Hex(stored.body);
+    if (!timingSafeEqual(Buffer.from(storedDigest, 'hex'), Buffer.from(digests[0]!, 'hex'))) {
+      const response = json(409, request, { error: 'digest mismatch' });
+      response.headers.set('Cache-Control', 'no-store');
+      return response;
+    }
+    const headers = corsHeaders(request);
+    headers.set('Content-Type', 'application/json');
+    headers.set('Cache-Control', 'no-store');
+    headers.set('ETag', quotedGeneration);
+    headers.set(GENERATION_HEADER, quotedGeneration);
+    return new Response(JSON.stringify({ generation: quotedGeneration }), { status: 200, headers });
+  }
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
-  headers.set('ETag', `"${generation}"`);
-  headers.set(GENERATION_HEADER, `"${generation}"`);
+  headers.set('ETag', quotedGeneration);
+  headers.set(GENERATION_HEADER, quotedGeneration);
   return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 
@@ -219,13 +242,37 @@ async function writeMailbox(
   if (expected === null) return json(428, request, { error: 'if-match required' });
   const body = await readBoundedBody(request, MAX_AI_MAILBOX_BYTES);
   if (!body.ok) return json(body.status, request, { error: body.error });
-  const written =
-    expected === 'empty'
-      ? await store.put(mailboxKey(id, mailbox), body.bytes, { exclusive: true })
-      : await store.put(mailboxKey(id, mailbox), body.bytes, { ifMatch: expected });
+  const key = mailboxKey(id, mailbox);
+  let written;
+  if (expected === 'empty') {
+    written = await store.put(key, body.bytes, { exclusive: true });
+  } else {
+    const expectedDigest = digestGeneration(expected);
+    if (expectedDigest) {
+      const current = await store.get(key);
+      if (!current || sha256Hex(current.body) !== expectedDigest) {
+        return json(412, request, { error: 'precondition failed' });
+      }
+      if (canonicalEtag(current.etag) === '') {
+        return json(500, request, { error: 'internal error' });
+      }
+      written = await store.put(key, body.bytes, { ifMatch: current.etag });
+    } else {
+      written = await store.put(key, body.bytes, { ifMatch: expected });
+    }
+  }
   if (!written.ok) return json(412, request, { error: 'precondition failed' });
-  const generation = canonicalEtag(written.etag);
-  if (generation === '') return json(500, request, { error: 'internal error' });
+  let generation = canonicalEtag(written.etag);
+  // The store may commit the bytes but omit the ETag from its write response.
+  // Reconcile without writing: an overwrite here could resurrect stale bytes.
+  if (generation === '') {
+    const recovered = await store.get(key);
+    if (!recovered || !equalBytes(recovered.body, body.bytes)) {
+      return json(500, request, { error: 'internal error' });
+    }
+    generation = canonicalEtag(recovered.etag);
+    if (generation === '') return json(500, request, { error: 'internal error' });
+  }
   const quotedGeneration = `"${generation}"`;
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/json');
@@ -396,8 +443,20 @@ function authorised(expectedHash: string, request: Request): boolean {
   return presented.length === expected.length && timingSafeEqual(presented, expected);
 }
 
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && timingSafeEqual(left, right);
+}
+
 function tokenHash(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex');
+}
+
+function sha256Hex(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function digestGeneration(value: string): string | null {
+  return /^sha256:([0-9a-f]{64})$/.exec(canonicalEtag(value))?.[1] ?? null;
 }
 
 function contentLength(request: Request): number | null {
