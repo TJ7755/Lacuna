@@ -12,9 +12,9 @@ import {
 } from './relayProtocol';
 
 const GENERATION_HEADER = 'X-Lacuna-Generation';
-const RECOVERY_READ_OFFSETS_MS = [0, 250, 650] as const;
-const RECOVERY_READ_TIMEOUT_MS = 250;
-const RECOVERY_DEADLINE_MS = 1_000;
+const RECOVERY_READ_OFFSETS_MS = [0, 650, 1_400] as const;
+const RECOVERY_READ_TIMEOUT_MS = 600;
+const RECOVERY_DEADLINE_MS = 2_200;
 
 export interface RelayBrowserCredentials {
   sessionId: string;
