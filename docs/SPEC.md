@@ -2439,8 +2439,8 @@ scrollspy and its navigation cannot drift from the rendered sections.
   The production `AiSession` adapter creates a ten-minute pairing code, persists the local
   conversation and relay credentials across reload, and polls two encrypted directional HTTP
   mailboxes. A deliberately running terminal task launches `tooling/lacuna-ai-mcp` as a standard
-  stdio MCP server and calls `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.reply` and
-  `lacuna.disconnect`. Browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
+  stdio MCP server and calls `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
+  `lacuna.reply` and `lacuna.disconnect`. Browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
   the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
   peer writes each mailbox. `If-Match` accepts either the backing-store ETag or a synthetic
   `"sha256:<lowercase ciphertext digest>"` generation. For a synthetic generation, the relay first
@@ -2449,13 +2449,13 @@ scrollspy and its navigation cannot drift from the rendered sections.
   HTTPS polling, not a browser extension, WebSocket or inbound localhost service.
 
   A mailbox write whose HTTP acknowledgement is unreadable or returns a server-side `5xx` is not
-  retried because the relay may already have committed it. On a browser-visible `200`, the writer
-  derives the next synthetic SHA-256 generation directly from the exact attempted ciphertext rather
-  than depending on response metadata. For a transport-rejected request, an unusable non-`200`
-  success or a server-side `5xx`, the writer instead performs bounded, authenticated GETs with that
-  digest on its own mailbox. The relay returns a receipt only when the current stored ciphertext
-  matches; the writer then derives the same synthetic generation without trusting the receipt body
-  or headers.
+  retried because the relay may already have committed it. A successful `200` uses the relay's real
+  generation from its JSON body or exposed header. Only a damaged acknowledgement falls back to a
+  synthetic SHA-256 generation derived from the exact attempted ciphertext. For a
+  transport-rejected request, an unusable non-`200` success or a server-side `5xx`, the writer
+  performs bounded, authenticated GETs with that digest on its own mailbox. The relay returns a
+  receipt only when the current stored ciphertext matches; the writer then derives the same
+  synthetic generation without trusting the receipt body or headers.
   Browser recovery uses absolute 0/650/1400 ms offsets, 600 ms per-read aborts and a 2.2-second
   deadline to allow Vercel's cross-origin authorisation preflight to complete. Terminal recovery
   uses 0/250/650 ms offsets, 250 ms per-read aborts and a one-second deadline. A mismatch that
@@ -2471,11 +2471,16 @@ scrollspy and its navigation cannot drift from the rendered sections.
   it cannot terminate inference already running in the model or terminal harness. The terminal task
   must remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
 
-  The current relay mailbox carries message claims, replies, Stop acknowledgements and disconnects
-  only. It does **not** expose Lacuna's course, Lesson, Card, Question or memory repositories, the
-  Electron MCP tool registry, approvals, action receipts or misconception-first instructions. The
-  preference is stored now for that later teaching integration. The Electron MCP server below is a
-  separate local-IPC data surface with different permissions and capabilities.
+  Mailbox protocol v2 also carries typed tool calls and browser-owned responses. The browser uses
+  the shared executor over the existing Electron MCP tool registry: registry lookup, validation,
+  live scope resolution, repository execution and Undo capture have one implementation. Reads are
+  implicit. Course-scoped writes require a connection/course grant; course creation uses a
+  one-shot `write_call` approval bound to the exact call and validated-input digest; destructive
+  calls use a consumed exact approval. Stable `callId` replay returns the recorded result and
+  receipt without repeating the mutation. Stop and disconnect reject later calls and clear grants,
+  approvals and replay state. Learner memories and misconception-first instructions remain future
+  slices. The Electron MCP server below is a separate local-IPC adapter with its own consent
+  coordinator.
 
 - **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
   count, followed by process-scoped read/write/destructive grants for the whole database

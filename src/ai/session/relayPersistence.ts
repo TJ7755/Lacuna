@@ -18,9 +18,12 @@ import {
   relayTokenSchema,
   type RelayBrowserMailbox,
 } from '../relayProtocol';
+import { restoreState as restoreToolSessionState } from '../toolSession/state';
+import type { AiToolSessionState } from '../toolSession';
 import type { AiSessionSnapshot } from './types';
 
 const STORAGE_KEY = 'lacuna-ai-relay-session-v1';
+const PROTOCOL_UPDATED_REASON = 'Reconnect the terminal after the AI protocol update.';
 
 export interface RelaySessionStorage {
   getItem(key: string): string | null;
@@ -37,6 +40,7 @@ export interface PersistedRelayConnection {
   queuedFollowUpMessageId: string | null;
   terminalRevisionSeen: number;
   processedEventIds: string[];
+  toolSessionState: AiToolSessionState;
 }
 
 export interface RelayDeviceState {
@@ -45,7 +49,7 @@ export interface RelayDeviceState {
 }
 
 interface StoredRelayDeviceState {
-  version: 2;
+  version: 3;
   snapshot: AiSessionSnapshot;
   connection: PersistedRelayConnection | null;
 }
@@ -79,7 +83,7 @@ export function createRelaySessionPersistence(
     },
     save(state) {
       try {
-        const stored: StoredRelayDeviceState = { version: 2, ...state };
+        const stored: StoredRelayDeviceState = { version: 3, ...state };
         storage.setItem(STORAGE_KEY, JSON.stringify(stored));
       } catch {
         // The active in-memory session remains usable when browser storage is unavailable.
@@ -93,7 +97,7 @@ function parseStoredState(value: unknown): RelayDeviceState | null {
   const parsedSnapshot = snapshotSchema.safeParse(value.snapshot);
   if (!parsedSnapshot.success) return null;
   const snapshot: AiSessionSnapshot = parsedSnapshot.data;
-  if (value.version === 2) {
+  if (value.version === 3) {
     if (value.connection === null) {
       return snapshot.connection.status === 'disconnected' ? { snapshot, connection: null } : null;
     }
@@ -102,11 +106,8 @@ function parseStoredState(value: unknown): RelayDeviceState | null {
       ? { snapshot, connection: recoverQueuedFollowUpIdentity(connection, snapshot) }
       : null;
   }
-  if (value.version === 1) {
-    const connection = parseConnection(value);
-    return connection && connectionMatchesSnapshot(connection, snapshot)
-      ? { snapshot, connection: recoverQueuedFollowUpIdentity(connection, snapshot) }
-      : null;
+  if (value.version === 2 || value.version === 1) {
+    return disconnectLegacySession(snapshot);
   }
   return null;
 }
@@ -129,7 +130,33 @@ function recoverQueuedFollowUpIdentity(
 
 function parseConnection(value: unknown): PersistedRelayConnection | null {
   const parsed = persistedConnectionSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  return parsed.success
+    ? { ...parsed.data, toolSessionState: restoreToolSessionState(parsed.data.toolSessionState) }
+    : null;
+}
+
+function disconnectLegacySession(snapshot: AiSessionSnapshot): RelayDeviceState {
+  const interruptedMessageId =
+    snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'
+      ? snapshot.run.messageId
+      : null;
+  return {
+    snapshot: {
+      ...snapshot,
+      connection: { status: 'disconnected', reason: PROTOCOL_UPDATED_REASON },
+      items: interruptedMessageId
+        ? snapshot.items.map((item) =>
+            item.kind === 'user' && item.id === interruptedMessageId
+              ? { ...item, delivery: 'stopped' as const }
+              : item,
+          )
+        : snapshot.items,
+      run: null,
+      activity: null,
+      approval: null,
+    },
+    connection: null,
+  };
 }
 
 function connectionMatchesSnapshot(
@@ -196,6 +223,13 @@ const persistedConnectionSchema = z
     queuedFollowUpMessageId: identifierSchema.nullable().optional().default(null),
     terminalRevisionSeen: revisionSchema,
     processedEventIds: z.array(identifierSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
+    toolSessionState: z
+      .object({
+        grants: z.array(z.unknown()).max(100),
+        approvals: z.array(z.unknown()).max(100),
+        ledger: z.array(z.unknown()).max(500),
+      })
+      .strict(),
   })
   .strict();
 

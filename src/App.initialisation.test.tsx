@@ -20,14 +20,16 @@ const dependencies = vi.hoisted(() => ({
   seedIfFirstRun: vi.fn(),
 }));
 
-vi.mock('./db/schema', () => ({
+vi.mock('./db/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./db/schema')>()),
   ensurePreMigrationSnapshot: dependencies.ensurePreMigrationSnapshot,
   openDatabase: dependencies.openDatabase,
 }));
 vi.mock('./db/persistence', () => ({
   requestPersistentStorage: dependencies.requestPersistentStorage,
 }));
-vi.mock('./db/repository', () => ({
+vi.mock('./db/repository', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./db/repository')>()),
   stampMissingLessonViewModes: dependencies.stampMissingLessonViewModes,
 }));
 vi.mock('./db/seed', () => ({

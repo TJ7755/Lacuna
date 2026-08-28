@@ -16,6 +16,15 @@ describe('relay AI session persistence', () => {
   it('restores pairing, credentials, private key, transcript and processed events after reload', async () => {
     const first = relaySessionHarness();
     await first.session.pair();
+    expect(JSON.parse(first.storage.getItem(STORAGE_KEY)!)).toEqual(
+      expect.objectContaining({
+        version: 3,
+        connection: expect.objectContaining({
+          browserMailbox: expect.objectContaining({ version: 2, toolResponses: [] }),
+          toolSessionState: { grants: [], approvals: [], ledger: [] },
+        }),
+      }),
+    );
 
     let pairingPoll: (() => Promise<void>) | null = null;
     let nextId = 0;
@@ -49,8 +58,9 @@ describe('relay AI session persistence', () => {
     await pairingReload.send('First message.');
 
     const completedMailbox: RelayTerminalMailbox = {
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 1,
       events: [
         {
           eventId: 'event-claim',

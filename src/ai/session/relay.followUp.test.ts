@@ -19,8 +19,9 @@ describe('relay AI session follow-up identity', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim-a',
@@ -64,8 +65,9 @@ describe('relay AI session follow-up identity', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(first.crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim-a',

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   LACUNA_AI_PROTOCOL_VERSION,
+  MAX_AI_TOOL_INPUT_BYTES,
   MAX_AI_IDENTIFIER_LENGTH,
   MAX_AI_MESSAGE_LENGTH,
   MAX_AI_WAIT_MS,
@@ -8,6 +9,7 @@ import {
   isAiBridgeError,
   isAiBridgeRequest,
   isSupportedAiProtocolVersion,
+  aiActionReceiptSchema,
   parseAiBridgeRequest,
 } from './protocol';
 
@@ -143,6 +145,32 @@ describe('AI browser protocol', () => {
         runId: 'run-1',
         activity: { status: 'working', summary: '', extra: true },
       }),
+    ).toBe(false);
+  });
+
+  it('rejects oversized tool input and exposes strict action receipts', () => {
+    expect(
+      isAiBridgeRequest({
+        type: 'invoke_tool',
+        connectionId: 'connection-1',
+        runId: 'run-1',
+        callId: 'call-1',
+        call: {
+          name: 'lacuna.list_courses',
+          input: { value: 'x'.repeat(MAX_AI_TOOL_INPUT_BYTES) },
+        },
+      }),
+    ).toBe(false);
+    expect(
+      aiActionReceiptSchema.safeParse({
+        receiptId: 'receipt-1',
+        callId: 'call-1',
+        toolName: 'lacuna.list_courses',
+        summary: 'Listed courses',
+        createdAt: 10,
+        targets: [],
+        unexpected: true,
+      }).success,
     ).toBe(false);
   });
 

@@ -1,7 +1,7 @@
 import type { AiEntityReference } from '../../ai/protocol';
 import type { AiConversationItem } from '../../ai/session/types';
+import { AiActivityReceipt } from './AiActivityReceipt';
 import { MarkdownView } from '../markdown/MarkdownView';
-import { CheckIcon } from '../ui/icons';
 
 function targetHref(source: AiEntityReference): string | null {
   if (source.kind === 'course') return `#/course/${source.id}`;
@@ -70,22 +70,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
           );
         }
         if (item.kind === 'receipt') {
-          return (
-            <article
-              key={item.id}
-              className="rounded-xl border border-line bg-surface-raised/60 p-3"
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-positive/10 text-positive">
-                  <CheckIcon width={14} height={14} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink">{item.receipt.summary}</p>
-                  <p className="mt-1 text-xs text-ink-faint">{item.receipt.toolName}</p>
-                </div>
-              </div>
-            </article>
-          );
+          return <AiActivityReceipt key={item.id} receipt={item.receipt} />;
         }
         return (
           <article key={item.id} className="rounded-xl border border-negative/30 bg-negative/5 p-3">

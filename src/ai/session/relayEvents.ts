@@ -186,6 +186,9 @@ export function applyTerminalEvent(
     };
   }
 
+  // Tool calls are executed by the relay session before this transcript reducer runs.
+  if (event.type === 'tool_call') return { snapshot, messages };
+
   const activeRun =
     snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'
       ? { ...snapshot.run, status: 'expired' as const, expiredAt: event.disconnectedAt }

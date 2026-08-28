@@ -3,10 +3,17 @@ import {
   MAX_AI_ACTIVITY_LENGTH,
   MAX_AI_IDENTIFIER_LENGTH,
   MAX_AI_MESSAGE_LENGTH,
+  aiActionReceiptSchema,
+  aiBridgeErrorSchema,
   aiClientIdentitySchema,
+  aiToolNameSchema,
+  boundedJsonValueSchema,
+  jsonValueSchema,
 } from './protocol';
 
-export const AI_RELAY_PROTOCOL_VERSION = 1 as const;
+/** Stable encrypted envelope format. Mailbox records may evolve independently. */
+export const AI_RELAY_ENVELOPE_VERSION = 1 as const;
+export const AI_RELAY_PROTOCOL_VERSION = 2 as const;
 export const AI_RELAY_EMPTY_GENERATION = '"0"';
 export const MAX_AI_RELAY_MAILBOX_ENTRIES = 2_000;
 
@@ -62,6 +69,30 @@ const relayReasonSchema = z
   .max(MAX_AI_ACTIVITY_LENGTH)
   .refine((value) => value.trim().length > 0, 'Disconnect reason must not be blank.');
 
+const relayToolResponseBase = {
+  runId: relayIdentifierSchema,
+  callId: relayIdentifierSchema,
+  respondedAt: relayTimestampSchema,
+};
+
+export const relayToolResponseSchema = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ...relayToolResponseBase,
+      ok: z.literal(true),
+      result: jsonValueSchema,
+      receipt: aiActionReceiptSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      ...relayToolResponseBase,
+      ok: z.literal(false),
+      error: aiBridgeErrorSchema,
+    })
+    .strict(),
+]);
+
 export const relayCreateSessionRequestSchema = z
   .object({ browserPublicKey: relayPublicKeySchema })
   .strict();
@@ -105,7 +136,7 @@ export const relayMailboxWriteResponseSchema = z
 
 export const relayEnvelopeSchema = z
   .object({
-    version: z.literal(AI_RELAY_PROTOCOL_VERSION),
+    version: z.literal(AI_RELAY_ENVELOPE_VERSION),
     nonce: base64UrlSchema.refine(
       (value) => decodedLength(value) === 12,
       'Expected a 12-byte AES-GCM nonce.',
@@ -147,6 +178,7 @@ export const relayBrowserMailboxSchema = z
     version: z.literal(AI_RELAY_PROTOCOL_VERSION),
     revision: relayRevisionSchema,
     messages: z.array(relayBrowserMessageSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
+    toolResponses: z.array(relayToolResponseSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
     terminalRevisionSeen: relayRevisionSchema,
   })
   .strict();
@@ -175,6 +207,17 @@ export const relayTerminalEventSchema = z.discriminatedUnion('type', [
   z
     .object({
       eventId: relayIdentifierSchema,
+      type: z.literal('tool_call'),
+      runId: relayIdentifierSchema,
+      callId: relayIdentifierSchema,
+      toolName: aiToolNameSchema,
+      input: boundedJsonValueSchema,
+      createdAt: relayTimestampSchema,
+    })
+    .strict(),
+  z
+    .object({
+      eventId: relayIdentifierSchema,
       type: z.literal('stop_acknowledged'),
       runId: relayIdentifierSchema,
       stoppedAt: relayTimestampSchema,
@@ -195,6 +238,7 @@ export const relayTerminalMailboxSchema = z
     version: z.literal(AI_RELAY_PROTOCOL_VERSION),
     revision: relayRevisionSchema,
     events: z.array(relayTerminalEventSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
+    browserRevisionSeen: relayRevisionSchema,
   })
   .strict();
 
@@ -209,3 +253,4 @@ export type RelayBrowserMessage = z.infer<typeof relayBrowserMessageSchema>;
 export type RelayBrowserMailbox = z.infer<typeof relayBrowserMailboxSchema>;
 export type RelayTerminalEvent = z.infer<typeof relayTerminalEventSchema>;
 export type RelayTerminalMailbox = z.infer<typeof relayTerminalMailboxSchema>;
+export type RelayToolResponse = z.infer<typeof relayToolResponseSchema>;

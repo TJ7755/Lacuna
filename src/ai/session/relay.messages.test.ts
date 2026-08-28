@@ -24,9 +24,10 @@ describe('relay AI session messages', () => {
     expect(crypto.seal).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        version: 1,
+        version: 2,
         revision: 1,
         terminalRevisionSeen: 0,
+        toolResponses: [],
         messages: [
           {
             messageId: 'message-1',
@@ -145,8 +146,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -210,8 +212,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -251,8 +254,9 @@ describe('relay AI session messages', () => {
     await session.send('Explain the testing effect.');
 
     const mailbox: RelayTerminalMailbox = {
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -311,8 +315,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-2"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -374,8 +379,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -425,8 +431,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -477,8 +484,9 @@ describe('relay AI session messages', () => {
 
     vi.mocked(relay.push).mockResolvedValueOnce({ generation: '"browser-4"' });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-stop',
@@ -514,8 +522,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -557,8 +566,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim-1',
@@ -574,8 +584,9 @@ describe('relay AI session messages', () => {
     await session.send('Now compare it with rereading.');
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-reply-1',
@@ -628,8 +639,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-old-claim',
@@ -644,8 +656,9 @@ describe('relay AI session messages', () => {
     await tick();
     setNow(2_000);
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-old-claim',
@@ -689,8 +702,9 @@ describe('relay AI session messages', () => {
     );
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-new-claim',

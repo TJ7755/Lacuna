@@ -173,7 +173,10 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
       throw relayHttpError('write the Lacuna AI terminal mailbox', response.status);
     }
     if (response.status === 200) {
-      return `"sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}"`;
+      const responseGeneration = await terminalWriteGeneration(response);
+      return (
+        responseGeneration ?? `"sha256:${createHash('sha256').update(body, 'utf8').digest('hex')}"`
+      );
     }
     const responseGeneration = await terminalWriteGeneration(response);
     if (responseGeneration) return responseGeneration;

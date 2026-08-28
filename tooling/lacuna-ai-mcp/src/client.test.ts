@@ -20,6 +20,7 @@ class FakeTransport implements TerminalRelayTransport {
     async (_code: string, _relayUrl: string, _client: AiClientIdentity) => CONNECTION,
   );
   readonly reads: Array<{ generation: string; mailbox: RelayBrowserMailbox } | null> = [];
+  fallbackRead: { generation: string; mailbox: RelayBrowserMailbox } | null = null;
   readonly writes: RelayTerminalMailbox[] = [];
   beforeWrite?: (mailbox: RelayTerminalMailbox) => void;
   writeError?: Error;
@@ -28,7 +29,7 @@ class FakeTransport implements TerminalRelayTransport {
     generation: string;
     mailbox: RelayBrowserMailbox;
   } | null> {
-    return this.reads.shift() ?? null;
+    return this.reads.shift() ?? this.fallbackRead;
   }
 
   async writeTerminalMailbox(
@@ -49,9 +50,10 @@ class FakeTransport implements TerminalRelayTransport {
 
 function queuedMailbox(): RelayBrowserMailbox {
   return {
-    version: 1,
+    version: 2,
     revision: 1,
     terminalRevisionSeen: 0,
+    toolResponses: [],
     messages: [
       {
         delivery: 'queued',
@@ -103,8 +105,9 @@ describe('TerminalAiClient', () => {
     });
     expect(transport.writes).toEqual([
       {
-        version: 1,
+        version: 2,
         revision: 1,
+        browserRevisionSeen: 1,
         events: [
           {
             type: 'claimed',
@@ -189,18 +192,20 @@ describe('TerminalAiClient', () => {
       {
         generation: '"browser-2"',
         mailbox: {
-          version: 1,
+          version: 2,
           revision: 2,
           terminalRevisionSeen: 0,
+          toolResponses: [],
           messages: [{ ...first, delivery: 'claimed', runId: 'run-1' }, second],
         },
       },
       {
         generation: '"browser-3"',
         mailbox: {
-          version: 1,
+          version: 2,
           revision: 3,
           terminalRevisionSeen: 1,
+          toolResponses: [],
           messages: [
             { ...first, delivery: 'claimed', runId: 'run-1' },
             { ...second, delivery: 'claimed', runId: 'run-3' },
@@ -222,8 +227,9 @@ describe('TerminalAiClient', () => {
     await client.waitForMessage(25_000);
 
     expect(transport.writes.at(-1)).toEqual({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 3,
       events: [
         expect.objectContaining({ type: 'claimed', messageId: 'message-2' }),
         expect.objectContaining({ type: 'claimed', messageId: 'message-3' }),
@@ -251,8 +257,9 @@ describe('TerminalAiClient', () => {
     await client.disconnect();
 
     expect(transport.writes.at(-1)).toEqual({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 1,
       events: [
         expect.objectContaining({ type: 'claimed', runId: claimed.runId }),
         {
@@ -267,6 +274,103 @@ describe('TerminalAiClient', () => {
       ],
     });
     await expect(client.waitForMessage(250)).rejects.toThrow('not connected');
+  });
+
+  it('publishes one tool call and returns only its exact browser response', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      createId: (prefix) => prefix + '-1',
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+    const responseMailbox: RelayBrowserMailbox = {
+      ...queuedMailbox(),
+      revision: 3,
+      messages: [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId: claimed.runId }],
+      toolResponses: [
+        {
+          runId: claimed.runId,
+          callId: 'call-1',
+          respondedAt: 1_100,
+          ok: true,
+          result: { courses: [] },
+        },
+      ],
+    };
+    transport.reads.push(
+      { generation: '"browser-2"', mailbox: responseMailbox },
+      { generation: '"browser-3"', mailbox: responseMailbox },
+    );
+
+    await expect(
+      client.invokeTool(claimed.runId, 'call-1', 'lacuna.list_courses', {}, 1_000),
+    ).resolves.toEqual({ ok: true, result: { courses: [] } });
+    const calls = transport.writes
+      .flatMap((mailbox) => mailbox.events)
+      .filter((event) => event.type === 'tool_call');
+    expect(new Set(calls.map((event) => event.eventId))).toHaveLength(1);
+  });
+
+  it('refreshes Stop state before admitting a tool call', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      createId: (prefix) => prefix + '-1',
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+    transport.reads.push({
+      generation: '"browser-2"',
+      mailbox: {
+        ...queuedMailbox(),
+        revision: 2,
+        messages: [
+          { ...queuedMailbox().messages[0], delivery: 'stop_requested', runId: claimed.runId },
+        ],
+        toolResponses: [],
+      },
+    });
+
+    await expect(
+      client.invokeTool(claimed.runId, 'call-1', 'lacuna.list_courses', {}, 1_000),
+    ).rejects.toThrow('tool call was not sent');
+    expect(transport.writes.flatMap((mailbox) => mailbox.events)).not.toContainEqual(
+      expect.objectContaining({ type: 'tool_call', callId: 'call-1' }),
+    );
+  });
+
+  it('times out while polling without publishing another call', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    const client = new TerminalAiClient({
+      transport,
+      now: (() => {
+        let current = 1_000;
+        return () => current++;
+      })(),
+      sleep: async () => {},
+      createId: (prefix) => prefix + '-1',
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+    transport.fallbackRead = { generation: '"browser-1"', mailbox: queuedMailbox() };
+
+    await expect(
+      client.invokeTool(claimed.runId, 'call-1', 'lacuna.list_courses', {}, 250),
+    ).rejects.toThrow('Timed out');
+    expect(
+      transport.writes
+        .flatMap((mailbox) => mailbox.events)
+        .filter((event) => event.type === 'tool_call'),
+    ).toHaveLength(1);
   });
 
   it('acknowledges a stop request for the active run instead of reclaiming it', async () => {
@@ -291,6 +395,7 @@ describe('TerminalAiClient', () => {
         ...queuedMailbox(),
         revision: 2,
         terminalRevisionSeen: 1,
+        toolResponses: [],
         messages: [
           {
             ...queuedMailbox().messages[0],
@@ -333,6 +438,7 @@ describe('TerminalAiClient', () => {
       ...queuedMailbox(),
       revision: 2,
       terminalRevisionSeen: 1,
+      toolResponses: [],
       messages: [
         {
           ...queuedMailbox().messages[0],
@@ -376,6 +482,7 @@ describe('TerminalAiClient', () => {
         ...queuedMailbox(),
         revision: 2,
         terminalRevisionSeen: 1,
+        toolResponses: [],
         messages: [
           {
             ...queuedMailbox().messages[0],
@@ -422,6 +529,7 @@ describe('TerminalAiClient', () => {
           ...queuedMailbox(),
           revision: 2,
           terminalRevisionSeen: 1,
+          toolResponses: [],
           messages: [
             {
               ...queuedMailbox().messages[0],

@@ -204,7 +204,12 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       }
       if (!response.ok) throw await httpError('push', response);
       if (response.status === 200) {
-        return { generation: `"sha256:${await sha256Hex(body)}"` };
+        try {
+          return { generation: await readPushGeneration(response) };
+        } catch (error) {
+          if (!(error instanceof RelayPushOutcomeUnknownError)) throw error;
+          return { generation: `"sha256:${await sha256Hex(body)}"` };
+        }
       }
       try {
         return { generation: await readPushGeneration(response) };

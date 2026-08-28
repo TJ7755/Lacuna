@@ -140,6 +140,14 @@ describe('AiPanel', () => {
           sources: [],
         },
       ],
+      run: {
+        runId: 'run-1',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        claimedAt: 1,
+        leaseExpiresAt: 10_000,
+        status: 'active',
+      },
       activity: {
         runId: 'run-1',
         status: 'working',
@@ -162,6 +170,14 @@ describe('AiPanel', () => {
         connectionId: 'connection-1',
         client: { name: 'Terminal agent' },
         lastActivityAt: 1,
+      },
+      run: {
+        runId: 'run-1',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        claimedAt: 1,
+        leaseExpiresAt: 10_000,
+        status: 'active',
       },
       activity: {
         runId: 'run-1',
@@ -208,6 +224,58 @@ describe('AiPanel', () => {
       screen.getByText('Further AI bridge actions are blocked. Completed changes remain.'),
     ).toBeVisible();
   });
+
+  it.each([
+    ['active', false, 'Stop'],
+    ['stop_requested', true, 'Stop requested'],
+  ] as const)(
+    'keeps Stop controlled by the %s run state when activity is completed',
+    (status, disabled, label) => {
+      const session = sessionWith({
+        connection: {
+          status: 'connected',
+          connectionId: 'connection-1',
+          client: { name: 'Terminal agent' },
+          lastActivityAt: 1,
+        },
+        run:
+          status === 'active'
+            ? {
+                runId: 'run-1',
+                conversationId: 'conversation-1',
+                messageId: 'message-1',
+                claimedAt: 1,
+                leaseExpiresAt: 10_000,
+                status,
+              }
+            : {
+                runId: 'run-1',
+                conversationId: 'conversation-1',
+                messageId: 'message-1',
+                claimedAt: 1,
+                leaseExpiresAt: 10_000,
+                status,
+                stopRequestedAt: 2,
+              },
+        activity: {
+          runId: 'run-1',
+          status: 'completed',
+          summary: 'Stopped',
+          updatedAt: 3,
+        },
+      });
+      render(<AiPanel session={session} onClose={vi.fn()} />);
+
+      const stop = screen.getByRole('button', { name: label });
+      if (disabled) {
+        expect(stop).toBeDisabled();
+      } else {
+        expect(stop).toBeEnabled();
+      }
+      fireEvent.click(stop);
+      expect(session.stop).toHaveBeenCalledTimes(disabled ? 0 : 1);
+    },
+  );
 
   it('presents the exact pending approval as the initial focus target', async () => {
     const session = sessionWith({

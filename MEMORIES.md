@@ -178,6 +178,14 @@ only a successful write response omitted its ETag, the relay re-reads and
 accepts the generation when the stored bytes still match exactly. Keep the
 app's generation guard treating `""` as absent.
 
+## Prefer the relay's real generation over a synthetic digest after a successful write
+
+Observed live on 28 August 2026: deriving a digest generation after every successful mailbox write
+made the next write perform a Vercel Blob read-after-write check. That read can return stale bytes,
+causing a false `412` against the same writer. Use the generation returned in the successful JSON
+body or exposed header first. Synthetic digest generations are recovery for damaged or ambiguous
+acknowledgements, not the normal path.
+
 ## Live Blob `allowOverwrite: false` was measured, not guaranteed
 
 On 15 August 2026, 25 concurrent first-write rounds against production
