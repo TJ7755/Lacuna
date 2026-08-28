@@ -24,9 +24,10 @@ describe('relay AI session messages', () => {
     expect(crypto.seal).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        version: 1,
+        version: 2,
         revision: 1,
         terminalRevisionSeen: 0,
+        toolResponses: [],
         messages: [
           {
             messageId: 'message-1',
@@ -145,8 +146,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -210,8 +212,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -251,8 +254,9 @@ describe('relay AI session messages', () => {
     await session.send('Explain the testing effect.');
 
     const mailbox: RelayTerminalMailbox = {
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -311,8 +315,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-2"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -374,8 +379,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -425,8 +431,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -477,8 +484,9 @@ describe('relay AI session messages', () => {
 
     vi.mocked(relay.push).mockResolvedValueOnce({ generation: '"browser-4"' });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-stop',
@@ -514,8 +522,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -542,6 +551,60 @@ describe('relay AI session messages', () => {
     );
   });
 
+  it('does not let a slow terminal mailbox read block queuing a follow-up', async () => {
+    const { session, relay, crypto, tick } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Run this first.');
+    vi.mocked(relay.pull).mockResolvedValueOnce({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 1,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    await tick();
+
+    let releasePull!: (value: null) => void;
+    vi.mocked(relay.pull).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releasePull = resolve;
+        }),
+    );
+    const polling = tick();
+    await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(2));
+
+    const sending = session.send('Queue this next.');
+    const outcome = await Promise.race([
+      sending.then(() => 'sent' as const),
+      new Promise<'blocked'>((resolve) => setTimeout(() => resolve('blocked'), 50)),
+    ]);
+    releasePull(null);
+    await polling;
+    await sending;
+
+    expect(outcome).toBe('sent');
+    expect(session.getSnapshot().queuedFollowUp).toBe('Queue this next.');
+  });
+
   it('moves a claimed follow-up from the queue into the transcript', async () => {
     const { session, relay, crypto, tick } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({
@@ -557,8 +620,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim-1',
@@ -574,8 +638,9 @@ describe('relay AI session messages', () => {
     await session.send('Now compare it with rereading.');
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-reply-1',
@@ -613,7 +678,7 @@ describe('relay AI session messages', () => {
     );
   });
 
-  it('requeues an expired claim and ignores a late reply from its old run', async () => {
+  it('requeues an expired claim under the same identity and completes a later run', async () => {
     const { session, relay, crypto, tick, setNow } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({
       terminalPublicKey: 'terminal-public',
@@ -628,8 +693,9 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-old-claim',
@@ -644,8 +710,9 @@ describe('relay AI session messages', () => {
     await tick();
     setNow(2_000);
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-old-claim',
@@ -675,27 +742,27 @@ describe('relay AI session messages', () => {
     expect(expired.items).toEqual([
       expect.objectContaining({
         kind: 'user',
+        id: 'message-1',
         content: 'Try this message again after the lease.',
         delivery: 'queued',
       }),
     ]);
-    const retriedMessageId = expired.items[0]?.id;
-    expect(retriedMessageId).toEqual(expect.stringMatching(/^message-(?!1$).+/));
     expect(crypto.seal).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({
-        messages: [expect.objectContaining({ messageId: retriedMessageId, delivery: 'queued' })],
+        messages: [expect.objectContaining({ messageId: 'message-1', delivery: 'queued' })],
       }),
     );
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-new-claim',
           type: 'claimed',
-          messageId: retriedMessageId,
+          messageId: 'message-1',
           runId: 'run-new',
           claimedAt: 2_100,
           leaseExpiresAt: 3_000,
@@ -704,7 +771,105 @@ describe('relay AI session messages', () => {
     });
     await tick();
     expect(session.getSnapshot().run).toEqual(
-      expect.objectContaining({ status: 'active', runId: 'run-new' }),
+      expect.objectContaining({ status: 'active', runId: 'run-new', messageId: 'message-1' }),
     );
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'claimed' }),
+    ]);
+
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 4,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-new-reply',
+          type: 'reply',
+          messageId: 'message-1',
+          runId: 'run-new',
+          content: 'This reply belongs to the retried run.',
+          createdAt: 2_200,
+        },
+      ],
+    });
+    await tick();
+
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'completed' }),
+      expect.objectContaining({
+        kind: 'assistant',
+        content: 'This reply belongs to the retried run.',
+      }),
+    ]);
+    expect(session.getSnapshot().run).toEqual(
+      expect.objectContaining({ status: 'completed', runId: 'run-new', messageId: 'message-1' }),
+    );
+  });
+
+  it('accepts a reply authored inside the lease when the browser polls after expiry', async () => {
+    const { session, relay, crypto, tick, setNow } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Finish before the lease, even if my browser polls late.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 1,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 2_000,
+        },
+      ],
+    });
+    await tick();
+
+    setNow(2_100);
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 2,
+      revision: 2,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 2_000,
+        },
+        {
+          eventId: 'event-reply',
+          type: 'reply',
+          messageId: 'message-1',
+          runId: 'run-1',
+          content: 'This reply was authored in time.',
+          createdAt: 1_999,
+        },
+      ],
+    });
+
+    await tick();
+
+    expect(session.getSnapshot().run).toEqual(
+      expect.objectContaining({ status: 'completed', runId: 'run-1', messageId: 'message-1' }),
+    );
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'completed' }),
+      expect.objectContaining({ kind: 'assistant', content: 'This reply was authored in time.' }),
+    ]);
   });
 });

@@ -114,7 +114,7 @@ describe('AiComposer', () => {
     });
   });
 
-  it('provides a 44 by 44 pixel minimum Send target', () => {
+  it('uses a shorter, wider Send target in the compact composer', () => {
     render(
       <AiComposer
         session={session()}
@@ -125,10 +125,23 @@ describe('AiComposer', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass(
-      'min-h-11',
-      'min-w-11',
+    expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass('h-8', 'min-w-16');
+  });
+
+  it('keeps message actions in document flow below multiline content', () => {
+    render(
+      <AiComposer
+        session={session()}
+        disabled={false}
+        initialDraft={'First line\nSecond line\nThird line'}
+        queuedFollowUp={null}
+        autoFocus={false}
+      />,
     );
+
+    const actions = screen.getByRole('group', { name: 'Message actions' });
+    expect(actions).not.toHaveClass('absolute');
+    expect(screen.getByRole('textbox', { name: 'Message AI' }).nextElementSibling).toBe(actions);
   });
 
   it('keeps the draft usable when the session rejects a send', async () => {

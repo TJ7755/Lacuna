@@ -35,8 +35,8 @@ export function AiSection() {
         <div className="min-w-0">
           <div className="text-sm text-ink">Use misconception-first teaching</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
-            Saves your preference for the planned teaching workflow. Memory and course or Card
-            actions are not connected to AI chat yet.
+            Saves your preference for the planned teaching workflow. Course actions stay local and
+            require Lacuna&apos;s normal permission checks.
           </p>
         </div>
         <Toggle

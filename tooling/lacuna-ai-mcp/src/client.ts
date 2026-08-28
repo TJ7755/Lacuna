@@ -1,16 +1,19 @@
 import { randomUUID } from 'node:crypto';
-import type { AiClientIdentity } from '../../../src/ai/protocol.js';
+import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol.js';
 import {
   AI_RELAY_EMPTY_GENERATION,
+  relayTerminalEventSchema,
   type RelayBrowserMailbox,
   type RelayTerminalEvent,
   type RelayTerminalMailbox,
+  type RelayToolResponse,
 } from '../../../src/ai/relayProtocol.js';
 
 export const DEFAULT_AI_RELAY_URL = 'https://lacuna-relay.vercel.app';
 const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
-const CLAIM_LEASE_MS = 60_000;
+const CLAIM_LEASE_MS = 5 * 60_000;
+const TOOL_CALL_TIMEOUT_MS = 25_000;
 
 export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
 
@@ -73,6 +76,12 @@ interface ActiveRun {
   replyRevision?: number;
 }
 
+type WithoutRelayEnvelope<T> = T extends unknown
+  ? Omit<T, 'runId' | 'callId' | 'respondedAt'>
+  : never;
+
+export type TerminalToolResponse = WithoutRelayEnvelope<RelayToolResponse>;
+
 export interface TerminalAiClientOptions {
   transport: TerminalRelayTransport;
   now?: () => number;
@@ -85,10 +94,16 @@ export class TerminalAiClient {
   private readonly now: () => number;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly createId: (prefix: 'event' | 'run') => string;
+  private operationQueue: Promise<void> = Promise.resolve();
   private connection: ConnectedTerminalRelay | null = null;
   private browserGeneration: string | null = null;
   private terminalGeneration = AI_RELAY_EMPTY_GENERATION;
-  private terminalMailbox: RelayTerminalMailbox = { version: 1, revision: 0, events: [] };
+  private terminalMailbox: RelayTerminalMailbox = {
+    version: 2,
+    revision: 0,
+    events: [],
+    browserRevisionSeen: 0,
+  };
   private readonly activeRuns = new Map<string, ActiveRun>();
   private readonly claimedMessageIds = new Set<string>();
   private readonly acknowledgedStops = new Set<string>();
@@ -102,7 +117,39 @@ export class TerminalAiClient {
     this.createId = options.createId ?? ((prefix) => `${prefix}-${randomUUID()}`);
   }
 
-  async connect(
+  connect(
+    code: string,
+    relayUrl: string | undefined,
+    client: AiClientIdentity,
+  ): Promise<ConnectedTerminalRelay> {
+    return this.runExclusive(() => this.connectExclusive(code, relayUrl, client));
+  }
+
+  waitForMessage(timeoutMs = DEFAULT_WAIT_MS): Promise<WaitForMessageResult> {
+    return this.runExclusive(() => this.waitForMessageExclusive(timeoutMs));
+  }
+
+  reply(runId: string, messageId: string, content: string): Promise<void> {
+    return this.runExclusive(() => this.replyExclusive(runId, messageId, content));
+  }
+
+  invokeTool(
+    runId: string,
+    callId: string,
+    toolName: string,
+    input: JsonValue,
+    timeoutMs = TOOL_CALL_TIMEOUT_MS,
+  ): Promise<TerminalToolResponse> {
+    return this.runExclusive(() =>
+      this.invokeToolExclusive(runId, callId, toolName, input, timeoutMs),
+    );
+  }
+
+  disconnect(): Promise<void> {
+    return this.runExclusive(() => this.disconnectExclusive());
+  }
+
+  private async connectExclusive(
     code: string,
     relayUrl: string | undefined,
     client: AiClientIdentity,
@@ -113,14 +160,15 @@ export class TerminalAiClient {
     return connection;
   }
 
-  async waitForMessage(timeoutMs = DEFAULT_WAIT_MS): Promise<WaitForMessageResult> {
+  private async waitForMessageExclusive(timeoutMs: number): Promise<WaitForMessageResult> {
     const connection = this.requireConnection();
     const deadline = this.now() + timeoutMs;
 
     for (;;) {
       const read = await this.transport.readBrowserMailbox(connection);
-      if (read && read.generation !== this.browserGeneration) {
-        this.applyBrowserAcknowledgement(read.mailbox.terminalRevisionSeen);
+      if (read) {
+        const generationChanged = read.generation !== this.browserGeneration;
+        if (generationChanged) this.noteBrowserMailbox(read.mailbox);
         const stop = await this.acknowledgeRequestedStop(read.mailbox);
         if (stop) {
           this.browserGeneration = read.generation;
@@ -155,7 +203,7 @@ export class TerminalAiClient {
             leaseExpiresAt,
           };
         }
-        this.browserGeneration = read.generation;
+        if (generationChanged) this.browserGeneration = read.generation;
       }
 
       const remaining = deadline - this.now();
@@ -164,7 +212,7 @@ export class TerminalAiClient {
     }
   }
 
-  async reply(runId: string, messageId: string, content: string): Promise<void> {
+  private async replyExclusive(runId: string, messageId: string, content: string): Promise<void> {
     const connection = this.requireConnection();
     const active = this.activeRuns.get(runId);
     if (!active || active.messageId !== messageId || active.replyRevision !== undefined) {
@@ -172,7 +220,7 @@ export class TerminalAiClient {
     }
     const latest = await this.transport.readBrowserMailbox(connection);
     if (latest && latest.generation !== this.browserGeneration) {
-      this.applyBrowserAcknowledgement(latest.mailbox.terminalRevisionSeen);
+      this.noteBrowserMailbox(latest.mailbox);
       const stopped = await this.acknowledgeRequestedStop(latest.mailbox);
       this.browserGeneration = latest.generation;
       if (stopped?.runId === runId) {
@@ -190,7 +238,75 @@ export class TerminalAiClient {
     active.replyRevision = this.terminalMailbox.revision;
   }
 
-  async disconnect(): Promise<void> {
+  private async invokeToolExclusive(
+    runId: string,
+    callId: string,
+    toolName: string,
+    input: JsonValue,
+    timeoutMs: number,
+  ): Promise<TerminalToolResponse> {
+    const connection = this.requireConnection();
+    const active = this.activeRuns.get(runId);
+    if (!active || active.replyRevision !== undefined) {
+      throw new Error('The supplied run is not active in this terminal session.');
+    }
+    const call = {
+      type: 'tool_call',
+      eventId: 'validation',
+      runId,
+      callId,
+      toolName,
+      input,
+      createdAt: this.now(),
+    } as const;
+    const parsedCall = relayTerminalEventSchema.safeParse(call);
+    if (!parsedCall.success) throw new Error('The Lacuna AI tool call is invalid.');
+
+    const latest = await this.transport.readBrowserMailbox(connection);
+    if (!latest) throw new Error('The Lacuna AI session is disconnected.');
+    if (latest.generation !== this.browserGeneration) {
+      this.noteBrowserMailbox(latest.mailbox);
+      const stopped = await this.acknowledgeRequestedStop(latest.mailbox);
+      this.browserGeneration = latest.generation;
+      if (stopped?.runId === runId) {
+        throw new Error('Stop was requested for this run; the tool call was not sent.');
+      }
+    }
+
+    await this.appendEvent({ ...parsedCall.data, eventId: this.createId('event') });
+
+    const deadline = this.now() + timeoutMs;
+    for (;;) {
+      const read = await this.transport.readBrowserMailbox(connection);
+      if (!read) throw new Error('The Lacuna AI session is disconnected.');
+      if (read.generation !== this.browserGeneration) {
+        this.noteBrowserMailbox(read.mailbox);
+        const stopped = await this.acknowledgeRequestedStop(read.mailbox);
+        this.browserGeneration = read.generation;
+        if (stopped?.runId === runId) {
+          throw new Error('Stop was requested for this run; the tool result was discarded.');
+        }
+      }
+      const response = read.mailbox.toolResponses.find(
+        (candidate) => candidate.runId === runId && candidate.callId === callId,
+      );
+      if (response) {
+        await this.acknowledgeBrowserRevision();
+        return response.ok
+          ? {
+              ok: true,
+              result: response.result,
+              ...(response.receipt ? { receipt: response.receipt } : {}),
+            }
+          : { ok: false, error: response.error };
+      }
+      const remaining = deadline - this.now();
+      if (remaining <= 0) throw new Error('Timed out waiting for the Lacuna AI tool result.');
+      await this.sleep(Math.min(POLL_INTERVAL_MS, remaining));
+    }
+  }
+
+  private async disconnectExclusive(): Promise<void> {
     if (!this.connection) return;
     try {
       await this.appendEvent({
@@ -227,9 +343,10 @@ export class TerminalAiClient {
   private async appendEvent(event: RelayTerminalEvent): Promise<void> {
     const connection = this.requireConnection();
     const next: RelayTerminalMailbox = {
-      version: 1,
+      version: 2,
       revision: this.terminalMailbox.revision + 1,
       events: [...this.terminalMailbox.events, event],
+      browserRevisionSeen: this.terminalMailbox.browserRevisionSeen,
     };
     let generation: string;
     try {
@@ -266,16 +383,48 @@ export class TerminalAiClient {
     }
   }
 
+  private noteBrowserMailbox(mailbox: RelayBrowserMailbox): void {
+    this.applyBrowserAcknowledgement(mailbox.terminalRevisionSeen);
+    this.terminalMailbox = {
+      ...this.terminalMailbox,
+      browserRevisionSeen: Math.max(this.terminalMailbox.browserRevisionSeen, mailbox.revision),
+    };
+  }
+
+  private async acknowledgeBrowserRevision(): Promise<void> {
+    const connection = this.requireConnection();
+    try {
+      const generation = await this.transport.writeTerminalMailbox(
+        connection,
+        this.terminalGeneration,
+        this.terminalMailbox,
+      );
+      this.terminalGeneration = generation;
+    } catch (error) {
+      if (error instanceof TerminalRelayReconnectRequiredError) this.clearConnection();
+      throw error;
+    }
+  }
+
   private requireConnection(): ConnectedTerminalRelay {
     if (!this.connection) throw new Error('Lacuna AI is not connected.');
     return this.connection;
+  }
+
+  private runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.operationQueue.then(operation, operation);
+    this.operationQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
   }
 
   private clearConnection(): void {
     this.connection = null;
     this.browserGeneration = null;
     this.terminalGeneration = AI_RELAY_EMPTY_GENERATION;
-    this.terminalMailbox = { version: 1, revision: 0, events: [] };
+    this.terminalMailbox = { version: 2, revision: 0, events: [], browserRevisionSeen: 0 };
     this.activeRuns.clear();
     this.claimedMessageIds.clear();
     this.acknowledgedStops.clear();

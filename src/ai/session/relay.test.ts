@@ -65,8 +65,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-disconnect',
@@ -173,8 +174,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -189,8 +191,9 @@ describe('relay AI session connection lifecycle', () => {
     await tick();
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-unknown-claim',
@@ -390,8 +393,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -441,8 +445,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -486,8 +491,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -532,8 +538,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-disconnect',
@@ -571,8 +578,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -586,8 +594,9 @@ describe('relay AI session connection lifecycle', () => {
     });
     await tick();
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-disconnect',
@@ -632,8 +641,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-3"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -696,8 +706,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-claim',
@@ -712,8 +723,9 @@ describe('relay AI session connection lifecycle', () => {
     await tick();
     await session.send('Recover this queued follow-up.');
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 3,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-reply',
@@ -776,8 +788,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"old-terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-old-disconnect',
@@ -797,8 +810,9 @@ describe('relay AI session connection lifecycle', () => {
       generation: '"new-terminal-2"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-new-claim',
@@ -878,8 +892,9 @@ describe('relay AI session connection lifecycle', () => {
     await replacement.send('Message from the replacement connection.');
     const pushesBeforeStaleCompletion = vi.mocked(first.relay.push).mock.calls.length;
     vi.mocked(first.crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-old-claim',

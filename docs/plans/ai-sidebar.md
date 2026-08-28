@@ -1,7 +1,7 @@
 # AI sidebar — one-week usable prototype
 
-**Status:** in progress — encrypted terminal pairing and chat delivered; domain actions, teaching
-instructions and durable learner memories remain future work
+**Status:** in progress — encrypted pairing, chat and the first domain-action vertical slice are
+delivered; teaching instructions and durable learner memories remain future work
 
 **Written:** 27 August 2026
 
@@ -15,10 +15,11 @@ code, repeatedly performs bounded message waits through a standard MCP companion
 non-streamed replies back into the sidebar. Lacuna stores no model credentials and knows nothing
 about the selected harness or model.
 
-The delivered checkpoint is chat transport only. It cannot yet inspect learning state, create or
-maintain Lacuna content, use the misconception-first preference, or persist learner memories.
-Those remain explicit later phases of this plan. Conversation transcripts remain local to the
-browser profile.
+The delivered checkpoint can invoke the existing typed domain tools through one shared executor,
+perform reads, request scoped or exact write approval, enforce Stop, replay a stable call without
+duplicating it, and render receipts from real repository results. Misconception-first execution and
+durable learner memories remain explicit later phases. Conversation transcripts remain local to
+the browser profile.
 
 This is a private tool. The interface says **AI**, not “terminal tutor”, “MCP”, “agent bridge” or a
 model name. Those are implementation details.
@@ -33,12 +34,16 @@ Delivered and source-backed:
 - two encrypted directional HTTP mailboxes with one writer each and `ETag` / `If-Match`;
 - ephemeral P-256 ECDH and AES-256-GCM envelopes which keep plaintext from the relay;
 - local transcript/session reload persistence, queued follow-up handling and cooperative Stop;
-- a final Stop refresh before reply, so a terminal cannot knowingly append a late response.
+- a final Stop refresh before reply, so a terminal cannot knowingly append a late response;
+- mailbox protocol v2 tool calls and browser responses through the existing `TOOL_REGISTRY`;
+- transport-neutral execution shared by Electron and web AI adapters;
+- implicit reads, course-scoped write grants, exact one-shot course creation and destructive
+  approvals, stable `callId` replay and real action receipts.
 
-Not delivered: domain-tool invocation, approvals, action receipts, instruction bundles,
-misconception-first execution, durable learner memories, memory backup/sync, or AI-driven Course,
-Lesson, Card, Question and assessment changes. The Electron MCP data companion is separate and does
-not make those capabilities available to web AI chat.
+Not delivered: instruction bundles, misconception-first execution, durable learner memories or
+memory backup/sync. The generic invocation path can reach the existing Course, Lesson, Card,
+Question and assessment tools, but the complete scenario-3 authored-content workflow still needs
+browser acceptance.
 
 ## Remaining prototype acceptance target
 
@@ -48,9 +53,10 @@ real repositories. Scenarios 3, 4 and 6 are future work, not current product cla
 1. Enable AI, pair a terminal agent with a short-lived code, send one message and receive one
    non-streamed response.
 2. Reload Lacuna with an unclaimed message pending, reconnect, claim it once and produce one reply.
-3. Ask AI to create a course, lessons, cards, Questions and an assessment; approve the global
-   course creation and subsequent course-scoped write, then receive structured, selectable receipts
-   for records that genuinely exist.
+3. Ask AI to create a course, lessons, cards, Questions and an assessment; approve exact one-shot
+   course creation and the subsequent course-scoped write, then receive structured, selectable
+   receipts for records that genuinely exist. The course-creation read/write/replay subset passed
+   in the real browser on 28 August 2026; the complete authored-content sequence remains.
 4. Ask a conceptual question with misconception-first enabled; the agent searches relevant
    memories and follows diagnose → conflict → resolve → transfer rather than dumping an answer.
 5. Stop while the agent is waiting and before a reply; the terminal acknowledges the run and a late
@@ -96,8 +102,8 @@ integration, browser behaviour or visual judgement disappear.
   message cannot start a new model turn after the terminal task has ended. The disconnected setup
   therefore provides one copyable instruction that tells the live agent to pair and maintain the
   bounded-wait loop.
-- Browser automation remains a harness capability for work on external websites. Future
-  Lacuna-native actions will use typed tools; the current chat companion has no domain-action tool.
+- Browser automation remains a harness capability for work on external websites. Lacuna-native
+  actions use typed tools through the shared executor.
 - OpenCode, Claude Code and Codex are examples, never product concepts. The agent instructions and
   bridge contract must not name one as the preferred runtime.
 
@@ -116,16 +122,16 @@ integration, browser behaviour or visual judgement disappear.
 - The interface first shows **Stop requested**. It changes to **Stopped** when the terminal loop
   acknowledges the run token. The copy states: **Further AI bridge actions are blocked. Completed
   changes remain.**
-- Structured action receipts remain planned with domain actions; the current relay conversation
-  produces assistant text only.
+- Successful writes append structured receipts from real repository results. Course targets link
+  to their native route; unsupported target kinds remain non-interactive rather than inventing a
+  route.
 
-### Permissions and learning evidence — planned domain-action phase
-
-None of the following permissions are present in the current chat mailbox. They govern the future
-tool integration:
+### Permissions and learning evidence
 
 - Reads retain Lacuna's implicit course-scoped grant behaviour.
 - Writes block on the existing session/course-scoped consent model.
+- Course creation cannot receive a reusable global grant. It uses one-shot `write_call` approval
+  bound to connection, run, call, tool, resolved creation target and validated-input digest.
 - Every destructive AI action uses a one-shot approval bound to connection, run, tool, resolved
   target and validated-input digest. The authorisation is consumed by one exact call and is never
   exposed to the terminal or stored as a session-wide destructive grant.
@@ -139,8 +145,8 @@ tool integration:
   survive ordinary reload. They are not included in peer sync.
 - Durable agent-memory backup, replacement, recovery merge, encrypted peer sync, size attribution
   and tombstones are planned and not implemented.
-- Connection grants do not exist in the current chat-only transport. They and live tool activity
-  belong to the planned domain-action phase.
+- Connection/course write grants and exact-call approvals are persisted for reload continuity and
+  cleared on Stop-disconnect boundaries; they are never exposed to the terminal.
 - Disabling AI currently unmounts the runtime and stops local polling. A confirmation which performs
   orderly remote revocation, queued-message cancellation and transcript preservation remains
   planned.
@@ -161,9 +167,10 @@ AI session module
   ├── local conversation queue
   ├── encrypted relay adapter and reload persistence
   ├── cooperative Stop
-  ├── activity, receipts and tutoring instructions (planned)
+  ├── activity and receipts
+  ├── tutoring instructions (planned)
   ├── memory search and maintenance (planned)
-  └── shared tool executor (planned)
+  └── shared tool executor
             ↕
 Existing TOOL_REGISTRY and repositories
             ↕
@@ -199,31 +206,32 @@ The UI continues to depend only on `AiSession`. Its production adapter owns pair
 agreement, encrypted mailbox polling, reload persistence and conversion between relay records and
 the UI read model. React does not learn relay URLs, generations, tokens or encryption formats.
 
-The terminal companion exposes a small MCP interface: connect with a pairing code, wait for a
-message, reply and disconnect. These are the only current tools. Later tool invocation, activity
-and approval events may extend the versioned mailbox union; they do not exist in mailbox v1.
+The terminal companion exposes five MCP tools: connect with a pairing code, wait for a message,
+invoke a domain tool, reply and disconnect. Mailbox protocol v2 carries `tool_call` events and
+browser-owned `toolResponses`; the encrypted envelope remains independently versioned at v1.
 
 `lacuna.wait_for_message` polls the encrypted browser mailbox for at most 25 seconds. A claim writes
-`messageId`, `runId` and lease expiry to the terminal mailbox and returns the browser-owned
-`conversationId` and content. `lacuna.reply` accepts only that active `runId`/`messageId` pair and
+`messageId`, `runId` and a five-minute lease expiry to the terminal mailbox and returns the
+browser-owned `conversationId` and content. `lacuna.reply` accepts only that active
+`runId`/`messageId` pair and
 refreshes the browser mailbox immediately before writing. If it finds `stop_requested`, it writes
 `stop_acknowledged`, removes the active run and refuses the late reply. Empty waits are ordinary;
-the terminal task must repeat them.
+the terminal task must repeat them. The companion serialises its public operations internally so
+parallel calls from an MCP host cannot race its single compare-and-swap mailbox writer. Expiry
+requeues the same stable `messageId`, and a reply authored within the lease remains valid if the
+browser processes it just after the deadline.
 
-The current terminal never receives or requests destructive approval because it cannot invoke
-domain tools. Server-held one-shot approval, `callId` replay and result-ledger behaviour remain
-planned requirements for that later integration.
+The terminal receives display-safe approval errors but never the underlying grant or exact binding.
+It retries the same stable `callId` after the browser decision. The browser-owned result ledger
+replays an exact match and rejects any attempt to bind that ID to different input.
 
 Claim, reply and disconnect events refresh the current browser session. Explicit terminal
 disconnect updates the panel; transient polling failures are retried. Quiet-state lease expiry and
 richer failure presentation remain unfinished. One pairing code admits one terminal companion.
 
-### Planned shared tool execution
+### Shared tool execution — delivered
 
-This section is a design constraint for future domain actions. The delivered chat companion does
-not call `TOOL_REGISTRY`.
-
-Do not copy `handleInvoke` for the web path. Extract its transport-neutral work into one executor:
+The web path does not copy `handleInvoke`. Its transport-neutral executor owns:
 
 1. Registry lookup.
 2. Input validation.
@@ -385,11 +393,11 @@ includes:
   actionable retry copy.
 - **Conversation:** the delivered transcript and composer carry user and assistant text.
 - **Working:** conversation remains usable; current activity and Stop appear in the header.
-- **Approval (rendering only):** a structured approval card exists behind `AiSession`, but the
-  current chat transport cannot request domain approval.
+- **Approval:** the browser renders the exact pending action and safe-first decision controls; the
+  terminal sees only display-safe pending/rejected results.
 - **Failed:** persistent error with retry or reconnect.
-- **Receipts and completed capsule (planned):** renderers exist for receipt-shaped fixtures, but no
-  live domain action produces them and the activity capsule is not delivered.
+- **Receipts:** successful writes append a structured receipt built from the repository result.
+- **Completed capsule (planned):** the closed-panel activity capsule is not delivered.
 
 The transcript uses `role="log"` with polite announcement only for newly appended messages. Activity
 uses a separate visually hidden polite status. Marking the whole panel live would make assistive
@@ -436,6 +444,7 @@ src/ai/settings.ts
 src/ai/relayProtocol.ts
 src/ai/relayCrypto.ts
 src/ai/relayClient.ts
+src/ai/toolSession.ts
 src/ai/session/types.ts
 src/ai/session/AiSessionContext.tsx
 src/ai/session/relay.ts
@@ -445,7 +454,10 @@ src/components/ai/AiConversation.tsx
 src/components/ai/AiComposer.tsx
 src/components/ai/AiApprovalCard.tsx
 src/components/ai/AiConnectionState.tsx
+src/components/ai/AiActivityReceipt.tsx
 src/pages/settings/AiSection.tsx
+
+src/mcp/executor.ts
 
 relay/src/aiRelay.ts
 tooling/lacuna-ai-mcp/**
@@ -455,12 +467,10 @@ tooling/lacuna-ai-mcp/**
 
 ```text
 src/ai/instructions.ts
-src/ai/toolSession.ts
 src/ai/repository.ts
 src/db/agentMemoryRepository.ts
 src/db/replacementLifecycle.ts
 src/mcp/tools/memories.ts
-src/components/ai/AiActivityReceipt.tsx
 src/components/ai/AiActivityCapsule.tsx
 ```
 
@@ -504,6 +514,10 @@ documentation change.
 
 ### Day 1 — freeze interfaces and red tests
 
+**Status: delivered.** The typed session seam, strict bridge protocol and six browser scenarios are
+in source. Mailbox protocol v2 was added for the domain-action slice without changing the encrypted
+envelope version.
+
 The orchestrator owns a half-day architectural freeze:
 
 1. Record the product decisions and six browser scenarios as typed acceptance fixtures; execution
@@ -518,6 +532,9 @@ receipts and inspector embellishment before cutting browser proof, permission sa
 
 ### Days 2–3 — four parallel owners
 
+**Status: partial.** AI UI, relay session and shared executor/tool-session work are delivered.
+Memory persistence/sync and pedagogy remain the next owner tracks.
+
 | Owner                   | Exclusive territory                                                                                                                                                                 | Completion criterion                                                                                                                                                                                                |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | AI UI                   | `src/components/ai/**`, `AppShell.tsx`, `Sidebar.tsx`, `AiSection.tsx`, AI settings and their tests                                                                                 | Every UI state renders through an in-memory `AiSession`; desktop gating, active-session continuity, focus and capsule mutual exclusion pass                                                                         |
@@ -531,6 +548,11 @@ replacement of it. No two workers edit `AppShell.tsx`, `Sidebar.tsx`, `schema.ts
 `registry.ts` or `App.tsx` concurrently.
 
 ### Day 4 — integration and high-value actions
+
+**Status: first vertical slice delivered.** A real terminal run invoked `lacuna.list_courses`,
+requested exact approval for `lacuna.create_course`, created one repository record, replayed the
+same `callId` without duplication and rendered a linked receipt. Complete authored workflows for
+Lessons, Cards, Questions and assessments remain to be exercised through the browser.
 
 The orchestrator integrates the four branches and owns `App.tsx`; the tools owner remains the sole
 owner of `registry.ts`. Add deliberate receipts for:
@@ -551,6 +573,10 @@ and an approved write through the existing tool registry, and replies with a ren
 
 ### Day 5 — trust states
 
+**Status: tool-call trust subset delivered.** Exact-call approval, replay persistence, disconnect
+revocation, Stop enforcement and connection recovery are implemented. Broader disable,
+replacement/sync coordination and closed-panel activity continuity remain.
+
 Finish one-shot approval, Undo, stop, reload recovery, connection reset and failure presentation.
 Exercise browser scenarios 2, 3 and 5. Verify that:
 
@@ -562,6 +588,8 @@ Exercise browser scenarios 2, 3 and 5. Verify that:
 
 ### Day 6 — teaching and memory
 
+**Status: not started.**
+
 Exercise scenario 4 against real course content and memories. Check:
 
 - active and uncertain memories are retrieved with intent rather than dumped wholesale;
@@ -572,6 +600,10 @@ Exercise scenario 4 against real course content and memories. Check:
 - a two-device peer merge preserves the expected memory update/deletion.
 
 ### Day 7 — browser quality gate and review
+
+**Status: partial.** The 1280 px live browser gate passed for pairing, read, exact approval, write,
+receipt, replay and Stop. Per the prompter's required ordering, this browser gate ran before any
+automated verification. The full viewport/theme/zoom matrix and final dual review remain.
 
 Run the complete automated suite, then browser-driven UI checks at 1024, 1280, 1440 and 1920 px in
 light, dark, reduced-motion and 200% zoom conditions. Cover threshold crossing during an active run,

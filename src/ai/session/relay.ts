@@ -2,6 +2,7 @@ import {
   RelayPushOutcomeUnknownError,
   RelayStaleGenerationError,
   type RelayClient,
+  type RelayMailbox,
 } from '../relayClient';
 import {
   createRelayKeyPair,
@@ -13,11 +14,15 @@ import {
 import { MAX_AI_MESSAGE_LENGTH, type JsonValue } from '../protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
+  AI_RELAY_PROTOCOL_VERSION,
   MAX_AI_RELAY_MAILBOX_ENTRIES,
   relayTerminalMailboxSchema,
   type RelayBrowserMailbox,
   type RelayEnvelope,
+  type RelayTerminalEvent,
+  type RelayToolResponse,
 } from '../relayProtocol';
+import { createAiToolSession, type AiToolInvokeResult, type AiToolSession } from '../toolSession';
 import type { AiSession, AiSessionCommandResult, AiSessionSnapshot } from './types';
 import { appendConversationItems, applyTerminalEvent, expireClaimLease } from './relayEvents';
 import {
@@ -65,6 +70,7 @@ export interface RelayAiSessionOptions {
   crypto?: RelaySessionCrypto;
   now?: () => number;
   createId?: (prefix: string) => string;
+  toolSession?: AiToolSession;
 }
 
 export function createRelayAiSession(options: RelayAiSessionOptions): AiSession {
@@ -84,10 +90,22 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
   let active = false;
   let pollInFlightEpoch: number | null = null;
   let mutationQueue: Promise<void> = Promise.resolve();
+  const toolSession =
+    options.toolSession ??
+    createAiToolSession(
+      {
+        now,
+        createId: () => createId('approval'),
+      },
+      persisted?.toolSessionState,
+    );
 
   if (isExpiredPairing(snapshot, now())) expirePairing();
 
   function persist(): void {
+    if (persisted) {
+      persisted = { ...persisted, toolSessionState: toolSession.exportState() };
+    }
     persistence.save({ snapshot, connection: persisted });
   }
 
@@ -120,6 +138,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
 
   function expirePairing(): void {
     stopPolling();
+    toolSession.clear();
     persisted = null;
     encryptionKey = null;
     publish({
@@ -127,6 +146,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       connection: { status: 'disconnected', reason: PAIRING_EXPIRED_REASON },
       run: null,
       activity: null,
+      approval: null,
     });
   }
 
@@ -134,7 +154,16 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     if (epoch !== pollingEpoch || pollInFlightEpoch === epoch) return;
     pollInFlightEpoch = epoch;
     try {
-      await serialise(() => (epoch === pollingEpoch ? pollOnce(epoch) : Promise.resolve()));
+      const connection = persisted;
+      const pulled: RelayMailbox | null =
+        connection?.peerPublicKey &&
+        snapshot.connection.status !== 'disconnected' &&
+        !isExpiredPairing(snapshot, now())
+          ? await options.relay.pull(connection.credentials)
+          : null;
+      await serialise(() =>
+        epoch === pollingEpoch ? pollOnce(epoch, pulled) : Promise.resolve(),
+      );
     } catch (error) {
       const reason = mailboxGenerationReason(error);
       if (epoch === pollingEpoch && reason) {
@@ -146,7 +175,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     }
   }
 
-  async function pollOnce(epoch: number): Promise<void> {
+  async function pollOnce(epoch: number, pulled: RelayMailbox | null): Promise<void> {
     if (epoch !== pollingEpoch || !persisted || snapshot.connection.status === 'disconnected') {
       return;
     }
@@ -180,13 +209,12 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     let queuedFollowUpMessageId = persisted.queuedFollowUpMessageId;
     let nextSnapshot = snapshot;
     let messages = [...persisted.browserMailbox.messages];
-    const expired = expireClaimLease(nextSnapshot, messages, now(), () => createId('message'));
-    if (expired) ({ snapshot: nextSnapshot, messages } = expired);
+    let toolResponses = [...persisted.browserMailbox.toolResponses];
+    let mailboxChanged = false;
 
-    const pulled = await options.relay.pull(persisted.credentials);
     if (epoch !== pollingEpoch) return;
     let terminalRevisionSeen = persisted.terminalRevisionSeen;
-    const events = [];
+    const events: RelayTerminalEvent[] = [];
     if (pulled) {
       const envelope = JSON.parse(new TextDecoder().decode(pulled.bytes)) as unknown;
       const key = await getEncryptionKey(epoch);
@@ -195,13 +223,72 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       if (epoch !== pollingEpoch) return;
       const terminalMailbox = relayTerminalMailboxSchema.parse(opened);
       terminalRevisionSeen = terminalMailbox.revision;
+      if (
+        toolResponses.length > 0 &&
+        terminalMailbox.browserRevisionSeen >= persisted.browserMailbox.revision
+      ) {
+        toolResponses = [];
+        mailboxChanged = true;
+      }
       events.push(...terminalMailbox.events.filter((event) => !processed.has(event.eventId)));
     }
-    if (!expired && events.length === 0) return;
+    const activeRun = nextSnapshot.run?.status === 'active' ? nextSnapshot.run : null;
+    const timelyReply =
+      activeRun !== null &&
+      events.some(
+        (event) =>
+          event.type === 'reply' &&
+          event.runId === activeRun.runId &&
+          event.messageId === activeRun.messageId &&
+          event.createdAt < activeRun.leaseExpiresAt,
+      );
+    const expired = timelyReply ? null : expireClaimLease(nextSnapshot, messages, now());
+    if (expired) ({ snapshot: nextSnapshot, messages } = expired);
+    if (!expired && events.length === 0 && !mailboxChanged) return;
 
     for (const event of events) {
       const beforeEvent = nextSnapshot;
-      ({ snapshot: nextSnapshot, messages } = applyTerminalEvent(nextSnapshot, messages, event));
+      if (event.type === 'tool_call') {
+        const outcome = await toolSession.invoke({
+          connectionId: persisted.credentials.sessionId,
+          runId: event.runId,
+          runStatus:
+            nextSnapshot.connection.status === 'disconnected'
+              ? 'disconnected'
+              : nextSnapshot.run?.runId === event.runId
+                ? nextSnapshot.run.status
+                : 'expired',
+          callId: event.callId,
+          toolName: event.toolName,
+          input: event.input,
+        });
+        const response: RelayToolResponse = outcome.response.ok
+          ? {
+              runId: event.runId,
+              callId: event.callId,
+              respondedAt: now(),
+              ok: true,
+              result: outcome.response.result,
+              ...(outcome.effects.receipt ? { receipt: outcome.effects.receipt } : {}),
+            }
+          : {
+              runId: event.runId,
+              callId: event.callId,
+              respondedAt: now(),
+              ok: false,
+              error: outcome.response.error,
+            };
+        toolResponses = [
+          ...toolResponses.filter(
+            (candidate) => candidate.runId !== event.runId || candidate.callId !== event.callId,
+          ),
+          response,
+        ].slice(-MAX_AI_RELAY_MAILBOX_ENTRIES);
+        nextSnapshot = applyToolEffects(nextSnapshot, event, outcome);
+        mailboxChanged = true;
+      } else {
+        ({ snapshot: nextSnapshot, messages } = applyTerminalEvent(nextSnapshot, messages, event));
+      }
       if (event.type === 'claimed' && event.messageId === queuedFollowUpMessageId) {
         queuedFollowUpMessageId = null;
       }
@@ -213,6 +300,10 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       ) {
         nextSnapshot = { ...nextSnapshot, ...recoverDisconnectedState(beforeEvent) };
         queuedFollowUpMessageId = null;
+      }
+      if (event.type === 'disconnected') {
+        toolSession.clear();
+        nextSnapshot = { ...nextSnapshot, approval: null };
       }
       processed.add(event.eventId);
       if (processed.size > MAX_AI_RELAY_MAILBOX_ENTRIES) {
@@ -233,6 +324,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       ...persisted.browserMailbox,
       revision: persisted.browserMailbox.revision + 1,
       messages,
+      toolResponses,
       terminalRevisionSeen,
     };
     let browserGeneration: string | null;
@@ -320,11 +412,13 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
 
   function disconnectMailboxGeneration(reason: string, current = snapshot): void {
     stopPolling();
+    toolSession.clear();
     encryptionKey = null;
     publish({
       ...current,
       ...recoverDisconnectedState(current),
       connection: { status: 'disconnected', reason },
+      approval: null,
     });
   }
 
@@ -362,6 +456,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
           return conflict('AI is already connecting or connected.');
         }
         try {
+          toolSession.clear();
           const keyPair = await crypto.createKeyPair();
           const created = await options.relay.create(keyPair.publicKey);
           if (epoch !== pollingEpoch) return unavailable('AI connection was reset.');
@@ -379,16 +474,18 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
             peerPublicKey: null,
             browserGeneration: AI_RELAY_EMPTY_GENERATION,
             browserMailbox: {
-              version: 1,
+              version: AI_RELAY_PROTOCOL_VERSION,
               revision: 0,
               messages: [],
+              toolResponses: [],
               terminalRevisionSeen: 0,
             },
             queuedFollowUpMessageId: null,
             terminalRevisionSeen: 0,
             processedEventIds: [],
+            toolSessionState: toolSession.exportState(),
           };
-          publish({ ...snapshot, connection });
+          publish({ ...snapshot, connection, approval: null });
           if (active) startPolling();
           return { ok: true, data: { code: created.pairingCode, expiresAt: created.expiresAt } };
         } catch {
@@ -531,8 +628,24 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
         }
       });
     },
-    async decide() {
-      return conflict('That approval is no longer pending.');
+    decide(approvalId, approved) {
+      return serialise(async () => {
+        const decision = await toolSession.decide(approvalId, approved);
+        if (!decision.ok)
+          return conflict(
+            decision.error.kind === 'tool' ? decision.error.error.message : decision.error.message,
+          );
+        const activity =
+          decision.effects.activity && snapshot.run
+            ? { runId: snapshot.run.runId, ...decision.effects.activity }
+            : snapshot.activity;
+        publish({
+          ...snapshot,
+          approval: decision.approval,
+          activity,
+        });
+        return { ok: true, data: undefined };
+      });
     },
     resetConnection() {
       const credentials = persisted?.credentials ?? null;
@@ -541,12 +654,14 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       stopPolling();
       pollInFlightEpoch = null;
       mutationQueue = Promise.resolve();
+      toolSession.clear();
       persisted = null;
       encryptionKey = null;
       publish({
         ...snapshot,
         ...recovered,
         connection: { status: 'disconnected' },
+        approval: null,
       });
 
       return (async () => {
@@ -560,6 +675,37 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       })();
     },
   };
+}
+
+function applyToolEffects(
+  snapshot: AiSessionSnapshot,
+  event: Extract<RelayTerminalEvent, { type: 'tool_call' }>,
+  outcome: AiToolInvokeResult,
+): AiSessionSnapshot {
+  const approval = outcome.effects.approval
+    ? outcome.effects.approval
+    : outcome.response.ok ||
+        !['approval_required', 'approval_pending'].includes(outcome.response.error.kind)
+      ? null
+      : snapshot.approval;
+  const activity = outcome.effects.activity
+    ? { runId: event.runId, ...outcome.effects.activity }
+    : snapshot.activity;
+  const receipt = outcome.effects.receipt;
+  const items =
+    receipt &&
+    !snapshot.items.some(
+      (item) =>
+        item.kind === 'receipt' &&
+        (item.receipt.receiptId === receipt.receiptId || item.receipt.callId === receipt.callId),
+    )
+      ? appendConversationItems(snapshot.items, {
+          kind: 'receipt',
+          id: receipt.receiptId,
+          receipt,
+        })
+      : snapshot.items;
+  return { ...snapshot, approval, activity, items };
 }
 
 function mailboxGenerationReason(error: unknown): string | null {

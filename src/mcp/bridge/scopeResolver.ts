@@ -4,8 +4,24 @@ import type { McpScopeTarget, McpToolError } from './protocol';
 
 type Resolution = { ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError };
 
-export async function resolveToolScopes(input: unknown): Promise<Resolution> {
+export const CREATE_COURSE_SCOPE_KEY = '__create_course__';
+
+export async function resolveToolScopes(input: unknown, toolName?: string): Promise<Resolution> {
   const value = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+  if (toolName === 'lacuna.create_course') {
+    return {
+      ok: true,
+      targets: [
+        {
+          courseId: CREATE_COURSE_SCOPE_KEY,
+          label:
+            typeof value.name === 'string' && value.name.trim() !== ''
+              ? `New course: ${value.name}`
+              : 'New course',
+        },
+      ],
+    };
+  }
   const courseIds = new Set<string>();
   const hasExplicitCourseId = Object.prototype.hasOwnProperty.call(value, 'courseId');
   if (

@@ -1,5 +1,45 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — AI domain-action vertical slice
+
+- Hardened the live terminal path after browser acceptance exposed failures hidden by the
+  in-memory tests. `lacuna.connect` now returns a JSON-safe public projection, companion operations
+  are serialised through its single mailbox writer, and five-minute claim leases leave practical
+  time for approval and multi-tool work. Expiry preserves the original message identity, accepts a
+  reply authored before the deadline even when the browser polls later, and ignores genuinely late
+  replies without duplicating the transcript. The companion also claims a queued follow-up already
+  observed during the preceding reply instead of waiting for an unrelated browser mailbox change,
+  while slow read-only browser polling no longer blocks an explicit Send action.
+- Normalised successful domain-tool results at the AI wire boundary by omitting optional
+  `undefined` object fields while continuing to reject cycles, symbols, accessors, sparse arrays
+  and non-finite numbers. This fixes `lacuna.create_card` and `lacuna.list_cards`, which previously
+  committed or read a real Card and then reported the successful result as an internal JSON error.
+- Fixed the AI panel's composer actions overlapping multiline drafts, scrolled the transcript when
+  either side appends an item, added a restrained accessible responding/stopping indicator, and
+  made the Send control shorter and wider so it no longer dominates the compact footer.
+- Added mailbox protocol v2 tool calls and browser responses to the terminal AI companion. The
+  companion now exposes `lacuna.invoke_tool`; the browser executes existing `lacuna.*` definitions
+  through one transport-neutral executor shared with the Electron renderer adapter.
+- Added browser-owned trust state: implicit reads, connection/course write grants, exact one-shot
+  course-creation and destructive approvals, stable `callId` replay, Stop enforcement and
+  disconnect revocation. Course creation no longer requests reusable global write access; approval
+  is bound to the exact call, input digest and requested course name.
+- Added structured activity receipts from real repository results. Course receipts link to the
+  created course; replay returns the same receipt without appending or creating a duplicate.
+- Fixed successful relay writes to retain the real returned generation before falling back to a
+  synthetic ciphertext digest. Using the digest unconditionally forced Vercel Blob through a
+  read-after-write check and produced false `412` conflicts when that read was stale.
+- Fixed pending approvals and grants surviving disconnect/reconnect, and fixed the Stop control to
+  follow active run state instead of disappearing whenever the latest tool activity completed.
+- Browser acceptance passed before automated verification: one live terminal run read courses,
+  obtained exact approval, created one course, replayed the call without duplication and rendered
+  the linked receipt. A local instance of the repository relay handler then proved that browser
+  Stop prevented the terminal from sending a later tool call after the production pairing limit
+  was exhausted.
+- Restricted writer-token mailbox GET access to authenticated digest receipts. Ordinary reads of a
+  writer's own full ciphertext mailbox now return `401`; the opposite role remains the only peer
+  reader.
+
 ## Unreleased — AI roadmap and sync verification close-out
 
 - Recorded PR #101 as merged after its complete GitHub and deployed-browser gates passed, and made
@@ -58,10 +98,9 @@
   state. This fixes the same-tab reconnect race that surfaced as a `412` stale-generation failure.
 - Hardened browser mailbox acknowledgement when Vercel commits a `200` write but the browser cannot
   use its response. A later live run proved Vercel can make an arbitrary successful acknowledgement
-  unreadable, not merely the first one. A `200` visible to either writer now derives the next
-  generation as `"sha256:<lowercase ciphertext digest>"` from the exact attempted bytes, so neither
-  writer depends on response metadata that Vercel can damage. Response generation metadata remains
-  compatibility for legacy non-`200` success responses only. The relay recognises that synthetic
+  unreadable, not merely the first one. A valid response body or exposed generation header is used
+  directly; a `200` with damaged metadata falls back to
+  `"sha256:<lowercase ciphertext digest>"` from the exact attempted bytes. The relay recognises that synthetic
   generation in a later `If-Match`, verifies it against the current stored bytes, then uses the
   backing store's current ETag for the atomic write; a changed mailbox still fails with `412`.
   Browser and terminal writers reconcile a transport-rejected request, an unusable non-`200`

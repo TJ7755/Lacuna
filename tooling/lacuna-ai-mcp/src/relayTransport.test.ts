@@ -103,9 +103,10 @@ describe('HttpTerminalRelayTransport', () => {
 
   it('reads the encrypted browser mailbox and writes the encrypted terminal mailbox with ETags', async () => {
     const browserMailbox: RelayBrowserMailbox = {
-      version: 1,
+      version: 2,
       revision: 0,
       terminalRevisionSeen: 0,
+      toolResponses: [],
       messages: [],
     };
     const fetchImpl = vi
@@ -142,9 +143,14 @@ describe('HttpTerminalRelayTransport', () => {
       generation: '"browser-1"',
       mailbox: browserMailbox,
     });
-    const terminalMailbox: RelayTerminalMailbox = { version: 1, revision: 0, events: [] };
+    const terminalMailbox: RelayTerminalMailbox = {
+      version: 2,
+      revision: 0,
+      events: [],
+      browserRevisionSeen: 0,
+    };
     await expect(transport.writeTerminalMailbox(connection, '"0"', terminalMailbox)).resolves.toBe(
-      SYNTHETIC_GENERATION,
+      '"terminal-1"',
     );
 
     expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
@@ -183,8 +189,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"stale"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).rejects.toMatchObject({
@@ -220,8 +227,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);
@@ -258,8 +266,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);
@@ -305,8 +314,9 @@ describe('HttpTerminalRelayTransport', () => {
       );
 
       const result = transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       });
       await vi.advanceTimersByTimeAsync(250);
@@ -349,8 +359,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).rejects.toMatchObject({
@@ -386,8 +397,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);
@@ -430,8 +442,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);
@@ -466,8 +479,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);
@@ -503,8 +517,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe('"terminal-legacy"');
@@ -534,8 +549,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);
@@ -567,8 +583,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
@@ -599,8 +616,9 @@ describe('HttpTerminalRelayTransport', () => {
 
     await expect(
       transport.writeTerminalMailbox(connection, '"0"', {
-        version: 1,
+        version: 2,
         revision: 0,
+        browserRevisionSeen: 0,
         events: [],
       }),
     ).resolves.toBe(SYNTHETIC_GENERATION);

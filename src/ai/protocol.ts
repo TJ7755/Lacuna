@@ -9,6 +9,7 @@ export const MAX_AI_CLIENT_VERSION_LENGTH = 100;
 export const MAX_AI_MESSAGE_LENGTH = 50_000;
 export const MAX_AI_ACTIVITY_LENGTH = 1_000;
 export const MAX_AI_INSTRUCTIONS_LENGTH = 200_000;
+export const MAX_AI_TOOL_INPUT_BYTES = 64 * 1024;
 export const MIN_AI_WAIT_MS = 250;
 export const MAX_AI_WAIT_MS = 25_000;
 export const MIN_AI_LEASE_MS = 5_000;
@@ -63,6 +64,11 @@ export const jsonValueSchema = z.custom<JsonValue>(isJsonValue, {
   message: 'Expected a finite, acyclic JSON value.',
 });
 
+export const boundedJsonValueSchema = jsonValueSchema.refine(
+  (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= MAX_AI_TOOL_INPUT_BYTES,
+  `JSON input must be at most ${MAX_AI_TOOL_INPUT_BYTES} bytes.`,
+);
+
 function hasControlCharacter(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
@@ -76,7 +82,10 @@ const identifierSchema = z
   .min(1)
   .max(MAX_AI_IDENTIFIER_LENGTH)
   .refine((value) => value.trim() === value, 'Identifiers must not have surrounding whitespace.')
-  .refine((value) => !hasControlCharacter(value), 'Identifiers must not contain control characters.');
+  .refine(
+    (value) => !hasControlCharacter(value),
+    'Identifiers must not contain control characters.',
+  );
 
 const requiredText = (maximum: number) =>
   z
@@ -87,6 +96,11 @@ const requiredText = (maximum: number) =>
 const timeoutSchema = z.number().int().min(MIN_AI_WAIT_MS).max(MAX_AI_WAIT_MS);
 const leaseSchema = z.number().int().min(MIN_AI_LEASE_MS).max(MAX_AI_LEASE_MS);
 const timestampSchema = z.number().int().nonnegative().finite();
+
+export const aiToolNameSchema = identifierSchema.regex(
+  /^lacuna\.[a-z0-9_]+$/,
+  'Tool names must use the lacuna.* namespace.',
+);
 
 export const aiClientIdentitySchema = z
   .object({
@@ -170,8 +184,8 @@ const aiBridgeRequestSchema = z.discriminatedUnion('type', [
       callId: identifierSchema,
       call: z
         .object({
-          name: z.string().regex(/^lacuna\.[a-z0-9_]+$/).max(MAX_AI_IDENTIFIER_LENGTH),
-          input: jsonValueSchema,
+          name: aiToolNameSchema,
+          input: boundedJsonValueSchema,
         })
         .strict(),
     })
@@ -236,7 +250,7 @@ export type AiRunStatus = 'active' | 'stop_requested' | 'stopped' | 'completed' 
 
 const aiApprovalBaseSchema = z.object({
   approvalId: identifierSchema,
-  kind: z.enum(['write_grant', 'destructive_call']),
+  kind: z.enum(['write_grant', 'write_call', 'destructive_call']),
   toolName: requiredText(MAX_AI_IDENTIFIER_LENGTH),
   targetLabel: requiredText(MAX_AI_ACTIVITY_LENGTH),
   summary: requiredText(MAX_AI_ACTIVITY_LENGTH),
@@ -244,9 +258,7 @@ const aiApprovalBaseSchema = z.object({
 });
 
 const decidedApprovalSchema = (status: 'approved' | 'rejected') =>
-  aiApprovalBaseSchema
-    .extend({ status: z.literal(status), decidedAt: timestampSchema })
-    .strict();
+  aiApprovalBaseSchema.extend({ status: z.literal(status), decidedAt: timestampSchema }).strict();
 
 export const aiApprovalStateSchema = z
   .discriminatedUnion('status', [
@@ -315,14 +327,18 @@ export type AiConnectionState =
   | { status: 'quiet'; connection: AiConnection; lastActivityAt: number }
   | { status: 'disconnected'; disconnectedAt: number };
 
-export interface AiActionReceipt {
-  receiptId: string;
-  callId: string;
-  toolName: string;
-  summary: string;
-  createdAt: number;
-  targets: AiEntityReference[];
-}
+export const aiActionReceiptSchema = z
+  .object({
+    receiptId: identifierSchema,
+    callId: identifierSchema,
+    toolName: aiToolNameSchema,
+    summary: requiredText(MAX_AI_ACTIVITY_LENGTH),
+    createdAt: timestampSchema,
+    targets: z.array(aiEntityReferenceSchema).max(100),
+  })
+  .strict();
+
+export type AiActionReceipt = z.infer<typeof aiActionReceiptSchema>;
 
 export type AiBridgeSuccess =
   | AiConnection
@@ -342,7 +358,7 @@ const simpleErrorSchema = (kind: 'validation' | 'forbidden' | 'conflict' | 'inte
   z.object({ kind: z.literal(kind), message: errorMessageSchema }).strict();
 const approvalErrorFields = {
   approvalId: identifierSchema,
-  approvalKind: z.enum(['write_grant', 'destructive_call']),
+  approvalKind: z.enum(['write_grant', 'write_call', 'destructive_call']),
   message: errorMessageSchema,
 } as const;
 

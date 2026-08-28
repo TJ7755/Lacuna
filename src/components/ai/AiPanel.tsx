@@ -19,6 +19,10 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   const connection = snapshot.connection;
   const disconnected = connection.status === 'disconnected' || connection.status === 'pairing';
   const pendingApproval = snapshot.approval?.status === 'pending';
+  const stoppableRun =
+    snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'
+      ? snapshot.run
+      : null;
   const connectionLabel =
     connection.status === 'disconnected'
       ? 'Not connected'
@@ -80,19 +84,16 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
               )}
             </div>
           </div>
-          {snapshot.activity &&
-            ['working', 'awaiting_approval', 'stop_requested'].includes(
-              snapshot.activity.status,
-            ) && (
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={snapshot.activity.status === 'stop_requested'}
-                onClick={() => void session.stop(snapshot.activity!.runId)}
-              >
-                {snapshot.activity.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
-              </Button>
-            )}
+          {stoppableRun && (
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={stoppableRun.status === 'stop_requested'}
+              onClick={() => void session.stop(stoppableRun.runId)}
+            >
+              {stoppableRun.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
+            </Button>
+          )}
           <button
             ref={closeRef}
             type="button"
@@ -152,6 +153,21 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
 
       {(!disconnected || (connection.status === 'disconnected' && snapshot.items.length > 0)) && (
         <AiConversation items={snapshot.items} />
+      )}
+
+      {stoppableRun && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-5 py-2 text-xs text-ink-soft"
+        >
+          <span
+            className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent"
+            aria-hidden="true"
+          />
+          {stoppableRun.status === 'stop_requested' ? 'Stopping response' : 'AI is responding'}
+        </div>
       )}
 
       {!disconnected && snapshot.approval && (

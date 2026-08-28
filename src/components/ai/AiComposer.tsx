@@ -82,7 +82,7 @@ export function AiComposer({
       {editingQueued && (
         <p className="mb-2 text-xs font-medium text-accent">Editing queued follow-up</p>
       )}
-      <div className="relative rounded-xl border border-line-strong bg-paper shadow-sm transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10">
+      <div className="overflow-hidden rounded-xl border border-line-strong bg-paper shadow-sm transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10">
         <textarea
           ref={inputRef}
           rows={2}
@@ -100,16 +100,20 @@ export function AiComposer({
               void send();
             }
           }}
-          className="block max-h-36 min-h-[68px] w-full resize-none bg-transparent px-3 pb-8 pt-3 text-sm text-ink outline-none placeholder:text-ink-faint disabled:cursor-not-allowed"
+          className="block max-h-36 min-h-[68px] w-full resize-none bg-transparent px-3 py-3 text-sm text-ink outline-none placeholder:text-ink-faint disabled:cursor-not-allowed"
         />
-        <div className="absolute inset-x-2 bottom-1.5 flex items-center justify-between gap-2">
+        <div
+          role="group"
+          aria-label="Message actions"
+          className="flex items-center justify-between gap-2 border-t border-line px-2 py-1"
+        >
           <span className="px-1 text-[10px] text-ink-faint">Shift+Enter for a new line</span>
           <button
             type="button"
             aria-label="Send message"
             disabled={disabled || sending || content.trim().length === 0}
             onClick={() => void send()}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-accent px-2 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
+            className="flex h-8 min-w-16 items-center justify-center rounded-lg bg-accent px-4 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
           >
             Send
           </button>

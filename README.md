@@ -118,12 +118,14 @@ node /absolute/path/to/Lacuna/tooling/lacuna-ai-mcp/dist/index.js
 Enable **Settings → AI**, open **AI → Connect terminal**, and copy the displayed instruction into
 the running task. The task must keep calling `lacuna.wait_for_message`; a sidebar message cannot
 wake a terminal task which has already ended. See
-[`tooling/lacuna-ai-mcp/README.md`](tooling/lacuna-ai-mcp/README.md) for the four-tool contract.
+[`tooling/lacuna-ai-mcp/README.md`](tooling/lacuna-ai-mcp/README.md) for the five-tool contract.
 
-The current web companion carries chat messages, Stop acknowledgements and disconnects only. It
-does not yet expose Lacuna's course/Card tools, learner memories, approvals or
-misconception-first instructions. The Electron MCP companion below is a separate, local data-tool
-surface and should not be confused with the web AI chat transport.
+The web companion can invoke the existing typed `lacuna.*` domain tools for an active run. Reads
+remain implicit; writes block on Lacuna's browser approval, course creation and destructive calls
+use exact one-shot approval, retries are keyed by `callId`, and successful writes render local
+receipts. Stop blocks later tool calls as well as replies. Learner memories and
+misconception-first instructions remain future slices. The Electron MCP companion below is a
+separate local-IPC adapter over the same shared executor.
 
 ### Electron (desktop build)
 

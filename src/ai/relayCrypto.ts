@@ -1,6 +1,6 @@
 import { jsonValueSchema, type JsonValue } from './protocol';
 import {
-  AI_RELAY_PROTOCOL_VERSION,
+  AI_RELAY_ENVELOPE_VERSION,
   relayEnvelopeSchema,
   relayPublicKeySchema,
   type RelayEnvelope,
@@ -106,7 +106,7 @@ export async function sealRelayJson(key: CryptoKey, value: JsonValue): Promise<R
     throw new RelayCryptoFormatError('The AI relay encryption key is invalid.');
   }
   return {
-    version: AI_RELAY_PROTOCOL_VERSION,
+    version: AI_RELAY_ENVELOPE_VERSION,
     nonce: base64UrlEncode(nonce),
     ciphertext: base64UrlEncode(new Uint8Array(encrypted)),
   };
