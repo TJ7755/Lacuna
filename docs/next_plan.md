@@ -22,13 +22,16 @@ the optional desktop panel, encrypted relay pairing, chat-only terminal companio
 reload continuity and recovery from ambiguous relay writes or a dead terminal. PR #101 merged on
 28 August 2026 as `5275266`; its full GitHub check suite and deployed-browser gate passed.
 
-That checkpoint is transport, not completed AI integration. The web companion still cannot read or
-change Courses, Lessons, Cards, Questions or learning evidence; the saved misconception-first
-preference is not sent to the terminal; and durable learner memories do not exist.
+The first domain-action vertical slice now extends that transport. The web companion invokes the
+existing typed registry through a shared executor, with implicit reads, scoped or exact write
+approval, stable-call replay, Stop enforcement and real receipts. A live browser run created one
+course exactly once and rendered its receipt. The complete authored-content workflow, saved
+misconception-first instructions and durable learner memories still do not exist.
 
 The remaining work stays inside the approved plan and lands in bounded slices:
 
-1. shared domain-tool execution, scoped grants, one-shot destructive approvals and real receipts;
+1. extend the delivered shared domain-tool path through the full Course, Lesson, Card, Question and
+   assessment browser scenario;
 2. versioned teaching instructions plus durable, learner-correctable memories with backup and sync;
 3. activity continuity, replacement/sync lifecycle coordination and browser acceptance scenarios
    3, 4 and 6.

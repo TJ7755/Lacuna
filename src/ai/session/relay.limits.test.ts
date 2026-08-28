@@ -62,8 +62,9 @@ describe('relay AI session bounds', () => {
       generation: '"terminal-1"',
     });
     const firstMailbox: RelayTerminalMailbox = {
-      version: 1,
+      version: 2,
       revision: 1,
+      browserRevisionSeen: 0,
       events: Array.from({ length: MAX_AI_RELAY_MAILBOX_ENTRIES }, (_, index) => ({
         eventId: `event-${index}`,
         type: 'claimed' as const,
@@ -76,8 +77,9 @@ describe('relay AI session bounds', () => {
     vi.mocked(crypto.open).mockResolvedValue(firstMailbox as JsonValue);
     await tick();
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 1,
+      version: 2,
       revision: 2,
+      browserRevisionSeen: 0,
       events: [
         {
           eventId: 'event-new',

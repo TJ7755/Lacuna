@@ -98,9 +98,7 @@ describe('browser AI relay client', () => {
 
     await expect(
       createTestRelayClient({ fetchImpl }).push(CREDENTIALS, bytes, AI_RELAY_EMPTY_GENERATION),
-    ).resolves.toEqual({
-      generation: '"sha256:787c798e39a5bc1910355bae6d0cd87a36b2e10fd0202a83e3bb6b005da83472"',
-    });
+    ).resolves.toEqual({ generation: '"browser-1"' });
 
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe(`${DEFAULT_RELAY_URL}/ai/s/${SESSION_ID}/browser`);
@@ -151,7 +149,7 @@ describe('browser AI relay client', () => {
     ['malformed', 'not-json', 'X-Lacuna-Generation'],
     ['empty', '', 'X-Lacuna-Generation'],
   ])(
-    'derives the generation locally for a 200 with a %s JSON body',
+    'uses the response generation for a 200 with a %s JSON body when available',
     async (_case, body, header) => {
       const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
         new Response(body, {
@@ -166,9 +164,7 @@ describe('browser AI relay client', () => {
           new Uint8Array([1]),
           AI_RELAY_EMPTY_GENERATION,
         ),
-      ).resolves.toEqual({
-        generation: '"sha256:4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"',
-      });
+      ).resolves.toEqual({ generation: '"browser-fallback"' });
     },
   );
 

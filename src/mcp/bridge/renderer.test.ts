@@ -17,26 +17,48 @@ describe('MCP renderer invocation grants', () => {
     const course = await createCourse('Biology');
     const reply = vi.fn<(response: McpInvokeResponse) => void>();
 
-    await handleInvoke({
-      id: 'one', tool: 'lacuna.create_lesson', input: { courseId: course.id, name: 'Cells' }, agentId: 'agent',
-      grant: { courseId: 'another-course', scope: 'write', grantedAt: 1 },
-    }, reply, {});
+    await handleInvoke(
+      {
+        id: 'one',
+        tool: 'lacuna.create_lesson',
+        input: { courseId: course.id, name: 'Cells' },
+        agentId: 'agent',
+        grant: { courseId: 'another-course', scope: 'write', grantedAt: 1 },
+      },
+      reply,
+      {},
+    );
 
     expect(reply).toHaveBeenCalledWith({
-      id: 'one', ok: false,
-      error: { kind: 'forbidden', message: 'The MCP invocation grant does not match the requested tool scope.' },
+      id: 'one',
+      ok: false,
+      error: {
+        kind: 'forbidden',
+        message: 'The MCP invocation grant does not match the requested tool scope.',
+      },
     });
     expect(await db.lessons.count()).toBe(0);
   });
 
   it('passes the validated grant to the actual tool invocation', async () => {
-    const grant = { courseId: '__global__', scope: 'read' as const, grantedAt: 42, label: 'All Lacuna data' };
+    const grant = {
+      courseId: '__global__',
+      scope: 'read' as const,
+      grantedAt: 42,
+      label: 'All Lacuna data',
+    };
     const reply = vi.fn<(response: McpInvokeResponse) => void>();
     const tool = getTool('lacuna.list_courses')!;
-    const handler = vi.spyOn(tool, 'handler').mockImplementation(async (_input: unknown, ctx: ToolContext) => ({ data: ctx.grant }));
+    const handler = vi
+      .spyOn(tool, 'handler')
+      .mockImplementation(async (_input: unknown, ctx: ToolContext) => ({ data: ctx.grant }));
 
     try {
-      await handleInvoke({ id: 'one', tool: tool.name, input: {}, agentId: 'agent', grant }, reply, {});
+      await handleInvoke(
+        { id: 'one', tool: tool.name, input: {}, agentId: 'agent', grant },
+        reply,
+        {},
+      );
     } finally {
       handler.mockRestore();
     }
@@ -49,12 +71,69 @@ describe('MCP renderer invocation grants', () => {
     const lesson = await createLesson(course.id, 'Cells');
     const reply = vi.fn<(response: McpInvokeResponse) => void>();
 
-    await handleInvoke({
-      id: 'one', tool: 'lacuna.delete_lesson', input: { lessonId: lesson.id }, agentId: 'agent',
-      grant: { courseId: course.id, scope: 'write', grantedAt: 1 },
-    }, reply, {});
+    await handleInvoke(
+      {
+        id: 'one',
+        tool: 'lacuna.delete_lesson',
+        input: { lessonId: lesson.id },
+        agentId: 'agent',
+        grant: { courseId: course.id, scope: 'write', grantedAt: 1 },
+      },
+      reply,
+      {},
+    );
 
-    expect(reply.mock.calls[0][0]).toMatchObject({ id: 'one', ok: false, error: { kind: 'forbidden' } });
+    expect(reply.mock.calls[0][0]).toMatchObject({
+      id: 'one',
+      ok: false,
+      error: { kind: 'forbidden' },
+    });
     expect(await db.lessons.get(lesson.id)).toBeDefined();
+  });
+
+  it('adapts a successful executor result to the existing IPC envelope', async () => {
+    const grant = {
+      courseId: '__global__',
+      scope: 'read' as const,
+      grantedAt: 42,
+      label: 'All Lacuna data',
+    };
+    const reply = vi.fn<(response: McpInvokeResponse) => void>();
+
+    await handleInvoke(
+      { id: 'one', tool: 'lacuna.list_courses', input: {}, agentId: 'agent', grant },
+      reply,
+      {},
+    );
+
+    expect(reply).toHaveBeenCalledWith({ id: 'one', ok: true, result: [] });
+  });
+
+  it('keeps destructive undo available to the renderer while stripping it from IPC', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const undo = vi.fn();
+    const reply = vi.fn<(response: McpInvokeResponse) => void>();
+
+    await handleInvoke(
+      {
+        id: 'one',
+        tool: 'lacuna.delete_lesson',
+        input: { lessonId: lesson.id },
+        agentId: 'agent',
+        grant: { courseId: course.id, scope: 'destructive', grantedAt: 1 },
+      },
+      reply,
+      { onUndoAvailable: undo },
+    );
+
+    expect(reply).toHaveBeenCalledWith({ id: 'one', ok: true, result: { id: lesson.id } });
+    expect(undo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'one',
+        toolName: 'lacuna.delete_lesson',
+        payload: expect.objectContaining({ kind: 'restoreLesson' }),
+      }),
+    );
   });
 });

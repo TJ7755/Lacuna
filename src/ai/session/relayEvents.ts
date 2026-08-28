@@ -28,7 +28,6 @@ export function expireClaimLease(
   snapshot: AiSessionSnapshot,
   messages: RelayBrowserMessage[],
   expiredAt: number,
-  createRetryMessageId: () => string,
 ): RelayEventReduction | null {
   const run = snapshot.run;
   if (!run || run.status !== 'active' || expiredAt < run.leaseExpiresAt) return null;
@@ -39,13 +38,12 @@ export function expireClaimLease(
       message.messageId === run.messageId,
   );
   if (!claimed) return null;
-  const retryMessageId = createRetryMessageId();
   return {
     snapshot: {
       ...snapshot,
       items: snapshot.items.map((item) =>
         item.kind === 'user' && item.id === run.messageId
-          ? { ...item, id: retryMessageId, delivery: 'queued' as const }
+          ? { ...item, delivery: 'queued' as const }
           : item,
       ),
       run: { ...run, status: 'expired', expiredAt },
@@ -59,7 +57,7 @@ export function expireClaimLease(
     messages: messages.map((message) =>
       message === claimed
         ? {
-            messageId: retryMessageId,
+            messageId: claimed.messageId,
             conversationId: claimed.conversationId,
             content: claimed.content,
             createdAt: claimed.createdAt,
@@ -185,6 +183,9 @@ export function applyTerminalEvent(
       ),
     };
   }
+
+  // Tool calls are executed by the relay session before this transcript reducer runs.
+  if (event.type === 'tool_call') return { snapshot, messages };
 
   const activeRun =
     snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'

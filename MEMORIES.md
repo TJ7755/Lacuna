@@ -12,9 +12,17 @@ and stale-chunk recovery must retain its one-reload guard.
 ## Web AI chat is not the Electron data MCP server
 
 The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
-encrypted HTTP relay mailboxes. Its current four-tool companion carries chat, Stop and disconnect
-events only. The Electron `--mcp-companion` uses local IPC and exposes authorised Lacuna data tools;
-neither surface implies the capabilities of the other.
+encrypted HTTP relay mailboxes. Its five-tool companion carries chat, Stop and disconnect events
+and asks the browser to execute approved domain tools. The Electron `--mcp-companion` uses local
+IPC; neither surface implies the transport or trust model of the other.
+
+## AI tool results need a real JSON wire projection
+
+Repository records may contain own optional properties whose value is `undefined`; Cards do this
+for payloads. The browser tool handler has already committed a write before the AI ledger validates
+its result, so rejecting that raw record can report failure after success and make a retry duplicate
+data. Keep the AI result normalisation that omits optional object fields before receipt and ledger
+storage; do not weaken the validator or move validation after a reported failure.
 
 ## Relay URLs must be HTTPS outside loopback
 
@@ -177,6 +185,14 @@ closed; an unconditional rewrite could overwrite a concurrent successor. If
 only a successful write response omitted its ETag, the relay re-reads and
 accepts the generation when the stored bytes still match exactly. Keep the
 app's generation guard treating `""` as absent.
+
+## Prefer the relay's real generation over a synthetic digest after a successful write
+
+Observed live on 28 August 2026: deriving a digest generation after every successful mailbox write
+made the next write perform a Vercel Blob read-after-write check. That read can return stale bytes,
+causing a false `412` against the same writer. Use the generation returned in the successful JSON
+body or exposed header first. Synthetic digest generations are recovery for damaged or ambiguous
+acknowledgements, not the normal path.
 
 ## Live Blob `allowOverwrite: false` was measured, not guaranteed
 

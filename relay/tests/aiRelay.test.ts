@@ -147,14 +147,7 @@ describe('AI relay', () => {
     const browserWriterRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
     );
-    expect(browserWriterRead.status).toBe(200);
-    expect(browserWriterRead.headers.get('ETag')).toBe(browserGeneration);
-    expect(browserWriterRead.headers.get('X-Lacuna-Generation')).toBe(browserGeneration);
-    expect(browserWriterRead.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
-    expect(browserWriterRead.headers.get('Access-Control-Expose-Headers')).toContain(
-      'X-Lacuna-Generation',
-    );
-    expect(new Uint8Array(await browserWriterRead.arrayBuffer())).toEqual(browserBody);
+    expect(browserWriterRead.status).toBe(401);
     const browserRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
@@ -177,10 +170,7 @@ describe('AI relay', () => {
     const terminalWriterRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/terminal`, 'GET', pair.terminalToken),
     );
-    expect(terminalWriterRead.status).toBe(200);
-    expect(terminalWriterRead.headers.get('ETag')).toBe(terminalGeneration);
-    expect(terminalWriterRead.headers.get('X-Lacuna-Generation')).toBe(terminalGeneration);
-    expect(new Uint8Array(await terminalWriterRead.arrayBuffer())).toEqual(terminalBody);
+    expect(terminalWriterRead.status).toBe(401);
     const terminalRead = await pair.handle(
       authorisedRequest(`/ai/s/${pair.sessionId}/terminal`, 'GET', pair.browserToken),
     );
@@ -208,6 +198,10 @@ describe('AI relay', () => {
 
   it('returns a generation receipt only when the stored mailbox matches the requested digest', async () => {
     const pair = await paired();
+    const ordinaryWriterRead = await pair.handle(
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+    );
+    expect(ordinaryWriterRead.status).toBe(401);
     const body = new Uint8Array([10, 20, 30]);
     const written = await pair.handle(
       mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, body),
@@ -254,7 +248,7 @@ describe('AI relay', () => {
       `?digest=${'0'.repeat(64)}&digest=${'0'.repeat(64)}`,
     ]) {
       const response = await pair.handle(
-        authorisedRequest(`${path}${query}`, 'GET', pair.browserToken),
+        authorisedRequest(`${path}${query}`, 'GET', pair.terminalToken),
       );
       expect(response.status).toBe(400);
       expect(response.headers.get('Cache-Control')).toBe('no-store');
@@ -283,7 +277,7 @@ describe('AI relay', () => {
 
     expect(written.status).toBe(200);
     const read = await pair.handle(
-      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(new Uint8Array(await read.arrayBuffer())).toEqual(successor);
   });
@@ -311,7 +305,7 @@ describe('AI relay', () => {
     expect(written.status).toBe(412);
     expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
     const read = await pair.handle(
-      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(new Uint8Array(await read.arrayBuffer())).toEqual(current);
   });
@@ -366,7 +360,7 @@ describe('AI relay', () => {
 
     expect(written.status).toBe(412);
     const read = await pair.handle(
-      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(new Uint8Array(await read.arrayBuffer())).toEqual(competing);
   });
@@ -388,7 +382,7 @@ describe('AI relay', () => {
     expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
 
     const read = await pair.handle(
-      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(read.status).toBe(200);
     expect(read.headers.get('ETag')).toBe(generation);
@@ -407,7 +401,7 @@ describe('AI relay', () => {
 
     flaky.lost = true;
     const read = await pair.handle(
-      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
 
     expect(read.status).toBe(500);
@@ -432,7 +426,7 @@ describe('AI relay', () => {
     expect(mailboxPuts(flaky)).toEqual([{ exclusive: true }]);
 
     const read = await pair.handle(
-      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.browserToken),
+      authorisedRequest(`/ai/s/${pair.sessionId}/browser`, 'GET', pair.terminalToken),
     );
     expect(read.status).toBe(200);
     expect(new Uint8Array(await read.arrayBuffer())).toEqual(newer);

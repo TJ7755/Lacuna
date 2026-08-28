@@ -2,20 +2,16 @@
 // renderer is the only process with IndexedDB, so it is where every tool handler actually
 // runs. electron/mcp/server.ts forwards each MCP tool call here as an `mcp:invoke` IPC
 // message (via the narrow `window.electronAPI.mcp` surface from electron/preload.ts);
-// attachMcpBridge() looks the tool up in src/mcp/registry.ts, runs it through
-// `validateAndRun`, and replies with `mcp:invoke:reply`.
+// attachMcpBridge() delegates execution to the shared executor and replies with
+// `mcp:invoke:reply`.
 //
 // Bridge-deadlock risk (docs/archive/roadmap-2026-08-11.md Section 2.10): if a failure here never replies, the
 // main process's request hangs until its own timeout fires (src/mcp/bridge/dispatcher.ts).
 // Every path below — unknown tool, validation/handler failure, or a genuinely unexpected
 // thrown error — is therefore wrapped so a reply is always sent.
 
-import { getTool, validateAndRun } from '../registry';
-import { scopeSatisfies } from '../grants';
-import type { ToolContext } from '../types';
+import { executeToolCall } from '../executor';
 import type { McpInvokeRequest, McpInvokeResponse } from './protocol';
-import { resolveToolScopes } from './scopeResolver';
-import { recordUndo } from './undoRegistry';
 import type { RecordedUndo } from './undoRegistry';
 
 export interface McpBridgeOptions {
@@ -42,61 +38,23 @@ export async function handleInvoke(
   reply: (response: McpInvokeResponse) => void,
   options: McpBridgeOptions,
 ): Promise<void> {
-  try {
-    const tool = getTool(request.tool);
-    if (!tool) {
-      reply({
-        id: request.id,
-        ok: false,
-        error: { kind: 'not_found', message: `Unknown tool "${request.tool}".` },
-      });
-      return;
-    }
-
-    // The main process resolved this scope against the live database before consent.
-    // A course move before this second check may be rejected spuriously; that race
-    // deliberately fails closed.
-    const scopes = await resolveToolScopes(request.input);
-    if (!scopes.ok) {
-      reply({ id: request.id, ok: false, error: scopes.error });
-      return;
-    }
-    if (scopes.targets.length !== 1 || scopes.targets[0].courseId !== request.grant.courseId ||
-      !scopeSatisfies(request.grant.scope, tool.requiredScope)) {
-      reply({
-        id: request.id,
-        ok: false,
-        error: { kind: 'forbidden', message: 'The MCP invocation grant does not match the requested tool scope.' },
-      });
-      return;
-    }
-
-    // The exact validated grant is passed through to the handler rather than replaced by
-    // a synthetic permission context after main-process consent.
-    const ctx: ToolContext = { grant: request.grant, agentId: request.agentId };
-
-    const outcome = await validateAndRun(tool, request.input, ctx);
-    if (!outcome.ok) {
-      reply({ id: request.id, ok: false, error: outcome.error });
-      return;
-    }
-
-    // `undo` is stripped here — it must never cross the IPC boundary to the calling agent
-    // (src/mcp/types.ts's ToolResult doc comment). It is kept renderer-side for Task 11's
-    // undo toast instead.
-    if (outcome.result.undo) {
-      recordUndo(request.id, tool.name, outcome.result.undo);
-      options.onUndoAvailable?.({
-        requestId: request.id,
-        toolName: tool.name,
-        payload: outcome.result.undo,
-        recordedAt: Date.now(),
-      });
-    }
-
-    reply({ id: request.id, ok: true, result: outcome.result.data });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    reply({ id: request.id, ok: false, error: { kind: 'internal', message } });
+  const outcome = await executeToolCall(
+    {
+      callId: request.id,
+      toolName: request.tool,
+      input: request.input,
+      agentId: request.agentId,
+      grant: request.grant,
+    },
+    { onUndoAvailable: options.onUndoAvailable },
+  );
+  if (!outcome.ok) {
+    reply({ id: request.id, ok: false, error: outcome.error });
+    return;
   }
+
+  // The receipt is consumed by transport adapters that need activity history. Electron's
+  // existing IPC envelope deliberately remains result-only, and the undo payload never
+  // crosses it.
+  reply({ id: request.id, ok: true, result: outcome.result });
 }
