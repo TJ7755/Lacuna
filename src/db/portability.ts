@@ -934,8 +934,16 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         const local = new Map(
           (await db.agentMemories.toArray()).map((memory) => [memory.id, memory]),
         );
-        const merged: AgentMemory[] = [];
+        const incomingById = new Map<string, AgentMemory>();
         for (const incoming of agentMemories) {
+          const selected = incomingById.get(incoming.id);
+          if (selected && selected.courseId !== incoming.courseId) {
+            throw new Error('A learner memory cannot move between global and Course scope.');
+          }
+          if (!selected || memoryWins(incoming, selected)) incomingById.set(incoming.id, incoming);
+        }
+        const merged: AgentMemory[] = [];
+        for (const incoming of incomingById.values()) {
           if (incoming.courseId !== null && !(await db.courses.get(incoming.courseId))) continue;
           const existing = local.get(incoming.id);
           if (existing && existing.courseId !== incoming.courseId) {

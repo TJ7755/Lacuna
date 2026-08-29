@@ -15,7 +15,7 @@ archive.
 
 ### AI sidebar — final verification
 
-**Status:** implementation complete; final verification and review in progress.
+**Status:** delivered.
 
 The implementation plan is [the AI sidebar prototype](plans/ai-sidebar.md). PRs #96–#101 delivered
 the optional desktop panel, encrypted relay pairing, chat-only terminal companion, cooperative Stop,

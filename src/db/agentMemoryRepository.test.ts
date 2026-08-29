@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { agentMemoryRepository } from './agentMemoryRepository';
-import { createCourse, createLesson, deleteLesson } from './repository';
+import { createCard, createCourse, createLesson, deleteLesson } from './repository';
 import { db } from './schema';
 
 describe('AgentMemoryRepository', () => {
@@ -11,6 +11,9 @@ describe('AgentMemoryRepository', () => {
       db.tombstones.clear(),
       db.courses.clear(),
       db.lessons.clear(),
+      db.cards.clear(),
+      db.concepts.clear(),
+      db.schedulingUnits.clear(),
     ]);
   });
   afterEach(async () => {
@@ -73,6 +76,22 @@ describe('AgentMemoryRepository', () => {
     await expect(
       agentMemoryRepository.update(memory.id, { references: memory.references }),
     ).rejects.toThrow('unavailable');
+  });
+
+  it('resolves Card ownership through its scheduling unit', async () => {
+    const course = await createCourse('Maths');
+    const card = await createCard(course.id, 'front_back', 'Question', 'Answer');
+    await db.cards.update(card.id, { courseId: undefined });
+
+    await expect(
+      agentMemoryRepository.create({
+        courseId: course.id,
+        tags: ['context'],
+        content: 'Relevant Card context.',
+        references: [{ kind: 'card', id: card.id, label: card.front }],
+        basis: 'learner-stated',
+      }),
+    ).resolves.toMatchObject({ courseId: course.id });
   });
 
   it('writes a tombstone and restores newer than the deletion', async () => {

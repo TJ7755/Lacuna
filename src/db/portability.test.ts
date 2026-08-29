@@ -9,7 +9,7 @@ import {
   BACKUP_VERSION,
   PRE_V22_BACKUP_MESSAGE,
 } from './portability';
-import type { BackupFile } from './types';
+import type { AgentMemory, BackupFile } from './types';
 import {
   createCourse,
   createCard,
@@ -179,6 +179,61 @@ describe('exportDatabase', () => {
       ),
     ).rejects.toThrow('cannot move between global and Course scope');
     expect(await db.agentMemories.get(local.id)).toMatchObject({ courseId: null });
+  });
+
+  it('selects the newest duplicate incoming memory before persistence', async () => {
+    const local = await agentMemoryRepository.create(
+      {
+        courseId: null,
+        tags: ['context'],
+        content: 'Local context.',
+        basis: 'learner-stated',
+      },
+      10,
+    );
+    const backup = await exportDatabase();
+
+    await importBackup(
+      {
+        ...backup,
+        agentMemories: [
+          { ...local, content: 'Newest context.', updatedAt: 30 },
+          { ...local, content: 'Older context.', updatedAt: 20 },
+        ],
+      },
+      'merge',
+    );
+
+    expect(await db.agentMemories.get(local.id)).toMatchObject({
+      content: 'Newest context.',
+      updatedAt: 30,
+    });
+  });
+
+  it('rejects conflicting scopes among duplicate incoming memories', async () => {
+    const course = await createCourse('Scoped target');
+    const backup = await exportDatabase();
+    const incoming: AgentMemory = {
+      id: 'memory-1',
+      courseId: null,
+      tags: ['context'],
+      status: 'active',
+      content: 'Global context.',
+      references: [],
+      basis: 'learner-stated',
+      createdAt: 10,
+      updatedAt: 20,
+    };
+
+    await expect(
+      importBackup(
+        {
+          ...backup,
+          agentMemories: [incoming, { ...incoming, courseId: course.id, updatedAt: 30 }],
+        },
+        'merge',
+      ),
+    ).rejects.toThrow('cannot move between global and Course scope');
   });
 
   it('exports full assessment semantics and stable ids in version 9', async () => {

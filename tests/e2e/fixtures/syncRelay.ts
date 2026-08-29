@@ -104,7 +104,9 @@ async function handleRoute(
     return;
   }
 
-  throw new Error(`Unexpected sync relay request: ${method} ${request.url()} (${relayBase})`);
+  const message = `Unexpected sync relay request: ${method} ${request.url()} (${relayBase})`;
+  await route.fulfill({ status: 500, contentType: 'text/plain', body: message });
+  throw new Error(message);
 }
 
 function generationFor(slot: RelaySlot, revision: number): string {

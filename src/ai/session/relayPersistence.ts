@@ -22,7 +22,7 @@ import { restoreState as restoreToolSessionState } from '../toolSession/state';
 import type { AiToolSessionState } from '../toolSession';
 import type { AiSessionSnapshot } from './types';
 
-const STORAGE_KEY = 'lacuna-ai-relay-session-v1';
+export const AI_RELAY_SESSION_STORAGE_KEY = 'lacuna-ai-relay-session-v1';
 const PROTOCOL_UPDATED_REASON = 'Reconnect the terminal after the AI protocol update.';
 
 export interface RelaySessionStorage {
@@ -67,7 +67,7 @@ export function createRelaySessionPersistence(
     load() {
       let encoded: string | null;
       try {
-        encoded = storage.getItem(STORAGE_KEY);
+        encoded = storage.getItem(AI_RELAY_SESSION_STORAGE_KEY);
       } catch {
         return null;
       }
@@ -85,7 +85,7 @@ export function createRelaySessionPersistence(
     save(state) {
       try {
         const stored: StoredRelayDeviceState = { version: 4, ...state };
-        storage.setItem(STORAGE_KEY, JSON.stringify(stored));
+        storage.setItem(AI_RELAY_SESSION_STORAGE_KEY, JSON.stringify(stored));
       } catch {
         // The active in-memory session remains usable when browser storage is unavailable.
       }
@@ -377,7 +377,7 @@ function containsBytes(bytes: Uint8Array, expected: readonly number[]): boolean 
 
 function removeStoredState(storage: RelaySessionStorage): void {
   try {
-    storage.removeItem(STORAGE_KEY);
+    storage.removeItem(AI_RELAY_SESSION_STORAGE_KEY);
   } catch {
     // Browser storage may be disabled or unavailable.
   }

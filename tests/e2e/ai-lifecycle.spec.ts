@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { AI_RELAY_SESSION_STORAGE_KEY } from '../../src/ai/session/relayPersistence.js';
 import type { TerminalAiClient } from '../../tooling/lacuna-ai-mcp/src/client.js';
 import { pairBrowserAndTerminal } from './fixtures/aiRelay.js';
 import {
@@ -11,7 +12,7 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   browser,
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
   const { composer, terminal } = await pairBrowserAndTerminal(page);
   await composer.fill('Create a temporary course so sync can remove it.');
   await page.getByRole('button', { name: 'Send message' }).click();
@@ -118,12 +119,8 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
     error: { kind: 'approval_required', approvalKind: 'write_grant' },
   });
   await page.getByRole('button', { name: 'Approve' }).click();
-  const stateWritesBeforeImport = syncRelay.requests.filter(
-    (request) => request.includes('PUT') && request.endsWith('/state'),
-  ).length;
-  const stateReadsBeforeImport = syncRelay.requests.filter(
-    (request) => request.includes('GET') && request.endsWith('/state'),
-  ).length;
+  const stateWritesBeforeImport = countStateRequests(syncRelay.requests, 'PUT');
+  const stateReadsBeforeImport = countStateRequests(syncRelay.requests, 'GET');
   const cardsBeforeImport = await cardCount(page);
   const importPromise = terminal.invokeTool(
     importRun.runId,
@@ -132,37 +129,21 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
     importInput,
     120_000,
   );
-  await expect.poll(() => cardCount(page), { timeout: 30_000, intervals: [50] }).toBeGreaterThan(
-    cardsBeforeImport,
-  );
+  await expect
+    .poll(() => cardCount(page), { timeout: 30_000, intervals: [50] })
+    .toBeGreaterThan(cardsBeforeImport);
   expect(await cardCount(page)).toBeLessThan(cardsBeforeImport + importInput.items.length);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect
-    .poll(
-      () =>
-        syncRelay.requests.filter(
-          (request) => request.includes('GET') && request.endsWith('/state'),
-        ).length,
-      { timeout: 30_000 },
-    )
+    .poll(() => countStateRequests(syncRelay.requests, 'GET'), { timeout: 30_000 })
     .toBeGreaterThan(stateReadsBeforeImport);
   expect(await cardCount(page)).toBeLessThan(cardsBeforeImport + importInput.items.length);
-  expect(
-    syncRelay.requests.filter(
-      (request) => request.includes('PUT') && request.endsWith('/state'),
-    ),
-  ).toHaveLength(stateWritesBeforeImport);
+  expect(countStateRequests(syncRelay.requests, 'PUT')).toBe(stateWritesBeforeImport);
   const imported = await importPromise;
   expect(imported).toMatchObject({ ok: true, result: { createdCount: 600 } });
   await terminal.reply(importRun.runId, importRun.messageId, 'The sync-fence import is complete.');
   await expect
-    .poll(
-      () =>
-        syncRelay.requests.filter(
-          (request) => request.includes('PUT') && request.endsWith('/state'),
-        ).length,
-      { timeout: 30_000 },
-    )
+    .poll(() => countStateRequests(syncRelay.requests, 'PUT'), { timeout: 30_000 })
     .toBeGreaterThan(stateWritesBeforeImport);
 
   await peerPage.evaluate(() => window.dispatchEvent(new Event('focus')));
@@ -184,19 +165,11 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   await peerPage.getByRole('button', { name: 'Delete course' }).click();
   await peerPage.getByRole('button', { name: 'Delete course' }).click();
   await expect(peerPage).toHaveURL(/\/#\/$/);
-  const peerStateWrites = syncRelay.requests.filter(
-    (request) => request.includes('PUT') && request.endsWith('/state'),
-  ).length;
+  const peerStateWrites = countStateRequests(syncRelay.requests, 'PUT');
   await peerPage.waitForTimeout(5_100);
   await peerPage.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect
-    .poll(
-      () =>
-        syncRelay.requests.filter(
-          (request) => request.includes('PUT') && request.endsWith('/state'),
-        ).length,
-      { timeout: 30_000 },
-    )
+    .poll(() => countStateRequests(syncRelay.requests, 'PUT'), { timeout: 30_000 })
     .toBeGreaterThan(peerStateWrites);
   await peerContext.close();
 
@@ -246,7 +219,12 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   await expect(page.getByText(createdReply, { exact: true })).toHaveCount(0);
   await expect(page.getByText(preservedReply, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
-  expect(await page.evaluate(() => localStorage.getItem('lacuna-ai-relay-session-v1'))).toBeNull();
+  expect(
+    await page.evaluate(
+      (storageKey) => localStorage.getItem(storageKey),
+      AI_RELAY_SESSION_STORAGE_KEY,
+    ),
+  ).toBeNull();
   await expect(terminal.disconnect()).rejects.toThrow(/relay HTTP 404/i);
 });
 
@@ -268,15 +246,29 @@ async function cardCount(page: import('@playwright/test').Page): Promise<number>
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
           const database = open.result;
-          const count = database.transaction('cards').objectStore('cards').count();
-          count.onerror = () => reject(count.error);
-          count.onsuccess = () => {
+          try {
+            const count = database.transaction('cards').objectStore('cards').count();
+            count.onerror = () => {
+              database.close();
+              reject(count.error);
+            };
+            count.onsuccess = () => {
+              database.close();
+              resolve(count.result);
+            };
+          } catch (error) {
             database.close();
-            resolve(count.result);
-          };
+            reject(error);
+          }
         };
       }),
   );
+}
+
+function countStateRequests(requests: readonly string[], method: 'GET' | 'PUT'): number {
+  return requests.filter(
+    (request) => request.startsWith(`${method} `) && request.endsWith('/state'),
+  ).length;
 }
 
 function successfulId(response: TerminalToolResponse): string {

@@ -969,9 +969,10 @@ course-scoped grant which later writes may reuse. Successful Course, Lesson, Car
 and assessment writes append selectable receipts linked to their native surfaces, while stable
 `callId` replay returns the saved result without repeating the mutation. With misconception-first
 enabled, conceptual exchanges diagnose the learner's model, create a failed prediction, delay the
-resolution, test transfer and update memory only from evidence. The terminal can
-`search/create/update/delete_memory`; search and creation require explicit global or Course scope,
-writes use normal approval, and deletion uses one-shot destructive approval. Settings → AI exposes
+resolution, test transfer and update memory only from evidence. The terminal can use
+`lacuna.search_memories`, `lacuna.create_memory`, `lacuna.update_memory` and
+`lacuna.delete_memory`; search and creation require explicit global or Course scope, writes use
+normal approval, and deletion uses one-shot destructive approval. Settings → AI exposes
 an all-scope **Teaching memory** inspector for correction, resolution and deletion. Missing memory
 references and activity-receipt targets render **Unavailable** rather than retaining stale links.
 Peer sync preserves the terminal session and transcript; full replacement clears them after a

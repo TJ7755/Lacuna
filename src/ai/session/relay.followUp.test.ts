@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { AI_RELAY_PROTOCOL_VERSION } from '../relayProtocol';
 import { createRelayAiSession } from './relay';
 import { TERMINAL_PUBLIC_KEY, relaySessionHarness } from './relay.testHarness';
 
@@ -19,7 +20,7 @@ describe('relay AI session follow-up identity', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 3,
+      version: AI_RELAY_PROTOCOL_VERSION,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -65,7 +66,7 @@ describe('relay AI session follow-up identity', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(first.crypto.open).mockResolvedValue({
-      version: 3,
+      version: AI_RELAY_PROTOCOL_VERSION,
       revision: 1,
       browserRevisionSeen: 0,
       events: [

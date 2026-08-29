@@ -16,17 +16,22 @@
   routing plus grounding, conservative memory authorship, approval and Stop rules.
 - Added schema-v25 learner memories with bounded validation, immutable scope, controlled evidence
   status and provenance, lexical search, Course cascade/Undo and a native Settings inspector.
-  `lacuna.search/create/update/delete_memory` reuse the existing approval and exact-call replay
-  boundaries; AI search and creation require explicit global or Course scope.
+  `lacuna.search_memories`, `lacuna.create_memory`, `lacuna.update_memory` and
+  `lacuna.delete_memory` reuse the existing approval and exact-call replay boundaries; AI search
+  and creation require explicit global or Course scope.
 - Included memories in full backup, replacement, recovery merge, encrypted peer sync, tombstones
   and size attribution. Peer merge converges updates, deletion and deliberate resurrection while
   rejecting an attempt to move one memory id between scopes.
+- Hardened recovery merge against duplicate incoming memory ids by selecting the deterministic
+  newest record and rejecting scope conflicts before persistence. Card references now resolve
+  ownership through the Card's scheduling unit rather than its obsolete direct Course field.
 - Added `ReplacementLifecycle` around AI writes and every snapshot/merge/import operation. Peer and
   recovery application preserve the AI session; manual replacement invalidates new work, drains
   admitted writes, attempts remote revocation and clears the local transcript, connection, grants,
   approvals and replay state only after a successful commit.
 - Made completed activity receipts re-check their native targets. A target deleted by peer sync is
-  shown as **Unavailable**, and the global memory pseudo-Course is never linked.
+  shown as **Unavailable**, unresolved availability never exposes a stale link, and the global
+  memory pseudo-Course is never linked.
 - Browser scenario 4 passed with an approved uncertain misconception, failed prediction,
   learner-evidence resolution and transfer check. Scenario 6 passed with focus-triggered peer sync
   preserving the terminal and transcript, a deleted Course receipt becoming **Unavailable**, and a

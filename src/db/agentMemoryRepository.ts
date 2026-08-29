@@ -13,6 +13,8 @@ import type {
   AgentMemoryReference,
   AgentMemoryStatus,
   AgentMemoryTag,
+  Card,
+  SchedulingUnitRecord,
 } from './types';
 
 export interface CreateAgentMemoryInput {
@@ -73,9 +75,14 @@ async function assertReferenceOwnership(
       case 'lesson':
         owner = (await tx.table('lessons').get(reference.id))?.courseId;
         break;
-      case 'card':
-        owner = (await tx.table('cards').get(reference.id))?.courseId;
+      case 'card': {
+        const card = await tx.table<Card>('cards').get(reference.id);
+        owner = card
+          ? (await tx.table<SchedulingUnitRecord>('schedulingUnits').get(card.schedulingUnitId))
+              ?.courseId
+          : undefined;
         break;
+      }
       case 'concept':
         owner = (await tx.table('concepts').get(reference.id))?.courseId;
         break;
@@ -124,7 +131,15 @@ export class AgentMemoryRepository {
     assertAgentMemory(memory);
     await db.transaction(
       'rw',
-      [db.agentMemories, db.courses, db.lessons, db.cards, db.concepts, db.questions],
+      [
+        db.agentMemories,
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.concepts,
+        db.questions,
+        db.schedulingUnits,
+      ],
       async (tx) => {
         await assertCourseAndReferences(tx, memory.courseId, memory.references);
         await db.agentMemories.add(memory);
@@ -140,7 +155,15 @@ export class AgentMemoryRepository {
   ): Promise<AgentMemory> {
     return db.transaction(
       'rw',
-      [db.agentMemories, db.courses, db.lessons, db.cards, db.concepts, db.questions],
+      [
+        db.agentMemories,
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.concepts,
+        db.questions,
+        db.schedulingUnits,
+      ],
       async (tx) => {
         const current = await db.agentMemories.get(id);
         if (!current) throw new Error('The memory could not be found.');

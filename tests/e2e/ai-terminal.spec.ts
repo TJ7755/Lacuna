@@ -178,6 +178,7 @@ test('creates a complete authored course through approved AI tools', async ({ pa
   await expectToolListCount(terminal, claimed.runId, 'list-questions', 'lacuna.list_questions', {
     courseId,
   });
+  // A Course starts with its Final exam; replay must add only the one requested checkpoint.
   await expectToolListCount(
     terminal,
     claimed.runId,

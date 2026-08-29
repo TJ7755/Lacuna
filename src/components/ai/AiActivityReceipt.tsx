@@ -58,7 +58,7 @@ export function AiActivityReceipt({ receipt }: { receipt: AiActionReceipt }) {
               {receipt.targets.map((target, index) => {
                 const href = targetHref(target);
                 const unavailable = availableTargets?.[index] === false;
-                return href && !unavailable ? (
+                return href && availableTargets?.[index] === true ? (
                   <a
                     key={`${target.kind}-${target.id}`}
                     href={href}

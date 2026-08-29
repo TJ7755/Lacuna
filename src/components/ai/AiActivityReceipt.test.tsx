@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiActionReceipt } from '../../ai/protocol';
 import { AiActivityReceipt } from './AiActivityReceipt';
 
-const availability = vi.hoisted(() => ({ targets: [true] as boolean[] }));
+const availability = vi.hoisted(() => ({ targets: [true] as boolean[] | undefined }));
 
 vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => availability.targets }));
 
@@ -67,6 +67,14 @@ describe('AiActivityReceipt', () => {
 
     expect(screen.queryByRole('link', { name: 'Open course Mechanics' })).not.toBeInTheDocument();
     expect(screen.getByText('Mechanics · Unavailable')).toBeInTheDocument();
+  });
+
+  it('does not expose a target link while availability is unresolved', () => {
+    availability.targets = undefined;
+    render(<AiActivityReceipt receipt={receipt} />);
+
+    expect(screen.queryByRole('link', { name: 'Open course Mechanics' })).not.toBeInTheDocument();
+    expect(screen.getByText('Mechanics')).toBeInTheDocument();
   });
 
   it('links a lesson target through its owning course route', () => {
