@@ -1,7 +1,6 @@
 # AI sidebar — one-week usable prototype
 
-**Status:** in progress — encrypted pairing, chat and the first domain-action vertical slice are
-delivered; teaching instructions and durable learner memories remain future work
+**Status:** implementation complete — final automated verification and dual review in progress
 
 **Written:** 27 August 2026
 
@@ -15,11 +14,12 @@ code, repeatedly performs bounded message waits through a standard MCP companion
 non-streamed replies back into the sidebar. Lacuna stores no model credentials and knows nothing
 about the selected harness or model.
 
-The delivered checkpoint can invoke the existing typed domain tools through one shared executor,
-perform reads, request scoped or exact write approval, enforce Stop, replay a stable call without
-duplicating it, and render receipts from real repository results. Misconception-first execution and
-durable learner memories remain explicit later phases. Conversation transcripts remain local to
-the browser profile.
+The delivered implementation invokes the existing typed domain tools through one shared executor,
+delivers live `teaching-v1` instructions with every claimed message, and maintains bounded,
+learner-correctable memories through explicit global or Course scope. It performs reads, requests
+scoped or exact write approval, enforces Stop, replays stable calls without duplication, and renders
+selectable receipts from real repository results. Conversation transcripts remain local to the
+browser profile.
 
 This is a private tool. The interface says **AI**, not “terminal tutor”, “MCP”, “agent bridge” or a
 model name. Those are implementation details.
@@ -35,35 +35,38 @@ Delivered and source-backed:
 - ephemeral P-256 ECDH and AES-256-GCM envelopes which keep plaintext from the relay;
 - local transcript/session reload persistence, queued follow-up handling and cooperative Stop;
 - a final Stop refresh before reply, so a terminal cannot knowingly append a late response;
-- mailbox protocol v2 tool calls and browser responses through the existing `TOOL_REGISTRY`;
+- mailbox protocol v3 tool calls, per-message instruction bundles and browser responses through the
+  existing `TOOL_REGISTRY`;
 - transport-neutral execution shared by Electron and web AI adapters;
 - implicit reads, course-scoped write grants, exact one-shot course creation and destructive
-  approvals, stable `callId` replay and real action receipts.
-
-Not delivered: instruction bundles, misconception-first execution, durable learner memories or
-memory backup/sync. The generic invocation path can reach the existing Course, Lesson, Card,
-Question and assessment tools, but the complete scenario-3 authored-content workflow still needs
-browser acceptance.
+  approvals, stable `callId` replay and real action receipts for authored content;
+- schema-v25 learner memories, a Settings inspector and search/create/update/delete tools with
+  correction history, Course cascade/Undo, full backup, recovery merge and encrypted peer sync;
+- replacement lifecycle fencing which preserves AI for peer/recovery application and revokes and
+  clears it only after successful full replacement.
 
 ## Remaining prototype acceptance target
 
-The broader prototype is accepted only when all six scenarios pass through the real browser and
-real repositories. Scenarios 3, 4 and 6 are future work, not current product claims:
+All six prototype scenarios have passed through the real browser and real repositories:
 
 1. Enable AI, pair a terminal agent with a short-lived code, send one message and receive one
    non-streamed response.
 2. Reload Lacuna with an unclaimed message pending, reconnect, claim it once and produce one reply.
 3. Ask AI to create a course, lessons, cards, Questions and an assessment; approve exact one-shot
    course creation and the subsequent course-scoped write, then receive structured, selectable
-   receipts for records that genuinely exist. The course-creation read/write/replay subset passed
-   in the real browser on 28 August 2026; the complete authored-content sequence remains.
+   receipts for records that genuinely exist. This passed in the real browser on 28 August 2026,
+   including stable assessment replay and saved-record count verification.
 4. Ask a conceptual question with misconception-first enabled; the agent searches relevant
    memories and follows diagnose → conflict → resolve → transfer rather than dumping an answer.
+   This passed on 28 August 2026: the run stored an uncertain misconception after approval,
+   confronted it with a failed prediction, resolved it from learner evidence and tested transfer.
 5. Stop while the agent is waiting and before a reply; the terminal acknowledges the run and a late
    reply is refused. The later domain-action phase must also prove Stop between two tool calls.
 6. Trigger peer sync by returning focus to Lacuna during a connected conversation. The sync waits
    for an active tool write, preserves the connection and transcript, and exposes merged durable
-   memories. A manual full replacement still performs the destructive shutdown and local cleanup.
+   memories. A manual full replacement performs the destructive shutdown and local cleanup. This
+   passed on 28 August 2026: peer deletion preserved the terminal and transcript and made the stale
+   Course receipt **Unavailable**; full replacement then disconnected and cleared the AI session.
 
 Agents make this schedule plausible by running independent work in parallel. They do not make
 integration, browser behaviour or visual judgement disappear.
@@ -116,15 +119,15 @@ integration, browser behaviour or visual judgement disappear.
 - While work is active, the UI permits exactly one queued follow-up. Editing replaces that queued
   text. Enter submits; Shift+Enter adds a line. Stop returns the queued follow-up to the composer as
   an unsent draft rather than silently running it.
-- Stop is cooperative. It rejects a later relay reply carrying the stopped `runId`. Future domain
-  tool calls must enforce the same run boundary. Stop cannot terminate arbitrary model inference or
-  revoke the terminal harness or companion process.
+- Stop is cooperative. It rejects later relay replies and domain tool calls carrying the stopped
+  `runId`. Stop cannot terminate arbitrary model inference or revoke the terminal harness or
+  companion process.
 - The interface first shows **Stop requested**. It changes to **Stopped** when the terminal loop
   acknowledges the run token. The copy states: **Further AI bridge actions are blocked. Completed
   changes remain.**
-- Successful writes append structured receipts from real repository results. Course targets link
-  to their native route; unsupported target kinds remain non-interactive rather than inventing a
-  route.
+- Successful writes append structured receipts from real repository results. Course, Lesson, Card,
+  fixed Question and assessment targets link to their native route; unsupported target kinds remain
+  non-interactive rather than inventing a route.
 
 ### Permissions and learning evidence
 
@@ -143,17 +146,17 @@ integration, browser behaviour or visual judgement disappear.
 
 - Conversation messages, pairing credentials and connection state are currently device-local and
   survive ordinary reload. They are not included in peer sync.
-- Durable agent-memory backup, replacement, recovery merge, encrypted peer sync, size attribution
-  and tombstones are planned and not implemented.
+- Durable memories participate in full backup, replacement, recovery merge, encrypted peer sync,
+  size attribution and tombstone convergence. Course deletion cascades scoped memories and Undo
+  restores them.
 - Connection/course write grants and exact-call approvals are persisted for reload continuity and
   cleared on Stop-disconnect boundaries; they are never exposed to the terminal.
-- Disabling AI currently unmounts the runtime and stops local polling. A confirmation which performs
-  orderly remote revocation, queued-message cancellation and transcript preservation remains
-  planned.
-- Coordinating manual replacement with an active AI session remains planned. There are no AI domain
-  calls or imported memories to quiesce in the current checkpoint.
-- Serialising automatic peer-sync application against AI domain writes also remains planned. Chat
-  transcripts and relay sessions are device-local and are not part of peer sync.
+- Disabling AI unmounts the runtime, stops polling and clears the active local connection.
+- Peer and recovery application take the exclusive replacement lifecycle across snapshot, merge and
+  import while preserving the session. Manual replacement synchronously rejects new AI writes,
+  drains admitted work, attempts remote revocation, replaces the data and clears transcript,
+  grants, approvals and replay state only after the commit succeeds.
+- Chat transcripts and relay sessions remain device-local and are not part of peer sync.
 
 ## Architecture
 
@@ -168,8 +171,8 @@ AI session module
   ├── encrypted relay adapter and reload persistence
   ├── cooperative Stop
   ├── activity and receipts
-  ├── tutoring instructions (planned)
-  ├── memory search and maintenance (planned)
+  ├── versioned tutoring instructions
+  ├── memory search and maintenance
   └── shared tool executor
             ↕
 Existing TOOL_REGISTRY and repositories
@@ -207,8 +210,9 @@ agreement, encrypted mailbox polling, reload persistence and conversion between 
 the UI read model. React does not learn relay URLs, generations, tokens or encryption formats.
 
 The terminal companion exposes five MCP tools: connect with a pairing code, wait for a message,
-invoke a domain tool, reply and disconnect. Mailbox protocol v2 carries `tool_call` events and
-browser-owned `toolResponses`; the encrypted envelope remains independently versioned at v1.
+invoke a domain tool, reply and disconnect. Mailbox protocol v3 carries `tool_call` events,
+browser-owned `toolResponses`, and a versioned instruction bundle on each queued message; the
+encrypted envelope remains independently versioned at v1.
 
 `lacuna.wait_for_message` polls the encrypted browser mailbox for at most 25 seconds. A claim writes
 `messageId`, `runId` and a five-minute lease expiry to the terminal mailbox and returns the
@@ -249,10 +253,10 @@ a narrow extraction into a rewrite.
 Browser protocol errors such as `approval_required`, `approval_pending`, `stopped` and `disconnected`
 wrap existing MCP errors rather than leaking into domain-tool definitions.
 
-## Planned memory model — not implemented
+## Memory model — delivered
 
-This section specifies later work. There is no `AgentMemory` store, memory inspector, memory MCP
-tool or backup/sync integration in the current chat checkpoint.
+`AgentMemoryRepository` owns the persistent record boundary. Settings exposes a compact inspector,
+and the web companion reaches the same repository through four typed tools.
 
 ### Record
 
@@ -293,7 +297,9 @@ not identities; duplicates and renames exist whether or not pretending otherwise
 
 ### Invariants
 
-- At least one controlled tag and non-empty, bounded plain text are required.
+- At least one controlled tag and non-empty, bounded plain text are required. Content is limited to
+  8,000 characters; identifiers and provenance ids to 160; reference labels to 500; references to
+  25; search queries to 1,000; and result limits to 50.
 - `id`, `createdAt` and `courseId` are immutable after creation.
 - A scoped memory must name an existing course.
 - References must exist and belong to the declared course when the memory is written.
@@ -310,8 +316,9 @@ not identities; duplicates and renames exist whether or not pretending otherwise
   the learner model look tidy.
 - Agent inference is labelled as inference. A low FSRS score may trigger diagnosis but is not proof
   of a misconception.
-- The AI settings surface includes a compact memory inspector supporting search, correction, status
-  change and deletion. Hidden, uncorrectable agent beliefs are rejected.
+- The AI settings surface includes a compact memory inspector supporting all-scope search,
+  correction, status change and deletion, with an explicit option to include expired records.
+  Hidden, uncorrectable agent beliefs are rejected.
 
 ### Tools
 
@@ -329,33 +336,30 @@ likely record count does not justify importing a small search-engine theme park.
 
 ### Backup and peer-sync semantics
 
-- Add optional `agentMemories?: AgentMemory[]` to `BackupFile`; backups without the collection
+- `BackupFile` accepts optional `agentMemories?: AgentMemory[]`; backups without the collection
   therefore remain valid and full-backup version 11 may stay unchanged. `validateBackup` and
   normalisation structurally validate every memory rather than accepting any array-shaped rubbish;
   replace import also requires each scoped memory's Course to exist in the resulting backup.
-- Add schema v25 with `id, courseId, status, updatedAt, *tags` indexes. The migration is additive and
+- Schema v25 adds `id, courseId, status, updatedAt, *tags` indexes. The migration is additive and
   needs no upgrade body, but pre-migration snapshots must know the table from this version onward.
 - Replace import clears and restores memories.
 - Recovery merge takes the newer `updatedAt` live record and uses an explicit, tested canonical-JSON
   tie-break at equal time. It carries incoming tombstones but, matching every other recovery-merge
   table, does not apply them as deletions to local live rows.
 - Peer merge reuses existing newest-write plus tombstone semantics. A live write newer than a
-  deletion deliberately resurrects the memory.
+  deletion deliberately resurrects the memory. Recovery and peer merge reject a conflicting record
+  which attempts to move one memory id between global and Course scope.
 - Undo of memory deletion clears the local tombstone in the same transaction and restores the row
   with an `updatedAt` newer than the deletion, so the next peer merge does not delete it again.
 - Global memory bytes are attributed to other local data; course-scoped memory bytes are attributed
   to their course in the sync-size report.
 
-## Planned misconception-first teaching — not implemented
+## Misconception-first teaching — delivered
 
-Settings currently stores the preference only. The chat companion does not receive an instruction
-bundle or memory context yet.
-
-The full method will ship as a versioned instruction bundle rather than a pointer to one machine's
-skill pathname.
-
-AI Settings already contains **Use misconception-first teaching**. Once the future instruction
-integration exists, the agent routes requests as follows:
+`buildAiInstructionBundle()` produces the versioned `teaching-v1` contract rather than pointing to
+one machine's skill pathname. Each queued message captures the live **Use misconception-first
+teaching** setting, and `lacuna.wait_for_message` returns that bundle with the claim. The agent
+routes requests as follows:
 
 ```text
 Operational request
@@ -373,7 +377,7 @@ Conceptual request with a relevant active or uncertain memory
 → update the memory only from evidence
 ```
 
-The planned method does not apply to procedural work, factual status, completely novel material
+The method does not apply to procedural work, factual status, completely novel material
 with no prior model, or an explicit request for a direct answer. Its instruction bundle also
 includes:
 
@@ -463,16 +467,19 @@ relay/src/aiRelay.ts
 tooling/lacuna-ai-mcp/**
 ```
 
-### Planned modules
+### Delivered teaching, memory and lifecycle modules
 
 ```text
 src/ai/instructions.ts
-src/ai/repository.ts
+src/ai/entityAvailability.ts
+src/db/agentMemoryRecord.ts
 src/db/agentMemoryRepository.ts
 src/db/replacementLifecycle.ts
 src/mcp/tools/memories.ts
-src/components/ai/AiActivityCapsule.tsx
+src/pages/settings/AiMemoryInspector.tsx
 ```
+
+`src/components/ai/AiActivityCapsule.tsx` remains the only planned module in this slice.
 
 Split rendering concerns before any file approaches 500 lines. `AiPanel.tsx` is composition, not a
 new landfill for every state and receipt formatter.
@@ -515,7 +522,8 @@ documentation change.
 ### Day 1 — freeze interfaces and red tests
 
 **Status: delivered.** The typed session seam, strict bridge protocol and six browser scenarios are
-in source. Mailbox protocol v2 was added for the domain-action slice without changing the encrypted
+in source. Mailbox protocol v3 was added for domain actions and per-message instructions without
+changing the encrypted
 envelope version.
 
 The orchestrator owns a half-day architectural freeze:
@@ -532,8 +540,8 @@ receipts and inspector embellishment before cutting browser proof, permission sa
 
 ### Days 2–3 — four parallel owners
 
-**Status: partial.** AI UI, relay session and shared executor/tool-session work are delivered.
-Memory persistence/sync and pedagogy remain the next owner tracks.
+**Status: delivered.** AI UI, relay session, shared execution, memory persistence/sync and pedagogy
+all meet their completion criteria.
 
 | Owner                   | Exclusive territory                                                                                                                                                                 | Completion criterion                                                                                                                                                                                                |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -549,10 +557,10 @@ replacement of it. No two workers edit `AppShell.tsx`, `Sidebar.tsx`, `schema.ts
 
 ### Day 4 — integration and high-value actions
 
-**Status: first vertical slice delivered.** A real terminal run invoked `lacuna.list_courses`,
-requested exact approval for `lacuna.create_course`, created one repository record, replayed the
-same `callId` without duplication and rendered a linked receipt. Complete authored workflows for
-Lessons, Cards, Questions and assessments remain to be exercised through the browser.
+**Status: delivered.** A real terminal run invoked the shared domain tools to create a Course,
+Lesson, Concept, Card, fixed Question and checkpoint assessment. It used exact Course approval and
+one course-scoped write grant, replayed the assessment's `callId` without duplication, verified the
+saved counts and rendered linked receipts for each authored record.
 
 The orchestrator integrates the four branches and owns `App.tsx`; the tools owner remains the sole
 owner of `registry.ts`. Add deliberate receipts for:
@@ -573,9 +581,9 @@ and an approved write through the existing tool registry, and replies with a ren
 
 ### Day 5 — trust states
 
-**Status: tool-call trust subset delivered.** Exact-call approval, replay persistence, disconnect
-revocation, Stop enforcement and connection recovery are implemented. Broader disable,
-replacement/sync coordination and closed-panel activity continuity remain.
+**Status: delivered except for the deferred closed-panel capsule.** Exact-call approval, replay
+persistence, disconnect revocation, Stop enforcement, connection recovery and replacement/sync
+coordination are implemented.
 
 Finish one-shot approval, Undo, stop, reload recovery, connection reset and failure presentation.
 Exercise browser scenarios 2, 3 and 5. Verify that:
@@ -588,7 +596,9 @@ Exercise browser scenarios 2, 3 and 5. Verify that:
 
 ### Day 6 — teaching and memory
 
-**Status: not started.**
+**Status: delivered.** Scenario 4 passed in the browser with an approved uncertain memory, concrete
+failed prediction, learner-evidence resolution and transfer check. The Settings inspector exposed
+the resolved record. Repository tests cover peer update, deletion and deliberate resurrection.
 
 Exercise scenario 4 against real course content and memories. Check:
 
@@ -601,11 +611,14 @@ Exercise scenario 4 against real course content and memories. Check:
 
 ### Day 7 — browser quality gate and review
 
-**Status: partial.** The 1280 px live browser gate passed for pairing, read, exact approval, write,
-receipt, replay and Stop. Per the prompter's required ordering, this browser gate ran before any
-automated verification. The full viewport/theme/zoom matrix and final dual review remain.
+**Status: partial.** The live browser gate passed for pairing, approvals, authored content,
+misconception-first teaching, memory correction, peer-sync continuity, unavailable receipts, full
+replacement cleanup, stable replay and Stop. Per the prompter's required ordering, browser
+acceptance ran before automated verification. The full viewport/theme/zoom matrix and final dual
+review remain.
 
-Run the complete automated suite, then browser-driven UI checks at 1024, 1280, 1440 and 1920 px in
+After the accepted browser scenarios, run the complete automated suite. Broader visual checks at
+1024, 1280, 1440 and 1920 px in
 light, dark, reduced-motion and 200% zoom conditions. Cover threshold crossing during an active run,
 long messages, long code/content wrapping, working, approval, failure and disconnection,
 keyboard-only use, Electron title-bar clearance,

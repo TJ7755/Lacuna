@@ -1,9 +1,17 @@
 import { useAiSettings } from '../../ai/settings';
 import { SparklesIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
+import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
+import { AiMemoryInspector } from './AiMemoryInspector';
 
 export function AiSection() {
   const [settings, update] = useAiSettings();
+  const session = useOptionalAiSession();
+
+  async function setEnabled(enabled: boolean): Promise<void> {
+    if (!enabled) await session?.resetConnection();
+    update({ enabled });
+  }
 
   return (
     <section id="settings-ai" className="mb-8 rounded-2xl border border-line bg-surface p-6">
@@ -26,7 +34,7 @@ export function AiSection() {
         </div>
         <Toggle
           checked={settings.enabled}
-          onChange={(enabled) => update({ enabled })}
+          onChange={(enabled) => void setEnabled(enabled)}
           ariaLabel="Enable AI"
         />
       </div>
@@ -35,7 +43,7 @@ export function AiSection() {
         <div className="min-w-0">
           <div className="text-sm text-ink">Use misconception-first teaching</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
-            Saves your preference for the planned teaching workflow. Course actions stay local and
+            Diagnoses an existing mental model before correcting it. Course actions stay local and
             require Lacuna&apos;s normal permission checks.
           </p>
         </div>
@@ -45,6 +53,8 @@ export function AiSection() {
           ariaLabel="Use misconception-first teaching"
         />
       </div>
+
+      <AiMemoryInspector />
     </section>
   );
 }

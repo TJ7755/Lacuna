@@ -4,6 +4,7 @@ import type { JsonValue } from '../protocol';
 import { AI_RELAY_EMPTY_GENERATION, type RelayTerminalMailbox } from '../relayProtocol';
 import { createRelayAiSession } from './relay';
 import { CREATED, TERMINAL_PUBLIC_KEY, relaySessionHarness } from './relay.testHarness';
+import { buildAiInstructionBundle } from '../instructions';
 
 describe('relay AI session messages', () => {
   it('encrypts and persists a queued browser mailbox message', async () => {
@@ -24,18 +25,18 @@ describe('relay AI session messages', () => {
     expect(crypto.seal).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        version: 2,
+        version: 3,
         revision: 1,
         terminalRevisionSeen: 0,
         toolResponses: [],
         messages: [
-          {
+          expect.objectContaining({
             messageId: 'message-1',
             conversationId: 'conversation-2',
             content: 'Explain the testing effect.',
             createdAt: 1_000,
             delivery: 'queued',
-          },
+          }),
         ],
       }),
     );
@@ -52,6 +53,40 @@ describe('relay AI session messages', () => {
         delivery: 'queued',
       }),
     ]);
+  });
+
+  it('captures the current teaching preference on each queued message', async () => {
+    let enabled = true;
+    const { session, relay, crypto, tick } = relaySessionHarness(undefined, () =>
+      buildAiInstructionBundle({ misconceptionFirstEnabled: enabled }),
+    );
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+
+    await session.send('First request.');
+    enabled = false;
+    await session.send('Second request.');
+
+    const lastMailbox = vi.mocked(crypto.seal).mock.calls.at(-1)?.[1];
+    expect(lastMailbox).toEqual(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({
+            content: 'First request.',
+            instructions: expect.objectContaining({ misconceptionFirstEnabled: true }),
+          }),
+          expect.objectContaining({
+            content: 'Second request.',
+            instructions: expect.objectContaining({ misconceptionFirstEnabled: false }),
+          }),
+        ],
+      }),
+    );
   });
 
   it('requires reconnect after a stale browser mailbox generation', async () => {
@@ -146,7 +181,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -212,7 +247,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -254,7 +289,7 @@ describe('relay AI session messages', () => {
     await session.send('Explain the testing effect.');
 
     const mailbox: RelayTerminalMailbox = {
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -315,7 +350,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-2"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -379,7 +414,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -431,7 +466,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -484,7 +519,7 @@ describe('relay AI session messages', () => {
 
     vi.mocked(relay.push).mockResolvedValueOnce({ generation: '"browser-4"' });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -522,7 +557,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -566,7 +601,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -620,7 +655,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -638,7 +673,7 @@ describe('relay AI session messages', () => {
     await session.send('Now compare it with rereading.');
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 3,
       browserRevisionSeen: 0,
       events: [
@@ -693,7 +728,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -710,7 +745,7 @@ describe('relay AI session messages', () => {
     await tick();
     setNow(2_000);
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [
@@ -755,7 +790,7 @@ describe('relay AI session messages', () => {
     );
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 3,
       browserRevisionSeen: 0,
       events: [
@@ -778,7 +813,7 @@ describe('relay AI session messages', () => {
     ]);
 
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 4,
       browserRevisionSeen: 0,
       events: [
@@ -821,7 +856,7 @@ describe('relay AI session messages', () => {
       generation: '"terminal-1"',
     });
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 1,
       browserRevisionSeen: 0,
       events: [
@@ -839,7 +874,7 @@ describe('relay AI session messages', () => {
 
     setNow(2_100);
     vi.mocked(crypto.open).mockResolvedValue({
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 0,
       events: [

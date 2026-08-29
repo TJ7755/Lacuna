@@ -61,6 +61,7 @@ export function expireClaimLease(
             conversationId: claimed.conversationId,
             content: claimed.content,
             createdAt: claimed.createdAt,
+            instructions: claimed.instructions,
             delivery: 'queued' as const,
           }
         : message,

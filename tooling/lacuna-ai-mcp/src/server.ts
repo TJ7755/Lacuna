@@ -80,7 +80,8 @@ export function createLacunaAiMcpServer(client: TerminalAiToolClient): McpServer
     'lacuna.wait_for_message',
     {
       description:
-        'Wait for and claim one queued Lacuna sidebar message. Empty waits are normal; call again while connected.',
+        'Wait for and claim one queued Lacuna sidebar message. Honour the returned versioned ' +
+        'instructions for that message. Empty waits are normal; call again while connected.',
       inputSchema: z
         .object({
           timeoutMs: z.number().int().min(MIN_AI_WAIT_MS).max(MAX_AI_WAIT_MS).optional(),

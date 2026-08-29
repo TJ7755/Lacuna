@@ -1,8 +1,22 @@
 import type { AiActionReceipt, AiEntityReference } from '../../ai/protocol';
+import { aiEntityExists } from '../../ai/entityAvailability';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { CheckIcon, ClockIcon } from '../ui/icons';
 
 function targetHref(target: AiEntityReference): string | null {
-  if (target.kind === 'course') return `#/course/${target.id}`;
+  if (target.kind === 'course' && target.id !== '__global__') return `#/course/${target.id}`;
+  if (target.kind === 'lesson' && target.courseId) {
+    return `#/course/${target.courseId}/lesson/${target.id}`;
+  }
+  if (target.kind === 'card' && target.courseId) {
+    return `#/course/${target.courseId}/cards/${target.id}/edit`;
+  }
+  if (target.kind === 'question' && target.courseId) {
+    return `#/course/${target.courseId}/questions/${target.id}/edit`;
+  }
+  if (target.kind === 'assessment' && target.courseId) {
+    return `#/course/${target.courseId}/settings#course-settings-assessments`;
+  }
   return null;
 }
 
@@ -11,6 +25,11 @@ function formatLocalTime(timestamp: number): string {
 }
 
 export function AiActivityReceipt({ receipt }: { receipt: AiActionReceipt }) {
+  const availableTargets = useLiveQuery(
+    () => Promise.all(receipt.targets.map((target) => aiEntityExists(target))),
+    [receipt.targets],
+  );
+
   return (
     <article
       aria-label={`Completed action: ${receipt.summary}`}
@@ -36,13 +55,14 @@ export function AiActivityReceipt({ receipt }: { receipt: AiActionReceipt }) {
           </div>
           {receipt.targets.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2" aria-label="Action targets">
-              {receipt.targets.map((target) => {
+              {receipt.targets.map((target, index) => {
                 const href = targetHref(target);
-                return href ? (
+                const unavailable = availableTargets?.[index] === false;
+                return href && availableTargets?.[index] === true ? (
                   <a
                     key={`${target.kind}-${target.id}`}
                     href={href}
-                    aria-label={`Open course ${target.label}`}
+                    aria-label={`Open ${target.kind} ${target.label}`}
                     className="inline-flex min-h-11 items-center rounded-full border border-line px-2.5 text-xs text-ink-soft hover:border-accent/50 hover:text-accent"
                   >
                     {target.label}
@@ -50,10 +70,15 @@ export function AiActivityReceipt({ receipt }: { receipt: AiActionReceipt }) {
                 ) : (
                   <span
                     key={`${target.kind}-${target.id}`}
-                    aria-label={`${target.kind} target: ${target.label} (unavailable)`}
+                    aria-label={
+                      unavailable
+                        ? `${target.kind} target: ${target.label} (unavailable)`
+                        : `${target.kind} target: ${target.label}`
+                    }
                     className="inline-flex min-h-11 items-center rounded-full border border-line px-2.5 text-xs text-ink-soft"
                   >
                     {target.label}
+                    {unavailable ? ' · Unavailable' : ''}
                   </span>
                 );
               })}

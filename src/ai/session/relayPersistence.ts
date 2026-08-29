@@ -22,7 +22,7 @@ import { restoreState as restoreToolSessionState } from '../toolSession/state';
 import type { AiToolSessionState } from '../toolSession';
 import type { AiSessionSnapshot } from './types';
 
-const STORAGE_KEY = 'lacuna-ai-relay-session-v1';
+export const AI_RELAY_SESSION_STORAGE_KEY = 'lacuna-ai-relay-session-v1';
 const PROTOCOL_UPDATED_REASON = 'Reconnect the terminal after the AI protocol update.';
 
 export interface RelaySessionStorage {
@@ -49,7 +49,7 @@ export interface RelayDeviceState {
 }
 
 interface StoredRelayDeviceState {
-  version: 3;
+  version: 4;
   snapshot: AiSessionSnapshot;
   connection: PersistedRelayConnection | null;
 }
@@ -57,6 +57,7 @@ interface StoredRelayDeviceState {
 export interface RelaySessionPersistence {
   load(): RelayDeviceState | null;
   save(state: RelayDeviceState): void;
+  clear(): void;
 }
 
 export function createRelaySessionPersistence(
@@ -66,7 +67,7 @@ export function createRelaySessionPersistence(
     load() {
       let encoded: string | null;
       try {
-        encoded = storage.getItem(STORAGE_KEY);
+        encoded = storage.getItem(AI_RELAY_SESSION_STORAGE_KEY);
       } catch {
         return null;
       }
@@ -83,11 +84,14 @@ export function createRelaySessionPersistence(
     },
     save(state) {
       try {
-        const stored: StoredRelayDeviceState = { version: 3, ...state };
-        storage.setItem(STORAGE_KEY, JSON.stringify(stored));
+        const stored: StoredRelayDeviceState = { version: 4, ...state };
+        storage.setItem(AI_RELAY_SESSION_STORAGE_KEY, JSON.stringify(stored));
       } catch {
         // The active in-memory session remains usable when browser storage is unavailable.
       }
+    },
+    clear() {
+      removeStoredState(storage);
     },
   };
 }
@@ -97,7 +101,7 @@ function parseStoredState(value: unknown): RelayDeviceState | null {
   const parsedSnapshot = snapshotSchema.safeParse(value.snapshot);
   if (!parsedSnapshot.success) return null;
   const snapshot: AiSessionSnapshot = parsedSnapshot.data;
-  if (value.version === 3) {
+  if (value.version === 4) {
     if (value.connection === null) {
       return snapshot.connection.status === 'disconnected' ? { snapshot, connection: null } : null;
     }
@@ -106,7 +110,7 @@ function parseStoredState(value: unknown): RelayDeviceState | null {
       ? { snapshot, connection: recoverQueuedFollowUpIdentity(connection, snapshot) }
       : null;
   }
-  if (value.version === 2 || value.version === 1) {
+  if (value.version === 3 || value.version === 2 || value.version === 1) {
     return disconnectLegacySession(snapshot);
   }
   return null;
@@ -373,7 +377,7 @@ function containsBytes(bytes: Uint8Array, expected: readonly number[]): boolean 
 
 function removeStoredState(storage: RelaySessionStorage): void {
   try {
-    storage.removeItem(STORAGE_KEY);
+    storage.removeItem(AI_RELAY_SESSION_STORAGE_KEY);
   } catch {
     // Browser storage may be disabled or unavailable.
   }

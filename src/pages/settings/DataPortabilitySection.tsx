@@ -14,6 +14,7 @@ import {
   type MergeDelta,
 } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
+import { replacementLifecycle } from '../../db/replacementLifecycle';
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -111,7 +112,9 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   async function runImport(mode: ImportMode) {
     if (!pending) return;
     try {
-      await importBackup(pending, mode);
+      await replacementLifecycle.replace(mode === 'replace' ? 'manual' : 'recovery', () =>
+        importBackup(pending, mode),
+      );
       notify(mode === 'replace' ? 'Data replaced from backup.' : 'Backup added.', 'positive');
     } catch {
       notify('Import failed.', 'negative');
@@ -236,7 +239,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                   <li>
                     <strong className="text-ink">Replace local data</strong> deletes every course
                     and review record in this installation, then restores the backup exactly. Lacuna
-                    has no account or cloud copy to delete.
+                    has no account or cloud copy to delete. A connected AI is disconnected, and its
+                    local conversation is cleared after replacement succeeds.
                   </li>
                 </ul>
               </div>
@@ -255,7 +259,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                 </Button>
                 {confirmReplace ? (
                   <ConfirmInline
-                    message="Delete current local data and restore this backup?"
+                    message="Delete current local data, disconnect AI and restore this backup?"
                     confirmLabel="Replace local data"
                     onCancel={() => setConfirmReplace(false)}
                     onConfirm={() => void runImport('replace')}

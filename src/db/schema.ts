@@ -29,6 +29,7 @@ import type {
   CoursePerformance,
   SchedulingPerformance,
   Tombstone,
+  AgentMemory,
 } from './types';
 import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
 import {
@@ -133,6 +134,7 @@ class LacunaDatabase extends Dexie {
   questions!: Table<QuestionDefinition, string>;
   questionConcepts!: Table<QuestionConceptSet, string>;
   questionAttempts!: Table<QuestionAttempt, string>;
+  agentMemories!: Table<AgentMemory, string>;
 
   constructor() {
     super('lacuna');
@@ -1164,10 +1166,48 @@ class LacunaDatabase extends Dexie {
         ];
         await tx.table('tombstones').bulkPut(tombstones);
       });
+
+    // Version 25: durable learner-correctable AI teaching context. Additive only.
+    this.version(25).stores({
+      cards:
+        'id, courseId, primaryLessonId, schedulingUnitId, conceptId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+      lineageIdMappings: 'id, courseId',
+      pendingMergeReviews: 'id, courseId',
+      occlusions: 'id, courseId, primaryLessonId, createdAt',
+      reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+      schedulingUnits: 'id, kind, courseId, lessonId',
+      coursePerformance: 'courseId',
+      schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+      tombstones: '[table+recordId], deletedAt',
+      concepts: 'id, scopeKey, courseId, updatedAt',
+      questions: 'id, courseId, primaryLessonId, kind, due, authoringUpdatedAt',
+      questionConcepts:
+        'questionId, courseId, *targetConceptIds, *prerequisiteConceptIds, authoringUpdatedAt',
+      questionAttempts:
+        'id, questionId, courseId, status, shownAt, sessionId, [questionId+shownAt], [courseId+shownAt], updatedAt',
+      agentMemories: 'id, courseId, status, updatedAt, *tags',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 24;
+const CURRENT_SCHEMA_VERSION = 25;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24]);
 
 export const db = new LacunaDatabase();
@@ -1380,6 +1420,7 @@ export async function readAllDataFromVersion(
     questionAttempts: (raw.data['questionAttempts'] ?? []) as QuestionAttempt[],
     lineageIdMappings: (raw.data['lineageIdMappings'] ?? []) as LineageIdMapping[],
     pendingMergeReviews: (raw.data['pendingMergeReviews'] ?? []) as PendingMergeReview[],
+    agentMemories: (raw.data['agentMemories'] ?? []) as AgentMemory[],
   };
 
   // A v13 pre-migration snapshot must retain the retired store byte-for-byte.

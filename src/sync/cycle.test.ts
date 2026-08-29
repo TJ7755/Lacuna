@@ -22,6 +22,7 @@ const {
   updateSyncStateMock,
   writeSyncStateMock,
   manualMergeMock,
+  replaceMock,
   MockManualMergeError,
 } = vi.hoisted(() => {
   class ManualMergeErrorForTest extends Error {
@@ -44,9 +45,14 @@ const {
     updateSyncStateMock: vi.fn(),
     writeSyncStateMock: vi.fn(),
     manualMergeMock: vi.fn(),
+    replaceMock: vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),
     MockManualMergeError: ManualMergeErrorForTest,
   };
 });
+
+vi.mock('../db/replacementLifecycle', () => ({
+  replacementLifecycle: { replace: replaceMock },
+}));
 
 vi.mock('../db/portability', async (importOriginal) => {
   const actual = await importOriginal<typeof DbPortability>();
@@ -129,6 +135,7 @@ beforeEach(() => {
   });
   writeSyncStateMock.mockReset().mockResolvedValue(undefined);
   manualMergeMock.mockReset();
+  replaceMock.mockClear();
   exportDatabaseMock.mockResolvedValue(backup());
   manualMergeMock.mockImplementation(
     async (
@@ -156,6 +163,7 @@ describe('syncCycle', () => {
     const result = await syncCycle(options(relay));
 
     expect(relay.pull).toHaveBeenCalledWith('state');
+    expect(replaceMock).toHaveBeenCalledWith('peer', expect.any(Function));
     expect(relay.push).toHaveBeenCalledWith('state', expect.any(Uint8Array), EMPTY_GENERATION);
     const pushedBytes = relay.push.mock.calls[0]![1] as Uint8Array;
     const opened = await openState(CHANNEL_KEY, pushedBytes, { channelId: CHANNEL_ID });
@@ -234,7 +242,7 @@ describe('syncCycle', () => {
 
     expect(manualMergeMock).toHaveBeenCalledWith(
       remoteSnapshot,
-      expect.objectContaining({ beforeApply: expect.any(Function) }),
+      expect.objectContaining({ beforeApply: expect.any(Function), kind: 'peer' }),
     );
     expect(relay.push).not.toHaveBeenCalled();
     expect(result).toMatchObject({

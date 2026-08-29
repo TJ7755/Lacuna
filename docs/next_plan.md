@@ -13,28 +13,27 @@ archive.
 
 ## Now
 
-### AI sidebar — domain integration
+### AI sidebar — final verification
 
-**Status:** in progress.
+**Status:** delivered.
 
 The implementation plan is [the AI sidebar prototype](plans/ai-sidebar.md). PRs #96–#101 delivered
 the optional desktop panel, encrypted relay pairing, chat-only terminal companion, cooperative Stop,
 reload continuity and recovery from ambiguous relay writes or a dead terminal. PR #101 merged on
 28 August 2026 as `5275266`; its full GitHub check suite and deployed-browser gate passed.
 
-The first domain-action vertical slice now extends that transport. The web companion invokes the
-existing typed registry through a shared executor, with implicit reads, scoped or exact write
-approval, stable-call replay, Stop enforcement and real receipts. A live browser run created one
-course exactly once and rendered its receipt. The complete authored-content workflow, saved
-misconception-first instructions and durable learner memories still do not exist.
+The completed implementation extends that transport through authored-content tools, a per-message
+`teaching-v1` instruction bundle, durable learner-correctable memories, and coordinated data
+replacement. Memories are bounded, inspectable, correctable, included in full backup and encrypted
+peer sync, and exposed to AI only through explicit global or Course scope. Peer and recovery
+application preserve the connected AI session; successful full replacement revokes and clears its
+device-local state.
 
-The remaining work stays inside the approved plan and lands in bounded slices:
-
-1. extend the delivered shared domain-tool path through the full Course, Lesson, Card, Question and
-   assessment browser scenario;
-2. versioned teaching instructions plus durable, learner-correctable memories with backup and sync;
-3. activity continuity, replacement/sync lifecycle coordination and browser acceptance scenarios
-   3, 4 and 6.
+Browser scenarios 4 and 6 passed on 28 August 2026. The teaching run stored an uncertain
+misconception after approval, confronted it with a failed prediction, resolved it from learner
+evidence and tested transfer. The lifecycle run preserved the terminal and transcript across a
+focus-triggered peer deletion, marked the stale Course receipt **Unavailable**, then proved that a
+full backup replacement disconnected and cleared the AI session.
 
 Lacuna remains model- and harness-agnostic. This is a terminal MCP integration, not an embedded LLM
 provider or permission to add model credentials to the app.

@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { RelayClient } from '../relayClient';
-import type { JsonValue } from '../protocol';
+import type { AiInstructionBundle, JsonValue } from '../protocol';
 import type { RelayEnvelope } from '../relayProtocol';
 import type { AiToolSession } from '../toolSession';
 import {
@@ -23,7 +23,10 @@ export const BROWSER_PRIVATE_KEY =
   'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgUgOaX_t7p24DbDzab6ZUutaIuZQny6LyFAMdUl7EoS-hRANCAARPmlpc_Do2BXmlkvIW2dZd7lxT8VQEWrsCJDntasxyxJ6Ztfqbd9BQkeJNx-TuG0pzmX4PvYpMaSsg7IFPiTr3';
 export const TERMINAL_PUBLIC_KEY = BROWSER_PUBLIC_KEY;
 
-export function relaySessionHarness(toolSession?: AiToolSession) {
+export function relaySessionHarness(
+  toolSession?: AiToolSession,
+  getInstructions?: () => AiInstructionBundle,
+) {
   let poll: (() => Promise<void>) | null = null;
   let currentTime = 1_000;
   const cancelPolling = vi.fn();
@@ -64,6 +67,7 @@ export function relaySessionHarness(toolSession?: AiToolSession) {
     now: () => currentTime,
     createId: (prefix) => `${prefix}-${++nextId}`,
     toolSession,
+    getInstructions,
   });
   session.activate();
   return {

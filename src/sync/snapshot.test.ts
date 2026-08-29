@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BackupFile, CourseRecord } from '../db/types';
+import type { AgentMemory, BackupFile, CourseRecord } from '../db/types';
 import { PRE_V22_BACKUP_MESSAGE } from '../db/portability';
 import {
   assertSnapshotSize,
@@ -95,6 +95,37 @@ describe('snapshot wire helpers', () => {
         }),
         message:
           'This sync snapshot is 0.00 MB, above the 0.00 MB limit. Reduce content in: Organic Chemistry.',
+      });
+    }
+  });
+
+  it('treats absent memory tables as empty and attributes scoped and global memory bytes', () => {
+    const scoped: AgentMemory = {
+      id: 'scoped',
+      courseId: 'course-1',
+      tags: ['context'],
+      status: 'active',
+      content: 'Course context',
+      references: [],
+      basis: 'learner-stated',
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    expect(snapshotsEquivalent(backup(), backup({ agentMemories: [] }))).toBe(true);
+    try {
+      assertSnapshotSize(
+        backup({
+          courses: [{ id: 'course-1', name: 'Maths' } as CourseRecord],
+          agentMemories: [scoped, { ...scoped, id: 'global', courseId: null }],
+        }),
+        2,
+        1,
+        1,
+      );
+      throw new Error('expected the size check to fail');
+    } catch (error) {
+      expect(error).toMatchObject({
+        report: expect.objectContaining({ courseNames: ['Maths', 'other local data'] }),
       });
     }
   });

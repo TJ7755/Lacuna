@@ -2,6 +2,7 @@
 // the owning adapter issues a grant first, then supplies it with the call.
 
 import { scopeSatisfies } from './grants';
+import { replacementLifecycle } from '../db/replacementLifecycle';
 import { getTool, validateAndRun } from './registry';
 import type { McpScopeTarget, McpToolError } from './bridge/protocol';
 import type { RecordedUndo } from './bridge/undoRegistry';
@@ -72,55 +73,61 @@ export async function executeToolCall(
       return { ok: false, error: { kind: 'validation', message: parsed.error.message } };
     }
 
-    const scopes = await resolveToolScopes(parsed.data, tool.name);
-    if (!scopes.ok) return { ok: false, error: scopes.error };
-    if (scopes.targets.length !== 1) {
+    const execute = async (): Promise<ToolExecutionOutcome> => {
+      const scopes = await resolveToolScopes(parsed.data, tool.name);
+      if (!scopes.ok) return { ok: false, error: scopes.error };
+      if (scopes.targets.length !== 1) {
+        return {
+          ok: false,
+          error: {
+            kind: 'conflict',
+            message: 'A single MCP tool call must resolve to exactly one permission scope.',
+          },
+        };
+      }
+      const target = scopes.targets[0];
+      if (
+        target.courseId !== request.grant.courseId ||
+        !scopeSatisfies(request.grant.scope, tool.requiredScope)
+      ) {
+        return { ok: false, error: GRANT_MISMATCH_ERROR };
+      }
+
+      const outcome = await validateAndRun(tool, parsed.data, {
+        grant: request.grant,
+        agentId: request.agentId,
+      });
+      if (!outcome.ok) return outcome;
+
+      if (outcome.result.undo) {
+        const recordedAt = (hooks.now ?? Date.now)();
+        const recorded: RecordedUndo = {
+          requestId: request.callId,
+          toolName: tool.name,
+          payload: outcome.result.undo,
+          recordedAt,
+        };
+        recordUndo(request.callId, tool.name, outcome.result.undo);
+        hooks.onUndoAvailable?.(recorded);
+      }
+
+      const completedAt = (hooks.now ?? Date.now)();
       return {
-        ok: false,
-        error: {
-          kind: 'conflict',
-          message: 'A single MCP tool call must resolve to exactly one permission scope.',
+        ok: true,
+        result: outcome.result.data,
+        receipt: {
+          callId: request.callId,
+          toolName: tool.name,
+          requiredScope: tool.requiredScope,
+          target,
+          completedAt,
         },
       };
-    }
-    const target = scopes.targets[0];
-    if (
-      target.courseId !== request.grant.courseId ||
-      !scopeSatisfies(request.grant.scope, tool.requiredScope)
-    ) {
-      return { ok: false, error: GRANT_MISMATCH_ERROR };
-    }
-
-    const outcome = await validateAndRun(tool, parsed.data, {
-      grant: request.grant,
-      agentId: request.agentId,
-    });
-    if (!outcome.ok) return outcome;
-
-    if (outcome.result.undo) {
-      const recordedAt = (hooks.now ?? Date.now)();
-      const recorded: RecordedUndo = {
-        requestId: request.callId,
-        toolName: tool.name,
-        payload: outcome.result.undo,
-        recordedAt,
-      };
-      recordUndo(request.callId, tool.name, outcome.result.undo);
-      hooks.onUndoAvailable?.(recorded);
-    }
-
-    const completedAt = (hooks.now ?? Date.now)();
-    return {
-      ok: true,
-      result: outcome.result.data,
-      receipt: {
-        callId: request.callId,
-        toolName: tool.name,
-        requiredScope: tool.requiredScope,
-        target,
-        completedAt,
-      },
     };
+
+    return tool.requiredScope === 'read'
+      ? await execute()
+      : await replacementLifecycle.admitWrite(execute);
   } catch (error) {
     return internalError(error);
   }

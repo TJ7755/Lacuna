@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol.js';
+import type { AiClientIdentity, AiInstructionBundle, JsonValue } from '../../../src/ai/protocol.js';
 import {
   AI_RELAY_EMPTY_GENERATION,
+  AI_RELAY_PROTOCOL_VERSION,
   relayTerminalEventSchema,
   type RelayBrowserMailbox,
   type RelayTerminalEvent,
@@ -66,6 +67,7 @@ export type WaitForMessageResult =
       content: string;
       createdAt: number;
       leaseExpiresAt: number;
+      instructions: AiInstructionBundle;
     }
   | { type: 'stop_requested'; messageId: string; runId: string }
   | { type: 'empty' };
@@ -99,7 +101,7 @@ export class TerminalAiClient {
   private browserGeneration: string | null = null;
   private terminalGeneration = AI_RELAY_EMPTY_GENERATION;
   private terminalMailbox: RelayTerminalMailbox = {
-    version: 2,
+    version: AI_RELAY_PROTOCOL_VERSION,
     revision: 0,
     events: [],
     browserRevisionSeen: 0,
@@ -201,6 +203,7 @@ export class TerminalAiClient {
             content: queued.content,
             createdAt: queued.createdAt,
             leaseExpiresAt,
+            instructions: queued.instructions,
           };
         }
         if (generationChanged) this.browserGeneration = read.generation;
@@ -274,6 +277,7 @@ export class TerminalAiClient {
     }
 
     await this.appendEvent({ ...parsedCall.data, eventId: this.createId('event') });
+    const callRevision = this.terminalMailbox.revision;
 
     const deadline = this.now() + timeoutMs;
     for (;;) {
@@ -287,9 +291,12 @@ export class TerminalAiClient {
           throw new Error('Stop was requested for this run; the tool result was discarded.');
         }
       }
-      const response = read.mailbox.toolResponses.find(
-        (candidate) => candidate.runId === runId && candidate.callId === callId,
-      );
+      const response =
+        read.mailbox.terminalRevisionSeen >= callRevision
+          ? read.mailbox.toolResponses.find(
+              (candidate) => candidate.runId === runId && candidate.callId === callId,
+            )
+          : undefined;
       if (response) {
         await this.acknowledgeBrowserRevision();
         return response.ok
@@ -343,7 +350,7 @@ export class TerminalAiClient {
   private async appendEvent(event: RelayTerminalEvent): Promise<void> {
     const connection = this.requireConnection();
     const next: RelayTerminalMailbox = {
-      version: 2,
+      version: AI_RELAY_PROTOCOL_VERSION,
       revision: this.terminalMailbox.revision + 1,
       events: [...this.terminalMailbox.events, event],
       browserRevisionSeen: this.terminalMailbox.browserRevisionSeen,
@@ -424,7 +431,12 @@ export class TerminalAiClient {
     this.connection = null;
     this.browserGeneration = null;
     this.terminalGeneration = AI_RELAY_EMPTY_GENERATION;
-    this.terminalMailbox = { version: 2, revision: 0, events: [], browserRevisionSeen: 0 };
+    this.terminalMailbox = {
+      version: AI_RELAY_PROTOCOL_VERSION,
+      revision: 0,
+      events: [],
+      browserRevisionSeen: 0,
+    };
     this.activeRuns.clear();
     this.claimedMessageIds.clear();
     this.acknowledgedStops.clear();

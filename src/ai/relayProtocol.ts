@@ -6,6 +6,7 @@ import {
   aiActionReceiptSchema,
   aiBridgeErrorSchema,
   aiClientIdentitySchema,
+  aiInstructionBundleSchema,
   aiToolNameSchema,
   boundedJsonValueSchema,
   jsonValueSchema,
@@ -13,7 +14,7 @@ import {
 
 /** Stable encrypted envelope format. Mailbox records may evolve independently. */
 export const AI_RELAY_ENVELOPE_VERSION = 1 as const;
-export const AI_RELAY_PROTOCOL_VERSION = 2 as const;
+export const AI_RELAY_PROTOCOL_VERSION = 3 as const;
 export const AI_RELAY_EMPTY_GENERATION = '"0"';
 export const MAX_AI_RELAY_MAILBOX_ENTRIES = 2_000;
 
@@ -153,6 +154,7 @@ const relayBrowserMessageBase = {
   conversationId: relayIdentifierSchema,
   content: relayMessageContentSchema,
   createdAt: relayTimestampSchema,
+  instructions: aiInstructionBundleSchema,
 };
 
 export const relayBrowserMessageSchema = z.discriminatedUnion('delivery', [

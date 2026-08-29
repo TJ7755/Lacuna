@@ -18,9 +18,9 @@ describe('relay AI session persistence', () => {
     await first.session.pair();
     expect(JSON.parse(first.storage.getItem(STORAGE_KEY)!)).toEqual(
       expect.objectContaining({
-        version: 3,
+        version: 4,
         connection: expect.objectContaining({
-          browserMailbox: expect.objectContaining({ version: 2, toolResponses: [] }),
+          browserMailbox: expect.objectContaining({ version: 3, toolResponses: [] }),
           toolSessionState: { grants: [], approvals: [], ledger: [] },
         }),
       }),
@@ -58,7 +58,7 @@ describe('relay AI session persistence', () => {
     await pairingReload.send('First message.');
 
     const completedMailbox: RelayTerminalMailbox = {
-      version: 2,
+      version: 3,
       revision: 2,
       browserRevisionSeen: 1,
       events: [
@@ -148,6 +148,43 @@ describe('relay AI session persistence', () => {
       expect.objectContaining({ connection: { status: 'disconnected' }, items: [] }),
     );
     expect(source.storage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('preserves the transcript while disconnecting a mailbox from the previous protocol', async () => {
+    const source = relaySessionHarness();
+    await source.session.pair();
+    const stored = JSON.parse(source.storage.getItem(STORAGE_KEY)!) as {
+      version: number;
+      snapshot: { items: unknown[] };
+    };
+    stored.version = 3;
+    stored.snapshot.items = [
+      {
+        kind: 'user',
+        id: 'message-legacy',
+        content: 'Preserve this transcript.',
+        createdAt: 1_000,
+        delivery: 'completed',
+      },
+    ];
+    source.storage.setItem(STORAGE_KEY, JSON.stringify(stored));
+
+    const restored = createRelayAiSession({
+      relay: source.relay,
+      storage: source.storage,
+      crypto: source.crypto,
+      timers: source.timers,
+    });
+
+    expect(restored.getSnapshot()).toEqual(
+      expect.objectContaining({
+        connection: {
+          status: 'disconnected',
+          reason: 'Reconnect the terminal after the AI protocol update.',
+        },
+        items: [expect.objectContaining({ content: 'Preserve this transcript.' })],
+      }),
+    );
   });
 
   it('discards a persisted transcript containing an invalid item shape', async () => {
@@ -321,14 +358,37 @@ describe('relay AI session persistence', () => {
     expect(restored.getSnapshot()).toEqual(
       expect.objectContaining({
         connection: { status: 'disconnected' },
+        draft: 'Keep this conversation.',
         items: [
           expect.objectContaining({
             kind: 'user',
             content: 'Keep this conversation.',
+            delivery: 'stopped',
           }),
         ],
       }),
     );
     expect(first.relay.peer).toHaveBeenCalledOnce();
+  });
+
+  it('clears device-local relay state only when a successful manual replacement completes', async () => {
+    const source = relaySessionHarness();
+    await source.session.pair();
+    expect(source.storage.getItem(STORAGE_KEY)).not.toBeNull();
+
+    source.session.replacementParticipant.invalidate();
+    await source.session.replacementParticipant.quiesce();
+
+    expect(source.storage.getItem(STORAGE_KEY)).not.toBeNull();
+    expect(source.session.getSnapshot()).toEqual(
+      expect.objectContaining({ connection: { status: 'disconnected' } }),
+    );
+
+    await source.session.replacementParticipant.clear();
+
+    expect(source.storage.getItem(STORAGE_KEY)).toBeNull();
+    expect(source.session.getSnapshot()).toEqual(
+      expect.objectContaining({ connection: { status: 'disconnected' }, items: [] }),
+    );
   });
 });

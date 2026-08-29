@@ -35,6 +35,7 @@ import type {
   Sequence,
   SessionHistoryEntry,
   UserPerformance,
+  AgentMemory,
 } from './types';
 import type {
   Concept,
@@ -110,6 +111,14 @@ export {
   restoreSequence,
 } from './sequenceRepository';
 export type { SequenceSnapshot } from './sequenceRepository';
+export { agentMemoryRepository, AgentMemoryRepository } from './agentMemoryRepository';
+export type {
+  AgentMemorySearch,
+  AgentMemorySearchScope,
+  CreateAgentMemoryInput,
+  DeletedAgentMemory,
+  UpdateAgentMemoryInput,
+} from './agentMemoryRepository';
 export {
   createNote,
   updateNote,
@@ -1445,6 +1454,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.questionAttempts,
       db.lineageIdMappings,
       db.pendingMergeReviews,
+      db.agentMemories,
       db.tombstones,
     ],
     async (tx) => {
@@ -1499,6 +1509,12 @@ export async function deleteCourse(id: string): Promise<void> {
       const pendingMergeReviewIds = (
         await db.pendingMergeReviews.where('courseId').equals(id).primaryKeys()
       ).map(String);
+      const agentMemories = await db.agentMemories.where('courseId').equals(id).toArray();
+      const agentMemoryIds = agentMemories.map((memory) => memory.id);
+      const agentMemoryDeletedAt = Math.max(
+        Date.now(),
+        ...agentMemories.map((memory) => memory.updatedAt + 1),
+      );
       const occlusionIds = (await db.occlusions.where('courseId').equals(id).primaryKeys()).map(
         String,
       );
@@ -1536,6 +1552,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.concepts.where('courseId').equals(id).delete();
       await db.lineageIdMappings.where('courseId').equals(id).delete();
       await db.pendingMergeReviews.where('courseId').equals(id).delete();
+      await db.agentMemories.where('courseId').equals(id).delete();
       await db.reviewHistory.where('courseId').equals(id).delete();
       // The course-level calibration profile and session history are keyed by the
       // course id itself for course/lesson-scoped reviews (see recordReview).
@@ -1569,6 +1586,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await recordTombstones(tx, 'questionAttempts', questionAttemptIds);
       await recordTombstones(tx, 'lineageIdMappings', lineageMappingIds);
       await recordTombstones(tx, 'pendingMergeReviews', pendingMergeReviewIds);
+      await recordTombstones(tx, 'agentMemories', agentMemoryIds, agentMemoryDeletedAt);
       await recordTombstones(tx, 'occlusions', occlusionIds);
       await recordTombstones(tx, 'schedulingUnits', schedulingUnitIds);
       if (coursePerformanceRow) await recordTombstone(tx, 'coursePerformance', id);
@@ -1604,6 +1622,7 @@ export interface CourseSnapshot {
   questionAttempts: QuestionAttempt[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
+  agentMemories?: AgentMemory[];
   sessionHistory: SessionHistoryEntry[];
   reviewHistory: ReviewHistoryEntry[];
   coursePerformance: CoursePerformance[];
@@ -1634,6 +1653,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questionAttempts,
     lineageIdMappings,
     pendingMergeReviews,
+    agentMemories,
     coursePerformance,
   ] = await Promise.all([
     db.lessons.where('courseId').equals(id).toArray(),
@@ -1650,6 +1670,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.questionAttempts.where('courseId').equals(id).toArray(),
     db.lineageIdMappings.where('courseId').equals(id).toArray(),
     db.pendingMergeReviews.where('courseId').equals(id).toArray(),
+    db.agentMemories.where('courseId').equals(id).toArray(),
     db.coursePerformance.where('courseId').equals(id).toArray(),
   ]);
   const reviewHistoryForCourse =
@@ -1708,6 +1729,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questionAttempts,
     lineageIdMappings,
     pendingMergeReviews,
+    agentMemories,
     sessionHistory: courseSessionHistory,
     reviewHistory: reviewHistoryForCourse,
     coursePerformance,
@@ -1758,6 +1780,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.questionAttempts,
         db.lineageIdMappings,
         db.pendingMergeReviews,
+        db.agentMemories,
         db.tombstones,
       ],
       async (tx) => {
@@ -1782,6 +1805,21 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.questionAttempts.bulkPut(snapshot.questionAttempts),
           db.lineageIdMappings.bulkPut(snapshot.lineageIdMappings),
           db.pendingMergeReviews.bulkPut(snapshot.pendingMergeReviews),
+          db.agentMemories.bulkPut(
+            await Promise.all(
+              (snapshot.agentMemories ?? []).map(async (memory) => {
+                const deletion = await db.tombstones.get(['agentMemories', memory.id]);
+                return {
+                  ...memory,
+                  updatedAt: Math.max(
+                    Date.now(),
+                    memory.updatedAt + 1,
+                    (deletion?.deletedAt ?? 0) + 1,
+                  ),
+                };
+              }),
+            ),
+          ),
           db.schedulingUnits.bulkPut(snapshot.schedulingUnits),
           db.coursePerformance.bulkPut(snapshot.coursePerformance),
           db.schedulingPerformance.bulkPut(snapshot.schedulingPerformance),
@@ -1886,6 +1924,11 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           tx,
           'pendingMergeReviews',
           snapshot.pendingMergeReviews.map((review) => review.id),
+        );
+        await clearTombstones(
+          tx,
+          'agentMemories',
+          (snapshot.agentMemories ?? []).map((memory) => memory.id),
         );
         await clearTombstones(
           tx,

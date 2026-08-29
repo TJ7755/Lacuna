@@ -123,9 +123,12 @@ wake a terminal task which has already ended. See
 The web companion can invoke the existing typed `lacuna.*` domain tools for an active run. Reads
 remain implicit; writes block on Lacuna's browser approval, course creation and destructive calls
 use exact one-shot approval, retries are keyed by `callId`, and successful writes render local
-receipts. Stop blocks later tool calls as well as replies. Learner memories and
-misconception-first instructions remain future slices. The Electron MCP companion below is a
-separate local-IPC adapter over the same shared executor.
+receipts. Stop blocks later tool calls as well as replies. Every claimed message includes the live
+`teaching-v1` instruction bundle. Learner memories require explicit global or Course scope, remain
+inspectable and correctable under Settings → AI, and participate in full backup and encrypted peer
+sync. Peer sync preserves the terminal and device-local transcript; successful full replacement
+disconnects and clears them. The Electron MCP companion below is a separate local-IPC adapter over
+the same shared executor.
 
 ### Electron (desktop build)
 

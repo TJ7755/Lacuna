@@ -28,6 +28,7 @@ import type {
   Sequence,
   SessionHistoryEntry,
   Tombstone,
+  AgentMemory,
 } from '../db/types';
 import {
   cardsWithReviewHistory,
@@ -86,6 +87,7 @@ export type MergedBackupFile = BackupFile & {
   questionAttempts: QuestionAttempt[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
+  agentMemories: AgentMemory[];
 };
 
 export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
@@ -214,6 +216,15 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     updatedAtOf,
     tombstones,
   );
+  const agentMemories = applyTombstones(
+    'agentMemories',
+    mergeAgentMemories(left.agentMemories, right.agentMemories),
+    idOf,
+    updatedAtOf,
+    tombstones,
+  ).filter(
+    (memory) => memory.courseId === null || courses.some((course) => course.id === memory.courseId),
+  );
   const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
   const lineageIdMappings = mergeLineageMappings(left.lineageIdMappings, right.lineageIdMappings);
   const pendingMergeReviews = newestWins(
@@ -257,6 +268,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questions: questionState.questions,
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
+    agentMemories,
   });
   const keptTombstones = [...tombstones.values()]
     .filter((row) => !liveKeys.has(tombstoneKey(row.table, row.recordId)))
@@ -301,6 +313,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questionAttempts: questionState.questionAttempts,
     lineageIdMappings,
     pendingMergeReviews,
+    agentMemories: sortById(agentMemories),
   };
 }
 
@@ -328,6 +341,7 @@ interface NormalisedSnapshot extends QuestionMergeCollections {
   tombstones: Tombstone[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
+  agentMemories: AgentMemory[];
 }
 
 function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
@@ -386,6 +400,7 @@ function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
     questionAttempts: normalised.questionAttempts,
     lineageIdMappings: normalised.lineageIdMappings ?? [],
     pendingMergeReviews: normalised.pendingMergeReviews ?? [],
+    agentMemories: normalised.agentMemories ?? [],
   };
 }
 
@@ -467,6 +482,17 @@ function newestWins<T>(
   return [...merged.values()];
 }
 
+function mergeAgentMemories(left: AgentMemory[], right: AgentMemory[]): AgentMemory[] {
+  const scopeById = new Map<string, string | null>();
+  for (const memory of [...left, ...right]) {
+    if (scopeById.has(memory.id) && scopeById.get(memory.id) !== memory.courseId) {
+      throw new Error('A learner memory cannot move between global and Course scope.');
+    }
+    scopeById.set(memory.id, memory.courseId);
+  }
+  return newestWins(left, right, idOf, updatedAtOf);
+}
+
 function mergeLineageMappings(
   left: LineageIdMapping[],
   right: LineageIdMapping[],
@@ -542,6 +568,7 @@ function collectLiveKeys(tables: {
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  agentMemories: AgentMemory[];
 }): Set<string> {
   const keys = new Set<string>();
   const add = (table: string, recordId: string) => keys.add(tombstoneKey(table, recordId));
@@ -566,6 +593,7 @@ function collectLiveKeys(tables: {
   for (const row of tables.questions) add('questions', row.id);
   for (const row of tables.questionConcepts) add('questionConcepts', row.questionId);
   for (const row of tables.questionAttempts) add('questionAttempts', row.id);
+  for (const row of tables.agentMemories) add('agentMemories', row.id);
   return keys;
 }
 

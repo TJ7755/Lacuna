@@ -11,7 +11,7 @@ import {
   sealRelayJson,
   type RelayKeyPair,
 } from '../relayCrypto';
-import { MAX_AI_MESSAGE_LENGTH, type JsonValue } from '../protocol';
+import { MAX_AI_MESSAGE_LENGTH, type AiInstructionBundle, type JsonValue } from '../protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
@@ -23,6 +23,8 @@ import {
   type RelayToolResponse,
 } from '../relayProtocol';
 import { createAiToolSession, type AiToolInvokeResult, type AiToolSession } from '../toolSession';
+import { buildAiInstructionBundle } from '../instructions';
+import type { ReplacementParticipant } from '../../db/replacementLifecycle';
 import type { AiSession, AiSessionCommandResult, AiSessionSnapshot } from './types';
 import { appendConversationItems, applyTerminalEvent, expireClaimLease } from './relayEvents';
 import {
@@ -71,15 +73,30 @@ export interface RelayAiSessionOptions {
   now?: () => number;
   createId?: (prefix: string) => string;
   toolSession?: AiToolSession;
+  getInstructions?: () => AiInstructionBundle;
 }
 
-export function createRelayAiSession(options: RelayAiSessionOptions): AiSession {
+export interface RelayAiSession extends AiSession {
+  /** Production-only coordination seam; React continues to depend on `AiSession`. */
+  readonly replacementParticipant: ReplacementParticipant;
+}
+
+export function clearPersistedRelayAiDeviceState(
+  storage: RelaySessionStorage = globalThis.localStorage,
+): void {
+  createRelaySessionPersistence(storage).clear();
+}
+
+export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSession {
   const storage = options.storage ?? globalThis.localStorage;
   const persistence = createRelaySessionPersistence(storage);
   const timers = options.timers ?? browserTimers();
   const crypto = options.crypto ?? browserCrypto();
   const now = options.now ?? Date.now;
   const createId = options.createId ?? ((prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`);
+  const getInstructions =
+    options.getInstructions ??
+    (() => buildAiInstructionBundle({ misconceptionFirstEnabled: true }));
   const listeners = new Set<() => void>();
   const restored = persistence.load();
   let persisted: PersistedRelayConnection | null = restored?.connection ?? null;
@@ -161,9 +178,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
         !isExpiredPairing(snapshot, now())
           ? await options.relay.pull(connection.credentials)
           : null;
-      await serialise(() =>
-        epoch === pollingEpoch ? pollOnce(epoch, pulled) : Promise.resolve(),
-      );
+      await serialise(() => (epoch === pollingEpoch ? pollOnce(epoch, pulled) : Promise.resolve()));
     } catch (error) {
       const reason = mailboxGenerationReason(error);
       if (epoch === pollingEpoch && reason) {
@@ -393,16 +408,21 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     const interruptedPrompt = interruptedRun
       ? current.items.find((item) => item.kind === 'user' && item.id === interruptedRun.messageId)
       : null;
+    const pendingPrompt = current.items.find(
+      (item) => item.kind === 'user' && (item.delivery === 'queued' || item.delivery === 'claimed'),
+    );
     const interruptedPromptContent =
-      interruptedPrompt?.kind === 'user' ? interruptedPrompt.content : '';
+      interruptedPrompt?.kind === 'user'
+        ? interruptedPrompt.content
+        : pendingPrompt?.kind === 'user'
+          ? pendingPrompt.content
+          : '';
     return {
-      items: interruptedRun
-        ? current.items.map((item) =>
-            item.kind === 'user' && item.id === interruptedRun.messageId
-              ? { ...item, delivery: 'stopped' as const }
-              : item,
-          )
-        : current.items,
+      items: current.items.map((item) =>
+        item.kind === 'user' && (item.delivery === 'queued' || item.delivery === 'claimed')
+          ? { ...item, delivery: 'stopped' as const }
+          : item,
+      ),
       run: null,
       activity: null,
       draft: current.queuedFollowUp ?? (current.draft || interruptedPromptContent),
@@ -432,7 +452,50 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     return conflict(reason);
   }
 
+  function invalidateForReplacement(): void {
+    stopPolling();
+    publish({
+      ...snapshot,
+      ...recoverDisconnectedState(snapshot),
+      approval: null,
+    });
+  }
+
+  async function quiesceForReplacement(): Promise<void> {
+    const credentials = persisted?.credentials ?? null;
+    publish({
+      ...snapshot,
+      ...recoverDisconnectedState(snapshot),
+      connection: { status: 'disconnected' },
+      approval: null,
+    });
+    if (!credentials) return;
+    try {
+      await options.relay.revoke(credentials);
+    } catch {
+      // The local session is already invalidated. An unavailable relay must not block a local
+      // database replacement; the remote session expires independently.
+    }
+  }
+
+  function clearReplacementState(): void {
+    stopPolling();
+    pollInFlightEpoch = null;
+    mutationQueue = Promise.resolve();
+    toolSession.clear();
+    persisted = null;
+    encryptionKey = null;
+    snapshot = { ...EMPTY_SNAPSHOT, revision: snapshot.revision + 1 };
+    persistence.clear();
+    listeners.forEach((listener) => listener());
+  }
+
   return {
+    replacementParticipant: {
+      invalidate: invalidateForReplacement,
+      quiesce: quiesceForReplacement,
+      clear: clearReplacementState,
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -513,6 +576,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
           conversationId,
           content,
           createdAt,
+          instructions: getInstructions(),
           delivery: 'queued' as const,
         };
         const active =

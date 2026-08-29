@@ -1,5 +1,6 @@
 import { db } from '../../db/schema';
 import { GLOBAL_SCOPE_KEY } from '../grants';
+import { agentMemoryRepository } from '../../db/agentMemoryRepository';
 import type { McpScopeTarget, McpToolError } from './protocol';
 
 type Resolution = { ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError };
@@ -21,6 +22,75 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
         },
       ],
     };
+  }
+  if (toolName === 'lacuna.search_memories' || toolName === 'lacuna.create_memory') {
+    const scope = value.scope;
+    if (!scope || typeof scope !== 'object') {
+      return {
+        ok: false,
+        error: {
+          kind: 'validation',
+          message: 'Memory tools require an explicit global or Course scope.',
+        },
+      };
+    }
+    const memoryScope = scope as Record<string, unknown>;
+    if (memoryScope.kind === 'global') {
+      return {
+        ok: true,
+        targets: [{ courseId: GLOBAL_SCOPE_KEY, label: 'All Lacuna data' }],
+      };
+    }
+    if (
+      memoryScope.kind !== 'course' ||
+      typeof memoryScope.courseId !== 'string' ||
+      memoryScope.courseId.trim() === ''
+    ) {
+      return {
+        ok: false,
+        error: {
+          kind: 'validation',
+          message: 'Memory tools require an explicit global or Course scope.',
+        },
+      };
+    }
+    const course = await db.courses.get(memoryScope.courseId);
+    if (!course) {
+      return {
+        ok: false,
+        error: { kind: 'not_found', message: `Course "${memoryScope.courseId}" was not found.` },
+      };
+    }
+    return { ok: true, targets: [{ courseId: course.id, label: course.name }] };
+  }
+  if (toolName === 'lacuna.update_memory' || toolName === 'lacuna.delete_memory') {
+    if (typeof value.memoryId !== 'string' || value.memoryId.trim() === '') {
+      return {
+        ok: false,
+        error: { kind: 'validation', message: 'memoryId must be a non-empty string.' },
+      };
+    }
+    const memory = await agentMemoryRepository.get(value.memoryId);
+    if (!memory) {
+      return {
+        ok: false,
+        error: { kind: 'not_found', message: `Memory "${value.memoryId}" was not found.` },
+      };
+    }
+    if (memory.courseId === null) {
+      return {
+        ok: true,
+        targets: [{ courseId: GLOBAL_SCOPE_KEY, label: 'All Lacuna data' }],
+      };
+    }
+    const course = await db.courses.get(memory.courseId);
+    if (!course) {
+      return {
+        ok: false,
+        error: { kind: 'not_found', message: `Course "${memory.courseId}" was not found.` },
+      };
+    }
+    return { ok: true, targets: [{ courseId: course.id, label: course.name }] };
   }
   const courseIds = new Set<string>();
   const hasExplicitCourseId = Object.prototype.hasOwnProperty.call(value, 'courseId');

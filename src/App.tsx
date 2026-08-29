@@ -17,12 +17,20 @@ import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { installSyncTriggers } from './sync/triggers';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
-import { useAiSettings } from './ai/settings';
+import { readAiSettings, useAiSettings } from './ai/settings';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
 import { createRelayClient } from './ai/relayClient';
-import { createRelayAiSession } from './ai/session/relay';
+import { clearPersistedRelayAiDeviceState, createRelayAiSession } from './ai/session/relay';
+import { replacementLifecycle } from './db/replacementLifecycle';
+import { buildAiInstructionBundle } from './ai/instructions';
 
 export { router } from './routes/router';
+
+const relayAiDeviceStateParticipant = {
+  invalidate: () => undefined,
+  quiesce: () => undefined,
+  clear: clearPersistedRelayAiDeviceState,
+};
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
@@ -30,10 +38,19 @@ function RouterWithQuotaWarning() {
 }
 
 function EnabledAiRouter() {
-  const [session] = useState(() => createRelayAiSession({ relay: createRelayClient() }));
+  const [session] = useState(() =>
+    createRelayAiSession({
+      relay: createRelayClient(),
+      getInstructions: () => buildAiInstructionBundle(readAiSettings()),
+    }),
+  );
   useEffect(() => {
+    const unregister = replacementLifecycle.register(session.replacementParticipant);
     session.activate();
-    return () => session.dispose();
+    return () => {
+      unregister();
+      session.dispose();
+    };
   }, [session]);
   return (
     <AiSessionProvider session={session}>
@@ -53,6 +70,8 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const initStarted = useRef(false);
+
+  useEffect(() => replacementLifecycle.register(relayAiDeviceStateParticipant), []);
 
   useEffect(() => {
     if (initStarted.current) return;

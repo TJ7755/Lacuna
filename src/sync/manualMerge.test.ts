@@ -6,9 +6,14 @@ import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHisto
 import { defaultFsrsParameters } from '../fsrs/params';
 import { ManualMergeError, manualMerge, summariseMerge } from './manualMerge';
 
-const { takeAutoBackup, importBackup } = vi.hoisted(() => ({
+const { takeAutoBackup, importBackup, replace } = vi.hoisted(() => ({
   takeAutoBackup: vi.fn(),
   importBackup: vi.fn(),
+  replace: vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),
+}));
+
+vi.mock('../db/replacementLifecycle', () => ({
+  replacementLifecycle: { replace },
 }));
 
 vi.mock('../db/backups', () => ({
@@ -123,6 +128,7 @@ describe('manualMerge', () => {
   beforeEach(() => {
     takeAutoBackup.mockReset();
     importBackup.mockReset();
+    replace.mockClear();
     takeAutoBackup.mockResolvedValue(backup());
     importBackup.mockResolvedValue({});
   });
@@ -130,6 +136,12 @@ describe('manualMerge', () => {
   it('takes a forced restore point and applies that same snapshot', async () => {
     const local = backup({ exportedAt: 10, cards: [card('c1')] });
     const order: string[] = [];
+    replace.mockImplementationOnce(async (_kind, operation) => {
+      order.push('exclusive:start');
+      const result = await operation();
+      order.push('exclusive:end');
+      return result;
+    });
     takeAutoBackup.mockImplementation(async () => {
       order.push('backup');
       return local;
@@ -142,13 +154,20 @@ describe('manualMerge', () => {
     await manualMerge(backup());
 
     expect(takeAutoBackup).toHaveBeenCalledWith(true);
-    expect(order).toEqual(['backup', 'import']);
+    expect(replace).toHaveBeenCalledWith('recovery', expect.any(Function));
+    expect(order).toEqual(['exclusive:start', 'backup', 'import', 'exclusive:end']);
     expect(importBackup).toHaveBeenCalledWith(
       expect.objectContaining({
         cards: [expect.objectContaining({ id: 'c1' })],
       }),
       'replace',
     );
+  });
+
+  it('marks an automatic merge as peer application without inheriting manual shutdown', async () => {
+    await manualMerge(backup(), { kind: 'peer' });
+
+    expect(replace).toHaveBeenCalledWith('peer', expect.any(Function));
   });
 
   it('aborts without writing if the safety backup fails', async () => {

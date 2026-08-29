@@ -18,6 +18,7 @@ import {
   type ConceptSnapshot,
   type QuestionSnapshot,
 } from '../../questions/repository';
+import { agentMemoryRepository, type DeletedAgentMemory } from '../../db/agentMemoryRepository';
 import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
 import type { McpConsentRequest } from '../../mcp/bridge/protocol';
 import { attachMcpBridge } from '../../mcp/bridge/renderer';
@@ -48,6 +49,9 @@ async function restoreUndo(undo: RecordedUndo): Promise<void> {
       return;
     case 'restoreQuestion':
       await restoreQuestion(snapshot as QuestionSnapshot);
+      return;
+    case 'restoreAgentMemory':
+      await agentMemoryRepository.restore(snapshot as DeletedAgentMemory);
       return;
     default: {
       const unhandledKind: never = kind;
@@ -87,20 +91,30 @@ export function McpBridgeController() {
         });
       },
     });
-    const detachConsent = mcp.onConsentRequest((request) => setQueue((items) => [...items, request]));
+    const detachConsent = mcp.onConsentRequest((request) =>
+      setQueue((items) => [...items, request]),
+    );
     const detachNotice = mcp.onGrantNotice((notice) => {
       void courseLabel(notice.courseId).then((name) => {
         notify(`${notice.client?.name ?? 'MCP'} read access granted for ${name}.`, 'neutral');
       });
     });
     const detachScope = mcp.onScopeResolutionRequest((request) => {
-      void resolveToolScopes(request.input).then((outcome) => {
-        mcp.replyScopeResolution(outcome.ok
-          ? { id: request.id, ok: true, targets: outcome.targets }
-          : { id: request.id, ok: false, error: outcome.error });
-      }).catch(() => {
-        mcp.replyScopeResolution({ id: request.id, ok: false, error: { kind: 'internal', message: 'Could not resolve the MCP tool scope.' } });
-      });
+      void resolveToolScopes(request.input, request.tool)
+        .then((outcome) => {
+          mcp.replyScopeResolution(
+            outcome.ok
+              ? { id: request.id, ok: true, targets: outcome.targets }
+              : { id: request.id, ok: false, error: outcome.error },
+          );
+        })
+        .catch(() => {
+          mcp.replyScopeResolution({
+            id: request.id,
+            ok: false,
+            error: { kind: 'internal', message: 'Could not resolve the MCP tool scope.' },
+          });
+        });
     });
     return () => {
       detachBridge?.();

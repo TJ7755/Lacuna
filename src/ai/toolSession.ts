@@ -147,6 +147,15 @@ export class AiToolSession {
           effects: EMPTY_EFFECTS,
         };
       }
+      const inputDigest = await this.digest(canonicalJson(parsed.data));
+      const callKey = ledgerKey(request.connectionId, request.callId);
+      const existing = this.ledger.get(callKey);
+      if (existing) {
+        if (!bindingMatches(existing, request, tool.name, inputDigest)) {
+          return this.conflict('This callId is already bound to a different tool invocation.');
+        }
+        return replay(existing);
+      }
       const scopes = await resolveToolScopes(parsed.data, tool.name);
       if (!scopes.ok)
         return { response: { ok: false, error: toolError(scopes.error) }, effects: EMPTY_EFFECTS };
@@ -163,15 +172,6 @@ export class AiToolSession {
         };
       }
       const target = scopes.targets[0];
-      const inputDigest = await this.digest(canonicalJson(parsed.data));
-      const callKey = ledgerKey(request.connectionId, request.callId);
-      const existing = this.ledger.get(callKey);
-      if (existing) {
-        if (!bindingMatches(existing, request, tool.name, target.courseId, inputDigest)) {
-          return this.conflict('This callId is already bound to a different tool invocation.');
-        }
-        return replay(existing);
-      }
 
       const pending = this.pendingForCall(request, tool.name, target.courseId, inputDigest);
       if (pending === 'conflict')

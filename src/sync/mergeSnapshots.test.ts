@@ -8,6 +8,7 @@ import type {
   ReviewLog,
   SessionHistoryEntry,
   Tombstone,
+  AgentMemory,
 } from '../db/types';
 import {
   reviewHistoryEntriesForCard,
@@ -78,6 +79,21 @@ function card(id: string, overrides: Partial<Card> = {}): Card {
   };
 }
 
+function memory(id: string, overrides: Partial<AgentMemory> = {}): AgentMemory {
+  return {
+    id,
+    courseId: null,
+    tags: ['preference'],
+    status: 'active',
+    content: id,
+    references: [],
+    basis: 'learner-stated',
+    createdAt: 1,
+    updatedAt: 1,
+    ...overrides,
+  };
+}
+
 function review(overrides: Partial<ReviewLog> & Pick<ReviewLog, 'timestamp' | 'grade'>): ReviewLog {
   return {
     sessionId: 'session-1',
@@ -132,6 +148,40 @@ function expectPeerProperties(a: BackupFile, b: BackupFile): MergedBackupFile {
 }
 
 describe('mergeSnapshots', () => {
+  it('converges memory updates, deletions and deliberate resurrection', () => {
+    const old = memory('memory-1', { content: 'old', updatedAt: 2 });
+    const updated = memory('memory-1', { content: 'new', updatedAt: 4 });
+    const deletion: Tombstone = { table: 'agentMemories', recordId: old.id, deletedAt: 3 };
+    expect(
+      mergeSnapshots(
+        backup({ agentMemories: [old], tombstones: [deletion] }),
+        backup({ agentMemories: [updated] }),
+      ).agentMemories,
+    ).toEqual([updated]);
+
+    const deleted = mergeSnapshots(
+      backup({ agentMemories: [old] }),
+      backup({ tombstones: [{ ...deletion, deletedAt: 5 }] }),
+    );
+    expect(deleted.agentMemories).toEqual([]);
+    expect(deleted.tombstones).toContainEqual({ ...deletion, deletedAt: 5 });
+  });
+
+  it('uses canonical JSON to converge equal-time memory conflicts', () => {
+    const left = backup({ agentMemories: [memory('memory-1', { content: 'alpha' })] });
+    const right = backup({ agentMemories: [memory('memory-1', { content: 'omega' })] });
+    expect(mergeSnapshots(left, right)).toEqual(mergeSnapshots(right, left));
+    expect(mergeSnapshots(left, right).agentMemories[0].content).toBe('omega');
+  });
+
+  it('rejects peer memory conflicts that change immutable scope', () => {
+    const global = memory('memory-1', { courseId: null });
+    const scoped = memory('memory-1', { courseId: 'course-1', updatedAt: 2 });
+    expect(() =>
+      mergeSnapshots(backup({ agentMemories: [global] }), backup({ agentMemories: [scoped] })),
+    ).toThrow('cannot move between global and Course scope');
+  });
+
   it('is commutative and idempotent on empty snapshots', () => {
     const a = backup({ exportedAt: 10 });
     const b = backup({ exportedAt: 20 });

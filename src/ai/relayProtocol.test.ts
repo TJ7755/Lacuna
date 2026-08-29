@@ -80,7 +80,7 @@ describe('AI relay protocol', () => {
     });
   });
 
-  it('freezes cumulative browser messages and terminal events as strict v2 snapshots', () => {
+  it('freezes cumulative browser messages and terminal events as strict v3 snapshots', () => {
     expect(
       relayBrowserMailboxSchema.parse({
         version: AI_RELAY_PROTOCOL_VERSION,
@@ -91,6 +91,13 @@ describe('AI relay protocol', () => {
             conversationId: 'conversation-1',
             content: 'Explain retrieval practice.',
             createdAt: 1,
+            instructions: {
+              type: 'instructions',
+              protocolVersion: 1,
+              instructionVersion: 'teaching-v1',
+              content: 'Use evidence.',
+              misconceptionFirstEnabled: true,
+            },
             delivery: 'claimed',
             runId: 'run-1',
           },
@@ -153,6 +160,13 @@ describe('AI relay protocol', () => {
             conversationId: 'conversation-1',
             content: 'Hello',
             createdAt: 1,
+            instructions: {
+              type: 'instructions',
+              protocolVersion: 1,
+              instructionVersion: 'teaching-v1',
+              content: 'Use evidence.',
+              misconceptionFirstEnabled: false,
+            },
             delivery: 'claimed',
           },
         ],
@@ -167,6 +181,23 @@ describe('AI relay protocol', () => {
         events: [],
         browserRevisionSeen: 0,
         ignored: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      relayBrowserMailboxSchema.safeParse({
+        version: AI_RELAY_PROTOCOL_VERSION,
+        revision: 1,
+        messages: [
+          {
+            messageId: 'message-1',
+            conversationId: 'conversation-1',
+            content: 'Hello',
+            createdAt: 1,
+            delivery: 'queued',
+          },
+        ],
+        toolResponses: [],
+        terminalRevisionSeen: 0,
       }).success,
     ).toBe(false);
     expect(

@@ -115,6 +115,7 @@ export const aiEntityReferenceSchema = z
   .object({
     kind: z.enum(['course', 'lesson', 'card', 'concept', 'question', 'assessment']),
     id: identifierSchema,
+    courseId: identifierSchema.optional(),
     label: requiredText(MAX_AI_ACTIVITY_LENGTH),
   })
   .strict();
@@ -225,13 +226,17 @@ export interface AiConnection {
   connectedAt: number;
 }
 
-export interface AiInstructionBundle {
-  type: 'instructions';
-  protocolVersion: typeof LACUNA_AI_PROTOCOL_VERSION;
-  instructionVersion: string;
-  content: string;
-  misconceptionFirstEnabled: boolean;
-}
+export const aiInstructionBundleSchema = z
+  .object({
+    type: z.literal('instructions'),
+    protocolVersion: z.literal(LACUNA_AI_PROTOCOL_VERSION),
+    instructionVersion: identifierSchema,
+    content: requiredText(MAX_AI_INSTRUCTIONS_LENGTH),
+    misconceptionFirstEnabled: z.boolean(),
+  })
+  .strict();
+
+export type AiInstructionBundle = z.infer<typeof aiInstructionBundleSchema>;
 
 export interface AiUserMessage {
   messageId: string;

@@ -339,3 +339,18 @@ ownership still determine genuine duplicates and cross-card collisions.
 A migrated Course/Lesson scheduling unit can temporarily be represented by more than one legacy
 backing Deck. When rebuilding its target pacing row, combine the Welford summaries rather than
 selecting the first Deck, and preserve an existing legacy profile if the target row is missing.
+
+## Stable AI call retries must fence stale same-call responses
+
+The browser mailbox can still contain the pre-approval response when the terminal republishes an
+approved tool call with the same `callId`. Accept a matching response only after the browser's
+`terminalRevisionSeen` reaches the revision containing that retry, or the stale approval response
+will win immediately.
+
+## Replacement exclusion covers snapshot, merge and import
+
+AI writes enter through `ReplacementLifecycle.admitWrite`. Peer and recovery operations must hold
+the exclusive lifecycle across candidate snapshotting and merging as well as the final import;
+fencing only `importBackup()` leaves a race where a write can land after the candidate snapshot.
+Manual replacement invalidates the AI session before draining work, while peer and recovery
+application preserve it.

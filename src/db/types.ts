@@ -1043,6 +1043,46 @@ export interface Tombstone {
   deletedAt: number;
 }
 
+export type AgentMemoryTag =
+  | 'misconception'
+  | 'plateau'
+  | 'preference'
+  | 'session'
+  | 'strength'
+  | 'context';
+
+export type AgentMemoryStatus = 'active' | 'uncertain' | 'resolved';
+export type AgentMemoryBasis = 'learner-stated' | 'agent-inferred' | 'observed-performance';
+export type AgentMemoryReferenceKind = 'card' | 'concept' | 'lesson' | 'question' | 'course';
+
+export interface AgentMemoryReference {
+  kind: AgentMemoryReferenceKind;
+  id: string;
+  /** Historical display snapshot. The entity id remains authoritative. */
+  label: string;
+}
+
+export interface AgentMemoryProvenance {
+  conversationId?: string;
+  messageId?: string;
+  agentId?: string;
+}
+
+/** Learner-correctable teaching context owned by either the learner globally or one Course. */
+export interface AgentMemory {
+  id: string;
+  courseId: string | null;
+  tags: AgentMemoryTag[];
+  status: AgentMemoryStatus;
+  content: string;
+  references: AgentMemoryReference[];
+  basis: AgentMemoryBasis;
+  provenance?: AgentMemoryProvenance;
+  expiresAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /**
  * Unwrapped channel key and write token kept on this device so sync works
  * without re-entering the recovery passphrase. Cleared by the Settings Lock
@@ -1090,6 +1130,8 @@ export interface BackupFile {
   questions?: QuestionDefinition[];
   questionConcepts?: QuestionConceptSet[];
   questionAttempts?: QuestionAttempt[];
+  /** Durable AI teaching context. Optional so existing v11 backups remain valid. */
+  agentMemories?: AgentMemory[];
   /** Canonical review events when exported from schema v20 or later. */
   reviewHistory?: ReviewHistoryEntry[];
   /** Target storage projections, optional while old backups are imported. */

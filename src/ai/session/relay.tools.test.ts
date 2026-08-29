@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { JsonValue } from '../protocol';
-import type {
-  RelayBrowserMailbox,
-  RelayTerminalEvent,
-  RelayTerminalMailbox,
+import {
+  AI_RELAY_PROTOCOL_VERSION,
+  type RelayBrowserMailbox,
+  type RelayTerminalEvent,
+  type RelayTerminalMailbox,
 } from '../relayProtocol';
 import { AiToolSession } from '../toolSession';
 import type { ToolExecutionOutcome, ToolExecutionRequest } from '../../mcp/executor';
@@ -17,7 +18,7 @@ function mailbox(
   events: RelayTerminalEvent[],
   browserRevisionSeen = 0,
 ): RelayTerminalMailbox {
-  return { version: 2, revision, browserRevisionSeen, events };
+  return { version: AI_RELAY_PROTOCOL_VERSION, revision, browserRevisionSeen, events };
 }
 
 function responseFromLastSeal(crypto: RelaySessionCrypto): RelayBrowserMailbox {

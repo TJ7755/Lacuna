@@ -41,7 +41,7 @@ describe('AiConnectionState', () => {
     const onCancel = vi.fn();
     const expiresAt = Date.now() + 90_000;
     const instruction =
-      'Connect to Lacuna with code A7K9-Q2, then wait for messages until I ask you to disconnect.';
+      'Connect to Lacuna with code A7K9-Q2. Keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.';
 
     render(
       <AiConnectionState
