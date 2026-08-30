@@ -5,7 +5,7 @@ import {
   type RelayBrowserMessage,
   type RelayTerminalMailbox,
 } from '../relayProtocol';
-import { applyTerminalEvent } from './relayEvents';
+import { applyTerminalEvent, expireClaimLease } from './relayEvents';
 import { relaySessionHarness } from './relay.testHarness';
 import type { AiSessionSnapshot } from './types';
 import { buildAiInstructionBundle } from '../instructions';
@@ -147,6 +147,43 @@ describe('relay terminal event bounds', () => {
     expect(second.snapshot.items.at(-1)?.id).not.toBe(assistantId);
   });
 
+  it('keeps generated recovery identifiers bounded and unique after truncation', () => {
+    const sharedPrefix = 'r'.repeat(MAX_AI_IDENTIFIER_LENGTH - 1);
+    const firstRunId = `${sharedPrefix}a`;
+    const secondRunId = `${sharedPrefix}b`;
+    const firstExpiry = expireClaimLease(
+      activeSnapshot([], firstRunId),
+      [claimedMessage(firstRunId)],
+      20_000,
+    );
+    const secondExpiry = expireClaimLease(
+      activeSnapshot([], secondRunId),
+      [claimedMessage(secondRunId)],
+      20_000,
+    );
+    const firstDisconnect = applyTerminalEvent(
+      activeSnapshot([], firstRunId),
+      [claimedMessage(firstRunId)],
+      { type: 'disconnected', eventId: firstRunId, disconnectedAt: 1_200 },
+    );
+    const secondDisconnect = applyTerminalEvent(
+      activeSnapshot([], secondRunId),
+      [claimedMessage(secondRunId)],
+      { type: 'disconnected', eventId: secondRunId, disconnectedAt: 1_200 },
+    );
+
+    const identifiers = [
+      firstExpiry?.snapshot.items.at(-1)?.id,
+      secondExpiry?.snapshot.items.at(-1)?.id,
+      firstDisconnect.snapshot.items.at(-1)?.id,
+      secondDisconnect.snapshot.items.at(-1)?.id,
+    ];
+    expect(identifiers.every((identifier) => identifier?.length === MAX_AI_IDENTIFIER_LENGTH)).toBe(
+      true,
+    );
+    expect(new Set(identifiers).size).toBe(identifiers.length);
+  });
+
   it('retains only the newest bounded transcript items', () => {
     const items = Array.from({ length: MAX_AI_RELAY_MAILBOX_ENTRIES }, (_, index) => ({
       kind: 'assistant' as const,
@@ -172,7 +209,10 @@ describe('relay terminal event bounds', () => {
   });
 });
 
-function activeSnapshot(items: AiSessionSnapshot['items']): AiSessionSnapshot {
+function activeSnapshot(
+  items: AiSessionSnapshot['items'],
+  runId = 'run-1',
+): AiSessionSnapshot {
   return {
     revision: 1,
     connection: {
@@ -185,7 +225,7 @@ function activeSnapshot(items: AiSessionSnapshot['items']): AiSessionSnapshot {
     items,
     run: {
       status: 'active',
-      runId: 'run-1',
+      runId,
       conversationId: 'conversation-1',
       messageId: 'message-1',
       claimedAt: 1_100,
@@ -198,7 +238,7 @@ function activeSnapshot(items: AiSessionSnapshot['items']): AiSessionSnapshot {
   };
 }
 
-function claimedMessage(): RelayBrowserMessage {
+function claimedMessage(runId = 'run-1'): RelayBrowserMessage {
   return {
     messageId: 'message-1',
     conversationId: 'conversation-1',
@@ -206,6 +246,6 @@ function claimedMessage(): RelayBrowserMessage {
     createdAt: 1_000,
     instructions: buildAiInstructionBundle({ misconceptionFirstEnabled: true }),
     delivery: 'claimed',
-    runId: 'run-1',
+    runId,
   };
 }

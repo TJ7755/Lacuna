@@ -56,6 +56,7 @@ export interface TerminalRelayTransport {
     connection: ConnectedTerminalRelay,
     generation: string,
     mailbox: RelayTerminalMailbox,
+    signal?: AbortSignal,
   ): Promise<string>;
 }
 
@@ -211,7 +212,7 @@ export class TerminalAiClient {
         if (generationChanged) this.browserGeneration = read.generation;
       }
 
-      await this.publishHeartbeatIfDue();
+      await this.publishHeartbeatIfDue(Math.max(0, deadline - this.now()));
       const remaining = deadline - this.now();
       if (remaining <= 0) return { type: 'empty' };
       await this.sleep(Math.min(POLL_INTERVAL_MS, remaining));
@@ -360,7 +361,7 @@ export class TerminalAiClient {
     await this.writeTerminalMailbox(next);
   }
 
-  private async publishHeartbeatIfDue(): Promise<void> {
+  private async publishHeartbeatIfDue(timeoutMs: number): Promise<void> {
     const writtenAt = this.now();
     if (
       this.lastTerminalWriteAt !== null &&
@@ -368,24 +369,41 @@ export class TerminalAiClient {
     ) {
       return;
     }
-    await this.writeTerminalMailbox({
-      ...this.terminalMailbox,
-      revision: this.terminalMailbox.revision + 1,
-    });
+    await this.writeTerminalMailbox(
+      {
+        ...this.terminalMailbox,
+        revision: this.terminalMailbox.revision + 1,
+      },
+      timeoutMs,
+    );
   }
 
-  private async writeTerminalMailbox(next: RelayTerminalMailbox): Promise<void> {
+  private async writeTerminalMailbox(
+    next: RelayTerminalMailbox,
+    timeoutMs?: number,
+  ): Promise<void> {
     const connection = this.requireConnection();
+    const controller = timeoutMs === undefined ? null : new AbortController();
+    const timeout = controller && timeoutMs !== undefined
+      ? setTimeout(() => controller.abort(), Math.max(0, timeoutMs))
+      : null;
     let generation: string;
     try {
       generation = await this.transport.writeTerminalMailbox(
         connection,
         this.terminalGeneration,
         next,
+        controller?.signal,
       );
     } catch (error) {
+      if (controller?.signal.aborted && !(error instanceof TerminalRelayReconnectRequiredError)) {
+        this.clearConnection();
+        throw new TerminalRelayReconnectRequiredError();
+      }
       if (error instanceof TerminalRelayReconnectRequiredError) this.clearConnection();
       throw error;
+    } finally {
+      if (timeout !== null) clearTimeout(timeout);
     }
     this.terminalMailbox = next;
     this.terminalGeneration = generation;

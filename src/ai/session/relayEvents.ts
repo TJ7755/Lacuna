@@ -236,13 +236,25 @@ export function applyTerminalEvent(
 }
 
 function leaseErrorId(runId: string): string {
-  const suffix = '-lease-expired';
-  return `error-${runId.slice(0, MAX_AI_IDENTIFIER_LENGTH - suffix.length - 6)}${suffix}`;
+  return recoveryErrorId(runId, '-lease-expired');
 }
 
 function disconnectErrorId(eventId: string): string {
-  const suffix = '-disconnected';
-  return `error-${eventId.slice(0, MAX_AI_IDENTIFIER_LENGTH - suffix.length - 6)}${suffix}`;
+  return recoveryErrorId(eventId, '-disconnected');
+}
+
+function recoveryErrorId(sourceId: string, suffix: string): string {
+  const prefix = 'error-';
+  const untruncated = `${prefix}${sourceId}${suffix}`;
+  if (untruncated.length <= MAX_AI_IDENTIFIER_LENGTH) return untruncated;
+  const fingerprint = identifierFingerprint(sourceId);
+  const preservedLength =
+    MAX_AI_IDENTIFIER_LENGTH -
+    prefix.length -
+    IDENTIFIER_FINGERPRINT_LENGTH -
+    suffix.length -
+    1;
+  return `${prefix}${sourceId.slice(0, preservedLength)}-${fingerprint}${suffix}`;
 }
 
 function assistantItemId(eventId: string): string {

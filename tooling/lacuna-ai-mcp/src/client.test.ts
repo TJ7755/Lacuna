@@ -30,6 +30,7 @@ class FakeTransport implements TerminalRelayTransport {
   fallbackRead: { generation: string; mailbox: RelayBrowserMailbox } | null = null;
   readonly writes: RelayTerminalMailbox[] = [];
   beforeWrite?: (mailbox: RelayTerminalMailbox) => void;
+  blockWrites = false;
   writeError?: Error;
 
   async readBrowserMailbox(): Promise<{
@@ -43,8 +44,14 @@ class FakeTransport implements TerminalRelayTransport {
     _connection: ConnectedTerminalRelay,
     _generation: string,
     mailbox: RelayTerminalMailbox,
+    signal?: AbortSignal,
   ): Promise<string> {
     this.beforeWrite?.(mailbox);
+    if (this.blockWrites) {
+      await new Promise<never>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    }
     if (this.writeError) {
       const error = this.writeError;
       this.writeError = undefined;
@@ -211,6 +218,31 @@ describe('TerminalAiClient', () => {
       browserRevisionSeen: 0,
       events: [],
     });
+  });
+
+  it('does not let a hung heartbeat write overrun a bounded wait', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    try {
+      const transport = new FakeTransport();
+      transport.blockWrites = true;
+      const client = new TerminalAiClient({ transport });
+      await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+      const wait = client.waitForMessage(25_000);
+      const outcome = Promise.race([
+        wait.catch((error: unknown) => error),
+        new Promise<'overrun'>((resolve) => setTimeout(() => resolve('overrun'), 25_001)),
+      ]);
+      await vi.advanceTimersByTimeAsync(25_001);
+
+      await expect(outcome).resolves.toMatchObject({
+        name: 'TerminalRelayReconnectRequiredError',
+        reason: 'write_outcome_unknown',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('retries the same browser generation when publishing a claim fails', async () => {

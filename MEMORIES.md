@@ -2,6 +2,12 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Pull-request review uses CodeRabbit
+
+CodeRabbit is the repository's automated reviewer; Copilot review output is irrelevant. CodeRabbit
+reviews the initial pull-request head but does not re-review follow-up fixes, so address its findings
+and rely on the normal CI gate before merging the updated head.
+
 ## Hash routing needs no SPA catch-all
 
 Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to

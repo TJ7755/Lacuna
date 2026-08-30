@@ -6,7 +6,10 @@ import type {
   RelayEnvelope,
   RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol';
-import { TerminalRelayReconnectRequiredError } from './client';
+import {
+  TerminalRelayReconnectRequiredError,
+  type TerminalRelayTransport,
+} from './client';
 import {
   HttpTerminalRelayTransport,
   type HttpTerminalRelayTransportOptions,
@@ -200,6 +203,69 @@ describe('HttpTerminalRelayTransport', () => {
       message:
         'Another terminal writer changed this Lacuna AI session. Reconnect Lacuna AI before continuing.',
     });
+  });
+
+  it('cancels a hung terminal PUT and reports its outcome as unknown', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({
+            sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+            browserPublicKey: PEER_PUBLIC_KEY,
+            terminalToken: TOKEN,
+            expiresAt: 90_000,
+          }),
+        )
+        .mockImplementationOnce((_input, init) => {
+          return new Promise<Response>((_resolve, reject) => {
+            if (init?.signal?.aborted) {
+              reject(init.signal.reason);
+              return;
+            }
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), {
+              once: true,
+            });
+          });
+        });
+      const transport = new HttpTerminalRelayTransport({
+        fetchImpl,
+        crypto: cryptoOperations({}),
+      });
+      const connection = await transport.connect(
+        'ABCD-EFGH-JKMN-PQRS-TVW2',
+        'https://relay.example',
+        { name: 'Test client' },
+      );
+      const controller = new AbortController();
+      const terminalTransport: TerminalRelayTransport = transport;
+      const write = terminalTransport.writeTerminalMailbox(
+        connection,
+        '"0"',
+        {
+          version: 3,
+          revision: 0,
+          browserRevisionSeen: 0,
+          events: [],
+        },
+        controller.signal,
+      );
+      const outcome = Promise.race([
+        write.catch((error: unknown) => error),
+        new Promise<'overrun'>((resolve) => setTimeout(() => resolve('overrun'), 1)),
+      ]);
+
+      controller.abort();
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(outcome).resolves.toMatchObject({
+        name: 'TerminalRelayReconnectRequiredError',
+        reason: 'write_outcome_unknown',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('recovers an exact terminal mailbox write after an ambiguous relay 500', async () => {
