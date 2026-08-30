@@ -39,6 +39,7 @@ export function CourseSectionBar() {
             <li key={label} className="flex flex-1">
               <NavLink
                 to={`/course/${courseId}${suffix}`}
+                end={suffix === ''}
                 aria-label={label}
                 aria-current={index === activeIndex ? 'page' : undefined}
                 className={cn(

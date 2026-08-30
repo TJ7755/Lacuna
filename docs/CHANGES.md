@@ -15,6 +15,8 @@
   755-line file into an even larger dumping ground.
 - Fixed Card-editor draft identity when navigating directly between two card routes in one mounted
   editor; each card now restores and updates only its own draft.
+- Fixed the mobile Course section bar marking Path as current alongside every nested section;
+  assistive technology now receives exactly one current-page tab.
 - Recorded the delivered and deliberately deferred audit items in both source audit documents.
 
 **Checks:** focused red-to-green component, page, session, backup and draft tests; full typecheck,
