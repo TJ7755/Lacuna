@@ -14,6 +14,8 @@
 - The streamlined interaction and visual pass found and fixed duplicated generic activity status
   and queued-follow-up text disappearing after an update. Width, dark-theme, reduced-motion and
   200%-zoom checks were run independently, without a wasteful Cartesian-product matrix.
+- Blocked new follow-ups while a Stop request awaits acknowledgement, preserving draft content
+  without allowing new AI work to slip behind an explicit Stop.
 
 ## Unreleased — course-wide Practice Now action
 

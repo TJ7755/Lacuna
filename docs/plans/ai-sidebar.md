@@ -403,7 +403,8 @@ includes:
   terminal sees only display-safe pending/rejected results.
 - **Failed:** persistent error with retry or reconnect.
 - **Receipts:** successful writes append a structured receipt built from the repository result.
-- **Completed capsule:** closing the full panel retains compact status, follow-up and Stop controls.
+- **Completed capsule:** closing the full panel retains compact status and follow-up controls. The
+  compact Stop control is shown only for an active or Stop-requested run.
 
 The transcript uses `role="log"` with polite announcement only for newly appended messages. Activity
 uses a separate visually hidden polite status. Marking the whole panel live would make assistive

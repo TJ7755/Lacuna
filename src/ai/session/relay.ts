@@ -566,6 +566,9 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
         ) {
           return unavailable('AI is not connected.');
         }
+        if (snapshot.run?.status === 'stop_requested') {
+          return conflict('Wait for AI to stop before sending another message.');
+        }
         if (content.trim() === '') return conflict('The AI message cannot be blank.');
         if (content.length > MAX_AI_MESSAGE_LENGTH) return conflict('The AI message is too long.');
         const messageId = createId('message');
@@ -579,8 +582,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           instructions: getInstructions(),
           delivery: 'queued' as const,
         };
-        const active =
-          snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested';
+        const active = snapshot.run?.status === 'active';
         const replacedFollowUpMessageId = persisted.queuedFollowUpMessageId;
         const messages = active
           ? [

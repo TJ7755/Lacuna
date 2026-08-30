@@ -61,10 +61,19 @@ export function createInMemoryAiSession(initial: Partial<AiSessionSnapshot> = {}
           error: { kind: 'unavailable', message: 'AI is not connected.' },
         };
       }
+      if (snapshot.run?.status === 'stop_requested') {
+        return {
+          ok: false,
+          error: {
+            kind: 'conflict',
+            message: 'Wait for AI to stop before sending another message.',
+          },
+        };
+      }
       const messageId = identifier('message');
       const conversationId = snapshot.conversationId ?? identifier('conversation');
       const now = Date.now();
-      if (snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested') {
+      if (snapshot.run?.status === 'active') {
         publish({ ...snapshot, queuedFollowUp: content });
       } else {
         publish({

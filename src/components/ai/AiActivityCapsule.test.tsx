@@ -201,4 +201,36 @@ describe('AiActivityCapsule', () => {
       ),
     );
   });
+
+  it('keeps follow-up controls disabled while Stop is awaiting acknowledgement', () => {
+    render(
+      <AiActivityCapsule
+        session={sessionWith({
+          run: {
+            runId: 'run-stopping',
+            conversationId: 'conversation-1',
+            messageId: 'message-1',
+            claimedAt: 1,
+            leaseExpiresAt: 10_000,
+            status: 'stop_requested',
+            stopRequestedAt: 2,
+          },
+          activity: {
+            runId: 'run-stopping',
+            status: 'stop_requested',
+            summary: 'Stop requested',
+            updatedAt: 2,
+          },
+          queuedFollowUp: 'Keep this draft unsent.',
+        })}
+        canOpenConversation
+        onOpenConversation={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'View AI activity' }));
+
+    expect(screen.getByRole('textbox', { name: 'Queued follow-up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Update follow-up' })).toBeDisabled();
+  });
 });

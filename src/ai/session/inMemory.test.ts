@@ -122,4 +122,33 @@ describe('in-memory AI session', () => {
       }),
     );
   });
+
+  it('rejects a new follow-up while Stop is awaiting acknowledgement', async () => {
+    const session = createInMemoryAiSession({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Test agent' },
+        lastActivityAt: 1,
+      },
+      run: {
+        status: 'stop_requested',
+        runId: 'run-1',
+        conversationId: 'conversation-1',
+        messageId: 'message-1',
+        claimedAt: 1,
+        leaseExpiresAt: 10,
+        stopRequestedAt: 2,
+      },
+    });
+
+    expect(await session.send('Do not queue this after Stop.')).toEqual({
+      ok: false,
+      error: {
+        kind: 'conflict',
+        message: 'Wait for AI to stop before sending another message.',
+      },
+    });
+    expect(session.getSnapshot().queuedFollowUp).toBeNull();
+  });
 });

@@ -33,6 +33,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
     snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'
       ? snapshot.run
       : null;
+  const stopPending = stoppableRun?.status === 'stop_requested';
   const latestReply = [...snapshot.items].reverse().find((item) => item.kind === 'assistant');
   const statusLabel = snapshot.activity
     ? ACTIVITY_STATUS_LABEL[snapshot.activity.status]
@@ -72,7 +73,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
 
   async function sendFollowUp() {
     const content = followUp.trim();
-    if (!content || sendingFollowUp) return;
+    if (!content || sendingFollowUp || stopPending) return;
     setSendingFollowUp(true);
     setFollowUpError(null);
     try {
@@ -101,15 +102,13 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           aria-label="View AI activity"
           aria-haspopup="dialog"
           aria-expanded={detailsOpen}
-          onClick={() =>
-            setDetailsOpen((open) => {
-              if (!open) {
-                setFollowUp(snapshot.queuedFollowUp ?? '');
-                setFollowUpError(null);
-              }
-              return !open;
-            })
-          }
+          onClick={() => {
+            if (!detailsOpen) {
+              setFollowUp(snapshot.queuedFollowUp ?? '');
+              setFollowUpError(null);
+            }
+            setDetailsOpen(!detailsOpen);
+          }}
           className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-line bg-surface text-accent">
@@ -119,9 +118,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
             <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
               {statusLabel}
             </span>
-            <span className="block max-w-52 truncate text-sm text-ink">
-              {compactSummary}
-            </span>
+            <span className="block max-w-52 truncate text-sm text-ink">{compactSummary}</span>
           </span>
         </button>
       ) : (
@@ -189,7 +186,8 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
               id="ai-capsule-follow-up"
               rows={2}
               value={followUp}
-              placeholder="No follow-up queued"
+              disabled={stopPending}
+              placeholder={stopPending ? 'Waiting for AI to stop' : 'No follow-up queued'}
               onChange={(event) => setFollowUp(event.target.value)}
               className="mt-2 block min-h-16 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-faint focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/10"
             />
@@ -202,7 +200,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           <div className="flex justify-end gap-1 border-t border-line bg-surface px-3 py-2">
             <button
               type="button"
-              disabled={sendingFollowUp || followUp.trim().length === 0}
+              disabled={stopPending || sendingFollowUp || followUp.trim().length === 0}
               onClick={() => void sendFollowUp()}
               className="min-h-11 rounded-lg px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
             >
