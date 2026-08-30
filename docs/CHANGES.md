@@ -12,11 +12,13 @@
   unchanged.
 - Stopped automatic sync startup from fetching pairing, backup validation, math
   verification and charts on an unpaired device. Remembered startup, focus and
-  completed-study triggers still use the same sync path when credentials exist.
+  completed-study triggers still use the same sync path when credentials exist,
+  and re-check the credential generation after the lazy module loads so Lock or
+  replacement cannot use a stale bearer capability.
 - Loaded the schema-v24 question migration only while that upgrade runs, using
   `Dexie.waitFor` so the version-change transaction remains valid.
 - Reduced the initial production JavaScript from 2,561,545 raw bytes to 863,072
-  (264,205 gzip), removed 29,290 bytes of optional CSS from first load and reduced
+  (264,211 gzip), removed 29,290 bytes of optional CSS from first load and reduced
   the PWA install precache from 1,519.50 KiB to 998.47 KiB.
 - Added enforceable initial-asset budgets and repaired the performance audit for
   the current Course and scheduling-unit APIs. Content-hashed scripts and the
@@ -24,9 +26,11 @@
 
 ## Unreleased — AI connection health
 
-- A relay pairing request that finishes after AI is disabled is now revoked before
-  its cancelled result settles. The remote bearer session can no longer be orphaned
-  or published locally after disposal wins the race.
+- A relay pairing request that finishes after AI is disabled now starts contained
+  best-effort revocation. Cleanup is detached from the serialised session queue, so
+  an unavailable relay cannot block a later connection attempt. The remote bearer
+  session cannot be published locally after disposal wins the race and is revoked
+  when the relay remains available.
 - Corrected the companion README's obsolete claim that durable learner memories were not
   implemented; schema-v25 memories already use the scoped domain-tool path.
 - Added throttled terminal heartbeats to the existing encrypted mailbox protocol. Repeated bounded

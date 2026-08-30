@@ -18,7 +18,7 @@ lifecycle behaviour:
 - the disabled relay runtime is behind an enabled-only dynamic import, and the AI
   panel (including Markdown, KaTeX and syntax highlighting) is fetched only when
   the panel opens;
-- automatic sync installs after application readiness as a 2,380-byte lazy
+- automatic sync installs after application readiness as a 2,404-byte lazy
   trigger. Pairing, backup validation, math verification and charts are no longer
   fetched by that trigger unless remembered credentials exist and a sync runs;
 - the schema-v24 question migration loads its expression verifier only while that
@@ -30,7 +30,7 @@ lifecycle behaviour:
 
 | Production measurement | Fresh `master` | After follow-up | Change |
 |---|---:|---:|---:|
-| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 863,072 / 264,205 gz | -66.3% raw / -64.7% gz |
+| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 863,072 / 264,211 gz | -66.3% raw / -64.7% gz |
 | Initial CSS | 148,744 bytes | 119,454 / 17,533 gz | -29,290 bytes |
 | PWA install precache | 1,519.50 KiB | 998.47 KiB | -521.03 KiB |
 

@@ -540,15 +540,17 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           if (epoch !== pollingEpoch) return unavailable('AI connection was reset.');
           const created = await options.relay.create(keyPair.publicKey);
           if (epoch !== pollingEpoch) {
-            try {
-              await options.relay.revoke({
-                sessionId: created.sessionId,
-                browserToken: created.browserToken,
-              });
-            } catch {
-              // Local disposal already won. An unavailable relay retains the
-              // otherwise unreachable session only until its server-side expiry.
-            }
+            void (async () => {
+              try {
+                await options.relay.revoke({
+                  sessionId: created.sessionId,
+                  browserToken: created.browserToken,
+                });
+              } catch {
+                // Local disposal already won. An unavailable relay retains the
+                // otherwise unreachable session only until its server-side expiry.
+              }
+            })();
             return unavailable('AI connection was reset.');
           }
           const connection = {

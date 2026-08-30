@@ -53,10 +53,12 @@ async function triggerSync(reason: string): Promise<void> {
   const state = await readSyncState().catch(() => null);
   if (!state?.channelId || !state?.wrappedKeyMaterial) return;
   const credentials = currentCredentials;
+  const generation = credentialGeneration;
   if (!credentials || credentials.channelId !== state.channelId) return;
   lastTriggerAt = now;
   try {
     const { syncWithCredentials } = await loadSyncPairing();
+    if (credentialGeneration !== generation) return;
     await syncWithCredentials(credentials);
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
