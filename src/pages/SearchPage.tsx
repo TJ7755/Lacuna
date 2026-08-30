@@ -63,7 +63,7 @@ function courseHitMeta(hit: CourseContentHit) {
   }
 }
 
-/** Full-page search across every course, lesson, note and card. Shares the search core with the palette. */
+/** Full-page content search with Card filters. Quick search remains the shortcut-led overlay. */
 export function SearchPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -130,8 +130,8 @@ export function SearchPage() {
       <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
         <div className="relative">
-          <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Find</p>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Search</h1>
+          <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Library</p>
+          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Search content</h1>
         </div>
       </header>
 
@@ -144,9 +144,6 @@ export function SearchPage() {
           placeholder="Search courses, lessons, notes, cards and questions…"
           className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
         />
-        <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint sm:block">
-          Ctrl/Cmd+K
-        </kbd>
       </div>
 
       {/* Smart-view filter chips: narrow the whole collection without a text query. */}

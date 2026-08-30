@@ -18,24 +18,24 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Review today' })).toHaveAttribute('href', '/learn');
   });
 
-  it('opens the command palette from a visible search control showing the shortcut', () => {
+  it('opens quick search from a distinctly labelled control showing the shortcut', () => {
     const onOpenPalette = vi.fn();
     render(
       <Sidebar collapsed={false} onToggleCollapsed={vi.fn()} onOpenPalette={onOpenPalette} />,
       { wrapper: MemoryRouter },
     );
 
-    const search = screen.getByRole('button', { name: /search/i });
+    const search = screen.getByRole('button', { name: /quick search/i });
     expect(search).toHaveTextContent('Ctrl/Cmd+K');
 
     fireEvent.click(search);
     expect(onOpenPalette).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to a plain link to the search page when no palette handler is given', () => {
+  it('falls back to a distinctly labelled content-search link without a palette handler', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
-    const search = screen.getByRole('link', { name: 'Search' });
+    const search = screen.getByRole('link', { name: 'Search content' });
     expect(search).toHaveAttribute('href', '/search');
   });
 

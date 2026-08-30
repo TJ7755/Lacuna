@@ -9,6 +9,15 @@ const mockNotify = vi.fn();
 let mockCourses: Course[] | undefined = undefined;
 let mockSummaries: Record<string, CourseSummary> | undefined = undefined;
 let mockCourseCards: Card[] = [];
+let mockSearchParams = new URLSearchParams();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useSearchParams: () => [mockSearchParams, vi.fn()],
+  };
+});
 
 vi.mock('../state/useCourseData', () => ({
   useCourses: () => mockCourses,
@@ -147,6 +156,7 @@ beforeEach(() => {
   mockCourseCards = [];
   mockDecodedPayload = {};
   mockFindCourseForLineage = undefined;
+  mockSearchParams = new URLSearchParams();
   mockImportLineageFirstTime.mockReset();
   mockMergeLineageUpdate.mockReset();
 });
@@ -251,6 +261,23 @@ describe('SharePage', () => {
       screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Share code to import' })).toBeInTheDocument();
+  });
+
+  it('moves the import job into view and focuses it for an explicit import intent', async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockSearchParams = new URLSearchParams('intent=import');
+
+    render(<SharePage />);
+
+    const input = screen.getByRole('textbox', { name: 'Share code to import' });
+    await waitFor(() => expect(input).toHaveFocus());
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('names generated share and plain-text exports', async () => {

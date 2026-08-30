@@ -46,6 +46,13 @@ describe('Welcome course seed assets', () => {
           concept?.scope === 'course' && concept.courseId === cards[index].courseId,
       ),
     ).toBe(true);
+
+    const searchCard = cards.find(
+      (card) => card.front === 'How can you find content across all your courses?',
+    );
+    expect(searchCard?.back).toContain('**Search content**');
+    expect(searchCard?.back).toContain('**Quick search**');
+    expect(searchCard?.back).not.toContain('command palette');
   });
 
   it('repairs missing and Blob-backed seeded assets in an existing Welcome course', async () => {

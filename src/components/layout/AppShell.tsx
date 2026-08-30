@@ -153,7 +153,7 @@ export function AppShell() {
     mobileWasOpenRef.current = mobileOpen;
   }, [mobileOpen]);
 
-  // Global shortcuts within the shell: Ctrl/Cmd+K (palette), / (search), ? (help).
+  // Global shortcuts within the shell: Ctrl/Cmd+K (quick search), / (content search), ? (help).
   // Single-key shortcuts stay inert while typing so they never hijack a text field.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

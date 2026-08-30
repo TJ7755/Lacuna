@@ -1,5 +1,6 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -122,6 +123,7 @@ export function SharePage() {
   const courses = useCourses();
   const summaries = useCourseSummaries();
   const { notify } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -134,6 +136,8 @@ export function SharePage() {
   const [importing, setImporting] = useState(false);
   const copyTimeoutRef = useRef<number | null>(null);
   const plainTextCopyTimeoutRef = useRef<number | null>(null);
+  const importSectionRef = useRef<HTMLElement>(null);
+  const importInputRef = useRef<HTMLTextAreaElement>(null);
   const [motionSpeed] = useMotionSpeed();
 
   const [plainText, setPlainText] = useState('');
@@ -176,6 +180,22 @@ export function SharePage() {
   }, []);
 
   const m = speedMultiplier(motionSpeed);
+
+  // Welcome links carry an explicit import intent because the Share page opens
+  // with export controls. Move the existing import job into view and put the
+  // keyboard at its first actionable field once the lazy route has mounted.
+  const importIntent = searchParams.get('intent') === 'import';
+  useEffect(() => {
+    if (!importIntent) return;
+    const id = window.requestAnimationFrame(() => {
+      importSectionRef.current?.scrollIntoView({
+        behavior: m > 0 ? 'smooth' : 'auto',
+        block: 'start',
+      });
+      importInputRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [importIntent, m]);
 
   const selectedCourse = useCourse(selectedCourseId ?? undefined);
   const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
@@ -706,7 +726,10 @@ export function SharePage() {
       </section>
 
       {/* Import */}
-      <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+      <section
+        ref={importSectionRef}
+        className="rounded-2xl border border-line bg-surface p-6 shadow-sm"
+      >
         <div className="mb-1 flex items-center gap-2">
           <UploadIcon width={18} height={18} className="text-accent" />
           <h2 className="font-display text-xl">Import a shared course</h2>
@@ -719,6 +742,7 @@ export function SharePage() {
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
           <textarea
+            ref={importInputRef}
             aria-label="Share code to import"
             value={input}
             onChange={(e) => {
