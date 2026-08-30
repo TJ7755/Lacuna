@@ -30,7 +30,7 @@ lifecycle behaviour:
 
 | Production measurement | Fresh `master` | After follow-up | Change |
 |---|---:|---:|---:|
-| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 863,072 / 264,208 gz | -66.3% raw / -64.7% gz |
+| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 863,072 / 264,205 gz | -66.3% raw / -64.7% gz |
 | Initial CSS | 148,744 bytes | 119,454 / 17,533 gz | -29,290 bytes |
 | PWA install precache | 1,519.50 KiB | 998.47 KiB | -521.03 KiB |
 

@@ -51,6 +51,33 @@ describe('relay AI session connection lifecycle', () => {
     expect(timers.repeat).toHaveBeenCalledOnce();
   });
 
+  it('revokes a remote pairing session created after local disposal wins', async () => {
+    const { session, relay, storage } = relaySessionHarness();
+    let releaseCreate!: (created: typeof CREATED) => void;
+    vi.mocked(relay.create).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseCreate = resolve;
+        }),
+    );
+
+    const pairing = session.pair();
+    await vi.waitFor(() => expect(relay.create).toHaveBeenCalledOnce());
+    session.dispose();
+    releaseCreate(CREATED);
+
+    await expect(pairing).resolves.toEqual({
+      ok: false,
+      error: { kind: 'unavailable', message: 'AI connection was reset.' },
+    });
+    expect(relay.revoke).toHaveBeenCalledWith({
+      sessionId: CREATED.sessionId,
+      browserToken: CREATED.browserToken,
+    });
+    expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
+    expect(storage.getItem('lacuna-ai-relay-session-v1')).toBeNull();
+  });
+
   it('expires an unclaimed pairing code without discarding the persisted transcript', async () => {
     const { session, relay, storage, crypto, timers, tick, setNow, cancelPolling } =
       relaySessionHarness();
