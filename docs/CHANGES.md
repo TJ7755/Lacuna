@@ -2353,3 +2353,11 @@ worker other than Claude for the first time.
   editorial layout is not evidence about 3D.
 
 **Checks:** documentation only; no code changed.
+
+## Unreleased — UI polish audit
+
+**Outcome:** `docs/ui-polish-points.md` records 24 source-backed opportunities to improve motion,
+state-transition continuity and interaction polish, with priorities, code locations and an
+implementation order. No application behaviour changed.
+
+**Checks:** documentation only; no code changed.
