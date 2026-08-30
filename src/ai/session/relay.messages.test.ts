@@ -541,6 +541,48 @@ describe('relay AI session messages', () => {
     );
   });
 
+  it('rejects a new follow-up while Stop is awaiting acknowledgement', async () => {
+    const { session, relay, crypto, tick } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Stop after claiming this.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 3,
+      revision: 1,
+      browserRevisionSeen: 0,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    await tick();
+    await session.stop('run-1');
+
+    await expect(session.send('Do not queue this after Stop.')).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: 'conflict',
+        message: 'Wait for AI to stop before sending another message.',
+      },
+    });
+    expect(session.getSnapshot().queuedFollowUp).toBeNull();
+  });
+
   it('retains queued messages that do not belong to the stopped run', async () => {
     const { session, relay, crypto, tick } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({

@@ -1,6 +1,6 @@
 # AI sidebar — one-week usable prototype
 
-**Status:** implementation complete — final automated verification and dual review in progress
+**Status:** implementation and streamlined verification complete — normal PR review pending
 
 **Written:** 27 August 2026
 
@@ -43,7 +43,9 @@ Delivered and source-backed:
 - schema-v25 learner memories, a Settings inspector and search/create/update/delete tools with
   correction history, Course cascade/Undo, full backup, recovery merge and encrypted peer sync;
 - replacement lifecycle fencing which preserves AI for peer/recovery application and revokes and
-  clears it only after successful full replacement.
+  clears it only after successful full replacement;
+- closed-panel activity capsule with compact follow-up editing, Stop continuity across the desktop
+  breakpoint and modal suppression.
 
 ## Remaining prototype acceptance target
 
@@ -77,8 +79,8 @@ integration, browser behaviour or visual judgement disappear.
 
 - AI is disabled by default. When disabled, no AI control, provider, timer or bridge is mounted.
 - AI is desktop-only. Its entry control and full panel appear from 1024 CSS px; it is absent from
-  the mobile drawer. Crossing below that threshold currently closes the panel. Keeping a compact
-  Stop control visible for an active run remains required future work.
+  the mobile drawer. Crossing below that threshold closes the panel but retains a compact Stop
+  control while a run is active or its Stop request is pending.
 - The existing navigation and the AI panel form one compound left workspace:
 
   ```text
@@ -89,7 +91,7 @@ integration, browser behaviour or visual judgement disappear.
 - Opening AI temporarily forces the navigation into its icon rail without overwriting the user's
   saved collapse preference. Closing AI restores the previous visual state.
 - The panel is non-modal. The learner may continue using the page while it is open.
-- A compact top-right activity/Stop capsule while the panel is closed remains planned. The
+- A compact top-right activity/Stop capsule appears while the panel is closed. The
   bottom-right remains owned by Lacuna's notification and Undo stack.
 
 ### Model and harness independence
@@ -401,7 +403,8 @@ includes:
   terminal sees only display-safe pending/rejected results.
 - **Failed:** persistent error with retry or reconnect.
 - **Receipts:** successful writes append a structured receipt built from the repository result.
-- **Completed capsule (planned):** the closed-panel activity capsule is not delivered.
+- **Completed capsule:** closing the full panel retains compact status and follow-up controls. The
+  compact Stop control is shown only for an active or Stop-requested run.
 
 The transcript uses `role="log"` with polite announcement only for newly appended messages. Activity
 uses a separate visually hidden polite status. Marking the whole panel live would make assistive
@@ -414,7 +417,7 @@ to the AI trigger.
 
 ### Activity capsule
 
-This remains planned; no current source mounts an AI activity capsule.
+This is delivered through the existing `AiSession` read and command seam.
 
 - Make the shell body the positioned containing block and absolutely position the capsule at
   `top-4 right-4`, below the Electron title bar.
@@ -425,6 +428,8 @@ This remains planned; no current source mounts an AI activity capsule.
 - The capsule and open panel are mutually exclusive.
 - Escape and outside click close the popover and restore focus to the capsule. Modal overlays render
   above it and suppress capsule interaction while open.
+- Below the full-panel breakpoint, only an active or Stop-requested run retains the compact safety
+  surface; completed activity does not become a mobile AI entry point.
 
 ### Visual direction
 
@@ -459,6 +464,7 @@ src/components/ai/AiComposer.tsx
 src/components/ai/AiApprovalCard.tsx
 src/components/ai/AiConnectionState.tsx
 src/components/ai/AiActivityReceipt.tsx
+src/components/ai/AiActivityCapsule.tsx
 src/pages/settings/AiSection.tsx
 
 src/mcp/executor.ts
@@ -478,8 +484,6 @@ src/db/replacementLifecycle.ts
 src/mcp/tools/memories.ts
 src/pages/settings/AiMemoryInspector.tsx
 ```
-
-`src/components/ai/AiActivityCapsule.tsx` remains the only planned module in this slice.
 
 Split rendering concerns before any file approaches 500 lines. `AiPanel.tsx` is composition, not a
 new landfill for every state and receipt formatter.
@@ -581,8 +585,8 @@ and an approved write through the existing tool registry, and replies with a ren
 
 ### Day 5 — trust states
 
-**Status: delivered except for the deferred closed-panel capsule.** Exact-call approval, replay
-persistence, disconnect revocation, Stop enforcement, connection recovery and replacement/sync
+**Status: delivered.** Exact-call approval, replay persistence, disconnect revocation, Stop
+enforcement, connection recovery, closed-panel activity continuity and replacement/sync
 coordination are implemented.
 
 Finish one-shot approval, Undo, stop, reload recovery, connection reset and failure presentation.
@@ -609,31 +613,32 @@ Exercise scenario 4 against real course content and memories. Check:
 - the memory inspector can correct, resolve and delete a mistaken agent inference;
 - a two-device peer merge preserves the expected memory update/deletion.
 
-### Day 7 — browser quality gate and review
+### Day 7 — interaction and visual quality gate
 
-**Status: partial.** The live browser gate passed for pairing, approvals, authored content,
-misconception-first teaching, memory correction, peer-sync continuity, unavailable receipts, full
-replacement cleanup, stable replay and Stop. Per the prompter's required ordering, browser
-acceptance ran before automated verification. The full viewport/theme/zoom matrix and final dual
-review remain.
+**Status: delivered.** The existing live browser gate passed for pairing, approvals, authored
+content, misconception-first teaching, memory correction, peer-sync continuity, unavailable
+receipts, full replacement cleanup, stable replay and Stop. The final deterministic interaction
+pass covered message claiming, queued-follow-up editing, panel/capsule transitions, approval,
+receipt, reply, Stop, focus restoration and modal suppression through the scripted browser fixture.
 
-After the accepted browser scenarios, run the complete automated suite. Broader visual checks at
-1024, 1280, 1440 and 1920 px in
-light, dark, reduced-motion and 200% zoom conditions. Cover threshold crossing during an active run,
-long messages, long code/content wrapping, working, approval, failure and disconnection,
-keyboard-only use, Electron title-bar clearance,
-command palette, study sheet, toasts and page modals.
+Visual checks kept each variable separate instead of multiplying them into a Cartesian-product
+matrix:
 
-Run two final read-only reviews in parallel:
+- widths at 1024, 1440 and 1920 px, with the 1280 px baseline already covered;
+- dark theme at 1280 px;
+- reduced motion at 1280 px;
+- 200% zoom from a wide viewport, including the resulting active-run breakpoint transition and
+  compact Stop surface.
 
-1. **Standards:** repository rules, architecture, performance, accessibility, tests and unrelated
-   changes.
-2. **Specification:** every product decision, acceptance scenario, permission rule, memory invariant
-   and misconception-first branch in this document.
+The pass found and fixed two defects: generic activity duplicated the `Working` label, and updating
+a queued follow-up cleared the saved text from the popover. Both fixes were proved red-to-green and
+the continuous interaction pass then completed successfully. Root lint, web and Electron
+type-checking, production build, and eight existing AI Playwright scenarios passed. The full unit
+run passed 2,547 tests; one unrelated page-visibility test timed out while duplicate suite processes
+competed for resources and passed immediately in isolation.
 
-Resolve findings, rerun affected tests and repeat the browser scenario that exercises each fix.
-Human visual sign-off remains required; an accessibility tree cannot judge whether the result looks
-bolted on.
+The remaining gate is the normal two-subagent review and CodeRabbit review at PR time. Human visual
+sign-off remains required; an accessibility tree cannot judge whether the result looks bolted on.
 
 ## Automated proof
 
