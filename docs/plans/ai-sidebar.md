@@ -716,7 +716,7 @@ tests remain mandatory even though the new visual surface is web-first.
 
 ## Delivery documentation
 
-After implementation, update `docs/SPEC.md`, `docs/APP-FLOWS.md`, `docs/PERFORMANCE.md`, README setup,
+After implementation, update `docs/SPEC.md`, `docs/UX-MAP.html`, `docs/UX-MAP.json`, `docs/PERFORMANCE.md`, README setup,
 Help, `docs/CHANGES.md` and `MEMORIES.md` only for non-obvious durable facts future agents would get
 wrong. Record measured browser and terminal evidence plus the exact MCP companion version used. Do
 not present the prototype as able to wake an idle harness: the required capability is a deliberately

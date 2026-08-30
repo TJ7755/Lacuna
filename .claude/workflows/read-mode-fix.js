@@ -54,9 +54,10 @@ Each is visible and performs a real write in Read mode.
    \`AddLessonControl.save\` calls \`createLesson\`.
 5. \`src/pages/LessonView.tsx\` 157-163 — "Add lesson" on a one-lesson course's inline path.
 6. \`src/pages/CoursePath.tsx\` 430-443 — course title pencil and double-click rename. Currently
-   gated on \`canEditLessons\`, which is the wrong gate. \`APP-FLOWS.md\` 205 says Edit only.
+   gated on \`canEditLessons\`, which is the wrong gate. The UX map records this as action
+   \`A-PTH-06\` and expects Edit-only authoring.
 7. \`src/pages/LessonView.tsx\` 188-201 — lesson title pencil and double-click rename. Same wrong
-   gate. \`APP-FLOWS.md\` 293 says Edit only.
+   gate. The UX map records this as action \`A-LSN-08\` and expects Edit-only authoring.
 
 **Verify each one yourself before changing it.** Line numbers may have drifted and the audit was
 read-only. If a claim does not hold, say so in your report and leave that one alone.

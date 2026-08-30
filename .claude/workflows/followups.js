@@ -74,8 +74,9 @@ const DOC_FIX = `${RULES}
 
 Branch \`docs/path-copy-and-lock-test\` from master. Commit granularly. Do not push, do not open a PR.
 
-1. **\`docs/APP-FLOWS.md\` line ~241** says the Manual practice controls "appear on hover, focus, and
-   touch". They do not: \`InsertButton\` in \`CoursePathSegment.tsx\` is a persistent labelled pill.
+1. **The UX map action \`A-PRC-09\`** should continue to record that Manual practice insert controls
+   are persistent labelled pills rather than controls that "appear on hover, focus, and touch".
+   They do not: \`InsertButton\` in \`CoursePathSegment.tsx\` is a persistent labelled pill.
    Correct the wording to match the code. Check the surrounding paragraphs for the same claim
    repeated elsewhere and fix those too. Do not change behaviour.
 
