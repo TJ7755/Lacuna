@@ -13,7 +13,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { CardsIcon, ChartIcon, FileTextIcon, PathIcon, SettingsIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
-import { activeCourseSectionIndex, COURSE_SECTIONS, courseIdFromPath } from './courseSections';
+import { COURSE_SECTIONS, courseIdFromPath } from './courseSections';
 
 /** Indexed by section, so it stays aligned with COURSE_SECTIONS rather than duplicating it. */
 const SECTION_ICONS = [PathIcon, CardsIcon, FileTextIcon, ChartIcon, SettingsIcon];
@@ -22,8 +22,6 @@ export function CourseSectionBar() {
   const { pathname } = useLocation();
   const courseId = courseIdFromPath(pathname);
   if (!courseId) return null;
-
-  const activeIndex = activeCourseSectionIndex(pathname, courseId);
 
   return (
     <nav
@@ -39,13 +37,18 @@ export function CourseSectionBar() {
             <li key={label} className="flex flex-1">
               <NavLink
                 to={`/course/${courseId}${suffix}`}
+                // Exact matching for Path keeps the course root and its nested lesson
+                // and editor routes from marking every sibling section current.
                 end={suffix === ''}
                 aria-label={label}
-                aria-current={index === activeIndex ? 'page' : undefined}
-                className={cn(
-                  'flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors',
-                  index === activeIndex ? 'text-accent' : 'text-ink-faint active:text-ink',
-                )}
+                // Styling and aria-current both come from NavLink's own route match,
+                // so the two can never disagree about which section is current.
+                className={({ isActive }) =>
+                  cn(
+                    'flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors',
+                    isActive ? 'text-accent' : 'text-ink-faint active:text-ink',
+                  )
+                }
               >
                 <Icon width={22} height={22} />
                 {short}

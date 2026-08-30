@@ -330,6 +330,38 @@ describe('CardEditor — draft autosave', () => {
 
     expect(screen.getByPlaceholderText(/Question or prompt/)).toHaveValue('Second card draft');
   });
+
+  it('persists the source draft when navigating between cards before the debounce expires', async () => {
+    const firstCard = { ...generatedCard, sequenceItemId: undefined };
+    const secondCard = {
+      ...firstCard,
+      id: 'card-2',
+      conceptId: 'concept-card-2',
+      front: 'Persisted second card',
+    };
+    mockCard = firstCard;
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
+        <Link to="/course/course-1/cards/card-2/edit">Open second card</Link>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Unsaved source edit' },
+    });
+    mockCard = secondCard;
+    // Navigate inside the 800 ms debounce window: the pending autosave timer must be
+    // flushed into the source card's draft before the editor re-arms for card-2.
+    fireEvent.click(screen.getByRole('link', { name: 'Open second card' }));
+    await screen.findByDisplayValue('Persisted second card');
+
+    expect(loadDraft(draftKey('bank:course-1', 'card-1'))?.front).toBe('Unsaved source edit');
+    expect(loadDraft(draftKey('bank:course-1', 'card-2'))).toBeNull();
+  });
 });
 
 describe('CardEditor — numeric items', () => {

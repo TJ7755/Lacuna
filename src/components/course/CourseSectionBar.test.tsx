@@ -30,4 +30,16 @@ describe('CourseSectionBar', () => {
     expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Path' })).not.toHaveAttribute('aria-current');
   });
+
+  it('marks no section current on a route nested inside a section', () => {
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/lesson/lesson-1']}>
+        <CourseSectionBar />
+      </MemoryRouter>,
+    );
+
+    for (const name of ['Path', 'Cards', 'Questions', 'Analytics', 'Settings']) {
+      expect(screen.getByRole('link', { name })).not.toHaveAttribute('aria-current');
+    }
+  });
 });

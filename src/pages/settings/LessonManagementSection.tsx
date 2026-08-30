@@ -64,7 +64,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
       {lessons?.map((lesson, index) => (
         <motion.div
           key={lesson.id}
-          layout="position"
+          layout={multiplier > 0 ? 'position' : undefined}
           transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
           className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
         >

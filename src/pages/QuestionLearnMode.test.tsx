@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
+import { questionGeneratorRegistry } from '../questions/generators';
 import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
 import { QuestionLearnMode } from './QuestionLearnMode';
 
@@ -233,5 +234,34 @@ describe('QuestionLearnMode', () => {
 
     expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
     expect(mocks.start).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers inline retry and exit controls when a generated Question cannot start', async () => {
+    const generated: QuestionDefinition = {
+      ...question(),
+      kind: 'generated',
+      generatorKey: 'integer-root-quadratic',
+      generatorVersion: 1,
+      generatorConfig: {},
+    };
+    mocks.data = { ...mocks.data!, questions: [generated] };
+    // Registry resolution throws synchronously, before startQuestionAttempt can even
+    // return its promise, so the same recovery path must cover it.
+    vi.spyOn(questionGeneratorRegistry, 'resolve').mockImplementationOnce(() => {
+      throw new Error('This Question generator is not built into this client.');
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const recovery = await screen.findByRole('alert');
+    expect(recovery).toHaveTextContent('This Question generator is not built into this client.');
+    expect(within(recovery).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(within(recovery).getByRole('button', { name: 'Exit' })).toBeInTheDocument();
   });
 });

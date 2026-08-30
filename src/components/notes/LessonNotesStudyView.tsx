@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { ChevronDownIcon } from '../ui/icons';
+import { collapse } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { Note } from '../../db/types';
 
@@ -69,14 +70,7 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
                   {isOpen && (
                     <motion.div
                       key="study-note-content"
-                      initial={m > 0 ? { height: 0, opacity: 0 } : false}
-                      animate={{
-                        height: 'auto',
-                        opacity: 1,
-                        transitionEnd: { overflow: 'visible' },
-                      }}
-                      exit={m > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
-                      transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                      {...collapse(m)}
                       className="overflow-hidden border-t border-line"
                     >
                       <div className="px-5 py-4">

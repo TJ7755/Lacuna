@@ -90,7 +90,11 @@ intent and shipped state.
 
 ## The findings in detail
 
-### QW-1 — Restore points report a wrong lesson count (essential, small)
+Each heading records the position at the audit commit; the Delivery status section above states
+what has since shipped. QW-1 and QW-9, the two findings whose detail sections read most like a
+current defect report, carry explicit delivered labels below.
+
+### QW-1 — Restore points report a wrong lesson count (essential, small; fixed 30 August 2026)
 
 `BackupsSection.tsx` renders `{backup.deckCount} lessons`, but `takeAutoBackup` derives the
 count from `payload.decks.length` — legacy backing Deck rows, not Course lessons. The learner
@@ -159,7 +163,7 @@ course" is low-contrast orange on pale orange and "looks disabled", while "Try o
 and "Import Anki / JSON" are fainter still and read as decorative labels. This is the
 first-run drop-off point. Fix: contrast pass on the Welcome primary actions.
 
-### QW-9 — Five user-facing "deck" strings survive on Course-facing screens (essential, small)
+### QW-9 — Five user-facing "deck" strings survive on Course-facing screens (essential, small; fixed 30 August 2026)
 
 Recorded in `docs/course-terminology-audit.md` and confirmed still open by the UX-MAP R-07
 delivery scope: the new-card cap copy ("a large deck does not overwhelm you",
@@ -345,7 +349,7 @@ Nothing on the dashboard hints at it. Fix: a sort control on the dashboard itsel
 Walkthrough defect 12, still open: the first generated preview prompt says "First item?" after
 the type changes to Procedure. The editor's copy argues with itself inside one screen.
 
-### LG-8 — Question practice lags the card surface (important, medium–large)
+### LG-8 — Question practice lags the card surface (optional, medium–large)
 
 The cross-cutting pattern from the study-surface audit: Question practice trails cards on
 keyboard support, undo prominence, progress display and exit conventions. Bringing it up to

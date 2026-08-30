@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
+import { collapse } from '../ui/motion';
 import {
   createNoteAnnotation,
   deleteNoteAnnotation,
@@ -150,18 +151,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
 
       <AnimatePresence initial={false}>
         {selectionError && (
-          <motion.div
-            key="selection-error"
-            initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
-            animate={{
-              height: 'auto',
-              opacity: 1,
-              transitionEnd: { overflow: 'visible' },
-            }}
-            exit={multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
-            transition={transition}
-            className="overflow-hidden"
-          >
+          <motion.div key="selection-error" {...collapse(multiplier)} className="overflow-hidden">
             <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-line bg-surface-raised px-3 py-2">
               <p role="status" className="text-xs text-ink-soft">
                 {selectionError}
@@ -182,14 +172,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
         {pendingAnchor && (
           <motion.div
             key="new-annotation"
-            initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
-            animate={{
-              height: 'auto',
-              opacity: 1,
-              transitionEnd: { overflow: 'visible' },
-            }}
-            exit={multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
-            transition={transition}
+            {...collapse(multiplier)}
             className="mt-4 overflow-hidden rounded-xl border border-accent/30 bg-accent/5 p-4"
           >
             <p className="border-l-2 border-accent/50 pl-3 text-sm text-ink">
@@ -309,16 +292,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                     {editing ? (
                       <motion.div
                         key="annotation-editor"
-                        initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
-                        animate={{
-                          height: 'auto',
-                          opacity: 1,
-                          transitionEnd: { overflow: 'visible' },
-                        }}
-                        exit={
-                          multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined
-                        }
-                        transition={transition}
+                        {...collapse(multiplier)}
                         className="mt-3 overflow-hidden"
                       >
                         <label htmlFor={`edit-annotation-${annotation.id}`} className="sr-only">
@@ -362,16 +336,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                     ) : deleting ? (
                       <motion.div
                         key="annotation-delete"
-                        initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
-                        animate={{
-                          height: 'auto',
-                          opacity: 1,
-                          transitionEnd: { overflow: 'visible' },
-                        }}
-                        exit={
-                          multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined
-                        }
-                        transition={transition}
+                        {...collapse(multiplier)}
                         className="mt-3 flex items-center justify-end gap-2 overflow-hidden"
                       >
                         <span className="mr-auto text-xs text-ink-soft">
@@ -406,16 +371,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                     ) : annotation.body ? (
                       <motion.p
                         key="annotation-body"
-                        initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
-                        animate={{
-                          height: 'auto',
-                          opacity: 1,
-                          transitionEnd: { overflow: 'visible' },
-                        }}
-                        exit={
-                          multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined
-                        }
-                        transition={transition}
+                        {...collapse(multiplier)}
                         className="mt-2 overflow-hidden text-sm text-ink-soft"
                       >
                         {annotation.body}

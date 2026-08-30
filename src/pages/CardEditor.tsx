@@ -114,14 +114,52 @@ export function CardEditor() {
   const draftKeyRef = useRef(currentDraftKey);
   const draftTimer = useRef<number>();
 
+  // Persist the current form state under the key in draftKeyRef. Shared by the
+  // debounced autosave and the route-change flush below.
+  function persistDraft() {
+    saveDraft(draftKeyRef.current, {
+      type: type === 'numeric' || type === 'working' || type === 'audio' ? 'front_back' : type,
+      itemKind: type === 'numeric' || type === 'working' || type === 'audio' ? type : undefined,
+      front,
+      back,
+      tags,
+      alsoReverse,
+      payload:
+        type === 'numeric'
+          ? { v: 1, kind: 'numeric', answer: numericAnswer }
+          : type === 'working'
+            ? {
+                v: 1,
+                kind: 'working',
+                scheme: workingCompilation.lines.flatMap((line) =>
+                  line.kind === 'compiled' ? [line.value] : [],
+                ),
+                ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+              }
+            : undefined,
+      workingSource: type === 'working' ? workingSource : undefined,
+      timestamp: Date.now(),
+    });
+  }
+  // Effects that must not re-run on every keystroke reach the latest persistDraft
+  // through this stable handle rather than a dependency.
+  const persistDraftRef = useRef(persistDraft);
+  persistDraftRef.current = persistDraft;
+
   // Re-arm the loaded latch whenever the card being edited changes so direct
   // navigation between cards (same route, different param) re-seeds the form.
+  // Flush the outgoing card first: the route change cancels the only pending
+  // autosave timer, and the un-debounced edit would otherwise be lost with the
+  // source draft key.
   useEffect(() => {
+    if (loaded && draftDirty && !draftPrompt) persistDraftRef.current();
     window.clearTimeout(draftTimer.current);
     draftKeyRef.current = currentDraftKey;
     setLoaded(false);
     setDraftDirty(false);
     setDraftPrompt(false);
+    // Deliberately keyed on the draft key alone; form state is read through persistDraftRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDraftKey]);
 
   // Quick-capture bookkeeping: how many cards added without leaving the page, and a
@@ -276,31 +314,7 @@ export function CardEditor() {
   useEffect(() => {
     if (!loaded || !draftDirty || draftPrompt) return;
     window.clearTimeout(draftTimer.current);
-    draftTimer.current = window.setTimeout(() => {
-      saveDraft(draftKeyRef.current, {
-        type: type === 'numeric' || type === 'working' || type === 'audio' ? 'front_back' : type,
-        itemKind: type === 'numeric' || type === 'working' || type === 'audio' ? type : undefined,
-        front,
-        back,
-        tags,
-        alsoReverse,
-        payload:
-          type === 'numeric'
-            ? { v: 1, kind: 'numeric', answer: numericAnswer }
-            : type === 'working'
-              ? {
-                  v: 1,
-                  kind: 'working',
-                  scheme: workingCompilation.lines.flatMap((line) =>
-                    line.kind === 'compiled' ? [line.value] : [],
-                  ),
-                  ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
-                }
-              : undefined,
-        workingSource: type === 'working' ? workingSource : undefined,
-        timestamp: Date.now(),
-      });
-    }, 800);
+    draftTimer.current = window.setTimeout(() => persistDraftRef.current(), 800);
     return () => window.clearTimeout(draftTimer.current);
   }, [
     loaded,

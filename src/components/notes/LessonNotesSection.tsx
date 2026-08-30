@@ -11,6 +11,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { NoteRow } from './NoteRow';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
+import { collapse } from '../ui/motion';
 import { PlusIcon } from '../ui/icons';
 import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/repository';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -105,18 +106,7 @@ export function LessonNotesSection({ lessonId, notes, className }: LessonNotesSe
       {/* New-note form */}
       <AnimatePresence initial={false}>
         {addingNote && (
-          <motion.div
-            key="new-note"
-            initial={m > 0 ? { height: 0, opacity: 0 } : false}
-            animate={{
-              height: 'auto',
-              opacity: 1,
-              transitionEnd: { overflow: 'visible' },
-            }}
-            exit={m > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
-            transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-4 overflow-hidden"
-          >
+          <motion.div key="new-note" {...collapse(m)} className="mb-4 overflow-hidden">
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
               <LessonNoteEditor
                 onSave={handleAddNote}
@@ -131,7 +121,8 @@ export function LessonNotesSection({ lessonId, notes, className }: LessonNotesSe
       {/* Existing notes */}
       {sortedNotes.length > 0 ? (
         <motion.div
-          layout
+          layout={m > 0}
+          transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col divide-y divide-line rounded-xl border border-line"
         >
           {sortedNotes.map((note, idx) => (

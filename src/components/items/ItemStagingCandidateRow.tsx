@@ -46,6 +46,9 @@ export function ItemStagingCandidateRow({
   const [revisedSource, setRevisedSource] = useState('');
   const ready = Boolean(candidate.payload);
   const articleRef = useRef<HTMLElement>(null);
+  // Scopes the edit-focus query to the staged editor, so a textarea rendered by the
+  // revision panel (or anything else above it in the article) can never win it.
+  const editorRef = useRef<HTMLDivElement>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const restoreButtonRef = useRef<HTMLButtonElement>(null);
   const revisionButtonRef = useRef<HTMLButtonElement>(null);
@@ -56,7 +59,7 @@ export function ItemStagingCandidateRow({
 
   useLayoutEffect(() => {
     if (editing && !previousEditing.current) {
-      articleRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus();
+      editorRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus();
     } else if (!editing && previousEditing.current) {
       editButtonRef.current?.focus();
     }
@@ -187,7 +190,18 @@ export function ItemStagingCandidateRow({
               transition={{ duration: 0.14 * motionMultiplier }}
               className="flex flex-wrap gap-2"
             >
-              <Button ref={editButtonRef} size="sm" variant="ghost" onClick={onBeginEdit}>
+              <Button
+                ref={editButtonRef}
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  // Editing and the revision panel must not be open together: the
+                  // panel's complaint textarea would otherwise sit between the author
+                  // and the editor, and its close-transition would steal focus.
+                  setRevisionOpen(false);
+                  onBeginEdit();
+                }}
+              >
                 Edit
               </Button>
               <Button size="sm" variant="ghost" onClick={onReject}>
@@ -301,7 +315,9 @@ export function ItemStagingCandidateRow({
       </AnimatedDisclosure>
 
       <AnimatedDisclosure open={editing}>
-        <StagedItemEditor candidate={candidate} onCancel={onCancelEdit} onApply={onApplyEdit} />
+        <div ref={editorRef}>
+          <StagedItemEditor candidate={candidate} onCancel={onCancelEdit} onApply={onApplyEdit} />
+        </div>
       </AnimatedDisclosure>
     </motion.article>
   );

@@ -79,21 +79,27 @@ export function QuestionLearnMode() {
     let cancelled = false;
     setAttempt(null);
     setStartError(null);
-    const instance =
-      question.kind === 'generated'
-        ? questionGeneratorRegistry.resolve({
-            generatorKey: question.generatorKey,
-            generatorVersion: question.generatorVersion,
-            configuration: question.generatorConfig,
-            seed: `${sessionId}:${index}:${question.id}`,
-          })
-        : undefined;
-    void startQuestionAttempt({
-      questionId: question.id,
-      sessionId,
-      attemptId: `${sessionId}:${index}`,
-      instance,
-    })
+    // Resolution and attempt startup share one async path so a synchronous throw
+    // from the generator registry lands in the same recovery flow as a rejected
+    // attempt write, and the Retry and Exit controls render for either failure.
+    const start = async () => {
+      const instance =
+        question.kind === 'generated'
+          ? questionGeneratorRegistry.resolve({
+              generatorKey: question.generatorKey,
+              generatorVersion: question.generatorVersion,
+              configuration: question.generatorConfig,
+              seed: `${sessionId}:${index}:${question.id}`,
+            })
+          : undefined;
+      return startQuestionAttempt({
+        questionId: question.id,
+        sessionId,
+        attemptId: `${sessionId}:${index}`,
+        instance,
+      });
+    };
+    void start()
       .then((started) => {
         if (!cancelled) {
           setAttempt(started);
