@@ -2488,6 +2488,15 @@ its navigation cannot drift from the rendered groups.
   terminate inference already running in the model or terminal harness. The terminal task must
   remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
 
+  A bounded wait publishes at most one terminal-mailbox heartbeat per minute. The browser treats a
+  newer terminal mailbox revision as liveness: an idle connection with no newer revision for 90
+  seconds becomes **Connection quiet**, and the next terminal write restores **connected**. An
+  active run retains connected status until its claim lease ends, avoiding a false warning while
+  the model is legitimately working. Quiet is deliberately not called disconnected because browser
+  polling cannot prove that the terminal process has ended. If a claim expires or the terminal
+  explicitly disconnects mid-run, Lacuna requeues or recovers the prompt and appends a persistent
+  failure record to the local transcript.
+
   Mailbox protocol v3 also carries typed tool calls, browser-owned responses and an immutable
   instruction bundle on every queued message. `buildAiInstructionBundle()` emits `teaching-v1`
   from the live Settings preference. Enabled conceptual requests diagnose the learner's model,

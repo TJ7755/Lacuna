@@ -8,6 +8,7 @@ import {
   type RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol';
 import {
+  AI_TERMINAL_HEARTBEAT_INTERVAL_MS,
   DEFAULT_AI_RELAY_URL,
   TerminalAiClient,
   TerminalRelayReconnectRequiredError,
@@ -178,6 +179,38 @@ describe('TerminalAiClient', () => {
         ],
       },
     ]);
+  });
+
+  it('publishes throttled liveness heartbeats while bounded waits are empty', async () => {
+    const transport = new FakeTransport();
+    let now = 1_000;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => now,
+      sleep: async () => undefined,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+    await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
+    await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
+    expect(transport.writes).toEqual([
+      {
+        version: AI_RELAY_PROTOCOL_VERSION,
+        revision: 1,
+        browserRevisionSeen: 0,
+        events: [],
+      },
+    ]);
+
+    now += AI_TERMINAL_HEARTBEAT_INTERVAL_MS;
+    await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
+    expect(transport.writes.at(-1)).toEqual({
+      version: AI_RELAY_PROTOCOL_VERSION,
+      revision: 2,
+      browserRevisionSeen: 0,
+      events: [],
+    });
   });
 
   it('retries the same browser generation when publishing a claim fails', async () => {

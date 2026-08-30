@@ -15,6 +15,7 @@ const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
+export const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
 
 export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
 
@@ -100,6 +101,7 @@ export class TerminalAiClient {
   private connection: ConnectedTerminalRelay | null = null;
   private browserGeneration: string | null = null;
   private terminalGeneration = AI_RELAY_EMPTY_GENERATION;
+  private lastTerminalWriteAt: number | null = null;
   private terminalMailbox: RelayTerminalMailbox = {
     version: AI_RELAY_PROTOCOL_VERSION,
     revision: 0,
@@ -209,6 +211,7 @@ export class TerminalAiClient {
         if (generationChanged) this.browserGeneration = read.generation;
       }
 
+      await this.publishHeartbeatIfDue();
       const remaining = deadline - this.now();
       if (remaining <= 0) return { type: 'empty' };
       await this.sleep(Math.min(POLL_INTERVAL_MS, remaining));
@@ -348,13 +351,31 @@ export class TerminalAiClient {
   }
 
   private async appendEvent(event: RelayTerminalEvent): Promise<void> {
-    const connection = this.requireConnection();
     const next: RelayTerminalMailbox = {
       version: AI_RELAY_PROTOCOL_VERSION,
       revision: this.terminalMailbox.revision + 1,
       events: [...this.terminalMailbox.events, event],
       browserRevisionSeen: this.terminalMailbox.browserRevisionSeen,
     };
+    await this.writeTerminalMailbox(next);
+  }
+
+  private async publishHeartbeatIfDue(): Promise<void> {
+    const writtenAt = this.now();
+    if (
+      this.lastTerminalWriteAt !== null &&
+      writtenAt - this.lastTerminalWriteAt < AI_TERMINAL_HEARTBEAT_INTERVAL_MS
+    ) {
+      return;
+    }
+    await this.writeTerminalMailbox({
+      ...this.terminalMailbox,
+      revision: this.terminalMailbox.revision + 1,
+    });
+  }
+
+  private async writeTerminalMailbox(next: RelayTerminalMailbox): Promise<void> {
+    const connection = this.requireConnection();
     let generation: string;
     try {
       generation = await this.transport.writeTerminalMailbox(
@@ -368,6 +389,7 @@ export class TerminalAiClient {
     }
     this.terminalMailbox = next;
     this.terminalGeneration = generation;
+    this.lastTerminalWriteAt = this.now();
   }
 
   private applyBrowserAcknowledgement(terminalRevisionSeen: number): void {
@@ -431,6 +453,7 @@ export class TerminalAiClient {
     this.connection = null;
     this.browserGeneration = null;
     this.terminalGeneration = AI_RELAY_EMPTY_GENERATION;
+    this.lastTerminalWriteAt = null;
     this.terminalMailbox = {
       version: AI_RELAY_PROTOCOL_VERSION,
       revision: 0,

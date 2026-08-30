@@ -41,6 +41,11 @@ peer sync, and exposed to AI only through explicit global or Course scope. Peer 
 application preserve the connected AI session; successful full replacement revokes and clears its
 device-local state.
 
+The final connection-health follow-up adds throttled companion heartbeats, honest idle
+**Connection quiet** expiry and persistent transcript failures for expired or explicitly
+disconnected runs. Quiet recovers on the next terminal write and does not pretend browser polling
+can prove that a terminal process has died.
+
 Browser scenarios 4 and 6 passed on 28 August 2026. The teaching run stored an uncertain
 misconception after approval, confronted it with a failed prediction, resolved it from learner
 evidence and tested transfer. The lifecycle run preserved the terminal and transcript across a
