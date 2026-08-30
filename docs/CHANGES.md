@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — first-load and network performance
+
+- Restored the production lazy boundaries for charts and Markdown, and moved the
+  disabled AI relay runtime plus the AI conversation panel behind their actual use
+  conditions. Existing panel motion, visual treatment and AI session lifecycle are
+  unchanged.
+- Stopped automatic sync startup from fetching pairing, backup validation, math
+  verification and charts on an unpaired device. Remembered startup, focus and
+  completed-study triggers still use the same sync path when credentials exist.
+- Loaded the schema-v24 question migration only while that upgrade runs, using
+  `Dexie.waitFor` so the version-change transaction remains valid.
+- Reduced the initial production JavaScript from 2,561,545 raw bytes to 861,662
+  (263,861 gzip), removed 29,290 bytes of optional CSS from first load and reduced
+  the PWA install precache from 1,519.50 KiB to 997.10 KiB.
+- Added enforceable initial-asset budgets and repaired the performance audit for
+  the current Course and scheduling-unit APIs. Content-hashed scripts and the
+  hosted font stylesheet now use bounded cache-first runtime caches.
+
 ## Unreleased — AI connection health
 
 - Corrected the companion README's obsolete claim that durable learner memories were not

@@ -6,7 +6,7 @@
 
 import { readSyncState } from '../db/mutationStamp';
 import { allowRelayConnect } from './csp';
-import { readRememberedCredentials, syncWithCredentials, type SyncCredentials } from './pairing';
+import type { SyncCredentials } from './pairing';
 
 let currentCredentials: SyncCredentials | null = null;
 let installed = false;
@@ -34,6 +34,8 @@ export function clearUnlockedCredentials(): void {
 async function restoreRememberedCredentials(): Promise<void> {
   const generation = credentialGeneration;
   const state = await readSyncState().catch(() => null);
+  if (!state?.remembered) return;
+  const { readRememberedCredentials } = await import('./pairing');
   const credentials = readRememberedCredentials(state ?? undefined);
   if (!credentials || credentialGeneration !== generation) return;
   allowRelayConnect(credentials.relayUrl);
@@ -49,6 +51,7 @@ async function triggerSync(reason: string): Promise<void> {
   if (!credentials || credentials.channelId !== state.channelId) return;
   lastTriggerAt = now;
   try {
+    const { syncWithCredentials } = await import('./pairing');
     await syncWithCredentials(credentials);
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console

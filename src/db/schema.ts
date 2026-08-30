@@ -48,7 +48,6 @@ import {
   type LegacyCourseRecord,
 } from './assessmentMigration';
 import { buildDomainStorageMigration } from './storageMigration';
-import { migrateQuestionModeContent } from '../questions/domain';
 import type {
   Concept,
   QuestionAttempt,
@@ -1003,6 +1002,13 @@ class LacunaDatabase extends Dexie {
           });
         }
 
+        // The question migration carries the expression verifier and mathjs. It is
+        // needed only when v24 actually upgrades an existing database, not on every
+        // launch. Dexie.waitFor keeps the versionchange transaction alive while the
+        // optional module is fetched.
+        const { migrateQuestionModeContent } = await Dexie.waitFor(
+          import('../questions/domain'),
+        );
         const migration = migrateQuestionModeContent({
           cards,
           reviewHistory,

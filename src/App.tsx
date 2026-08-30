@@ -14,22 +14,20 @@ import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
-import { installSyncTriggers } from './sync/triggers';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
-import { readAiSettings, useAiSettings } from './ai/settings';
-import { AiSessionProvider } from './ai/session/AiSessionContext';
-import { createRelayClient } from './ai/relayClient';
-import { clearPersistedRelayAiDeviceState, createRelayAiSession } from './ai/session/relay';
+import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
-import { buildAiInstructionBundle } from './ai/instructions';
 
 export { router } from './routes/router';
 
 const relayAiDeviceStateParticipant = {
   invalidate: () => undefined,
   quiesce: () => undefined,
-  clear: clearPersistedRelayAiDeviceState,
+  clear: () =>
+    import('./ai/session/relay').then(({ clearPersistedRelayAiDeviceState }) =>
+      clearPersistedRelayAiDeviceState(),
+    ),
 };
 
 function RouterWithQuotaWarning() {
@@ -37,31 +35,22 @@ function RouterWithQuotaWarning() {
   return <RouterProvider router={router} />;
 }
 
-function EnabledAiRouter() {
-  const [session] = useState(() =>
-    createRelayAiSession({
-      relay: createRelayClient(),
-      getInstructions: () => buildAiInstructionBundle(readAiSettings()),
-    }),
-  );
-  useEffect(() => {
-    const unregister = replacementLifecycle.register(session.replacementParticipant);
-    session.activate();
-    return () => {
-      unregister();
-      session.dispose();
-    };
-  }, [session]);
-  return (
-    <AiSessionProvider session={session}>
-      <RouterWithQuotaWarning />
-    </AiSessionProvider>
-  );
-}
+const EnabledAiRuntime = lazy(() =>
+  import('./ai/session/EnabledAiRuntime').then((module) => ({
+    default: module.EnabledAiRuntime,
+  })),
+);
 
 function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
-  return settings.enabled ? <EnabledAiRouter /> : <RouterWithQuotaWarning />;
+  if (!settings.enabled) return <RouterWithQuotaWarning />;
+  return (
+    <Suspense fallback={<RouterWithQuotaWarning />}>
+      <EnabledAiRuntime>
+        <RouterWithQuotaWarning />
+      </EnabledAiRuntime>
+    </Suspense>
+  );
 }
 
 const McpBridgeController = lazy(loadMcpBridgeController);
@@ -157,8 +146,20 @@ export function App() {
 
   useEffect(() => {
     if (!ready) return;
-    const dispose = installSyncTriggers();
-    return dispose;
+    let active = true;
+    let dispose: (() => void) | undefined;
+    void import('./sync/triggers')
+      .then(({ installSyncTriggers }) => {
+        if (active) dispose = installSyncTriggers();
+      })
+      .catch(() => {
+        // Automatic sync is optional background work; Settings can still load
+        // the same runtime for deliberate sync if this fetch was interrupted.
+      });
+    return () => {
+      active = false;
+      dispose?.();
+    };
   }, [ready]);
 
   if (initError) {
