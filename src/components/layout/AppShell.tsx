@@ -19,6 +19,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAiSettings } from '../../ai/settings';
 import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { AiActivityCapsule } from '../ai/AiActivityCapsule';
 import { AiPanel } from '../ai/AiPanel';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
@@ -66,6 +67,7 @@ export function AppShell() {
   const titlebarRef = useRef<HTMLDivElement>(null);
   const bottomNavRef = useRef<HTMLDivElement>(null);
   const shellBodyRef = useRef<HTMLDivElement>(null);
+  const aiCapsuleRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileWasOpenRef = useRef(false);
   const aiTriggerRef = useRef<HTMLButtonElement>(null);
@@ -83,6 +85,14 @@ export function AppShell() {
   // The section bar only exists inside a course, so only those pages need to clear it.
   const inCourse = courseIdFromPath(location.pathname) !== null;
   const studySheet = useStudySheetState();
+  const capsuleSuppressed = mobileOpen || paletteOpen || hintsOpen || studySheet.open;
+
+  useEffect(() => {
+    const capsule = aiCapsuleRef.current;
+    if (!capsule) return;
+    if (capsuleSuppressed) capsule.setAttribute('inert', '');
+    else capsule.removeAttribute('inert');
+  }, [aiSession, aiSettings.enabled, capsuleSuppressed]);
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
   // quarter of the viewport on the full sidebar. The user's preference resumes
@@ -198,7 +208,7 @@ export function AppShell() {
       <div ref={titlebarRef} className="shrink-0">
         <Titlebar />
       </div>
-      <div ref={shellBodyRef} className="flex flex-1 overflow-hidden">
+      <div ref={shellBodyRef} className="relative flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
         <div className="hidden md:block">
           <Sidebar
@@ -233,6 +243,26 @@ export function AppShell() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {!aiOpen && aiSettings.enabled && aiSession && (
+          <div
+            ref={aiCapsuleRef}
+            aria-hidden={capsuleSuppressed || undefined}
+            className={cn(
+              'absolute right-4 top-4 z-30',
+              capsuleSuppressed && 'pointer-events-none select-none',
+            )}
+          >
+            <AiActivityCapsule
+              session={aiSession}
+              canOpenConversation={aiDesktop}
+              stoppableOnly={!aiDesktop}
+              onOpenConversation={() => {
+                if (aiDesktop) setAiOpen(true);
+              }}
+            />
+          </div>
+        )}
 
         {/* Mobile drawer */}
         <AnimatePresence>

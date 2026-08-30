@@ -1,5 +1,22 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — AI closed-panel activity capsule
+
+- Added a compact top-right AI activity capsule while the full conversation panel is closed. It
+  exposes explicit status, current activity, the latest reply, editable queued follow-up, Open and
+  cooperative Stop controls through the existing `AiSession` seam.
+- Preserved an active or Stop-requested run's compact Stop surface when the viewport crosses below
+  the 1024 px desktop-panel breakpoint without exposing the ordinary AI entry point on mobile.
+  Completed activity remains desktop-only.
+- Made the capsule and full panel mutually exclusive, restored focus after Escape or outside-click
+  dismissal, and suppressed capsule interaction beneath the command palette, navigation drawer,
+  key hints and study sheet.
+- The streamlined interaction and visual pass found and fixed duplicated generic activity status
+  and queued-follow-up text disappearing after an update. Width, dark-theme, reduced-motion and
+  200%-zoom checks were run independently, without a wasteful Cartesian-product matrix.
+- Blocked new follow-ups while a Stop request awaits acknowledgement, preserving draft content
+  without allowing new AI work to slip behind an explicit Stop.
+
 ## Unreleased — course-wide Practice Now action
 
 - Removed the repeated manual-practice insertion controls from the curriculum path. The course
