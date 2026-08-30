@@ -21,7 +21,18 @@
     "sourcePolicy": "Code and executable tests are authoritative. Product documentation was not used to assert current behaviour.",
     "obsoleteCatalogue": "docs/APP-FLOWS.md was deleted before replacement artefacts were created and is not an evidence source.",
     "noteOnScores": "Scores are heuristic source-audit judgements, not observed usability measurements.",
-    "mapReading": "Current stations are semantic control clusters. Repeated JSX instances are represented by occurrenceRefs rather than pretending every rendered row is a unique concept."
+    "mapReading": "Current stations are semantic control clusters. Repeated JSX instances are represented by occurrenceRefs rather than pretending every rendered row is a unique concept.",
+    "deliveryOverlay": {
+      "recordedOn": "2026-08-30",
+      "basis": "Implementation source inspection only. The 2026-08-29 audit stations, actions, observations and heuristic scores remain an unchanged historical snapshot.",
+      "browserValidated": false,
+      "testValidated": false,
+      "statusMeaning": {
+        "delivered": "The implemented source covers the recommendation's agreed scope.",
+        "partially delivered": "A bounded part of the recommendation is implemented; the remaining scope is named explicitly.",
+        "not addressed": "No delivery was included in this change."
+      }
+    }
   },
   "scoring": {
     "scale": "1-10",
@@ -13297,7 +13308,30 @@
         "authoring-gate tests"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The code already gates controls by mode; the map exposes the duplicate choice."
+      "rationale": "The code already gates controls by mode; the map exposes the duplicate choice.",
+      "delivery": {
+        "status": "delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Course paths and lesson views now share one Study/Author workspace mode beside the content, and Course settings no longer repeats the mode control.",
+        "sourceRefs": [
+          {
+            "file": "src/components/course/LessonViewModeToggle.tsx",
+            "lines": "4-39"
+          },
+          {
+            "file": "src/pages/CoursePath.tsx",
+            "lines": "430-456"
+          },
+          {
+            "file": "src/pages/LessonView.tsx",
+            "lines": "160-176"
+          },
+          {
+            "file": "src/pages/CourseSettings.tsx",
+            "lines": "38-48"
+          }
+        ]
+      }
     },
     {
       "id": "R-03",
@@ -13364,7 +13398,18 @@
         "Route preservation"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The current system has multiple entry points to the same authoring families."
+      "rationale": "The current system has multiple entry points to the same authoring families.",
+      "delivery": {
+        "status": "partially delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "The Cards library now presents Card, Sequence and Occlusion creation as one labelled Add content group and no longer repeats a second empty-state action cluster. Question, import/link and lesson-level entry points remain separate.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/CardsPage.tsx",
+            "lines": "122-149"
+          }
+        ]
+      }
     },
     {
       "id": "R-05",
@@ -13422,7 +13467,18 @@
         "Settings deep links"
       ],
       "expectedIntuitionDelta": "+1 to +2",
-      "rationale": "The source's section list is already an unambiguous information-architecture inventory."
+      "rationale": "The source's section list is already an unambiguous information-architecture inventory.",
+      "delivery": {
+        "status": "delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Global settings are grouped under Appearance and access, Study behaviour, Course defaults, Data safety and Integrations while existing child section anchors remain available for direct links.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/Settings.tsx",
+            "lines": "20-72, 92-150"
+          }
+        ]
+      }
     },
     {
       "id": "R-07",
@@ -13450,7 +13506,22 @@
         "Import destination"
       ],
       "expectedIntuitionDelta": "+2",
-      "rationale": "This is a source-confirmed contradiction, not a usability opinion."
+      "rationale": "This is a source-confirmed contradiction, not a usability opinion.",
+      "delivery": {
+        "status": "partially delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Both Welcome links use current course terminology and open /share with an explicit import intent; the Share page scrolls to and focuses its existing import job, and compatibility redirects remain for old bookmarks. Current-facing deck terminology remains in course scheduling guidance, the duplicate-card warning and the legacy import preview.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/Welcome.tsx",
+            "lines": "412-417, 717-724"
+          },
+          {
+            "file": "src/pages/SharePage.tsx",
+            "lines": "184-198, 728-755"
+          }
+        ]
+      }
     },
     {
       "id": "R-08",
@@ -13477,7 +13548,30 @@
         "Shortcut copy"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The two controls have different jobs but the same noun."
+      "rationale": "The two controls have different jobs but the same noun.",
+      "delivery": {
+        "status": "delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "The keyboard overlay and its sidebar trigger are now Quick search; the routed library surface and sidebar fallback are Search content, with matching shortcut copy.",
+        "sourceRefs": [
+          {
+            "file": "src/components/layout/Sidebar.tsx",
+            "lines": "145-180, 550-565"
+          },
+          {
+            "file": "src/components/search/CommandPalette.tsx",
+            "lines": "86-90, 195-203"
+          },
+          {
+            "file": "src/pages/SearchPage.tsx",
+            "lines": "66-67, 128-145"
+          },
+          {
+            "file": "src/state/shortcuts.ts",
+            "lines": "15-22"
+          }
+        ]
+      }
     },
     {
       "id": "R-09",
@@ -13506,7 +13600,26 @@
         "Path authoring gate"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The path already renders the resulting objects; creation should happen where users see them."
+      "rationale": "The path already renders the resulting objects; creation should happen where users see them.",
+      "delivery": {
+        "status": "partially delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Author mode can create and edit practice nodes and checkpoints directly from the course path, including assessment date, placement, coverage and exclusions through the shared editor. Unlock policy remains in Course Settings, while revision planning remains in the assessment study flow.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/CoursePath.tsx",
+            "lines": "323-363, 555-658"
+          },
+          {
+            "file": "src/components/course/PracticeNodeEditor.tsx",
+            "lines": "31-68, 104-160"
+          },
+          {
+            "file": "src/components/course/AssessmentEditorDialog.tsx",
+            "lines": "36-83, 120-165"
+          }
+        ]
+      }
     },
     {
       "id": "R-10",
@@ -13538,7 +13651,18 @@
         "Shared confirmation/undo component"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The code contains safety primitives but not one user-facing contract."
+      "rationale": "The code contains safety primitives but not one user-facing contract.",
+      "delivery": {
+        "status": "partially delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Restore-point deletion now names the local scope and states that mirrored files are retained. The wider shared safety preview across merge, replace, sync, channel and MCP operations is not implemented.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/settings/BackupsSection.tsx",
+            "lines": "47-67, 206-224"
+          }
+        ]
+      }
     },
     {
       "id": "R-11",
@@ -13605,7 +13729,18 @@
         "Snapshot/undo coverage"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The product already has confirmation and undo implementations; they need one behavioural contract."
+      "rationale": "The product already has confirmation and undo implementations; they need one behavioural contract.",
+      "delivery": {
+        "status": "partially delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Restore-point deletion now uses an explicit inline confirmation with impact and recovery-boundary copy, and keeps the confirmation open when deletion fails. Other destructive flows retain their existing contracts.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/settings/BackupsSection.tsx",
+            "lines": "57-67, 206-224"
+          }
+        ]
+      }
     },
     {
       "id": "R-13",
@@ -13630,7 +13765,26 @@
         "Settings grouping"
       ],
       "expectedIntuitionDelta": "+1",
-      "rationale": "The current controls are individually labelled but collectively impose a translation burden."
+      "rationale": "The current controls are individually labelled but collectively impose a translation burden.",
+      "delivery": {
+        "status": "delivered",
+        "recordedOn": "2026-08-30",
+        "scope": "Workload and session goals remain visible while interval, learning-step and leech controls, practice thresholds and scheduling optimisation sit behind deliberate disclosures with plain-language summaries and a reset path.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/settings/SchedulingFieldsSection.tsx",
+            "lines": "150-199"
+          },
+          {
+            "file": "src/pages/settings/PracticeSettingsSection.tsx",
+            "lines": "45-77"
+          },
+          {
+            "file": "src/pages/settings/OptimisationPanel.tsx",
+            "lines": "90-145"
+          }
+        ]
+      }
     },
     {
       "id": "R-14",
@@ -13679,7 +13833,22 @@
           "lines": "720-730"
         }
       ],
-      "recommendationId": "R-07"
+      "recommendationId": "R-07",
+      "deliveryDisposition": {
+        "status": "resolved in source",
+        "recordedOn": "2026-08-30",
+        "note": "The original audit finding is retained above. Current Welcome links are labelled Import a shared course and open the focused import job at /share?intent=import.",
+        "sourceRefs": [
+          {
+            "file": "src/pages/Welcome.tsx",
+            "lines": "412-417, 717-724"
+          },
+          {
+            "file": "src/pages/SharePage.tsx",
+            "lines": "184-198, 728-755"
+          }
+        ]
+      }
     },
     {
       "id": "G-02",
@@ -13721,7 +13890,22 @@
           "lines": "125-310"
         }
       ],
-      "recommendationId": "R-08"
+      "recommendationId": "R-08",
+      "deliveryDisposition": {
+        "status": "resolved in source",
+        "recordedOn": "2026-08-30",
+        "note": "The original audit finding is retained above. Current source distinguishes the Quick search overlay from the Search content route.",
+        "sourceRefs": [
+          {
+            "file": "src/components/layout/Sidebar.tsx",
+            "lines": "145-180, 550-565"
+          },
+          {
+            "file": "src/pages/SearchPage.tsx",
+            "lines": "128-145"
+          }
+        ]
+      }
     },
     {
       "id": "G-04",
@@ -13771,7 +13955,22 @@
           "lines": "20-55"
         }
       ],
-      "recommendationId": "R-02"
+      "recommendationId": "R-02",
+      "deliveryDisposition": {
+        "status": "resolved in source",
+        "recordedOn": "2026-08-30",
+        "note": "The original audit finding is retained above. Current source uses one Study/Author workspace mode on path and lesson surfaces and removes the Course settings duplicate.",
+        "sourceRefs": [
+          {
+            "file": "src/components/course/LessonViewModeToggle.tsx",
+            "lines": "4-39"
+          },
+          {
+            "file": "src/pages/CourseSettings.tsx",
+            "lines": "38-48"
+          }
+        ]
+      }
     },
     {
       "id": "G-06",

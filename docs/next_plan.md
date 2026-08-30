@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 28 August 2026.
+Reviewed 30 August 2026.
 
 This file is the current decision surface: what is active, what follows it, and what is
 deliberately parked. Detailed specifications, implementation diaries and completed arcs do
@@ -12,6 +12,17 @@ documentation to an Arc or numbered section of the former `next_plan.md` refer t
 archive.
 
 ## Now
+
+### UX flow consolidation
+
+**Status:** in progress.
+
+The implementation plan is [UX flow consolidation](plans/ux-flow-consolidation.md), grounded in the
+[UX map](UX-MAP.html). It repairs the audit's concrete contradictions: honest import and search
+entry points, one Study/Author decision beside course content, path-native authoring, task-oriented
+Settings, deliberate disclosure of scheduling internals, and confirmation before deleting a restore
+point from Lacuna. Browser verification is the release gate; automated checks follow it once the
+complete UI has passed.
 
 ### AI sidebar — final verification
 

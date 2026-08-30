@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — UX flow consolidation
+
+- Repaired onboarding import links: **Import a shared course** now opens the existing Share-page
+  importer directly instead of sending an Anki/JSON or deck-labelled action to Settings.
+- Distinguished **Quick search** (the Ctrl/Cmd+K overlay) from the full **Search content** page in
+  navigation, shortcuts, accessibility labels and the seeded Welcome course.
+- Replaced the repeated Read/Edit decision with one persisted **Study/Author** workspace mode beside
+  course and lesson content. Course Settings no longer duplicates the same setting.
+- Added one Author-mode path action group for lessons, Manual practice and checkpoints. The existing
+  Practice and assessment editors now handle path-native creation/editing, including single-lesson
+  courses; Study mode keeps checkpoint details and revision.
+- Grouped global Settings under Appearance & access, Study behaviour, Course defaults, Data safety
+  and Integrations while preserving the old child anchors. Scheduler internals, practice thresholds
+  and optimisation now use deliberate Advanced disclosures; workload and session goals remain
+  visible.
+- Automatic restore points now require confirmation before deletion from Lacuna and report failures.
+  Folder-mirrored backup files are explicitly left untouched.
+
 ## Unreleased — course-wide Practice Now action
 
 - Removed the repeated manual-practice insertion controls from the curriculum path. The course
