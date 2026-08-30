@@ -110,14 +110,19 @@ export function CardEditor() {
   const [draftDirty, setDraftDirty] = useState(false);
   // Whether a stored draft was found and is offered for restoration.
   const [draftPrompt, setDraftPrompt] = useState(false);
-  const draftKeyRef = useRef(draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new'));
+  const currentDraftKey = draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new');
+  const draftKeyRef = useRef(currentDraftKey);
   const draftTimer = useRef<number>();
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
   // navigation between cards (same route, different param) re-seeds the form.
   useEffect(() => {
+    window.clearTimeout(draftTimer.current);
+    draftKeyRef.current = currentDraftKey;
     setLoaded(false);
-  }, [cardId]);
+    setDraftDirty(false);
+    setDraftPrompt(false);
+  }, [currentDraftKey]);
 
   // Quick-capture bookkeeping: how many cards added without leaving the page, and a
   // remount key that refocuses the first field after each "Save & add another".

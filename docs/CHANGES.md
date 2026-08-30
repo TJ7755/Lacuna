@@ -13,6 +13,8 @@
   Course tabs. All transitions collapse under reduced motion.
 - Extracted the staging candidate row from its oversized review component instead of turning one
   755-line file into an even larger dumping ground.
+- Fixed Card-editor draft identity when navigating directly between two card routes in one mounted
+  editor; each card now restores and updates only its own draft.
 - Recorded the delivered and deliberately deferred audit items in both source audit documents.
 
 **Checks:** focused red-to-green component, page, session, backup and draft tests; full typecheck,

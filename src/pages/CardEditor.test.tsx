@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import * as React from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
@@ -289,6 +289,46 @@ describe('CardEditor — draft autosave', () => {
     });
 
     expect(loadDraft(draftKey('bank:course-1', 'card-1'))).toBeNull();
+  });
+
+  it('uses the destination card draft after route-parameter navigation', async () => {
+    const firstCard = { ...generatedCard, sequenceItemId: undefined };
+    const secondCard = {
+      ...firstCard,
+      id: 'card-2',
+      conceptId: 'concept-card-2',
+      front: 'Persisted second card',
+    };
+    saveDraft(draftKey('bank:course-1', 'card-1'), {
+      type: 'front_back',
+      front: 'First card draft',
+      back: 'First answer',
+      tags: [],
+      timestamp: 1,
+    });
+    saveDraft(draftKey('bank:course-1', 'card-2'), {
+      type: 'front_back',
+      front: 'Second card draft',
+      back: 'Second answer',
+      tags: [],
+      timestamp: 2,
+    });
+    mockCard = firstCard;
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
+        <Link to="/course/course-1/cards/card-2/edit">Open second card</Link>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    mockCard = secondCard;
+    fireEvent.click(screen.getByRole('link', { name: 'Open second card' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Restore draft' }));
+
+    expect(screen.getByPlaceholderText(/Question or prompt/)).toHaveValue('Second card draft');
   });
 });
 
