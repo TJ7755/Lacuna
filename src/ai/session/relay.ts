@@ -36,6 +36,7 @@ import {
 export type { RelaySessionStorage } from './relayPersistence';
 
 const POLL_INTERVAL_MS = 1_000;
+export const AI_CONNECTION_QUIET_AFTER_MS = 90_000;
 const PAIRING_EXPIRED_REASON = 'Pairing code expired. Connect the terminal again.';
 const STALE_GENERATION_REASON =
   'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.';
@@ -229,6 +230,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
 
     if (epoch !== pollingEpoch) return;
     let terminalRevisionSeen = persisted.terminalRevisionSeen;
+    let terminalActivitySeen = false;
     const events: RelayTerminalEvent[] = [];
     if (pulled) {
       const envelope = JSON.parse(new TextDecoder().decode(pulled.bytes)) as unknown;
@@ -237,7 +239,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       const opened = await crypto.open(key, envelope);
       if (epoch !== pollingEpoch) return;
       const terminalMailbox = relayTerminalMailboxSchema.parse(opened);
-      terminalRevisionSeen = terminalMailbox.revision;
+      terminalActivitySeen = terminalMailbox.revision > terminalRevisionSeen;
+      terminalRevisionSeen = Math.max(terminalRevisionSeen, terminalMailbox.revision);
       if (
         toolResponses.length > 0 &&
         terminalMailbox.browserRevisionSeen >= persisted.browserMailbox.revision
@@ -259,7 +262,24 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       );
     const expired = timelyReply ? null : expireClaimLease(nextSnapshot, messages, now());
     if (expired) ({ snapshot: nextSnapshot, messages } = expired);
-    if (!expired && events.length === 0 && !mailboxChanged) return;
+
+    const connectionBeforeEvents = nextSnapshot.connection;
+    if (
+      terminalActivitySeen &&
+      (nextSnapshot.connection.status === 'connected' || nextSnapshot.connection.status === 'quiet')
+    ) {
+      nextSnapshot = {
+        ...nextSnapshot,
+        connection: { ...nextSnapshot.connection, status: 'connected', lastActivityAt: now() },
+      };
+    } else {
+      nextSnapshot = markQuietConnection(nextSnapshot, now());
+    }
+    const connectionChanged = nextSnapshot.connection !== connectionBeforeEvents;
+    if (!expired && events.length === 0 && !mailboxChanged && !terminalActivitySeen) {
+      if (connectionChanged) publish(nextSnapshot);
+      return;
+    }
 
     for (const event of events) {
       const beforeEvent = nextSnapshot;
@@ -313,7 +333,12 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           beforeEvent.run?.status === 'stop_requested' ||
           beforeEvent.queuedFollowUp !== null)
       ) {
-        nextSnapshot = { ...nextSnapshot, ...recoverDisconnectedState(beforeEvent) };
+        const recovered = recoverDisconnectedState(nextSnapshot);
+        nextSnapshot = {
+          ...nextSnapshot,
+          ...recovered,
+          activity: nextSnapshot.activity,
+        };
         queuedFollowUpMessageId = null;
       }
       if (event.type === 'disconnected') {
@@ -325,15 +350,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
         const oldest = processed.values().next().value;
         if (oldest !== undefined) processed.delete(oldest);
       }
-    }
-    if (
-      nextSnapshot.connection.status === 'connected' ||
-      nextSnapshot.connection.status === 'quiet'
-    ) {
-      nextSnapshot = {
-        ...nextSnapshot,
-        connection: { ...nextSnapshot.connection, status: 'connected', lastActivityAt: now() },
-      };
     }
     const browserMailbox: RelayBrowserMailbox = {
       ...persisted.browserMailbox,
@@ -800,6 +816,18 @@ function browserTimers(): RelaySessionTimers {
 
 function isExpiredPairing(snapshot: AiSessionSnapshot, now: number): boolean {
   return snapshot.connection.status === 'pairing' && now >= snapshot.connection.expiresAt;
+}
+
+function markQuietConnection(snapshot: AiSessionSnapshot, currentTime: number): AiSessionSnapshot {
+  const connection = snapshot.connection;
+  if (
+    connection.status !== 'connected' ||
+    currentTime - connection.lastActivityAt < AI_CONNECTION_QUIET_AFTER_MS ||
+    (snapshot.run?.status === 'active' && currentTime < snapshot.run.leaseExpiresAt)
+  ) {
+    return snapshot;
+  }
+  return { ...snapshot, connection: { ...connection, status: 'quiet' } };
 }
 
 type AiSessionCommandFailure = Extract<AiSessionCommandResult<never>, { ok: false }>;

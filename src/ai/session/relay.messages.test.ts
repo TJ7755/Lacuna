@@ -823,6 +823,14 @@ describe('relay AI session messages', () => {
         content: 'Try this message again after the lease.',
         delivery: 'queued',
       }),
+      expect.objectContaining({
+        kind: 'error',
+        error: {
+          kind: 'internal',
+          message:
+            'The terminal did not finish before the run lease expired. The message was queued again.',
+        },
+      }),
     ]);
     expect(crypto.seal).toHaveBeenLastCalledWith(
       expect.anything(),
@@ -852,6 +860,7 @@ describe('relay AI session messages', () => {
     );
     expect(session.getSnapshot().items).toEqual([
       expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'claimed' }),
+      expect.objectContaining({ kind: 'error' }),
     ]);
 
     vi.mocked(crypto.open).mockResolvedValue({
@@ -873,6 +882,7 @@ describe('relay AI session messages', () => {
 
     expect(session.getSnapshot().items).toEqual([
       expect.objectContaining({ kind: 'user', id: 'message-1', delivery: 'completed' }),
+      expect.objectContaining({ kind: 'error' }),
       expect.objectContaining({
         kind: 'assistant',
         content: 'This reply belongs to the retried run.',

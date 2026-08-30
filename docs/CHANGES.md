@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — AI connection health
+
+- Corrected the companion README's obsolete claim that durable learner memories were not
+  implemented; schema-v25 memories already use the scoped domain-tool path.
+- Added throttled terminal heartbeats to the existing encrypted mailbox protocol. Repeated bounded
+  waits now prove that the companion task is still running without creating a second transport or
+  changing the relay's plaintext-blind trust model. A heartbeat PUT is cancelled at the wait
+  deadline and an uncertain outcome requires reconnection instead of overrunning the advertised
+  bound.
+- The browser marks an idle connection **Connection quiet** after 90 seconds without a newer
+  terminal mailbox revision and restores **connected** on the next terminal write. An active run
+  remains connected for its claim lease, so ordinary model work is not falsely reported as dead.
+- Claim expiry and explicit mid-run disconnect now append persistent, bounded failure records to the
+  transcript while recovering the interrupted prompt. Previously the header failure could be
+  cleared during recovery, leaving the learner with a draft but no durable explanation. Truncated
+  failure identifiers retain a source fingerprint so distinct long run and event ids cannot
+  collide.
+
 ## Unreleased — UX flow consolidation
 
 - Repaired onboarding import links: **Import a shared course** now opens the existing Share-page

@@ -15,6 +15,7 @@ const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
+export const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
 
 export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
 
@@ -55,6 +56,7 @@ export interface TerminalRelayTransport {
     connection: ConnectedTerminalRelay,
     generation: string,
     mailbox: RelayTerminalMailbox,
+    signal?: AbortSignal,
   ): Promise<string>;
 }
 
@@ -100,6 +102,7 @@ export class TerminalAiClient {
   private connection: ConnectedTerminalRelay | null = null;
   private browserGeneration: string | null = null;
   private terminalGeneration = AI_RELAY_EMPTY_GENERATION;
+  private lastTerminalWriteAt: number | null = null;
   private terminalMailbox: RelayTerminalMailbox = {
     version: AI_RELAY_PROTOCOL_VERSION,
     revision: 0,
@@ -209,6 +212,7 @@ export class TerminalAiClient {
         if (generationChanged) this.browserGeneration = read.generation;
       }
 
+      await this.publishHeartbeatIfDue(Math.max(0, deadline - this.now()));
       const remaining = deadline - this.now();
       if (remaining <= 0) return { type: 'empty' };
       await this.sleep(Math.min(POLL_INTERVAL_MS, remaining));
@@ -348,26 +352,62 @@ export class TerminalAiClient {
   }
 
   private async appendEvent(event: RelayTerminalEvent): Promise<void> {
-    const connection = this.requireConnection();
     const next: RelayTerminalMailbox = {
       version: AI_RELAY_PROTOCOL_VERSION,
       revision: this.terminalMailbox.revision + 1,
       events: [...this.terminalMailbox.events, event],
       browserRevisionSeen: this.terminalMailbox.browserRevisionSeen,
     };
+    await this.writeTerminalMailbox(next);
+  }
+
+  private async publishHeartbeatIfDue(timeoutMs: number): Promise<void> {
+    const writtenAt = this.now();
+    if (
+      this.lastTerminalWriteAt !== null &&
+      writtenAt - this.lastTerminalWriteAt < AI_TERMINAL_HEARTBEAT_INTERVAL_MS
+    ) {
+      return;
+    }
+    await this.writeTerminalMailbox(
+      {
+        ...this.terminalMailbox,
+        revision: this.terminalMailbox.revision + 1,
+      },
+      timeoutMs,
+    );
+  }
+
+  private async writeTerminalMailbox(
+    next: RelayTerminalMailbox,
+    timeoutMs?: number,
+  ): Promise<void> {
+    const connection = this.requireConnection();
+    const controller = timeoutMs === undefined ? null : new AbortController();
+    const timeout = controller && timeoutMs !== undefined
+      ? setTimeout(() => controller.abort(), Math.max(0, timeoutMs))
+      : null;
     let generation: string;
     try {
       generation = await this.transport.writeTerminalMailbox(
         connection,
         this.terminalGeneration,
         next,
+        controller?.signal,
       );
     } catch (error) {
+      if (controller?.signal.aborted && !(error instanceof TerminalRelayReconnectRequiredError)) {
+        this.clearConnection();
+        throw new TerminalRelayReconnectRequiredError();
+      }
       if (error instanceof TerminalRelayReconnectRequiredError) this.clearConnection();
       throw error;
+    } finally {
+      if (timeout !== null) clearTimeout(timeout);
     }
     this.terminalMailbox = next;
     this.terminalGeneration = generation;
+    this.lastTerminalWriteAt = this.now();
   }
 
   private applyBrowserAcknowledgement(terminalRevisionSeen: number): void {
@@ -431,6 +471,7 @@ export class TerminalAiClient {
     this.connection = null;
     this.browserGeneration = null;
     this.terminalGeneration = AI_RELAY_EMPTY_GENERATION;
+    this.lastTerminalWriteAt = null;
     this.terminalMailbox = {
       version: AI_RELAY_PROTOCOL_VERSION,
       revision: 0,

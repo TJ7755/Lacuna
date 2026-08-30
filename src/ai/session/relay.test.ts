@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ReplacementLifecycle } from '../../db/replacementLifecycle';
 import { RelayPushOutcomeUnknownError } from '../relayClient';
 import { AI_RELAY_PROTOCOL_VERSION } from '../relayProtocol';
-import { createRelayAiSession } from './relay';
+import { AI_CONNECTION_QUIET_AFTER_MS, createRelayAiSession } from './relay';
 import {
   BROWSER_PRIVATE_KEY,
   BROWSER_PUBLIC_KEY,
@@ -124,6 +124,46 @@ describe('relay AI session connection lifecycle', () => {
       connectionId: CREATED.sessionId,
       client: { name: 'Terminal agent', version: '1.2.3' },
       lastActivityAt: 1_000,
+    });
+  });
+
+  it('marks an inactive terminal quiet and restores connected on its next mailbox revision', async () => {
+    const { session, relay, crypto, tick, setNow } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: TERMINAL_PUBLIC_KEY,
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+
+    setNow(1_000 + AI_CONNECTION_QUIET_AFTER_MS);
+    await tick();
+    expect(session.getSnapshot().connection).toEqual({
+      status: 'quiet',
+      connectionId: CREATED.sessionId,
+      client: { name: 'Terminal agent' },
+      lastActivityAt: 1_000,
+    });
+
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: AI_RELAY_PROTOCOL_VERSION,
+      revision: 1,
+      browserRevisionSeen: 0,
+      events: [],
+    });
+    setNow(1_000 + AI_CONNECTION_QUIET_AFTER_MS + 1_000);
+    await tick();
+
+    expect(session.getSnapshot().connection).toEqual({
+      status: 'connected',
+      connectionId: CREATED.sessionId,
+      client: { name: 'Terminal agent' },
+      lastActivityAt: 1_000 + AI_CONNECTION_QUIET_AFTER_MS + 1_000,
     });
   });
 
@@ -700,11 +740,22 @@ describe('relay AI session connection lifecycle', () => {
         draft: 'Recover this claimed prompt.',
         queuedFollowUp: null,
         run: null,
-        activity: null,
+        activity: expect.objectContaining({
+          status: 'failed',
+          summary: 'Terminal task ended.',
+        }),
         items: [
           expect.objectContaining({
             content: 'Recover this claimed prompt.',
             delivery: 'stopped',
+          }),
+          expect.objectContaining({
+            kind: 'error',
+            error: {
+              kind: 'unavailable',
+              reason: 'disconnected',
+              message: 'Terminal task ended.',
+            },
           }),
         ],
       }),

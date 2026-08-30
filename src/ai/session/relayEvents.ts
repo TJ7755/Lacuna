@@ -41,10 +41,22 @@ export function expireClaimLease(
   return {
     snapshot: {
       ...snapshot,
-      items: snapshot.items.map((item) =>
-        item.kind === 'user' && item.id === run.messageId
-          ? { ...item, delivery: 'queued' as const }
-          : item,
+      items: appendConversationItems(
+        snapshot.items.map((item) =>
+          item.kind === 'user' && item.id === run.messageId
+            ? { ...item, delivery: 'queued' as const }
+            : item,
+        ),
+        {
+          kind: 'error',
+          id: leaseErrorId(run.runId),
+          error: {
+            kind: 'internal',
+            message:
+              'The terminal did not finish before the run lease expired. The message was queued again.',
+          },
+          createdAt: expiredAt,
+        },
       ),
       run: { ...run, status: 'expired', expiredAt },
       activity: {
@@ -188,14 +200,29 @@ export function applyTerminalEvent(
   // Tool calls are executed by the relay session before this transcript reducer runs.
   if (event.type === 'tool_call') return { snapshot, messages };
 
-  const activeRun =
+  const interruptedRun =
     snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested'
-      ? { ...snapshot.run, status: 'expired' as const, expiredAt: event.disconnectedAt }
-      : snapshot.run;
+      ? snapshot.run
+      : null;
+  const activeRun = interruptedRun
+    ? { ...interruptedRun, status: 'expired' as const, expiredAt: event.disconnectedAt }
+    : snapshot.run;
   return {
     snapshot: {
       ...snapshot,
       connection: { status: 'disconnected', reason: event.reason },
+      items: interruptedRun
+        ? appendConversationItems(snapshot.items, {
+            kind: 'error',
+            id: disconnectErrorId(event.eventId),
+            error: {
+              kind: 'unavailable',
+              reason: 'disconnected',
+              message: event.reason ?? 'The terminal disconnected before the run finished.',
+            },
+            createdAt: event.disconnectedAt,
+          })
+        : snapshot.items,
       run: activeRun,
       activity: {
         runId: snapshot.run?.runId ?? 'connection',
@@ -206,6 +233,28 @@ export function applyTerminalEvent(
     },
     messages,
   };
+}
+
+function leaseErrorId(runId: string): string {
+  return recoveryErrorId(runId, '-lease-expired');
+}
+
+function disconnectErrorId(eventId: string): string {
+  return recoveryErrorId(eventId, '-disconnected');
+}
+
+function recoveryErrorId(sourceId: string, suffix: string): string {
+  const prefix = 'error-';
+  const untruncated = `${prefix}${sourceId}${suffix}`;
+  if (untruncated.length <= MAX_AI_IDENTIFIER_LENGTH) return untruncated;
+  const fingerprint = identifierFingerprint(sourceId);
+  const preservedLength =
+    MAX_AI_IDENTIFIER_LENGTH -
+    prefix.length -
+    IDENTIFIER_FINGERPRINT_LENGTH -
+    suffix.length -
+    1;
+  return `${prefix}${sourceId.slice(0, preservedLength)}-${fingerprint}${suffix}`;
 }
 
 function assistantItemId(eventId: string): string {

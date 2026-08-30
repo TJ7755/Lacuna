@@ -34,6 +34,8 @@ Delivered and source-backed:
 - two encrypted directional HTTP mailboxes with one writer each and `ETag` / `If-Match`;
 - ephemeral P-256 ECDH and AES-256-GCM envelopes which keep plaintext from the relay;
 - local transcript/session reload persistence, queued follow-up handling and cooperative Stop;
+- throttled terminal heartbeats, honest quiet-state expiry and recovery on later activity;
+- persistent transcript failures when a run lease expires or the terminal disconnects mid-run;
 - a final Stop refresh before reply, so a terminal cannot knowingly append a late response;
 - mailbox protocol v3 tool calls, per-message instruction bundles and browser responses through the
   existing `TOOL_REGISTRY`;
@@ -232,8 +234,9 @@ It retries the same stable `callId` after the browser decision. The browser-owne
 replays an exact match and rejects any attempt to bind that ID to different input.
 
 Claim, reply and disconnect events refresh the current browser session. Explicit terminal
-disconnect updates the panel; transient polling failures are retried. Quiet-state lease expiry and
-richer failure presentation remain unfinished. One pairing code admits one terminal companion.
+disconnect updates the panel; transient polling failures are retried. Throttled bounded-wait
+heartbeats now drive quiet-state expiry, and run expiry or mid-run disconnect leaves a persistent
+failure beside the recovered prompt. One pairing code admits one terminal companion.
 
 ### Shared tool execution — delivered
 
@@ -586,8 +589,8 @@ and an approved write through the existing tool registry, and replies with a ren
 ### Day 5 — trust states
 
 **Status: delivered.** Exact-call approval, replay persistence, disconnect revocation, Stop
-enforcement, connection recovery, closed-panel activity continuity and replacement/sync
-coordination are implemented.
+enforcement, heartbeat-driven quiet-state recovery, persistent run failures, closed-panel activity
+continuity and replacement/sync coordination are implemented.
 
 Finish one-shot approval, Undo, stop, reload recovery, connection reset and failure presentation.
 Exercise browser scenarios 2, 3 and 5. Verify that:

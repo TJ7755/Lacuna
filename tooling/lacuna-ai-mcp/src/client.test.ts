@@ -8,6 +8,7 @@ import {
   type RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol';
 import {
+  AI_TERMINAL_HEARTBEAT_INTERVAL_MS,
   DEFAULT_AI_RELAY_URL,
   TerminalAiClient,
   TerminalRelayReconnectRequiredError,
@@ -29,6 +30,7 @@ class FakeTransport implements TerminalRelayTransport {
   fallbackRead: { generation: string; mailbox: RelayBrowserMailbox } | null = null;
   readonly writes: RelayTerminalMailbox[] = [];
   beforeWrite?: (mailbox: RelayTerminalMailbox) => void;
+  blockWrites = false;
   writeError?: Error;
 
   async readBrowserMailbox(): Promise<{
@@ -42,8 +44,14 @@ class FakeTransport implements TerminalRelayTransport {
     _connection: ConnectedTerminalRelay,
     _generation: string,
     mailbox: RelayTerminalMailbox,
+    signal?: AbortSignal,
   ): Promise<string> {
     this.beforeWrite?.(mailbox);
+    if (this.blockWrites) {
+      await new Promise<never>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    }
     if (this.writeError) {
       const error = this.writeError;
       this.writeError = undefined;
@@ -178,6 +186,63 @@ describe('TerminalAiClient', () => {
         ],
       },
     ]);
+  });
+
+  it('publishes throttled liveness heartbeats while bounded waits are empty', async () => {
+    const transport = new FakeTransport();
+    let now = 1_000;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => now,
+      sleep: async () => undefined,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+    await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
+    await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
+    expect(transport.writes).toEqual([
+      {
+        version: AI_RELAY_PROTOCOL_VERSION,
+        revision: 1,
+        browserRevisionSeen: 0,
+        events: [],
+      },
+    ]);
+
+    now += AI_TERMINAL_HEARTBEAT_INTERVAL_MS;
+    await expect(client.waitForMessage(0)).resolves.toEqual({ type: 'empty' });
+    expect(transport.writes.at(-1)).toEqual({
+      version: AI_RELAY_PROTOCOL_VERSION,
+      revision: 2,
+      browserRevisionSeen: 0,
+      events: [],
+    });
+  });
+
+  it('does not let a hung heartbeat write overrun a bounded wait', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    try {
+      const transport = new FakeTransport();
+      transport.blockWrites = true;
+      const client = new TerminalAiClient({ transport });
+      await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+      const wait = client.waitForMessage(25_000);
+      const outcome = Promise.race([
+        wait.catch((error: unknown) => error),
+        new Promise<'overrun'>((resolve) => setTimeout(() => resolve('overrun'), 25_001)),
+      ]);
+      await vi.advanceTimersByTimeAsync(25_001);
+
+      await expect(outcome).resolves.toMatchObject({
+        name: 'TerminalRelayReconnectRequiredError',
+        reason: 'write_outcome_unknown',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('retries the same browser generation when publishing a claim fails', async () => {

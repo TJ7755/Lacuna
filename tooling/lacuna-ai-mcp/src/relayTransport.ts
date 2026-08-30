@@ -127,6 +127,7 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     connection: ConnectedTerminalRelay,
     generation: string,
     mailbox: RelayTerminalMailbox,
+    signal?: AbortSignal,
   ): Promise<string> {
     const authenticated = authenticatedConnection(connection);
     const parsedMailbox = relayTerminalMailboxSchema.safeParse(mailbox);
@@ -147,8 +148,10 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
           'If-Match': generation,
         },
         body,
+        signal,
       });
     } catch {
+      if (signal?.aborted) throw new TerminalRelayReconnectRequiredError();
       return recoverTerminalWrite(
         this.fetchImpl,
         mailboxUrl,

@@ -6,7 +6,7 @@ it does not contain a model, choose a terminal harness or store model credential
 The companion can invoke Lacuna's existing typed domain tools for one active run. Lacuna performs
 the registry lookup, validation, live scope resolution and repository write in the browser; the
 terminal never receives IndexedDB access or an approval bearer token. Durable learner memories are
-not implemented yet.
+available through the same scoped, approved domain-tool path rather than a companion-owned store.
 
 ## Build
 
@@ -39,7 +39,9 @@ daemon.
 The companion serialises all public operations through its single terminal-mailbox writer. A host
 may issue calls concurrently without manufacturing a stale-generation race. Claimed messages use
 a five-minute lease so approval and ordinary multi-tool work do not expire while the user is still
-responding.
+responding. Empty bounded waits publish a throttled heartbeat at most once per minute so Lacuna can
+show a quiet connection when the running task stops checking in. A heartbeat write cannot extend the
+wait deadline; an uncertain timed-out write requires reconnection.
 
 ## Tools
 
