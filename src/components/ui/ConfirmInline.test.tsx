@@ -37,4 +37,20 @@ describe('ConfirmInline', () => {
     expect(screen.getByText('Restore')).toBeInTheDocument();
     expect(screen.getByText('Not now')).toBeInTheDocument();
   });
+
+  it('can announce a replacement prompt and move focus into it', () => {
+    render(
+      <ConfirmInline
+        message="Delete this restore point?"
+        confirmLabel="Delete restore point"
+        announce
+        focusOnMount="confirm"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Delete this restore point?');
+    expect(screen.getByRole('button', { name: 'Delete restore point' })).toHaveFocus();
+  });
 });
