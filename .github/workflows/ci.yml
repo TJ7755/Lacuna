@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master, main]
 
+permissions:
+  contents: read
+
 jobs:
   typecheck:
     runs-on: ubuntu-latest
@@ -62,9 +65,18 @@ jobs:
 
   test:
     needs: [test-unit, test-coverage]
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Unit shards and coverage passed."
+      - name: Verify test jobs passed
+        env:
+          UNIT_RESULT: ${{ needs.test-unit.result }}
+          COVERAGE_RESULT: ${{ needs.test-coverage.result }}
+        run: |
+          if [ "$UNIT_RESULT" != "success" ] || [ "$COVERAGE_RESULT" != "success" ]; then
+            echo "Unit or coverage tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT"
+            exit 1
+          fi
 
   relay:
     runs-on: ubuntu-latest

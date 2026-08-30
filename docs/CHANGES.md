@@ -33,6 +33,8 @@
   two isolated workers in CI while remaining serial for local runs.
 - Made the 2,000-entry relay bounds fixture linear by using a fixed mock envelope, cached instruction
   data and a no-op storage adapter; persistence coverage remains in the dedicated persistence tests.
+- Restricted workflow tokens to read-only repository contents and made the aggregate `test` check
+  fail closed when either its unit shards or coverage job fails.
 
 ## Unreleased — AI connection health
 
