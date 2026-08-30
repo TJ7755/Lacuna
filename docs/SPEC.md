@@ -1030,10 +1030,11 @@ history[], createdAt`
 ### SessionHistoryEntry
 
 `{ id?, eventId?, sessionId?, revisionPlanId?, revisionWindowId?, timestamp, deckId, courseId?,
-averagePredictedRetrievability }` — sampled at most once per local calendar day per review unit.
-Analytics reads retain only the last stored sample per day (and per Course globally) while
-traversing IndexedDB, so redundant samples do not all materialise in JavaScript. The underlying
-rows remain unpruned. Event/session and revision fields preserve ordinary and assessment-revision
+averagePredictedRetrievability }` — the current review path samples asynchronously at most once per
+local calendar day per review unit. Legacy and imported databases may contain per-answer rows.
+Analytics traverses every retained row but materialises only the last sample per local day for a
+Course chart, and the last sample per local day and Course for the global chart. The underlying rows
+remain unpruned. Event/session and revision fields preserve ordinary and assessment-revision
 provenance.
 
 ### UserPerformance (transitional calibration profile)

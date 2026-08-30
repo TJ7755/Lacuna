@@ -53,6 +53,9 @@
   materialising the entire local session table.
 - Corrected Card hydration to remove canonical row metadata (`id`, ownership and scheduling keys)
   from runtime `ReviewLog` values rather than leaking IndexedDB fields through the Card interface.
+- Made Card, Course and Lesson snapshot restoration replace the restored Cards' canonical review
+  rows atomically, so events written after the snapshot cannot survive an undo. Schema v26 also
+  normalises missing or malformed legacy Card history projections to an empty stored array.
 
 **Checks:** schema migration and rollback, review/undo, backup replace/merge, Course/Lesson/
 generated-card snapshots, APKG legacy import, peer merge, daily analytics projection, typecheck,

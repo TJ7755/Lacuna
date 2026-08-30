@@ -617,6 +617,16 @@ export type CardSnapshot = Card[] & {
   reviewHistory: ReviewHistoryEntry[];
 };
 
+async function replaceReviewHistoryForCards(
+  cardIds: string[],
+  entries: ReviewHistoryEntry[],
+): Promise<void> {
+  if (cardIds.length > 0) {
+    await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
+  }
+  if (entries.length > 0) await db.reviewHistory.bulkPut(entries);
+}
+
 /** Capture card rows and dependent lesson progress before an undoable mutation. */
 export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
   const [cards, lessonCards, lessonCardExposures, reviewHistory] = await Promise.all([
@@ -638,10 +648,13 @@ export async function restoreCards(cards: CardSnapshot): Promise<void> {
       'rw',
       [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
       async (tx) => {
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(cards.lessonCards);
         await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
-        await db.reviewHistory.bulkPut(reviewHistoryToRestore);
         await clearTombstones(
           tx,
           'cards',
@@ -1778,6 +1791,10 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.tombstones,
       ],
       async (tx) => {
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await Promise.all([
           db.courses.put(snapshot.course),
           db.lessons.bulkPut(snapshot.lessons),
@@ -1817,7 +1834,6 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.schedulingUnits.bulkPut(snapshot.schedulingUnits),
           db.coursePerformance.bulkPut(snapshot.coursePerformance),
           db.schedulingPerformance.bulkPut(snapshot.schedulingPerformance),
-          db.reviewHistory.bulkPut(reviewHistoryToRestore),
           // Drop the old auto-increment ids so Dexie reassigns them cleanly.
           db.sessionHistory.bulkAdd(
             snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
@@ -2110,6 +2126,10 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.tombstones,
       ],
       async (tx) => {
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await Promise.all([
           db.lessons.put(snapshot.lesson),
           db.notes.bulkPut(snapshot.notes),
@@ -2129,7 +2149,6 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           snapshot.schedulingPerformance
             ? db.schedulingPerformance.put(snapshot.schedulingPerformance)
             : Promise.resolve(),
-          db.reviewHistory.bulkPut(reviewHistoryToRestore),
         ]);
         await clearTombstone(tx, 'lessons', snapshot.lesson.id);
         await clearTombstones(

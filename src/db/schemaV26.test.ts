@@ -61,10 +61,17 @@ async function createV25Database(
   history: ReviewLog[],
   canonical: ReviewHistoryEntry[] = [],
 ): Promise<void> {
+  await createV25DatabaseWithCards([card(history)], canonical);
+}
+
+async function createV25DatabaseWithCards(
+  cards: object[],
+  canonical: ReviewHistoryEntry[] = [],
+): Promise<void> {
   const legacy = new Dexie('lacuna');
   legacy.version(25).stores(stores);
   await legacy.open();
-  await legacy.table('cards').add(card(history));
+  await legacy.table('cards').bulkAdd(cards);
   if (canonical.length > 0) await legacy.table('reviewHistory').bulkAdd(canonical);
   legacy.close();
 }
@@ -144,6 +151,23 @@ describe('schema v26 review-history cutover', () => {
       primaryLessonId: 'old-lesson',
     });
     expect((await hydrateCardsWithHistory([stored]))[0].history).toEqual(history);
+  });
+
+  it('normalises missing and invalid legacy Card histories', async () => {
+    const missingHistory = { ...card([]), id: 'card-without-history' } as Partial<Card>;
+    delete missingHistory.history;
+    const invalidHistory = {
+      ...card([]),
+      id: 'card-with-invalid-history',
+      history: 'not-an-array',
+    };
+    await createV25DatabaseWithCards([missingHistory, invalidHistory]);
+
+    await db.open();
+
+    expect((await db.cards.get('card-without-history'))?.history).toEqual([]);
+    expect((await db.cards.get('card-with-invalid-history'))?.history).toEqual([]);
+    expect(await db.reviewHistory.count()).toBe(0);
   });
 
   it('blocks the destructive cutover when its external restore point cannot commit', async () => {

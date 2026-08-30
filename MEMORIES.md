@@ -243,7 +243,8 @@ names; do not spend a day renaming the old ones.
 Schema v26 stores Cards with `history: []`; the Card-table hooks enforce this even for direct
 writes. Canonical `reviewHistory` rows are the evidence, and read interfaces hydrate runtime Cards.
 When adapting legacy inline history, derive canonical rows before writing the Card because a write
-hook may clear the supplied object's array.
+hook may clear the supplied object's array. Projection code must also treat a missing or non-array
+legacy `history` value as empty rather than dereferencing it.
 
 ## Lacuna is not yet in real use, and goes live in September 2026
 

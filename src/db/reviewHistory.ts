@@ -19,7 +19,9 @@ export interface ReviewHistoryEntry extends ReviewLog {
  * callers that only need scheduling or authoring fields.
  */
 export function projectCardForStorage(card: Card): Card {
-  return card.history.length === 0 ? card : { ...card, history: [] };
+  return Array.isArray(card.history) && card.history.length === 0
+    ? card
+    : { ...card, history: [] };
 }
 
 export function projectCardsForStorage(cards: readonly Card[]): Card[] {

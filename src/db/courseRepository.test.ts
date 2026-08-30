@@ -43,6 +43,7 @@ import {
 import { FSRS_VERSION } from '../fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import { createConcept, createFixedQuestion, startQuestionAttempt } from '../questions/repository';
@@ -572,7 +573,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(lessonAfter!.unlockedAt).toBe(unlockedAt);
   });
 
-  it('clears the card projection when a course snapshot omits canonical events', async () => {
+  it('replaces canonical history when a course snapshot omits later events', async () => {
     const course = await createCourse('Course snapshot history boundary');
     const lesson = await createLesson(course.id, 'Lesson 1');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
@@ -590,8 +591,15 @@ describe('snapshotCourse / restoreCourse', () => {
     });
 
     const snapshot = await snapshotCourse(course.id);
+    const laterReview = {
+      ...snapshot!.reviewHistory[0],
+      id: reviewHistoryEntryIdForEvent('event-after-course-snapshot'),
+      eventId: 'event-after-course-snapshot',
+      timestamp: snapshot!.reviewHistory[0].timestamp + 1,
+    };
     snapshot!.reviewHistory = [];
     await deleteCourse(course.id);
+    await db.reviewHistory.add(laterReview);
     await restoreCourse(snapshot!);
 
     const restored = (await db.cards.get(card.id))!;
@@ -793,7 +801,7 @@ describe('deleteLesson', () => {
     expect(await db.schedulingPerformance.get(deckId)).toBeDefined();
   });
 
-  it('clears the card projection when a lesson snapshot omits canonical events', async () => {
+  it('replaces canonical history when a lesson snapshot omits later events', async () => {
     const course = await createCourse('Lesson snapshot history boundary');
     const lesson = await createLesson(course.id, 'Lesson 1');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
@@ -811,9 +819,15 @@ describe('deleteLesson', () => {
     });
 
     const snapshot = await snapshotLesson(lesson.id);
+    const laterReview = {
+      ...snapshot!.reviewHistory[0],
+      id: reviewHistoryEntryIdForEvent('event-after-lesson-snapshot'),
+      eventId: 'event-after-lesson-snapshot',
+      timestamp: snapshot!.reviewHistory[0].timestamp + 1,
+    };
     snapshot!.reviewHistory = [];
     await deleteLesson(lesson.id);
-    await db.reviewHistory.clear();
+    await db.reviewHistory.add(laterReview);
     await restoreLesson(snapshot!);
 
     const restored = (await db.cards.get(card.id))!;
