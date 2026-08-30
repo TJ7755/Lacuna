@@ -52,6 +52,7 @@ describe('Welcome course seed assets', () => {
     );
     expect(searchCard?.back).toContain('**Search content**');
     expect(searchCard?.back).toContain('**Quick search**');
+    expect(searchCard?.back).toContain('**Ctrl/Cmd+K**');
     expect(searchCard?.back).not.toContain('command palette');
   });
 

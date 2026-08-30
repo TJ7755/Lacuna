@@ -1,4 +1,11 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
@@ -77,12 +84,26 @@ function escapeRegExp(s: string) {
 }
 
 /** Quick search: a keyboard-summoned overlay for jumping straight to content. */
-export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CommandPalette({
+  open,
+  onClose,
+  returnFocusTarget,
+}: {
+  open: boolean;
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement>;
+}) {
   if (!open) return null;
-  return <CommandPaletteDialog onClose={onClose} />;
+  return <CommandPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
 }
 
-function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
+function CommandPaletteDialog({
+  onClose,
+  returnFocusTarget,
+}: {
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement>;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const searchData = useSearchData();
@@ -94,7 +115,8 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    returnFocusTarget?.current ??
+      (document.activeElement instanceof HTMLElement ? document.activeElement : null),
   );
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input', returnFocus: false });
 
