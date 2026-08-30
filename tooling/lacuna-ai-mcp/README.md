@@ -6,7 +6,7 @@ it does not contain a model, choose a terminal harness or store model credential
 The companion can invoke Lacuna's existing typed domain tools for one active run. Lacuna performs
 the registry lookup, validation, live scope resolution and repository write in the browser; the
 terminal never receives IndexedDB access or an approval bearer token. Durable learner memories are
-not implemented yet.
+available through the same scoped, approved domain-tool path rather than a companion-owned store.
 
 ## Build
 

@@ -2,6 +2,8 @@
 
 ## Unreleased — AI connection health
 
+- Corrected the companion README's obsolete claim that durable learner memories were not
+  implemented; schema-v25 memories already use the scoped domain-tool path.
 - Added throttled terminal heartbeats to the existing encrypted mailbox protocol. Repeated bounded
   waits now prove that the companion task is still running without creating a second transport or
   changing the relay's plaintext-blind trust model.
