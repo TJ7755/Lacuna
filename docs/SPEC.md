@@ -189,7 +189,9 @@ Specific motion (current state of the app):
   on every navigation. Incoming page content sits still inside that fade — settings
   sections, dashboard cards, editor shells, Help and Share no longer hop up after the
   route has already arrived.
-- **Buttons (`Button`):** spring `whileHover` scale 1.02 and `whileTap` scale 0.96; every
+- **Shared controls:** `Button` scales to 1.02 on hover and 0.96 on press; `Toggle`, `Menu`
+  and assessment sheets use the same global motion multiplier for their springs, fades and
+  CSS transitions. Reduced motion removes these transforms and entrances. Every Button
   variant enforces a 44px minimum touch height.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
@@ -215,17 +217,20 @@ Specific motion (current state of the app):
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
   Swipe gestures (right = Yes, left = No) share the same spring physics as the card-list row
   swipes; the flip card is the only place in the app that combines rotation with translation.
-- **In-place steps:** picker-to-options sheets, Learn reveal-to-grade, and other same-surface
-  steps keep their chrome still and crossfade the step (`StepSwap`). Forward and back take a
-  short sideways step; phase changes fade in place.
+- **In-place steps:** picker-to-options sheets, Learn reveal-to-grade, Question checking,
+  Numeric/Working results, Lesson Study/Author mode and other same-surface steps keep their
+  chrome still and crossfade the step (`StepSwap`). Forward and back take a short sideways
+  step; phase changes fade in place. Note, annotation, optional-constraint and staging panels
+  also interpolate height instead of snapping open or shut.
 - **Touch bottom sheets:** in touch mode, the Learn grading controls live in a fixed
   bottom sheet that springs in once; reveal and grade swap inside that sheet rather than
   replacing it. The card-actions menu is a similar bottom sheet rather than a dropdown,
   with a drag handle that closes it when dragged down past a threshold or flicked quickly.
 - **Session report:** the whole panel rises in; reaching the goal springs in a tick badge and fires a confetti burst; the four stat tiles reveal in sequence with count-up numbers; the progress bar animates from before to after with a delta badge; a grade-distribution bar chart shows the rating breakdown.
-- **Tabs / chips:** active-tab underlines are shared-layout elements, e.g. Settings'
-  (`layoutId="activePill"`/`"activeBar"`) and Help's (`layoutId="helpActivePill"`/
-  `"helpActiveBar"`).
+- **Tabs / chips:** active-tab underlines and pills are shared-layout elements, including
+  Settings, Help and the Course tabs. Batch-authoring workflow tabs use the same continuity.
+- **Reordering and replacement:** lesson rows animate to their new positions; shared inline
+  confirmations crossfade and resize while restoring focus to the exact trigger on cancel.
 - **Toasts:** slide in from the right with a slight scale.
 - **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the
   streak number springs when it changes.
@@ -515,7 +520,9 @@ The learner leaves only through an explicit finish action. The step union reserv
 or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
 staged animation: the panel settles, the completion state lands, and the summary and next-step
 controls follow. Disabling motion removes the delays rather than trapping the learner behind a
-decorative transition.
+decorative transition. While the conductor recalculates the authoritative next step, Continue
+remains visible but disabled as **Planning next step…**; it never accepts a click that cannot yet
+advance.
 
 Curricular Practice keeps a fixed lesson prefix only for its milestone denominator, so later
 lessons cannot rewrite or revive that historical milestone. A current automatic or recurring
@@ -1568,8 +1575,11 @@ In Question practice, a working Question uses a multi-line answer surface. Each 
 checked against the persisted scheme, with each criterion awarded at most once. The Attempt persists
 the marks and per-line verdicts. Any incomplete result maps to Again; full marks map to Good. An
 undetermined line or learner-reported checker dispute preserves the raw result but withholds
-scheduling. Feedback always shows the worked explanation before the learner continues, and an
-optional correction is stored separately from the immutable first submission.
+scheduling. After checking, **Edit answer** returns to the same response so the learner can correct
+and deterministically re-check it before submitting. Feedback always shows the worked explanation
+before the learner continues, and an optional correction is stored separately from the immutable
+first submission. If attempt creation fails, the practice route replaces its loading skeleton with
+an inline error containing Retry and Exit actions.
 
 Question analytics aggregate earned/available marks and criterion evidence from Attempts, retaining
 the content version, criterion index and label so a later mark-scheme edit cannot merge unlike
@@ -1639,7 +1649,9 @@ Simple mode):
   on.
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
-  events list, and deletes the written `SessionHistory` row.
+  events list, and deletes the written `SessionHistory` row. Every recorded FSRS answer exposes
+  this through a short-lived **Undo** toast as well as the `U` shortcut; no toast is shown when
+  the write was skipped or rejected.
 - **Focus Mode** (F): hides the shared Learn header without moving the card. Reaching the
   top edge reveals the controls temporarily; on touch, the top-edge affordance can be tapped.
   `Esc` leaves Focus Mode. Settings can make new Learn sessions start focused without changing
@@ -1676,6 +1688,9 @@ Simple mode):
 - **Continuous practice chrome:** Yes and No replace only the card surface; the Learn header and
   accumulated session state stay mounted. The next card enters through a short motion-speed-aware
   hand-off, while the objective track and ring interpolate from their previous values.
+- **Screen-reader progress:** the polite live region announces only **Card X of Y** (or
+  **Session complete**) after navigation; it does not repeat the full correct/wrong/unseen tally
+  over the card content.
 
 ### Pomodoro timer (v0.0.2, `src/hooks/usePomodoro.ts`,
 
@@ -1813,6 +1828,9 @@ ordinary `front_back` cards to the scheduler.
   retains type and tags, refocuses the first field, tallies a per-sitting count,
   and flashes a "Saved" confirmation. A seamless Tab order runs Front -> Back ->
   Save-and-add -> Save. `Ctrl/Cmd+Enter` saves (and, for new cards, keeps going).
+- **Crash drafts:** autosave begins only after the learner changes seeded editor content. While
+  an unresolved saved-draft prompt is visible, the editor cannot overwrite that draft. Navigating
+  between card edit routes in one mounted editor switches draft identity before any later save.
 - **Reverse cards:** for a new basic card, an "Also create reverse" toggle
   additionally creates an independent card testing the back.
 - **Touch targets:** the toolbar buttons and type-selector are 44px tall with
@@ -2012,6 +2030,8 @@ A single, reusable export UI offering multiple output formats:
   reads-transforms-writes explicitly rather than mutating inside an async Dexie
   `.modify()` callback (which Dexie does not reliably persist).
 - Restoring replaces all current data with the snapshot.
+- Snapshot summaries display the number of Course lessons. The serialised `deckCount` field keeps
+  its legacy wire name for compatibility but stores that lesson count for current snapshots.
 - **Folder mirror** (where the File System Access API is supported): each backup
   can also be written to a chosen folder so it survives clearing browser data.
   Where unsupported, the UI explains this and points to manual export.

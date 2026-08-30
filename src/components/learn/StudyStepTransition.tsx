@@ -11,6 +11,7 @@ interface StudyStepTransitionProps {
   summary: SessionSummary;
   canReviewDueCards: boolean;
   breakPending: boolean;
+  planningNextStep: boolean;
   onContinue: () => void;
   onTakeBreak: () => void;
   onDeferBreak: () => void;
@@ -34,6 +35,7 @@ export function StudyStepTransition({
   summary,
   canReviewDueCards,
   breakPending,
+  planningNextStep,
   onContinue,
   onTakeBreak,
   onDeferBreak,
@@ -136,14 +138,21 @@ export function StudyStepTransition({
                 Take a break
               </Button>
             )}
-            {(incomplete || nextLabel) && (
+            {(incomplete || nextLabel || planningNextStep) && (
               <Button
                 variant={breakPending ? 'secondary' : 'primary'}
                 size="lg"
                 onClick={onContinue}
+                disabled={planningNextStep}
               >
-                <PlayIcon width={18} height={18} />
-                {breakPending ? 'Continue without break' : incomplete ? 'Resume' : 'Continue'}
+                {!planningNextStep && <PlayIcon width={18} height={18} />}
+                {planningNextStep
+                  ? 'Planning next step…'
+                  : breakPending
+                    ? 'Continue without break'
+                    : incomplete
+                      ? 'Resume'
+                      : 'Continue'}
               </Button>
             )}
             {breakPending && (

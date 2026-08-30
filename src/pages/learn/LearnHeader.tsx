@@ -269,13 +269,14 @@ export function LearnHeader({
                   transition={{ duration: 0.12 * m }}
                   className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
                 >
-                  {current.sequenceItemId === undefined && current.occlusionRegionId === undefined && (
-                    <MenuItem
-                      icon={<EditIcon width={16} height={16} />}
-                      label="Edit card"
-                      onClick={onEdit}
-                    />
-                  )}
+                  {current.sequenceItemId === undefined &&
+                    current.occlusionRegionId === undefined && (
+                      <MenuItem
+                        icon={<EditIcon width={16} height={16} />}
+                        label="Edit card"
+                        onClick={onEdit}
+                      />
+                    )}
                   <MenuItem
                     icon={<FlagIcon width={16} height={16} />}
                     label={current.flagged ? 'Remove flag' : 'Flag card'}
@@ -340,15 +341,7 @@ export function LearnHeader({
   );
 }
 
-function ObjectiveProgressTrack({
-  value,
-  label,
-  m,
-}: {
-  value: number;
-  label: string;
-  m: number;
-}) {
+function ObjectiveProgressTrack({ value, label, m }: { value: number; label: string; m: number }) {
   const progress = Math.max(0, Math.min(1, value));
   return (
     // This track is now the session's only progress indicator, so it carries the
@@ -384,12 +377,9 @@ function SessionSegments({
   value: number;
   label: string;
 }) {
-  const statusFor = (id: string): SessionCardOutcome | 'current' | 'unseen' => {
-    if (id === currentCardId) return 'current';
-    return outcomes.get(id) ?? 'unseen';
-  };
-  const statuses = cardIds.map(statusFor);
-  const statusSummary = `${statuses.filter((status) => status === 'correct').length} correct, ${statuses.filter((status) => status === 'wrong').length} wrong, ${statuses.filter((status) => status === 'current').length} current, ${statuses.filter((status) => status === 'unseen').length} unseen`;
+  const currentIndex = currentCardId === null ? -1 : cardIds.indexOf(currentCardId);
+  const progressAnnouncement =
+    currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
   const maxSegments = 120;
   const groupSize = Math.max(1, Math.ceil(cardIds.length / maxSegments));
   const groups: string[][] = [];
@@ -409,8 +399,8 @@ function SessionSegments({
       aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
       title={`${cardIds.length} cards in this session`}
     >
-      <span className="sr-only" aria-live="polite">
-        {statusSummary}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {progressAnnouncement}
       </span>
       <div className="flex h-2 w-full gap-1" aria-hidden="true">
         {groups.map((group) => {
@@ -441,7 +431,6 @@ function SessionSegments({
     </div>
   );
 }
-
 
 function MenuItem({
   icon,

@@ -187,16 +187,17 @@ function CourseStudyFlowInner() {
 
   const continueFlow = useCallback(() => {
     if (!transition) return;
+    const readyFlow = flow?.generation === refreshKey ? flow : null;
+    if (transition.summary.reachedGoal && !readyFlow) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
     if (!transition.summary.reachedGoal) {
       setTransition(null);
       return;
     }
-    if (flow?.generation !== refreshKey) return;
     // As on entry, a 'choice' decision continues the curriculum: the revision
     // alternative is offered by the study sheet, not mid-flow.
-    if (flow.decision.kind === 'step' || flow.decision.kind === 'choice') {
-      setCurrentStep(flow.decision.step);
+    if (readyFlow?.decision.kind === 'step' || readyFlow?.decision.kind === 'choice') {
+      setCurrentStep(readyFlow.decision.step);
       setTransition(null);
       return;
     }
@@ -226,7 +227,7 @@ function CourseStudyFlowInner() {
     );
   }
 
-  if (flow === undefined || (transition && flow.generation !== refreshKey)) {
+  if (!transition && flow === undefined) {
     return (
       <DelayedFallback>
         <CourseStudyFlowSkeleton />
@@ -237,8 +238,9 @@ function CourseStudyFlowInner() {
   let scene: string;
   let body: ReactNode;
   if (transition) {
+    const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
     const nextLabel =
-      flow.decision.kind === 'step' || flow.decision.kind === 'choice'
+      !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
         ? flow.decision.step.label
         : undefined;
     scene = 'transition';
@@ -250,9 +252,11 @@ function CourseStudyFlowInner() {
         canReviewDueCards={
           (transition.completedStep.kind !== 'practice' ||
             transition.completedStep.nodeKey !== 'ad-hoc') &&
-          flow.snapshot.recurringPracticeEligibleCount > 0
+          !planningNextStep &&
+          (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }
         breakPending={pomodoro.breakPending}
+        planningNextStep={planningNextStep}
         onContinue={continueFlow}
         onTakeBreak={pomodoro.acceptBreak}
         onDeferBreak={pomodoro.deferBreak}
@@ -284,7 +288,7 @@ function CourseStudyFlowInner() {
         sessionId={flowIdentity?.sessionId}
       />
     );
-  } else if (flow.decision.kind === 'blocked') {
+  } else if (flow?.decision.kind === 'blocked') {
     scene = 'blocked';
     body = (
       <StudyFlowMessage
@@ -301,9 +305,9 @@ function CourseStudyFlowInner() {
     scene = 'message';
     body = (
       <StudyFlowMessage
-        title={flow.decision.kind === 'empty' ? 'This course is empty' : 'You are caught up'}
+        title={flow?.decision.kind === 'empty' ? 'This course is empty' : 'You are caught up'}
         detail={
-          flow.decision.kind === 'empty'
+          flow?.decision.kind === 'empty'
             ? 'Add a lesson before starting this study flow.'
             : 'There is no lesson or Practice work ready right now.'
         }

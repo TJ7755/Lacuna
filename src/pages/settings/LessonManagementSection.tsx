@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInline } from '../../components/ui/ConfirmInline';
+import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
 import { useLessons } from '../../state/useCourseData';
 import { updateLesson, deleteLesson, reorderLessons } from '../../db/repository';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 export interface LessonManagementSectionProps {
   courseId: string;
@@ -17,6 +19,8 @@ export interface LessonManagementSectionProps {
  * repository (notes, lesson-card links, card unassignment) so a plain confirm suffices.
  */
 export function LessonManagementSection({ courseId }: LessonManagementSectionProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
   const lessons = useLessons(courseId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
@@ -58,8 +62,10 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
         <p className="text-xs text-ink-faint">This course has no lessons yet.</p>
       )}
       {lessons?.map((lesson, index) => (
-        <div
+        <motion.div
           key={lesson.id}
+          layout={multiplier > 0 ? 'position' : undefined}
+          transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
           className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
         >
           <div className="flex min-w-0 items-center gap-2">
@@ -104,35 +110,33 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
               </span>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {confirmDeleteId === lesson.id ? (
-              <ConfirmInline
-                message="Delete? Notes will be removed and cards unassigned."
-                onConfirm={() => void remove(lesson.id)}
-                onCancel={() => setConfirmDeleteId(null)}
-              />
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startEdit(lesson.id, lesson.name)}
-                  aria-label={`Rename ${lesson.name}`}
-                >
-                  <EditIcon width={16} height={16} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDeleteId(lesson.id)}
-                  aria-label={`Delete ${lesson.name}`}
-                >
-                  <TrashIcon width={16} height={16} />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+          <ConfirmInlineSwap
+            active={confirmDeleteId === lesson.id}
+            message="Delete? Notes will be removed and cards unassigned."
+            onConfirm={() => void remove(lesson.id)}
+            onCancel={() => setConfirmDeleteId(null)}
+            swapClassName="shrink-0"
+          >
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => startEdit(lesson.id, lesson.name)}
+                aria-label={`Rename ${lesson.name}`}
+              >
+                <EditIcon width={16} height={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDeleteId(lesson.id)}
+                aria-label={`Delete ${lesson.name}`}
+              >
+                <TrashIcon width={16} height={16} />
+              </Button>
+            </div>
+          </ConfirmInlineSwap>
+        </motion.div>
       ))}
       <AddLessonControl courseId={courseId} lessonCount={lessons?.length ?? 0} />
     </div>

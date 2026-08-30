@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Menu } from './Menu';
+
+beforeEach(() => localStorage.clear());
 
 function renderMenu(overrides?: {
   onFirst?: () => void;
@@ -123,6 +125,16 @@ describe('Menu', () => {
     );
 
     expect(screen.queryByLabelText('More ways to add cards')).not.toBeInTheDocument();
+  });
+
+  it('scales item transitions from the global motion setting', () => {
+    localStorage.setItem('lacuna.motionSpeed', 'fast');
+    const { trigger } = renderMenu();
+    fireEvent.click(trigger);
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? '0ms' : '60ms';
+    expect(screen.getByRole('menuitem', { name: 'New sequence' })).toHaveStyle({
+      transitionDuration: duration,
+    });
   });
 });
 

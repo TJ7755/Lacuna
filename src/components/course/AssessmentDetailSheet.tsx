@@ -2,6 +2,7 @@ import { m as motion } from 'motion/react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatDateTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
@@ -15,6 +16,14 @@ interface AssessmentDetailSheetProps {
   onRevise: () => void;
 }
 
+export function assessmentSheetTiming(multiplier: number) {
+  const ease = [0.16, 1, 0.3, 1] as const;
+  return {
+    backdrop: { duration: 0.16 * multiplier, ease },
+    sheet: { duration: 0.24 * multiplier, ease },
+  };
+}
+
 export function AssessmentDetailSheet({
   assessment,
   lessons,
@@ -23,6 +32,9 @@ export function AssessmentDetailSheet({
   onClose,
   onRevise,
 }: AssessmentDetailSheetProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
+  const transition = assessmentSheetTiming(multiplier);
   const trapRef = useFocusTrap(true);
   const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
   const excludedNames = assessment.excludedCardIds.map(
@@ -33,9 +45,10 @@ export function AssessmentDetailSheet({
     <motion.div
       ref={trapRef}
       className="fixed inset-0 z-50 flex justify-end"
-      initial={{ opacity: 0 }}
+      initial={multiplier > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={multiplier > 0 ? { opacity: 0 } : undefined}
+      transition={transition.backdrop}
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key === 'Escape') onClose();
@@ -46,9 +59,10 @@ export function AssessmentDetailSheet({
         role="dialog"
         aria-modal="true"
         aria-label={`${assessment.name} details`}
-        initial={{ x: 32 }}
+        initial={multiplier > 0 ? { x: 32 } : false}
         animate={{ x: 0 }}
-        exit={{ x: 32 }}
+        exit={multiplier > 0 ? { x: 32 } : undefined}
+        transition={transition.sheet}
         className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-line-strong bg-paper pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] shadow-2xl"
       >
         <header className="flex items-start justify-between border-b border-line px-6 py-5">

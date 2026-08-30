@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createHashRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
+import { forwardRef } from 'react';
 import { SharePage } from './SharePage';
 import { Welcome } from './Welcome';
 
@@ -9,7 +10,9 @@ vi.mock('../hooks/useRevealOnScroll', () => ({
 }));
 
 vi.mock('../components/welcome/GradingDemo', () => ({
-  GradingDemo: () => null,
+  GradingDemo: forwardRef(function GradingDemo() {
+    return null;
+  }),
 }));
 vi.mock('../components/welcome/DashboardMock', () => ({
   DashboardMock: () => null,
@@ -23,9 +26,6 @@ vi.mock('../components/welcome/PathDemo', () => ({
 }));
 vi.mock('../components/welcome/PracticeDeck', () => ({
   PracticeDeck: () => null,
-}));
-vi.mock('../components/welcome/LandingCta', () => ({
-  LandingCta: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 vi.mock('../components/welcome/useSmoothScroll', () => ({
   useSmoothScroll: () => undefined,
@@ -42,12 +42,31 @@ vi.mock('../components/ui/Toast', () => ({
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
   speedMultiplier: () => 1,
+  getMotionMultiplier: () => 0,
 }));
 vi.mock('../db/repository', () => ({
   publishCourse: vi.fn(),
 }));
 
 describe('Welcome import entry points', () => {
+  it('gives every first-run action a defined, high-contrast surface', () => {
+    render(<Welcome />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('button', { name: 'Create your first course' })).toHaveClass(
+      'border-accent-ink/40',
+    );
+    expect(screen.getByRole('button', { name: 'Try one card first' })).toHaveClass(
+      'border-line-strong',
+      'bg-surface-raised',
+      'text-ink',
+    );
+    expect(screen.getAllByRole('link', { name: 'Import a shared course' })[0]).toHaveClass(
+      'border-line-strong',
+      'bg-paper',
+      'text-ink-soft',
+    );
+  });
+
   it('sends both current-facing import links to the shared-course importer', () => {
     render(<Welcome />, { wrapper: MemoryRouter });
 

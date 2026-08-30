@@ -7,10 +7,11 @@
 // secondary "editor" half of the page).
 
 import { useState } from 'react';
-import { m as motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { NoteRow } from './NoteRow';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
+import { collapse } from '../ui/motion';
 import { PlusIcon } from '../ui/icons';
 import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/repository';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -103,23 +104,27 @@ export function LessonNotesSection({ lessonId, notes, className }: LessonNotesSe
       </div>
 
       {/* New-note form */}
-      {addingNote && (
-        <motion.div
-          initial={m > 0 ? { opacity: 0 } : false}
-          animate={{ opacity: 1 }}
-          exit={m > 0 ? { opacity: 0 } : undefined}
-          transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-4"
-        >
-          <div className="rounded-2xl border border-line-strong bg-surface p-5">
-            <LessonNoteEditor onSave={handleAddNote} onCancel={() => setAddingNote(false)} busy={noteBusy} />
-          </div>
-        </motion.div>
-      )}
+      <AnimatePresence initial={false}>
+        {addingNote && (
+          <motion.div key="new-note" {...collapse(m)} className="mb-4 overflow-hidden">
+            <div className="rounded-2xl border border-line-strong bg-surface p-5">
+              <LessonNoteEditor
+                onSave={handleAddNote}
+                onCancel={() => setAddingNote(false)}
+                busy={noteBusy}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Existing notes */}
       {sortedNotes.length > 0 ? (
-        <div className="flex flex-col divide-y divide-line rounded-xl border border-line">
+        <motion.div
+          layout={m > 0}
+          transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col divide-y divide-line rounded-xl border border-line"
+        >
           {sortedNotes.map((note, idx) => (
             <NoteRow
               key={note.id}
@@ -152,7 +157,7 @@ export function LessonNotesSection({ lessonId, notes, className }: LessonNotesSe
               onMoveDown={() => handleMoveNote(note.id, 'down')}
             />
           ))}
-        </div>
+        </motion.div>
       ) : !addingNote ? (
         <div className="rounded-xl border border-dashed border-line-strong py-12 text-center">
           <p className="text-sm text-ink-soft">No notes yet. Add one to get started.</p>

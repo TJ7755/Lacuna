@@ -11,7 +11,7 @@ import {
   autoBackupIfStale,
   __resetBackupThrottleForTests,
 } from './backups';
-import { createCard, createCourse } from './repository';
+import { createCard, createCourse, createLesson } from './repository';
 import { PRE_V22_BACKUP_MESSAGE } from './portability';
 import type { BackupFile, ItemPayload } from './types';
 
@@ -36,13 +36,15 @@ describe('backups', () => {
     vi.restoreAllMocks();
   });
 
-  it('takeAutoBackup stores a snapshot in the backups table', async () => {
-    await createCourse('Alpha');
+  it('takeAutoBackup stores the lesson count with the snapshot', async () => {
+    const course = await createCourse('Alpha');
+    await createLesson(course.id, 'Foundations');
+    await createLesson(course.id, 'Applications');
     const payload = await takeAutoBackup();
 
     const snapshots = await db.backups.toArray();
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0].deckCount).toBe(1);
+    expect(snapshots[0].deckCount).toBe(2);
     expect(snapshots[0].payload).toBeDefined();
     expect(snapshots[0].payload.decks).toBeUndefined();
     expect(snapshots[0].payload.courses?.[0].name).toBe('Alpha');

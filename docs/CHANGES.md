@@ -1,5 +1,52 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — review fixes for the audit implementation
+
+- Flush the Card editor's pending draft when navigating directly between two card routes inside
+  the 800 ms autosave window; the source card's edit previously died with the cancelled timer.
+- Route synchronous Question-generator resolution failures through the same recovery path as
+  failed attempt writes, so Retry and Exit render for either failure mode.
+- Close a staged candidate's "Revise with AI" panel when editing begins and focus the editor
+  through a dedicated ref, so the panel's complaint textarea can no longer win the edit-focus
+  query or steal focus through its close transition.
+- Give the batch revision panel a focus fallback to "Accept all clean" when applied revisions
+  leave no failing candidate and the "Revise N with AI" trigger unmounts.
+- Gate the notes-list layout animation and the lesson-management reorder animation on the motion
+  multiplier, so reduced motion no longer animates note add, delete and reorder movements.
+- Derive the mobile course section bar's active styling and current-page semantics from the
+  NavLink's own route match, removing the inactive fallback styling that disagreed with
+  aria-current on nested routes.
+- Extracted the shared height-collapse motion configuration into a `collapse` helper beside
+  `scaledSpring` and applied it across the note components.
+- Reconciled the audit documents' delivered-status wording and corrected LG-8's priority rating
+  to match the priority matrix.
+
+**Checks:** focused red-to-green tests for the draft flush and generated-Question recovery paths
+plus the staging, notes, navigation and settings suites; full typecheck and lint recorded with
+the pull request.
+
+## Unreleased — UI/UX audit implementation
+
+- Delivered QW-1–QW-6 and QW-8–QW-10 from the 30 August sticking-point audit: restore points
+  report Course lessons; failed Question starts offer Retry and Exit; study-flow Continue exposes
+  planner delay; Card drafts save only real edits; checked Question answers can be edited; every
+  recorded FSRS answer offers Undo; Welcome actions have deliberate light-theme contrast; the two
+  confirmed live Course-facing Deck strings are gone; and Learn announces concise progress.
+- Made the motion-speed setting apply to shared buttons, toggles, menus and assessment sheets, and
+  added continuity to Question and study results, Lesson Study/Author swaps and reordering, inline
+  confirmations, notes and annotations, batch authoring, optional constraints, staging review and
+  Course tabs. All transitions collapse under reduced motion.
+- Extracted the staging candidate row from its oversized review component instead of turning one
+  755-line file into an even larger dumping ground.
+- Fixed Card-editor draft identity when navigating directly between two card routes in one mounted
+  editor; each card now restores and updates only its own draft.
+- Fixed the mobile Course section bar marking Path as current alongside every nested section;
+  assistive technology now receives exactly one current-page tab.
+- Recorded the delivered and deliberately deferred audit items in both source audit documents.
+
+**Checks:** focused red-to-green component, page, session, backup and draft tests; full typecheck,
+lint, unit, coverage, production, tooling and browser checks are recorded by the pull request.
+
 ## Unreleased — first-load and network performance
 
 - Contained a failed lazy AI-panel download inside the workspace so the shell and
@@ -2351,5 +2398,15 @@ worker other than Claude for the first time.
   leaves the device.
 - The 3D and graphical column remains unrated and must not be inferred from this. Taste in a flat
   editorial layout is not evidence about 3D.
+
+**Checks:** documentation only; no code changed.
+
+## Unreleased — UI polish audit
+
+**Outcome:** `docs/ui-polish-points.md` records 24 source-backed opportunities to improve motion,
+state-transition continuity and interaction polish, with priorities, code locations and an
+implementation order. No application behaviour changed in this entry, and those polish
+opportunities remain open; the separate sticking-point fixes delivered afterwards are recorded
+in "Unreleased — UI/UX audit implementation" above.
 
 **Checks:** documentation only; no code changed.

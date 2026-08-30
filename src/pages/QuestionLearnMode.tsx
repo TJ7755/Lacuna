@@ -33,6 +33,8 @@ export function QuestionLearnMode() {
   const [questionIds, setQuestionIds] = useState<string[] | null>(null);
   const [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState<QuestionAttempt | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [startVersion, setStartVersion] = useState(0);
   const activeAttemptRef = useRef<QuestionAttempt | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -76,35 +78,43 @@ export function QuestionLearnMode() {
     if (attempt?.questionId === question.id) return;
     let cancelled = false;
     setAttempt(null);
-    const instance =
-      question.kind === 'generated'
-        ? questionGeneratorRegistry.resolve({
-            generatorKey: question.generatorKey,
-            generatorVersion: question.generatorVersion,
-            configuration: question.generatorConfig,
-            seed: `${sessionId}:${index}:${question.id}`,
-          })
-        : undefined;
-    void startQuestionAttempt({
-      questionId: question.id,
-      sessionId,
-      attemptId: `${sessionId}:${index}`,
-      instance,
-    })
+    setStartError(null);
+    // Resolution and attempt startup share one async path so a synchronous throw
+    // from the generator registry lands in the same recovery flow as a rejected
+    // attempt write, and the Retry and Exit controls render for either failure.
+    const start = async () => {
+      const instance =
+        question.kind === 'generated'
+          ? questionGeneratorRegistry.resolve({
+              generatorKey: question.generatorKey,
+              generatorVersion: question.generatorVersion,
+              configuration: question.generatorConfig,
+              seed: `${sessionId}:${index}:${question.id}`,
+            })
+          : undefined;
+      return startQuestionAttempt({
+        questionId: question.id,
+        sessionId,
+        attemptId: `${sessionId}:${index}`,
+        instance,
+      });
+    };
+    void start()
       .then((started) => {
-        if (!cancelled) setAttempt(started);
+        if (!cancelled) {
+          setAttempt(started);
+          setStartError(null);
+        }
       })
       .catch((error) => {
-        if (!cancelled)
-          notify(
-            error instanceof Error ? error.message : 'Could not start this Question.',
-            'negative',
-          );
+        if (!cancelled) {
+          setStartError(error instanceof Error ? error.message : 'Could not start this Question.');
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [attempt, index, notify, question, questionIds, sessionId]);
+  }, [attempt, index, question, questionIds, sessionId, startVersion]);
 
   const submit = async (answer: CheckedQuestionAnswer) => {
     if (!attempt) return;
@@ -227,7 +237,36 @@ export function QuestionLearnMode() {
           />
         </div>
 
-        {!attempt ? (
+        {startError ? (
+          <section
+            role="alert"
+            className="grid min-h-[30rem] place-items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center shadow-xl shadow-black/5"
+          >
+            <div className="max-w-md">
+              <p className="text-xs uppercase tracking-[0.18em] text-negative">
+                Question unavailable
+              </p>
+              <h1 className="mt-3 font-display text-3xl tracking-tight">
+                Could not start practice
+              </h1>
+              <p className="mt-3 text-sm leading-6 text-ink-soft">{startError}</p>
+              <div className="mt-7 grid grid-cols-2 gap-3">
+                <Button variant="secondary" onClick={() => void exit()}>
+                  Exit
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setStartError(null);
+                    setStartVersion((version) => version + 1);
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : !attempt ? (
           <div className="h-[30rem] animate-pulse rounded-3xl bg-ink/10" />
         ) : attempt.status === 'answered' ? (
           <QuestionFeedback

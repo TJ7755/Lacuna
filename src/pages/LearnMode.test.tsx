@@ -179,7 +179,8 @@ describe('LearnMode course/lesson scope', () => {
     await act(async () => {
       fireEvent.click(yes);
       for (let attempt = 0; attempt < 50; attempt += 1) {
-        if ((await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()) === 1) return;
+        if ((await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()) === 1)
+          return;
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
     });
@@ -754,9 +755,7 @@ describe('LearnMode course/lesson scope', () => {
     // Entering focus mode now lives in the card-actions menu, so leaving it is observed
     // by the study chrome becoming permanently visible rather than by a header toggle.
     await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: 'Show study controls' }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Show study controls' })).not.toBeInTheDocument();
     });
     expect(localStorage.getItem('lacuna.startInFocusMode')).toBe('on');
   });
@@ -785,11 +784,15 @@ describe('LearnMode course/lesson scope', () => {
       '0',
     );
     expect(document.querySelectorAll('[data-session-card-status="current"]')).toHaveLength(1);
+    const progressAnnouncement = document.querySelector('header [aria-live="polite"]');
+    expect(progressAnnouncement).toHaveTextContent('Card 1 of 2');
+    expect(progressAnnouncement).not.toHaveTextContent(/correct|wrong|current|unseen/i);
 
     await answerNo();
     await waitFor(() => {
       expect(document.querySelectorAll('[data-session-card-status="wrong"]')).toHaveLength(1);
       expect(document.querySelectorAll('[data-session-card-status="current"]')).toHaveLength(1);
+      expect(progressAnnouncement).toHaveTextContent('Card 2 of 2');
     });
 
     await answerYes();
@@ -894,6 +897,31 @@ describe('LearnMode course/lesson scope', () => {
     await waitFor(async () => expect(await db.sessionHistory.count()).toBe(1));
   });
 
+  it('offers Undo after an ordinary button answer and reverses that review', async () => {
+    const deck = await createCourse('Undo controls');
+    await createCard(deck.id, 'front_back', 'First undo question', 'Answer');
+    await createCard(deck.id, 'front_back', 'Second undo question', 'Answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const firstQuestion = (await screen.findByText(/undo question/i)).textContent;
+    await answerYes();
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+
+    await waitFor(async () => expect(await db.reviewHistory.count()).toBe(0));
+    expect(await screen.findByText(firstQuestion ?? '')).toBeInTheDocument();
+  });
+
   it('checks a numeric answer and records full marks without self-grading', async () => {
     const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
     const deck = await createCourse('Numeric deck');
@@ -928,12 +956,14 @@ describe('LearnMode course/lesson scope', () => {
           correct: true,
           marksEarned: 1,
           marksAvailable: 1,
-          checkerDisputes: [{
-            question: 'What is 8 / 2?',
-            studentLine: '8 / 2',
-            verdict: { correct: true, marksEarned: 1 },
-            checkerSeeds: [],
-          }],
+          checkerDisputes: [
+            {
+              question: 'What is 8 / 2?',
+              studentLine: '8 / 2',
+              verdict: { correct: true, marksEarned: 1 },
+              checkerSeeds: [],
+            },
+          ],
         });
       });
     } finally {
@@ -990,13 +1020,23 @@ describe('LearnMode course/lesson scope', () => {
     });
     try {
       render(
-        <ThemeProvider><ToastProvider><MemoryRouter initialEntries={['/learn']}><Routes>
-          <Route path="/learn" element={<LearnMode />} />
-        </Routes></MemoryRouter></ToastProvider></ThemeProvider>,
+        <ThemeProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={['/learn']}>
+              <Routes>
+                <Route path="/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </ThemeProvider>,
       );
-      fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8\n4' } });
+      fireEvent.change(await screen.findByLabelText('Your working'), {
+        target: { value: '2x = 8\n4' },
+      });
       fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
-      fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong for line 1' }));
+      fireEvent.click(
+        screen.getByRole('button', { name: 'The checker got this wrong for line 1' }),
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
       await waitFor(async () => {
         expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
@@ -1008,12 +1048,14 @@ describe('LearnMode course/lesson scope', () => {
             { studentLine: '2x = 8', matchedLineIndex: 0, marksEarned: 1 },
             { studentLine: '4', matchedLineIndex: 1, marksEarned: 2 },
           ],
-          checkerDisputes: [{
-            question: 'Solve 2x = 8.',
-            studentLine: '2x = 8',
-            verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
-            checkerSeeds: [`${card.id}:0:0`],
-          }],
+          checkerDisputes: [
+            {
+              question: 'Solve 2x = 8.',
+              studentLine: '2x = 8',
+              verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+              checkerSeeds: [`${card.id}:0:0`],
+            },
+          ],
         });
       });
     } finally {
@@ -1034,9 +1076,15 @@ describe('LearnMode course/lesson scope', () => {
       },
     });
     render(
-      <ThemeProvider><ToastProvider><MemoryRouter initialEntries={['/learn']}><Routes>
-        <Route path="/learn" element={<LearnMode />} />
-      </Routes></MemoryRouter></ToastProvider></ThemeProvider>,
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
     );
     fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check working' }));

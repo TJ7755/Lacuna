@@ -3,11 +3,12 @@
 // expanded. Extracted from LessonView.tsx to keep that file focused on
 // page-level composition.
 
-import { m as motion } from 'motion/react';
+import { useRef } from 'react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { ChevronDownIcon, EditIcon, TrashIcon } from '../ui/icons';
-import { ConfirmInline } from '../ui/ConfirmInline';
+import { ConfirmInlineSwap } from '../ui/ConfirmInline';
 import { cn } from '../ui/cn';
 import type { Note } from '../../db/types';
 
@@ -31,6 +32,10 @@ interface NoteRowProps {
   onMoveDown: () => void;
 }
 
+export function noteRowTiming(multiplier: number) {
+  return { duration: 0.18 * multiplier, ease: [0.16, 1, 0.3, 1] as const };
+}
+
 export function NoteRow({
   note,
   isOpen,
@@ -50,106 +55,151 @@ export function NoteRow({
   onMoveUp,
   onMoveDown,
 }: NoteRowProps) {
-  if (isEditing) {
-    return (
-      <div className="p-5">
-        <LessonNoteEditor
-          note={note}
-          onSave={onEditSave}
-          onCancel={onEditCancel}
-          busy={noteBusy}
-        />
-      </div>
+  const transition = noteRowTiming(m);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  function restoreEditFocus() {
+    queueMicrotask(() =>
+      rootRef.current?.querySelector<HTMLButtonElement>('[title="Edit note"]')?.focus(),
     );
   }
 
   return (
-    <div>
-      {/* Title row */}
-      <div className="flex items-center gap-1 px-3 py-2">
-        {/* Expand / collapse toggle */}
-        <button
-          type="button"
-          aria-expanded={isOpen}
-          onClick={onToggle}
-          className="flex flex-1 items-center gap-2.5 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
-        >
-          <motion.span
-            animate={{ rotate: isOpen ? 0 : -90 }}
-            transition={{ duration: 0.15 * m }}
-            className="shrink-0 text-ink-faint"
+    <motion.div ref={rootRef} layout="position" transition={transition}>
+      <AnimatePresence initial={false} mode="popLayout">
+        {isEditing ? (
+          <motion.div
+            key="editor"
+            initial={m > 0 ? { height: 0, opacity: 0 } : false}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transitionEnd: { overflow: 'visible' },
+            }}
+            exit={m > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
+            transition={transition}
+            className="overflow-hidden"
           >
-            <ChevronDownIcon width={14} height={14} />
-          </motion.span>
-          <span className="flex-1 font-medium text-ink">{note.name}</span>
-        </button>
+            <div className="p-5">
+              <LessonNoteEditor
+                note={note}
+                onSave={async (data) => {
+                  await onEditSave(data);
+                  restoreEditFocus();
+                }}
+                onCancel={() => {
+                  onEditCancel();
+                  restoreEditFocus();
+                }}
+                busy={noteBusy}
+              />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="content"
+            initial={m > 0 ? { height: 0, opacity: 0 } : false}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transitionEnd: { overflow: 'visible' },
+            }}
+            exit={m > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
+            transition={transition}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-1 px-3 py-2">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={onToggle}
+                className="flex flex-1 items-center gap-2.5 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
+              >
+                <motion.span
+                  animate={{ rotate: isOpen ? 0 : -90 }}
+                  transition={{ duration: 0.15 * m }}
+                  className="shrink-0 text-ink-faint"
+                >
+                  <ChevronDownIcon width={14} height={14} />
+                </motion.span>
+                <span className="flex-1 font-medium text-ink">{note.name}</span>
+              </button>
 
-        {/* Controls */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          {confirmingDelete ? (
-            <ConfirmInline message="Delete?" onConfirm={onDeleteConfirm} onCancel={onDeleteCancel} />
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={onMoveUp}
-                disabled={isFirst}
-                title="Move up"
-                className={cn(
-                  'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
-                  'disabled:pointer-events-none disabled:opacity-30',
-                )}
+              <ConfirmInlineSwap
+                active={confirmingDelete}
+                message="Delete?"
+                onConfirm={onDeleteConfirm}
+                onCancel={onDeleteCancel}
+                swapClassName="shrink-0"
               >
-                <ChevronDownIcon
-                  width={14}
-                  height={14}
-                  className="rotate-180"
-                />
-              </button>
-              <button
-                type="button"
-                onClick={onMoveDown}
-                disabled={isLast}
-                title="Move down"
-                className={cn(
-                  'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
-                  'disabled:pointer-events-none disabled:opacity-30',
-                )}
-              >
-                <ChevronDownIcon width={14} height={14} />
-              </button>
-              <button
-                type="button"
-                onClick={onEdit}
-                title="Edit note"
-                className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
-              >
-                <EditIcon width={14} height={14} />
-              </button>
-              <button
-                type="button"
-                onClick={onDeleteRequest}
-                title="Delete note"
-                className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
-              >
-                <TrashIcon width={14} height={14} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={onMoveUp}
+                    disabled={isFirst}
+                    title="Move up"
+                    className={cn(
+                      'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+                      'disabled:pointer-events-none disabled:opacity-30',
+                    )}
+                  >
+                    <ChevronDownIcon width={14} height={14} className="rotate-180" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onMoveDown}
+                    disabled={isLast}
+                    title="Move down"
+                    className={cn(
+                      'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+                      'disabled:pointer-events-none disabled:opacity-30',
+                    )}
+                  >
+                    <ChevronDownIcon width={14} height={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    title="Edit note"
+                    className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+                  >
+                    <EditIcon width={14} height={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDeleteRequest}
+                    title="Delete note"
+                    className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                  >
+                    <TrashIcon width={14} height={14} />
+                  </button>
+                </div>
+              </ConfirmInlineSwap>
+            </div>
 
-      {/* Expanded content */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.12 * m }}
-          className="border-t border-line px-5 py-4"
-        >
-          <MarkdownView source={note.content} allowEmbeds />
-        </motion.div>
-      )}
-    </div>
+            <AnimatePresence initial={false}>
+              {isOpen && (
+                <motion.div
+                  key="expanded-note"
+                  initial={m > 0 ? { height: 0, opacity: 0 } : false}
+                  animate={{
+                    height: 'auto',
+                    opacity: 1,
+                    transitionEnd: { overflow: 'visible' },
+                  }}
+                  exit={m > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
+                  transition={transition}
+                  className="overflow-hidden border-t border-line"
+                >
+                  <div className="px-5 py-4">
+                    <MarkdownView source={note.content} allowEmbeds />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

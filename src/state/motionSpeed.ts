@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type MotionSpeed = 'slow' | 'normal' | 'fast';
 
@@ -22,9 +22,7 @@ export function readMotionSpeed(): MotionSpeed {
 
 export function writeMotionSpeed(speed: MotionSpeed): void {
   localStorage.setItem(KEY, speed);
-  window.dispatchEvent(
-    new CustomEvent('lacuna:motion-speed', { detail: speed }),
-  );
+  window.dispatchEvent(new CustomEvent('lacuna:motion-speed', { detail: speed }));
 }
 
 export function speedMultiplier(speed?: MotionSpeed): number {
@@ -41,36 +39,41 @@ export function getMotionMultiplier(): number {
   }
 }
 
-export function useMotionSpeed(): [
-  MotionSpeed,
-  (speed: MotionSpeed) => void,
-] {
-  const [speed, setSpeed] = useState<MotionSpeed>(() => readMotionSpeed());
-  // Force re-render when the OS-level motion preference changes so that
-  // components recompute their speedMultiplier() on the next render.
-  const [, setMotionPref] = useState(false);
+const subscribers = new Set<() => void>();
+let stopListening: (() => void) | null = null;
 
-  useEffect(() => {
-    const onChange = () => setSpeed(readMotionSpeed());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('lacuna:motion-speed', onChange);
+function motionSnapshot(): string {
+  return `${readMotionSpeed()}:${prefersReducedMotion() ? 'reduce' : 'animate'}`;
+}
 
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onPref = (e: MediaQueryListEvent) => setMotionPref(e.matches);
-    mql.addEventListener('change', onPref);
+function emitMotionChange() {
+  subscribers.forEach((subscriber) => subscriber());
+}
 
-    return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('lacuna:motion-speed', onChange);
-      mql.removeEventListener('change', onPref);
-    };
-  }, []);
+function startListening() {
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  window.addEventListener('storage', emitMotionChange);
+  window.addEventListener('lacuna:motion-speed', emitMotionChange);
+  media.addEventListener('change', emitMotionChange);
+  stopListening = () => {
+    window.removeEventListener('storage', emitMotionChange);
+    window.removeEventListener('lacuna:motion-speed', emitMotionChange);
+    media.removeEventListener('change', emitMotionChange);
+    stopListening = null;
+  };
+}
 
-  return [
-    speed,
-    (next) => {
-      writeMotionSpeed(next);
-      setSpeed(next);
-    },
-  ];
+function subscribeMotion(subscriber: () => void) {
+  subscribers.add(subscriber);
+  if (subscribers.size === 1) startListening();
+  return () => {
+    subscribers.delete(subscriber);
+    if (subscribers.size === 0) stopListening?.();
+  };
+}
+
+export function useMotionSpeed(): [MotionSpeed, (speed: MotionSpeed) => void] {
+  const snapshot = useSyncExternalStore(subscribeMotion, motionSnapshot, () => 'normal:animate');
+  const speed = snapshot.split(':', 1)[0] as MotionSpeed;
+  return [speed, writeMotionSpeed];
 }

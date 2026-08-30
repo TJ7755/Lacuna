@@ -105,16 +105,62 @@ export function CardEditor() {
   // When set (new front/back cards only), saving also creates an independent reverse card.
   const [alsoReverse, setAlsoReverse] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Autosave begins only after an author changes a seeded field. Without this latch,
+  // mounting an existing card fabricates a draft and mounting over a real draft can erase it.
+  const [draftDirty, setDraftDirty] = useState(false);
   // Whether a stored draft was found and is offered for restoration.
   const [draftPrompt, setDraftPrompt] = useState(false);
-  const draftKeyRef = useRef(draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new'));
+  const currentDraftKey = draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new');
+  const draftKeyRef = useRef(currentDraftKey);
   const draftTimer = useRef<number>();
 
+  // Persist the current form state under the key in draftKeyRef. Shared by the
+  // debounced autosave and the route-change flush below.
+  function persistDraft() {
+    saveDraft(draftKeyRef.current, {
+      type: type === 'numeric' || type === 'working' || type === 'audio' ? 'front_back' : type,
+      itemKind: type === 'numeric' || type === 'working' || type === 'audio' ? type : undefined,
+      front,
+      back,
+      tags,
+      alsoReverse,
+      payload:
+        type === 'numeric'
+          ? { v: 1, kind: 'numeric', answer: numericAnswer }
+          : type === 'working'
+            ? {
+                v: 1,
+                kind: 'working',
+                scheme: workingCompilation.lines.flatMap((line) =>
+                  line.kind === 'compiled' ? [line.value] : [],
+                ),
+                ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+              }
+            : undefined,
+      workingSource: type === 'working' ? workingSource : undefined,
+      timestamp: Date.now(),
+    });
+  }
+  // Effects that must not re-run on every keystroke reach the latest persistDraft
+  // through this stable handle rather than a dependency.
+  const persistDraftRef = useRef(persistDraft);
+  persistDraftRef.current = persistDraft;
+
   // Re-arm the loaded latch whenever the card being edited changes so direct
-  // navigation between cards (same route, different param) re-seeds the formotion.
+  // navigation between cards (same route, different param) re-seeds the form.
+  // Flush the outgoing card first: the route change cancels the only pending
+  // autosave timer, and the un-debounced edit would otherwise be lost with the
+  // source draft key.
   useEffect(() => {
+    if (loaded && draftDirty && !draftPrompt) persistDraftRef.current();
+    window.clearTimeout(draftTimer.current);
+    draftKeyRef.current = currentDraftKey;
     setLoaded(false);
-  }, [cardId]);
+    setDraftDirty(false);
+    setDraftPrompt(false);
+    // Deliberately keyed on the draft key alone; form state is read through persistDraftRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDraftKey]);
 
   // Quick-capture bookkeeping: how many cards added without leaving the page, and a
   // remount key that refocuses the first field after each "Save & add another".
@@ -142,6 +188,11 @@ export function CardEditor() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const isTouchMode = useIsTouchMode();
+  function modifyDraftField<T>(setter: (value: T) => void, value: T) {
+    setter(value);
+    setDraftDirty(true);
+  }
+
   function flashSaved() {
     window.clearTimeout(savedTimer.current);
     setShowSaved(true);
@@ -229,11 +280,13 @@ export function CardEditor() {
       setWorkingFixtures(draft.payload?.kind === 'working' ? (draft.payload.fixtures ?? []) : []);
     }
     if (draft.alsoReverse !== undefined) setAlsoReverse(draft.alsoReverse);
+    setDraftDirty(false);
     setDraftPrompt(false);
   };
 
   const discardDraft = () => {
     clearDraft(draftKeyRef.current);
+    setDraftDirty(false);
     setDraftPrompt(false);
     if (editing && card) {
       setType(
@@ -256,38 +309,17 @@ export function CardEditor() {
     }
   };
 
-  // Auto-save a draft whenever the form changes.
+  // Auto-save only author-initiated changes, and never while a stored draft is awaiting a
+  // restore/discard decision. State seeding is deliberately excluded from the dirty boundary.
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || !draftDirty || draftPrompt) return;
     window.clearTimeout(draftTimer.current);
-    draftTimer.current = window.setTimeout(() => {
-      saveDraft(draftKeyRef.current, {
-        type: type === 'numeric' || type === 'working' || type === 'audio' ? 'front_back' : type,
-        itemKind: type === 'numeric' || type === 'working' || type === 'audio' ? type : undefined,
-        front,
-        back,
-        tags,
-        alsoReverse,
-        payload:
-          type === 'numeric'
-            ? { v: 1, kind: 'numeric', answer: numericAnswer }
-            : type === 'working'
-              ? {
-                  v: 1,
-                  kind: 'working',
-                  scheme: workingCompilation.lines.flatMap((line) =>
-                    line.kind === 'compiled' ? [line.value] : [],
-                  ),
-                  ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
-                }
-              : undefined,
-        workingSource: type === 'working' ? workingSource : undefined,
-        timestamp: Date.now(),
-      });
-    }, 800);
+    draftTimer.current = window.setTimeout(() => persistDraftRef.current(), 800);
     return () => window.clearTimeout(draftTimer.current);
   }, [
     loaded,
+    draftDirty,
+    draftPrompt,
     type,
     front,
     back,
@@ -544,6 +576,7 @@ export function CardEditor() {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
       }
       clearDraft(draftKeyRef.current);
+      setDraftDirty(false);
       flashSaved();
       // Let the confirmation flourish play briefly before leaving the page.
       window.setTimeout(() => {
@@ -570,6 +603,7 @@ export function CardEditor() {
       await createCourseCard(courseId!, storedType, front, backValue, tags, payload);
     }
     clearDraft(draftKeyRef.current);
+    setDraftDirty(false);
     if (andAnother) {
       // Stay on the page for rapid entry: clear the content, keep the type and tags
       // (usually shared across a batch), refocus the first field, and tally the count.
@@ -675,7 +709,7 @@ export function CardEditor() {
                 className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3"
               >
                 <span className="text-sm text-warning-fg">
-                  A card with identical content already exists in this deck.
+                  A card with identical content already exists in this course.
                 </span>
                 <button
                   type="button"
@@ -703,7 +737,10 @@ export function CardEditor() {
                 <motion.button
                   key={t.key}
                   type="button"
-                  onClick={() => setType(t.key)}
+                  onClick={() => {
+                    setType(t.key);
+                    setDraftDirty(true);
+                  }}
                   aria-pressed={type === t.key}
                   whileTap={{ scale: 0.96 }}
                   className={cn(
@@ -735,7 +772,7 @@ export function CardEditor() {
                   autoFocus={!editing}
                   label="Text (use the Cloze button to hide answers)"
                   value={front}
-                  onChange={setFront}
+                  onChange={(value) => modifyDraftField(setFront, value)}
                   minRows={8}
                   allowCloze
                   clozePreview={showBackCloze ? 'back' : 'front'}
@@ -768,8 +805,8 @@ export function CardEditor() {
               <AudioCardEditor
                 front={front}
                 back={back}
-                onFrontChange={setFront}
-                onBackChange={setBack}
+                onFrontChange={(value) => modifyDraftField(setFront, value)}
+                onBackChange={(value) => modifyDraftField(setBack, value)}
                 onError={(message) => notify(message, 'negative')}
               />
             </div>
@@ -785,7 +822,7 @@ export function CardEditor() {
                   autoFocus={!editing}
                   label="Question"
                   value={front}
-                  onChange={setFront}
+                  onChange={(value) => modifyDraftField(setFront, value)}
                   minRows={8}
                   placeholder="Question or prompt. Markdown, maths and images are supported."
                   onError={(message) => notify(message, 'negative')}
@@ -798,7 +835,7 @@ export function CardEditor() {
                 >
                   <NumericAnswerEditor
                     value={numericAnswer}
-                    onChange={setNumericAnswer}
+                    onChange={(value) => modifyDraftField(setNumericAnswer, value)}
                     invalid={shakeField === 'answer'}
                   />
                 </div>
@@ -809,9 +846,12 @@ export function CardEditor() {
                 >
                   <MarkSchemeEditor
                     value={workingSource}
-                    onChange={setWorkingSource}
+                    onChange={(value) => modifyDraftField(setWorkingSource, value)}
                     fixtures={workingFixtures}
-                    onFixturesChange={setWorkingFixtures}
+                    onFixturesChange={(fixtures) => {
+                      setWorkingFixtures(fixtures);
+                      setDraftDirty(true);
+                    }}
                     onDraftMarkScheme={() => void copyMarkSchemePrompt()}
                     draftDisabled={!front.trim()}
                     invalid={shakeField === 'scheme'}
@@ -831,7 +871,7 @@ export function CardEditor() {
                   autoFocus={!editing}
                   label="Front"
                   value={front}
-                  onChange={setFront}
+                  onChange={(value) => modifyDraftField(setFront, value)}
                   minRows={8}
                   placeholder="Question or prompt. Markdown, maths and images are supported."
                   onError={(m) => notify(m, 'negative')}
@@ -846,7 +886,7 @@ export function CardEditor() {
                   inputRef={backRef}
                   label="Back"
                   value={back}
-                  onChange={setBack}
+                  onChange={(value) => modifyDraftField(setBack, value)}
                   minRows={8}
                   placeholder="Answer. Markdown, maths and images are supported."
                   onError={(m) => notify(m, 'negative')}
@@ -862,7 +902,10 @@ export function CardEditor() {
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
             <TagInput
               tags={tags}
-              onChange={setTags}
+              onChange={(nextTags) => {
+                setTags(nextTags);
+                setDraftDirty(true);
+              }}
               suggestions={tagSuggestions}
               placeholder="Add tags to group cards for filtered study…"
             />
@@ -893,7 +936,10 @@ export function CardEditor() {
           {!editing && !isCloze && !isBasicReversed && !isStructured && !isAudio && (
             <motion.button
               type="button"
-              onClick={() => setAlsoReverse((v) => !v)}
+              onClick={() => {
+                setAlsoReverse((v) => !v);
+                setDraftDirty(true);
+              }}
               whileTap={{ scale: 0.96 }}
               aria-pressed={alsoReverse}
               title="Also create a card testing the back side"

@@ -1,10 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMotionMultiplier } from '../../state/motionSpeed';
-import {
-  beginLandingTransition,
-  COVERED_EVENT,
-} from '../layout/LandingTransition';
+import { beginLandingTransition, COVERED_EVENT } from '../layout/LandingTransition';
 
 /**
  * The landing page's accent call-to-action. Hovering swaps the label for a
@@ -39,7 +36,7 @@ export function LandingCta({ children }: { children: ReactNode }) {
         started.current = true;
         beginLandingTransition(ref.current.getBoundingClientRect());
       }}
-      className="group/cta shadow-paper shadow-paper-hover relative inline-flex min-h-16 items-center rounded-[10px] bg-accent px-9 text-base font-medium text-accent-fg"
+      className="group/cta shadow-paper shadow-paper-hover relative inline-flex min-h-16 items-center rounded-[10px] border border-accent-ink/40 bg-accent px-9 text-base font-semibold text-accent-fg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
     >
       <span className="transition-[opacity,transform] duration-200 ease-out group-hover/cta:-translate-y-1.5 group-hover/cta:opacity-0 group-focus-visible/cta:-translate-y-1.5 group-focus-visible/cta:opacity-0 motion-reduce:transition-none motion-reduce:group-hover/cta:translate-y-0 motion-reduce:group-hover/cta:opacity-100">
         {children}

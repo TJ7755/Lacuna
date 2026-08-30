@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import type { Lesson } from '../../db/types';
 import type { QuestionDefinition } from '../../questions/types';
@@ -10,6 +10,10 @@ import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+import { StepSwap, stepSwapTiming } from '../ui/StepSwap';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { scaledSpring } from '../ui/motion';
 
 interface BatchAuthoringPromptDialogProps {
   courseId: string;
@@ -40,9 +44,17 @@ export function BatchAuthoringPromptDialog({
   const [mode, setMode] = useState<'prompt' | 'review'>('prompt');
   const [reviewDirty, setReviewDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  const reviewSourceRef = useRef<HTMLTextAreaElement>(null);
   const canCopy = notes.trim().length > 0 && topic.trim().length > 0 && level.trim().length > 0;
   const hasDraft =
     notes.trim().length > 0 || topic.trim().length > 0 || level.trim().length > 0 || reviewDirty;
+
+  useLayoutEffect(() => {
+    (mode === 'review' ? reviewSourceRef : notesRef).current?.focus();
+  }, [mode]);
 
   function requestClose() {
     if (hasDraft) {
@@ -98,7 +110,8 @@ export function BatchAuthoringPromptDialog({
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        layout={multiplier > 0 ? 'size' : undefined}
+        transition={scaledSpring(multiplier, 320, 30)}
         className={cn(
           'relative z-10 m-auto flex max-h-[90vh] w-full flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20',
           mode === 'review' ? 'max-w-5xl' : 'max-w-2xl',
@@ -157,95 +170,109 @@ export function BatchAuthoringPromptDialog({
           ))}
         </div>
 
-        <div className="relative flex flex-col gap-5 overflow-y-auto px-6 py-6">
-          {mode === 'review' ? (
-            <ItemStagingReview
-              courseId={courseId}
-              lessons={lessons}
-              questions={questions}
-              onDirtyChange={setReviewDirty}
-            />
-          ) : (
-            <>
-              <label className="flex flex-col gap-2 text-sm text-ink-soft">
-                Lesson notes
-                <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  rows={showConstraints ? 5 : 6}
-                  placeholder="Paste the notes for one lesson or topic…"
-                  className="resize-y rounded-xl border border-line-strong bg-surface px-4 py-3 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
-                />
-              </label>
-
-              <div className="grid gap-4 sm:grid-cols-2">
+        <motion.div
+          layout={multiplier > 0 ? 'size' : undefined}
+          transition={stepSwapTiming(multiplier)}
+          className="relative overflow-y-auto"
+        >
+          <StepSwap
+            stepKey={mode}
+            direction={mode === 'review' ? 1 : -1}
+            className="flex flex-col gap-5 px-6 py-6"
+          >
+            {mode === 'review' ? (
+              <ItemStagingReview
+                courseId={courseId}
+                lessons={lessons}
+                questions={questions}
+                onDirtyChange={setReviewDirty}
+                sourceInputRef={reviewSourceRef}
+              />
+            ) : (
+              <>
                 <label className="flex flex-col gap-2 text-sm text-ink-soft">
-                  Topic
-                  <input
-                    value={topic}
-                    onChange={(event) => setTopic(event.target.value)}
-                    placeholder="Demand"
-                    className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
+                  Lesson notes
+                  <textarea
+                    value={notes}
+                    ref={notesRef}
+                    onChange={(event) => setNotes(event.target.value)}
+                    rows={6}
+                    placeholder="Paste the notes for one lesson or topic…"
+                    className="resize-y rounded-xl border border-line-strong bg-surface px-4 py-3 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
                   />
                 </label>
-                <label className="flex flex-col gap-2 text-sm text-ink-soft">
-                  Level
-                  <input
-                    value={level}
-                    onChange={(event) => setLevel(event.target.value)}
-                    placeholder="A level"
-                    className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
-                  />
-                </label>
-              </div>
 
-              <div className="rounded-xl border border-accent/25 bg-accent-soft/45 px-4 py-3">
-                <p className="text-sm font-medium text-ink">Concept checks, not worksheets</p>
-                <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-                  Working items should test a reusable method or derivation. Use symbolic general
-                  forms where possible; arbitrary-number exercise variants are not supported yet.
-                </p>
-              </div>
-
-              <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  aria-label="Set generation constraints"
-                  checked={showConstraints}
-                  onChange={(event) => setShowConstraints(event.target.checked)}
-                  className="accent-accent"
-                />
-                <span className="font-medium text-ink">Set generation constraints</span>
-                <span className="ml-auto text-xs text-ink-faint">Otherwise the model chooses</span>
-              </label>
-
-              {showConstraints && (
-                <div className="grid gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="flex flex-col gap-2 text-sm text-ink-soft">
-                    Maximum items <span className="text-xs text-ink-faint">Optional</span>
+                    Topic
                     <input
-                      type="number"
-                      min={1}
-                      value={maxItems}
-                      placeholder="No limit"
-                      onChange={(event) =>
-                        setMaxItems(event.target.value === '' ? '' : Number(event.target.value))
-                      }
-                      className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none focus:border-accent"
+                      value={topic}
+                      onChange={(event) => setTopic(event.target.value)}
+                      placeholder="Demand"
+                      className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                    Level
+                    <input
+                      value={level}
+                      onChange={(event) => setLevel(event.target.value)}
+                      placeholder="A level"
+                      className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
                     />
                   </label>
                 </div>
-              )}
 
-              <p className="text-xs leading-relaxed text-ink-faint">
-                Lacuna copies a prompt only. Continue the conversation in your chosen chatbot, then
-                paste its structured response into the staging review.
-              </p>
-            </>
-          )}
-        </div>
+                <div className="rounded-xl border border-accent/25 bg-accent-soft/45 px-4 py-3">
+                  <p className="text-sm font-medium text-ink">Concept checks, not worksheets</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                    Working items should test a reusable method or derivation. Use symbolic general
+                    forms where possible; arbitrary-number exercise variants are not supported yet.
+                  </p>
+                </div>
 
-        {mode === 'prompt' && (
+                <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
+                  <input
+                    type="checkbox"
+                    aria-label="Set generation constraints"
+                    checked={showConstraints}
+                    onChange={(event) => setShowConstraints(event.target.checked)}
+                    className="accent-accent"
+                  />
+                  <span className="font-medium text-ink">Set generation constraints</span>
+                  <span className="ml-auto text-xs text-ink-faint">
+                    Otherwise the model chooses
+                  </span>
+                </label>
+
+                <AnimatedDisclosure open={showConstraints}>
+                  <div className="grid gap-4 pt-0.5">
+                    <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                      Maximum items <span className="text-xs text-ink-faint">Optional</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={maxItems}
+                        placeholder="No limit"
+                        onChange={(event) =>
+                          setMaxItems(event.target.value === '' ? '' : Number(event.target.value))
+                        }
+                        className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none focus:border-accent"
+                      />
+                    </label>
+                  </div>
+                </AnimatedDisclosure>
+
+                <p className="text-xs leading-relaxed text-ink-faint">
+                  Lacuna copies a prompt only. Continue the conversation in your chosen chatbot,
+                  then paste its structured response into the staging review.
+                </p>
+              </>
+            )}
+          </StepSwap>
+        </motion.div>
+
+        <AnimatedDisclosure open={mode === 'prompt'}>
           <footer className="relative flex justify-end gap-2 border-t border-line px-6 py-4">
             <Button variant="ghost" onClick={requestClose}>
               Cancel
@@ -254,17 +281,19 @@ export function BatchAuthoringPromptDialog({
               Copy Question batch prompt
             </Button>
           </footer>
-        )}
-        {confirmClose && (
+        </AnimatedDisclosure>
+        <AnimatedDisclosure open={confirmClose}>
           <div className="relative border-t border-warning/30 bg-warning/5 px-6 py-4">
             <ConfirmInline
               message="Discard this unsaved Question batch prompt and staging review?"
               confirmLabel="Discard batch"
+              announce
+              focusOnMount="cancel"
               onCancel={() => setConfirmClose(false)}
               onConfirm={onClose}
             />
           </div>
-        )}
+        </AnimatedDisclosure>
       </motion.div>
     </motion.div>
   );

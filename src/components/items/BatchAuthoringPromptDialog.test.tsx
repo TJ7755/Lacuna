@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { BatchAuthoringPromptDialog } from './BatchAuthoringPromptDialog';
 import { BATCH_OUTPUT_START } from '../../items/prompts';
 
@@ -78,6 +78,28 @@ describe('BatchAuthoringPromptDialog', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Review response' }));
     expect(screen.getByText('Generated Question batch')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Target lesson' })).toBeDisabled();
+    expect(screen.getByPlaceholderText(new RegExp(BATCH_OUTPUT_START))).toHaveFocus();
+  });
+
+  it('moves focus safely into the unsaved-close warning', () => {
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="Economics"
+        lessons={[]}
+        questions={[]}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('Paste the notes for one lesson or topic…'), {
+      target: { value: 'Unsaved notes' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    const warning = screen.getByText(
+      'Discard this unsaved Question batch prompt and staging review?',
+    ).parentElement!;
+    expect(within(warning).getByRole('button', { name: 'Cancel' })).toHaveFocus();
   });
 
   it('copies a constrained, course-scoped prompt from the form', async () => {

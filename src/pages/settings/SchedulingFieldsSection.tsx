@@ -119,7 +119,7 @@ export function SchedulingFieldsSection({
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
-          Caps how many never-seen cards a study session introduces each day, so a large deck does
+          Caps how many never-seen cards a study session introduces each day, so a large course does
           not overwhelm you. Leave blank for unlimited. Reviews of cards you have already started
           are never capped.
         </span>

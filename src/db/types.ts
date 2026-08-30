@@ -1022,7 +1022,10 @@ export interface BackupSnapshot {
    * botched migration always has a restore point to fall back to.
    */
   tag?: 'pre-migration';
-  /** Denormalised counts so the restore-point list can be shown without parsing the payload. */
+  /**
+   * Denormalised counts so the restore-point list can render without parsing the payload.
+   * `deckCount` is a legacy wire name; current snapshots store the user-facing lesson count.
+   */
   deckCount: number;
   cardCount: number;
   /** The full backup payload, identical in shape to a manual export. */

@@ -185,10 +185,7 @@ describe('useLearnSession answer boundary', () => {
 
   it.each([
     ['an unsupported kind', { v: 1, kind: 'scaffold' }],
-    [
-      'an unsupported version',
-      { v: 2, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
-    ],
+    ['an unsupported version', { v: 2, kind: 'numeric', answer: { kind: 'exact', value: '4' } }],
   ])('does not grade a card with %s', async (_label, payload) => {
     const deck = await createCourse('Unsupported payload');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {
@@ -220,10 +217,16 @@ describe('useLearnSession answer boundary', () => {
 
     await waitFor(() => expect(result.current.current?.id).toBe(card.id));
 
+    let undoAvailable: boolean | undefined;
     await act(async () => {
-      await result.current.answer({ correct: true, marksEarned: 1, marksAvailable: 1 });
+      undoAvailable = await result.current.answer({
+        correct: true,
+        marksEarned: 1,
+        marksAvailable: 1,
+      });
     });
 
+    expect(undoAvailable).toBe(false);
     expect(result.current.phase).toBe('question');
     expect(result.current.events.current).toHaveLength(0);
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
@@ -321,10 +324,12 @@ describe('useLearnSession answer boundary', () => {
     });
     await waitFor(() => expect(result.current.phase).toBe('answer'));
 
+    let undoAvailable: boolean | undefined;
     await act(async () => {
-      await result.current.answer(true);
+      undoAvailable = await result.current.answer(true);
     });
 
+    expect(undoAvailable).toBe(true);
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);

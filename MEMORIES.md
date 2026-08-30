@@ -368,3 +368,11 @@ the exclusive lifecycle across candidate snapshotting and merging as well as the
 fencing only `importBackup()` leaves a race where a write can land after the candidate snapshot.
 Manual replacement invalidates the AI session before draining work, while peer and recovery
 application preserve it.
+
+## Use a throwaway worktree, never stashes, to test a baseline
+
+The prompter keeps long-lived stashes from unrelated branches in this repository, so `git stash`
+runs can pop or conflict with stashes that are not the agent's own, and an interrupted run leaves
+the working tree half-stashed. To compare behaviour against a merge-base, use
+`git worktree add /tmp/<name> <ref>` with a symlinked `node_modules` instead, then
+`git worktree remove`. Verify `git status` after any stash-like operation before continuing.

@@ -57,4 +57,11 @@ describe('SchedulingFieldsSection', () => {
     fireEvent.click(summary!);
     expect(disclosure).toHaveAttribute('open');
   });
+
+  it('explains workload caps using current Course language', () => {
+    renderSection();
+
+    expect(screen.getByText(/so a large course does not overwhelm you/i)).toBeInTheDocument();
+    expect(screen.queryByText(/large deck/i)).not.toBeInTheDocument();
+  });
 });

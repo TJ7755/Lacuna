@@ -124,9 +124,12 @@ describe('ItemStagingReview', () => {
     fireEvent.click(within(duplicateRow).getByRole('button', { name: 'Accept' }));
     await waitFor(() => expect(createBatchFixedQuestion).toHaveBeenCalledTimes(3));
     expect(within(duplicateRow).getByText('accepted')).toBeInTheDocument();
-    expect(
-      within(duplicateRow).queryByRole('button', { name: 'Revise with AI' }),
-    ).not.toBeInTheDocument();
+    // The button leaves through an exit animation, so its removal is asynchronous.
+    await waitFor(() =>
+      expect(
+        within(duplicateRow).queryByRole('button', { name: 'Revise with AI' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it('reports fixtures as unavailable rather than failing when the scheme will not compile', () => {
@@ -152,6 +155,7 @@ describe('ItemStagingReview', () => {
     const row = screen.getByText('Untitled Question').closest('article')!;
 
     fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+    expect(within(row).getByRole('textbox', { name: 'Question' })).toHaveFocus();
     fireEvent.change(within(row).getByRole('textbox', { name: 'Question' }), {
       target: { value: 'Corrected' },
     });
@@ -161,7 +165,7 @@ describe('ItemStagingReview', () => {
     const correctedRow = screen.getByText('Corrected').closest('article')!;
     fireEvent.click(within(correctedRow).getByRole('button', { name: 'Reject' }));
     expect(within(correctedRow).getByText('rejected')).toBeInTheDocument();
-    expect(within(correctedRow).getByRole('button', { name: 'Restore' })).toBeInTheDocument();
+    expect(within(correctedRow).getByRole('button', { name: 'Restore' })).toHaveFocus();
   });
 
   it('edits a working fixture through fields rather than raw JSON', () => {
@@ -205,6 +209,7 @@ describe('ItemStagingReview', () => {
     const row = screen.getByText('Calculate revenue').closest('article')!;
 
     fireEvent.click(within(row).getByRole('button', { name: 'Revise with AI' }));
+    expect(within(row).getByRole('textbox', { name: 'What should change?' })).toHaveFocus();
     fireEvent.change(within(row).getByRole('textbox', { name: 'What should change?' }), {
       target: { value: 'Accept the correct intermediate quantity.' },
     });
@@ -267,6 +272,9 @@ describe('ItemStagingReview', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Revise 2 with AI' }));
+    expect(
+      screen.getByRole('textbox', { name: 'Anything else to change? (optional)' }),
+    ).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Copy revision prompt' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const prompt = writeText.mock.calls[0][0] as string;
