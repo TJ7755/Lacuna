@@ -29,6 +29,7 @@ import type {
 import { isAgentMemory } from './agentMemoryRecord';
 import {
   mergeReviewHistoryEntries,
+  projectCardsForStorage,
   resolveReviewHistoryCollisions,
   type ReviewHistoryCollisionState,
   type ReviewHistoryEntry,
@@ -121,7 +122,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.pendingMergeReviews.toArray(),
     db.agentMemories.toArray(),
   ]);
-  const projectedCards = cards;
+  const projectedCards = projectCardsForStorage(cards);
   const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
   for (const note of notes) {
     for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
@@ -154,7 +155,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     sequences,
     occlusions,
     revisionPlans,
-    reviewHistory: mergeReviewHistoryEntries(reviewHistory, projectedCards),
+    reviewHistory,
     schedulingUnits,
     coursePerformance,
     schedulingPerformance,
@@ -388,6 +389,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     backup.reviewHistory ?? [],
     cards,
   );
+  const storedCards = projectCardsForStorage(cards);
   const hydratedReviewHistory = reviewHistory.map((entry) => ({
     ...entry,
     schedulingUnitId:
@@ -477,7 +479,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.pendingMergeReviews.clear(),
           db.agentMemories.clear(),
         ]);
-        await db.cards.bulkAdd(cards);
+        await db.cards.bulkAdd(storedCards);
         if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
         await db.userPerformance.bulkAdd(backup.userPerformance);
         // Drop incoming auto-increment ids so they are reassigned cleanly.
@@ -872,7 +874,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           mergedCards.push(b > a ? incoming : existing);
         }
       }
-      await db.cards.bulkPut(mergedCards);
+      await db.cards.bulkPut(projectCardsForStorage(mergedCards));
 
       // Merge performance: prefer the profile whose deck has been studied most
       // recently (lastInteractedAt), so a local deck reset (totalCorrectReviews = 0)
@@ -895,9 +897,25 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       await db.userPerformance.bulkPut(mergedPerf);
 
       // Append session history that we do not already have.
+      const incomingEventIds = sessionHistory.flatMap((entry) =>
+        entry.eventId ? [entry.eventId] : [],
+      );
+      const incomingLegacyTimestamps = sessionHistory.flatMap((entry) =>
+        entry.eventId ? [] : [entry.timestamp],
+      );
+      const [existingEventRows, existingLegacyRows] = await Promise.all([
+        incomingEventIds.length > 0
+          ? db.sessionHistory.where('eventId').anyOf(incomingEventIds).toArray()
+          : [],
+        incomingLegacyTimestamps.length > 0
+          ? db.sessionHistory.where('timestamp').anyOf(incomingLegacyTimestamps).toArray()
+          : [],
+      ]);
       const existingKeys = new Set(
-        (await db.sessionHistory.toArray()).map((s) =>
-          s.eventId ? `event:${s.eventId}` : `legacy:${s.timestamp}:${s.deckId}`,
+        [...existingEventRows, ...existingLegacyRows].map((entry) =>
+          entry.eventId
+            ? `event:${entry.eventId}`
+            : `legacy:${entry.timestamp}:${entry.deckId}`,
         ),
       );
       const toAdd = sessionHistory.flatMap((entry) => {

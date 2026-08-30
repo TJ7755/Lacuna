@@ -19,9 +19,11 @@ import {
   ratchetLessonUnlock,
   recordReview,
   removeTagFromCards,
+  restoreCards,
   rescheduleCards,
   sampleReviewTrajectory,
   setCardsSuspended,
+  snapshotCards,
   undoReview,
   updateCard,
 } from './repository';
@@ -112,7 +114,7 @@ describe('undoReview', () => {
     );
   });
 
-  it('keeps the card projection and canonical event in sync through record and undo', async () => {
+  it('keeps persisted cards compact while record and undo hydrate canonical history', async () => {
     const deck = await createCourse('Review history consistency');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
@@ -130,10 +132,11 @@ describe('undoReview', () => {
 
     const recordedCard = (await db.cards.get(card.id))!;
     const canonical = await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-consistency'));
-    expect(recordedCard.history).toHaveLength(1);
+    expect(recordedCard.history).toEqual([]);
+    expect(result.card.history).toHaveLength(1);
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
     expect(canonical).toMatchObject({
-      ...recordedCard.history[0],
+      ...result.card.history[0],
       cardId: card.id,
       deckId: deck.id,
       schedulingUnitId: deck.id,
@@ -187,8 +190,12 @@ describe('undoReview', () => {
       correct: true,
     });
 
-    expect((await db.cards.get(cardWithHint.id))!.history[0].hintUsed).toBe(true);
-    expect((await db.cards.get(cardWithoutHint.id))!.history[0].hintUsed).toBe(false);
+    expect(
+      (await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-hint')))!.hintUsed,
+    ).toBe(true);
+    expect(
+      (await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-no-hint')))!.hintUsed,
+    ).toBe(false);
   });
 
   it('records machine-awarded marks on the review log', async () => {
@@ -221,7 +228,9 @@ describe('undoReview', () => {
       ],
     });
 
-    expect((await db.cards.get(card.id))!.history[0]).toMatchObject({
+    expect(
+      await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-numeric')),
+    ).toMatchObject({
       grade: 4,
       correct: true,
       marksEarned: 1,
@@ -432,7 +441,9 @@ describe('undoReview', () => {
 
     expect(results.map((result) => result.recorded).sort()).toEqual([false, true]);
     expect((await db.cards.get(card.id))?.reps).toBe(1);
-    expect((await db.cards.get(card.id))?.history).toHaveLength(1);
+    expect((await db.cards.get(card.id))?.history).toEqual([]);
+    expect(results.every((result) => result.card.history.length === 1)).toBe(true);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
     await waitForTrajectorySample('event-replayed');
     expect(await db.sessionHistory.count()).toBe(1);
     expect((await db.schedulingPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
@@ -640,7 +651,7 @@ describe('structured item payload validation', () => {
 
 describe('bulk card actions', () => {
   beforeEach(async () => {
-    await Promise.all([db.schedulingUnits.clear(), db.cards.clear()]);
+    await Promise.all([db.schedulingUnits.clear(), db.cards.clear(), db.reviewHistory.clear()]);
   });
 
   it('suspends and resumes many cards at once', async () => {
@@ -737,6 +748,32 @@ describe('bulk card actions', () => {
 
     await deleteCards([b.id]);
     expect(await db.cards.get(b.id)).toBeUndefined();
+  });
+
+  it('replaces canonical history with the captured card snapshot', async () => {
+    const deck = await createCourse('Snapshot history');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const snapshot = await snapshotCards([card.id]);
+    await db.reviewHistory.add({
+      id: reviewHistoryEntryIdForEvent('event-after-card-snapshot'),
+      eventId: 'event-after-card-snapshot',
+      cardId: card.id,
+      deckId: card.deckId,
+      schedulingUnitId: card.schedulingUnitId,
+      timestamp: 100,
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    });
+
+    await restoreCards(snapshot);
+
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
   });
 
   it('refuses to delete sequence-generated cards', async () => {

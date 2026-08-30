@@ -1,5 +1,6 @@
 import { db } from './schema';
 import {
+  cardsWithReviewHistory,
   resolveReviewHistoryCollisions,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
@@ -82,12 +83,5 @@ export async function hydrateCardsWithHistory(
 ): Promise<Card[]> {
   if (cards.length === 0) return [];
   const entries = await listReviewHistoryForCards(cards, reviewHistory);
-  const byCard = new Map<string, ReviewHistoryEntry[]>();
-  for (const entry of entries) {
-    const history = byCard.get(entry.cardId) ?? [];
-    history.push(entry);
-    byCard.set(entry.cardId, history);
-  }
-
-  return cards.map((card) => ({ ...card, history: byCard.get(card.id) ?? [] }));
+  return cardsWithReviewHistory(cards, entries);
 }

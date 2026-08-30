@@ -23,6 +23,7 @@ import {
 import { MAX_AUDIO_BYTES } from './assets';
 import { createCourse, createLesson } from './repository';
 import { reviewHistoryEntryId } from './reviewHistory';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { assertZipMetadataWithinLimits } from './zipMetadata';
 import * as fflate from 'fflate';
 
@@ -202,7 +203,8 @@ describe('importApkgResult', () => {
       suspended: true,
     });
     expect(persisted?.createdAt).toBe(1_699_000_000_000);
-    expect(persisted).toEqual(returned);
+    expect(persisted?.history).toEqual([]);
+    expect((await hydrateCardsWithHistory([persisted!]))[0]).toEqual(returned);
     expect(await db.courses.get(imported.courseId)).toMatchObject({ name: 'Imported deck' });
     expect(returned).toMatchObject({
       courseId: imported.courseId,
@@ -316,7 +318,9 @@ describe('importApkgResult', () => {
     expect(card.back).toBe(
       `See ![diagram](lacuna-asset://${image!.hash}) and ![audio](lacuna-asset://${audio!.hash})`,
     );
-    expect(await db.cards.get(card.id)).toEqual(card);
+    const persisted = (await db.cards.get(card.id))!;
+    expect(persisted.history).toEqual([]);
+    expect((await hydrateCardsWithHistory([persisted]))[0]).toEqual(card);
   });
 });
 

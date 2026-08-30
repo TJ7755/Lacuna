@@ -13,7 +13,7 @@ import { unzipSync, type Unzipped } from 'fflate';
 import initSqlJs, { type Database } from 'sql.js';
 import type { Card, CardType, ReviewLog } from './types';
 import { makeId, db } from './schema';
-import { reviewHistoryEntriesForCard } from './reviewHistory';
+import { projectCardsForStorage, reviewHistoryEntriesForCard } from './reviewHistory';
 import { sha256Blob } from './assets';
 import { assertZipMetadataWithinLimits } from './zipMetadata';
 import sqlWasmUrl from '../assets/sql-wasm.wasm?url';
@@ -781,8 +781,8 @@ export async function importApkgResult(
         };
       });
       if (scheduledCards.length > 0) {
-        await db.cards.bulkPut(scheduledCards);
         const history = scheduledCards.flatMap((card) => reviewHistoryEntriesForCard(card));
+        await db.cards.bulkPut(projectCardsForStorage(scheduledCards));
         if (history.length > 0) await db.reviewHistory.bulkPut(history);
       }
     },
@@ -800,7 +800,7 @@ export async function importApkgResult(
         rewritten.push(card);
       }
     }
-    if (rewritten.length > 0) await db.cards.bulkPut(rewritten);
+    if (rewritten.length > 0) await db.cards.bulkPut(projectCardsForStorage(rewritten));
   }
 
   return { courseId: courseId!, cards: scheduledCards };

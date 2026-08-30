@@ -44,8 +44,10 @@ import type {
   QuestionDefinition,
 } from '../questions/types';
 import {
-  cardsWithReviewHistory,
+  projectCardForStorage,
+  projectCardsForStorage,
   reviewHistoryEntriesForCard,
+  reviewHistoryEntryForCard,
   reviewHistoryEntryIdForEvent,
   type ReviewHistoryEntry,
 } from './reviewHistory';
@@ -615,6 +617,16 @@ export type CardSnapshot = Card[] & {
   reviewHistory: ReviewHistoryEntry[];
 };
 
+async function replaceReviewHistoryForCards(
+  cardIds: string[],
+  entries: ReviewHistoryEntry[],
+): Promise<void> {
+  if (cardIds.length > 0) {
+    await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
+  }
+  if (entries.length > 0) await db.reviewHistory.bulkPut(entries);
+}
+
 /** Capture card rows and dependent lesson progress before an undoable mutation. */
 export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
   const [cards, lessonCards, lessonCardExposures, reviewHistory] = await Promise.all([
@@ -629,21 +641,20 @@ export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
 /** Re-insert previously captured cards (the inverse of deleteCards). */
 export async function restoreCards(cards: CardSnapshot): Promise<void> {
   try {
-    const cardsToRestore =
-      cards.reviewHistory === undefined
-        ? cards
-        : cardsWithReviewHistory(cards, cards.reviewHistory);
+    const cardsToRestore = projectCardsForStorage(cards);
+    const reviewHistoryToRestore =
+      cards.reviewHistory ?? cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     await db.transaction(
       'rw',
       [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
       async (tx) => {
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(cards.lessonCards);
         await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
-        await db.reviewHistory.bulkPut(
-          cards.reviewHistory ??
-            cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
-        );
         await clearTombstones(
           tx,
           'cards',
@@ -821,7 +832,7 @@ export interface RecordReviewArgs {
 /** The result of recording a review: the updated card plus undo bookkeeping. */
 export interface RecordReviewResult {
   card: Card;
-  /** The exact persisted state before this transition, used by undo. */
+  /** The exact hydrated state before this transition, used by undo. */
   cardBefore: Card;
   /** False when this eventId had already been committed and no state changed. */
   recorded: boolean;
@@ -975,12 +986,13 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         const existingSession = await db.sessionHistory.where('eventId').equals(eventId).first();
         if (existingReview || existingSession) {
           const persistedCard = await db.cards.get(card.id);
-          if (!persistedCard?.history.some((entry) => entry.eventId === eventId)) {
+          if (!persistedCard || existingReview?.cardId !== card.id) {
             throw new Error(`Review event ${eventId} belongs to another attempt.`);
           }
+          const hydratedCard = (await hydrateCardsWithHistory([persistedCard]))[0];
           return {
-            card: persistedCard,
-            cardBefore: persistedCard,
+            card: hydratedCard,
+            cardBefore: hydratedCard,
             recorded: false,
             sessionHistoryId: existingSession?.id,
             kind,
@@ -989,8 +1001,9 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           };
         }
 
-        const cardBefore = await db.cards.get(card.id);
-        if (!cardBefore) throw new Error('The reviewed card no longer exists.');
+        const persistedCardBefore = await db.cards.get(card.id);
+        if (!persistedCardBefore) throw new Error('The reviewed card no longer exists.');
+        const cardBefore = (await hydrateCardsWithHistory([persistedCardBefore]))[0];
 
         // Compute from the transaction's current card, not the caller's potentially
         // stale snapshot. Duplicate detection and the one FSRS transition are atomic.
@@ -1049,15 +1062,8 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         }
 
         const stampedCard = stampUpdatedAt(updatedCard, now);
-        await db.cards.put(stampedCard);
-        const updatedHistory = reviewHistoryEntriesForCard(stampedCard);
-        const reviewHistoryEntry = updatedHistory[updatedHistory.length - 1];
-        if (reviewHistoryEntry) {
-          await db.reviewHistory.put({
-            ...reviewHistoryEntry,
-            id: reviewHistoryEntryIdForEvent(eventId),
-          });
-        }
+        await db.cards.put(projectCardForStorage(stampedCard));
+        await db.reviewHistory.put(reviewHistoryEntryForCard(stampedCard, log));
         if (kind === 'course') {
           const before = await db.courses.get(deck.id);
           lastInteractedAtBefore = before?.lastInteractedAt;
@@ -1104,10 +1110,11 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     const existingSession = await db.sessionHistory.where('eventId').equals(args.eventId).first();
     if (existingReview || existingSession) {
       const persistedCard = await db.cards.get(args.card.id);
-      if (persistedCard?.history.some((entry) => entry.eventId === args.eventId)) {
+      if (persistedCard && existingReview?.cardId === args.card.id) {
+        const hydratedCard = (await hydrateCardsWithHistory([persistedCard]))[0];
         return {
-          card: persistedCard,
-          cardBefore: persistedCard,
+          card: hydratedCard,
+          cardBefore: hydratedCard,
           recorded: false,
           sessionHistoryId: existingSession?.id,
           kind: args.kind ?? 'scheduling-unit',
@@ -1183,7 +1190,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         if (session && session.eventId !== undo.eventId) {
           throw new Error('The review event no longer matches its session history entry.');
         }
-        await db.cards.put(undo.cardBefore);
+        await db.cards.put(projectCardForStorage(undo.cardBefore));
         await restoreReviewUnitPerformance(undo.deckId, undo.perfBefore, undo.kind);
         // Dexie's update() deletes the property when the patch value is undefined, so
         // this also correctly restores "never interacted" (no prior lastInteractedAt).
@@ -1742,10 +1749,10 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
 export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
   try {
     finalAssessmentForCourse(snapshot.course.id, snapshot.courseAssessments);
-    const cardsToRestore =
-      snapshot.reviewHistory === undefined
-        ? snapshot.cards
-        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
+    const cardsToRestore = projectCardsForStorage(snapshot.cards);
+    const reviewHistoryToRestore =
+      snapshot.reviewHistory ??
+      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     for (const assessment of snapshot.courseAssessments) {
       if (assessment.courseId !== snapshot.course.id) {
         throw new Error('A course snapshot cannot contain assessments from another course.');
@@ -1784,6 +1791,10 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.tombstones,
       ],
       async (tx) => {
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await Promise.all([
           db.courses.put(snapshot.course),
           db.lessons.bulkPut(snapshot.lessons),
@@ -1823,10 +1834,6 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.schedulingUnits.bulkPut(snapshot.schedulingUnits),
           db.coursePerformance.bulkPut(snapshot.coursePerformance),
           db.schedulingPerformance.bulkPut(snapshot.schedulingPerformance),
-          db.reviewHistory.bulkPut(
-            snapshot.reviewHistory ??
-              cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
-          ),
           // Drop the old auto-increment ids so Dexie reassigns them cleanly.
           db.sessionHistory.bulkAdd(
             snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
@@ -2096,10 +2103,10 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
 /** Restore a lesson snapshot captured immediately before {@link deleteLesson}. */
 export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
   try {
-    const cardsToRestore =
-      snapshot.reviewHistory === undefined
-        ? snapshot.cards
-        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
+    const cardsToRestore = projectCardsForStorage(snapshot.cards);
+    const reviewHistoryToRestore =
+      snapshot.reviewHistory ??
+      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     await db.transaction(
       'rw',
       [
@@ -2119,6 +2126,10 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.tombstones,
       ],
       async (tx) => {
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await Promise.all([
           db.lessons.put(snapshot.lesson),
           db.notes.bulkPut(snapshot.notes),
@@ -2138,10 +2149,6 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           snapshot.schedulingPerformance
             ? db.schedulingPerformance.put(snapshot.schedulingPerformance)
             : Promise.resolve(),
-          db.reviewHistory.bulkPut(
-            snapshot.reviewHistory ??
-              cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
-          ),
         ]);
         await clearTombstone(tx, 'lessons', snapshot.lesson.id);
         await clearTombstones(

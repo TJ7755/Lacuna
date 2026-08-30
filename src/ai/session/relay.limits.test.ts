@@ -29,7 +29,16 @@ describe('relay AI session bounds', () => {
   });
 
   it('does not grow the browser mailbox beyond its protocol limit', async () => {
-    const { session, relay, crypto, tick } = relaySessionHarness();
+    const instructions = buildAiInstructionBundle({ misconceptionFirstEnabled: true });
+    const { session, relay, crypto, tick } = relaySessionHarness(
+      undefined,
+      () => instructions,
+      {
+        // Persistence is covered by relay.persistence.test.ts. Keeping it out of
+        // this protocol-limit loop prevents measuring 2,000 full snapshot writes.
+        storage: { getItem: () => null, setItem: () => undefined, removeItem: () => undefined },
+      },
+    );
     vi.mocked(relay.peer).mockResolvedValue({
       terminalPublicKey: 'terminal-public',
       client: { name: 'Terminal agent' },

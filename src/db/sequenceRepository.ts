@@ -10,7 +10,7 @@ import type { Card, LessonCardExposure, LessonCardLink, Sequence, SequenceItem }
 import type { Concept } from '../questions/types';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import {
-  cardsWithReviewHistory,
+  projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
 } from './reviewHistory';
@@ -359,10 +359,10 @@ export async function snapshotSequence(id: string): Promise<SequenceSnapshot | n
 /** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
 export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void> {
   try {
-    const cardsToRestore =
-      snapshot.reviewHistory === undefined
-        ? snapshot.cards
-        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
+    const cardsToRestore = projectCardsForStorage(snapshot.cards);
+    const reviewHistoryToRestore =
+      snapshot.reviewHistory ??
+      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     await db.transaction(
       'rw',
       [
@@ -395,10 +395,7 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
-        await db.reviewHistory.bulkPut(
-          snapshot.reviewHistory ??
-            cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
-        );
+        await db.reviewHistory.bulkPut(reviewHistoryToRestore);
         await clearTombstone(tx, 'sequences', snapshot.sequence.id);
         await clearTombstones(
           tx,

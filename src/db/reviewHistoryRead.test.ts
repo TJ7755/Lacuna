@@ -40,7 +40,6 @@ describe('review-history read adapter', () => {
     const deck = await createCourse('Deck');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
     const legacy = review(999);
-    await db.cards.update(card.id, { history: [legacy] });
     await db.reviewHistory.add({
       ...review(100, 'canonical-event'),
       id: 'review:event:canonical-event',
@@ -49,7 +48,7 @@ describe('review-history read adapter', () => {
       schedulingUnitId: card.deckId,
     });
 
-    const events = await listReviewHistoryForCards([(await db.cards.get(card.id))!]);
+    const events = await listReviewHistoryForCards([{ ...card, history: [legacy] }]);
 
     expect(events.map((event) => event.timestamp)).toEqual([100, 999]);
     expect(events[0].eventId).toBe('canonical-event');
@@ -59,7 +58,6 @@ describe('review-history read adapter', () => {
   it('prefers the canonical row over a stale projection for the same event', async () => {
     const deck = await createCourse('Deck');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
-    await db.cards.update(card.id, { history: [review(999, 'same-event')] });
     await db.reviewHistory.add({
       ...review(100, 'same-event'),
       id: reviewHistoryEntryIdForEvent('same-event'),
@@ -68,7 +66,9 @@ describe('review-history read adapter', () => {
       schedulingUnitId: card.deckId,
     });
 
-    const events = await listReviewHistoryForCards([(await db.cards.get(card.id))!]);
+    const events = await listReviewHistoryForCards([
+      { ...card, history: [review(999, 'same-event')] },
+    ]);
 
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
@@ -93,14 +93,14 @@ describe('review-history read adapter', () => {
     expect(canonicalHydrated.history[0].eventId).toBe('canonical-only');
 
     await db.reviewHistory.clear();
-    await db.cards.update(card.id, { history: [review(999, 'projection-only')] });
-    const projectionHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
+    const projectionCard = { ...card, history: [review(999, 'projection-only')] };
+    const projectionHydrated = (await hydrateCardsWithHistory([projectionCard]))[0];
 
     expect(projectionHydrated.history).toHaveLength(1);
     expect(projectionHydrated.history[0].eventId).toBe('projection-only');
 
     const explicitEmptyHydrated =
-      (await hydrateCardsWithHistory([(await db.cards.get(card.id))!], []))[0];
+      (await hydrateCardsWithHistory([projectionCard], []))[0];
     expect(explicitEmptyHydrated.history).toEqual([]);
   });
 
@@ -109,8 +109,6 @@ describe('review-history read adapter', () => {
     const chemistry = await createCourse('Chemistry');
     const biologyCard = await createCourseCard(biology.id, 'front_back', 'Q1', 'A1');
     const chemistryCard = await createCourseCard(chemistry.id, 'front_back', 'Q2', 'A2');
-    await db.cards.update(biologyCard.id, { history: [review(200, 'biology-event')] });
-    await db.cards.update(chemistryCard.id, { history: [review(300, 'chemistry-event')] });
     await db.reviewHistory.bulkAdd([
       {
         ...review(200, 'biology-event'),

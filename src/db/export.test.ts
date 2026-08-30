@@ -11,6 +11,7 @@ import {
   exportReviewHistoryCsv,
   exportReviewHistoryJson,
 } from './export';
+import { reviewHistoryEntryForCard } from './reviewHistory';
 
 async function reset() {
   await Promise.all([
@@ -89,22 +90,20 @@ describe('card exporters: course/lesson naming', () => {
     const course = await createCourse('Physics');
     const lesson = await createLesson(course.id, 'Mechanics');
     const card = await createCourseCard(course.id, 'front_back', 'Q', 'A');
-    await db.cards.update(card.id, {
-      primaryLessonId: lesson.id,
-      history: [
-        {
-          timestamp: Date.now(),
-          grade: 3,
-          responseTimeSec: 5,
-          distracted: false,
-          stabilityBefore: null,
-          stabilityAfter: 1,
-          difficultyBefore: null,
-          difficultyAfter: 5,
-          retrievabilityAtReview: null,
-        },
-      ],
-    });
+    const review = {
+      timestamp: Date.now(),
+      grade: 3 as const,
+      responseTimeSec: 5,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 1,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+    const reviewedCard = { ...card, primaryLessonId: lesson.id, history: [review] };
+    await db.cards.update(card.id, { primaryLessonId: lesson.id });
+    await db.reviewHistory.put(reviewHistoryEntryForCard(reviewedCard, review));
 
     const csv = await exportReviewHistoryCsv();
     expect(csv).toContain('Physics — Mechanics');
@@ -116,29 +115,26 @@ describe('card exporters: course/lesson naming', () => {
   it('review history exporters include the complete non-secret event contract', async () => {
     const deck = await createCourse('Biology');
     const card = await createCard(deck.id, 'front_back', 'Q', 'A');
-    await db.cards.update(card.id, {
-      history: [
-        {
-          eventId: 'event-1',
-          sessionId: 'session-1',
-          sessionKind: 'revision-plan',
-          revisionPlanId: 'plan-1',
-          revisionWindowId: 'window-1',
-          timestamp: 1_725_123_456_789,
-          grade: 2,
-          correct: false,
-          responseTimeSec: 1.25,
-          distracted: true,
-          hintUsed: true,
-          stabilityBefore: 1,
-          stabilityAfter: 2,
-          difficultyBefore: 5,
-          difficultyAfter: 5.5,
-          retrievabilityAtReview: 0.75,
-          fsrsWeightsFingerprint: 'w1:3f2a91c4',
-        },
-      ],
-    });
+    const review = {
+      eventId: 'event-1',
+      sessionId: 'session-1',
+      sessionKind: 'revision-plan' as const,
+      revisionPlanId: 'plan-1',
+      revisionWindowId: 'window-1',
+      timestamp: 1_725_123_456_789,
+      grade: 2 as const,
+      correct: false,
+      responseTimeSec: 1.25,
+      distracted: true,
+      hintUsed: true,
+      stabilityBefore: 1,
+      stabilityAfter: 2,
+      difficultyBefore: 5,
+      difficultyAfter: 5.5,
+      retrievabilityAtReview: 0.75,
+      fsrsWeightsFingerprint: 'w1:3f2a91c4',
+    };
+    await db.reviewHistory.put(reviewHistoryEntryForCard({ ...card, history: [review] }, review));
 
     const csv = await exportReviewHistoryCsv();
     expect(csv).toContain(

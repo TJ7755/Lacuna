@@ -1,9 +1,6 @@
 import type { Card, ReviewLog } from './types';
 
-/**
- * A review event in the canonical append-only history store. The card keeps its
- * legacy `history` projection until the read/write cutover is complete.
- */
+/** A review event in the canonical append-only history store. */
 export interface ReviewHistoryEntry extends ReviewLog {
   /** Stable store primary key. Event-backed rows use the event id directly. */
   id: string;
@@ -13,6 +10,22 @@ export interface ReviewHistoryEntry extends ReviewLog {
   courseId?: string | null;
   primaryLessonId?: string | null;
   schedulingUnitId?: string;
+}
+
+/**
+ * The durable Card projection deliberately excludes review evidence. Runtime
+ * readers hydrate `history` through the canonical review-event store, while
+ * keeping an empty array here preserves the long-standing Card interface for
+ * callers that only need scheduling or authoring fields.
+ */
+export function projectCardForStorage(card: Card): Card {
+  return Array.isArray(card.history) && card.history.length === 0
+    ? card
+    : { ...card, history: [] };
+}
+
+export function projectCardsForStorage(cards: readonly Card[]): Card[] {
+  return cards.map(projectCardForStorage);
 }
 
 /** Stable key for a review written after event ids became mandatory. */
@@ -55,6 +68,22 @@ export function reviewHistoryEntriesForCard(card: Card): ReviewHistoryEntry[] {
       schedulingUnitId: card.schedulingUnitId,
     };
   });
+}
+
+/** Convert one runtime review into its canonical event row. */
+export function reviewHistoryEntryForCard(
+  card: Card,
+  review: ReviewLog,
+): ReviewHistoryEntry {
+  return {
+    ...review,
+    id: reviewHistoryEntryId(card.id, review),
+    cardId: card.id,
+    deckId: card.deckId,
+    courseId: card.courseId,
+    primaryLessonId: card.primaryLessonId,
+    schedulingUnitId: card.schedulingUnitId,
+  };
 }
 
 /**

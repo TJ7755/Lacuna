@@ -226,7 +226,7 @@ describe('useLearnSession answer boundary', () => {
 
     expect(result.current.phase).toBe('question');
     expect(result.current.events.current).toHaveLength(0);
-    expect((await db.cards.get(card.id))?.history).toHaveLength(0);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
     expect(await db.sessionHistory.count()).toBe(0);
   });
 
@@ -327,7 +327,7 @@ describe('useLearnSession answer boundary', () => {
 
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
-    expect((await db.cards.get(card.id))?.history).toHaveLength(1);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
   });
 });
 

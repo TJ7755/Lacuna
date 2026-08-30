@@ -23,9 +23,14 @@ export const BROWSER_PRIVATE_KEY =
   'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgUgOaX_t7p24DbDzab6ZUutaIuZQny6LyFAMdUl7EoS-hRANCAARPmlpc_Do2BXmlkvIW2dZd7lxT8VQEWrsCJDntasxyxJ6Ztfqbd9BQkeJNx-TuG0pzmX4PvYpMaSsg7IFPiTr3';
 export const TERMINAL_PUBLIC_KEY = BROWSER_PUBLIC_KEY;
 
+export interface RelaySessionHarnessOptions {
+  storage?: RelaySessionStorage;
+}
+
 export function relaySessionHarness(
   toolSession?: AiToolSession,
   getInstructions?: () => AiInstructionBundle,
+  options: RelaySessionHarnessOptions = {},
 ) {
   let poll: (() => Promise<void>) | null = null;
   let currentTime = 1_000;
@@ -38,11 +43,12 @@ export function relaySessionHarness(
     revoke: vi.fn().mockResolvedValue(undefined),
   };
   const values = new Map<string, string>();
-  const storage: RelaySessionStorage = {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value),
-    removeItem: (key) => values.delete(key),
-  };
+  const storage: RelaySessionStorage =
+    options.storage ?? {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    };
   const encryptionKey = {} as CryptoKey;
   const crypto: RelaySessionCrypto = {
     createKeyPair: vi
@@ -96,10 +102,15 @@ export async function runScheduled(
 }
 
 function envelope(value: JsonValue): RelayEnvelope {
+  // The harness never opens envelopes produced by this mock: tests inspect the
+  // value passed to seal and provide their own opened mailboxes. Avoid encoding
+  // the complete mailbox here, otherwise filling the 2,000-entry limit turns a
+  // fixture detail into an accidental quadratic serialisation benchmark.
+  void value;
   return {
     version: 1,
     nonce: btoa('nonce-12byte').replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, ''),
-    ciphertext: btoa(JSON.stringify(value).padEnd(16, '.'))
+    ciphertext: btoa('fixture-ciphertext')
       .replaceAll('+', '-')
       .replaceAll('/', '_')
       .replace(/=+$/, ''),

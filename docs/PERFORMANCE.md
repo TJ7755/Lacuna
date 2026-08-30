@@ -1,6 +1,50 @@
 # Lacuna performance audit
 
-Record of the performance audit performed on 11 Aug 2026 (read-only; no code changed). All file:line references were verified against the source tree and the production build at that date.
+Record of the original read-only audit on 11 August 2026 and the production
+follow-ups measured against later builds. Historical figures remain below so
+regressions are compared with the work that actually ran at the time.
+
+## First-load and network follow-up (30 August 2026)
+
+Fresh `master` had regressed to four initial JavaScript assets: the 967,691-byte
+application entry, 399,386-byte vendor chunk, 416,648-byte charts chunk and
+777,820-byte Markdown chunk. The generated HTML also referenced the optional
+29,290-byte Markdown stylesheet. That was 2,561,545 raw JavaScript bytes before
+the user had asked for a chart, Markdown rendering or AI.
+
+The follow-up restores the intended boundaries without changing UI, motion or AI
+lifecycle behaviour:
+
+- the disabled relay runtime is behind an enabled-only dynamic import, and the AI
+  panel (including Markdown, KaTeX and syntax highlighting) is fetched only when
+  the panel opens;
+- automatic sync installs after application readiness as a 2,404-byte lazy
+  trigger. Pairing, backup validation, math verification and charts are no longer
+  fetched by that trigger unless remembered credentials exist and a sync runs;
+- the schema-v24 question migration loads its expression verifier only while that
+  upgrade runs. `Dexie.waitFor` keeps the version-change transaction alive across
+  the dynamic import;
+- Workbox precaches only the application shell. Content-addressed scripts and the
+  hosted font stylesheet use bounded cache-first runtime caches, avoiding pointless
+  repeat revalidation while retaining the complete hosted font language coverage.
+
+| Production measurement | Fresh `master` | After follow-up | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 863,072 / 264,211 gz | -66.3% raw / -64.7% gz |
+| Initial CSS | 148,744 bytes | 119,454 / 17,533 gz | -29,290 bytes |
+| PWA install precache | 1,519.50 KiB | 998.47 KiB | -521.03 KiB |
+
+The generated HTML now references only `app` and `vendor` JavaScript plus the
+base stylesheet. Charts, Markdown JavaScript and Markdown CSS remain lazy. The
+application entry is 462,755 bytes; `vendor` is 400,317 bytes.
+
+`bun run perf:check` enforces 900,000 raw / 280,000 gzip initial JavaScript and
+130,000 raw / 22,000 gzip initial CSS budgets, and rejects eager `charts-*` or
+`markdown-*` references. Run it after `bun run build`. The repaired full audit on
+this branch measured 10,000-card `selectNext` and `sessionComplete` medians of
+15.45 ms and 16.00 ms; one `recordReview` call measured 13.82 ms at 500 cards,
+6.05 ms at 2,000 cards and 29.04 ms at 10,000 cards. The separate once-daily
+10,000-card sample measured 83.68 ms in fake IndexedDB.
 
 ## Baseline (production build, 11 Aug 2026)
 
@@ -116,9 +160,10 @@ day per unit.
   on the main thread. KaTeX CSS is loaded with the lazy Markdown chunk rather than
   on the initial page.
 
-The remaining retention findings are deliberately deferred: pruning the compatible
-`Card.history` projection, choosing a `sessionHistory` horizon, and changing
-whole-table import/merge materialisation all alter storage or analytics semantics.
+The review-history storage cutover is now complete. Schema v26 verifies every legacy inline event
+in the canonical store before clearing `Card.history`, and a Card-table write hook prevents
+restores or imports from resurrecting it. No `sessionHistory` horizon was invented: analytics now
+materialises only its exact last-sample-per-day projection while retaining every stored row.
 
 ## Findings by area
 
@@ -149,11 +194,20 @@ whole-table import/merge materialisation all alter storage or analytics semantic
 
 ### 4. Memory and retention
 
-- **`card.history` grows forever** (`src/db/repository.ts:773`, `history: [...cardBefore.history, log]`). Every review appends a ~25-field `ReviewLog` to the card row. This is the master multiplier: it inflates the cards table, every full-table read (dashboard/search/analytics/learn), and every backup snapshot. At 10k cards × 100 reviews, a full-table load exceeds 400 MB in JS heap.
-- **`sessionHistory` is unbounded** (`src/db/schema.ts`) and re-read wholesale by Analytics (`src/pages/Analytics.tsx:71`, `src/components/analytics/prepare.ts`).
-- **Auto-backups retain 10 full-DB snapshots** (`src/db/backups.ts:88-117`), each containing all history arrays. The folder mirror is now pruned to the same ten Lacuna backup files without touching unrelated files.
+- **Inline review-history multiplication is fixed.** Card rows, full backups and encrypted peer
+  snapshots now keep `history: []`; canonical `reviewHistory` rows carry the evidence once. Runtime
+  Cards are hydrated through the existing read seam, so study, analytics, optimisation and exports
+  retain their previous interface without loading duplicate copies from IndexedDB.
+- **`sessionHistory` remains unbounded by design**, but Analytics no longer re-reads it into an
+  array merely to discard repeated same-day points. Cursor-backed readers retain the last point per
+  day (and per Course globally), which is exactly the chart's existing projection.
+- **Auto-backups retain 10 full-DB snapshots**, now without duplicated Card history arrays. The
+  folder mirror remains pruned to the same ten Lacuna backup files without touching unrelated files.
 - **The alleged single-deck load is not a defect.** The no-course/no-lesson path is the deliberate cross-course “Review today” session, so it must consider all cards. Course and lesson sessions already use their scoped card queries.
-- **Import/backup-merge materialises whole tables into Maps** (`src/db/portability.ts:582-631`) inside one transaction — ≥2× live data transiently.
+- **Recovery merge session deduplication is scoped.** It queries only event ids and legacy
+  timestamps present in the incoming backup instead of materialising the whole local
+  `sessionHistory` table. Other course/content merge maps still scale with their participating
+  tables; changing those semantics remains separate work.
 - **`useVirtualList` now removes callbacks and disconnects observers when rows unmount.**
 - **Share workers now terminate after the final concurrent job settles**, including error and timeout paths.
 - **Confirmed clean** (do not touch): assetCache is a bounded 200-entry LRU with URL revocation; MarkdownView's HTML cache is a bounded 600-entry LRU with TTL; every `addEventListener` has a matching removal; sql.js runs only inside `apkg.worker`; Apkg/optimise workers terminate on all paths; QR camera streams stop on unmount; PWA caches are all bounded.
@@ -178,10 +232,11 @@ Ordered by impact per effort.
 | Done | Remove phone-visible chart, blur, layout and image costs; prefetch route chunks and combine Sidebar reads | UI routes and Sidebar | Reduces first paint, scroll paint and review-adjacent work |
 | Done | Isolate Pomodoro, virtual-list, share-worker and MCP background work | hooks, workers and settings | Removes invisible but persistent timers, registries and worker lifetimes |
 | Done | Split mathjs/MCP/Markdown/Share optional work from initial bundles | App.tsx, vite.config.ts, MarkdownView.tsx, shareCodec.ts | Initial CSS fell to 107,735 bytes; share worker to 3,813 bytes |
-| Deferred | Decide retention for `Card.history` and `sessionHistory` and reduce import/merge peak memory | repository.ts, schema.ts, portability.ts | Requires storage and analytics semantics, not another opportunistic cache |
+| Done | Remove persisted `Card.history`, preserve legacy import and project daily analytics reads | reviewHistory, schema, portability, sync and state reads | Removes the dominant storage/network multiplier without discarding evidence or changing charts |
 
 ## Scale verdict
 
 - **Today (≤2–5k cards):** the phone-visible review path no longer carries the aggregate scan, per-second persistence or redundant Sidebar reads. Optional charts, Markdown and worker code stay off first paint.
-- **10k cards:** a single objective session selection/completion measured 13.31/12.48 ms, and one `recordReview` measured 16.48 ms. Inline history retention and multi-unit scoring remain the material costs.
-- **100k cards:** inline history and whole-table live-query/merge paths remain a hard ceiling. A retention and storage-projection decision is required before claiming support at that scale.
+- **10k cards:** a single objective session selection/completion measured 13.31/12.48 ms, and one `recordReview` measured 16.48 ms. Multi-unit scoring and canonical event volume remain the material costs.
+- **100k cards:** the former inline-history multiplier is gone, but whole-table content merge and
+  all-history analytics/calibration paths remain a ceiling. This work does not claim 100k-card support.

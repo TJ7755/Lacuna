@@ -318,7 +318,8 @@ describe('exportDatabase', () => {
     expect(backup.reviewHistory).toEqual([
       expect.objectContaining({ id: reviewHistoryEntryIdForEvent('event-portability') }),
     ]);
-    expect(backup.cards[0].history[0]).toEqual(
+    expect(backup.cards[0].history).toEqual([]);
+    expect(backup.reviewHistory![0]).toEqual(
       expect.objectContaining({
         eventId: 'event-portability',
         sessionId: 'session-portability',
@@ -352,7 +353,13 @@ describe('exportDatabase', () => {
     await importBackup(backup, 'replace');
 
     const restored = await db.cards.toArray();
-    expect(restored[0].history[0]).toEqual(backup.cards[0].history[0]);
+    expect(restored[0].history).toEqual([]);
+    const hydrated = (await hydrateCardsWithHistory(restored))[0];
+    expect(hydrated.history[0]).toMatchObject({
+      eventId: 'event-portability',
+      revisionPlanId: 'plan-1',
+      revisionWindowId: 'window-1',
+    });
     expect(
       await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-portability')),
     ).toBeDefined();
@@ -422,8 +429,8 @@ describe('exportDatabase', () => {
       const restoredCard = (await db.cards.get(card.id))!;
       const restoredEvents = await db.reviewHistory.where('cardId').equals(card.id).toArray();
       const hydrated = (await hydrateCardsWithHistory([restoredCard]))[0];
-      expect(restoredCard.history).toEqual(exportedCard.history);
-      expect(restoredCard.history).toHaveLength(1);
+      expect(exportedCard.history).toEqual([]);
+      expect(restoredCard.history).toEqual([]);
       expect(restoredEvents).toHaveLength(1);
       expect(restoredEvents[0]).toMatchObject({
         ...exportedEvent,

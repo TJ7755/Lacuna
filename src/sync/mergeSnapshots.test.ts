@@ -267,7 +267,7 @@ describe('mergeSnapshots', () => {
     expect(merged.cards[0].due).toBe(expected.due);
     expect(merged.cards[0].state).toBe(expected.state);
     expect(merged.cards[0].lastReviewed).toBe(expected.lastReviewed);
-    expect(merged.cards[0].history.map((entry) => entry.eventId)).toEqual(['e1', 'e2']);
+    expect(merged.cards[0].history).toEqual([]);
   });
 
   it('honours a delete when the other device has not touched the row', () => {
@@ -380,7 +380,7 @@ describe('mergeSnapshots', () => {
     const merged = expectPeerProperties(a, b);
     expect(merged.reviewHistory).toHaveLength(1);
     expect(merged.reviewHistory[0].id).toBe(reviewHistoryEntryId('c1', legacy));
-    expect(reviewHistoryEntriesForCard(merged.cards[0])).toHaveLength(1);
+    expect(reviewHistoryEntriesForCard(merged.cards[0])).toHaveLength(0);
   });
 
   it('unions sessionHistory by eventId and keeps two same-day samples', () => {

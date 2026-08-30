@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db, readAllDataFromVersion } from './schema';
 
-describe('schema v25 agent memories', () => {
+describe('schema v25 agent memories through the current schema', () => {
   beforeEach(async () => {
     db.close();
     await db.delete();
@@ -14,7 +14,7 @@ describe('schema v25 agent memories', () => {
 
   it('adds the indexed memory store and includes it in migration snapshots', async () => {
     await db.open();
-    expect(db.verno).toBe(25);
+    expect(db.verno).toBe(26);
     expect(db.agentMemories.schema.indexes.map((index) => index.name)).toEqual(
       expect.arrayContaining(['courseId', 'status', 'updatedAt', 'tags']),
     );
@@ -31,7 +31,7 @@ describe('schema v25 agent memories', () => {
     });
     db.close();
 
-    const snapshot = await readAllDataFromVersion('lacuna', 25);
+    const snapshot = await readAllDataFromVersion('lacuna', 26);
     expect(snapshot.agentMemories).toEqual([expect.objectContaining({ id: 'memory-1' })]);
   });
 });

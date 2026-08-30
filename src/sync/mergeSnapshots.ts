@@ -33,6 +33,7 @@ import type {
 import {
   cardsWithReviewHistory,
   mergeReviewHistoryEntries,
+  projectCardsForStorage,
   type ReviewHistoryEntry,
 } from '../db/reviewHistory';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
@@ -278,7 +279,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     app: 'lacuna',
     version: 11,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
-    cards: sortById(replayedCards),
+    cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),
     schedulingUnits: sortById(schedulingUnits),
     coursePerformance: sortBy(coursePerformance, coursePerfId),

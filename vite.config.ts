@@ -13,12 +13,19 @@ const crossOriginIsolationHeaders = {
 export const workbox = {
   // Precache only the application shell. Lazy routes and their large optional
   // assets are cached when visited instead of all being downloaded on install.
-  globPatterns: ['**/*.{html,css,ico,png,svg}', 'assets/{app,vendor}-*.js'],
+  globPatterns: [
+    '**/*.{html,ico,png,svg}',
+    'assets/index-*.css',
+    'assets/{app,vendor}-*.js',
+  ],
   runtimeCaching: [
     {
-      urlPattern: ({ request }: { request: Request }) =>
-        request.destination === 'script' || request.destination === 'worker',
-      handler: 'StaleWhileRevalidate' as const,
+      urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+        (request.destination === 'script' || request.destination === 'worker') &&
+        /^\/assets\/.+-[A-Za-z0-9_-]{8}\.js$/.test(url.pathname),
+      // Production scripts are content-addressed. Revalidating an immutable URL
+      // on every visit spends bandwidth without any possibility of fresher bytes.
+      handler: 'CacheFirst' as const,
       options: {
         cacheName: 'script-cache',
         expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
@@ -31,6 +38,17 @@ export const workbox = {
       options: {
         cacheName: 'font-cache',
         expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+    {
+      // Keep the hosted stylesheet so the full Google Fonts language coverage
+      // remains intact without another third-party request on repeat launches.
+      urlPattern: ({ url }: { url: URL }) => url.origin === 'https://fonts.googleapis.com',
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'font-stylesheet-cache',
+        expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 365 },
         cacheableResponse: { statuses: [0, 200] },
       },
     },
@@ -139,8 +157,8 @@ export default defineConfig({
             return 'markdown';
           }
           if (
-            ['react', 'react-dom', 'react-router-dom', 'motion'].some((packageName) =>
-              id.includes(`/node_modules/${packageName}/`),
+            ['react', 'react-dom', 'react-router-dom', 'motion', '@babel/runtime'].some(
+              (packageName) => id.includes(`/node_modules/${packageName}/`),
             )
           ) {
             return 'vendor';

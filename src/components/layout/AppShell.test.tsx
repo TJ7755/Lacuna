@@ -182,7 +182,7 @@ describe('AppShell mobile navigation', () => {
 });
 
 describe('AppShell AI workspace', () => {
-  it('shows the activity capsule only while the full conversation is closed', () => {
+  it('shows the activity capsule only while the full conversation is closed', async () => {
     aiSessionState.current = createInMemoryAiSession({
       run: {
         runId: 'run-1',
@@ -205,7 +205,7 @@ describe('AppShell AI workspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'AI' }));
 
-    expect(screen.getByLabelText('AI conversation')).toBeInTheDocument();
+    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'AI activity' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
@@ -239,7 +239,7 @@ describe('AppShell AI workspace', () => {
     expect(capsule.parentElement).toHaveAttribute('inert');
   });
 
-  it('opens beside a forced navigation rail and restores focus when closed', () => {
+  it('opens beside a forced navigation rail and restores focus when closed', async () => {
     vi.mocked(window.matchMedia).mockImplementation((query) => ({
       matches: query === '(min-width: 1024px)' || query === '(min-width: 1280px)',
       media: query,
@@ -256,7 +256,7 @@ describe('AppShell AI workspace', () => {
     trigger.focus();
     fireEvent.click(trigger);
 
-    expect(screen.getByLabelText('AI conversation')).toBeInTheDocument();
+    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
     expect(trigger.closest('aside')).toHaveAttribute('data-collapsed', 'true');
 
     const close = screen.getByRole('button', { name: 'Close AI' });
@@ -317,7 +317,7 @@ describe('AppShell AI workspace', () => {
     }));
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-    expect(screen.getByLabelText('AI conversation')).toBeInTheDocument();
+    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
 
     mediaQueryState.aiDesktop = false;
     fireEvent.click(screen.getByRole('button', { name: 'Navigate page' }));

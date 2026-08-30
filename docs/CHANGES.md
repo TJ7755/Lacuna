@@ -1,7 +1,73 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — first-load and network performance
+
+- Contained a failed lazy AI-panel download inside the workspace so the shell and
+  learner's current page remain usable, with a native Close control. Remembered
+  sync startup now also contains a failed pairing-module download instead of
+  producing an unhandled rejection.
+- Restored the production lazy boundaries for charts and Markdown, and moved the
+  disabled AI relay runtime plus the AI conversation panel behind their actual use
+  conditions. Existing panel motion, visual treatment and AI session lifecycle are
+  unchanged.
+- Stopped automatic sync startup from fetching pairing, backup validation, math
+  verification and charts on an unpaired device. Remembered startup, focus and
+  completed-study triggers still use the same sync path when credentials exist,
+  and re-check the credential generation after the lazy module loads so Lock or
+  replacement cannot use a stale bearer capability.
+- Loaded the schema-v24 question migration only while that upgrade runs, using
+  `Dexie.waitFor` so the version-change transaction remains valid.
+- Reduced the initial production JavaScript from 2,561,545 raw bytes to 863,072
+  (264,211 gzip), removed 29,290 bytes of optional CSS from first load and reduced
+  the PWA install precache from 1,519.50 KiB to 998.47 KiB.
+- Added enforceable initial-asset budgets and repaired the performance audit for
+  the current Course and scheduling-unit APIs. Content-hashed scripts and the
+  hosted font stylesheet now use bounded cache-first runtime caches.
+
+## Unreleased — CI and test throughput
+
+- Split the root unit suite into four one-worker CI shards, with coverage retained as one separate
+  job and the existing `test` check kept as an aggregate gate. Local Vitest defaults remain serial.
+- Removed full typechecking from CI asset builds through the new `build:assets` script; the ordinary
+  `bun run build` command still typechecks before building. Playwright uses that asset-only build and
+  two isolated workers in CI while remaining serial for local runs.
+- Made the 2,000-entry relay bounds fixture linear by using a fixed mock envelope, cached instruction
+  data and a no-op storage adapter; persistence coverage remains in the dedicated persistence tests.
+- Restricted workflow tokens to read-only repository contents and made the aggregate `test` check
+  fail closed when either its unit shards or coverage job fails.
+
+## Unreleased — canonical review-history storage cutover
+
+- Added schema v26. Its atomic migration copies and verifies every remaining inline Card review
+  before clearing the duplicate projection; a failed canonical write leaves the v25 database and
+  source history unchanged. The existing pre-migration restore-point gate now covers this cutover.
+- Made the Card-table write hook the single storage seam for compact Card rows. Review writes and
+  undo still return fully hydrated Cards, while repository snapshots, APKG imports, backup replace/
+  merge and generated-card restores cannot reintroduce an expanding inline history array.
+- Current full backups and encrypted peer snapshots carry review evidence once in canonical
+  `reviewHistory`; compact Card rows retain `history: []`. Old inline-only backup, APKG and peer
+  inputs remain accepted and are canonicalised before storage.
+- Replaced Analytics' whole-array `sessionHistory` reads with cursor-backed daily projections that
+  produce exactly the same last-point-per-day chart input without deleting stored evidence.
+  Recovery-merge deduplication now queries only incoming event ids and legacy timestamps instead of
+  materialising the entire local session table.
+- Corrected Card hydration to remove canonical row metadata (`id`, ownership and scheduling keys)
+  from runtime `ReviewLog` values rather than leaking IndexedDB fields through the Card interface.
+- Made Card, Course and Lesson snapshot restoration replace the restored Cards' canonical review
+  rows atomically, so events written after the snapshot cannot survive an undo. Schema v26 also
+  normalises missing or malformed legacy Card history projections to an empty stored array.
+
+**Checks:** schema migration and rollback, review/undo, backup replace/merge, Course/Lesson/
+generated-card snapshots, APKG legacy import, peer merge, daily analytics projection, typecheck,
+lint and the full test suite.
+
 ## Unreleased — AI connection health
 
+- A relay pairing request that finishes after AI is disabled now starts contained
+  best-effort revocation. Cleanup is detached from the serialised session queue, so
+  an unavailable relay cannot block a later connection attempt. The remote bearer
+  session cannot be published locally after disposal wins the race and is revoked
+  when the relay remains available.
 - Corrected the companion README's obsolete claim that durable learner memories were not
   implemented; schema-v25 memories already use the scoped domain-tool path.
 - Added throttled terminal heartbeats to the existing encrypted mailbox protocol. Repeated bounded

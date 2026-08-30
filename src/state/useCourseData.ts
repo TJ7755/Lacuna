@@ -5,6 +5,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listReviewHistoryForCourse } from '../db/reviewHistoryRead';
+import { listCourseDailySessionHistory } from '../db/sessionHistoryRead';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type {
   Card,
@@ -260,7 +261,7 @@ export function useCourseSessionHistory(
 ): SessionHistoryEntry[] | undefined {
   return useLiveQuery(
     () =>
-      courseId ? db.sessionHistory.where('courseId').equals(courseId).sortBy('timestamp') : [],
+      courseId ? listCourseDailySessionHistory(courseId) : [],
     [courseId],
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Sidebar } from './Sidebar';
@@ -20,7 +20,10 @@ import { useAiSettings } from '../../ai/settings';
 import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AiActivityCapsule } from '../ai/AiActivityCapsule';
-import { AiPanel } from '../ai/AiPanel';
+import { loadAiPanel } from '../ai/loaders';
+import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
+
+const AiPanel = lazy(loadAiPanel);
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
@@ -250,7 +253,11 @@ export function AppShell() {
               transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
               className="hidden shrink-0 overflow-hidden lg:block"
             >
-              <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
+              <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
+                <Suspense fallback={null}>
+                  <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
+                </Suspense>
+              </AiPanelLoadBoundary>
             </motion.div>
           )}
         </AnimatePresence>

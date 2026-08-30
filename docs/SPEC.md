@@ -726,7 +726,7 @@ Schema **v12** adds `lessonCardExposures`, `lessonCompletions`, `noteAnnotations
 Linked rows are not backfilled because the old display-only link proves nothing about where
 the card was taught.
 
-### Review history (schema v20)
+### Review history (schemas v20 and v26)
 
 Schema **v20** adds the canonical `reviewHistory` store, indexed by
 `id, cardId, deckId, courseId, primaryLessonId` and `timestamp`. A `ReviewHistoryEntry`
@@ -734,13 +734,14 @@ extends `ReviewLog` with its stable store id and card/course ownership. The migr
 every existing `Card.history` row, including legacy entries without an `eventId`, using a
 deterministic id with collision handling; it does not prune or discard history.
 
-New review writes, undo, snapshots, import and course/sequence/occlusion restore paths keep
-the canonical store in sync while retaining `Card.history` as a compatibility projection.
-Readers hydrate cards from the canonical rows and preserve legacy-only projection rows during
-compatibility reads. When a caller supplies an explicit canonical result, including an empty one,
-that result is authoritative and stale projection rows are not resurrected. Full backups carry
-`reviewHistory` explicitly as well as the card projection, so review history remains recoverable
-across export, restore and merge.
+Schema **v26** completes the cutover. Its atomic upgrade copies and verifies every remaining
+inline event before clearing the duplicate `Card.history` arrays. The Card-table write hook keeps
+the stored projection empty across ordinary writes, restores, imports and generated-card modules.
+Runtime readers still return the same hydrated `Card.history` interface from canonical rows, and
+legacy backup, peer and APKG inputs may still supply inline-only events at the import seam. An
+explicit canonical result, including an empty one, remains authoritative. Current backups and peer
+snapshots carry each event once in `reviewHistory`; their Card rows carry an empty `history` array.
+No event is pruned or compacted by this cutover.
 
 ### Concepts and Questions (schema v24)
 
@@ -1017,8 +1018,9 @@ history[], createdAt`
   `lastReviewed`, `due` are all `null` until the first review.
 - `reps, lapses, state, scheduledDays, learningSteps, due` mirror ts-fsrs's card fields.
   `state in {0 New, 1 Learning, 2 Review, 3 Relearning}`.
-- `history[]` is the compatibility projection of the canonical schema-v20 `reviewHistory`
-  rows. It contains `ReviewLog` entries (timestamp, grade, responseTimeSec, distracted,
+- `history[]` is a runtime projection hydrated from canonical schema-v20 `reviewHistory` rows;
+  schema v26 Card rows and current portability payloads store it as an empty array. It contains
+  `ReviewLog` entries (timestamp, grade, responseTimeSec, distracted,
   stability/difficulty before+after, retrievabilityAtReview|null, session/revision provenance,
   and optional legacy machine-awarded `marksEarned`/`marksAvailable`, line verdicts and checker
   disputes for structured Cards that pre-date v24).
@@ -1028,9 +1030,12 @@ history[], createdAt`
 ### SessionHistoryEntry
 
 `{ id?, eventId?, sessionId?, revisionPlanId?, revisionWindowId?, timestamp, deckId, courseId?,
-averagePredictedRetrievability }` — written **per answered card**; analytics aggregate to the
-last snapshot per calendar day to plot the trajectory. The event/session and revision fields
-preserve provenance for ordinary and assessment-revision sessions.
+averagePredictedRetrievability }` — the current review path samples asynchronously at most once per
+local calendar day per review unit. Legacy and imported databases may contain per-answer rows.
+Analytics traverses every retained row but materialises only the last sample per local day for a
+Course chart, and the last sample per local day and Course for the global chart. The underlying rows
+remain unpruned. Event/session and revision fields preserve ordinary and assessment-revision
+provenance.
 
 ### UserPerformance (transitional calibration profile)
 
@@ -1071,7 +1076,8 @@ courseAssessments?, revisionPlans?, sequences?, occlusions?, concepts, questions
 questionConcepts, questionAttempts, courseExamDates? }` — the
   shape of both manual exports and snapshot payloads. Current exports include canonical
   `reviewHistory`, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions` and all four
-  Question collections; the
+  Question collections. Current `cards` carry an empty `history` projection; legacy inline history
+  remains accepted and is normalised into `reviewHistory` before storage. The
   legacy `courseExamDates` field is accepted for old imports but is never emitted. `noteAnnotations`
   and lineage merge state are deliberately absent. `version` is the portability format version
   (currently 11), not the Dexie schema version. Current exports require the Question arrays; older
@@ -1952,8 +1958,8 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 
-- **Export:** versioned JSON portable snapshot (`BackupFile`: decks, cards, canonical
-  `reviewHistory` plus the compatibility card projection, referenced image/audio assets,
+- **Export:** versioned JSON portable snapshot (`BackupFile`: decks, compact Card rows, canonical
+  `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
   progress, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions`, `concepts`,
   `questions`, `questionConcepts` and `questionAttempts`). Backups are

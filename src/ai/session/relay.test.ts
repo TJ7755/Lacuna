@@ -51,6 +51,81 @@ describe('relay AI session connection lifecycle', () => {
     expect(timers.repeat).toHaveBeenCalledOnce();
   });
 
+  it('revokes a remote pairing session created after local disposal wins', async () => {
+    const { session, relay, storage } = relaySessionHarness();
+    let releaseCreate!: (created: typeof CREATED) => void;
+    vi.mocked(relay.create).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseCreate = resolve;
+        }),
+    );
+
+    const pairing = session.pair();
+    await vi.waitFor(() => expect(relay.create).toHaveBeenCalledOnce());
+    session.dispose();
+    releaseCreate(CREATED);
+
+    await expect(pairing).resolves.toEqual({
+      ok: false,
+      error: { kind: 'unavailable', message: 'AI connection was reset.' },
+    });
+    expect(relay.revoke).toHaveBeenCalledWith({
+      sessionId: CREATED.sessionId,
+      browserToken: CREATED.browserToken,
+    });
+    expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
+    expect(storage.getItem('lacuna-ai-relay-session-v1')).toBeNull();
+  });
+
+  it('does not block later pairing while cancelled-session revocation is pending', async () => {
+    const { session, relay } = relaySessionHarness();
+    const replacementCreated = {
+      ...CREATED,
+      sessionId: 'B'.repeat(20),
+      pairingCode: 'BBBB-BBBB-BBBB-BBBB-BBBB',
+    };
+    let releaseCreate!: (created: typeof CREATED) => void;
+    vi.mocked(relay.create)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseCreate = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(replacementCreated);
+    let rejectRevoke!: (error: unknown) => void;
+    vi.mocked(relay.revoke).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRevoke = reject;
+        }),
+    );
+
+    const cancelledPairing = session.pair();
+    await vi.waitFor(() => expect(relay.create).toHaveBeenCalledOnce());
+    session.dispose();
+    releaseCreate(CREATED);
+    await vi.waitFor(() => expect(relay.revoke).toHaveBeenCalledOnce());
+
+    const replacementPairing = session.pair();
+    await vi.waitFor(() => expect(relay.create).toHaveBeenCalledTimes(2));
+    await expect(cancelledPairing).resolves.toEqual({
+      ok: false,
+      error: { kind: 'unavailable', message: 'AI connection was reset.' },
+    });
+    await expect(replacementPairing).resolves.toEqual({
+      ok: true,
+      data: {
+        code: replacementCreated.pairingCode,
+        expiresAt: replacementCreated.expiresAt,
+      },
+    });
+
+    rejectRevoke(new Error('Relay unavailable'));
+    await Promise.resolve();
+  });
+
   it('expires an unclaimed pairing code without discarding the persisted transcript', async () => {
     const { session, relay, storage, crypto, timers, tick, setNow, cancelPolling } =
       relaySessionHarness();
