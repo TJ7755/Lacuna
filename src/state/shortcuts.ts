@@ -16,8 +16,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Anywhere',
     shortcuts: [
-      { keys: ['Ctrl/Cmd', 'K'], description: 'Open the command palette' },
-      { keys: ['/'], description: 'Jump to search' },
+      { keys: ['Ctrl/Cmd', 'K'], description: 'Open quick search' },
+      { keys: ['/'], description: 'Open Search content' },
       { keys: ['?'], description: 'Show this help' },
     ],
   },

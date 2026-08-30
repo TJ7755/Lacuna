@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
@@ -27,6 +27,9 @@ const {
   mockCreatePracticeNode,
   mockUpdatePracticeNode,
   mockDeletePracticeNode,
+  mockCreateCourseAssessment,
+  mockUpdateCourseAssessment,
+  mockDeleteCourseAssessment,
   mockReorderLessons,
   mockLessonViewProps,
 } = vi.hoisted(() => ({
@@ -35,6 +38,9 @@ const {
   mockCreatePracticeNode: vi.fn(),
   mockUpdatePracticeNode: vi.fn(),
   mockDeletePracticeNode: vi.fn(),
+  mockCreateCourseAssessment: vi.fn(),
+  mockUpdateCourseAssessment: vi.fn(),
+  mockDeleteCourseAssessment: vi.fn(),
   mockReorderLessons: vi.fn(),
   mockLessonViewProps: vi.fn(),
 }));
@@ -108,6 +114,9 @@ vi.mock('../db/repository', () => ({
   createPracticeNode: mockCreatePracticeNode,
   updatePracticeNode: mockUpdatePracticeNode,
   deletePracticeNode: mockDeletePracticeNode,
+  createCourseAssessment: mockCreateCourseAssessment,
+  updateCourseAssessment: mockUpdateCourseAssessment,
+  deleteCourseAssessment: mockDeleteCourseAssessment,
   reorderLessons: mockReorderLessons,
 }));
 
@@ -259,13 +268,30 @@ beforeEach(() => {
   mockUpdateCourse.mockReset();
   mockUpdateCourse.mockResolvedValue(undefined);
   mockCreatePracticeNode.mockReset();
+  mockCreatePracticeNode.mockResolvedValue(undefined);
   mockUpdatePracticeNode.mockReset();
   mockDeletePracticeNode.mockReset();
+  mockCreateCourseAssessment.mockReset();
+  mockCreateCourseAssessment.mockResolvedValue(undefined);
+  mockUpdateCourseAssessment.mockReset();
+  mockUpdateCourseAssessment.mockResolvedValue(undefined);
+  mockDeleteCourseAssessment.mockReset();
+  mockDeleteCourseAssessment.mockResolvedValue(undefined);
   mockReorderLessons.mockReset();
   mockLessonViewProps.mockReset();
 });
 
-describe('CoursePath Read mode', () => {
+describe('CoursePath Study mode', () => {
+  it('offers one explicit Author mode beside the course sections', () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
+    expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
   it('starts course-wide practice from the header', () => {
     const card = makeCard('card-1', 'lesson-1');
     mockCourseCards = [card];
@@ -291,7 +317,11 @@ describe('CoursePath Read mode', () => {
     renderPage();
     await waitFor(() => {
       expect(mockLessonViewProps).toHaveBeenCalledWith(
-        expect.objectContaining({ practiceNowEnabled: true }),
+        expect.objectContaining({
+          practiceNowEnabled: true,
+          onAddPractice: expect.any(Function),
+          onAddCheckpoint: expect.any(Function),
+        }),
       );
     });
   });
@@ -331,18 +361,267 @@ describe('CoursePath Read mode', () => {
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
+
+  it('hides path-authoring actions', () => {
+    renderPage();
+
+    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a locked distributed copy in Study mode across every path authoring gate', () => {
+    mockCourse = {
+      ...course,
+      lessonViewMode: 'edit',
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+
+    renderPage();
+
+    expect(screen.getByText('Authoring is locked for shared courses')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' })).not.toBeInTheDocument();
+  });
 });
 
-describe('CoursePath Edit mode', () => {
+describe('CoursePath Author mode', () => {
   beforeEach(() => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
   });
 
-  it('keeps manual-practice insertion controls off the curriculum path', () => {
+  it('creates manual practice from the path', async () => {
     renderPage();
-    expect(
-      screen.queryByRole('button', { name: 'Add manual practice here' }),
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add practice' }));
+    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(mockCreatePracticeNode).toHaveBeenCalledWith(
+        'course-1',
+        expect.objectContaining({ type: 'manual', name: 'Practice', position: 1 }),
+      );
+    });
+  });
+
+  it('creates a checkpoint from the path', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+    expect(screen.getByRole('dialog', { name: 'Add checkpoint' })).toBeInTheDocument();
+    const nameInput = screen.getByRole('textbox', { name: 'Name' });
+    expect(nameInput).toHaveFocus();
+    fireEvent.change(nameInput, {
+      target: { value: 'Paper 1' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save checkpoint' }));
+
+    await waitFor(() => {
+      expect(mockCreateCourseAssessment).toHaveBeenCalledWith(
+        'course-1',
+        'Paper 1',
+        expect.any(Number),
+        expect.objectContaining({ afterLessonId: 'lesson-2', coverageMode: 'prefix' }),
+      );
+    });
+  });
+
+  it('restores the Add checkpoint control after cancelling checkpoint creation', async () => {
+    renderPage();
+    const opener = screen.getByRole('button', { name: 'Add checkpoint' });
+    opener.focus();
+    fireEvent.click(opener);
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it('restores the Add checkpoint control after closing checkpoint creation with Escape', async () => {
+    renderPage();
+    const opener = screen.getByRole('button', { name: 'Add checkpoint' });
+    opener.focus();
+    fireEvent.click(opener);
+
+    const nameInput = screen.getByRole('textbox', { name: 'Name' });
+    expect(nameInput).toHaveFocus();
+    fireEvent.keyDown(nameInput, { key: 'Escape' });
+
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it('keeps Tab trapped in the checkpoint editor when its date picker is open', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
+
+    const done = screen.getByRole('button', { name: 'Done' });
+    done.focus();
+    fireEvent.keyDown(done, { key: 'Tab' });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close editor' })).toHaveFocus());
+  });
+
+  it('edits a checkpoint directly from its path node', async () => {
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
+
+    expect(screen.getByRole('dialog', { name: 'Edit checkpoint' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Paper 1 details' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Revised Paper 1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save checkpoint' }));
+
+    await waitFor(() => {
+      expect(mockUpdateCourseAssessment).toHaveBeenCalledWith(
+        'assessment-1',
+        expect.objectContaining({ name: 'Revised Paper 1' }),
+      );
+    });
+  });
+
+  it('confirms checkpoint deletion before removing it from the repository', async () => {
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
+    const deleteTrigger = screen.getByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteTrigger);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Delete checkpoint?');
+    expect(screen.getByRole('button', { name: 'Keep checkpoint' })).toHaveFocus();
+    expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+
+    await waitFor(() => {
+      expect(mockDeleteCourseAssessment).toHaveBeenCalledWith('assessment-1');
+    });
+  });
+
+  it('restores the checkpoint Delete trigger after cancelling deletion', async () => {
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep checkpoint' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus());
+    expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
+  });
+
+  it('creates practice at the single lesson position from the lesson header', async () => {
+    mockLessons = [lesson1];
+    renderPage();
+
+    await waitFor(() => expect(mockLessonViewProps).toHaveBeenCalled());
+    const lessonViewProps = mockLessonViewProps.mock.lastCall?.[0] as {
+      onAddPractice: () => void;
+    };
+    act(() => lessonViewProps.onAddPractice());
+    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(mockCreatePracticeNode).toHaveBeenCalledWith(
+        'course-1',
+        expect.objectContaining({ type: 'manual', name: 'Practice', position: 0 }),
+      );
+    });
+  });
+
+  it('anchors a single-lesson checkpoint after that lesson', async () => {
+    mockLessons = [lesson1];
+    renderPage();
+
+    await waitFor(() => expect(mockLessonViewProps).toHaveBeenCalled());
+    const lessonViewProps = mockLessonViewProps.mock.lastCall?.[0] as {
+      onAddCheckpoint: () => void;
+    };
+    act(() => lessonViewProps.onAddCheckpoint());
+
+    const nameInput = screen.getByRole('textbox', { name: 'Name' });
+    expect(nameInput).toHaveFocus();
+    fireEvent.change(nameInput, { target: { value: 'Solo checkpoint' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save checkpoint' }));
+
+    await waitFor(() => {
+      expect(mockCreateCourseAssessment).toHaveBeenCalledWith(
+        'course-1',
+        'Solo checkpoint',
+        expect.any(Number),
+        expect.objectContaining({ afterLessonId: 'lesson-1', coverageMode: 'prefix' }),
+      );
+    });
   });
 
   it('opens the editor from the practice-node pencil', () => {

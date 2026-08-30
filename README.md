@@ -71,9 +71,9 @@ recovery** to back up or move your data as a single JSON file.
   only), and **drag-and-drop images** (downscaled and stored inline).
 - **Course-scoped analytics** — Card trajectory, stability, review volume and lesson breakdown stay
   separate from Question first/repeat, generated novel/repeat, marks and criterion evidence.
-- **Course-wide search and command palette** — search across Courses, lessons, notes, Cards and
-  Questions from one place. Card-only management filters remain due, new, leech, flagged and
-  suspended.
+- **Search content and Quick search** — search across Courses, lessons, notes, Cards and Questions
+  from either the full library or the compact `Ctrl/Cmd+K` overlay. Card-only management filters
+  remain due, new, leech, flagged and suspended on Search content.
 - **Distinct Cards and Questions tabs** — Cards provides course-wide browsing, search and bulk
   management for recall material; Questions provides independent authoring and practice for
   application problems. Questions are deliberately not integrated into the Path in v1.

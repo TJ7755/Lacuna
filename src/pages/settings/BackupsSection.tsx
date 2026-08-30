@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../components/ui/cn';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
@@ -26,13 +27,24 @@ export function BackupsSection() {
   const backups = useBackups();
   const [persistence, setPersistence] = useState<StoragePersistenceState | null>(null);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
+  const backupNowButton = useRef<HTMLButtonElement>(null);
+  const deleteButtons = useRef(new Map<number, HTMLButtonElement>());
+  const deleteFocusReturn = useRef<number | null>(null);
   const mirrorSupported = folderMirrorSupported();
 
   useEffect(() => {
     void backupFolderName().then(setFolder);
     void checkPersistentStorage().then(setPersistence);
   }, []);
+
+  useEffect(() => {
+    if (confirmDelete !== null || deleteFocusReturn.current === null) return;
+    const backupId = deleteFocusReturn.current;
+    deleteFocusReturn.current = null;
+    deleteButtons.current.get(backupId)?.focus();
+  }, [confirmDelete]);
 
   async function handleBackupNow() {
     try {
@@ -50,6 +62,20 @@ export function BackupsSection() {
       notify('Data restored from the selected point.', 'positive');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Restore failed.', 'negative');
+    }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await deleteBackup(id);
+      setConfirmDelete(null);
+      backupNowButton.current?.focus();
+      notify('Restore point deleted from Lacuna. Mirrored files were not removed.', 'neutral');
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : 'Could not delete the restore point.',
+        'negative',
+      );
     }
   }
 
@@ -77,9 +103,11 @@ export function BackupsSection() {
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-accent">
           <ArchiveIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Automatic backups</h2>
+          <SettingsSectionHeading className="font-display text-xl">
+            Automatic backups
+          </SettingsSectionHeading>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleBackupNow}>
+        <Button ref={backupNowButton} variant="secondary" size="sm" onClick={handleBackupNow}>
           Back up now
         </Button>
       </div>
@@ -199,25 +227,49 @@ export function BackupsSection() {
                     backup.id !== null && backup.id !== undefined && void handleRestore(backup.id)
                   }
                 />
+              ) : confirmDelete === backup.id ? (
+                <ConfirmInline
+                  message="Delete this restore point from Lacuna? Mirrored files are not removed."
+                  confirmLabel="Delete restore point"
+                  announce
+                  focusOnMount="confirm"
+                  onCancel={() => {
+                    if (backup.id === null || backup.id === undefined) return;
+                    deleteFocusReturn.current = backup.id;
+                    setConfirmDelete(null);
+                  }}
+                  onConfirm={() =>
+                    backup.id !== null && backup.id !== undefined && void handleDelete(backup.id)
+                  }
+                />
               ) : (
                 <div className="flex items-center gap-2">
                   <Button
+                    ref={(button) => {
+                      if (backup.id === null || backup.id === undefined) return;
+                      if (button) deleteButtons.current.set(backup.id, button);
+                      else deleteButtons.current.delete(backup.id);
+                    }}
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      backup.id !== null && backup.id !== undefined && void deleteBackup(backup.id)
-                    }
+                    onClick={() => {
+                      setConfirmRestore(null);
+                      setConfirmDelete(
+                        backup.id !== null && backup.id !== undefined ? backup.id : null,
+                      );
+                    }}
                   >
                     Delete
                   </Button>
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() =>
+                    onClick={() => {
+                      setConfirmDelete(null);
                       setConfirmRestore(
                         backup.id !== null && backup.id !== undefined ? backup.id : null,
-                      )
-                    }
+                      );
+                    }}
                   >
                     Restore
                   </Button>

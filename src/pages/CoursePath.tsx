@@ -33,6 +33,7 @@ import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { planNextStudyStep } from '../course/studyFlowPlanner';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
+import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmentsStrip';
 import { AddLessonControl } from '../components/course/AddLessonControl';
@@ -43,7 +44,7 @@ import { useStudySheet } from '../components/learn/StudySheetContext';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { Button } from '../components/ui/Button';
-import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 
 import { updateCourse } from '../db/repository';
 import {
@@ -56,6 +57,7 @@ import { useLessonPathReorder } from '../components/course/useLessonPathReorder'
 import { useToast } from '../components/ui/Toast';
 import type {
   Card,
+  CourseAssessment,
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
@@ -81,8 +83,14 @@ export function CoursePath() {
   const { openStudySheet } = useStudySheet();
   const { notify } = useToast();
 
-  // Existing manual practice nodes remain editable from their path badges.
-  const [editingPracticeNode, setEditingPracticeNode] = useState<PracticeNode | null>(null);
+  const [practiceEditor, setPracticeEditor] = useState<{
+    node?: PracticeNode;
+    defaultPosition?: number;
+  } | null>(null);
+  const [assessmentEditor, setAssessmentEditor] = useState<{
+    assessment?: CourseAssessment;
+    defaultAfterLessonId?: string | null;
+  } | null>(null);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
@@ -299,9 +307,7 @@ export function CoursePath() {
   // Course not found.
   if (course === null || summary === null) {
     return (
-      <div
-        className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10"
-      >
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <p className="mb-4 text-ink-soft">This course could not be found.</p>
@@ -313,18 +319,69 @@ export function CoursePath() {
     );
   }
 
+  const lastLesson = lessons[lessons.length - 1];
+  const pathEditors = (
+    <AnimatePresence>
+      {selectedAssessmentId &&
+        assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
+          <AssessmentDetailSheet
+            assessment={assessments.find((assessment) => assessment.id === selectedAssessmentId)!}
+            lessons={lessons}
+            cards={courseCards}
+            links={lessonLinks}
+            onClose={() => setSelectedAssessmentId(null)}
+            onRevise={() =>
+              navigate(
+                `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,
+              )
+            }
+          />
+        )}
+      {practiceEditor && (
+        <PracticeNodeEditor
+          courseId={course.id}
+          lessons={lessons}
+          node={practiceEditor.node}
+          defaultPosition={practiceEditor.defaultPosition}
+          onSaved={() => setPracticeEditor(null)}
+          onCancel={() => setPracticeEditor(null)}
+        />
+      )}
+      {assessmentEditor && (
+        <AssessmentEditorDialog
+          courseId={course.id}
+          assessment={assessmentEditor.assessment}
+          defaultAfterLessonId={assessmentEditor.defaultAfterLessonId}
+          lessons={lessons}
+          cards={courseCards}
+          links={lessonLinks}
+          timeZone={course.timeZone}
+          onSaved={() => setAssessmentEditor(null)}
+          onCancel={() => setAssessmentEditor(null)}
+        />
+      )}
+    </AnimatePresence>
+  );
+
   // Single-lesson branch (addendum E): render the lesson view directly rather than
   // showing a one-item path. No redirect — this is a rendering branch.
   if (lessons.length === 1) {
     return (
-      <Suspense fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}>
-        <LazyLessonView
-          courseId={courseId}
-          lessonId={lessons[0].id}
-          showStudyNow
-          practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
-        />
-      </Suspense>
+      <>
+        <Suspense
+          fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}
+        >
+          <LazyLessonView
+            courseId={courseId}
+            lessonId={lessons[0].id}
+            showStudyNow
+            practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
+            onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
+            onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
+          />
+        </Suspense>
+        {pathEditors}
+      </>
     );
   }
 
@@ -382,12 +439,12 @@ export function CoursePath() {
         </Link>
         <div className="flex min-w-0 items-center gap-3">
           <CourseTabs courseId={courseId ?? ''} />
-          {/* Lesson view mode configures the path view rather than the course as a
-              whole, so it stays in the path's own header rather than moving into
-              CourseTabs, which is shared across all four course surfaces. */}
+          {/* Workspace mode governs the path and lessons, so it stays beside the
+              content navigation rather than moving into CourseTabs, which is shared
+              across course surfaces that do not have an authoring state. */}
           {!canEditLessons(course) ? (
             <span className="hidden text-xs text-ink-faint sm:inline">
-              Editing is locked for shared courses
+              Authoring is locked for shared courses
             </span>
           ) : (
             <LessonViewModeToggle
@@ -495,9 +552,40 @@ export function CoursePath() {
 
       {/* Curriculum — the ordered path with practice nodes, unlock rules and
           insertion points. */}
-      <h2 className="mb-6 font-display text-2xl">Curriculum</h2>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-2xl">Curriculum</h2>
+        {authoring && (
+          <div
+            role="group"
+            aria-label="Add to path"
+            className="flex flex-wrap items-center justify-end gap-2"
+          >
+            <AddLessonControl
+              courseId={course.id}
+              lessonCount={lessons.length}
+              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPracticeEditor({ defaultPosition: lastLesson?.orderIndex })}
+            >
+              <PlusIcon width={16} height={16} />
+              Add practice
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null })}
+            >
+              <PlusIcon width={16} height={16} />
+              Add checkpoint
+            </Button>
+          </div>
+        )}
+      </div>
       <p id="lesson-path-reorder-instructions" className="sr-only">
-        In Edit mode, hold this lesson and drag it to reorder. Alternatively, press Alt and the up
+        In Author mode, hold this lesson and drag it to reorder. Alternatively, press Alt and the up
         or down arrow key.
       </p>
       <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -507,11 +595,7 @@ export function CoursePath() {
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
           {authoring && (
-            <AddLessonControl
-              courseId={course.id}
-              lessonCount={lessons.length}
-              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
-            />
+            <p className="text-xs text-ink-faint">Use the path actions above to begin.</p>
           )}
         </div>
       ) : (
@@ -551,10 +635,18 @@ export function CoursePath() {
                   `/course/${courseId}/study?assessmentId=${encodeURIComponent(assessmentId)}`,
                 )
               }
-              onCheckpointClick={setSelectedAssessmentId}
+              onCheckpointClick={(assessmentId) => {
+                const assessment = assessments.find((item) => item.id === assessmentId);
+                if (!assessment) return;
+                if (authoring) {
+                  setAssessmentEditor({ assessment });
+                } else {
+                  setSelectedAssessmentId(assessmentId);
+                }
+              }}
               onPracticeEdit={
                 authoring
-                  ? (pn) => pn.practiceNode && setEditingPracticeNode(pn.practiceNode)
+                  ? (pn) => pn.practiceNode && setPracticeEditor({ node: pn.practiceNode })
                   : undefined
               }
               authoring={authoring}
@@ -565,44 +657,10 @@ export function CoursePath() {
               }
             />
           ))}
-          {authoring && (
-            <div className="mt-4 flex w-full justify-center">
-              <AddLessonControl
-                courseId={course.id}
-                lessonCount={lessons.length}
-                onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
-              />
-            </div>
-          )}
         </div>
       )}
 
-      <AnimatePresence>
-        {selectedAssessmentId &&
-          assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
-            <AssessmentDetailSheet
-              assessment={assessments.find((assessment) => assessment.id === selectedAssessmentId)!}
-              lessons={lessons}
-              cards={courseCards}
-              links={lessonLinks}
-              onClose={() => setSelectedAssessmentId(null)}
-              onRevise={() =>
-                navigate(
-                  `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,
-                )
-              }
-            />
-          )}
-        {editingPracticeNode && (
-          <PracticeNodeEditor
-            courseId={course.id}
-            lessons={lessons}
-            node={editingPracticeNode}
-            onSaved={() => setEditingPracticeNode(null)}
-            onCancel={() => setEditingPracticeNode(null)}
-          />
-        )}
-      </AnimatePresence>
+      {pathEditors}
     </div>
   );
 }

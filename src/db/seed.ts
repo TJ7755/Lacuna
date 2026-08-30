@@ -437,7 +437,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'How can you find content across all your courses?',
-        'Open **Search** from the sidebar or press **Ctrl+K** for the command palette. Both search courses, lessons, notes and cards together, and the card list can be filtered by **due**, **new**, **leech**, **flagged**, and **suspended**.',
+        'Open **Search content** from the sidebar for the full library and Card filters, or press **Ctrl/Cmd+K** for **Quick search**. Both search courses, lessons, notes and cards together; Search content can filter Cards by **due**, **new**, **leech**, **flagged**, and **suspended**.',
         ['search', 'navigation'],
         24,
       ),

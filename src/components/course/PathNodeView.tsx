@@ -83,7 +83,13 @@ export function PathNodeView({
         />
       );
     case 'checkpoint':
-      return <CheckpointNode assessment={node.assessment} onClick={onCheckpointClick} />;
+      return (
+        <CheckpointNode
+          assessment={node.assessment}
+          onClick={onCheckpointClick}
+          authoring={authoring}
+        />
+      );
     case 'practice-auto':
     case 'practice-manual':
       return (

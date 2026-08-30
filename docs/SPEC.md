@@ -300,7 +300,7 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 |          |  independently; page transitions           |
 | > Dash.. |  animate here                              |
 | > Review |                                            |
-| > Search |  (^K)                                      |
+| > Quick  |  (^K)                                      |
 | > Share  |                                            |
 | > Analyt.|                                            |
 | > Setting|                                            |
@@ -322,17 +322,15 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
   per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
   (configured in Settings → Sidebar) and take effect immediately.
-- **Search nav item as command-palette affordance:** the Search entry is a button, not a
-  plain link — it opens the `Ctrl/Cmd+K` command palette directly and shows the shortcut
-  hint inline (collapsed sidebar: as a title tooltip), so the palette has a visible
-  entry point instead of relying on the user already knowing the shortcut. Surfaces
-  without palette wiring (e.g. LearnMode's own nav drawer) fall back to a plain `/search`
-  link.
+- **Search navigation:** when the compact overlay is available, the sidebar entry is
+  **Quick search**, opens that overlay directly, and shows the `Ctrl/Cmd+K` shortcut hint inline
+  (collapsed sidebar: as a title tooltip). Surfaces without overlay wiring (for example,
+  LearnMode's own nav drawer) expose **Search content** as a plain `/search` link instead.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger; the scrim closes
   it; it auto-closes on navigation. On desktop the sidebar is always visible; on touch
   viewports the burger is the only way to reach it.
-- **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles the command
-  palette; `/` opens full search; `?` toggles the keyboard-hints overlay. Single-key
+- **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles **Quick search**;
+  `/` opens **Search content**; `?` toggles the keyboard-hints overlay. Single-key
   shortcuts are inert while typing in an input/textarea.
 - **Error boundaries:** one wraps the whole app, one wraps each page, and one wraps the
   Learn session.
@@ -417,7 +415,7 @@ lesson, card and review; the completion toast offers Undo by clearing the same `
 
 ```
 < All courses                     ( Path | Cards | Questions | Analytics | Settings )
-                                                          ( Read | Edit )
+                                                         ( Study | Author )
 Exam 14 Jun 2026, 23:59
 Organic Chemistry                                          [Study]
 [path] Lesson 4 of 9   [ring] Mastery 68%   [clock] Due today 12 cards
@@ -440,15 +438,16 @@ and practice nodes, built by `src/course/path.ts`. The breadcrumb row pairs the 
 courses" link with the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`:
 Path · Cards · Questions · Analytics · Settings, active tab derived from the route), rendered
 on the five course surfaces and every normal or single-lesson view, so any section is one click
-from any other. Lesson URLs keep Path active because a lesson belongs to the path;
-`LessonViewModeToggle`
-stays CoursePath-only (it configures the path view, not the course) and sits in its own row
-above the header, right-aligned. That row also carries the `UpcomingAssessmentsStrip`
-(`src/components/course/UpcomingAssessmentsStrip.tsx`), left-aligned: compact date/name pills
-for the nearest few future-dated assessments (checkpoints and the final alike), reusing the
-same `assessments` array the path itself renders checkpoint nodes from, so exam dates are
-visible without opening Course Settings. Clicking a pill opens the same `AssessmentDetailSheet`
-a checkpoint node opens. Omitted entirely when no assessment is still ahead of `now`. Practice gathers cards from lessons
+from any other. Lesson URLs keep Path active because a lesson belongs to the path. The course-owned
+`LessonViewModeToggle` appears beside that navigation on CoursePath and every Lesson view, so the
+same Study/Author decision follows the user through the workspace. CoursePath places the back link,
+tabs and toggle in one chrome row above the header. Its `UpcomingAssessmentsStrip`
+(`src/components/course/UpcomingAssessmentsStrip.tsx`) renders immediately below when multiple
+assessments make a choice useful: compact date/name pills for the nearest few future-dated
+assessments (checkpoints and the final alike), reusing the same `assessments` array the path itself
+renders checkpoint nodes from, so exam dates are visible without opening Course Settings. Clicking
+a pill opens the same `AssessmentDetailSheet` a checkpoint node opens. It is omitted entirely when
+no assessment is still ahead of `now`. Practice gathers cards from lessons
 reached so far whose predicted retrievability remains below the mastery threshold at each
 card's applicable exam horizon; this is not the narrower `card.due` timestamp concept. Questions
 do not enter this pool or the Path conductor in v1; they are reached deliberately from the separate
@@ -466,9 +465,9 @@ FSRS retention, shown as a ring rather than a bar) and from due-today (a live co
 session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
 same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
-Curriculum locking controls study progression, not authoring. In Read mode, locked lesson
-nodes remain inert; in Edit mode, they retain their locked appearance and status but open the
-ordinary lesson authoring view. Edit mode also enables direct path reordering: hold a lesson
+Curriculum locking controls study progression, not authoring. In Study mode, locked lesson
+nodes remain inert; in Author mode, they retain their locked appearance and status but open the
+ordinary lesson authoring view. Author mode also enables direct path reordering: hold a lesson
 node for 350 ms, then drag it to a lesson boundary and release. Moving before the hold cancels
 the gesture, as do Escape and pointer cancellation. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
 keyboard equivalent with live announcements. Reordering persists through the same
@@ -489,6 +488,10 @@ confirmation.
 Checkpoint nodes open a detail sheet showing the assessment date, resolved lessons and cards,
 exclusions and validation state. Revision starts with that assessment's stable id; the final
 assessment uses the same authoring and resolution rules, and each course retains exactly one.
+In Author mode, **Add checkpoint** creates one at the end of the visible path and selecting an
+existing checkpoint opens the same assessment editor used by Course Settings. Study mode retains
+the read-only detail and revision behaviour. Inline single-lesson courses expose the same creation
+action.
 
 The course header has one **Study** action. It launches the persistent course study
 conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the
@@ -503,9 +506,10 @@ as a preference. Selecting a visible manual Practice node or assessment on the p
 generic choice and enters that exact scope. A secondary **Practice Now** action beside **Study**
 enters course-wide ad-hoc Practice directly when reached, exposed cards are eligible. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
-nodes remain editable on the path, but the path no longer displays repeated insertion controls.
-Course Settings explains the distinction, lists existing manual nodes and links back to the path
-instead of duplicating the editor.
+nodes remain editable on the path, and Author mode exposes one **Add practice** action beside the
+other path-authoring actions rather than repeating insertion controls at every gap. Course Settings
+explains the distinction, lists existing manual nodes and links back to the path instead of
+duplicating the editor.
 The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
 or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
@@ -521,7 +525,7 @@ Study mode they appear and gate progression only when they have eligible work wh
 review time crosses the course's near/far threshold, or when they are the last relevant
 opportunity for an urgent assessment intersecting that exact Practice context. An unrelated
 assessment never tightens the threshold. Zero-eligible and low-workload nodes remain latent
-and non-gating; they remain visible in Edit mode. Completed manual checkpoints remain visible
+and non-gating; they remain visible in Author mode. Completed manual checkpoints remain visible
 as curriculum history. Automatic Practice is conductor scheduling machinery and is not
 rendered as a separate path diamond.
 
@@ -587,25 +591,26 @@ modes resolved by `src/course/lessonViewMode.ts`:
   (`src/components/notes/`, reusing `MarkdownView` for each note's body), and cards show a
   summary — count, due count, mastery % — via `LessonCardsSummary` (`src/components/cards/`)
   rather than an editable table.
-- **Edit**: the full notes/cards CRUD, extracted into `LessonNotesSection`
+- **Author**: the full notes/cards CRUD, extracted into `LessonNotesSection`
   (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
   component stays a thin layout/data shell. Path authoring chrome — Add lesson, Manual
   practice, the practice-node pencil, and inline course/lesson rename — is also gated on
-  `isLessonAuthoringMode` and is absent in Read mode. Settings, Cards, Questions, Analytics and the
-  command palette are not.
+  `isLessonAuthoringMode` and is absent in Study mode. Settings, Cards, Questions, Analytics and
+  Quick search are not.
 
 Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
-site-wide default. It is set directly via a compact Read/Edit segmented control
-(`LessonViewModeToggle`, `src/components/course/`) in the CoursePath (its own row above the
-course header) and inline LessonView headers, and via a plain Read/Edit choice on Course Settings
-(`LessonViewModeSection`, `src/pages/settings/`). `resolveLessonViewMode(course)`
+site-wide default. It is set directly via one compact Study/Author workspace control
+(`LessonViewModeToggle`, `src/components/course/`) beside course navigation on the Course Path and
+every Lesson view. Course Settings deliberately does not duplicate that decision.
+`resolveLessonViewMode(course)`
 (`src/course/lessonViewMode.ts`) falls back to `'study'` only for courses that predate the
 mandatory field (e.g. an old backup restored later); a one-shot startup migration in `App.tsx`
 (`stampMissingLessonViewModes`, `src/db/repository.ts`) stamps any such course with the retired
 global default's last value so existing users see no behaviour change. A single
-`canEditLessons(course)` gate (currently always `true`, since there is no locked-course concept
-yet) is the one place that will later decide whether edit mode is available at all — every call
-site goes through it rather than reading the mode field directly. When CoursePath renders this
+`canEditLessons(course)` gate returns `false` for a locked distributed copy and `true` for a course
+authored locally or deliberately detached from its lineage. It is the one place that decides
+whether Author mode is available at all, and every call site goes through it rather than reading
+the mode field directly. When CoursePath renders this
 page inline for a single-lesson course, it gets the same full header/CTA treatment, including
 exam context via `nearestExamDate`.
 
@@ -681,12 +686,13 @@ authoring agents and button handlers can share the same layer without duplicatio
 
 `PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
 computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
-Manual nodes are teacher-authored and persisted. In Edit mode, an edit badge on an existing manual
+Manual nodes are teacher-authored and persisted. In Author mode, an edit badge on an existing manual
 node lets a teacher reposition, rename or delete it (`PracticeNodeEditor`,
-`src/components/course/`). The badge is absent in Read mode, and there is no manual-node creation
-affordance in the current UI. `PracticeNodesSection` in course settings lists existing nodes and
-links to the path for editing. Filters (`CardFilter[]`) remain supported in storage but are not
-authorable in the UI because there is no existing filter builder to reuse.
+`src/components/course/`). The path's **Add practice** action opens the same editor for creation,
+including on an inline single-lesson course. The badge and creation action are absent in Study mode.
+`PracticeNodesSection` in course settings lists existing nodes and links to the path for editing.
+Filters (`CardFilter[]`) remain supported in storage but are not authorable in the UI because there
+is no existing filter builder to reuse.
 
 `LessonCardExposure { lessonId, cardId, taughtAt }` records that one card has been
 introduced successfully in one lesson. The `(lessonId, cardId)` pair is unique. This is
@@ -884,7 +890,7 @@ createdAt }` — `items` is ordered and stored inline (sequences are small); `pr
   case free of payload cost.
 - Generated cards are **read-only** in the card editor (edit the sequence instead) and
   carry a `GeneratedCardBadge` (`src/components/cards/GeneratedCardBadge.tsx`) wherever cards are
-  listed, searched or shown in the command palette; `CardList` additionally groups
+  listed, searched or shown in the Quick search overlay; `CardList` additionally groups
   generated cards under their owning sequence (`GeneratedCardGroup`, shared with occlusions)
   rather than listing them loose (§12). This is enforced below the UI too: `deleteCards`/`moveCards` (the
   generic bulk mutations) run an `assertNoGeneratedCards` check and throw if any targeted
@@ -967,7 +973,7 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   would restore occlusions with no image. Share codes carry occlusions as an additive v2
   field, but **not** the diagram (§13).
 - Generated cards are **read-only** in the card editor and carry a `GeneratedCardBadge`
-  wherever cards are listed, searched or shown in the command palette; `CardList` groups them
+  wherever cards are listed, searched or shown in the Quick search overlay; `CardList` groups them
   under their owning occlusion (`GeneratedCardGroup`, shared with sequences) rather than
   listing them loose. Enforced below the UI by the same `assertNoGeneratedCards` guard on
   `deleteCards`/`moveCards`.
@@ -1847,7 +1853,7 @@ retains its Attempt receipts as personal evidence.
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
-  notes-first teaching flow when it is the next available path step. In edit mode,
+  notes-first teaching flow when it is the next available path step. In Author mode,
   **Link existing cards** opens a searchable course-card picker and adds selected ordinary
   cards (sequence-generated cards are excluded) as
   `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS
@@ -2256,9 +2262,9 @@ uses.
 - **Structured filters** (AND-combined, usable without a query, cards only): **due, new,
   leech, flagged, suspended**. These turn search into course-wide card management ("show
   me all leeches").
-- The full-page Search and the `Ctrl/Cmd+K` command palette share the same core; Card and Question
-  results are visibly distinct and link to their respective editors, while course/lesson/note
-  results link to their page.
+- The full-page **Search content** surface and the `Ctrl/Cmd+K` **Quick search** overlay share the
+  same core. Card and Question results are visibly distinct and link to their respective editors,
+  while course/lesson/note results link to their page.
   `plainPreview` strips Markdown/cloze/images for previews.
 - **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
   the search filter, but scheduling is never changed automatically.
@@ -2366,9 +2372,12 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 
 ## 15. Settings (`src/pages/Settings.tsx`)
 
-`Settings.tsx` is a thin page composition; the web setting groups live under
-`src/pages/settings/` (with an additional Electron-only MCP group). Section ids and ordering remain centralised in the page so the
-scrollspy and its navigation cannot drift from the rendered sections.
+`Settings.tsx` is a thin page composition; the web settings live under
+`src/pages/settings/` (with an additional Electron-only MCP surface). The page organises them into
+five task groups: **Appearance & access**, **Study behaviour**, **Course defaults**, **Data safety**
+and **Integrations**. Existing child section ids remain in the DOM so old deep links continue to
+reach the same control. Group ids and ordering remain centralised in the page so the scrollspy and
+its navigation cannot drift from the rendered groups.
 
 - **Shared scrollspy rail** (`src/components/ui/SectionRail.tsx`): `useSectionRail`
   (the IntersectionObserver hook), `SectionRail` (the desktop right-hand nav) and
@@ -2399,16 +2408,21 @@ scrollspy and its navigation cannot drift from the rendered sections.
 - **Pomodoro** (v0.0.2): work / short break / long break minutes and
   `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
   header.
-- **Study & scheduling:** **Manual four-point grading** toggle (off by default ->
+- **Study behaviour:** **Manual four-point grading** toggle (off by default ->
   silent grader, §10), **Type your answer** toggle (off by default -> flip-to-reveal;
-  see "Typing setting" above), **Start Learn sessions in Focus Mode** (off by default),
-  and the global **Optimise scheduling** default (on -> fit
-  FSRS weights to your own history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`,
-  overridable per course, applied only on confirmation).
+  see "Typing setting" above), audio-answer controls and **Start Learn sessions in Focus Mode**
+  (off by default).
+- **Course defaults:** automatic Practice placement and the global **Optimise scheduling** default
+  (on -> fit FSRS weights to review history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per
+  course, applied only on confirmation). Practice timing, FSRS retention/interval fields and
+  optimisation controls sit behind native **Advanced practice timing** or **Advanced scheduling**
+  disclosures. Workload and session-goal fields remain visible.
 - **Sidebar:** show due counts (on by default), show archived courses (on by default;
   courses can be archived from the dashboard card context menu), compact
   mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Dashboard, Review today, Search, Share, Analytics, Settings, Help). Persisted
+  entry (Dashboard, Review today, Search, Share, Analytics, Settings, Help). The rendered search
+  trigger is **Quick search** when the overlay is available and **Search content** when it must link
+  to the full page. Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
   dashboard's own course-ordering control (recent / ready to study / mastery / exam
   date / name / created) is a separate, dashboard-local setting
@@ -2425,8 +2439,9 @@ scrollspy and its navigation cannot drift from the rendered sections.
   A `useStorageQuotaWarning` hook (§16) also surfaces a non-blocking toast when
   the browser reports the database is approaching its quota.
 - **Automatic backups:** "Back up now"; folder-mirror controls (where
-  supported); a list of restore points (timestamp + deck/card counts) each with
-  Delete and a two-step Restore confirmation.
+  supported); a list of restore points (timestamp + lesson/card counts) each with
+  two-step Delete and Restore confirmation. Deleting removes the IndexedDB restore point from
+  Lacuna; an independently mirrored folder file is not removed.
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
 - **AI** (desktop web only): a device-local opt-in which is off by default, plus an independent
@@ -2526,16 +2541,15 @@ three course surfaces, and groups its five headed groups under the same shared `
 scrollspy pattern global Settings uses (extracted into `src/components/ui/SectionRail.tsx`
 in Arc 10 §10.3, see above), instead of one flat scroll:
 **Basics** (rename, exam objective), **Study** (scheduling fields, unlock mode,
-auto-practice, lesson view mode, optimisation), **Content** (lesson management, practice
+auto-practice, optimisation), **Content** (lesson management, practice
 nodes), **Assessments** (exam dates), **Danger zone**. Composed from extracted, reusable
 section components (originally factored out of the now-deleted deck-settings page so the
 same form primitives serve both models while the deck UI still existed; only the
-course-facing composition remains): `SchedulingFieldsSection` (rename, exam date and
-time, exam objective toggle — Expected marks <-> Secure topics with live explanatory
-copy, new cards per day, target retention slider with Relaxed/Balanced/Thorough presets
-and adaptive guidance copy, max reviews/interval, learning/relearning steps, leech
-threshold/action, daily review goal, session time limit), `UnlockModeSection`
-(semi-linear vs linear lesson unlocking, with linear cadence fields),
+course-facing composition remains). Course name, provenance and the exam-objective toggle live
+directly in Basics. `SchedulingFieldsSection` owns new cards per day, target retention with
+Relaxed/Balanced/Thorough presets and adaptive guidance copy, maximum reviews and interval,
+learning/relearning steps, leech threshold/action, daily review goal and session time limit.
+`UnlockModeSection` owns semi-linear versus linear lesson unlocking and its linear cadence fields;
 `PracticeSettingsSection` (auto-practice toggle and the four threshold/window/gap fields
 feeding `shouldInsertPractice`, §-linked to `src/fsrs/practice.ts`), `ExamDatesSection`
 (per-course exam-date list), `LessonManagementSection` (reorder/rename/delete lessons)
@@ -2549,15 +2563,15 @@ defaults** is always available.
 - **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
   through the existing `updateCourse` path as it's edited — there is no staged
   "Save changes" bar and no local draft state to lose. Text and numeric fields (rename,
-  exam objective label, scheduling numbers) commit **on blur**, with the same
+  course provenance and scheduling numbers) commit **on blur**, with the same
   clamping/validation they always had, so a half-typed value never commits mid-edit;
-  toggles, radios and selects (unlock mode, auto-practice, lesson view mode) commit **on
+  toggles, radios and selects (exam objective, unlock mode, auto-practice) commit **on
   change**. The **target-retention slider** is the one exception with its own two-phase
   commit: dragging updates the displayed value locally on every tick but writes to the
   repository only once, on pointer/key release (the discrete preset buttons still commit
   immediately, since they're a single discrete action, not a drag). This replaced an
   earlier split model where ExamDates/LessonManagement/PracticeNodes already committed
-  instantly while name/scheduling/unlock/practice/view-mode sat behind a sticky save
+  instantly while name/scheduling/unlock/practice/authoring-mode sat behind a sticky save
   button — the ambiguity of not knowing which edits were pending is why the whole page
   now shares one model. **Behaviour change for existing users:** there is no longer a
   way to edit a field and back out without saving — every edit is live immediately.
@@ -2627,8 +2641,8 @@ defaults** is always available.
 
 | Context                | Key                | Action                                |
 | ---------------------- | ------------------ | ------------------------------------- |
-| Global (shell)         | `Ctrl/Cmd+K`       | Toggle command palette                |
-| Global (shell)         | `/`                | Open search                           |
+| Global (shell)         | `Ctrl/Cmd+K`       | Toggle Quick search                   |
+| Global (shell)         | `/`                | Open Search content                   |
 | Global (shell)         | `?`                | Toggle keyboard hints                 |
 | Card editor            | `Ctrl/Cmd+Enter`   | Save (and add another, for new cards) |
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |

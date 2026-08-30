@@ -1,7 +1,7 @@
 // Lesson view page — a study destination first, notes/cards second. The
-// second half renders in one of two modes, resolved by
-// src/course/lessonViewMode.ts: study (read-only notes, a cards summary) or
-// edit (full notes/cards CRUD), driven by the course's own
+// second half renders in one of two workspace modes, resolved by
+// src/course/lessonViewMode.ts: Study (read-only notes, a cards summary) or
+// Author (full notes/cards CRUD), driven by the course's own
 // Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
 // Also renderable inline by CoursePath when a course has exactly one lesson
@@ -24,7 +24,7 @@ import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
-import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseTabs } from '../components/course/CourseTabs';
@@ -32,7 +32,11 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { courseHeaderStats } from '../course/headerStats';
-import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
+import {
+  canEditLessons,
+  isLessonAuthoringMode,
+  resolveLessonViewMode,
+} from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { updateCourse, updateLesson } from '../db/repository';
@@ -53,6 +57,10 @@ interface LessonViewProps {
   showStudyNow?: boolean;
   /** Whether the inline one-lesson course has reached cards eligible for immediate practice. */
   practiceNowEnabled?: boolean;
+  /** Opens path-native manual-practice creation for an inline one-lesson course. */
+  onAddPractice?: () => void;
+  /** Opens path-native checkpoint creation for an inline one-lesson course. */
+  onAddCheckpoint?: () => void;
 }
 
 export function LessonView({
@@ -60,6 +68,8 @@ export function LessonView({
   lessonId: lessonIdProp,
   showStudyNow = false,
   practiceNowEnabled = false,
+  onAddPractice,
+  onAddCheckpoint,
 }: LessonViewProps) {
   const params = useParams<{ courseId: string; lessonId: string }>();
   // Props take precedence over route params (single-lesson inline branch).
@@ -106,9 +116,7 @@ export function LessonView({
   // Not found.
   if (lesson === null || course === null) {
     return (
-      <div
-        className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10"
-      >
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <p className="mb-4 text-ink-soft">
@@ -153,34 +161,48 @@ export function LessonView({
           <ChevronLeftIcon width={16} height={16} />
           {backLabel}
         </Link>
-        {courseId && <CourseTabs courseId={courseId} />}
+        <div className="flex min-w-0 items-center gap-3">
+          {courseId && <CourseTabs courseId={courseId} />}
+          {!canEditLessons(course) ? (
+            <Link
+              to={`/course/${courseId}/settings`}
+              className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
+            >
+              Authoring is locked for shared courses
+            </Link>
+          ) : (
+            <LessonViewModeToggle
+              mode={viewMode}
+              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+            />
+          )}
+        </div>
       </div>
-      {isInline && courseId && (
-        <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
-          <div className="flex items-center gap-4">
-            {authoring && (
-              <AddLessonControl
-                courseId={courseId}
-                lessonCount={lessons.length}
-                onCreated={(createdLesson) =>
-                  navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
-                }
-              />
-            )}
-            {!canEditLessons(course) ? (
-              <Link
-                to={`/course/${courseId}/settings`}
-                className="text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
-              >
-                Editing is locked for shared courses
-              </Link>
-            ) : (
-              <LessonViewModeToggle
-                mode={viewMode}
-                onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-              />
-            )}
-          </div>
+      {isInline && courseId && authoring && (
+        <div
+          role="group"
+          aria-label="Add to path"
+          className="mb-6 flex flex-wrap justify-end gap-2"
+        >
+          <AddLessonControl
+            courseId={courseId}
+            lessonCount={lessons.length}
+            onCreated={(createdLesson) =>
+              navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
+            }
+          />
+          {onAddPractice && (
+            <Button variant="secondary" size="sm" onClick={onAddPractice}>
+              <PlusIcon width={16} height={16} />
+              Add practice
+            </Button>
+          )}
+          {onAddCheckpoint && (
+            <Button variant="secondary" size="sm" onClick={onAddCheckpoint}>
+              <PlusIcon width={16} height={16} />
+              Add checkpoint
+            </Button>
+          )}
         </div>
       )}
 
@@ -251,14 +273,12 @@ export function LessonView({
 
       {/* ------------------------------------------------------------------ */}
       {/* Notes and cards. Demoted below the study CTA: a quieter, smaller-   */}
-      {/* heading section either way. In edit mode this is the full CRUD     */}
-      {/* editor (LessonNotesSection/LessonCardsSection); in study mode it   */}
+      {/* heading section either way. In Author mode this is the full CRUD   */}
+      {/* editor (LessonNotesSection/LessonCardsSection); in Study mode it   */}
       {/* is read-only content plus a cards summary — see                    */}
       {/* src/course/lessonViewMode.ts for how the mode is resolved.         */}
       {/* ------------------------------------------------------------------ */}
-      <div
-        className="space-y-10 border-t border-line pt-8"
-      >
+      <div className="space-y-10 border-t border-line pt-8">
         {viewMode === 'edit' ? (
           <>
             {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}

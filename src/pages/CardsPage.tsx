@@ -127,7 +127,12 @@ export function CardsPage() {
             {cards.length} card{cards.length === 1 ? '' : 's'} across {course.name}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="group"
+          aria-label="Add content"
+          className="flex flex-wrap items-center justify-end gap-2"
+        >
+          <span className="w-full text-right text-xs font-medium text-ink-faint">Add content</span>
           <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
             <PlusIcon width={18} height={18} />
             New sequence
@@ -163,27 +168,8 @@ export function CardsPage() {
 
       {isEmpty ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="mb-4 text-sm text-ink-soft">This course has no cards yet.</p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
-              <PlusIcon width={18} height={18} />
-              New card
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/course/${courseId}/sequence/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New sequence
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/course/${courseId}/occlusion/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New occlusion
-            </Button>
-          </div>
+          <p className="text-sm text-ink-soft">This course has no cards yet.</p>
+          <p className="mt-2 text-xs text-ink-faint">Choose a content type above to begin.</p>
         </div>
       ) : noMatches ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">

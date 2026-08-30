@@ -1,4 +1,5 @@
 import { Button } from '../../components/ui/Button';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon, MenuIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
@@ -15,7 +16,7 @@ export function SidebarSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <MenuIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Sidebar</h2>
+        <SettingsSectionHeading className="font-display text-xl">Sidebar</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         Control what information appears in the sidebar navigation and how compact it is.
@@ -51,6 +52,7 @@ export function SidebarSection() {
             const canMoveUp = index > 0;
             const canMoveDown = index < sidebarSettings.navItems.length - 1;
             const canHide = item.visible ? visibleCount > 1 : true;
+            const label = item.id === 'search' ? 'Search entry' : item.label;
             return (
               <div
                 key={item.id}
@@ -59,7 +61,7 @@ export function SidebarSection() {
                 <div className="flex flex-col gap-0.5">
                   <MoveButton
                     direction="up"
-                    label={item.label}
+                    label={label}
                     disabled={!canMoveUp}
                     onClick={() => {
                       const next = [...sidebarSettings.navItems];
@@ -70,7 +72,7 @@ export function SidebarSection() {
                   />
                   <MoveButton
                     direction="down"
-                    label={item.label}
+                    label={label}
                     disabled={!canMoveDown}
                     onClick={() => {
                       const next = [...sidebarSettings.navItems];
@@ -80,11 +82,11 @@ export function SidebarSection() {
                     }}
                   />
                 </div>
-                <span className="flex-1 text-sm text-ink">{item.label}</span>
+                <span className="flex-1 text-sm text-ink">{label}</span>
                 <Toggle
                   checked={item.visible}
                   disabled={!canHide}
-                  ariaLabel={`Show ${item.label}`}
+                  ariaLabel={`Show ${label}`}
                   onChange={(checked) => {
                     const next = sidebarSettings.navItems.map((navItem) =>
                       navItem.id === item.id ? { ...navItem, visible: checked } : navItem,

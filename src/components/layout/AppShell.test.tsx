@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiSession } from '../../ai/session/types';
@@ -14,11 +14,13 @@ vi.mock('./Sidebar', () => ({
     toggleLabel = 'Toggle navigation',
     collapsed,
     aiAction,
+    onOpenPalette,
   }: {
     onToggleCollapsed: () => void;
     toggleLabel?: string;
     collapsed: boolean;
     aiAction?: { onClick: () => void; triggerRef: React.RefObject<HTMLButtonElement> };
+    onOpenPalette?: () => void;
   }) => (
     <aside data-collapsed={collapsed || undefined}>
       <button type="button" data-sidebar-close onClick={onToggleCollapsed} aria-label={toggleLabel}>
@@ -29,6 +31,11 @@ vi.mock('./Sidebar', () => ({
           AI
         </button>
       )}
+      {onOpenPalette && (
+        <button type="button" onClick={onOpenPalette}>
+          Quick search
+        </button>
+      )}
     </aside>
   ),
 }));
@@ -37,8 +44,8 @@ vi.mock('./Titlebar', () => ({ Titlebar: () => null }));
 vi.mock('./ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
 }));
-vi.mock('../search/CommandPalette', () => ({
-  CommandPalette: () => null,
+vi.mock('../../state/useSearchData', () => ({
+  useSearchData: () => ({ cards: [], courses: [], lessons: [], notes: [], questions: [] }),
 }));
 vi.mock('../ui/KeyHints', () => ({ KeyHints: () => null }));
 vi.mock('./LandingTransition', () => ({ consumeLandingArrival: () => false }));
@@ -145,6 +152,23 @@ describe('AppShell mobile navigation', () => {
 
     await waitFor(() => expect(trigger).toHaveFocus());
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+  });
+
+  it('returns focus to the navigation trigger after Quick search closes from the drawer', async () => {
+    renderShell();
+    const navigationTrigger = screen.getByRole('button', { name: 'Open navigation' });
+    fireEvent.click(navigationTrigger);
+
+    const navigation = screen.getByRole('dialog', { name: 'Navigation' });
+    const quickSearch = within(navigation).getByRole('button', { name: 'Quick search' });
+    quickSearch.focus();
+    fireEvent.click(quickSearch);
+
+    const searchInput = await screen.findByRole('combobox');
+    await waitFor(() => expect(searchInput).toHaveFocus());
+    fireEvent.keyDown(searchInput, { key: 'Escape' });
+
+    await waitFor(() => expect(navigationTrigger).toHaveFocus());
   });
 
   it('does not leave the previous page stacked under the next one', async () => {

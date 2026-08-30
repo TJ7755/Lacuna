@@ -62,6 +62,7 @@ interface AssessmentEditorProps {
   cards: Card[];
   links: LessonCardLink[];
   timeZone?: string;
+  initialNameFocusTarget?: boolean;
 }
 
 export function AssessmentEditor({
@@ -73,6 +74,7 @@ export function AssessmentEditor({
   cards,
   links,
   timeZone,
+  initialNameFocusTarget = false,
 }: AssessmentEditorProps) {
   const [query, setQuery] = useState('');
   const assessment = useMemo(
@@ -137,6 +139,7 @@ export function AssessmentEditor({
       <label className="block text-sm text-ink-soft">
         Name
         <input
+          data-assessment-name={initialNameFocusTarget ? '' : undefined}
           value={draft.name}
           onChange={(event) => onChange({ ...draft, name: event.target.value })}
           placeholder={kind === 'final' ? 'Final exam' : 'e.g. Mock exam'}

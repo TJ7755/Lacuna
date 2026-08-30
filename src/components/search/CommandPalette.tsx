@@ -1,4 +1,11 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
@@ -76,13 +83,27 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** A keyboard-summoned (Ctrl/Cmd+K) overlay for searching every card. */
-export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Quick search: a keyboard-summoned overlay for jumping straight to content. */
+export function CommandPalette({
+  open,
+  onClose,
+  returnFocusTarget,
+}: {
+  open: boolean;
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement>;
+}) {
   if (!open) return null;
-  return <CommandPaletteDialog onClose={onClose} />;
+  return <CommandPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
 }
 
-function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
+function CommandPaletteDialog({
+  onClose,
+  returnFocusTarget,
+}: {
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement>;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const searchData = useSearchData();
@@ -94,7 +115,8 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    returnFocusTarget?.current ??
+      (document.activeElement instanceof HTMLElement ? document.activeElement : null),
   );
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input', returnFocus: false });
 
@@ -177,7 +199,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
           ref={trapRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Search"
+          aria-label="Quick search"
           className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />

@@ -4,6 +4,7 @@ import { Toggle } from '../../components/ui/Toggle';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric, type CourseCardMetric } from '../../state/courseCardMetric';
 import { useDashboardSort, type DashboardSort } from '../../state/dashboardSort';
+import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 
 const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
   { key: 'recent', label: 'Recently studied' },
@@ -26,7 +27,7 @@ export function DashboardSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <GridIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Dashboard</h2>
+        <SettingsSectionHeading className="font-display text-xl">Dashboard</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         Choose how all active courses are ordered on the dashboard.
@@ -54,7 +55,9 @@ export function DashboardSection() {
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
-        <h3 className="mb-1 text-sm font-medium text-ink">Course progress metric</h3>
+        <SettingsSubsectionHeading className="mb-1 text-sm font-medium text-ink">
+          Course progress metric
+        </SettingsSubsectionHeading>
         <p className="mb-4 text-sm text-ink-soft">
           Choose the progress measure shown on each dashboard course card.
         </p>
@@ -88,7 +91,9 @@ export function DashboardSection() {
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
-        <h3 className="mb-1 text-sm font-medium text-ink">Card hover detail</h3>
+        <SettingsSubsectionHeading className="mb-1 text-sm font-medium text-ink">
+          Card hover detail
+        </SettingsSubsectionHeading>
         <p className="mb-4 text-sm text-ink-soft">
           Choose what a course card reveals when you hover over it.
         </p>

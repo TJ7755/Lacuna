@@ -2,13 +2,9 @@ import { cn } from '../ui/cn';
 import type { LessonViewMode } from '../../state/lessonViewMode';
 
 /**
- * Compact Read/Edit segmented control for a course's lesson view mode. Used
- * in the CoursePath and inline single-lesson (LessonView) headers, right next
- * to the settings link, so the mode is visible and changeable without a trip
- * to Course settings. Writes course.lessonViewMode directly — see
- * src/course/lessonViewMode.ts for how the mode is resolved and
- * src/pages/settings/LessonViewModeSection.tsx for the equivalent control in
- * Course settings.
+ * Compact Study/Author workspace control. Both options write the course's one
+ * shared mode, so moving between the path and a lesson never creates another
+ * local workspace-mode decision.
  */
 export function LessonViewModeToggle({
   mode,
@@ -20,7 +16,7 @@ export function LessonViewModeToggle({
   return (
     <div
       role="group"
-      aria-label="Lesson view mode"
+      aria-label="Workspace mode"
       className="inline-flex h-8 shrink-0 items-center rounded-full border border-line bg-ink/5 p-0.5 text-xs"
     >
       {(['study', 'edit'] as const).map((option) => (
@@ -28,6 +24,7 @@ export function LessonViewModeToggle({
           key={option}
           type="button"
           aria-pressed={mode === option}
+          aria-label={option === 'study' ? 'Study mode' : 'Author mode'}
           onClick={() => onChange(option)}
           className={cn(
             'flex h-full items-center rounded-full px-3 font-medium transition-colors',
@@ -36,7 +33,7 @@ export function LessonViewModeToggle({
               : 'text-ink-faint hover:text-ink',
           )}
         >
-          {option === 'study' ? 'Read' : 'Edit'}
+          {option === 'study' ? 'Study' : 'Author'}
         </button>
       ))}
     </div>

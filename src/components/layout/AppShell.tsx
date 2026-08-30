@@ -70,6 +70,7 @@ export function AppShell() {
   const aiCapsuleRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileWasOpenRef = useRef(false);
+  const paletteReturnFocusRef = useRef<HTMLElement | null>(null);
   const aiTriggerRef = useRef<HTMLButtonElement>(null);
   const aiWasOpenRef = useRef(false);
   const mobileDrawerRef = useFocusTrap(mobileOpen, {
@@ -157,19 +158,25 @@ export function AppShell() {
   // the trap cleanup is too early: browsers correctly refuse to focus an inert
   // trigger.
   useEffect(() => {
-    if (mobileWasOpenRef.current && !mobileOpen) {
+    if (mobileWasOpenRef.current && !mobileOpen && !paletteOpen) {
       mobileTriggerRef.current?.focus();
     }
     mobileWasOpenRef.current = mobileOpen;
-  }, [mobileOpen]);
+  }, [mobileOpen, paletteOpen]);
 
-  // Global shortcuts within the shell: Ctrl/Cmd+K (palette), / (search), ? (help).
+  // Global shortcuts within the shell: Ctrl/Cmd+K (quick search), / (content search), ? (help).
   // Single-key shortcuts stay inert while typing so they never hijack a text field.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setPaletteOpen((v) => !v);
+        setPaletteOpen((open) => {
+          if (!open) {
+            paletteReturnFocusRef.current =
+              document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          }
+          return !open;
+        });
         return;
       }
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
@@ -214,7 +221,11 @@ export function AppShell() {
           <Sidebar
             collapsed={!wideDesktop || collapsed || aiOpen}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
-            onOpenPalette={() => setPaletteOpen(true)}
+            onOpenPalette={() => {
+              paletteReturnFocusRef.current =
+                document.activeElement instanceof HTMLElement ? document.activeElement : null;
+              setPaletteOpen(true);
+            }}
             onOpenStudySheet={() => studySheet.value.openStudySheet()}
             collapseControl={wideDesktop && !aiOpen}
             aiAction={
@@ -314,6 +325,7 @@ export function AppShell() {
                   onToggleCollapsed={() => setMobileOpen(false)}
                   toggleLabel="Close navigation"
                   onOpenPalette={() => {
+                    paletteReturnFocusRef.current = mobileTriggerRef.current;
                     setMobileOpen(false);
                     setPaletteOpen(true);
                   }}
@@ -408,7 +420,11 @@ export function AppShell() {
           )}
         </AnimatePresence>
       </div>
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        returnFocusTarget={paletteReturnFocusRef}
+      />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
     </motion.div>
   );

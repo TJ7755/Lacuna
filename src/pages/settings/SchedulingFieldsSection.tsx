@@ -2,6 +2,7 @@ import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { Toggle } from '../../components/ui/Toggle';
 import { cn } from '../../components/ui/cn';
+import { ChevronDownIcon } from '../../components/ui/icons';
 import {
   DEFAULT_REQUEST_RETENTION,
   MAX_REQUEST_RETENTION,
@@ -57,6 +58,8 @@ export interface SchedulingFieldsSectionProps {
 /**
  * Shared scheduling fields for deck/course settings pages: new/review daily caps, target
  * retention, interval fuzz, maximum interval, learning/relearning steps, and leech detection.
+ * Task-facing workload and session limits stay visible; low-level scheduler mechanics are grouped
+ * in the Advanced scheduling disclosure.
  * Pure controlled component — all state lives with the caller, which also owns the instant-commit
  * mechanics: text/numeric fields commit on blur via the `on*Blur` callbacks (so a half-typed value
  * never reaches the repository), toggles/selects commit directly through their `on*Change`
@@ -116,9 +119,9 @@ export function SchedulingFieldsSection({
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
-          Caps how many never-seen cards a study session introduces each day, so a
-          large deck does not overwhelm you. Leave blank for unlimited. Reviews of
-          cards you have already started are never capped.
+          Caps how many never-seen cards a study session introduces each day, so a large deck does
+          not overwhelm you. Leave blank for unlimited. Reviews of cards you have already started
+          are never capped.
         </span>
       </label>
 
@@ -135,226 +138,244 @@ export function SchedulingFieldsSection({
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
-          Caps how many cards you can review in a single day for this deck, including
-          re-reviews of cards you have already started. Leave blank for unlimited.
+          Caps how many cards you can review in a single day for this course, including re-reviews
+          of cards you have already started. Leave blank for unlimited.
         </span>
       </label>
 
-      <div className="block text-sm text-ink-soft">
-        <div className="flex items-baseline justify-between">
-          <span>Target retention</span>
-          <span className="tabular font-medium text-ink">
-            {Math.round(retention * 100)}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min={MIN_REQUEST_RETENTION}
-          max={MAX_REQUEST_RETENTION}
-          step={0.01}
-          value={retention}
-          onChange={(e) => onRetentionChange(Number(e.target.value))}
-          onPointerUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
-          onKeyUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
-          aria-label="Target retention"
-          className="mt-3 w-full accent-accent"
-        />
-        <div className="mt-2 flex gap-2">
-          {RETENTION_PRESETS.map((p) => {
-            const active = Math.round(retention * 100) === Math.round(p.value * 100);
-            return (
-              <motion.button
-                key={p.label}
-                type="button"
-                onClick={() => onRetentionCommit(p.value)}
-                aria-pressed={active}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ duration: 0.1 * m }}
-                className={cn(
-                  'flex-1 rounded-lg border px-3 py-2 text-xs transition-colors',
-                  active
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-ink-soft hover:border-line-strong',
-                )}
-              >
-                <span className="block font-medium">{p.label}</span>
-                <span className="text-ink-faint">{Math.round(p.value * 100)}%</span>
-              </motion.button>
-            );
-          })}
-        </div>
-        <span className="mt-2 block text-xs text-ink-faint">
-          How well you want to remember each card. Higher means cards come back sooner
-          and more often (more reviews, fewer lapses); lower means a lighter workload
-          with more forgetting. {Math.round(retention * 100)}% is{' '}
-          {retention > DEFAULT_REQUEST_RETENTION
-            ? 'more thorough than the default.'
-            : retention < DEFAULT_REQUEST_RETENTION
-              ? 'lighter than the default.'
-              : 'the recommended default.'}
-        </span>
-      </div>
-
-      <div className="block text-sm text-ink-soft">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="font-medium">Interval fuzz</div>
-            <span className="mt-1 block text-xs text-ink-faint">
-              Adds a small random variation to scheduled intervals so cards do not cluster
-              on the same day. Recommended on.
-            </span>
-          </div>
-          <Toggle
-            checked={enableFuzz}
-            onChange={onEnableFuzzChange}
-            label="Fuzz intervals"
-          />
-        </div>
-      </div>
-
       <label className="block text-sm text-ink-soft">
-        Maximum interval
+        Daily review goal
         <input
           type="number"
-          min={1}
+          min={0}
           inputMode="numeric"
-          value={maxInterval}
-          onChange={(e) => onMaxIntervalChange(e.target.value)}
-          onBlur={onMaxIntervalBlur}
-          placeholder={maxIntervalPlaceholder}
+          value={dailyReviewGoal}
+          onChange={(e) => onDailyReviewGoalChange(e.target.value)}
+          onBlur={onDailyReviewGoalBlur}
+          placeholder="No goal"
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
-          Caps the longest scheduled interval in days. Cards that would be scheduled beyond
-          this limit are capped here instead. The default is 36,500 days (~100 years).
+          Target number of cards to review per day. When reached, the session ends with a
+          &quot;Daily goal reached&quot; message. Leave blank for no goal.
         </span>
       </label>
 
       <label className="block text-sm text-ink-soft">
-        Learning steps
+        Session time limit
         <input
-          value={learningSteps}
-          onChange={(e) => onLearningStepsChange(e.target.value)}
-          onBlur={onLearningStepsBlur}
-          placeholder="e.g. 1m, 10m"
+          type="number"
+          min={0}
+          inputMode="numeric"
+          value={sessionTimeLimit}
+          onChange={(e) => onSessionTimeLimitChange(e.target.value)}
+          onBlur={onSessionTimeLimitBlur}
+          placeholder="No limit"
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
-          Intervals for a new card before it graduates to review. Use values like
-          1m, 10m, 1d, 1h separated by commas or spaces.
+          Maximum number of minutes a single study session may run. When the limit is reached, the
+          session ends gracefully. Leave blank for no limit.
         </span>
       </label>
 
-      <label className="block text-sm text-ink-soft">
-        Relearning steps
-        <input
-          value={relearningSteps}
-          onChange={(e) => onRelearningStepsChange(e.target.value)}
-          onBlur={onRelearningStepsBlur}
-          placeholder="e.g. 10m"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
-        />
-        <span className="mt-1 block text-xs text-ink-faint">
-          Intervals for a card after it lapses, before it returns to review. Use the same
-          format as learning steps.
-        </span>
-      </label>
+      <details className="group border-t border-line pt-5">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
+            <span className="mt-1 block text-xs leading-5 text-ink-faint">
+              Lacuna currently aims for {Math.round(retention * 100)}% recall and manages card
+              intervals automatically. Open this to tune intervals, learning steps and leeches.
+            </span>
+          </span>
+          <ChevronDownIcon
+            width={18}
+            height={18}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
+          />
+        </summary>
 
-      <div className="block text-sm text-ink-soft">
-        <div className="mb-2 font-medium">Leech detection</div>
-        <div className="flex flex-col gap-3">
+        <div className="mt-5 flex flex-col gap-4 rounded-xl border border-line bg-surface-raised/50 p-4">
+          <div className="block text-sm text-ink-soft">
+            <div className="flex items-baseline justify-between">
+              <span>Target retention</span>
+              <span className="tabular font-medium text-ink">{Math.round(retention * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min={MIN_REQUEST_RETENTION}
+              max={MAX_REQUEST_RETENTION}
+              step={0.01}
+              value={retention}
+              onChange={(e) => onRetentionChange(Number(e.target.value))}
+              onPointerUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
+              onKeyUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
+              aria-label="Target retention"
+              className="mt-3 w-full accent-accent"
+            />
+            <div className="mt-2 flex gap-2">
+              {RETENTION_PRESETS.map((p) => {
+                const active = Math.round(retention * 100) === Math.round(p.value * 100);
+                return (
+                  <motion.button
+                    key={p.label}
+                    type="button"
+                    onClick={() => onRetentionCommit(p.value)}
+                    aria-pressed={active}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ duration: 0.1 * m }}
+                    className={cn(
+                      'flex-1 rounded-lg border px-3 py-2 text-xs transition-colors',
+                      active
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line text-ink-soft hover:border-line-strong',
+                    )}
+                  >
+                    <span className="block font-medium">{p.label}</span>
+                    <span className="text-ink-faint">{Math.round(p.value * 100)}%</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+            <span className="mt-2 block text-xs text-ink-faint">
+              How well you want to remember each card. Higher means cards come back sooner and more
+              often (more reviews, fewer lapses); lower means a lighter workload with more
+              forgetting. {Math.round(retention * 100)}% is{' '}
+              {retention > DEFAULT_REQUEST_RETENTION
+                ? 'more thorough than the default.'
+                : retention < DEFAULT_REQUEST_RETENTION
+                  ? 'lighter than the default.'
+                  : 'the recommended default.'}
+            </span>
+          </div>
+
+          <div className="block text-sm text-ink-soft">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-medium">Interval fuzz</div>
+                <span className="mt-1 block text-xs text-ink-faint">
+                  Adds a small random variation to scheduled intervals so cards do not cluster on
+                  the same day. Recommended on.
+                </span>
+              </div>
+              <Toggle checked={enableFuzz} onChange={onEnableFuzzChange} label="Fuzz intervals" />
+            </div>
+          </div>
+
           <label className="block text-sm text-ink-soft">
-            Leech threshold
+            Maximum interval
             <input
               type="number"
               min={1}
               inputMode="numeric"
-              value={leechThreshold}
-              onChange={(e) => onLeechThresholdChange(e.target.value)}
-              onBlur={onLeechThresholdBlur}
-              placeholder="8"
+              value={maxInterval}
+              onChange={(e) => onMaxIntervalChange(e.target.value)}
+              onBlur={onMaxIntervalBlur}
+              placeholder={maxIntervalPlaceholder}
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
-              Number of lapses (failed reviews) at which a card is treated as a leech.
-              Leave blank for the default of 8.
+              Caps the longest scheduled interval in days. Cards that would be scheduled beyond this
+              limit are capped here instead. The default is 36,500 days (~100 years).
             </span>
           </label>
+
           <label className="block text-sm text-ink-soft">
-            Daily review goal
+            Learning steps
             <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={dailyReviewGoal}
-              onChange={(e) => onDailyReviewGoalChange(e.target.value)}
-              onBlur={onDailyReviewGoalBlur}
-              placeholder="Unlimited"
+              value={learningSteps}
+              onChange={(e) => onLearningStepsChange(e.target.value)}
+              onBlur={onLearningStepsBlur}
+              placeholder="e.g. 1m, 10m"
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
-              Target number of cards to review per day. When reached, the session
-              ends with a &quot;Daily goal reached&quot; message. Leave blank for no goal.
+              Intervals for a new card before it graduates to review. Use values like 1m, 10m, 1d,
+              1h separated by commas or spaces.
             </span>
           </label>
+
           <label className="block text-sm text-ink-soft">
-            Session time limit
+            Relearning steps
             <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={sessionTimeLimit}
-              onChange={(e) => onSessionTimeLimitChange(e.target.value)}
-              onBlur={onSessionTimeLimitBlur}
-              placeholder="Unlimited"
+              value={relearningSteps}
+              onChange={(e) => onRelearningStepsChange(e.target.value)}
+              onBlur={onRelearningStepsBlur}
+              placeholder="e.g. 10m"
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
-              Maximum number of minutes a single study session may run. When the
-              limit is reached, the session ends gracefully. Leave blank for no limit.
+              Intervals for a card after it lapses, before it returns to review. Use the same format
+              as learning steps.
             </span>
           </label>
-          <fieldset className="block text-sm text-ink-soft">
-            <legend className="mb-2">When a card becomes a leech</legend>
-            <div className="flex flex-col gap-2">
-              <label className="flex cursor-pointer items-center gap-2">
+
+          <div className="block text-sm text-ink-soft">
+            <div className="mb-2 font-medium">Leech detection</div>
+            <div className="flex flex-col gap-3">
+              <label className="block text-sm text-ink-soft">
+                Leech threshold
                 <input
-                  type="radio"
-                  name="leechAction"
-                  value="suspend"
-                  checked={leechAction === 'suspend'}
-                  onChange={(e) => onLeechActionChange(e.target.value as 'suspend')}
-                  className="accent-accent"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={leechThreshold}
+                  onChange={(e) => onLeechThresholdChange(e.target.value)}
+                  onBlur={onLeechThresholdBlur}
+                  placeholder="8"
+                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                 />
-                <span className="text-sm text-ink-soft">Auto-suspend the card</span>
+                <span className="mt-1 block text-xs text-ink-faint">
+                  Number of lapses (failed reviews) at which a card is treated as a leech. Leave
+                  blank for the default of 8.
+                </span>
               </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  name="leechAction"
-                  value="tag"
-                  checked={leechAction === 'tag'}
-                  onChange={(e) => onLeechActionChange(e.target.value as 'tag')}
-                  className="accent-accent"
-                />
-                <span className="text-sm text-ink-soft">Add a &apos;leech&apos; tag</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="radio"
-                  name="leechAction"
-                  value="none"
-                  checked={leechAction === 'none'}
-                  onChange={(e) => onLeechActionChange(e.target.value as 'none')}
-                  className="accent-accent"
-                />
-                <span className="text-sm text-ink-soft">Show the badge only, take no action</span>
-              </label>
+              <fieldset className="block text-sm text-ink-soft">
+                <legend className="mb-2">When a card becomes a leech</legend>
+                <div className="flex flex-col gap-2">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="leechAction"
+                      value="suspend"
+                      checked={leechAction === 'suspend'}
+                      onChange={(e) => onLeechActionChange(e.target.value as 'suspend')}
+                      className="accent-accent"
+                    />
+                    <span className="text-sm text-ink-soft">Auto-suspend the card</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="leechAction"
+                      value="tag"
+                      checked={leechAction === 'tag'}
+                      onChange={(e) => onLeechActionChange(e.target.value as 'tag')}
+                      className="accent-accent"
+                    />
+                    <span className="text-sm text-ink-soft">Add a &apos;leech&apos; tag</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="leechAction"
+                      value="none"
+                      checked={leechAction === 'none'}
+                      onChange={(e) => onLeechActionChange(e.target.value as 'none')}
+                      className="accent-accent"
+                    />
+                    <span className="text-sm text-ink-soft">
+                      Show the badge only, take no action
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
             </div>
-          </fieldset>
+          </div>
         </div>
-      </div>
+      </details>
     </>
   );
 }

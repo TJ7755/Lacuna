@@ -1,6 +1,6 @@
-// Modal editor for a manual practice node, opened from its edit badge on the
-// course path. Mirrors the chrome of CardEditOverlay. Settings links back here
-// instead of maintaining a competing management surface.
+// Modal editor for a manual practice node, opened from the path's Add practice
+// action or an existing node's edit badge. Mirrors the chrome of CardEditOverlay.
+// Settings links back here instead of maintaining a competing management surface.
 //
 // British English throughout.
 
@@ -13,19 +13,16 @@ import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
 import { createPracticeNode, updatePracticeNode, deletePracticeNode } from '../../db/repository';
 import type { Lesson, PracticeNode } from '../../db/types';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { PracticeNodeFields } from './PracticeNodeFields';
-import {
-  emptyPracticeNodeDraft,
-  draftFromPracticeNode,
-  parseCardCount,
-} from './practiceNodeDraft';
+import { emptyPracticeNodeDraft, draftFromPracticeNode, parseCardCount } from './practiceNodeDraft';
 
 interface PracticeNodeEditorProps {
   courseId: string;
   lessons: Lesson[];
   /** The node being edited; undefined when creating a new one. */
   node?: PracticeNode;
-  /** Seeds a new node's position, e.g. the gap the teacher clicked "+" on. */
+  /** Seeds a new node's position on the visible course path. */
   defaultPosition?: number;
   onSaved: () => void;
   onCancel: () => void;
@@ -41,6 +38,8 @@ export function PracticeNodeEditor({
 }: PracticeNodeEditorProps) {
   const { notify } = useToast();
   const trapRef = useFocusTrap(true);
+  const [motionSpeed] = useMotionSpeed();
+  const motionMultiplier = speedMultiplier(motionSpeed);
   const [draft, setDraft] = useState(() =>
     node ? draftFromPracticeNode(node) : emptyPracticeNodeDraft(defaultPosition),
   );
@@ -76,7 +75,10 @@ export function PracticeNodeEditor({
       onSaved();
     } catch (err) {
       setConfirmingDelete(false);
-      notify(err instanceof Error ? err.message : 'Could not delete the practice node.', 'negative');
+      notify(
+        err instanceof Error ? err.message : 'Could not delete the practice node.',
+        'negative',
+      );
     }
   }
 
@@ -84,9 +86,10 @@ export function PracticeNodeEditor({
     <motion.div
       ref={trapRef}
       className="fixed inset-0 z-50 flex flex-col"
-      initial={{ opacity: 0 }}
+      initial={motionMultiplier > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
+      transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       onKeyDown={(e) => {
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation();
@@ -102,13 +105,18 @@ export function PracticeNodeEditor({
         role="dialog"
         aria-modal="true"
         aria-label={node ? 'Edit manual practice' : 'Add manual practice'}
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        initial={motionMultiplier > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        exit={motionMultiplier > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
+        transition={
+          motionMultiplier > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }
+        }
         className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
-        <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
+          aria-hidden="true"
+        />
         <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="font-display text-xl">{node ? 'Edit practice' : 'Add practice'}</h2>
           <button

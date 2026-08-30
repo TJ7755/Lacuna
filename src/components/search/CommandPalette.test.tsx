@@ -118,7 +118,7 @@ vi.mock('../../state/useSearchData', () => ({
 describe('CommandPalette', () => {
   beforeEach(() => dataHooks.useSearchData.mockClear());
 
-  it('restores focus to the Search trigger after Escape closes the palette', async () => {
+  it('restores focus to the Quick search trigger after Escape closes the palette', async () => {
     function Harness() {
       const [open, setOpen] = useState(false);
       const backgroundRef = useRef<HTMLDivElement>(null);
@@ -134,7 +134,7 @@ describe('CommandPalette', () => {
         <>
           <div ref={backgroundRef}>
             <button type="button" onClick={() => setOpen(true)}>
-              Search
+              Quick search
             </button>
           </div>
           <CommandPalette open={open} onClose={() => setOpen(false)} />
@@ -143,7 +143,7 @@ describe('CommandPalette', () => {
     }
 
     render(<Harness />, { wrapper: MemoryRouter });
-    const trigger = screen.getByRole('button', { name: 'Search' });
+    const trigger = screen.getByRole('button', { name: 'Quick search' });
     trigger.focus();
     fireEvent.click(trigger);
     const input = await screen.findByPlaceholderText(/search courses/i);
@@ -160,7 +160,7 @@ describe('CommandPalette', () => {
 
   it('exposes an open palette as a focus-trapped modal', async () => {
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
-    const dialog = await screen.findByRole('dialog', { name: 'Search' });
+    const dialog = await screen.findByRole('dialog', { name: 'Quick search' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog.style.opacity).toBe('');
     expect(screen.getByPlaceholderText(/search courses/i)).toHaveFocus();

@@ -1,6 +1,7 @@
 import { Button } from '../../components/ui/Button';
 import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 
 export function InstallSection() {
   return (
@@ -10,7 +11,7 @@ export function InstallSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <DownloadIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Install</h2>
+        <SettingsSectionHeading className="font-display text-xl">Install</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">Add Lacuna to your home screen for quick access and offline use.</p>
       <InstallPanel />

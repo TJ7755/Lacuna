@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Lesson, PracticeNode } from '../../db/types';
+import type { CourseAssessment, Lesson, PracticeNode } from '../../db/types';
 import type { PathNode, PracticePathNode } from '../../course/path';
 import { PathNodeWithLine } from './CoursePathSegment';
 
@@ -45,6 +45,26 @@ const practiceNode: PracticePathNode = {
   nodeKey: 'practice-1',
 };
 
+const checkpoint: CourseAssessment = {
+  id: 'assessment-1',
+  courseId: 'course-1',
+  kind: 'checkpoint',
+  name: 'Paper 1',
+  examDate: 2_000_000_000_000,
+  afterLessonId: 'lesson-1',
+  coverageMode: 'prefix',
+  excludedCardIds: [],
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+const checkpointNode: PathNode = {
+  id: 'assessment-1',
+  nodeType: 'checkpoint',
+  assessment: checkpoint,
+  afterLessonId: 'lesson-1',
+};
+
 function renderSegment(overrides: Partial<ComponentProps<typeof PathNodeWithLine>> = {}) {
   const onPracticeEdit = vi.fn();
   render(
@@ -74,7 +94,7 @@ describe('PathNodeWithLine connector', () => {
 });
 
 describe('PathNodeWithLine practice-node pencil', () => {
-  it('hides the edit badge in Read mode', () => {
+  it('hides the edit badge in Study mode', () => {
     const { onPracticeEdit } = renderSegment({ node: practiceNode, isLast: true });
     expect(
       screen.getByRole('button', { name: 'Manual practice: Weekly review, 0% secured' }),
@@ -83,7 +103,7 @@ describe('PathNodeWithLine practice-node pencil', () => {
     expect(onPracticeEdit).not.toHaveBeenCalled();
   });
 
-  it('opens the editor from the pencil in Edit mode', () => {
+  it('opens the editor from the pencil in Author mode', () => {
     const { onPracticeEdit } = renderSegment({
       node: practiceNode,
       isLast: true,
@@ -91,5 +111,21 @@ describe('PathNodeWithLine practice-node pencil', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Edit Weekly review' }));
     expect(onPracticeEdit).toHaveBeenCalledWith(practiceNode);
+  });
+});
+
+describe('PathNodeWithLine checkpoint intent', () => {
+  it('opens checkpoint details in Study mode', () => {
+    renderSegment({ node: checkpointNode, isLast: true });
+
+    expect(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' })).toBeInTheDocument();
+    expect(screen.queryByTitle('Edit checkpoint')).not.toBeInTheDocument();
+  });
+
+  it('presents the checkpoint as an edit action in Author mode', () => {
+    renderSegment({ node: checkpointNode, isLast: true, authoring: true });
+
+    expect(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' })).toBeInTheDocument();
+    expect(screen.getByTitle('Edit checkpoint')).toBeInTheDocument();
   });
 });

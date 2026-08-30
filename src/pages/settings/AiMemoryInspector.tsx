@@ -12,6 +12,7 @@ import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { TrashIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { aiEntityExists } from '../../ai/entityAvailability';
+import { SettingsSubsectionHeading } from './SettingsSectionHeading';
 
 interface InspectorData {
   memories: AgentMemory[];
@@ -98,7 +99,9 @@ export function AiMemoryInspector({
     <div className="mt-6 border-t border-line pt-5">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h3 className="text-sm font-medium text-ink">Teaching memory</h3>
+          <SettingsSubsectionHeading className="text-sm font-medium text-ink">
+            Teaching memory
+          </SettingsSubsectionHeading>
           <p className="mt-1 text-xs leading-5 text-ink-faint">
             Inspect and correct what the AI retains about how you learn.
           </p>

@@ -1,6 +1,7 @@
 import { GaugeIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
 import { useCourseHeaderSettings } from '../../state/courseHeaderSettings';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 
 /**
  * Which stat pills a course header shows. Which of them read as useful depends on how
@@ -17,7 +18,7 @@ export function CourseHeaderSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <GaugeIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Course header</h2>
+        <SettingsSectionHeading className="font-display text-xl">Course header</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         Choose which figures appear beside a course title. Cards due and mastery are shown by

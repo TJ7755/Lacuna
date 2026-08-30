@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type * as ReactRouterDom from 'react-router-dom';
 import { SharePage } from './SharePage';
 import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
@@ -9,6 +10,28 @@ const mockNotify = vi.fn();
 let mockCourses: Course[] | undefined = undefined;
 let mockSummaries: Record<string, CourseSummary> | undefined = undefined;
 let mockCourseCards: Card[] = [];
+let mockSearchParams = new URLSearchParams();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
+  return {
+    ...actual,
+    Link: ({
+      to,
+      children,
+      className,
+    }: {
+      to: string;
+      children: React.ReactNode;
+      className?: string;
+    }) => (
+      <a href={`#${to}`} className={className}>
+        {children}
+      </a>
+    ),
+    useSearchParams: () => [mockSearchParams, vi.fn()],
+  };
+});
 
 vi.mock('../state/useCourseData', () => ({
   useCourses: () => mockCourses,
@@ -147,11 +170,21 @@ beforeEach(() => {
   mockCourseCards = [];
   mockDecodedPayload = {};
   mockFindCourseForLineage = undefined;
+  mockSearchParams = new URLSearchParams();
   mockImportLineageFirstTime.mockReset();
   mockMergeLineageUpdate.mockReset();
 });
 
 describe('SharePage', () => {
+  it('deep-links full recovery through the hash router and retains the section anchor', () => {
+    render(<SharePage />);
+
+    expect(screen.getByRole('link', { name: 'Open full backup and recovery' })).toHaveAttribute(
+      'href',
+      '#/settings#settings-export',
+    );
+  });
+
   it('renders loading skeleton when courses are loading', () => {
     render(<SharePage />);
     expect(screen.getByTestId('download-icon')).toBeInTheDocument();
@@ -251,6 +284,23 @@ describe('SharePage', () => {
       screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Share code to import' })).toBeInTheDocument();
+  });
+
+  it('moves the import job into view and focuses it for an explicit import intent', async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockSearchParams = new URLSearchParams('intent=import');
+
+    render(<SharePage />);
+
+    const input = screen.getByRole('textbox', { name: 'Share code to import' });
+    await waitFor(() => expect(input).toHaveFocus());
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('names generated share and plain-text exports', async () => {

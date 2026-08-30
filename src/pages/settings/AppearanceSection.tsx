@@ -5,6 +5,7 @@ import { FONT_SCALE_STEPS, useFontScale } from '../../state/FontScaleContext';
 import { useMotionSpeed } from '../../state/motionSpeed';
 import { useTheme, type Theme } from '../../state/ThemeContext';
 import { MotionSpeedControl } from './MotionSpeedControl';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 
 export function AppearanceSection() {
   const [motionSpeed, setMotionSpeed] = useMotionSpeed();
@@ -19,7 +20,7 @@ export function AppearanceSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <MoonIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Appearance</h2>
+        <SettingsSectionHeading className="font-display text-xl">Appearance</SettingsSectionHeading>
       </div>
       <p className="mb-4 text-sm text-ink-soft">
         Lacuna defaults to a dark theme. Your choice is remembered on this device.

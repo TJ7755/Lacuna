@@ -33,9 +33,9 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   toggleLabel?: string;
-  /** Opens the command palette instead of routing to /search. When omitted
-   *  (surfaces without palette wiring, e.g. LearnMode's nav drawer) the
-   *  search item falls back to a plain link to the full search page. */
+  /** Opens quick search instead of routing to /search. When omitted (surfaces
+   *  without palette wiring, e.g. LearnMode's nav drawer) the item falls back
+   *  to a plain link to the full content-search page. */
   onOpenPalette?: () => void;
   /** Raises the study sheet instead of routing to /learn. Omitted on surfaces without
    *  sheet wiring, where Review today falls back to the full-screen session. */
@@ -141,8 +141,8 @@ function ActionNavItem({
   );
 }
 
-/** The sidebar's search entry: opens the command palette rather than routing to a
- *  page, with a visible ⌘K/Ctrl+K hint so the palette is discoverable without
+/** The sidebar's quick-search entry: opens the palette rather than routing to a
+ *  page, with a visible ⌘K/Ctrl+K hint so it is discoverable without
  *  reading the shortcuts cheatsheet first. */
 function SearchNavItem({
   onOpenPalette,
@@ -157,7 +157,7 @@ function SearchNavItem({
     <button
       type="button"
       onClick={onOpenPalette}
-      title={collapsed ? 'Search (Ctrl/Cmd+K)' : undefined}
+      title={collapsed ? 'Quick search (Ctrl/Cmd+K)' : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
         compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
@@ -170,7 +170,7 @@ function SearchNavItem({
       </span>
       {!collapsed && (
         <>
-          <span className="flex-1 truncate">Search</span>
+          <span className="flex-1 truncate">Quick search</span>
           <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
             Ctrl/Cmd+K
           </kbd>
@@ -561,7 +561,7 @@ export function Sidebar({
                     <DashboardIcon />
                   )
                 }
-                label={n.label}
+                label={n.id === 'search' ? 'Search content' : n.label}
                 collapsed={collapsed}
                 compact={sidebarSettings.compactMode}
                 streakBadge={

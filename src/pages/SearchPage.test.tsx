@@ -114,6 +114,13 @@ vi.mock('../state/useSearchData', () => ({
 }));
 
 describe('SearchPage', () => {
+  it('identifies the full page as content search without advertising the quick-search shortcut', () => {
+    render(<SearchPage />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('heading', { name: 'Search content' })).toBeInTheDocument();
+    expect(screen.queryByText('Ctrl/Cmd+K')).not.toBeInTheDocument();
+  });
+
   it('badges a sequence-generated card result', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, sequenceItemId: 'item-1' }],

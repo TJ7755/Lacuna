@@ -4,7 +4,7 @@
 
 **Baseline:** `master` at `ad13c0b`
 
-**Audit:** [Lacuna UI flow catalogue](../APP-FLOWS.md)
+**Audit:** [Lacuna UX map](../UX-MAP.html) ([machine-readable register](../UX-MAP.json))
 
 ## Outcome
 
@@ -55,7 +55,7 @@ needed. Building any of those would be redundant.
    allows it. Repository validation remains the final boundary.
 5. Audit course settings and Help copy touched by this flow. Use **Final exam** for the primary
    assessment and **Checkpoint** for intermediate assessments; do not rename internal types.
-6. Update the focused component tests, `docs/APP-FLOWS.md`, `docs/CHANGES.md` and any affected
+6. Update the focused component tests, `docs/UX-MAP.html`, `docs/UX-MAP.json`, `docs/CHANGES.md` and any affected
    Help or specification text.
 
 ## Tests

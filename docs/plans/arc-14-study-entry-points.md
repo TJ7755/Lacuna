@@ -4,7 +4,7 @@
 
 **Baseline:** `master` at `df75237`
 
-**Audit:** [Lacuna UI flow catalogue](../APP-FLOWS.md)
+**Audit:** [Lacuna UX map](../UX-MAP.html) ([machine-readable register](../UX-MAP.json))
 
 ## Outcome
 
@@ -52,7 +52,7 @@ No new route, scheduler, queue, persisted preference or study-mode abstraction i
 3. Preserve direct `review=due`, `practiceNode` and `assessmentId` entry behaviour.
 4. Add **Review today** to the default configurable sidebar and route it to `/learn`.
 5. Align Learn header, Help, welcome and affected flow copy with the new labels.
-6. Update focused tests, `docs/APP-FLOWS.md`, `docs/SPEC.md`, `docs/CHANGES.md`, the website
+6. Update focused tests, `docs/UX-MAP.html`, `docs/UX-MAP.json`, `docs/SPEC.md`, `docs/CHANGES.md`, the website
    checklist and the current roadmap.
 
 ## Tests

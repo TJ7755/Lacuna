@@ -410,10 +410,10 @@ export function Welcome() {
               Try one card first
             </button>
             <Link
-              to="/settings"
+              to="/share?intent=import"
               className="inline-flex min-h-12 items-center rounded-[10px] px-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint transition-colors hover:text-ink-soft"
             >
-              Import Anki / JSON
+              Import a shared course
             </Link>
           </div>
         </div>
@@ -717,10 +717,10 @@ function CheckpointSection({
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <LandingCta>Open the dashboard</LandingCta>
               <Link
-                to="/settings"
+                to="/share?intent=import"
                 className="inline-flex min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"
               >
-                Import a deck
+                Import a shared course
               </Link>
               <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint">
                 Alpha — local, free, yours
