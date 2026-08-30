@@ -4,6 +4,7 @@ import { cn } from '../../components/ui/cn';
 import { KeyboardIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { ACTION_LABELS, formatBinding, useShortcutBindings, type LearnAction } from '../../state/shortcutBindings';
+import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 
 export function ShortcutsSection() {
   const shortcutBindings = useShortcutBindings();
@@ -17,7 +18,7 @@ export function ShortcutsSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <KeyboardIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Keyboard shortcuts</h2>
+        <SettingsSectionHeading className="font-display text-xl">Keyboard shortcuts</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         Customise the keys used while studying. Click any row then press the key you want to assign. Changes are remembered on this device.
@@ -102,7 +103,9 @@ function KeyCaptureOverlay({ action, onCapture, onCancel }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onCancel}>
       <div className="rounded-2xl border border-line-strong bg-surface px-8 py-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <h3 className="mb-2 font-display text-lg">Set shortcut for {ACTION_LABELS[action]}</h3>
+        <SettingsSubsectionHeading className="mb-2 font-display text-lg">
+          Set shortcut for {ACTION_LABELS[action]}
+        </SettingsSubsectionHeading>
         <p className="text-sm text-ink-soft">Press the key you want to use. Press Escape or click outside this card to cancel.</p>
       </div>
     </div>

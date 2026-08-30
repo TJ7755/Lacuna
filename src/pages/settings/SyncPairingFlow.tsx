@@ -5,6 +5,7 @@ import { cn } from '../../components/ui/cn';
 import { CameraIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { SyncField } from './SyncField';
+import { SettingsSubsectionHeading } from './SettingsSectionHeading';
 import {
   DEFAULT_RELAY_URL,
   decodePairingCode,
@@ -161,7 +162,9 @@ export function SyncPairingFlow({
     return (
       <form onSubmit={handleSetup} className="space-y-5">
         <div>
-          <h3 className="mb-1 font-display text-lg">Set up sync</h3>
+          <SettingsSubsectionHeading className="mb-1 font-display text-lg">
+            Set up sync
+          </SettingsSubsectionHeading>
           <p className="text-sm text-ink-soft">
             This device will create the private channel and publish the first encrypted snapshot.
           </p>
@@ -230,7 +233,9 @@ export function SyncPairingFlow({
   return (
     <div>
       <div className="mb-5">
-        <h3 className="mb-1 font-display text-lg">Join another device</h3>
+        <SettingsSubsectionHeading className="mb-1 font-display text-lg">
+          Join another device
+        </SettingsSubsectionHeading>
         <p className="text-sm text-ink-soft">
           Scan a pairing QR or enter the channel details and recovery passphrase.
         </p>

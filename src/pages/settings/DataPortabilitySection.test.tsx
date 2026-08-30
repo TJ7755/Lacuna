@@ -160,7 +160,7 @@ describe('DataPortabilitySection', () => {
   it('explains combining in the resting copy, not at the confirm', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
 
-    expect(screen.getByRole('heading', { name: 'Another device' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Another device' })).toBeInTheDocument();
     expect(screen.getByText(/Cards, Questions and review evidence/)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Choose backup from another device' }),

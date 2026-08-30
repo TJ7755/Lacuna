@@ -6,6 +6,7 @@ import {
   savePomodoroSettings,
   type PomodoroSettings,
 } from '../../hooks/usePomodoro';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 
 export function PomodoroSection() {
   const [settings, setSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
@@ -22,7 +23,7 @@ export function PomodoroSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <ClockIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Pomodoro timer</h2>
+        <SettingsSectionHeading className="font-display text-xl">Pomodoro timer</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         A built-in focus timer for your study sessions. Customise the durations to match your own

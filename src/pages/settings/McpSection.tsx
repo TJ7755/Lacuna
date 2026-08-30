@@ -6,6 +6,7 @@ import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
 import type { McpGrant } from '../../mcp/types';
 import type { McpClientConnection } from '../../mcp/connections';
 import { useCourses } from '../../state/useCourseData';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 
 interface McpStatus {
   running: boolean;
@@ -107,7 +108,7 @@ export function McpSection() {
   return (
     <section id="settings-mcp"
       className="mb-8 rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-1 flex items-center gap-2 text-accent"><GridIcon width={18} height={18} /><h2 className="font-display text-xl">MCP server</h2></div>
+      <div className="mb-1 flex items-center gap-2 text-accent"><GridIcon width={18} height={18} /><SettingsSectionHeading className="font-display text-xl">MCP server</SettingsSectionHeading></div>
       <p className="mb-4 text-sm text-ink-soft">Control what connected MCP clients may read or change. Access is cleared when each client disconnects.</p>
       <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm">
         <span className={status?.running ? 'text-positive' : 'text-negative'}>{status?.running ? 'Running' : 'Stopped'}</span>

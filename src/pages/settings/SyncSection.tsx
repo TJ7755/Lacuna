@@ -6,6 +6,7 @@ import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { ClockIcon, CloseIcon, QrCodeIcon, ShareIcon, TrashIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { readSyncState } from '../../db/mutationStamp';
+import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import type { SyncState } from '../../db/types';
 import { formatDateTime, formatRelativeTime } from '../../utils/datetime';
 import {
@@ -342,7 +343,7 @@ export function SyncSection() {
     <section id="settings-sync" className="mb-8 rounded-2xl border border-line bg-surface p-6">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <ShareIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Device sync</h2>
+        <SettingsSectionHeading className="font-display text-xl">Device sync</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         Keep courses, cards and review history aligned across your devices. The relay stores only
@@ -417,7 +418,9 @@ export function SyncSection() {
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-display text-lg">Pair another device</h3>
+                  <SettingsSubsectionHeading className="font-display text-lg">
+                    Pair another device
+                  </SettingsSubsectionHeading>
                   <p className="text-xs text-ink-soft">
                     Show this only while the other device is ready to scan.
                   </p>
@@ -453,7 +456,9 @@ export function SyncSection() {
           )}
 
           <div className="border-t border-line pt-5">
-            <h3 className="mb-2 font-display text-base">Leave this channel</h3>
+            <SettingsSubsectionHeading className="mb-2 font-display text-base">
+              Leave this channel
+            </SettingsSubsectionHeading>
             <p className="mb-4 text-sm text-ink-soft">
               Unpairing removes sync details from this device only. Deleting the channel removes the
               encrypted relay data for every paired device.
@@ -511,7 +516,9 @@ export function SyncSection() {
         />
       ) : (
         <div className="rounded-xl border border-line bg-surface-raised/30 p-4">
-          <h3 className="mb-1 font-display text-lg">Keep this device in step</h3>
+          <SettingsSubsectionHeading className="mb-1 font-display text-lg">
+            Keep this device in step
+          </SettingsSubsectionHeading>
           <p className="mb-4 text-sm text-ink-soft">
             Pair this installation with another device. Sync runs automatically on focus and after
             each study session once this device is unlocked.

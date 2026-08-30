@@ -1,6 +1,6 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -449,9 +449,9 @@ export function SharePage() {
           a restorable backup: schedules stay private and media files are omitted. Use a full backup
           when you need an exact transfer with images or audio.
           {' '}
-          <a href="/settings#settings-export" className="text-accent underline underline-offset-2">
+          <Link to="/settings#settings-export" className="text-accent underline underline-offset-2">
             Open full backup and recovery
-          </a>
+          </Link>
           .
         </p>
 

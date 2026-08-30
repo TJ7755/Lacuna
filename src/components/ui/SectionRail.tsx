@@ -9,7 +9,7 @@
 // one of the two ever mounts at a time — not two independently-styled,
 // always-mounted elements hidden via separate Tailwind breakpoint classes.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LayoutGroup, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { cn } from './cn';
 import { ChevronDownIcon } from './icons';
@@ -28,8 +28,11 @@ export interface SectionRailItem {
   label: string;
 }
 
-function scrollToSection(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function scrollToSection(id: string, motionMultiplier: number) {
+  document.getElementById(id)?.scrollIntoView({
+    behavior: motionMultiplier > 0 ? 'smooth' : 'instant',
+    block: 'start',
+  });
 }
 
 /**
@@ -37,7 +40,7 @@ function scrollToSection(id: string) {
  * returns the active section id plus a navigate helper. Shared by both the
  * desktop rail and the mobile jumper so they stay in sync off one observer.
  */
-export function useSectionRail(sections: SectionRailItem[]) {
+export function useSectionRail(sections: SectionRailItem[], motionMultiplier = 1) {
   const [activeSection, setActiveSection] = useState(sections[0]?.id ?? '');
   const sectionIds = sections.map((section) => section.id).join('|');
 
@@ -62,7 +65,12 @@ export function useSectionRail(sections: SectionRailItem[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionIds]);
 
-  return { activeSection, goToSection: scrollToSection };
+  const goToSection = useCallback(
+    (id: string) => scrollToSection(id, motionMultiplier),
+    [motionMultiplier],
+  );
+
+  return { activeSection, goToSection };
 }
 
 interface SectionRailProps {

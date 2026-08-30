@@ -10,6 +10,7 @@ const SECTIONS: SectionRailItem[] = [
 let observerCallback: IntersectionObserverCallback | null = null;
 const observe = vi.fn();
 const disconnect = vi.fn();
+const scrollIntoView = vi.fn();
 
 class MockIntersectionObserver {
   constructor(callback: IntersectionObserverCallback) {
@@ -44,6 +45,11 @@ beforeEach(() => {
     configurable: true,
     value: MockIntersectionObserver,
   });
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scrollIntoView,
+  });
+  scrollIntoView.mockClear();
   document.body.innerHTML = '<div id="section-a"></div><div id="section-b"></div>';
   mockViewport(true);
 });
@@ -53,20 +59,31 @@ afterEach(() => {
   window.matchMedia = originalMatchMedia;
 });
 
-function Harness({ onNavigate = vi.fn() }: { onNavigate?: (id: string) => void }) {
-  const { activeSection, goToSection } = useSectionRail(SECTIONS);
+function Harness({
+  onNavigate = vi.fn(),
+  motionMultiplier = 1,
+}: {
+  onNavigate?: (id: string) => void;
+  motionMultiplier?: number;
+}) {
+  const { activeSection, goToSection } = useSectionRail(SECTIONS, motionMultiplier);
+  const navigate = (id: string) => {
+    goToSection(id);
+    onNavigate(id);
+  };
   return (
     <>
       <SectionRail
         sections={SECTIONS}
         activeSection={activeSection}
-        onNavigate={(id) => {
-          goToSection(id);
-          onNavigate(id);
-        }}
-        motionMultiplier={0}
+        onNavigate={navigate}
+        motionMultiplier={motionMultiplier}
       />
-      <SectionRailMobileJumper sections={SECTIONS} activeSection={activeSection} onNavigate={onNavigate} />
+      <SectionRailMobileJumper
+        sections={SECTIONS}
+        activeSection={activeSection}
+        onNavigate={navigate}
+      />
     </>
   );
 }
@@ -94,6 +111,26 @@ describe('SectionRail', () => {
     render(<Harness onNavigate={onNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: 'Section B' }));
     expect(onNavigate).toHaveBeenCalledWith('section-b');
+  });
+
+  it.each([
+    {
+      label: 'uses immediate scrolling when motion is reduced',
+      motionMultiplier: 0,
+      behavior: 'instant',
+    },
+    {
+      label: 'uses smooth scrolling when motion is enabled',
+      motionMultiplier: 1,
+      behavior: 'smooth',
+    },
+  ])('$label', ({ motionMultiplier, behavior }) => {
+    render(<Harness motionMultiplier={motionMultiplier} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Section B' }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior, block: 'start' });
+    expect(scrollIntoView.mock.instances[0]).toBe(document.getElementById('section-b'));
   });
 
   it('reflects the active section in the mobile jumper select', () => {

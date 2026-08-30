@@ -6,6 +6,7 @@ import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { importBackup, readBackupFile, type ImportMode } from '../../db/portability';
+import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import type { BackupFile } from '../../db/types';
 import {
   ManualMergeError,
@@ -128,7 +129,9 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
     <section id="settings-export" className="rounded-2xl border border-line bg-surface p-6">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <UploadIcon width={18} height={18} />
-        <h2 className="mb-1 font-display text-xl">Full backup and recovery</h2>
+        <SettingsSectionHeading className="mb-1 font-display text-xl">
+          Full backup and recovery
+        </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         A full JSON backup contains every local course, Card, Question, attempt, schedule and media
@@ -140,7 +143,9 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
       </div>
 
       <div className="border-t border-line pt-5">
-        <h3 className="mb-3 font-display text-lg">Another device</h3>
+        <SettingsSubsectionHeading className="mb-3 font-display text-lg">
+          Another device
+        </SettingsSubsectionHeading>
         <p className="mb-4 text-sm text-ink-soft">
           Combine this installation with a backup from another device. Cards, Questions and review
           evidence from either side are kept; content deleted on either is removed. A restore point
@@ -181,7 +186,9 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
       </div>
 
       <div className="mt-5 border-t border-line pt-5">
-        <h3 className="mb-3 font-display text-lg">Recover this installation</h3>
+        <SettingsSubsectionHeading className="mb-3 font-display text-lg">
+          Recover this installation
+        </SettingsSubsectionHeading>
         <p className="mb-4 text-sm text-ink-soft">
           Choose a backup file to add its contents to this installation, or to replace everything
           here.
@@ -220,7 +227,9 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
             className="mt-5"
           >
             <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
-              <h3 className="mb-3 font-display text-lg">Full-backup recovery</h3>
+              <SettingsSubsectionHeading className="mb-3 font-display text-lg">
+                Full-backup recovery
+              </SettingsSubsectionHeading>
               <div className="text-sm text-ink-soft">
                 <p className="mb-3">
                   This backup contains{' '}

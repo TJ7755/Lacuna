@@ -5,6 +5,7 @@ import { Settings } from './Settings';
 const setStartInFocusMode = vi.fn();
 const setCourseCardMetric = vi.fn();
 const setMotionSpeed = vi.fn();
+const scrollIntoView = vi.fn();
 
 vi.mock('../state/focusModePreference', () => ({
   useStartInFocusMode: () => [false, setStartInFocusMode],
@@ -37,13 +38,16 @@ vi.mock('../state/gradingMode', () => ({ useGradingMode: () => ['silent', vi.fn(
 vi.mock('../state/typingSetting', () => ({ useTypingSetting: () => ['reveal', vi.fn()] }));
 vi.mock('../state/optimiseSetting', () => ({ useAutoOptimiseDefault: () => [true, vi.fn()] }));
 vi.mock('../state/practiceDefaults', () => ({
-  usePracticeDefaults: () => [{
-    autoPractice: true,
-    practiceThresholdMinutesFar: 30,
-    practiceThresholdMinutesNear: 15,
-    practiceUrgentWindowDays: 7,
-    practiceMaxGap: 5,
-  }, vi.fn()],
+  usePracticeDefaults: () => [
+    {
+      autoPractice: true,
+      practiceThresholdMinutesFar: 30,
+      practiceThresholdMinutesNear: 15,
+      practiceUrgentWindowDays: 7,
+      practiceMaxGap: 5,
+    },
+    vi.fn(),
+  ],
 }));
 vi.mock('../state/dashboardSort', () => ({ useDashboardSort: () => ['recent', vi.fn()] }));
 vi.mock('../state/courseCardDetail', () => ({
@@ -58,15 +62,18 @@ vi.mock('../state/inputMode', () => ({
 }));
 vi.mock('../state/sidebarSettings', () => ({
   DEFAULT_NAV_ITEMS: [],
-  useSidebarSettings: () => [{
-    showDueCounts: true,
-    showArchived: true,
-    compactMode: false,
-    navItems: [
-      { id: 'dashboard', label: 'Dashboard', visible: true },
-      { id: 'search', label: 'Search', visible: true },
-    ],
-  }, vi.fn()],
+  useSidebarSettings: () => [
+    {
+      showDueCounts: true,
+      showArchived: true,
+      compactMode: false,
+      navItems: [
+        { id: 'dashboard', label: 'Dashboard', visible: true },
+        { id: 'search', label: 'Search', visible: true },
+      ],
+    },
+    vi.fn(),
+  ],
 }));
 vi.mock('../state/shortcutBindings', () => ({
   ACTION_LABELS: {},
@@ -100,11 +107,18 @@ Object.defineProperty(globalThis, 'IntersectionObserver', {
   value: MockIntersectionObserver,
 });
 
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  configurable: true,
+  value: scrollIntoView,
+});
+
 describe('Settings', () => {
   beforeEach(() => {
     setStartInFocusMode.mockClear();
     setCourseCardMetric.mockClear();
     setMotionSpeed.mockClear();
+    scrollIntoView.mockClear();
+    window.location.hash = '';
   });
 
   it('updates the default Focus Mode preference', () => {
@@ -119,6 +133,14 @@ describe('Settings', () => {
     render(<Settings />);
 
     expect(screen.getByRole('switch', { name: 'Type your answer' })).toBeInTheDocument();
+  });
+
+  it('names the shared sidebar control as a search entry rather than either search surface', () => {
+    render(<Settings />);
+
+    expect(screen.getByText('Search entry')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Show Search entry' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Show Search' })).not.toBeInTheDocument();
   });
 
   it('selects the course card progress metric', () => {
@@ -172,7 +194,9 @@ describe('Settings', () => {
     expect(screen.getByRole('switch', { name: 'Show archived courses' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Compact mode' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Manual four-point grading' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Optimise scheduling' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Optimise scheduling', hidden: true }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Auto-insert practice nodes' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Auto-start breaks' })).toBeInTheDocument();
   });
@@ -185,8 +209,94 @@ describe('Settings', () => {
     expect(
       screen.getByRole('spinbutton', {
         name: 'Threshold (far)',
+        hidden: true,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'Focus duration, in minutes' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Focus duration, in minutes' }),
+    ).toBeInTheDocument();
+  });
+
+  it('organises settings into five task groups while preserving existing section anchors', () => {
+    render(<Settings />);
+
+    const jumper = screen.getByLabelText('Jump to settings group');
+    expect(
+      Array.from(jumper.querySelectorAll('option')).map((option) => option.textContent),
+    ).toEqual([
+      'Appearance & access',
+      'Study behaviour',
+      'Course defaults',
+      'Data safety',
+      'Integrations',
+    ]);
+    expect(document.querySelectorAll('section[id^="settings-group-"]')).toHaveLength(5);
+
+    const membership = {
+      'settings-group-appearance': [
+        'settings-appearance',
+        'settings-input',
+        'settings-sidebar',
+        'settings-dashboard',
+        'settings-course-header',
+        'settings-shortcuts',
+      ],
+      'settings-group-study': ['settings-study', 'settings-pomodoro'],
+      'settings-group-course-defaults': ['settings-course-defaults'],
+      'settings-group-data': ['settings-sync', 'settings-export', 'settings-backups'],
+      'settings-group-integrations': ['settings-install', 'settings-ai'],
+    };
+
+    Object.entries(membership).forEach(([groupId, childIds]) => {
+      const group = document.getElementById(groupId);
+      childIds.forEach((childId) =>
+        expect(document.getElementById(childId)?.parentElement).toBe(group),
+      );
+    });
+  });
+
+  it('renders task groups, sections and subsections at successive heading levels', () => {
+    render(<Settings />);
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Appearance & access' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Appearance' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Session behaviour' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Full backup and recovery' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 4, name: 'Course progress metric' }),
+    ).toBeInTheDocument();
+  });
+
+  it('scrolls a routed secondary hash to the preserved child section', () => {
+    window.location.hash = '#/settings#settings-export';
+
+    render(<Settings />);
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    const target = document.getElementById('settings-export');
+    expect(scrollIntoView.mock.instances[0]).toBe(target);
+    expect(target?.parentElement?.className).toContain('[&>section]:scroll-mt-20');
+  });
+
+  it('keeps global scheduler internals closed behind deliberate disclosures', () => {
+    render(<Settings />);
+
+    const scheduling = screen.getByText('Advanced scheduling').closest('details');
+    const practiceTiming = screen.getByText('Advanced practice timing').closest('details');
+
+    expect(scheduling).not.toHaveAttribute('open');
+    expect(practiceTiming).not.toHaveAttribute('open');
+    expect(
+      screen.getByRole('switch', { name: 'Optimise scheduling', hidden: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Threshold (far)', hidden: true }),
+    ).toBeInTheDocument();
   });
 });

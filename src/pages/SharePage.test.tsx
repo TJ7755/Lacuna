@@ -15,6 +15,19 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
+    Link: ({
+      to,
+      children,
+      className,
+    }: {
+      to: string;
+      children: React.ReactNode;
+      className?: string;
+    }) => (
+      <a href={`#${to}`} className={className}>
+        {children}
+      </a>
+    ),
     useSearchParams: () => [mockSearchParams, vi.fn()],
   };
 });
@@ -162,6 +175,15 @@ beforeEach(() => {
 });
 
 describe('SharePage', () => {
+  it('deep-links full recovery through the hash router and retains the section anchor', () => {
+    render(<SharePage />);
+
+    expect(screen.getByRole('link', { name: 'Open full backup and recovery' })).toHaveAttribute(
+      'href',
+      '#/settings#settings-export',
+    );
+  });
+
   it('renders loading skeleton when courses are loading', () => {
     render(<SharePage />);
     expect(screen.getByTestId('download-icon')).toBeInTheDocument();

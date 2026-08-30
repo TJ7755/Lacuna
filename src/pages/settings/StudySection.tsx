@@ -1,4 +1,5 @@
-import { FlameIcon } from '../../components/ui/icons';
+import { ChevronDownIcon, FlameIcon } from '../../components/ui/icons';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { Toggle } from '../../components/ui/Toggle';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
@@ -14,22 +15,19 @@ export function StudySection() {
   const [gradingMode, setGradingMode] = useGradingMode();
   const [typingSetting, setTypingSetting] = useTypingSetting();
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
-  const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
-  const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
   const [audioSettings, setAudioSettings] = useAudioSettings();
 
   return (
-    <section
-      id="settings-study"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
-    >
+    <section id="settings-study" className="mb-8 rounded-2xl border border-line bg-surface p-6">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <FlameIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Study &amp; scheduling</h2>
+        <SettingsSectionHeading className="font-display text-xl">
+          Session behaviour
+        </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        How grades are decided and how the FSRS schedule adapts to you.
+        Choose how sessions present cards, collect answers and keep you focused.
       </p>
 
       <SettingToggle
@@ -125,30 +123,79 @@ export function StudySection() {
           onChange={setStartInFocusMode}
         />
       </div>
+    </section>
+  );
+}
 
+export function CourseDefaultsSection() {
+  const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
+  const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
+
+  return (
+    <section
+      id="settings-course-defaults"
+      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+    >
+      <div className="mb-1 flex items-center gap-2 text-accent">
+        <FlameIcon width={18} height={18} />
+        <SettingsSectionHeading className="font-display text-xl">
+          Scheduling &amp; practice
+        </SettingsSectionHeading>
+      </div>
+      <p className="mb-5 text-sm text-ink-soft">
+        Shared starting points for scheduling and automatic practice. A course&apos;s own settings
+        always take priority.
+      </p>
       <SettingToggle
-        bordered
-        title="Optimise scheduling"
-        description={`Fit each course's FSRS weights to your own review history, which is where most of FSRS's efficiency comes from. On by default. Optimisation only runs once a course has at least ${MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied without your confirmation. You can override this per course in its settings.`}
-        checked={autoOptimise}
-        onChange={setAutoOptimise}
+        title="Auto-insert practice nodes"
+        description="Automatically add practice nodes between lessons on the course path."
+        checked={practiceDefaults.autoPractice}
+        onChange={(checked) => setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })}
       />
 
-      <div className="mt-6 border-t border-line pt-5">
-        <h3 className="font-display text-base">Course defaults</h3>
-        <p className="mt-1 mb-4 text-sm text-ink-soft">
-          Starting point for practice nodes on new courses. Any course can override these in its own
-          settings, which always take priority.
-        </p>
-        <SettingToggle
-          title="Auto-insert practice nodes"
-          description="Automatically add practice nodes between lessons on the course path."
-          checked={practiceDefaults.autoPractice}
-          onChange={(checked) =>
-            setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
-          }
-        />
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <details className="group mt-6 border-t border-line pt-5">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
+            <span className="mt-1 block text-sm text-ink-soft">
+              Lacuna uses its recommended scheduling model by default. Open this only if you want
+              courses without their own override to fit scheduling to your review history.
+            </span>
+          </span>
+          <ChevronDownIcon
+            width={18}
+            height={18}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <div className="mt-5 rounded-xl border border-line bg-surface-raised/50 p-4">
+          <SettingToggle
+            title="Optimise scheduling"
+            description={`Fit each course's FSRS weights to your own review history. Optimisation starts only after at least ${MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied without your confirmation. You can override this per course in its settings.`}
+            checked={autoOptimise}
+            onChange={setAutoOptimise}
+          />
+        </div>
+      </details>
+
+      <details className="group mt-6 border-t border-line pt-5">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
+            <span className="mt-1 block text-sm text-ink-soft">
+              Keep the recommended thresholds unless you need tighter control over when Lacuna
+              inserts practice into a course path.
+            </span>
+          </span>
+          <ChevronDownIcon
+            width={18}
+            height={18}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <NumberField
             label="Threshold (far)"
             value={practiceDefaults.practiceThresholdMinutesFar}
@@ -194,7 +241,7 @@ export function StudySection() {
           The near threshold applies once an exam is within the revision period; the far threshold
           applies otherwise. Max gap forces a practice node after this many lessons without one.
         </p>
-      </div>
+      </details>
     </section>
   );
 }

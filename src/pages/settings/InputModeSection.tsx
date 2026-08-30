@@ -1,6 +1,7 @@
 import { KeyboardIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { useInputMode, type InputMode } from '../../state/inputMode';
+import { SettingsSectionHeading } from './SettingsSectionHeading';
 
 const INPUT_OPTIONS: { key: InputMode; label: string; desc: string }[] = [
   { key: 'keyboard', label: 'Keyboard first', desc: 'Compact layout with shortcuts' },
@@ -18,7 +19,7 @@ export function InputModeSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <KeyboardIcon width={18} height={18} />
-        <h2 className="font-display text-xl">Input mode</h2>
+        <SettingsSectionHeading className="font-display text-xl">Input mode</SettingsSectionHeading>
       </div>
       <p className="mb-4 text-sm text-ink-soft">
         Choose how Lacuna presents its interface. Keyboard-first keeps the compact,
