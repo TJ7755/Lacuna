@@ -18,7 +18,7 @@ lifecycle behaviour:
 - the disabled relay runtime is behind an enabled-only dynamic import, and the AI
   panel (including Markdown, KaTeX and syntax highlighting) is fetched only when
   the panel opens;
-- automatic sync installs after application readiness as a 2,610-byte lazy
+- automatic sync installs after application readiness as a 2,380-byte lazy
   trigger. Pairing, backup validation, math verification and charts are no longer
   fetched by that trigger unless remembered credentials exist and a sync runs;
 - the schema-v24 question migration loads its expression verifier only while that
@@ -30,21 +30,21 @@ lifecycle behaviour:
 
 | Production measurement | Fresh `master` | After follow-up | Change |
 |---|---:|---:|---:|
-| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 861,662 / 263,861 gz | -66.4% raw / -64.8% gz |
+| Initial JavaScript | 2,561,545 bytes / ~748,825 gz | 863,072 / 264,208 gz | -66.3% raw / -64.7% gz |
 | Initial CSS | 148,744 bytes | 119,454 / 17,533 gz | -29,290 bytes |
-| PWA install precache | 1,519.50 KiB | 997.10 KiB | -522.40 KiB |
+| PWA install precache | 1,519.50 KiB | 998.47 KiB | -521.03 KiB |
 
 The generated HTML now references only `app` and `vendor` JavaScript plus the
 base stylesheet. Charts, Markdown JavaScript and Markdown CSS remain lazy. The
-application entry is 461,345 bytes; `vendor` is 400,317 bytes.
+application entry is 462,755 bytes; `vendor` is 400,317 bytes.
 
 `bun run perf:check` enforces 900,000 raw / 280,000 gzip initial JavaScript and
 130,000 raw / 22,000 gzip initial CSS budgets, and rejects eager `charts-*` or
 `markdown-*` references. Run it after `bun run build`. The repaired full audit on
 this branch measured 10,000-card `selectNext` and `sessionComplete` medians of
-25.15 ms and 21.30 ms; one `recordReview` call measured 8.11 ms at 500 cards,
-6.69 ms at 2,000 cards and 28.17 ms at 10,000 cards. The separate once-daily
-10,000-card sample measured 119.32 ms in fake IndexedDB.
+15.45 ms and 16.00 ms; one `recordReview` call measured 13.82 ms at 500 cards,
+6.05 ms at 2,000 cards and 29.04 ms at 10,000 cards. The separate once-daily
+10,000-card sample measured 83.68 ms in fake IndexedDB.
 
 ## Baseline (production build, 11 Aug 2026)
 

@@ -11,11 +11,13 @@ import {
 
 const {
   allowRelayConnectMock,
+  pairingModuleExecutions,
   readRememberedCredentialsMock,
   readSyncStateMock,
   syncWithCredentialsMock,
 } = vi.hoisted(() => ({
     allowRelayConnectMock: vi.fn(),
+    pairingModuleExecutions: { count: 0 },
     readRememberedCredentialsMock: vi.fn(),
     readSyncStateMock: vi.fn(),
     syncWithCredentialsMock: vi.fn(),
@@ -23,10 +25,13 @@ const {
 
 vi.mock('../db/mutationStamp', () => ({ readSyncState: readSyncStateMock }));
 vi.mock('./csp', () => ({ allowRelayConnect: allowRelayConnectMock }));
-vi.mock('./pairing', () => ({
-  readRememberedCredentials: readRememberedCredentialsMock,
-  syncWithCredentials: syncWithCredentialsMock,
-}));
+vi.mock('./pairing', () => {
+  pairingModuleExecutions.count += 1;
+  return {
+    readRememberedCredentials: readRememberedCredentialsMock,
+    syncWithCredentials: syncWithCredentialsMock,
+  };
+});
 
 const state: SyncState = {
   relayUrl: 'https://custom-relay.example',
@@ -53,6 +58,17 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('remembered sync trigger credentials', () => {
+  it('does not execute the pairing module when this device has no remembered credentials', async () => {
+    readSyncStateMock.mockResolvedValue({ ...state, remembered: undefined });
+
+    const dispose = installSyncTriggers();
+    await vi.waitFor(() => expect(readSyncStateMock).toHaveBeenCalled());
+
+    expect(pairingModuleExecutions.count).toBe(0);
+    expect(readRememberedCredentialsMock).not.toHaveBeenCalled();
+    dispose();
+  });
+
   it('allows a remembered custom relay through the web CSP before publishing it', async () => {
     const dispose = installSyncTriggers();
 
@@ -76,16 +92,6 @@ describe('remembered sync trigger credentials', () => {
     await vi.waitFor(() => expect(readRememberedCredentialsMock).toHaveBeenCalled());
 
     expect(getUnlockedCredentials()).toBeNull();
-    dispose();
-  });
-
-  it('does not load pairing helpers when this device has no remembered credentials', async () => {
-    readSyncStateMock.mockResolvedValue({ ...state, remembered: undefined });
-
-    const dispose = installSyncTriggers();
-    await vi.waitFor(() => expect(readSyncStateMock).toHaveBeenCalled());
-
-    expect(readRememberedCredentialsMock).not.toHaveBeenCalled();
     dispose();
   });
 

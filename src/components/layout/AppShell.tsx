@@ -21,6 +21,7 @@ import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AiActivityCapsule } from '../ai/AiActivityCapsule';
 import { loadAiPanel } from '../ai/loaders';
+import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
 
 const AiPanel = lazy(loadAiPanel);
 
@@ -252,9 +253,11 @@ export function AppShell() {
               transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
               className="hidden shrink-0 overflow-hidden lg:block"
             >
-              <Suspense fallback={null}>
-                <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
-              </Suspense>
+              <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
+                <Suspense fallback={null}>
+                  <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
+                </Suspense>
+              </AiPanelLoadBoundary>
             </motion.div>
           )}
         </AnimatePresence>

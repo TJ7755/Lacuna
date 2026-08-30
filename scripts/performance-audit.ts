@@ -83,6 +83,7 @@ function makeBenchmarkDeck(): SchedulingUnitRecord {
 function makeBenchmarkCard(index: number, deckId: string): Card {
   return {
     id: `performance-card-${index}`,
+    conceptId: `performance-concept-${index}`,
     deckId,
     schedulingUnitId: deckId,
     type: 'front_back',
