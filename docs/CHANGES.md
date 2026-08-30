@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — UI/UX audit implementation
+
+- Delivered QW-1–QW-6 and QW-8–QW-10 from the 30 August sticking-point audit: restore points
+  report Course lessons; failed Question starts offer Retry and Exit; study-flow Continue exposes
+  planner delay; Card drafts save only real edits; checked Question answers can be edited; every
+  recorded FSRS answer offers Undo; Welcome actions have deliberate light-theme contrast; the two
+  confirmed live Course-facing Deck strings are gone; and Learn announces concise progress.
+- Made the motion-speed setting apply to shared buttons, toggles, menus and assessment sheets, and
+  added continuity to Question and study results, Lesson Study/Author swaps and reordering, inline
+  confirmations, notes and annotations, batch authoring, optional constraints, staging review and
+  Course tabs. All transitions collapse under reduced motion.
+- Extracted the staging candidate row from its oversized review component instead of turning one
+  755-line file into an even larger dumping ground.
+- Recorded the delivered and deliberately deferred audit items in both source audit documents.
+
+**Checks:** focused red-to-green component, page, session, backup and draft tests; full typecheck,
+lint, unit, coverage, production, tooling and browser checks are recorded by the pull request.
+
 ## Unreleased — first-load and network performance
 
 - Contained a failed lazy AI-panel download inside the workspace so the shell and

@@ -1,5 +1,10 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { readMotionSpeed, writeMotionSpeed, speedMultiplier, getMotionMultiplier } from './motionSpeed';
+import {
+  getMotionMultiplier,
+  readMotionSpeed,
+  speedMultiplier,
+  writeMotionSpeed,
+} from './motionSpeed';
 
 const KEY = 'lacuna.motionSpeed';
 

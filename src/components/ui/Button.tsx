@@ -1,17 +1,18 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { m as motion } from 'motion/react';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
+import { scaledSpring } from './motion';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 // Framer's motion.button defines its own gesture/animation handlers, so drop the DOM
 // versions that would otherwise clash with the typed props.
-interface ButtonProps
-  extends Omit<
-    ButtonHTMLAttributes<HTMLButtonElement>,
-    'onAnimationStart' | 'onAnimationEnd' | 'onDrag' | 'onDragStart' | 'onDragEnd'
-  > {
+interface ButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'onAnimationStart' | 'onAnimationEnd' | 'onDrag' | 'onDragStart' | 'onDragEnd'
+> {
   variant?: Variant;
   size?: Size;
 }
@@ -39,15 +40,19 @@ const sizes: Record<Size, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', size = 'md', className, ...rest },
+  { variant = 'secondary', size = 'md', className, style, ...rest },
   ref,
 ) {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
+
   return (
     <motion.button
       ref={ref}
-      whileTap={{ scale: 0.96 }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ type: 'spring', stiffness: 600, damping: 28 }}
+      whileTap={multiplier > 0 ? { scale: 0.96 } : undefined}
+      whileHover={multiplier > 0 ? { scale: 1.02 } : undefined}
+      transition={scaledSpring(multiplier, 600, 28)}
+      style={{ ...style, transitionDuration: `${150 * multiplier}ms` }}
       className={cn(base, variants[variant], sizes[size], className)}
       {...rest}
     />

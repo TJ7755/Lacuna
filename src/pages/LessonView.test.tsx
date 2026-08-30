@@ -196,11 +196,12 @@ describe('LessonView Study mode', () => {
   });
 
   it('renders notes read-only, with no add/edit/delete controls', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('A note')).toBeInTheDocument();
     expect(screen.queryByText('Add note')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Edit note')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Delete note')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-lesson-workspace-mode="study"]')).not.toBeNull();
   });
 
   it('does not show a Course settings link when rendered via the normal route', () => {
@@ -296,9 +297,10 @@ describe('LessonView Author mode', () => {
   });
 
   it('renders the full notes CRUD section', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('A note')).toBeInTheDocument();
     expect(screen.getByText('Add note')).toBeInTheDocument();
+    expect(container.querySelector('[data-lesson-workspace-mode="edit"]')).not.toBeNull();
   });
 
   it('renders the editable cards section rather than the summary', () => {

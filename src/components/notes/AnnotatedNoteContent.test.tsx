@@ -97,9 +97,17 @@ describe('AnnotatedNoteContent', () => {
     await waitFor(() =>
       expect(updateAnnotation).toHaveBeenCalledWith('annotation-1', { body: 'Updated' }),
     );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Edit annotation for zeta' })).toHaveFocus(),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete annotation for zeta' }));
     expect(screen.getByText('Delete this highlight?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete annotation for zeta' })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete annotation for zeta' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(deleteAnnotation).toHaveBeenCalledWith('annotation-1'));
   });

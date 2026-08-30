@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
@@ -210,5 +210,28 @@ describe('QuestionLearnMode', () => {
     window.dispatchEvent(new Event('pagehide'));
 
     await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(expect.any(String)));
+  });
+
+  it('offers inline retry and exit controls when a Question cannot start', async () => {
+    mocks.start.mockRejectedValueOnce(new Error('The Question could not be loaded.'));
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+          <Route path="/course/:courseId/questions" element={<p>Question bank</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const recovery = await screen.findByRole('alert');
+    expect(recovery).toHaveTextContent('The Question could not be loaded.');
+    expect(within(recovery).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(within(recovery).getByRole('button', { name: 'Exit' })).toBeInTheDocument();
+
+    fireEvent.click(within(recovery).getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    expect(mocks.start).toHaveBeenCalledTimes(2);
   });
 });

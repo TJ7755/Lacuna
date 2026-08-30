@@ -76,4 +76,32 @@ describe('QuestionResponsePanel', () => {
       }),
     );
   });
+
+  it('lets the learner return from checked working to edit the same answer', () => {
+    const onSubmit = vi.fn();
+    render(
+      <QuestionResponsePanel
+        attempt={attempt({
+          resolvedPayload: {
+            v: 1,
+            kind: 'working',
+            scheme: [{ marks: 1, kind: 'predicate', predicate: 'equals', args: ['4'] }],
+          },
+        })}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Your working'), { target: { value: '2 + 2 = 5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+
+    const result = screen.getByLabelText('Checker result');
+    expect(result).toBeInTheDocument();
+    expect(result.parentElement).toHaveStyle({ opacity: '0' });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit answer' }));
+
+    expect(screen.getByLabelText('Your working')).toHaveValue('2 + 2 = 5');
+    expect(screen.queryByLabelText('Checker result')).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

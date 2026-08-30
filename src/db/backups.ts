@@ -126,7 +126,7 @@ export async function takeAutoBackup(force = false): Promise<BackupFile | undefi
   const payload = await exportDatabase();
   const snapshot: BackupSnapshot = {
     createdAt: payload.exportedAt,
-    deckCount: payload.decks?.length ?? payload.courses?.length ?? 0,
+    deckCount: payload.lessons?.length ?? 0,
     cardCount: payload.cards.length,
     payload,
   };

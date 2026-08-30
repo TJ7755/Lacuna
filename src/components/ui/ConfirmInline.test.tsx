@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ConfirmInline } from './ConfirmInline';
+import { useState } from 'react';
+import { ConfirmInline, ConfirmInlineSwap, inlineConfirmTiming } from './ConfirmInline';
 
 describe('ConfirmInline', () => {
   it('renders the message and default labels', () => {
@@ -52,5 +53,39 @@ describe('ConfirmInline', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Delete this restore point?');
     expect(screen.getByRole('button', { name: 'Delete restore point' })).toHaveFocus();
+  });
+});
+
+describe('ConfirmInlineSwap', () => {
+  it('animates at the global multiplier', () => {
+    expect(inlineConfirmTiming(1.4).duration).toBeCloseTo(0.224);
+    expect(inlineConfirmTiming(0.6).duration).toBeCloseTo(0.096);
+    expect(inlineConfirmTiming(0).duration).toBe(0);
+  });
+
+  it('moves focus into the replacement and restores it when cancelled', () => {
+    function Harness() {
+      const [active, setActive] = useState(false);
+      return (
+        <ConfirmInlineSwap
+          active={active}
+          message="Delete?"
+          onConfirm={vi.fn()}
+          onCancel={() => setActive(false)}
+        >
+          <button type="button">Edit note</button>
+          <button type="button" onClick={() => setActive(true)}>
+            Delete note
+          </button>
+        </ConfirmInlineSwap>
+      );
+    }
+
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete note' }));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete note' })).toHaveFocus();
   });
 });

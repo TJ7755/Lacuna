@@ -9,7 +9,17 @@ function TestComponent() {
     <div>
       <button onClick={() => notify('Hello world')}>Notify</button>
       <button onClick={() => notify('Error', 'negative')}>Error</button>
-      <button onClick={() => notify('Action', 'neutral', { actionLabel: 'Undo', onAction: vi.fn() })}>Action</button>
+      <button
+        onClick={() => notify('Action', 'neutral', { actionLabel: 'Undo', onAction: vi.fn() })}
+      >
+        Action
+      </button>
+      <button onClick={() => notify('First answer', 'neutral', { replaceKey: 'answer' })}>
+        First answer
+      </button>
+      <button onClick={() => notify('Second answer', 'neutral', { replaceKey: 'answer' })}>
+        Second answer
+      </button>
     </div>
   );
 }
@@ -19,7 +29,7 @@ describe('ToastProvider', () => {
     render(
       <ToastProvider>
         <div data-testid="child">Content</div>
-      </ToastProvider>
+      </ToastProvider>,
     );
     expect(screen.getByTestId('child')).toBeInTheDocument();
   });
@@ -28,10 +38,12 @@ describe('ToastProvider', () => {
     render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     );
     fireEvent.click(screen.getByText('Notify'));
-    await waitFor(() => expect(screen.getByText('Hello world', { selector: 'span' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Hello world', { selector: 'span' })).toBeInTheDocument(),
+    );
   });
 
   it('announces each toast through the visible notification stack only once', async () => {
@@ -53,20 +65,38 @@ describe('ToastProvider', () => {
     render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Error' }));
-    await waitFor(() => expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Error', { selector: 'span' })).toBeInTheDocument(),
+    );
   });
 
   it('shows an action button', async () => {
     render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     );
     fireEvent.click(screen.getByText('Action'));
     await waitFor(() => expect(screen.getByText('Undo')).toBeInTheDocument());
+  });
+
+  it('replaces a keyed toast so stale actions cannot remain visible', async () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'First answer' }));
+    await screen.findByText('First answer', { selector: 'span' });
+    fireEvent.click(screen.getByRole('button', { name: 'Second answer' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('First answer', { selector: 'span' })).not.toBeInTheDocument();
+      expect(screen.getByText('Second answer', { selector: 'span' })).toBeInTheDocument();
+    });
   });
 
   it('throws when useToast is called outside provider', () => {

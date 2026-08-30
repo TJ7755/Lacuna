@@ -6,6 +6,7 @@ import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
 const mockNavigate = vi.fn();
 let mockCourse: Course | undefined;
@@ -199,6 +200,7 @@ function renderEditingViaLesson(state?: unknown) {
 afterEach(() => vi.useRealTimers());
 
 beforeEach(() => {
+  localStorage.clear();
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
@@ -214,6 +216,79 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText: writeClipboardText },
+  });
+});
+
+describe('CardEditor — draft autosave', () => {
+  it('does not fabricate a draft merely by opening a saved card', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    renderEditing();
+
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
+
+    expect(loadDraft(draftKey('bank:course-1', 'card-1'))).toBeNull();
+  });
+
+  it('does not overwrite a saved draft while its restore prompt is unresolved', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    const key = draftKey('bank:course-1', 'card-1');
+    const savedDraft = {
+      type: 'front_back' as const,
+      front: 'Unsaved authoring work',
+      back: 'Do not erase this',
+      tags: ['important'],
+      timestamp: 123,
+    };
+    saveDraft(key, savedDraft);
+
+    renderEditing();
+    expect(
+      screen.getByText('A saved draft from a previous session was found.'),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
+
+    expect(loadDraft(key)).toEqual(savedDraft);
+  });
+
+  it('autosaves after the user changes the seeded card', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    renderEditing();
+
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Changed by the author' },
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
+
+    expect(loadDraft(draftKey('bank:course-1', 'card-1'))?.front).toBe('Changed by the author');
+  });
+
+  it('does not treat a preview-only control as an authoring change', async () => {
+    vi.useFakeTimers();
+    mockCard = {
+      ...generatedCard,
+      sequenceItemId: undefined,
+      type: 'cloze',
+      front: 'Demand {{c1::falls}} when price rises.',
+      back: '',
+    };
+    renderEditing();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Preview revealed answer' }));
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
+
+    expect(loadDraft(draftKey('bank:course-1', 'card-1'))).toBeNull();
   });
 });
 
@@ -312,6 +387,40 @@ describe('CardEditor — backing-deck boundary', () => {
       'The quantity consumers will buy.',
       undefined,
     );
+  });
+
+  it('describes a duplicate in current Course language', async () => {
+    vi.useFakeTimers();
+    mockBankBackingDeck = {
+      id: 'bank-deck',
+      name: 'Cards',
+      examDate: Date.now() + 86_400_000,
+      timeZone: 'UTC',
+      createdAt: Date.now(),
+      fsrsVersion: FSRS_VERSION,
+      fsrsParameters: defaultFsrsParameters(),
+      examObjective: 'expectedMarks',
+      lastInteractedAt: Date.now(),
+    };
+    checkDuplicate.mockResolvedValue({ ...generatedCard, sequenceItemId: undefined });
+    renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'What is demand?' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Answer. Markdown, maths and images are supported.'),
+      { target: { value: 'The quantity consumers will buy.' } },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText('A card with identical content already exists in this course.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/exists in this deck/i)).not.toBeInTheDocument();
   });
 });
 

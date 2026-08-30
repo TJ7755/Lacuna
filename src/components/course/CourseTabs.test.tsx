@@ -19,9 +19,12 @@ function renderAt(path: string) {
 
 describe('CourseTabs', () => {
   it('marks Path active on the course root route', () => {
-    renderAt('/course/course-1');
-    expect(screen.getByRole('link', { name: 'Path' })).toHaveAttribute('aria-current', 'page');
+    const { container } = renderAt('/course/course-1');
+    const active = screen.getByRole('link', { name: 'Path' });
+    expect(active).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Cards' })).not.toHaveAttribute('aria-current');
+    expect(container.querySelectorAll('[data-course-tab-indicator]')).toHaveLength(1);
+    expect(active.querySelector('[data-course-tab-indicator]')).not.toBeNull();
   });
 
   it('marks Cards active on the cards route (and not Path)', () => {

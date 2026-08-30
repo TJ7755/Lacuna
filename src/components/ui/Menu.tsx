@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { Button } from './Button';
 import { cn } from './cn';
 
@@ -29,6 +30,8 @@ interface MenuProps {
  * If a menu here ever needs those, it has outgrown this component and wants its own.
  */
 export function Menu({ children, label, items, align = 'end', className }: MenuProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -143,10 +146,10 @@ export function Menu({ children, label, items, align = 'end', className }: MenuP
             role="menu"
             aria-label={label}
             onKeyDown={onMenuKeyDown}
-            initial={{ opacity: 0, y: -4 }}
+            initial={multiplier > 0 ? { opacity: 0, y: -4 } : false}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
+            exit={multiplier > 0 ? { opacity: 0, y: -4 } : undefined}
+            transition={{ duration: 0.12 * multiplier, ease: 'easeOut' }}
             className={cn(
               'absolute z-30 mt-2 min-w-56 overflow-hidden rounded-xl border border-line-strong',
               'bg-surface-raised p-1 shadow-lg shadow-black/10',
@@ -167,6 +170,7 @@ export function Menu({ children, label, items, align = 'end', className }: MenuP
                   close(true);
                   item.onSelect();
                 }}
+                style={{ transitionDuration: `${100 * multiplier}ms` }}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm',
                   'text-ink transition-colors duration-100 hover:bg-ink/5',

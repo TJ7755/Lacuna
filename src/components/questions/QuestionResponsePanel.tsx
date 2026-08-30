@@ -5,6 +5,7 @@ import type { QuestionAttempt, QuestionPayload } from '../../questions/types';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { MathsAnswerInput } from '../items/MathsAnswerInput';
 import { Button } from '../ui/Button';
+import { StepSwap } from '../ui/StepSwap';
 
 export interface CheckedQuestionAnswer {
   submittedAnswer: string | string[];
@@ -81,58 +82,80 @@ export function QuestionResponsePanel({
           else check();
         }}
       >
-        {checked ? (
-          <CheckedResult
-            result={checked}
-            disputedLines={disputedLines}
-            onToggleDispute={(line) =>
-              setDisputedLines((current) => {
-                const next = new Set(current);
-                if (next.has(line)) next.delete(line);
-                else next.add(line);
-                return next;
-              })
-            }
-          />
-        ) : attempt.resolvedPayload.kind === 'numeric' ? (
-          <MathsAnswerInput
-            value={answer}
-            onChange={setAnswer}
-            label="Your answer"
-            placeholder="Enter your answer"
-            autoFocus
-          />
-        ) : (
-          <label className="block">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
-              Your working
-            </span>
-            <textarea
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              rows={8}
-              placeholder="Write one step per line"
-              autoFocus
-              className="w-full resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-base leading-7 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-            />
-          </label>
-        )}
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="mt-6 w-full"
-          disabled={
-            !checked &&
-            (attempt.resolvedPayload.kind === 'numeric' ? !parsed?.ok : studentLines.length === 0)
-          }
-        >
-          {checked
-            ? 'Show worked feedback'
-            : attempt.resolvedPayload.kind === 'numeric'
-              ? 'Check answer'
-              : 'Check working'}
-        </Button>
+        <StepSwap stepKey={checked ? 'result' : 'answer'} direction={checked ? 1 : -1}>
+          {checked ? (
+            <>
+              <CheckedResult
+                result={checked}
+                disputedLines={disputedLines}
+                onToggleDispute={(line) =>
+                  setDisputedLines((current) => {
+                    const next = new Set(current);
+                    if (next.has(line)) next.delete(line);
+                    else next.add(line);
+                    return next;
+                  })
+                }
+              />
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => {
+                    setChecked(null);
+                    setDisputedLines(new Set());
+                  }}
+                >
+                  Edit answer
+                </Button>
+                <Button type="submit" variant="primary" size="lg" className="w-full">
+                  Show worked feedback
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {attempt.resolvedPayload.kind === 'numeric' ? (
+                <MathsAnswerInput
+                  value={answer}
+                  onChange={setAnswer}
+                  label="Your answer"
+                  placeholder="Enter your answer"
+                  autoFocus
+                />
+              ) : (
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+                    Your working
+                  </span>
+                  <textarea
+                    value={answer}
+                    onChange={(event) => setAnswer(event.target.value)}
+                    rows={8}
+                    placeholder="Write one step per line"
+                    autoFocus
+                    className="w-full resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-base leading-7 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                </label>
+              )}
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="mt-6 w-full"
+                disabled={
+                  attempt.resolvedPayload.kind === 'numeric'
+                    ? !parsed?.ok
+                    : studentLines.length === 0
+                }
+              >
+                {attempt.resolvedPayload.kind === 'numeric' ? 'Check answer' : 'Check working'}
+              </Button>
+            </>
+          )}
+        </StepSwap>
       </form>
     </section>
   );

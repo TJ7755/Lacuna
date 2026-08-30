@@ -1103,15 +1103,16 @@ export function useLearnSession({
         );
       }
 
-      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id), reviewKindRef.current);
+      const perfs = await performanceForReviewUnits(
+        units.map((unit) => unit.id),
+        reviewKindRef.current,
+      );
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
       schedulingUnitsRef.current = new Map(units.map((u) => [u.id, u]));
       schedulingConfigRef.current =
-        sessionUnits.length === 1 && 'config' in sessionUnits[0]
-          ? sessionUnits[0].config
-          : null;
+        sessionUnits.length === 1 && 'config' in sessionUnits[0] ? sessionUnits[0].config : null;
       const ctx = makeSessionContext(sessionUnits, 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
@@ -1269,7 +1270,7 @@ export function useLearnSession({
       input: boolean | Grade | MachineMarkedAnswer,
       source: 'touch' | 'keyboard' = 'keyboard',
     ) => {
-      if (submitting.current) return;
+      if (submitting.current) return false;
       submitting.current = true;
       const phaseNow = phaseRef.current;
       const cardNow = currentRef.current;
@@ -1281,7 +1282,7 @@ export function useLearnSession({
         isUnrenderableItemPayload(cardNow)
       ) {
         submitting.current = false;
-        return;
+        return false;
       }
 
       try {
@@ -1343,7 +1344,7 @@ export function useLearnSession({
           } else {
             serveNext();
           }
-          return;
+          return false;
         }
 
         const ctx = ctxRef.current;
@@ -1354,12 +1355,10 @@ export function useLearnSession({
             ? schedulingUnitsRef.current.get(cardNow.schedulingUnitId)
             : undefined
           : schedulingUnitsRef.current.values().next().value;
-        const schedulingConfig = isGlobal
-          ? deck
-          : schedulingConfigRef.current;
+        const schedulingConfig = isGlobal ? deck : schedulingConfigRef.current;
         if (!ctx || !deck || !schedulingConfig) {
           submitting.current = false;
-          return;
+          return false;
         }
 
         const manualGrade: Grade | null = typeof input === 'number' ? input : null;
@@ -1503,13 +1502,13 @@ export function useLearnSession({
         const limit = schedulingConfig.maxReviewsPerDay;
         if (!limitOverride && limit && limit > 0 && deckReviews >= limit) {
           finish(false, true);
-          return;
+          return recorded;
         }
 
         const goal = schedulingConfig.dailyReviewGoal;
         if (!limitOverride && goal && goal > 0 && deckReviews >= goal) {
           finish(true);
-          return;
+          return recorded;
         }
 
         const revisionPlan = revisionPlanRef.current;
@@ -1522,7 +1521,7 @@ export function useLearnSession({
           Date.now() >= revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
         ) {
           finish(false, false, true);
-          return;
+          return recorded;
         }
 
         const timeLimit = schedulingConfig.sessionTimeLimitMinutes;
@@ -1530,13 +1529,14 @@ export function useLearnSession({
           const elapsedMinutes = (Date.now() - sessionStartMs.current) / 60000;
           if (elapsedMinutes >= timeLimit) {
             finish(false, false, true);
-            return;
+            return recorded;
           }
         }
 
         if (revisionPlanRef.current) serveNext();
         else if (sessionComplete(nextCards, ctx)) finish(true);
         else serveNext();
+        return recorded;
       } finally {
         submitting.current = false;
       }

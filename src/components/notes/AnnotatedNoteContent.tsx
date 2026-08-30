@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 import {
@@ -9,6 +10,7 @@ import {
   updateNoteAnnotation,
 } from '../../db/repository';
 import type { Note, NoteAnnotation } from '../../db/types';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import {
   renderAnnotationHighlights,
   sourceAnchorFromSelection,
@@ -22,8 +24,15 @@ interface AnnotatedNoteContentProps {
 const EMPTY_ANNOTATIONS: NoteAnnotation[] = [];
 
 export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
+  const transition = {
+    duration: 0.18 * multiplier,
+    ease: [0.16, 1, 0.3, 1] as const,
+  };
   const queryResult = useLiveQuery(() => listNoteAnnotations(note.id), [note.id], []);
   const annotations = Array.isArray(queryResult) ? queryResult : EMPTY_ANNOTATIONS;
+  const rootRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [pendingAnchor, setPendingAnchor] = useState<SourceAnchor | null>(null);
   const [draftBody, setDraftBody] = useState('');
@@ -33,6 +42,23 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
   const [editBody, setEditBody] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const returnFocusAction = useRef<{ id: string; action: 'edit' | 'delete' } | null>(null);
+
+  useLayoutEffect(() => {
+    if (editingId || deletingId || !returnFocusAction.current) return;
+    const target = returnFocusAction.current;
+    returnFocusAction.current = null;
+    const actions = rootRef.current?.querySelectorAll<HTMLButtonElement>(
+      '[data-annotation-action]',
+    );
+    Array.from(actions ?? [])
+      .find(
+        (button) =>
+          button.dataset.annotationId === target.id &&
+          button.dataset.annotationAction === target.action,
+      )
+      ?.focus();
+  }, [deletingId, editingId]);
 
   useLayoutEffect(() => {
     const root = contentRef.current?.querySelector<HTMLElement>('.prose-lacuna');
@@ -93,6 +119,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
     setBusy(true);
     try {
       await updateNoteAnnotation(annotation.id, { body: editBody.trim() || undefined });
+      returnFocusAction.current = { id: annotation.id, action: 'edit' };
       setEditingId(null);
       setEditBody('');
     } finally {
@@ -111,7 +138,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
   }
 
   return (
-    <div>
+    <div ref={rootRef}>
       <div
         ref={contentRef}
         onMouseUp={captureSelection}
@@ -121,63 +148,91 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
         <MarkdownView source={note.content} allowEmbeds />
       </div>
 
-      {selectionError && (
-        <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-line bg-surface-raised px-3 py-2">
-          <p role="status" className="text-xs text-ink-soft">
-            {selectionError}
-          </p>
-          <button
-            type="button"
-            onClick={() => setSelectionError(null)}
-            className="shrink-0 text-xs font-medium text-ink-soft hover:text-ink"
+      <AnimatePresence initial={false}>
+        {selectionError && (
+          <motion.div
+            key="selection-error"
+            initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transitionEnd: { overflow: 'visible' },
+            }}
+            exit={multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
+            transition={transition}
+            className="overflow-hidden"
           >
-            Dismiss
-          </button>
-        </div>
-      )}
+            <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-line bg-surface-raised px-3 py-2">
+              <p role="status" className="text-xs text-ink-soft">
+                {selectionError}
+              </p>
+              <button
+                type="button"
+                onClick={() => setSelectionError(null)}
+                className="shrink-0 text-xs font-medium text-ink-soft hover:text-ink"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {pendingAnchor && (
-        <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
-          <p className="border-l-2 border-accent/50 pl-3 text-sm text-ink">
-            {pendingAnchor.selectedText}
-          </p>
-          <label
-            className="mt-3 block text-xs font-medium text-ink-soft"
-            htmlFor={`annotation-${note.id}`}
+      <AnimatePresence initial={false}>
+        {pendingAnchor && (
+          <motion.div
+            key="new-annotation"
+            initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transitionEnd: { overflow: 'visible' },
+            }}
+            exit={multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
+            transition={transition}
+            className="mt-4 overflow-hidden rounded-xl border border-accent/30 bg-accent/5 p-4"
           >
-            Annotation <span className="font-normal text-ink-faint">(optional)</span>
-          </label>
-          <textarea
-            id={`annotation-${note.id}`}
-            value={draftBody}
-            onChange={(event) => setDraftBody(event.target.value)}
-            rows={2}
-            autoFocus
-            className="mt-1.5 w-full resize-y rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/15"
-            placeholder="Add a note to this highlight"
-          />
-          <div className="mt-3 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => setPendingAnchor(null)}
+            <p className="border-l-2 border-accent/50 pl-3 text-sm text-ink">
+              {pendingAnchor.selectedText}
+            </p>
+            <label
+              className="mt-3 block text-xs font-medium text-ink-soft"
+              htmlFor={`annotation-${note.id}`}
             >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={busy}
-              onClick={saveNewAnnotation}
-            >
-              Save highlight
-            </Button>
-          </div>
-        </div>
-      )}
+              Annotation <span className="font-normal text-ink-faint">(optional)</span>
+            </label>
+            <textarea
+              id={`annotation-${note.id}`}
+              value={draftBody}
+              onChange={(event) => setDraftBody(event.target.value)}
+              rows={2}
+              autoFocus
+              className="mt-1.5 w-full resize-y rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/15"
+              placeholder="Add a note to this highlight"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => setPendingAnchor(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={busy}
+                onClick={saveNewAnnotation}
+              >
+                Save highlight
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {annotations.length > 0 && (
         <section
@@ -193,8 +248,10 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
               const editing = editingId === annotation.id;
               const deleting = deletingId === annotation.id;
               return (
-                <li
+                <motion.li
                   key={annotation.id}
+                  layout
+                  transition={transition}
                   className="rounded-lg border border-line bg-surface-raised px-3 py-3"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -206,95 +263,166 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                         </p>
                       )}
                     </div>
-                    {!editing && !deleting && (
-                      <div className="flex shrink-0 gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingId(annotation.id);
-                            setEditBody(annotation.body ?? '');
-                            setDeletingId(null);
-                          }}
-                          className="min-h-9 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                          aria-label={`Edit annotation for ${annotation.selectedText}`}
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {!editing && !deleting && (
+                        <motion.div
+                          key="annotation-actions"
+                          initial={multiplier > 0 ? { opacity: 0 } : false}
+                          animate={{ opacity: 1 }}
+                          exit={multiplier > 0 ? { opacity: 0 } : undefined}
+                          transition={transition}
+                          className="flex shrink-0 gap-1"
                         >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDeletingId(annotation.id);
-                            setEditingId(null);
-                          }}
-                          className="min-h-9 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-negative/10 hover:text-negative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative/50"
-                          aria-label={`Delete annotation for ${annotation.selectedText}`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                          <button
+                            type="button"
+                            data-annotation-action="edit"
+                            data-annotation-id={annotation.id}
+                            onClick={() => {
+                              setEditingId(annotation.id);
+                              setEditBody(annotation.body ?? '');
+                              setDeletingId(null);
+                            }}
+                            className="min-h-9 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                            aria-label={`Edit annotation for ${annotation.selectedText}`}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            data-annotation-action="delete"
+                            data-annotation-id={annotation.id}
+                            onClick={() => {
+                              setDeletingId(annotation.id);
+                              setEditingId(null);
+                            }}
+                            className="min-h-9 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-negative/10 hover:text-negative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative/50"
+                            aria-label={`Delete annotation for ${annotation.selectedText}`}
+                          >
+                            Delete
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
-                  {editing ? (
-                    <div className="mt-3">
-                      <label htmlFor={`edit-annotation-${annotation.id}`} className="sr-only">
-                        Annotation text
-                      </label>
-                      <textarea
-                        id={`edit-annotation-${annotation.id}`}
-                        value={editBody}
-                        onChange={(event) => setEditBody(event.target.value)}
-                        rows={2}
-                        autoFocus
-                        className="w-full resize-y rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
-                      />
-                      <div className="mt-2 flex justify-end gap-2">
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {editing ? (
+                      <motion.div
+                        key="annotation-editor"
+                        initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
+                        animate={{
+                          height: 'auto',
+                          opacity: 1,
+                          transitionEnd: { overflow: 'visible' },
+                        }}
+                        exit={
+                          multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined
+                        }
+                        transition={transition}
+                        className="mt-3 overflow-hidden"
+                      >
+                        <label htmlFor={`edit-annotation-${annotation.id}`} className="sr-only">
+                          Annotation text
+                        </label>
+                        <textarea
+                          id={`edit-annotation-${annotation.id}`}
+                          value={editBody}
+                          onChange={(event) => setEditBody(event.target.value)}
+                          rows={2}
+                          autoFocus
+                          className="w-full resize-y rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
+                        />
+                        <div className="mt-2 flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => {
+                              returnFocusAction.current = {
+                                id: annotation.id,
+                                action: 'edit',
+                              };
+                              setEditingId(null);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => saveEdit(annotation)}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ) : deleting ? (
+                      <motion.div
+                        key="annotation-delete"
+                        initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
+                        animate={{
+                          height: 'auto',
+                          opacity: 1,
+                          transitionEnd: { overflow: 'visible' },
+                        }}
+                        exit={
+                          multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined
+                        }
+                        transition={transition}
+                        className="mt-3 flex items-center justify-end gap-2 overflow-hidden"
+                      >
+                        <span className="mr-auto text-xs text-ink-soft">
+                          Delete this highlight?
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
+                          autoFocus
                           disabled={busy}
-                          onClick={() => setEditingId(null)}
+                          onClick={() => {
+                            returnFocusAction.current = {
+                              id: annotation.id,
+                              action: 'delete',
+                            };
+                            setDeletingId(null);
+                          }}
                         >
                           Cancel
                         </Button>
                         <Button
                           type="button"
-                          variant="primary"
+                          variant="danger"
                           size="sm"
                           disabled={busy}
-                          onClick={() => saveEdit(annotation)}
+                          onClick={() => confirmDelete(annotation.id)}
                         >
-                          Save
+                          Delete
                         </Button>
-                      </div>
-                    </div>
-                  ) : deleting ? (
-                    <div className="mt-3 flex items-center justify-end gap-2">
-                      <span className="mr-auto text-xs text-ink-soft">Delete this highlight?</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => setDeletingId(null)}
+                      </motion.div>
+                    ) : annotation.body ? (
+                      <motion.p
+                        key="annotation-body"
+                        initial={multiplier > 0 ? { height: 0, opacity: 0 } : false}
+                        animate={{
+                          height: 'auto',
+                          opacity: 1,
+                          transitionEnd: { overflow: 'visible' },
+                        }}
+                        exit={
+                          multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined
+                        }
+                        transition={transition}
+                        className="mt-2 overflow-hidden text-sm text-ink-soft"
                       >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => confirmDelete(annotation.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  ) : annotation.body ? (
-                    <p className="mt-2 text-sm text-ink-soft">{annotation.body}</p>
-                  ) : null}
-                </li>
+                        {annotation.body}
+                      </motion.p>
+                    ) : null}
+                  </AnimatePresence>
+                </motion.li>
               );
             })}
           </ul>

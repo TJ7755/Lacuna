@@ -2,6 +2,14 @@
 
 Date: 30 August 2026. Scope: code at commit `3e3ec76`.
 
+## Delivery status
+
+Implemented on 30 August 2026: QW-1–QW-6 and QW-8–QW-10. The Course-facing terminology
+pass changed the two confirmed live strings in this scope; the other three reported strings
+were compatibility/import wording or had already moved. QW-7 remains open because making an
+exam date optional changes the assessment, scheduler and persistence contract rather than one
+form default. EH, IM and LG findings remain roadmap work.
+
 ## How this was produced
 
 Three parallel audits were run over (a) the core study surfaces (`LearnMode`,
@@ -364,7 +372,6 @@ Findings drawn from the project's own records (UX-MAP, MANUAL_WALKTHROUGH,
 course-terminology-audit, BROWSER_QA_AUDIT) exclude everything those documents record as
 fixed in the August follow-up verification. Code-level findings were verified against the
 source at commit `3e3ec76`; line numbers refer to that tree and will drift.
-
 
 
 

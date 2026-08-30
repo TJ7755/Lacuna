@@ -270,6 +270,25 @@ describe('CourseStudyFlow', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it('keeps Continue disabled while the next planner generation is pending', async () => {
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
+    renderFlow();
+    await screen.findByTestId('learn-request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
+
+    const pending = await screen.findByRole('button', { name: 'Planning next step…' });
+    expect(pending).toBeDisabled();
+    expect(screen.queryByLabelText('Loading course study flow')).not.toBeInTheDocument();
+
+    mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1);
+    await act(async () => {
+      mockFlowListeners.forEach((listener) => listener());
+    });
+
+    expect(await screen.findByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
   it('resumes the same step when the embedded session is incomplete', async () => {
     mockFlows = [
       flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0),
@@ -342,11 +361,9 @@ describe('CourseStudyFlow', () => {
     // test, not deep equality.
     const sameIds = practiceState('manual-1', 'Checkpoint', ['lesson-1']);
     mockFlows = [
-      flow(
-        { kind: 'practice', nodeKey: 'manual-1', mode: 'curricular', label: 'Checkpoint' },
-        0,
-        [sameIds],
-      ),
+      flow({ kind: 'practice', nodeKey: 'manual-1', mode: 'curricular', label: 'Checkpoint' }, 0, [
+        sameIds,
+      ]),
     ];
     await act(async () => {
       mockFlowListeners.forEach((listener) => listener());

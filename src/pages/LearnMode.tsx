@@ -33,7 +33,7 @@ import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../components/items/UnknownItemFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
-import type { LearnModeType, LearnSessionRequest } from './learn/types';
+import type { LearnModeType, LearnSessionRequest, MachineMarkedAnswer } from './learn/types';
 
 export type { LearnSessionRequest } from './learn/types';
 export { LearnSkeleton } from './learn/LearnSkeleton';
@@ -215,11 +215,27 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
   const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
 
+  const answerWithUndo = useCallback(
+    (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
+      void (async () => {
+        const undoAvailable = await answer(input, source);
+        if (undoAvailable) {
+          notify('Answer recorded', 'neutral', {
+            actionLabel: 'Undo',
+            onAction: () => void undoLast(),
+            replaceKey: 'learn-answer',
+          });
+        }
+      })();
+    },
+    [answer, notify, undoLast],
+  );
+
   useLearnKeyboardShortcuts({
     phase,
     reveal,
     hide,
-    answer,
+    answer: answerWithUndo,
     canUndo,
     isLinesModeCard,
     hintStep,
@@ -249,23 +265,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       window.dispatchEvent(new CustomEvent('lacuna:study-session-end'));
     }
   }, [phase, summary]);
-
-  // A swipe can be begun by accident in a way a deliberate tap on Yes or No cannot,
-  // and an unnoticed lapse damages that card's scheduling. Undo already exists on the
-  // keyboard; this is its touch equivalent, offered only for swipe-committed grades so
-  // that ordinary tapping does not raise a toast on every card.
-  const answerBySwipe = useCallback(
-    (input: boolean | Grade) => {
-      void (async () => {
-        await answer(input, 'touch');
-        notify('Answer recorded', 'neutral', {
-          actionLabel: 'Undo',
-          onAction: () => void undoLast(),
-        });
-      })();
-    },
-    [answer, notify, undoLast],
-  );
 
   if (phase === 'loading') {
     return (
@@ -532,7 +531,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                           }
                         }
                         allowCheckerDisputes={!isSimpleMode}
-                        onAnswer={(result) => void answer(result, 'keyboard')}
+                        onAnswer={(result) => answerWithUndo(result, 'keyboard')}
                       />
                     ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
                       <WorkingStudyFace
@@ -542,7 +541,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                           }
                         }
                         allowCheckerDisputes={!isSimpleMode}
-                        onAnswer={(result) => void answer(result, 'keyboard')}
+                        onAnswer={(result) => answerWithUndo(result, 'keyboard')}
                       />
                     ) : hasUnrenderableItemPayload ? (
                       <UnknownItemFace card={current} />
@@ -559,15 +558,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         hintsOpen={hintsOpen}
                         onReveal={reveal}
                         onHide={hide}
-                        onAnswer={answerBySwipe}
+                        onAnswer={(input) => answerWithUndo(input, 'touch')}
                         typedAnswer={typedAnswer}
                         isTypingCard={isTypingCard}
                         mode={mode}
                         isLinesModeCard={isLinesModeCard}
                         hintStep={hintStep}
-                        onRevealHint={() =>
-                          setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))
-                        }
+                        onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
                         answerStrictness={answerStrictness}
                         occlusion={occlusion}
                         occlusionAnswerText={occlusionAnswerText}
@@ -604,105 +601,106 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
 
               {/* Controls */}
-              {!suppressClassicGrading && (isTouchMode ? (
-                <TouchBottomSheet
-                  phase={phase}
-                  gradingMode={gradingMode}
-                  onReveal={reveal}
-                  onHide={hide}
-                  onAnswer={answer}
-                  m={m}
-                  isTypingCard={isTypingCard}
-                />
-              ) : (
-                <div className="mt-8">
-                  <StepSwap
-                    stepKey={phase}
-                    className={
-                      phase === 'question'
-                        ? 'flex flex-col items-center gap-2'
-                        : 'flex flex-col items-center gap-3'
-                    }
-                  >
-                    {phase === 'question' ? (
-                      <>
-                        {!isTypingCard && (
-                          <Button
-                            variant="primary"
-                            size="lg"
-                            className="w-full max-w-[13.5rem] shadow-lg shadow-accent/15"
-                            onClick={reveal}
-                          >
-                            Show answer
-                          </Button>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {gradingMode === 'manual' ? (
-                          <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
-                            <Button
-                              variant="danger"
-                              size="lg"
-                              className="w-full"
-                              onClick={() => void answer(1, 'keyboard')}
-                            >
-                              <CloseIcon width={18} height={18} />
-                              Again
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="lg"
-                              className="w-full"
-                              onClick={() => void answer(2, 'keyboard')}
-                            >
-                              Hard
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="lg"
-                              className="w-full"
-                              onClick={() => void answer(3, 'keyboard')}
-                            >
-                              Good
-                            </Button>
+              {!suppressClassicGrading &&
+                (isTouchMode ? (
+                  <TouchBottomSheet
+                    phase={phase}
+                    gradingMode={gradingMode}
+                    onReveal={reveal}
+                    onHide={hide}
+                    onAnswer={answerWithUndo}
+                    m={m}
+                    isTypingCard={isTypingCard}
+                  />
+                ) : (
+                  <div className="mt-8">
+                    <StepSwap
+                      stepKey={phase}
+                      className={
+                        phase === 'question'
+                          ? 'flex flex-col items-center gap-2'
+                          : 'flex flex-col items-center gap-3'
+                      }
+                    >
+                      {phase === 'question' ? (
+                        <>
+                          {!isTypingCard && (
                             <Button
                               variant="primary"
                               size="lg"
-                              className="w-full"
-                              onClick={() => void answer(4, 'keyboard')}
+                              className="w-full max-w-[13.5rem] shadow-lg shadow-accent/15"
+                              onClick={reveal}
                             >
-                              <CheckIcon width={18} height={18} />
-                              Easy
+                              Show answer
                             </Button>
-                          </div>
-                        ) : (
-                          <div className="flex w-full max-w-md gap-3">
-                            <Button
-                              variant="danger"
-                              size="lg"
-                              className="w-full flex-1"
-                              onClick={() => void answer(false, 'keyboard')}
-                            >
-                              <CloseIcon width={18} height={18} />
-                              No
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="lg"
-                              className="w-full flex-1"
-                              onClick={() => void answer(true, 'keyboard')}
-                            >
-                              <CheckIcon width={18} height={18} />
-                              Yes
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </StepSwap>
-                </div>
-              ))}
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {gradingMode === 'manual' ? (
+                            <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
+                              <Button
+                                variant="danger"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => answerWithUndo(1, 'keyboard')}
+                              >
+                                <CloseIcon width={18} height={18} />
+                                Again
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => answerWithUndo(2, 'keyboard')}
+                              >
+                                Hard
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => answerWithUndo(3, 'keyboard')}
+                              >
+                                Good
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => answerWithUndo(4, 'keyboard')}
+                              >
+                                <CheckIcon width={18} height={18} />
+                                Easy
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex w-full max-w-md gap-3">
+                              <Button
+                                variant="danger"
+                                size="lg"
+                                className="w-full flex-1"
+                                onClick={() => answerWithUndo(false, 'keyboard')}
+                              >
+                                <CloseIcon width={18} height={18} />
+                                No
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="lg"
+                                className="w-full flex-1"
+                                onClick={() => answerWithUndo(true, 'keyboard')}
+                              >
+                                <CheckIcon width={18} height={18} />
+                                Yes
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </StepSwap>
+                  </div>
+                ))}
             </main>
           </motion.div>
         )}

@@ -2,6 +2,12 @@
 
 Source-only audit of Lacuna's motion and interaction polish. This list records definite state-transition gaps and lower-priority visual opportunities found on 30 August 2026. It does not claim that a static browser frame can prove animation quality; timing and easing still require an interactive recording when these points are implemented.
 
+## Delivery status
+
+Implemented on 30 August 2026 in the recommended order: points 14, 15, 1, 16, 13, 2, 3,
+21, 19, 20, 22 and 4. The remaining points stay open; they are not silently implied by this
+first pass.
+
 ## Priority findings
 
 ### 1. Make the animation-speed setting genuinely global

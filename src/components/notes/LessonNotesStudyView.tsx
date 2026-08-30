@@ -6,7 +6,7 @@
 // is removed.
 
 import { useState } from 'react';
-import { m as motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { ChevronDownIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -65,16 +65,26 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
                   </motion.span>
                   <span className="flex-1 font-medium text-ink">{note.name}</span>
                 </button>
-                {isOpen && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.12 * m }}
-                    className="border-t border-line px-5 py-4"
-                  >
-                    <AnnotatedNoteContent note={note} />
-                  </motion.div>
-                )}
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="study-note-content"
+                      initial={m > 0 ? { height: 0, opacity: 0 } : false}
+                      animate={{
+                        height: 'auto',
+                        opacity: 1,
+                        transitionEnd: { overflow: 'visible' },
+                      }}
+                      exit={m > 0 ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
+                      transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden border-t border-line"
+                    >
+                      <div className="px-5 py-4">
+                        <AnnotatedNoteContent note={note} />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}

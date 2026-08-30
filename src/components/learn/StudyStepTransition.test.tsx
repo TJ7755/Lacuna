@@ -42,6 +42,7 @@ describe('StudyStepTransition', () => {
         summary={summary(true)}
         canReviewDueCards
         breakPending
+        planningNextStep={false}
         {...actions}
       />,
     );
@@ -71,6 +72,7 @@ describe('StudyStepTransition', () => {
         summary={summary(false)}
         canReviewDueCards={false}
         breakPending={false}
+        planningNextStep={false}
         {...actions}
       />,
     );
@@ -100,6 +102,7 @@ describe('StudyStepTransition', () => {
         summary={revisionSummary}
         canReviewDueCards={false}
         breakPending={false}
+        planningNextStep={false}
         {...callbacks()}
       />,
     );
@@ -127,6 +130,7 @@ describe('StudyStepTransition', () => {
         }}
         canReviewDueCards={false}
         breakPending={false}
+        planningNextStep={false}
         {...callbacks()}
       />,
     );

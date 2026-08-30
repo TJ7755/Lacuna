@@ -10,6 +10,7 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { m as motion } from 'motion/react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db/schema';
 import {
@@ -43,6 +44,8 @@ import { updateCourse, updateLesson } from '../db/repository';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
+import { StepSwap } from '../components/ui/StepSwap';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 
 interface LessonViewProps {
   /**
@@ -80,6 +83,8 @@ export function LessonView({
 
   const navigate = useNavigate();
   const { notify } = useToast();
+  const [motionSpeed] = useMotionSpeed();
+  const motionMultiplier = speedMultiplier(motionSpeed);
 
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
@@ -278,33 +283,44 @@ export function LessonView({
       {/* is read-only content plus a cards summary — see                    */}
       {/* src/course/lessonViewMode.ts for how the mode is resolved.         */}
       {/* ------------------------------------------------------------------ */}
-      <div className="space-y-10 border-t border-line pt-8">
-        {viewMode === 'edit' ? (
-          <>
-            {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}
+      <motion.div
+        layout="size"
+        transition={{ duration: 0.22 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+        className="border-t border-line pt-8"
+        data-lesson-workspace-mode={viewMode}
+      >
+        <StepSwap
+          stepKey={viewMode}
+          direction={viewMode === 'edit' ? 1 : -1}
+          className="space-y-10"
+        >
+          {viewMode === 'edit' ? (
+            <>
+              {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}
 
-            {courseId && lessonId && (
-              <LessonCardsSection
-                courseId={courseId}
-                lessonId={lessonId}
-                lessonName={lesson.name}
-                lessonCards={lessonCards}
-                lessonSchedulingConfig={lessonDeck}
-                onNavigate={navigate}
+              {courseId && lessonId && (
+                <LessonCardsSection
+                  courseId={courseId}
+                  lessonId={lessonId}
+                  lessonName={lesson.name}
+                  lessonCards={lessonCards}
+                  lessonSchedulingConfig={lessonDeck}
+                  onNavigate={navigate}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <LessonNotesStudyView notes={notes} />
+              <LessonCardsSummary
+                cardCount={lessonCards.length}
+                dueCount={lessonDueCount}
+                masteryPct={Math.round(lessonMastery * 100)}
               />
-            )}
-          </>
-        ) : (
-          <>
-            <LessonNotesStudyView notes={notes} />
-            <LessonCardsSummary
-              cardCount={lessonCards.length}
-              dueCount={lessonDueCount}
-              masteryPct={Math.round(lessonMastery * 100)}
-            />
-          </>
-        )}
-      </div>
+            </>
+          )}
+        </StepSwap>
+      </motion.div>
     </div>
   );
 }

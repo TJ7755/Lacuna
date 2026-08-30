@@ -28,6 +28,8 @@ interface ToastOptions {
   /** Invoked when the toast is dismissed (either by the user clicking the close button,
    *  or by the action button being pressed, or by the auto-dismiss timer firing). */
   onDismiss?: () => void;
+  /** Replaces an existing toast with the same key instead of leaving stale actions stacked. */
+  replaceKey?: string;
 }
 
 interface ToastContextValue {
@@ -43,6 +45,7 @@ interface ToastItem {
   actionLabel?: string;
   onAction?: () => void;
   onDismiss?: () => void;
+  replaceKey?: string;
   duration: number;
 }
 
@@ -65,7 +68,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         : (options?.duration ?? (options?.actionLabel ? 6000 : 3500));
       setToasts((prev) => {
         const next = [
-          ...prev,
+          ...prev.filter(
+            (toast) => !options?.replaceKey || toast.replaceKey !== options.replaceKey,
+          ),
           {
             id,
             message,
@@ -73,6 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             actionLabel: options?.actionLabel,
             onAction: options?.onAction,
             onDismiss: options?.onDismiss,
+            replaceKey: options?.replaceKey,
             duration,
           },
         ];
@@ -98,7 +104,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       >
         <AnimatePresence>
           {toasts.map((t) => (
-            <ToastBar key={t.id} toast={t} onDismiss={() => dismiss(t.id)} motionMultiplier={m} />
+            <ToastBar
+              key={t.replaceKey ? `replace:${t.replaceKey}` : t.id}
+              toast={t}
+              onDismiss={() => dismiss(t.id)}
+              motionMultiplier={m}
+            />
           ))}
         </AnimatePresence>
       </div>
@@ -106,7 +117,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; onDismiss: () => void; motionMultiplier?: number }) {
+function ToastBar({
+  toast,
+  onDismiss,
+  motionMultiplier,
+}: {
+  toast: ToastItem;
+  onDismiss: () => void;
+  motionMultiplier?: number;
+}) {
   const m = motionMultiplier ?? 1;
   const [progress, setProgress] = useState(1);
   const rafRef = useRef<number>(0);
@@ -150,13 +169,14 @@ function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; on
   }, []);
 
   useEffect(() => {
+    remainingRef.current = isPersistent ? 1 : toastDuration;
+    setProgress(1);
     if (isPersistent) {
-      setProgress(1);
       return;
     }
     resume();
     return () => cancelAnimationFrame(rafRef.current);
-  }, [resume, isPersistent]);
+  }, [resume, isPersistent, toast.id, toastDuration]);
 
   const toneClasses = {
     positive: 'border-positive/40 text-positive',
@@ -175,7 +195,12 @@ function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; on
       layout
       initial={{ opacity: 0, x: 24, scale: 0.96 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 24, scale: 0.96, transition: { duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] } }}
+      exit={{
+        opacity: 0,
+        x: 24,
+        scale: 0.96,
+        transition: { duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] },
+      }}
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         'relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs overflow-hidden',

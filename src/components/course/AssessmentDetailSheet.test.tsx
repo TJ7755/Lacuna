@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
-import { AssessmentDetailSheet } from './AssessmentDetailSheet';
+import { AssessmentDetailSheet, assessmentSheetTiming } from './AssessmentDetailSheet';
 import { CheckpointNode } from './CheckpointNode';
 
 const lesson: Lesson = {
@@ -51,6 +51,12 @@ const assessment: CourseAssessment = {
 };
 
 describe('checkpoint assessment details', () => {
+  it('scales sheet motion and disables durations for reduced motion', () => {
+    expect(assessmentSheetTiming(1.4).sheet.duration).toBeCloseTo(0.336);
+    expect(assessmentSheetTiming(0.6).backdrop.duration).toBeCloseTo(0.096);
+    expect(assessmentSheetTiming(0).sheet.duration).toBe(0);
+  });
+
   it('opens from an interactive checkpoint node', () => {
     const onClick = vi.fn();
     render(<CheckpointNode assessment={assessment} onClick={onClick} />);

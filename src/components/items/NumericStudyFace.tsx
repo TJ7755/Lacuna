@@ -4,6 +4,7 @@ import { parseExpression, checkNumeric } from '../../items/verify';
 import type { MachineMarkedAnswer } from '../../pages/learn/types';
 import { CardContent } from '../cards/CardContent';
 import { Button } from '../ui/Button';
+import { StepSwap } from '../ui/StepSwap';
 import { MathsAnswerInput } from './MathsAnswerInput';
 
 interface NumericStudyFaceProps {
@@ -12,7 +13,11 @@ interface NumericStudyFaceProps {
   allowCheckerDisputes?: boolean;
 }
 
-export function NumericStudyFace({ card, onAnswer, allowCheckerDisputes = true }: NumericStudyFaceProps) {
+export function NumericStudyFace({
+  card,
+  onAnswer,
+  allowCheckerDisputes = true,
+}: NumericStudyFaceProps) {
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState<{ answer: string; correct: boolean } | null>(null);
   const [disputed, setDisputed] = useState(false);
@@ -34,13 +39,15 @@ export function NumericStudyFace({ card, onAnswer, allowCheckerDisputes = true }
       marksEarned: result.correct ? 1 : 0,
       marksAvailable: 1,
       checkerDisputes: disputed
-        ? [{
-            reportedAt: Date.now(),
-            question: card.front,
-            studentLine: result.answer,
-            verdict: { correct: result.correct, marksEarned: result.correct ? 1 : 0 },
-            checkerSeeds: [],
-          }]
+        ? [
+            {
+              reportedAt: Date.now(),
+              question: card.front,
+              studentLine: result.answer,
+              verdict: { correct: result.correct, marksEarned: result.correct ? 1 : 0 },
+              checkerSeeds: [],
+            },
+          ]
         : undefined,
     });
   };
@@ -57,42 +64,59 @@ export function NumericStudyFace({ card, onAnswer, allowCheckerDisputes = true }
           submit();
         }}
       >
-        {result ? (
-          <div aria-label="Checker result" className="rounded-xl border border-line bg-surface-raised p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="font-mono text-ink">{result.answer}</span>
-              <span className={result.correct ? 'text-positive' : 'text-negative'}>
-                {result.correct ? '1 / 1 mark' : '0 / 1 marks'}
-              </span>
-            </div>
-            {allowCheckerDisputes && (
-              <button
+        <StepSwap stepKey={result ? 'result' : 'answer'} direction={result ? 1 : -1}>
+          {result ? (
+            <div
+              aria-label="Checker result"
+              className="rounded-xl border border-line bg-surface-raised p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="font-mono text-ink">{result.answer}</span>
+                <span className={result.correct ? 'text-positive' : 'text-negative'}>
+                  {result.correct ? '1 / 1 mark' : '0 / 1 marks'}
+                </span>
+              </div>
+              {allowCheckerDisputes && (
+                <button
+                  type="button"
+                  aria-pressed={disputed}
+                  onClick={() => setDisputed((value) => !value)}
+                  className="mt-3 text-sm text-ink-faint underline decoration-line-strong underline-offset-4 hover:text-ink"
+                >
+                  {disputed ? 'Checker issue reported' : 'The checker got this wrong'}
+                </button>
+              )}
+              <Button
                 type="button"
-                aria-pressed={disputed}
-                onClick={() => setDisputed((value) => !value)}
-                className="mt-3 text-sm text-ink-faint underline decoration-line-strong underline-offset-4 hover:text-ink"
+                variant="primary"
+                size="lg"
+                className="mt-5 w-full"
+                onClick={continueStudy}
               >
-                {disputed ? 'Checker issue reported' : 'The checker got this wrong'}
-              </button>
-            )}
-            <Button type="button" variant="primary" size="lg" className="mt-5 w-full" onClick={continueStudy}>
-              Continue
-            </Button>
-          </div>
-        ) : (
-          <>
-            <MathsAnswerInput
-              value={answer}
-              onChange={setAnswer}
-              label="Your answer"
-              placeholder="Enter your answer"
-              autoFocus
-            />
-            <Button type="submit" variant="primary" size="lg" className="mt-6 w-full" disabled={!parsed?.ok}>
-              Check answer
-            </Button>
-          </>
-        )}
+                Continue
+              </Button>
+            </div>
+          ) : (
+            <>
+              <MathsAnswerInput
+                value={answer}
+                onChange={setAnswer}
+                label="Your answer"
+                placeholder="Enter your answer"
+                autoFocus
+              />
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="mt-6 w-full"
+                disabled={!parsed?.ok}
+              >
+                Check answer
+              </Button>
+            </>
+          )}
+        </StepSwap>
       </form>
     </section>
   );

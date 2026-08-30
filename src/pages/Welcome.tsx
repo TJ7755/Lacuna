@@ -405,13 +405,13 @@ export function Welcome() {
                   .getElementById('lesson-grading')
                   ?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
               }}
-              className="inline-flex min-h-12 items-center rounded-[10px] px-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"
+              className="inline-flex min-h-12 items-center rounded-[10px] border border-line-strong bg-surface-raised px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               Try one card first
             </button>
             <Link
               to="/share?intent=import"
-              className="inline-flex min-h-12 items-center rounded-[10px] px-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint transition-colors hover:text-ink-soft"
+              className="inline-flex min-h-12 items-center rounded-[10px] border border-line-strong bg-paper px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:border-accent/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               Import a shared course
             </Link>
