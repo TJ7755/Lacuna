@@ -594,8 +594,8 @@ export function DateTimePicker({
                 aria-label="Choose date and time"
                 data-date-time-picker-popover
                 onKeyDown={(event) => {
-                  event.stopPropagation();
                   if (event.key !== 'Escape') return;
+                  event.stopPropagation();
                   event.preventDefault();
                   if (commitTimeDrafts()) closePicker(true);
                 }}

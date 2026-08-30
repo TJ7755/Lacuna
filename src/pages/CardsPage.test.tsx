@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CardsPage } from './CardsPage';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
@@ -222,8 +222,27 @@ describe('CardsPage', () => {
     mockLessons = [];
     mockCards = [];
     renderPage();
-    expect(screen.getByText('This course has no cards yet.')).toBeInTheDocument();
-    expect(screen.getAllByText('New card')).not.toHaveLength(0);
+    const emptyMessage = screen.getByText('This course has no cards yet.');
+    const emptyPanel = emptyMessage.parentElement;
+    expect(emptyPanel).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: 'New card' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'New sequence' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'New occlusion' })).toHaveLength(1);
+    expect(within(emptyPanel!).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(emptyPanel!).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('keeps the common content types directly available from one labelled action group', () => {
+    mockCourse = course;
+    mockLessons = [];
+    mockCards = [makeCard({ id: 'c1' })];
+
+    renderPage();
+
+    const addContent = screen.getByRole('group', { name: 'Add content' });
+    expect(addContent).toHaveTextContent('New card');
+    expect(addContent).toHaveTextContent('New sequence');
+    expect(addContent).toHaveTextContent('New occlusion');
   });
 
   it('groups cards by lesson and shows counts', () => {

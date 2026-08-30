@@ -142,7 +142,11 @@ function renderPage() {
   );
 }
 
-function renderInline(showStudyNow = false, practiceNowEnabled = false) {
+function renderInline(
+  showStudyNow = false,
+  practiceNowEnabled = false,
+  pathActions?: { onAddPractice: () => void; onAddCheckpoint: () => void },
+) {
   return render(
     <MemoryRouter initialEntries={['/']}>
       <ToastProvider>
@@ -151,6 +155,8 @@ function renderInline(showStudyNow = false, practiceNowEnabled = false) {
           lessonId="lesson-1"
           showStudyNow={showStudyNow}
           practiceNowEnabled={practiceNowEnabled}
+          onAddPractice={pathActions?.onAddPractice}
+          onAddCheckpoint={pathActions?.onAddCheckpoint}
         />
       </ToastProvider>
     </MemoryRouter>,
@@ -178,7 +184,17 @@ beforeEach(() => {
   mockUpdateLesson.mockResolvedValue(undefined);
 });
 
-describe('LessonView study mode', () => {
+describe('LessonView Study mode', () => {
+  it('offers the shared Author mode on a normal lesson route', () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
+    expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
   it('renders notes read-only, with no add/edit/delete controls', () => {
     renderPage();
     expect(screen.getByText('A note')).toBeInTheDocument();
@@ -199,6 +215,35 @@ describe('LessonView study mode', () => {
     expect(screen.getByText('Due')).toBeInTheDocument();
     expect(screen.getByText('Mastery')).toBeInTheDocument();
     expect(screen.queryByText('Add your first card')).not.toBeInTheDocument();
+  });
+
+  it('keeps a locked distributed copy in Study mode across every lesson authoring gate', () => {
+    mockCourse = {
+      ...course,
+      lessonViewMode: 'edit',
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+
+    renderInline(false, false, {
+      onAddPractice: vi.fn(),
+      onAddCheckpoint: vi.fn(),
+    });
+
+    expect(
+      screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
+    ).toHaveAttribute('href', '/course/course-1/settings');
+    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.getByText('A note')).toBeInTheDocument();
+    expect(screen.queryByText('Add note')).not.toBeInTheDocument();
   });
 });
 
@@ -230,7 +275,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(link).toHaveAttribute('href', '/course/course-1/settings');
   });
 
-  it('hides Add lesson in Read mode', () => {
+  it('hides Add lesson in Study mode', () => {
     renderInline();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(mockCreateLesson).not.toHaveBeenCalled();
@@ -238,14 +283,14 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 });
 
 describe('LessonView title editing', () => {
-  it('hides the lesson rename control in Read mode', () => {
+  it('hides the lesson rename control in Study mode', () => {
     renderPage();
     expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 });
 
-describe('LessonView edit mode', () => {
+describe('LessonView Author mode', () => {
   beforeEach(() => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
   });
@@ -271,6 +316,18 @@ describe('LessonView edit mode', () => {
       expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Lesson 2');
       expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
     });
+  });
+
+  it('keeps practice and checkpoint creation on a single-lesson path', () => {
+    const onAddPractice = vi.fn();
+    const onAddCheckpoint = vi.fn();
+
+    renderInline(false, false, { onAddPractice, onAddCheckpoint });
+    fireEvent.click(screen.getByRole('button', { name: 'Add practice' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+
+    expect(onAddPractice).toHaveBeenCalledOnce();
+    expect(onAddCheckpoint).toHaveBeenCalledOnce();
   });
 
   it('renames the lesson from its header', async () => {

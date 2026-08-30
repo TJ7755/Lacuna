@@ -16,13 +16,11 @@ import {
 } from '../fsrs/params';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import type { CourseRecord, ExamObjective, FsrsParameters, UnlockMode } from '../db/types';
-import type { LessonViewMode } from '../state/lessonViewMode';
 import { parseSteps } from './settings/parseSteps';
 import { SchedulingFieldsSection } from './settings/SchedulingFieldsSection';
 import { OptimisationPanel } from './settings/OptimisationPanel';
 import { UnlockModeSection } from './settings/UnlockModeSection';
 import { PracticeSettingsSection } from './settings/PracticeSettingsSection';
-import { LessonViewModeSection } from './settings/LessonViewModeSection';
 import { ExamDatesSection } from './settings/ExamDatesSection';
 import { LessonManagementSection } from './settings/LessonManagementSection';
 import { PracticeNodesSection } from './settings/PracticeNodesSection';
@@ -40,7 +38,8 @@ const COURSE_SETTINGS_SECTIONS = [
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
  * scheduling fields, optimisation, unlock mode, auto-practice, exam dates and lesson
- * management, plus a danger zone. Grouped under a shared scrollspy rail (Basics,
+ * management, plus a danger zone. Author mode belongs beside the course content rather
+ * than being duplicated here. Grouped under a shared scrollspy rail (Basics,
  * Study, Content, Assessments, Danger zone — see SectionRail) with one save model:
  * every field commits instantly through `updateCourse` (text/numeric inputs on blur,
  * toggles/selects on change) rather than being staged behind a "Save changes" button,
@@ -54,7 +53,7 @@ export function CourseSettings() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { notify } = useToast();
-  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS);
+  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found"
   // (null), matching CoursePath's pattern — Dexie's .get() resolves to
@@ -93,7 +92,6 @@ export function CourseSettings() {
   const [practiceThresholdMinutesNear, setPracticeThresholdMinutesNear] = useState('');
   const [practiceUrgentWindowDays, setPracticeUrgentWindowDays] = useState('');
   const [practiceMaxGap, setPracticeMaxGap] = useState('');
-  const [lessonViewMode, setLessonViewMode] = useState<LessonViewMode>('study');
   const [loaded, setLoaded] = useState(false);
 
   // Re-arm the loaded latch whenever the course changes so back/forward navigation
@@ -132,7 +130,6 @@ export function CourseSettings() {
     setPracticeThresholdMinutesNear(String(course.practiceThresholdMinutesNear));
     setPracticeUrgentWindowDays(String(course.practiceUrgentWindowDays));
     setPracticeMaxGap(String(course.practiceMaxGap));
-    setLessonViewMode(course.lessonViewMode ?? 'study');
     setLoaded(true);
   }, [course, loaded]);
 
@@ -289,9 +286,7 @@ export function CourseSettings() {
         </div>
 
         <div>
-          <header
-            className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8"
-          >
+          <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
             <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
             <div className="relative">
               <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Course</p>
@@ -308,9 +303,7 @@ export function CourseSettings() {
           <div className="flex flex-col gap-10">
             <div id="course-settings-basics" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Basics</h2>
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <div className="flex flex-col gap-4">
                   <label className="block text-sm text-ink-soft">
                     Course name
@@ -367,9 +360,7 @@ export function CourseSettings() {
 
             <div id="course-settings-study" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Study</h2>
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Scheduling</h3>
                 <div className="flex flex-col gap-4">
                   <SchedulingFieldsSection
@@ -418,9 +409,7 @@ export function CourseSettings() {
                 </div>
               </section>
 
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <UnlockModeSection
                   unlockMode={unlockMode}
                   onUnlockModeChange={(mode) => {
@@ -441,9 +430,7 @@ export function CourseSettings() {
                 />
               </section>
 
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Auto-practice</h3>
                 <PracticeSettingsSection
                   autoPractice={autoPractice}
@@ -496,19 +483,6 @@ export function CourseSettings() {
                 />
               </section>
 
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
-                <h3 className="mb-4 font-display text-xl">Lesson view</h3>
-                <LessonViewModeSection
-                  lessonViewMode={lessonViewMode}
-                  onLessonViewModeChange={(mode) => {
-                    setLessonViewMode(mode);
-                    commitCourse({ lessonViewMode: mode });
-                  }}
-                />
-              </section>
-
               <div>
                 <OptimisationPanel
                   entity={course}
@@ -516,22 +490,19 @@ export function CourseSettings() {
                   reviewHistory={reviewHistory}
                   onUpdate={(changes) => updateCourse(course.id, changes)}
                   entityLabel="course"
+                  headingLevel={3}
                 />
               </div>
             </div>
 
             <div id="course-settings-content" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Content</h2>
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Lessons</h3>
                 <LessonManagementSection courseId={course.id} />
               </section>
 
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Practice nodes</h3>
                 <PracticeNodesSection courseId={course.id} />
               </section>
@@ -539,9 +510,7 @@ export function CourseSettings() {
 
             <div id="course-settings-assessments" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Assessments</h2>
-              <section
-                className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
-              >
+              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <ExamDatesSection courseId={course.id} timeZone={timeZone} />
               </section>
             </div>

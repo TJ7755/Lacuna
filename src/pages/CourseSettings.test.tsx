@@ -392,20 +392,12 @@ describe('CourseSettings', () => {
     );
   });
 
-  it('commits lessonViewMode: edit immediately when Edit is picked', () => {
+  it('does not duplicate the course authoring mode inside settings', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('radio', { name: /Edit/ }));
-    expect(mockUpdateCourse).toHaveBeenCalledWith(
-      'course-1',
-      expect.objectContaining({ lessonViewMode: 'edit' }),
-    );
-  });
-
-  it('pre-populates the choice from an existing course value', () => {
-    mockCourse = { ...course, lessonViewMode: 'edit' };
-    renderPage();
-    const editRadio = screen.getByRole('radio', { name: /Edit/ });
-    expect(editRadio).toBeChecked();
+    expect(screen.queryByText('Lesson view')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('How lessons in this course open by default.'),
+    ).not.toBeInTheDocument();
   });
 
   it('rejects an invalid learning steps format on blur without committing', () => {

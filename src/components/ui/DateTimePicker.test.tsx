@@ -288,4 +288,22 @@ describe('DateTimePicker', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('lets Tab reach its focus trap when the picker is portalled through an outer modal', async () => {
+    render(
+      <div data-modal-layer>
+        <div role="dialog" aria-label="Outer dialog">
+          <ControlledPicker initialValue={Date.UTC(2026, 5, 10, 14, 30)} />
+        </div>
+      </div>,
+    );
+    openPicker();
+
+    const done = screen.getByRole('button', { name: 'Done' });
+    done.focus();
+    expect(done).toHaveFocus();
+    fireEvent.keyDown(done, { key: 'Tab' });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Previous month' })).toHaveFocus());
+  });
 });
