@@ -6,6 +6,7 @@ import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listAllReviewHistory } from '../db/reviewHistoryRead';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type { BackupSnapshot, Card, SessionHistoryEntry } from '../db/types';
+import { listGlobalDailySessionHistory } from '../db/sessionHistoryRead';
 
 export function useCard(cardId: string | undefined): Card | null | undefined {
   return useLiveQuery<Card | null>(
@@ -34,7 +35,7 @@ export function useBackups(): BackupSnapshot[] | undefined {
   return useLiveQuery(() => db.backups.orderBy('createdAt').reverse().toArray(), []);
 }
 
-/** All session-history entries across every deck, sorted by timestamp. */
+/** Daily per-Course trajectory points across active analytics history. */
 export function useAllSessionHistory(): SessionHistoryEntry[] | undefined {
-  return useLiveQuery(() => db.sessionHistory.orderBy('timestamp').toArray(), []);
+  return useLiveQuery(() => listGlobalDailySessionHistory(), []);
 }

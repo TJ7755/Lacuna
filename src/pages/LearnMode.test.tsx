@@ -70,6 +70,10 @@ async function continueFromNotes() {
   fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
 }
 
+async function storedReviewsForCard(cardId: string) {
+  return db.reviewHistory.where('cardId').equals(cardId).sortBy('timestamp');
+}
+
 describe('LearnMode course/lesson scope', () => {
   beforeEach(async () => {
     await Promise.all([
@@ -88,6 +92,7 @@ describe('LearnMode course/lesson scope', () => {
       db.revisionPlans.clear(),
       db.noteAnnotations.clear(),
       db.sequences.clear(),
+      db.reviewHistory.clear(),
     ]);
     localStorage.clear();
   });
@@ -570,8 +575,8 @@ describe('LearnMode course/lesson scope', () => {
 
     await answerYes();
     await waitFor(async () => {
-      const reviewed = await db.cards.get(included.id);
-      expect(reviewed?.history[0]).toEqual(
+      const [review] = await storedReviewsForCard(included.id);
+      expect(review).toEqual(
         expect.objectContaining({
           eventId: expect.any(String),
           sessionId: 'flow-session-1',
@@ -581,7 +586,7 @@ describe('LearnMode course/lesson scope', () => {
       );
       expect(await db.sessionHistory.toArray()).toEqual([
         expect.objectContaining({
-          eventId: reviewed?.history[0].eventId,
+          eventId: review?.eventId,
           sessionId: 'flow-session-1',
         }),
       ]);
@@ -648,9 +653,9 @@ describe('LearnMode course/lesson scope', () => {
         }),
       }),
     );
-    const reviewed = await db.cards.get(card.id);
-    expect(reviewed?.history).toHaveLength(1);
-    expect(reviewed?.history[0]).toEqual(
+    const reviews = await storedReviewsForCard(card.id);
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toEqual(
       expect.objectContaining({
         sessionId: 'revision-session-1',
         revisionPlanId: plan.id,
@@ -662,7 +667,7 @@ describe('LearnMode course/lesson scope', () => {
       expect.objectContaining({
         cardIds: [card.id],
         improvedCardIds: [card.id],
-        reviewEventIds: [reviewed?.history[0].eventId],
+        reviewEventIds: [reviews[0].eventId],
       }),
     );
     expect(await db.practiceMilestones.count()).toBe(0);
@@ -918,7 +923,7 @@ describe('LearnMode course/lesson scope', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
       await waitFor(async () => {
-        expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+        expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
           grade: 4,
           correct: true,
           marksEarned: 1,
@@ -960,7 +965,7 @@ describe('LearnMode course/lesson scope', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(async () => {
-      expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+      expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
         grade: 1,
         correct: false,
         marksEarned: 0,
@@ -994,7 +999,7 @@ describe('LearnMode course/lesson scope', () => {
       fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong for line 1' }));
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
       await waitFor(async () => {
-        expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+        expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
           grade: 4,
           correct: true,
           marksEarned: 3,
@@ -1037,7 +1042,7 @@ describe('LearnMode course/lesson scope', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(async () => {
-      expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+      expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
         grade: 1,
         correct: false,
         marksEarned: 1,
@@ -1076,7 +1081,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByRole('button', { name: 'Show answer' })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 
-    expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
+    expect(await storedReviewsForCard(card.id)).toHaveLength(0);
   });
 
   it('falls back to the read-only face for an unknown payload version, not just an unknown kind', async () => {
@@ -1139,7 +1144,7 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     expect(await screen.findByText('Session complete')).toBeInTheDocument();
-    expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
+    expect(await storedReviewsForCard(card.id)).toHaveLength(0);
     await act(async () => unmount());
   });
 

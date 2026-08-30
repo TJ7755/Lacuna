@@ -36,6 +36,28 @@
 - Restricted workflow tokens to read-only repository contents and made the aggregate `test` check
   fail closed when either its unit shards or coverage job fails.
 
+## Unreleased — canonical review-history storage cutover
+
+- Added schema v26. Its atomic migration copies and verifies every remaining inline Card review
+  before clearing the duplicate projection; a failed canonical write leaves the v25 database and
+  source history unchanged. The existing pre-migration restore-point gate now covers this cutover.
+- Made the Card-table write hook the single storage seam for compact Card rows. Review writes and
+  undo still return fully hydrated Cards, while repository snapshots, APKG imports, backup replace/
+  merge and generated-card restores cannot reintroduce an expanding inline history array.
+- Current full backups and encrypted peer snapshots carry review evidence once in canonical
+  `reviewHistory`; compact Card rows retain `history: []`. Old inline-only backup, APKG and peer
+  inputs remain accepted and are canonicalised before storage.
+- Replaced Analytics' whole-array `sessionHistory` reads with cursor-backed daily projections that
+  produce exactly the same last-point-per-day chart input without deleting stored evidence.
+  Recovery-merge deduplication now queries only incoming event ids and legacy timestamps instead of
+  materialising the entire local session table.
+- Corrected Card hydration to remove canonical row metadata (`id`, ownership and scheduling keys)
+  from runtime `ReviewLog` values rather than leaking IndexedDB fields through the Card interface.
+
+**Checks:** schema migration and rollback, review/undo, backup replace/merge, Course/Lesson/
+generated-card snapshots, APKG legacy import, peer merge, daily analytics projection, typecheck,
+lint and the full test suite.
+
 ## Unreleased — AI connection health
 
 - A relay pairing request that finishes after AI is disabled now starts contained

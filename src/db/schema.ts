@@ -31,7 +31,11 @@ import type {
   Tombstone,
   AgentMemory,
 } from './types';
-import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
+import {
+  projectCardForStorage,
+  reviewHistoryEntriesForCard,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
 import {
   migrateCardRecord,
   migrateDeckRecord,
@@ -64,17 +68,12 @@ async function putMigratedReviewHistoryEntries(
   table: Table<ReviewHistoryEntry, string>,
   entries: ReviewHistoryEntry[],
 ): Promise<void> {
-  const identityOf = (entry: ReviewHistoryEntry): string => {
-    const { id: _id, ...identity } = entry;
-    return JSON.stringify(identity);
-  };
-
   for (const entry of entries) {
-    const identity = identityOf(entry);
+    const identity = migratedReviewHistoryIdentity(entry);
     let id = entry.id;
     let existing = await table.get(id);
     if (existing) {
-      if (identityOf(existing) === identity) continue;
+      if (migratedReviewHistoryIdentity(existing) === identity) continue;
 
       const suffix =
         existing.cardId === entry.cardId
@@ -84,7 +83,7 @@ async function putMigratedReviewHistoryEntries(
       existing = await table.get(id);
       let collision = 1;
       while (existing) {
-        if (identityOf(existing) === identity) {
+        if (migratedReviewHistoryIdentity(existing) === identity) {
           id = '';
           break;
         }
@@ -95,6 +94,23 @@ async function putMigratedReviewHistoryEntries(
     }
     await table.put({ ...entry, id });
   }
+}
+
+/**
+ * Card ownership fields are compatibility projections, not review identity. A
+ * card may have moved Course or Lesson since an older canonical row was written;
+ * that must not turn one review into two during a later migration.
+ */
+function migratedReviewHistoryIdentity(entry: ReviewHistoryEntry): string {
+  const {
+    id: _id,
+    deckId: _deckId,
+    courseId: _courseId,
+    primaryLessonId: _primaryLessonId,
+    schedulingUnitId: _schedulingUnitId,
+    ...identity
+  } = entry;
+  return JSON.stringify(identity);
 }
 
 /**
@@ -656,8 +672,8 @@ class LacunaDatabase extends Dexie {
 
     // Version 20: add the canonical review-event store. The migration copies every
     // existing Card.history row without changing the Card projection or runtime
-    // readers/writers. Later slices will cut persistence and reads over behind an
-    // adapter once backup and undo coverage is in place.
+    // readers/writers. Schema v26 later completes the persistence cutover after
+    // backup, merge and undo have canonical-event coverage.
     this.version(20)
       .stores({
         decks: 'id, createdAt, examDate, folderId',
@@ -1210,13 +1226,72 @@ class LacunaDatabase extends Dexie {
         'id, questionId, courseId, status, shownAt, sessionId, [questionId+shownAt], [courseId+shownAt], updatedAt',
       agentMemories: 'id, courseId, status, updatedAt, *tags',
     });
+
+    // Version 26: complete the review-event storage cutover. Every legacy inline
+    // Card.history event is copied and verified in the canonical table before the
+    // duplicate Card projection is cleared. The upgrade transaction is atomic, so
+    // a failed verification preserves both the source projection and schema v25.
+    this.version(26)
+      .stores({
+        cards:
+          'id, courseId, primaryLessonId, schedulingUnitId, conceptId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      })
+      .upgrade(async (tx) => {
+        const cardsTable = tx.table<Card, string>('cards');
+        const reviewHistoryTable = tx.table<ReviewHistoryEntry, string>('reviewHistory');
+        const batchSize = 100;
+        let offset = 0;
+
+        for (;;) {
+          const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
+          if (cards.length === 0) break;
+
+          for (const card of cards) {
+            const projectedEntries = reviewHistoryEntriesForCard(card);
+            if (projectedEntries.length > 0) {
+              await putMigratedReviewHistoryEntries(reviewHistoryTable, projectedEntries);
+              const persisted = await reviewHistoryTable.where('cardId').equals(card.id).toArray();
+              if (!containsReviewProjection(persisted, projectedEntries)) {
+                throw new Error(`Review-history migration verification failed for card ${card.id}`);
+              }
+            }
+            await cardsTable.put(projectCardForStorage(card));
+          }
+          offset += cards.length;
+        }
+      });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 25;
-const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24]);
+function containsReviewProjection(
+  persisted: ReviewHistoryEntry[],
+  projected: ReviewHistoryEntry[],
+): boolean {
+  const available = new Map<string, number>();
+  for (const entry of persisted) {
+    const key = migratedReviewHistoryIdentity(entry);
+    available.set(key, (available.get(key) ?? 0) + 1);
+  }
+  for (const entry of projected) {
+    const key = migratedReviewHistoryIdentity(entry);
+    const count = available.get(key) ?? 0;
+    if (count === 0) return false;
+    available.set(key, count - 1);
+  }
+  return true;
+}
+
+const CURRENT_SCHEMA_VERSION = 26;
+const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24, 26]);
 
 export const db = new LacunaDatabase();
+
+// This hook is the storage seam: direct repository writes, restores, imports and
+// generated-card modules cannot accidentally resurrect the retired projection.
+db.cards.hook('creating', (_primaryKey, card) => {
+  card.history = [];
+});
+db.cards.hook('updating', () => ({ history: [] }));
 
 /** Possible outcomes when trying to open the database. */
 export type DbOpenResult =

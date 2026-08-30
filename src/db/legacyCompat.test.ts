@@ -4,6 +4,7 @@ import { bytesToBase45 } from './base45';
 import { ensureLessonBackingDeck } from './backingDecks';
 import { exportDatabase, importBackup, PRE_V22_BACKUP_MESSAGE } from './portability';
 import { reviewHistoryEntriesForCard } from './reviewHistory';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { createCard, createCourse, createLesson } from './repository';
 import { db } from './schema';
 import {
@@ -86,8 +87,9 @@ describe('legacy storage compatibility net', () => {
       reps: reviews.length,
       lastReviewed: reviews[1].timestamp,
     };
-    await db.cards.put(reviewedCard);
-    await db.reviewHistory.bulkPut(reviewHistoryEntriesForCard(reviewedCard));
+    const canonicalReviews = reviewHistoryEntriesForCard(reviewedCard);
+    await db.cards.put({ ...reviewedCard });
+    await db.reviewHistory.bulkPut(canonicalReviews);
     await db.coursePerformance.put({
       courseId: course.id,
       runningMeanResponseTime: 6,
@@ -115,7 +117,9 @@ describe('legacy storage compatibility net', () => {
     await resetDatabase();
     await importBackup(backup, 'replace');
 
-    expect((await db.cards.get(card.id))?.history).toEqual(reviews);
+    const restoredCard = (await db.cards.get(card.id))!;
+    expect(restoredCard.history).toEqual([]);
+    expect((await hydrateCardsWithHistory([restoredCard]))[0].history).toEqual(reviews);
     expect(await db.reviewHistory.where('cardId').equals(card.id).sortBy('timestamp')).toEqual(
       expectedEvents,
     );

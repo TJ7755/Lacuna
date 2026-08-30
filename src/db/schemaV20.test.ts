@@ -9,6 +9,7 @@ import {
   reviewHistoryEntryIdForEvent,
 } from './reviewHistory';
 import type { Card, ReviewLog } from './types';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 function review(timestamp: number, overrides: Partial<ReviewLog> = {}): ReviewLog {
   return {
@@ -85,7 +86,7 @@ describe('schema v20: additive review history', () => {
     await db.delete();
   });
 
-  it('copies v19 card history without changing the card projection', async () => {
+  it('copies v19 card history before the current schema clears the duplicate projection', async () => {
     const history = [review(100), review(200, { eventId: 'event-2', grade: 1 })];
     const legacy = new Dexie('lacuna');
     legacy.version(19).stores({
@@ -143,7 +144,8 @@ describe('schema v20: additive review history', () => {
     await db.open();
 
     const migratedCard = await db.cards.get('card-1');
-    expect(migratedCard?.history).toEqual(history);
+    expect(migratedCard?.history).toEqual([]);
+    expect((await hydrateCardsWithHistory([migratedCard!]))[0].history).toEqual(history);
     expect(await db.schedulingUnits.get('deck-1')).toBeDefined();
     expect(await db.courses.get('course-1')).toBeDefined();
     expect(await db.sessionHistory.where('eventId').equals('session-event').count()).toBe(1);

@@ -103,7 +103,7 @@ describe('read.ts', () => {
   });
 
   describe('cards', () => {
-    it('hydrates canonical review history and replaces a stale embedded projection', async () => {
+    it('hydrates canonical review history and retains an unmatched legacy projection', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
@@ -118,7 +118,6 @@ describe('read.ts', () => {
         difficultyAfter: 5,
         retrievabilityAtReview: null,
       };
-      await db.cards.update(card.id, { history: [stale] });
       await db.reviewHistory.add({
         ...stale,
         id: 'review:event:canonical',
@@ -133,10 +132,10 @@ describe('read.ts', () => {
 
       const rawCard = await db.cards.get(card.id);
       expect(rawCard).toBeDefined();
-      const hydrated = await hydrateCardsWithHistory([rawCard!]);
+      const hydrated = await hydrateCardsWithHistory([{ ...rawCard!, history: [stale] }]);
       expect(hydrated[0].history.map((entry) => entry.eventId)).toEqual(['canonical', undefined]);
       expect((await getCard(card.id))?.history[0].eventId).toBe('canonical');
-      expect((await getCard(card.id))?.history).toHaveLength(2);
+      expect((await getCard(card.id))?.history).toHaveLength(1);
     });
 
     it('falls back to embedded history for legacy-only cards', async () => {
@@ -154,9 +153,12 @@ describe('read.ts', () => {
         difficultyAfter: 5,
         retrievabilityAtReview: null,
       };
-      await db.cards.update(card.id, { history: [legacy] });
-
-      expect((await listCardsForCourse(course.id))[0].history[0].timestamp).toBe(100);
+      const rawCard = await db.cards.get(card.id);
+      expect(rawCard).toBeDefined();
+      expect(
+        (await hydrateCardsWithHistory([{ ...rawCard!, history: [legacy] }]))[0].history[0]
+          .timestamp,
+      ).toBe(100);
     });
 
     it('scopes listCardsForCourse to its own course', async () => {

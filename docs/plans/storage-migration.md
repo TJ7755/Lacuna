@@ -64,17 +64,16 @@ Active Course/Lesson FSRS sessions now read their scheduling configuration from 
 for databases opened before projection materialisation. Legacy global sessions continue to read
 Deck configuration directly.
 
-The dedicated `reviewHistory` store is now the explicit read source for FSRS optimisation,
-analytics and diagnostics, while `Card.history` remains a mirrored compatibility projection for
-old backups and callers during the migration window.
+The dedicated `reviewHistory` store is the explicit persisted source for FSRS optimisation,
+analytics and diagnostics. Schema v26 ended the mirrored-storage window: `Card.history` is now a
+runtime hydration projection, while legacy inputs are normalised at the import seam.
 
 ### Review events move out of Card rows, but are not discarded
 
-`ReviewLog` is an append-only user record. The target is a dedicated `reviewHistory` store keyed
-by a stable event id, with indexes for card, course, session and timestamp. During the compatibility
-window, Cards retain their existing `history` array as a compatibility projection; its size and
-removal date are deliberately unspecified until the event-store cutover has been measured and
-validated. No bounded "recent" projection is being introduced by this plan.
+`ReviewLog` is an append-only user record. The canonical `reviewHistory` store is keyed by a stable
+event id with card/course/time indexes. Stored Cards and current portability payloads keep an empty
+`history` array; runtime readers hydrate full history through the review-history interface. No
+bounded recent projection or event retention policy was introduced.
 
 The migration must preserve:
 
@@ -110,12 +109,12 @@ explicit compatibility tests.
 
 | Concern              | Current source of truth                                         | Target                                                                     | Compatibility requirement                                                      |
 | -------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Review event         | `Card.history[]`                                                | `reviewHistory` event store                                                | Import old cards; preserve event ids/order                                     |
+| Review event         | `reviewHistory` event store                                     | Closed                                                                     | Import old inline cards; preserve event ids/order                              |
 | FSRS card state      | `Card` fields                                                   | `Card` fields initially                                                    | No scheduling behaviour change                                                 |
 | Course calibration   | `userPerformance` keyed by Course id                            | `coursePerformance`                                                        | Preserve merge/undo semantics                                                  |
 | Pacing estimate      | `userPerformance` keyed by backing Deck id                      | `schedulingPerformance`                                                    | Keep separate from calibration                                                 |
 | Predicted trajectory | `sessionHistory`                                                | `sessionHistory` initially, then explicit projection                       | Preserve course/deck provenance                                                |
-| Full backup          | `BackupFile.cards[].history` plus session rows                  | A future versioned `reviewHistory` section plus compatibility card history | Old backups import unchanged; new backups remain self-contained                |
+| Full backup          | Canonical `reviewHistory`; compact Card rows                    | Closed                                                                     | Old inline backups import unchanged; current backups remain self-contained     |
 | Course snapshot      | repository snapshots containing cards and history               | Snapshot event rows with card state                                        | Restore remains atomic                                                         |
 | Merge import         | `portability.ts` / `mergeImport.ts`                             | Explicit event and performance adapters                                    | Never overwrite newer local review evidence                                    |
 | Share code           | Content-only; no review history                                 | Unchanged                                                                  | Scheduling/history stays private                                               |
@@ -125,17 +124,11 @@ explicit compatibility tests.
 
 ## Implementation status
 
-The first domain-storage slice is now approved for implementation on `feat/storage-migration`.
-Schema v21 adds `schedulingUnits`, `coursePerformance` and `schedulingPerformance`, backfills
-Course/Lesson and legacy compatibility units, and stamps cards and canonical review events with
-the resolved scheduling-unit id. The second slice cuts Course calibration and pacing reads over
-to the target stores, dual-writes the legacy calibration mirror for rollback, and includes review
-and undo transaction coverage. Course dashboard/read models use the pacing adapter, and fresh
-Course cards/backing units now initialise their target projection fields. The latest slice keeps
-Course/Lesson scheduling-unit configuration synchronised across repository Course, Lesson and
-assessment writes, including inherited settings, lesson date overrides, target performance
-initialisation, and deletion snapshots/restore. The old stores remain readable; no rollback or
-wire-compatibility path is removed until the later cutover slices have focused coverage.
+The domain-storage and review-history migrations are closed. Schema v26 migrates and verifies any
+projection-only legacy events before atomically clearing stored Card histories. The Card-table hook
+is the storage seam for all writers; backup, APKG and peer inputs retain legacy compatibility by
+canonicalising inline evidence before crossing it. Course/Lesson and generated-card snapshots carry
+event rows separately and restore atomically.
 
 ## Phases
 
@@ -157,7 +150,10 @@ wire-compatibility path is removed until the later cutover slices have focused c
    preserved. The destructive upgrade is blocked unless its separate pre-migration snapshot
    commits, and a failed v22 transaction leaves the database readable at v21. A completed upgrade
    has no in-place downgrade path; see [the compatibility release note](../storage-v22-compatibility.md).
-6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
+6. **Review-history storage cutover — closed.** Schema v26 copies and verifies remaining inline
+   events before clearing Card projections, current backup/sync wires carry canonical events once,
+   and legacy inline inputs remain accepted. Migration failure leaves the v25 database unchanged.
+7. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event
    store migration itself.

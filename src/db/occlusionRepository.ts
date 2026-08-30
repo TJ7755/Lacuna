@@ -22,7 +22,7 @@ import {
   lessonCardExposureId,
 } from './mutationStamp';
 import {
-  cardsWithReviewHistory,
+  projectCardsForStorage,
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
 } from './reviewHistory';
@@ -392,10 +392,10 @@ export async function snapshotOcclusion(id: string): Promise<OcclusionSnapshot |
 /** Re-insert a previously captured OcclusionSnapshot (the inverse of deleteOcclusion/updateOcclusion). */
 export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<void> {
   try {
-    const cardsToRestore =
-      snapshot.reviewHistory === undefined
-        ? snapshot.cards
-        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
+    const cardsToRestore = projectCardsForStorage(snapshot.cards);
+    const reviewHistoryToRestore =
+      snapshot.reviewHistory ??
+      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     await db.transaction(
       'rw',
       [
@@ -428,10 +428,7 @@ export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<voi
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
-        await db.reviewHistory.bulkPut(
-          snapshot.reviewHistory ??
-            cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
-        );
+        await db.reviewHistory.bulkPut(reviewHistoryToRestore);
         await clearTombstone(tx, 'occlusions', snapshot.occlusion.id);
         await clearGeneratedCardCascade(
           tx,
