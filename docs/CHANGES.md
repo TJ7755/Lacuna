@@ -24,6 +24,16 @@
   the current Course and scheduling-unit APIs. Content-hashed scripts and the
   hosted font stylesheet now use bounded cache-first runtime caches.
 
+## Unreleased — CI and test throughput
+
+- Split the root unit suite into four one-worker CI shards, with coverage retained as one separate
+  job and the existing `test` check kept as an aggregate gate. Local Vitest defaults remain serial.
+- Removed full typechecking from CI asset builds through the new `build:assets` script; the ordinary
+  `bun run build` command still typechecks before building. Playwright uses that asset-only build and
+  two isolated workers in CI while remaining serial for local runs.
+- Made the 2,000-entry relay bounds fixture linear by using a fixed mock envelope, cached instruction
+  data and a no-op storage adapter; persistence coverage remains in the dedicated persistence tests.
+
 ## Unreleased — AI connection health
 
 - A relay pairing request that finishes after AI is disabled now starts contained
