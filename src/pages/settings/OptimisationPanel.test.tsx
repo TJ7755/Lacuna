@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as FsrsOptimise from '../../fsrs/optimise';
 import { defaultFsrsParameters } from '../../fsrs/params';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
 import { OptimisationPanel } from './OptimisationPanel';
@@ -42,7 +43,7 @@ vi.mock('../../components/ui/Toast', () => ({
 vi.mock('../../db/backups', () => ({ takeAutoBackup: vi.fn() }));
 
 vi.mock('../../fsrs/optimise', async () => {
-  const actual = await vi.importActual<typeof import('../../fsrs/optimise')>('../../fsrs/optimise');
+  const actual = await vi.importActual<typeof FsrsOptimise>('../../fsrs/optimise');
   return { ...actual, countReviews: () => panelState.reviews };
 });
 

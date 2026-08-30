@@ -205,7 +205,7 @@ describe('Settings', () => {
     render(<Settings />);
 
     expect(screen.getByRole('switch', { name: 'Show Dashboard' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Show Search' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Show Search entry' })).toBeInTheDocument();
     expect(
       screen.getByRole('spinbutton', {
         name: 'Threshold (far)',

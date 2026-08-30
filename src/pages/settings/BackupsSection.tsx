@@ -29,6 +29,7 @@ export function BackupsSection() {
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
+  const backupNowButton = useRef<HTMLButtonElement>(null);
   const deleteButtons = useRef(new Map<number, HTMLButtonElement>());
   const deleteFocusReturn = useRef<number | null>(null);
   const mirrorSupported = folderMirrorSupported();
@@ -68,6 +69,7 @@ export function BackupsSection() {
     try {
       await deleteBackup(id);
       setConfirmDelete(null);
+      backupNowButton.current?.focus();
       notify('Restore point deleted from Lacuna. Mirrored files were not removed.', 'neutral');
     } catch (error) {
       notify(
@@ -105,7 +107,7 @@ export function BackupsSection() {
             Automatic backups
           </SettingsSectionHeading>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleBackupNow}>
+        <Button ref={backupNowButton} variant="secondary" size="sm" onClick={handleBackupNow}>
           Back up now
         </Button>
       </div>

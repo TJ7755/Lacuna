@@ -1,6 +1,6 @@
 # UX flow consolidation
 
-**Status:** in progress
+**Status:** delivered
 
 **Baseline:** `master` at `f282a9c`
 
@@ -52,3 +52,18 @@ After all implementation and documentation changes are complete:
 
 This ordering is deliberate: later UI changes must not invalidate an earlier browser pass, and the
 ordinary test suite must not be repeatedly rerun while browser-visible failures remain.
+
+## Verification
+
+Completed on 30 August 2026 in the required order:
+
+1. One consolidated browser pass covered import intent, Quick search and Search content, desktop
+   and narrow-width Settings, deep-link positioning, backup-deletion cancellation, multi-lesson and
+   single-lesson Study/Author parity, path-native practice and checkpoint authoring, Cards controls,
+   focus restoration and keyboard handling.
+2. The new regression tests fail against merge-base `f282a9c` in the sampled import/search,
+   authoring, settings and backup flows, then pass on the delivered branch.
+3. Focused regressions: 17 files and 175 tests passed.
+4. Lint, every TypeScript target and the production build passed.
+5. Full unit suite: 306 files and 2,582 tests passed.
+6. Web end-to-end suite: 15 scenarios passed.

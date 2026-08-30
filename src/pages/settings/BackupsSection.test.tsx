@@ -57,6 +57,7 @@ describe('BackupsSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete restore point' }));
     await waitFor(() => expect(mockDeleteBackup).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back up now' })).toHaveFocus());
   });
 
   it('keeps confirmation open and reports a failed restore-point deletion', async () => {

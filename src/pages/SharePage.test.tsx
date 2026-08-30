@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type * as ReactRouterDom from 'react-router-dom';
 import { SharePage } from './SharePage';
 import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
@@ -12,7 +13,7 @@ let mockCourseCards: Card[] = [];
 let mockSearchParams = new URLSearchParams();
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
   return {
     ...actual,
     Link: ({

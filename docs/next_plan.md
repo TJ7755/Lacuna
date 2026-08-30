@@ -15,14 +15,15 @@ archive.
 
 ### UX flow consolidation
 
-**Status:** in progress.
+**Status:** delivered.
 
 The implementation plan is [UX flow consolidation](plans/ux-flow-consolidation.md), grounded in the
 [UX map](UX-MAP.html). It repairs the audit's concrete contradictions: honest import and search
 entry points, one Study/Author decision beside course content, path-native authoring, task-oriented
 Settings, deliberate disclosure of scheduling internals, and confirmation before deleting a restore
-point from Lacuna. Browser verification is the release gate; automated checks follow it once the
-complete UI has passed.
+point from Lacuna. The consolidated desktop and narrow-width browser gate passed first, followed by
+the focused regressions, merge-base red-to-green proof, lint, all TypeScript targets, production
+build, 2,582 unit tests and 15 web end-to-end scenarios.
 
 ### AI sidebar — final verification
 

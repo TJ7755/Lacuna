@@ -24,9 +24,9 @@
     "mapReading": "Current stations are semantic control clusters. Repeated JSX instances are represented by occurrenceRefs rather than pretending every rendered row is a unique concept.",
     "deliveryOverlay": {
       "recordedOn": "2026-08-30",
-      "basis": "Implementation source inspection only. The 2026-08-29 audit stations, actions, observations and heuristic scores remain an unchanged historical snapshot.",
-      "browserValidated": false,
-      "testValidated": false,
+      "basis": "Implementation source inspection, a consolidated desktop and narrow-width browser walkthrough, focused regression tests, merge-base red-to-green proof, static checks, the production build, the full unit suite and the web end-to-end suite. The 2026-08-29 audit stations, actions, observations and heuristic scores remain an unchanged historical snapshot.",
+      "browserValidated": true,
+      "testValidated": true,
       "statusMeaning": {
         "delivered": "The implemented source covers the recommendation's agreed scope.",
         "partially delivered": "A bounded part of the recommendation is implemented; the remaining scope is named explicitly.",
