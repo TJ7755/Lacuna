@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addElectronSecurityHeaders,
   canGrantRendererPermission,
   decideWindowOpen,
   isAllowedRendererNavigation,
@@ -7,6 +8,40 @@ import {
 } from '../electron/securityPolicy.js';
 
 describe('Electron renderer security policy', () => {
+  describe('response headers', () => {
+    it('repairs CORS for the exact production sync relay and no other remote origin', () => {
+      expect(
+        addElectronSecurityHeaders(
+          'https://lacuna-relay.vercel.app/channel',
+          { 'access-control-allow-origin': ['https://stripped.example'] },
+          'production',
+        ),
+      ).toMatchObject({
+        'Access-Control-Allow-Origin': ['app://.'],
+        'Access-Control-Allow-Methods': ['GET, PUT, POST, DELETE, OPTIONS'],
+        'Access-Control-Allow-Headers': ['Authorization, Content-Type, If-Match'],
+      });
+      expect(
+        addElectronSecurityHeaders(
+          'https://lacuna-relay.vercel.app/channel',
+          { 'access-control-allow-origin': ['https://stripped.example'] },
+          'production',
+        ),
+      ).not.toHaveProperty('access-control-allow-origin');
+
+      expect(
+        addElectronSecurityHeaders('https://example.com/channel', {}, 'production'),
+      ).not.toHaveProperty('Access-Control-Allow-Origin');
+      expect(
+        addElectronSecurityHeaders(
+          'https://lacuna-relay.vercel.app.evil.example/channel',
+          {},
+          'production',
+        ),
+      ).not.toHaveProperty('Access-Control-Allow-Origin');
+    });
+  });
+
   describe('permissions', () => {
     it.each([
       ['production', 'app://./index.html', ['audio']],

@@ -157,6 +157,10 @@ update manually. The macOS beta is unsigned and therefore also updates manually:
 signed application for electron-updater. All unsigned beta artefacts may trigger normal operating
 system trust warnings.
 
+The web app's `#/download` page provides direct, operating-system-aware links without asking users
+to decipher GitHub's release asset list. It recommends the portable executable for managed Windows
+computers and states which formats update automatically.
+
 Open Lacuna normally, then copy the JSON configuration from **Settings → MCP server** into
 your client's local stdio-server configuration. Its command is the installed Lacuna executable
 with `--mcp-companion` as its sole argument. For example, with Claude Code on macOS:

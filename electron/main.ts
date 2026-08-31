@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
 import {
+  addElectronSecurityHeaders,
   canGrantRendererPermission,
   decideWindowOpen,
   isAllowedRendererNavigation,
@@ -143,15 +144,11 @@ function installPermissionHandlers(): void {
 /** Inject security headers required for SharedArrayBuffer (WASM) and CSP. */
 function installSecurityHeaders(): void {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    const headers: Record<string, string[]> = {
-      ...details.responseHeaders,
-      'Cross-Origin-Opener-Policy': ['same-origin'],
-      'Cross-Origin-Embedder-Policy': ['credentialless'],
-    };
-    // Allow cross-origin requests for the custom app:// protocol.
-    if (details.url.startsWith('app://')) {
-      headers['Access-Control-Allow-Origin'] = ['*'];
-    }
+    const headers = addElectronSecurityHeaders(
+      details.url,
+      details.responseHeaders ?? {},
+      rendererEnvironment,
+    );
     if (!isDev) {
       // The sync relay is a separate origin; connect-src must list it. Keep this in step with
       // src/sync/pairing.ts DEFAULT_RELAY_URL and the index.html meta policy. This header is

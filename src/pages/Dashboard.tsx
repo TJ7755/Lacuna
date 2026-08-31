@@ -8,13 +8,11 @@ import { StudySignals } from '../components/dashboard/StudySignals';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
-import { ChevronRightIcon, LacunaIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
+import { LacunaIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useDashboardSort } from '../state/dashboardSort';
-import { readActiveStudyFlow } from '../state/activeStudyFlow';
-import { useStudySheet } from '../components/learn/StudySheetContext';
 import { updateCourse } from '../db/repository';
 import { useToast } from '../components/ui/Toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -44,7 +42,6 @@ export function Dashboard() {
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
-  const { openStudySheet } = useStudySheet();
 
   // Active courses only (archived ones are hidden from the main grid), ordered per
   // the "Choose how courses are ordered" dashboard setting.
@@ -98,12 +95,6 @@ export function Dashboard() {
     return grouped;
   }, [allCards]);
 
-  // A conductor interrupted mid-flow (Arc 10 §10.1: moved here from the retired
-  // StudyToday page) — resuming recalculates the next step from current course
-  // state rather than trusting the stored session.
-  const activeFlow = useMemo(() => readActiveStudyFlow(), []);
-  const resumableCourse = courses?.find((course) => course.id === activeFlow?.courseId);
-
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
       {/* Page header */}
@@ -136,34 +127,6 @@ export function Dashboard() {
       <AnimatePresence>
         {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
       </AnimatePresence>
-
-      {/* The way into study, in the same place whether or not a flow was interrupted.
-          It used to appear only mid-flow, which left the ordinary case reaching study
-          through a course card or the sidebar drawer — an extra tap, and on a phone a
-          hidden one. Resuming recalculates the next step; otherwise the study sheet
-          opens at its course picker. */}
-      {activeCourses && activeCourses.length > 0 && (
-        <button
-          type="button"
-          onClick={() =>
-            resumableCourse ? navigate(`/course/${resumableCourse.id}/study`) : openStudySheet()
-          }
-          className="mb-6 flex min-h-20 w-full items-center gap-4 rounded-2xl border border-accent/30 bg-accent/[0.04] px-5 py-4 text-left transition-colors hover:bg-accent/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-        >
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
-            <PlayIcon width={18} height={18} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-xs uppercase tracking-[0.14em] text-ink-faint">
-              {resumableCourse ? 'Resume study flow' : 'Study'}
-            </span>
-            <span className="mt-1 block truncate font-display text-xl text-ink">
-              {resumableCourse ? resumableCourse.name : 'Choose a course'}
-            </span>
-          </span>
-          <ChevronRightIcon width={18} height={18} className="shrink-0 text-accent" />
-        </button>
-      )}
 
       <SyncStatus />
 

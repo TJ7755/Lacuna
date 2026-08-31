@@ -1,5 +1,87 @@
 # Lacuna — version 0.2.0
 
+## Unreleased — mobile edge navigation
+
+- Added a deliberate left-edge rightward swipe to open the mobile navigation drawer. It is limited
+  to touch at the mobile breakpoint, ignores interactive targets and rejects vertical or ambiguous
+  movement before opening.
+- Suppressed horizontal history overscroll with the standard CSS property while the application
+  shell is mounted on supported mobile browsers. iOS Safari may still reserve its native edge-back
+  gesture and does not provide a web API that can reliably replace it.
+
+**Checks:** red-to-green drawer-opening and gesture-rejection regressions; existing course-section
+swipe regressions; web typecheck and focused lint.
+
+## Unreleased — packaged-app network bootstrap
+
+- Made Electron repair CORS response headers for the exact default sync relay and exact packaged
+  renderer origin. This keeps sync working when a managed-device proxy strips the unusual
+  `app://.` origin from an otherwise valid relay response without disabling Chromium web security
+  or granting arbitrary remote origins.
+- Stopped the packaged app requesting the hosted Google Fonts stylesheet which its production CSP
+  correctly blocks. HTTP(S) builds still load the hosted fonts; Electron continues to inject the
+  existing bundled fonts for offline use.
+- Moved PWA registration into the protocol-aware application bootstrap. Production HTTP(S) pages
+  still register `/sw.js`, while `app://` no longer attempts an unsupported service-worker
+  registration or emits an unhandled rejection.
+
+**Checks:** red-to-green exact-relay CORS, hosted-font and service-worker protocol regressions;
+focused unit tests, typecheck, focused lint and production asset build.
+
+## Unreleased — unlocked sync channel deletion
+
+- Fixed the Device sync deletion path when the device already remembers its unlocked credentials.
+  The existing destructive confirmation now purges with that authenticated write-token capability
+  instead of demanding a passphrase through a field which the unlocked state deliberately hides.
+- Locked devices still require the recovery passphrase before deletion. Unpairing remains local to
+  the current device; deleting the channel remains a separately confirmed purge for every device.
+- The sync boundary rejects an unlocked credential whose relay or channel does not match the local
+  pairing before it sends a purge request or clears local state.
+
+**Checks:** red-to-green Settings deletion regression, credential-boundary purge and mismatch tests;
+focused unit tests, web typecheck and focused lint.
+
+## Unreleased — public download journey
+
+- Added an operating-system-aware download page with direct links to supported release artefacts.
+  Managed Windows computers receive the portable build as the primary recommendation; installer,
+  DEB, signing and update trade-offs are stated beside the relevant choice.
+- Simplified the welcome page's first decision to opening Lacuna or downloading the desktop app,
+  with shared-course import demoted to a text link and desktop prompts omitted inside Electron.
+- Kept first-run routing from replacing an intentional visit to the public download page,
+  including hashes with the router's accepted trailing slash.
+- Kept desktop-download calls to action off phone layouts and made direct mobile visits neutral
+  until the visitor chooses the computer where Lacuna will run, rather than defaulting to Windows.
+
+**Checks:** red-to-green download selection, welcome hierarchy, first-run routing (including a
+trailing slash), public route transition and browser first-launch tests; web typecheck and focused
+unit tests.
+
+## Unreleased — Windows packaging polish
+
+- Corrected the Windows maximise/restore control's incomplete restore outline without changing the
+  established caption-button sizing or placement.
+- Added a restrained branded splash to the Windows portable wrapper so extraction is no longer
+  silent. It appears before Electron starts and honestly warns that managed computers may take a
+  moment; Windows security checks which occur before the wrapper starts remain outside the app's
+  control.
+
+**Checks:** red-to-green titlebar glyph and portable splash configuration tests; Electron builder
+configuration validation, typecheck and focused lint.
+
+## Unreleased — MCP setup guidance
+
+- Expanded the copied AI terminal pairing instruction with a fallback to the README's terminal
+  companion setup when `lacuna.wait_for_message` is unavailable, including the need to restart the
+  terminal after configuring MCP. The pairing panel now also exposes that setup link directly.
+- Reworked the Teaching memory controls into a cohesive responsive header and preserved Settings
+  scroll position when the optional AI runtime remounts the application shell. Ordinary route
+  changes still reset to the top without persisting the outgoing page position.
+- Removed the redundant Dashboard study banner; course cards still open a resumable course study
+  flow, while Review today in the sidebar still opens the shared course-picker sheet.
+
+**Checks:** focused AI, Settings and Dashboard tests, plus the full browser suite.
+
 ## 0.2.0 beta — release hardening
 
 - Guarded outstanding Card and Question sessions against explicit Exit, application navigation,

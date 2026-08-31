@@ -33,7 +33,7 @@ export async function pairBrowserAndTerminal(
   );
 
   await page.goto('/');
-  await page.getByRole('button', { name: 'Create your first course' }).click();
+  await page.getByRole('button', { name: 'Open Lacuna', exact: true }).first().click();
   await page.goto('/#/settings#settings-ai');
   await page.getByRole('switch', { name: 'Enable AI' }).click();
   await page.getByRole('button', { name: 'AI', exact: true }).first().click();
@@ -43,7 +43,7 @@ export async function pairBrowserAndTerminal(
   const pairingCode = await pairingCodeFrom(page);
   const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
   await expect(instruction).toHaveValue(
-    `Connect to Lacuna with code ${pairingCode}. Keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`,
+    `Connect to Lacuna with code ${pairingCode}. If lacuna.wait_for_message is unavailable, read https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat and help me set up the Lacuna terminal companion; tell me when I must restart this terminal before continuing. If it is available, keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`,
   );
   const composer = page.getByRole('textbox', { name: 'Message AI' });
   await expect(composer).toBeDisabled();

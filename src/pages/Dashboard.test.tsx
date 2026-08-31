@@ -33,16 +33,9 @@ vi.mock('../state/motionSpeed', () => ({
 }));
 
 vi.mock('../components/ui/icons', () => ({
-  ChevronRightIcon: () => <svg data-testid="chevron-right-icon" />,
   LacunaIcon: () => <svg data-testid="lacuna-icon" />,
   PlayIcon: () => <svg data-testid="play-icon" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
-}));
-
-let mockActiveFlow: { courseId: string } | null = null;
-
-vi.mock('../state/activeStudyFlow', () => ({
-  readActiveStudyFlow: () => mockActiveFlow,
 }));
 
 vi.mock('../components/course/NewCourseForm', () => ({
@@ -69,14 +62,6 @@ vi.mock('../components/ui/Button', () => ({
 
 vi.mock('../components/dashboard/StudySignals', () => ({
   StudySignals: () => <div data-testid="study-signals">Study Signals</div>,
-}));
-
-// The dashboard renders inside the app shell, which provides the study sheet. These tests
-// render the page alone, so the hook is mocked rather than wrapping every render.
-const { mockOpenStudySheet } = vi.hoisted(() => ({ mockOpenStudySheet: vi.fn() }));
-
-vi.mock('../components/learn/StudySheetContext', () => ({
-  useStudySheet: () => ({ openStudySheet: mockOpenStudySheet }),
 }));
 
 vi.mock('../components/dashboard/ReviewHeatmap', () => ({
@@ -178,7 +163,6 @@ beforeEach(() => {
   mockNotify.mockReset();
   mockCourseDashboardData = undefined;
   mockPendingUpdateIds = new Set<string>();
-  mockActiveFlow = null;
 });
 
 function setCourseData(courses: Course[] = [mockCourse]) {
@@ -280,8 +264,7 @@ describe('Dashboard', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
   });
 
-  it('shows a resume banner for an active study flow and navigates on click', () => {
-    mockActiveFlow = { courseId: 'course-1' };
+  it('keeps study access in the course card without a dashboard study banner', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
       lessons: [],
@@ -290,34 +273,9 @@ describe('Dashboard', () => {
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
     render(<Dashboard />);
-    fireEvent.click(screen.getByText('Resume study flow'));
+    expect(screen.queryByText('Choose a course')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('study-course-1'));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
-  });
-
-  it('does not show a resume banner when there is no active study flow', () => {
-    mockCourseDashboardData = {
-      courses: [mockCourse],
-      lessons: [],
-      allCards: [],
-      summaries: {},
-      stats: { reviewedToday: 0, streak: 0, forecast: [] },
-    };
-    render(<Dashboard />);
-    expect(screen.queryByText('Resume study flow')).not.toBeInTheDocument();
-  });
-
-  it('offers the study sheet in the same place when there is no flow to resume', () => {
-    mockCourseDashboardData = {
-      courses: [mockCourse],
-      lessons: [],
-      allCards: [],
-      summaries: {},
-      stats: { reviewedToday: 0, streak: 0, forecast: [] },
-    };
-    render(<Dashboard />);
-    fireEvent.click(screen.getByText('Choose a course'));
-    expect(mockOpenStudySheet).toHaveBeenCalled();
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('offers no study control until there is a course to study', () => {

@@ -48,7 +48,7 @@ async function stubRelay(page: Page, relayBase: string, requests: string[]): Pro
 async function openSeededDashboard(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Study for the day that counts.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Create your first course' }).click();
+  await page.getByRole('button', { name: 'Open Lacuna', exact: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
 }

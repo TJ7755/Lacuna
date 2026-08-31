@@ -9,7 +9,7 @@ vi.mock('./pages/NotFound', () => ({ NotFound: () => <h1>Not found</h1> }));
 
 import { router } from './App';
 
-describe('legacy routes', () => {
+describe('application routes', () => {
   it('redirects a Deck bookmark to the dashboard', async () => {
     render(<RouterProvider router={router} />);
 
@@ -19,6 +19,17 @@ describe('legacy routes', () => {
 
     expect(router.state.location.pathname).toBe('/');
     expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Not found' })).not.toBeInTheDocument();
+  });
+
+  it('opens the public download route outside the application shell', async () => {
+    render(<RouterProvider router={router} />);
+
+    await act(async () => {
+      await router.navigate('/download');
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Download Lacuna.' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Not found' })).not.toBeInTheDocument();
   });
 });

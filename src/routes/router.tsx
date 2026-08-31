@@ -15,6 +15,7 @@ import {
   loadCoursePath,
   loadCourseSettings,
   loadCourseStudyFlow,
+  loadDownload,
   loadHelpPage,
   loadLessonView,
   loadLearnMode,
@@ -54,6 +55,7 @@ const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Welcome = lazy(loadWelcome);
+const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 
 function lazyRoute(Component: LazyExoticComponent<ComponentType>) {
@@ -148,6 +150,11 @@ export const router = createHashRouter([
         // The landing page is a full-screen editorial experience outside the shell.
         path: '/welcome',
         element: isolatedRoute('the landing page', lazyRoute(Welcome)),
+      },
+      {
+        // Public download guidance stays outside the application shell.
+        path: '/download',
+        element: isolatedRoute('the download page', lazyRoute(Download)),
       },
       {
         // The technical account belongs to the landing page, outside the app shell.

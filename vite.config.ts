@@ -66,6 +66,10 @@ export const workbox = {
   ],
 };
 
+// Registration is gated by the page protocol in src/webBootstrap.ts so the
+// packaged app never tries to install a worker from app://.
+export const pwaInjectRegister = null;
+
 // Lacuna is a static, serverless single-page application.
 export default defineConfig({
   plugins: [
@@ -73,6 +77,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: pwaInjectRegister,
       manifest: false, // Use the custom manifest in public/
       workbox,
       devOptions: {

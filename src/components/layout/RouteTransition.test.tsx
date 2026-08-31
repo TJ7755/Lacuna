@@ -59,8 +59,9 @@ describe('routeTransitionKey', () => {
     expect(routeTransitionKey('/course/one/lesson/two')).toBe('shell');
   });
 
-  it('gives welcome and each focused study route its own transition boundary', () => {
+  it('gives public and focused study routes their own transition boundaries', () => {
     expect(routeTransitionKey('/welcome')).toBe('welcome');
+    expect(routeTransitionKey('/download')).toBe('download');
     expect(routeTransitionKey('/learn')).toBe('focus:/learn');
     expect(routeTransitionKey('/course/one/study')).toBe('focus:/course/one/study');
     expect(routeTransitionKey('/course/one/learn')).toBe('focus:/course/one/learn');

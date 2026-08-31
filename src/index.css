@@ -135,6 +135,14 @@
     }
   }
 
+  /* Chromium and Firefox honour this standard property for history-navigation
+     overscroll. Safari may still reserve its native screen-edge back gesture. */
+  @media (max-width: 767px) {
+    html.lacuna-app-shell {
+      overscroll-behavior-x: none;
+    }
+  }
+
   /* Re-enable text selection for actual editable and readable content. */
   input,
   textarea,

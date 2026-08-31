@@ -5,7 +5,7 @@ import type { AiSession } from '../../ai/session/types';
 import { createInMemoryAiSession } from '../../ai/session/inMemory';
 import { AppShell } from './AppShell';
 
-const mediaQueryState = vi.hoisted(() => ({ aiDesktop: true }));
+const mediaQueryState = vi.hoisted(() => ({ aiDesktop: true, mobileViewport: true }));
 const aiSessionState = vi.hoisted<{ current: AiSession | null }>(() => ({ current: null }));
 
 vi.mock('./Sidebar', () => ({
@@ -65,7 +65,9 @@ vi.mock('../../ai/session/AiSessionContext', () => ({
 vi.mock('../ai/AiPanel', () => ({
   AiPanel: ({ onClose }: { onClose: () => void }) => (
     <aside aria-label="AI conversation">
-      <button type="button" onClick={onClose}>Close AI</button>
+      <button type="button" onClick={onClose}>
+        Close AI
+      </button>
     </aside>
   ),
 }));
@@ -73,9 +75,12 @@ vi.mock('../ai/AiPanel', () => ({
 function RouteContent() {
   const navigate = useNavigate();
   return (
-    <button type="button" onClick={() => navigate('/settings')}>
-      Navigate page
-    </button>
+    <>
+      <button type="button" onClick={() => navigate('/settings')}>
+        Navigate page
+      </button>
+      <input aria-label="Page input" />
+    </>
   );
 }
 
@@ -96,10 +101,14 @@ function renderShell() {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
   mediaQueryState.aiDesktop = true;
+  mediaQueryState.mobileViewport = true;
   aiSessionState.current = createInMemoryAiSession();
   vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
-    matches: query === '(prefers-reduced-motion: reduce)',
+    matches:
+      query === '(prefers-reduced-motion: reduce)' ||
+      (query === '(max-width: 767px)' && mediaQueryState.mobileViewport),
     media: query,
     onchange: null,
     addListener: vi.fn(),
@@ -115,6 +124,61 @@ beforeEach(() => {
 });
 
 describe('AppShell mobile navigation', () => {
+  function swipe(target: Element, from: { x: number; y: number }, to: { x: number; y: number }) {
+    fireEvent.pointerDown(target, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: from.x,
+      clientY: from.y,
+    });
+    fireEvent.pointerMove(target, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: to.x,
+      clientY: to.y,
+    });
+    fireEvent.pointerUp(target, {
+      pointerId: 1,
+      pointerType: 'touch',
+      clientX: to.x,
+      clientY: to.y,
+    });
+  }
+
+  it('opens the drawer after a deliberate right swipe from the left viewport edge', () => {
+    renderShell();
+
+    swipe(document.querySelector('main')!, { x: 12, y: 160 }, { x: 84, y: 166 });
+
+    expect(screen.getByRole('dialog', { name: 'Navigation' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['starts away from the edge', 'main', { x: 48, y: 160 }, { x: 124, y: 162 }],
+    ['is predominantly vertical', 'main', { x: 12, y: 120 }, { x: 30, y: 205 }],
+    ['is directionally ambiguous', 'main', { x: 12, y: 120 }, { x: 32, y: 138 }],
+    ['starts on an input', 'input', { x: 10, y: 120 }, { x: 90, y: 122 }],
+  ])('does not open the drawer when a swipe %s', (_label, targetName, from, to) => {
+    renderShell();
+    const target =
+      targetName === 'input'
+        ? screen.getByRole('textbox', { name: 'Page input' })
+        : document.querySelector('main')!;
+
+    swipe(target, from, to);
+
+    expect(screen.queryByRole('dialog', { name: 'Navigation' })).not.toBeInTheDocument();
+  });
+
+  it('does not enable the edge gesture at the desktop breakpoint', () => {
+    mediaQueryState.mobileViewport = false;
+    renderShell();
+
+    swipe(document.querySelector('main')!, { x: 12, y: 160 }, { x: 84, y: 162 });
+
+    expect(screen.queryByRole('dialog', { name: 'Navigation' })).not.toBeInTheDocument();
+  });
+
   it.each([
     ['the close button', (dialog: HTMLElement) => dialog.querySelector('[data-mobile-close]')],
     ['the sidebar toggle', (dialog: HTMLElement) => dialog.querySelector('[data-sidebar-close]')],
@@ -178,6 +242,31 @@ describe('AppShell mobile navigation', () => {
       expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument(),
     );
     expect(screen.queryByRole('button', { name: 'Navigate page' })).not.toBeInTheDocument();
+  });
+
+  it('restores the current page scroll after an application-shell remount', () => {
+    const first = renderShell();
+    const main = document.querySelector('main');
+    expect(main).not.toBeNull();
+    main!.scrollTop = 420;
+
+    first.unmount();
+    renderShell();
+
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenLastCalledWith({ top: 420 });
+  });
+
+  it('does not persist the outgoing page scroll during ordinary navigation', async () => {
+    renderShell();
+    const main = document.querySelector('main');
+    expect(main).not.toBeNull();
+    main!.scrollTop = 420;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Navigate page' }));
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible());
+    expect(sessionStorage.getItem('lacuna-shell-scroll-position')).toBeNull();
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledWith({ top: 0 });
   });
 });
 

@@ -332,9 +332,12 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   **Quick search**, opens that overlay directly, and shows the `Ctrl/Cmd+K` shortcut hint inline
   (collapsed sidebar: as a title tooltip). Surfaces without overlay wiring (for example,
   LearnMode's own nav drawer) expose **Search content** as a plain `/search` link instead.
-- **Mobile:** the sidebar becomes a drawer opened from a top bar burger; the scrim closes
-  it; it auto-closes on navigation. On desktop the sidebar is always visible; on touch
-  viewports the burger is the only way to reach it.
+- **Mobile:** the sidebar becomes a drawer opened from a top bar burger or a deliberate
+  left-edge rightward swipe; the scrim closes it; it auto-closes on navigation. The edge
+  gesture rejects vertical movement and starts on non-interactive content only, so ordinary
+  scrolling and controls retain their native behaviour. Supported browsers suppress horizontal
+  history overscroll while the application shell is mounted; iOS Safari may still reserve its
+  native screen-edge back gesture. On desktop the sidebar is always visible.
 - **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles **Quick search**;
   `/` opens **Search content**; `?` toggles the keyboard-hints overlay. Single-key
   shortcuts are inert while typing in an input/textarea.
@@ -377,6 +380,7 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/lesson/:lessonId/learn`                               | Learn session (new cards for one lesson)                                | **no**    | lazy    |
 | `/learn`                                                | Review today session across every course                                | **no**    | lazy    |
 | `/welcome`                                              | First-run landing page                                                  | **no**    | lazy    |
+| `/download`                                             | OS-aware desktop beta download page                                     | **no**    | lazy    |
 | `/method`                                               | Technical method page                                                   | **no**    | lazy    |
 | `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |
 | `/study`                                                | Redirects to `/`                                                        | yes       | eager   |
@@ -2748,22 +2752,36 @@ Windows x64 NSIS and portable, Linux x64 AppImage and DEB, and macOS arm64 DMG a
 The Electron layer lives in `electron/` and wraps the existing Vite SPA without
 modifying the renderer source.
 
+The public `/download` route selects Windows, macOS or Linux from a desktop browser user agent while
+keeping all three choices available. Mobile and unknown agents remain neutral until the visitor
+chooses the computer where Lacuna will run. It recommends the Windows portable executable for
+managed computers, the macOS Apple Silicon DMG and the Linux AppImage, with the installer or DEB
+demoted to clearly labelled alternatives. The page states signing and update limitations rather
+than exposing GitHub's updater metadata as user choices.
+
 ### Architecture
 
 - **Main process** (`electron/main.ts`): creates a frameless `BrowserWindow`,
   injects Cross-Origin Isolation headers (COOP/COEP) required by the FSRS WASM
-  trainer, registers a custom `app://` protocol for production builds, and
+  trainer, registers a custom `app://` protocol for production builds, repairs CORS only for the
+  exact default sync relay when a managed-device intermediary strips that response header, and
   manages window lifecycle (single-instance lock, close/minimise/maximise).
 - **Preload** (`electron/preload.ts`): exposes a minimal `electronAPI` via
   `contextBridge` for platform detection, window controls and the narrow MCP IPC surface.
 - **Titlebar** (`src/components/layout/Titlebar.tsx`): a custom React component which reserves the
   native traffic-light inset and omits duplicate controls on macOS. Windows and Linux render the
-  custom minimise, maximise/restore and close controls. It only mounts when
+  custom minimise, maximise/restore and close controls; the restore glyph uses two complete,
+  overlapping window outlines rather than an incomplete front corner. It only mounts when
   `window.electronAPI.isElectron` is truthy, so the web version is completely unaffected.
+- **Portable startup** (`electron/assets/portable-splash.bmp`): electron-builder's NSIS wrapper
+  shows a restrained Lacuna-branded bitmap while the Windows portable executable extracts. This
+  gives immediate feedback before Electron exists; it does not claim progress or disguise any
+  earlier Windows security scan.
 - **Fonts** (`electron/assets/fonts/`): Fraunces, Geist and JetBrains Mono
   bundled as local TTF variable fonts. The main process injects
   `electron/fonts.css` via `webContents.insertCSS` so the app works fully
-  offline.
+  offline. The hosted Google Fonts links are added only on HTTP(S), so Electron does not make a
+  request which its production CSP would reject.
 - **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub Releases and checks
   the beta channel shortly after launch. Windows NSIS and Linux AppImage download updates and install
   them on quit. Windows portable and Linux DEB update manually. The unsigned macOS beta also updates
@@ -2978,7 +2996,8 @@ cross-environment consistency.
   toast when the database is approaching its quota.
 - **Install-prompt panel** in Settings (PWA / Windows installer links where
   supported).
-- **PWA service worker** for offline use, registered at the application root.
+- **PWA service worker** for offline use, registered at the application root on production HTTP(S)
+  pages. The packaged Electron app uses `app://` and does not attempt browser worker registration.
 
 ### Storage layer
 

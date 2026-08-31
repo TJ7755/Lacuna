@@ -11,6 +11,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
  */
 export function routeTransitionKey(pathname: string): string {
   if (pathname === '/welcome') return 'welcome';
+  if (pathname === '/download') return 'download';
   if (
     pathname === '/learn' ||
     /^\/course\/[^/]+\/(?:study|learn)$/.test(pathname) ||

@@ -1,8 +1,62 @@
 export type RendererEnvironment = 'development' | 'production';
 
 export const VITE_RENDERER_ORIGIN = 'http://localhost:5173';
+export const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
+const DEFAULT_SYNC_RELAY_ORIGIN = 'https://lacuna-relay.vercel.app';
 const ALLOWED_MEDIA_TYPES = new Set(['audio', 'video']);
+
+export type ElectronResponseHeaders = Record<string, string[]>;
+
+function setResponseHeader(
+  headers: ElectronResponseHeaders,
+  name: string,
+  values: string[],
+): void {
+  for (const existingName of Object.keys(headers)) {
+    if (existingName.toLowerCase() === name.toLowerCase()) delete headers[existingName];
+  }
+  headers[name] = values;
+}
+
+/** Add the renderer isolation headers and repair CORS only for Lacuna's exact relay. */
+export function addElectronSecurityHeaders(
+  responseUrl: string,
+  responseHeaders: ElectronResponseHeaders,
+  environment: RendererEnvironment,
+): ElectronResponseHeaders {
+  const headers = { ...responseHeaders };
+  setResponseHeader(headers, 'Cross-Origin-Opener-Policy', ['same-origin']);
+  setResponseHeader(headers, 'Cross-Origin-Embedder-Policy', ['credentialless']);
+
+  if (responseUrl.startsWith('app://')) {
+    setResponseHeader(headers, 'Access-Control-Allow-Origin', ['*']);
+  }
+
+  if (environment === 'production') {
+    try {
+      if (new URL(responseUrl).origin === DEFAULT_SYNC_RELAY_ORIGIN) {
+        // Some managed-device proxies strip a custom-scheme CORS value from the
+        // otherwise valid relay response. The renderer is already confined to
+        // APP_RENDERER_ORIGIN, so repair only this one trusted relay boundary.
+        setResponseHeader(headers, 'Access-Control-Allow-Origin', [APP_RENDERER_ORIGIN]);
+        setResponseHeader(headers, 'Access-Control-Allow-Methods', [
+          'GET, PUT, POST, DELETE, OPTIONS',
+        ]);
+        setResponseHeader(headers, 'Access-Control-Allow-Headers', [
+          'Authorization, Content-Type, If-Match',
+        ]);
+        setResponseHeader(headers, 'Access-Control-Expose-Headers', ['ETag']);
+        setResponseHeader(headers, 'Cross-Origin-Resource-Policy', ['cross-origin']);
+        setResponseHeader(headers, 'Vary', ['Origin']);
+      }
+    } catch {
+      // Electron may report non-URL internal resources; isolation headers still apply.
+    }
+  }
+
+  return headers;
+}
 
 export interface RendererPermissionContext {
   permission: string;

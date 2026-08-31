@@ -5,6 +5,7 @@ import {
   MIN_RECOVERY_PASSPHRASE_LENGTH,
   SyncPairingError,
   decodePairingCode,
+  deleteChannel,
   encodePairingCode,
   forgetRememberedCredentials,
   readRememberedCredentials,
@@ -25,20 +26,25 @@ function hexToBytes(value: string): Uint8Array {
 import type { SyncResult } from './cycle';
 import type { RelayProvider } from './relay';
 
-const { readSyncStateMock, updateSyncStateMock, writeSyncStateMock, syncCycleMock } = vi.hoisted(
-  () => ({
-    readSyncStateMock: vi.fn(),
-    updateSyncStateMock: vi.fn(),
-    writeSyncStateMock: vi.fn(),
-    syncCycleMock: vi.fn(),
-  }),
-);
+const {
+  clearSyncStateMock,
+  readSyncStateMock,
+  updateSyncStateMock,
+  writeSyncStateMock,
+  syncCycleMock,
+} = vi.hoisted(() => ({
+  clearSyncStateMock: vi.fn(),
+  readSyncStateMock: vi.fn(),
+  updateSyncStateMock: vi.fn(),
+  writeSyncStateMock: vi.fn(),
+  syncCycleMock: vi.fn(),
+}));
 
 vi.mock('../db/mutationStamp', () => ({
   readSyncState: readSyncStateMock,
   updateSyncState: updateSyncStateMock,
   writeSyncState: writeSyncStateMock,
-  clearSyncState: vi.fn(),
+  clearSyncState: clearSyncStateMock,
 }));
 
 vi.mock('./cycle', () => ({ syncCycle: syncCycleMock }));
@@ -81,6 +87,7 @@ function response(status: number, body?: unknown, headers?: HeadersInit): Respon
 }
 
 beforeEach(() => {
+  clearSyncStateMock.mockReset().mockResolvedValue(undefined);
   readSyncStateMock.mockReset();
   updateSyncStateMock.mockReset().mockImplementation(async (update) => {
     const current = await readSyncStateMock();
@@ -92,6 +99,45 @@ beforeEach(() => {
   readSyncStateMock.mockImplementation(async () => {
     const latest = writeSyncStateMock.mock.lastCall?.[0] as SyncState | undefined;
     return latest;
+  });
+});
+
+describe('deleteChannel', () => {
+  it('purges with an unlocked device credential without reopening the recovery keybag', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response(204));
+    const state: SyncState = {
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: 'aa'.repeat(162),
+    };
+
+    await deleteChannel(state, credentials(), { fetchImpl });
+
+    expect(fetchImpl).toHaveBeenCalledWith(`${DEFAULT_RELAY_URL}/c/${CHANNEL_ID}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${WRITE_TOKEN}` },
+    });
+    expect(clearSyncStateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses an unlocked credential for a different channel', async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const state: SyncState = {
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: 'aa'.repeat(162),
+    };
+
+    await expect(
+      deleteChannel(
+        state,
+        { ...credentials(), channelId: 'fedcba9876543210fedcba9876543210' },
+        { fetchImpl },
+      ),
+    ).rejects.toThrow('no longer unlocked for that sync channel');
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(clearSyncStateMock).not.toHaveBeenCalled();
   });
 });
 

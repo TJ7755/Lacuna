@@ -25,6 +25,7 @@ nsis:
   createStartMenuShortcut: true
 portable:
   artifactName: '${productName}-Portable-${version}.${ext}'
+  splashImage: electron/assets/portable-splash.bmp
 linux:
   target:
     - target: AppImage
