@@ -80,6 +80,9 @@ describe('v0.2.0 release configuration', () => {
     expect(releaseWorkflow).toContain('--draft');
     expect(releaseWorkflow).toContain('--prerelease');
     expect(releaseWorkflow).toContain('--title "Lacuna ${GITHUB_REF_NAME#v} Beta"');
+    expect(releaseWorkflow).toContain('! -name SHA256SUMS.txt');
+    expect(releaseWorkflow).toContain('gh release delete-asset');
+    expect(releaseWorkflow).toContain("--jq '.assets[].name'");
     expect(releaseWorkflow).not.toContain('--publish always');
     expect(releaseWorkflow).toMatch(/publish-draft:[\s\S]*?needs:\s*\[build-win, build-linux\]/);
   });

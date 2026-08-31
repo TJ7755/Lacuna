@@ -6,6 +6,7 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -51,8 +52,10 @@ const DataRouterNavigationGuard = forwardRef<NavigationGuardHandle, NavigationGu
   function DataRouterNavigationGuard(props, ref) {
     const activeRef = useRef(props.active);
     const onAttemptRef = useRef(props.onAttempt);
-    activeRef.current = props.active;
-    onAttemptRef.current = props.onAttempt;
+    useLayoutEffect(() => {
+      activeRef.current = props.active;
+      onAttemptRef.current = props.onAttempt;
+    }, [props.active, props.onAttempt]);
     const blocker = useBlocker(
       useCallback(() => {
         if (!resolveActive(activeRef.current)) return false;
@@ -87,10 +90,12 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     const onAttemptRef = useRef(onAttempt);
     const onConfirmRef = useRef(onConfirm);
     const onExplicitLeaveRef = useRef(onExplicitLeave);
-    activeRef.current = active;
-    onAttemptRef.current = onAttempt;
-    onConfirmRef.current = onConfirm;
-    onExplicitLeaveRef.current = onExplicitLeave;
+    useLayoutEffect(() => {
+      activeRef.current = active;
+      onAttemptRef.current = onAttempt;
+      onConfirmRef.current = onConfirm;
+      onExplicitLeaveRef.current = onExplicitLeave;
+    }, [active, onAttempt, onConfirm, onExplicitLeave]);
     const [confirming, setConfirming] = useState(false);
     const [explicitAttempt, setExplicitAttempt] = useState(false);
     const blocked = blocker?.state === 'blocked' || explicitAttempt;

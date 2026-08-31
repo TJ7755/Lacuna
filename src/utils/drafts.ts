@@ -38,5 +38,9 @@ export function loadDraft<T = DraftData>(key: string): T | null {
 }
 
 export function clearDraft(key: string): void {
-  localStorage.removeItem(key);
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Draft cleanup must not turn a successful repository write into a failed save.
+  }
 }

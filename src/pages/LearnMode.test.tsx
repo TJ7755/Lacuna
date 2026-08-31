@@ -22,6 +22,7 @@ import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 import { writeStartInFocusMode } from '../state/focusModePreference';
+import { loadSimpleSession } from './learn/simpleSessionPersistence';
 
 describe('LearnSkeleton', () => {
   it('renders the skeleton loading screen', () => {
@@ -1570,6 +1571,46 @@ describe('LearnMode course/lesson scope', () => {
         document.querySelector('[data-study-card-id]')?.getAttribute('data-study-card-id'),
       ).toBe(secondServedId);
     });
+  });
+
+  it('does not restore outcomes from a completed Simple pass after restarting', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cell structure');
+    const card = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Cell control centre',
+      'Nucleus',
+    );
+
+    const firstRender = render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    await answerYesAndWaitForExposure(lesson.id);
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep studying' }));
+    await waitFor(() => {
+      const storageKey = [...Array(localStorage.length)]
+        .map((_, index) => localStorage.key(index))
+        .find((key) => key?.startsWith('lacuna.simpleSession.v1:'));
+      expect(storageKey).toBeDefined();
+      expect(JSON.parse(localStorage.getItem(storageKey!)!).outcomes).toEqual([]);
+    });
+    firstRender.unmount();
+
+    expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.outcomes).toEqual(
+      new Map(),
+    );
   });
 
   it('guards an outstanding Card, keeps it mounted on Stay and clears resume on Leave', async () => {

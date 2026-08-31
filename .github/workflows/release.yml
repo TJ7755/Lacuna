@@ -124,7 +124,7 @@ jobs:
 
       - name: Create checksums
         working-directory: release-assets
-        run: find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+        run: find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
       - name: Upload artefacts to draft release
         env:
@@ -132,6 +132,16 @@ jobs:
         working-directory: release-assets
         shell: bash
         run: |
+          while IFS= read -r asset_name; do
+            gh release delete-asset "$GITHUB_REF_NAME" "$asset_name" \
+              --repo "$GITHUB_REPOSITORY" \
+              --yes
+          done < <(
+            gh release view "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json assets \
+              --jq '.assets[].name'
+          )
           mapfile -d '' assets < <(find . -type f -print0)
           gh release upload "$GITHUB_REF_NAME" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \

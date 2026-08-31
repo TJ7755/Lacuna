@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { draftKey, loadDraft, saveDraft } from './drafts';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearDraft, draftKey, loadDraft, saveDraft } from './drafts';
 
 interface AlternateDraft {
   mode: 'generated';
@@ -30,5 +30,14 @@ describe('draft storage', () => {
     saveDraft(first, { mode: 'generated', configuration: {}, timestamp: 1 });
 
     expect(loadDraft<AlternateDraft>(second)).toBeNull();
+  });
+
+  it('does not let storage cleanup failures interrupt a successful save flow', () => {
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementationOnce(() => {
+      throw new Error('Storage unavailable');
+    });
+
+    expect(() => clearDraft('question:course-1')).not.toThrow();
+    expect(remove).toHaveBeenCalledOnce();
   });
 });

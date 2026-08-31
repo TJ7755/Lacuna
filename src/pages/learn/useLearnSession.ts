@@ -503,6 +503,12 @@ export function useLearnSession({
     if (isSimpleMode) clearSimpleSession(simpleSessionScope);
   }, [isSimpleMode, simpleSessionScope]);
 
+  const resetSimpleSessionOutcomes = useCallback(() => {
+    const outcomes = new Map<string, SessionCardOutcome>();
+    sessionCardOutcomesRef.current = outcomes;
+    setSessionCardOutcomes(outcomes);
+  }, []);
+
   const objectiveLabel = useCallback(() => {
     if (isSimpleMode) return 'Cards correct in this pass';
     if (singleDeck) return progressHeading(singleDeck);
@@ -1915,5 +1921,6 @@ export function useLearnSession({
     lessonHasMembersRef,
     persistSimpleResume,
     clearSimpleSessionResume,
+    resetSimpleSessionOutcomes,
   };
 }

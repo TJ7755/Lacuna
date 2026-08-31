@@ -166,11 +166,15 @@ export function useQuestionDraft(key: string) {
         | Partial<QuestionAuthoringState>
         | ((current: QuestionAuthoringState) => Partial<QuestionAuthoringState>),
     ) => {
-      setState((current) => {
-        const next = { ...current, ...(typeof patch === 'function' ? patch(current) : patch) };
-        stateRef.current = next;
-        return next;
-      });
+      const current = stateRef.current;
+      const applied = typeof patch === 'function' ? patch(current) : patch;
+      const changed = (Object.keys(applied) as (keyof QuestionAuthoringState)[]).some(
+        (key) => !Object.is(current[key], applied[key]),
+      );
+      if (!changed) return;
+      const next = { ...current, ...applied };
+      stateRef.current = next;
+      setState(next);
       dirtyRef.current = true;
       setDirty(true);
     },

@@ -156,7 +156,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     sessionCardIds,
     setSessionCardIds,
     sessionCardOutcomes,
-    setSessionCardOutcomes,
     schedulerProgress,
     simpleProgress,
     revisionSecondsRemaining,
@@ -191,6 +190,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     lessonHasMembersRef,
     persistSimpleResume,
     clearSimpleSessionResume,
+    resetSimpleSessionOutcomes,
   } = useLearnSession({
     courseId,
     lessonId,
@@ -354,7 +354,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         sessionStartMs.current = Date.now();
                         setSummary(null);
                         setSessionCardIds(simpleQueue.current.map((card) => card.id));
-                        setSessionCardOutcomes(new Map());
+                        resetSimpleSessionOutcomes();
                         serveNext();
                       }
                     : () => {

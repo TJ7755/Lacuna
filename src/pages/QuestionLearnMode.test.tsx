@@ -210,6 +210,31 @@ describe('QuestionLearnMode', () => {
     expect(mocks.abandon).toHaveBeenCalledTimes(1);
   });
 
+  it('retries a failed abandonment before leaving the Question session', async () => {
+    mocks.abandon.mockRejectedValueOnce(new Error('Database unavailable'));
+    const router = createMemoryRouter(
+      [
+        { path: '/course/:courseId/questions/learn', element: <QuestionLearnMode /> },
+        { path: '/course/:courseId/questions', element: <p>Question bank</p> },
+      ],
+      { initialEntries: ['/course/course-1/questions/learn'] },
+    );
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+    await waitFor(() => expect(mocks.abandon).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Question bank')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+
+    expect(await screen.findByText('Question bank')).toBeInTheDocument();
+    expect(mocks.abandon).toHaveBeenCalledTimes(2);
+  });
+
   it('waits for an in-flight answer before leaving and does not abandon the answered attempt', async () => {
     let resolveAnswer: ((result: Awaited<ReturnType<typeof mocks.answer>>) => void) | undefined;
     mocks.answer.mockImplementationOnce(

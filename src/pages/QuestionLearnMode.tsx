@@ -39,15 +39,25 @@ export function QuestionLearnMode() {
   const [startVersion, setStartVersion] = useState(0);
   const activeAttemptRef = useRef<QuestionAttempt | null>(null);
   const abandonedAttemptIds = useRef(new Set<string>());
+  const abandonWrites = useRef(new Map<string, Promise<void>>());
   const answerWriteRef = useRef<Promise<void> | null>(null);
   const [busy, setBusy] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
 
   const abandonAttemptOnce = useCallback(async (candidate: QuestionAttempt | null) => {
     if (candidate?.status !== 'shown' || abandonedAttemptIds.current.has(candidate.id)) return;
-    abandonedAttemptIds.current.add(candidate.id);
-    if (activeAttemptRef.current?.id === candidate.id) activeAttemptRef.current = null;
-    await abandonQuestionAttempt(candidate.id);
+    const pending = abandonWrites.current.get(candidate.id);
+    if (pending) return pending;
+    const write = abandonQuestionAttempt(candidate.id)
+      .then(() => {
+        abandonedAttemptIds.current.add(candidate.id);
+        if (activeAttemptRef.current?.id === candidate.id) activeAttemptRef.current = null;
+      })
+      .finally(() => {
+        abandonWrites.current.delete(candidate.id);
+      });
+    abandonWrites.current.set(candidate.id, write);
+    return write;
   }, []);
 
   const settleAnswerAndAbandon = useCallback(async () => {

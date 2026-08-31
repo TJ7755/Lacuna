@@ -251,6 +251,16 @@ describe('QuestionEditor', () => {
     expect(await screen.findByText('Other page')).toBeInTheDocument();
   });
 
+  it('does not mark the editor dirty when the selected kind is clicked again', async () => {
+    const router = renderEditor();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Fixed problem' }));
+    await act(() => router.navigate('/away'));
+
+    expect(await screen.findByText('Other page')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Leave this Question?' })).not.toBeInTheDocument();
+  });
+
   it('retains authoring state when saving fails', async () => {
     mocks.createFixed.mockRejectedValueOnce(new Error('Database write failed'));
     const router = renderEditor();
