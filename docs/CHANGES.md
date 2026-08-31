@@ -30,6 +30,9 @@
   are uploaded with SHA-256 checksums.
 - Installed the relay dependency tree in the release verifier so the browser tests can import the
   real relay store on a clean GitHub runner.
+- Kept the AI terminal fixture's accelerated polling on a real wall clock. Its previous synthetic
+  clock compressed a nominal 25-second tool timeout to roughly 2.5 seconds and made the release
+  browser gate fail under ordinary hosted-runner contention.
 - Kept automatic beta-channel updates for Windows NSIS and Linux AppImage. Windows portable and
   Linux DEB update manually. The unsigned macOS beta also updates manually because macOS requires
   code signing for electron-updater.

@@ -74,15 +74,11 @@ export async function connectTerminal(
   name: string,
   idScope: string,
 ): Promise<TerminalAiClient> {
-  let terminalNow = Date.now();
   let terminalSequence = 0;
   const terminal = new TerminalAiClient({
     transport: new HttpTerminalRelayTransport({ fetchImpl: relayFetch(handleRelayRequest) }),
-    now: () => terminalNow,
-    sleep: async (milliseconds) => {
-      terminalNow += milliseconds;
-      await new Promise((resolve) => setTimeout(resolve, Math.min(milliseconds, 50)));
-    },
+    sleep: (milliseconds) =>
+      new Promise((resolve) => setTimeout(resolve, Math.min(milliseconds, 50))),
     createId: (prefix) => `${prefix}-playwright-${idScope}-${++terminalSequence}`,
   });
   await terminal.connect(pairingCode, RELAY_URL, { name });
