@@ -37,22 +37,38 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
       role="log"
       aria-live="polite"
       aria-relevant="additions text"
-      className="flex-1 space-y-5 overflow-y-auto px-5 py-5"
+      className="flex-1 space-y-4 overflow-y-auto px-5 py-5"
     >
       {items.map((item) => {
         if (item.kind === 'user') {
           return (
-            <article key={item.id} className="ml-8 border-l-2 border-accent/35 pl-3">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-ink-faint">You</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink">{item.content}</p>
+            <article
+              key={item.id}
+              aria-label="Your message"
+              data-speaker="user"
+              className="ml-auto max-w-[88%] rounded-2xl rounded-br-md border border-accent/20 bg-accent-soft px-4 py-3 text-accent-ink shadow-sm"
+            >
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent-ink/70">
+                You
+              </p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">
+                {item.content}
+              </p>
             </article>
           );
         }
         if (item.kind === 'assistant') {
           return (
-            <article key={item.id}>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-accent">AI</p>
-              <MarkdownView source={item.content} className="mt-1 text-sm leading-6 text-ink" />
+            <article
+              key={item.id}
+              aria-label="AI response"
+              data-speaker="assistant"
+              className="mr-auto max-w-[92%] rounded-2xl rounded-bl-md border border-line bg-surface-raised px-4 py-3 text-ink shadow-sm"
+            >
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent">
+                AI
+              </p>
+              <MarkdownView source={item.content} className="mt-1 break-words text-sm leading-6" />
               {item.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {item.sources.map((source) => {
