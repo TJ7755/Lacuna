@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom';
 import { LearnMode, LearnSkeleton } from './LearnMode';
 import { db } from '../db/schema';
 import {
@@ -22,6 +22,7 @@ import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 import { writeStartInFocusMode } from '../state/focusModePreference';
+import { loadSimpleSession } from './learn/simpleSessionPersistence';
 
 describe('LearnSkeleton', () => {
   it('renders the skeleton loading screen', () => {
@@ -283,6 +284,9 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
+    const notesUnload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(notesUnload);
+    expect(notesUnload.defaultPrevented).toBe(false);
     await continueFromNotes();
     expect(await screen.findByText(/Shared Q/)).toBeInTheDocument();
   });
@@ -1513,5 +1517,149 @@ describe('LearnMode course/lesson scope', () => {
       expect(screen.getByRole('button', { name: /^yes$/i })).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
+  });
+
+  it('resumes an interrupted Simple lesson from its reconciled card queue', async () => {
+    const course = await createCourse('History');
+    const lesson = await createLesson(course.id, 'Industrial change');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'First cause', 'Steam power');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Second cause', 'Urbanisation');
+
+    const firstRender = render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    await screen.findByText(/cause$/);
+    const firstServedId = document
+      .querySelector('[data-study-card-id]')
+      ?.getAttribute('data-study-card-id');
+    await answerYesAndWaitForExposure(lesson.id);
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-study-card-id]')?.getAttribute('data-study-card-id'),
+      ).not.toBe(firstServedId);
+    });
+    const secondServedId = document
+      .querySelector('[data-study-card-id]')
+      ?.getAttribute('data-study-card-id');
+    firstRender.unmount();
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-study-card-id]')?.getAttribute('data-study-card-id'),
+      ).toBe(secondServedId);
+    });
+  });
+
+  it('does not restore outcomes from a completed Simple pass after restarting', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cell structure');
+    const card = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Cell control centre',
+      'Nucleus',
+    );
+
+    const firstRender = render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    await answerYesAndWaitForExposure(lesson.id);
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep studying' }));
+    await waitFor(() => {
+      const storageKey = [...Array(localStorage.length)]
+        .map((_, index) => localStorage.key(index))
+        .find((key) => key?.startsWith('lacuna.simpleSession.v1:'));
+      expect(storageKey).toBeDefined();
+      expect(JSON.parse(localStorage.getItem(storageKey!)!).outcomes).toEqual([]);
+    });
+    firstRender.unmount();
+
+    expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.outcomes).toEqual(
+      new Map(),
+    );
+  });
+
+  it('guards an outstanding Card, keeps it mounted on Stay and clears resume on Leave', async () => {
+    const course = await createCourse('Geography');
+    const lesson = await createLesson(course.id, 'River processes');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Define erosion', 'Wearing away');
+    const router = createMemoryRouter(
+      [
+        { path: '/lesson/:lessonId/learn', element: <LearnMode /> },
+        {
+          path: '/course/:courseId/lesson/:lessonId',
+          element: <p>Lesson destination</p>,
+        },
+      ],
+      { initialEntries: [`/lesson/${lesson.id}/learn`] },
+    );
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <RouterProvider router={router} future={{ v7_startTransition: true }} />
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    expect(await screen.findByText('Define erosion')).toBeInTheDocument();
+    expect(
+      [...Array(localStorage.length)].some((_, index) =>
+        localStorage.key(index)?.startsWith('lacuna.simpleSession.v1:'),
+      ),
+    ).toBe(true);
+
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toHaveTextContent(
+      '0 of 1 Card answered',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
+    expect(screen.getByText('Define erosion')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+    expect(await screen.findByText('Lesson destination')).toBeInTheDocument();
+    expect(
+      [...Array(localStorage.length)].some((_, index) =>
+        localStorage.key(index)?.startsWith('lacuna.simpleSession.v1:'),
+      ),
+    ).toBe(false);
   });
 });

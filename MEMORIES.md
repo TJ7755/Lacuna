@@ -8,6 +8,20 @@ CodeRabbit is the repository's automated reviewer; Copilot review output is irre
 reviews the initial pull-request head but does not re-review follow-up fixes, so address its findings
 and rely on the normal CI gate before merging the updated head.
 
+## Release publishing must whitelist packaged artefacts
+
+electron-builder writes unpacked application directories beside installers in `release/`. A broad
+`release/**` workflow upload would attach thousands of internal files and collide on basenames.
+Keep the release workflow's per-platform installer, blockmap and update-metadata allowlists; macOS
+artefacts join the same draft only after the Windows/Linux publisher finishes.
+
+## The v0.2.0 desktop channel is an unsigned beta
+
+GitHub marks `v0.2.0` as a pre-release and the application deliberately follows prereleases.
+Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and unsigned macOS builds
+update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
+claim macOS auto-update until the application is signed.
+
 ## Hash routing needs no SPA catch-all
 
 Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to

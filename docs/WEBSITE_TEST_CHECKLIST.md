@@ -507,6 +507,11 @@ are beyond its scope, as stated in the automation boundary above.
 
 ## 9. Numeric and working Question editor
 
+- [ ] Dirty Question navigation and browser back offer **Stay** and **Leave**; Stay preserves every
+      field and Leave retains a restorable draft.
+- [ ] Refreshing during fixed, working and generated authoring offers the correct draft without
+      replacing invalid raw working source, fixtures or uncommitted Concept text.
+- [ ] Successful save/delete clears its draft; a failed save leaves the editor and recovery intact.
 - [ ] Numeric Exact accepts a valid constant expression and rejects variables or invalid syntax.
 - [ ] Tolerance accepts a non-negative tolerance and previews the expected value.
 - [ ] One of adds and removes alternatives without losing the remaining values.

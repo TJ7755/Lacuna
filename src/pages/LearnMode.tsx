@@ -1,5 +1,5 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
@@ -34,6 +34,8 @@ import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../components/items/UnknownItemFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
 import type { LearnModeType, LearnSessionRequest, MachineMarkedAnswer } from './learn/types';
+import { SessionExitGuard } from '../components/learn/SessionExitGuard';
+import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 
 export type { LearnSessionRequest } from './learn/types';
 export { LearnSkeleton } from './learn/LearnSkeleton';
@@ -50,6 +52,8 @@ interface LearnModeProps {
 }
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
+  const exitGuardRef = useRef<NavigationGuardHandle>(null);
+  const leavingSessionRef = useRef(false);
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
   const courseId = request?.kind === 'practice' ? request.courseId : routeParams.courseId;
   const lessonId = request?.kind === 'lesson' ? request.lessonId : routeParams.lessonId;
@@ -152,7 +156,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     sessionCardIds,
     setSessionCardIds,
     sessionCardOutcomes,
-    setSessionCardOutcomes,
     schedulerProgress,
     simpleProgress,
     revisionSecondsRemaining,
@@ -185,6 +188,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     simpleMastered,
     simpleWrong,
     lessonHasMembersRef,
+    persistSimpleResume,
+    clearSimpleSessionResume,
+    resetSimpleSessionOutcomes,
   } = useLearnSession({
     courseId,
     lessonId,
@@ -299,6 +305,23 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   return (
     <div className="min-h-screen bg-paper">
+      <SessionExitGuard
+        ref={exitGuardRef}
+        active={() =>
+          !leavingSessionRef.current &&
+          current !== null &&
+          (phase === 'question' || phase === 'answer')
+        }
+        itemName="Card"
+        answeredCount={sessionCardOutcomes.size}
+        totalCount={sessionCardIds.length}
+        onAttempt={persistSimpleResume}
+        onConfirm={() => {
+          leavingSessionRef.current = true;
+          clearSimpleSessionResume();
+        }}
+        onExplicitLeave={backOut}
+      />
       <AnimatePresence mode="wait" initial={false}>
         {phase === 'finished' && summary ? (
           <motion.div
@@ -331,7 +354,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         sessionStartMs.current = Date.now();
                         setSummary(null);
                         setSessionCardIds(simpleQueue.current.map((card) => card.id));
-                        setSessionCardOutcomes(new Map());
+                        resetSimpleSessionOutcomes();
                         serveNext();
                       }
                     : () => {
@@ -468,7 +491,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   filterParams={filterParams}
                   tagFilter={tagFilter}
                   onOpenNav={() => setNavOpen(true)}
-                  onExit={onStepFinished ? backOut : () => finish(false)}
+                  onExit={() => exitGuardRef.current?.requestLeave()}
                   focusMode={focusMode}
                   onToggleFocus={() => {
                     setFocusMode((value) => !value);

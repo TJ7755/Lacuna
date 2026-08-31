@@ -115,6 +115,12 @@ import {
   isTypingEligible,
   isUnrenderableItemPayload,
 } from './sessionCardCapabilities';
+import {
+  clearSimpleSession,
+  loadSimpleSession,
+  saveSimpleSession,
+  type SimpleSessionScope,
+} from './simpleSessionPersistence';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
@@ -208,6 +214,57 @@ export function useLearnSession({
   const isLessonScoped = !!lessonId;
   const isCourseScoped = !!courseId && !lessonId;
   const isGlobal = !courseId && !lessonId;
+  const requestScopeLessonIdsKey =
+    requestScopeLessonIds === undefined ? undefined : requestScopeLessonIds.join('\0');
+  const filterParamsKey = filterParams.join('\0');
+  const simpleSessionScope = useMemo<SimpleSessionScope>(() => {
+    if (lessonId) return { kind: 'lesson', lessonId };
+    if (
+      courseId &&
+      (sessionId ||
+        practiceNodeKeyParam ||
+        requestScopeLessonIdsKey !== undefined ||
+        requestAssessmentId ||
+        requestPlanId ||
+        requestWindowId)
+    ) {
+      return {
+        kind: 'practice',
+        courseId,
+        sessionId,
+        nodeKey: practiceNodeKeyParam ?? undefined,
+        lessonIds:
+          requestScopeLessonIdsKey === undefined ? undefined : requestScopeLessonIdsKey.split('\0'),
+        assessmentId: requestAssessmentId,
+        planId: requestPlanId,
+        windowId: requestWindowId,
+      };
+    }
+    if (courseId) {
+      return {
+        kind: 'course',
+        courseId,
+        filters: filterParamsKey ? filterParamsKey.split('\0') : [],
+        tag: tagFilter ?? undefined,
+      };
+    }
+    return {
+      kind: 'global',
+      filters: filterParamsKey ? filterParamsKey.split('\0') : [],
+      tag: tagFilter ?? undefined,
+    };
+  }, [
+    courseId,
+    filterParamsKey,
+    lessonId,
+    practiceNodeKeyParam,
+    requestAssessmentId,
+    requestPlanId,
+    requestScopeLessonIdsKey,
+    requestWindowId,
+    sessionId,
+    tagFilter,
+  ]);
 
   const startInFocusModeRef = useRef(startInFocusMode);
   useEffect(() => {
@@ -298,6 +355,8 @@ export function useLearnSession({
   const [sessionCardOutcomes, setSessionCardOutcomes] = useState<Map<string, SessionCardOutcome>>(
     () => new Map(),
   );
+  const sessionCardOutcomesRef = useRef(sessionCardOutcomes);
+  sessionCardOutcomesRef.current = sessionCardOutcomes;
   const [schedulerProgress, setSchedulerProgress] = useState(0);
   const [revisionSecondsRemaining, setRevisionSecondsRemaining] = useState(0);
   const [revisionWindowBudgetSeconds, setRevisionWindowBudgetSeconds] = useState(0);
@@ -426,6 +485,29 @@ export function useLearnSession({
     if (onFlowExit) onFlowExit();
     else navigate(exitTo);
   }, [navigate, exitTo, onFlowExit]);
+
+  const persistSimpleResume = useCallback(
+    (outcomes: Map<string, SessionCardOutcome> = sessionCardOutcomesRef.current) => {
+      if (!isSimpleMode) return;
+      saveSimpleSession(simpleSessionScope, {
+        queueCardIds: simpleQueue.current.map((card) => card.id),
+        masteredCardIds: [...simpleMastered.current],
+        outcomes,
+        events: events.current,
+      });
+    },
+    [isSimpleMode, simpleSessionScope],
+  );
+
+  const clearSimpleSessionResume = useCallback(() => {
+    if (isSimpleMode) clearSimpleSession(simpleSessionScope);
+  }, [isSimpleMode, simpleSessionScope]);
+
+  const resetSimpleSessionOutcomes = useCallback(() => {
+    const outcomes = new Map<string, SessionCardOutcome>();
+    sessionCardOutcomesRef.current = outcomes;
+    setSessionCardOutcomes(outcomes);
+  }, []);
 
   const objectiveLabel = useCallback(() => {
     if (isSimpleMode) return 'Cards correct in this pass';
@@ -694,6 +776,7 @@ export function useLearnSession({
   const finish = useCallback(
     (reachedGoal: boolean, limitReached = false, timeLimitReached = false) => {
       if (!mountedRef.current) return;
+      if (isSimpleMode && reachedGoal) clearSimpleSession(simpleSessionScope);
       const ctx = ctxRef.current;
       const total = distraction.sessionMs();
       const focus =
@@ -719,7 +802,15 @@ export function useLearnSession({
         mode,
       });
     },
-    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, finaliseSummary],
+    [
+      objectiveLabel,
+      distraction,
+      cachedSessionProgress,
+      isSimpleMode,
+      mode,
+      finaliseSummary,
+      simpleSessionScope,
+    ],
   );
 
   useEffect(() => {
@@ -739,6 +830,7 @@ export function useLearnSession({
     if (!mountedRef.current) return;
 
     if (isSimpleMode) {
+      persistSimpleResume();
       const remaining = simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id));
       if (remaining.length === 0) {
         finish(true);
@@ -838,7 +930,7 @@ export function useLearnSession({
     distraction.setAnswerVisible(false);
     // Invalidate progress cache when moving to a new card.
     progressCacheRef.current.dirty = true;
-  }, [finish, distraction, isSimpleMode, requestWindowId]);
+  }, [finish, distraction, isSimpleMode, persistSimpleResume, requestWindowId]);
 
   // Stable ref so the initial-load effect never re-runs just because serveNext's
   // callback identity changed (which would reset phase and undo reveal/exit).
@@ -847,10 +939,6 @@ export function useLearnSession({
 
   const finaliseSummaryRef = useRef(finaliseSummary);
   finaliseSummaryRef.current = finaliseSummary;
-
-  const requestScopeLessonIdsKey =
-    requestScopeLessonIds === undefined ? undefined : requestScopeLessonIds.join('\0');
-  const filterParamsKey = filterParams.join('\0');
 
   // Load when the session identity changes — course, lesson, practice node,
   // filters, or assessment window. Serialised scope and filter keys mean a
@@ -900,7 +988,8 @@ export function useLearnSession({
     setFocusMode(startInFocusModeRef.current);
     setFocusChromeVisible(false);
     setSessionCardIds([]);
-    setSessionCardOutcomes(new Map());
+    sessionCardOutcomesRef.current = new Map();
+    setSessionCardOutcomes(sessionCardOutcomesRef.current);
     setSchedulerProgress(0);
     setRevisionSecondsRemaining(0);
     setRevisionWindowBudgetSeconds(0);
@@ -1144,7 +1233,8 @@ export function useLearnSession({
           : sessionServePool(cards, ctx).length > 0;
       setSchedulerProgress(initialProgress);
       setSessionCardIds(cards.map((card) => card.id));
-      setSessionCardOutcomes(new Map());
+      sessionCardOutcomesRef.current = new Map();
+      setSessionCardOutcomes(sessionCardOutcomesRef.current);
       reviewsByDeck.current = new Map();
       setLimitOverride(false);
       setSingleDeck((prev) => {
@@ -1154,9 +1244,26 @@ export function useLearnSession({
       });
 
       if (isSimpleMode) {
-        simpleQueue.current = [...cards];
-        simpleMastered.current = new Set();
-        simpleWrong.current = new Set();
+        const cardsById = new Map(cards.map((card) => [card.id, card]));
+        const resumed = loadSimpleSession(
+          simpleSessionScope,
+          cards.map((card) => card.id),
+        );
+        simpleQueue.current = resumed
+          ? resumed.queueCardIds.flatMap((cardId) => {
+              const card = cardsById.get(cardId);
+              return card ? [card] : [];
+            })
+          : [...cards];
+        simpleMastered.current = new Set(resumed?.masteredCardIds ?? []);
+        simpleWrong.current = new Set(
+          [...(resumed?.outcomes ?? [])]
+            .filter(([, outcome]) => outcome === 'wrong')
+            .map(([cardId]) => cardId),
+        );
+        events.current = resumed?.events ?? [];
+        sessionCardOutcomesRef.current = resumed?.outcomes ?? new Map();
+        setSessionCardOutcomes(sessionCardOutcomesRef.current);
       }
 
       // A lesson always opens with its notes, including a cardless lesson. The
@@ -1254,6 +1361,7 @@ export function useLearnSession({
     requestPlanId,
     requestWindowId,
     plannedRevision,
+    simpleSessionScope,
   ]);
 
   const reveal = useCallback(() => {
@@ -1338,11 +1446,11 @@ export function useLearnSession({
               cardNow,
             ];
           }
-          setSessionCardOutcomes((previous) => {
-            const next = new Map(previous);
-            next.set(cardNow.id, correct ? 'correct' : 'wrong');
-            return next;
-          });
+          const nextOutcomes = new Map(sessionCardOutcomesRef.current);
+          nextOutcomes.set(cardNow.id, correct ? 'correct' : 'wrong');
+          sessionCardOutcomesRef.current = nextOutcomes;
+          setSessionCardOutcomes(nextOutcomes);
+          persistSimpleResume(nextOutcomes);
 
           const remaining = simpleQueue.current.filter(
             (c) => !simpleMastered.current.has(c.id),
@@ -1574,6 +1682,7 @@ export function useLearnSession({
       sessionCardOutcomes,
       reviewSessionKind,
       requestWindowId,
+      persistSimpleResume,
     ],
   );
 
@@ -1810,5 +1919,8 @@ export function useLearnSession({
     simpleMastered,
     simpleWrong,
     lessonHasMembersRef,
+    persistSimpleResume,
+    clearSimpleSessionResume,
+    resetSimpleSessionOutcomes,
   };
 }

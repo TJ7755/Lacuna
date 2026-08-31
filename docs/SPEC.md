@@ -1349,6 +1349,13 @@ available for standalone entry.
    **report**.
 3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
 
+While a Card or Question presentation is outstanding, explicit Exit, application navigation and
+browser back open one modal decision. **Stay** is focused by default and preserves the mounted
+answer. Confirmed departure states the unique answered count, retains already committed evidence
+and abandons only the current presentation. Reload and window close use the browser's native unload
+decision. Loading, lesson notes, empty, failed-start and completed states do not manufacture a
+warning when no work can be lost.
+
 For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
 learner may highlight source text and attach optional free-text annotations before moving to
 the card loop. Highlights and annotations persist on this device but are excluded from every
@@ -1613,7 +1620,10 @@ Simple mode):
   correct answer upserts that lesson's `LessonCardExposure`; it writes no `ReviewLog`,
   `SessionHistoryEntry`, stability, difficulty, due date or FSRS state. A live pill UI
   (Wrong / Remaining / Right) updates on every answer. The SessionReport omits the
-  grade-distribution chart since grades are not meaningful in this mode.
+  grade-distribution chart since grades are not meaningful in this mode. A versioned local recovery
+  record stores only the scoped Card-id queue, mastered ids, outcomes and small session events. On
+  restart it discards ineligible ids and appends newly eligible Cards. Completion or a deliberate
+  confirmed exit clears the record; an unexpected refresh or termination leaves it resumable.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 
@@ -1875,6 +1885,14 @@ are optional. Fixed Questions additionally require a prompt, valid numeric answe
 working scheme, and worked explanation. A generated family selects a supported generator and its
 typed configuration. Changing Question form during editing is prohibited: it would be a new
 definition, not a cosmetic edit.
+
+Question authoring uses the same local draft store as Card authoring through a typed, generic
+storage boundary. Fixed, working and generated state — including invalid raw working source,
+fixtures and uncommitted Concept text — is isolated by Course and Question identity. Autosave begins
+only after an author change, never overwrites an unresolved recovery prompt and flushes synchronously
+before route departure or unload. Confirmed departure retains the draft; re-entry offers explicit
+Restore or Discard. Successful save and deletion clear the draft and bypass the navigation guard;
+a failed write leaves both the editor and its draft intact.
 
 Questions are post-instruction application practice. They do not appear in the Card editor, lesson
 Card study or Course path. Deleting a Question removes the definition and relationship set but
@@ -2724,7 +2742,8 @@ menu.
 
 ## 19. Electron desktop build
 
-Lacuna can be packaged as a standalone Windows desktop application via Electron.
+Lacuna can be packaged as a standalone desktop application via Electron. The v0.2.0 beta matrix is
+Windows x64 NSIS and portable, Linux x64 AppImage and DEB, and macOS arm64 DMG and ZIP.
 The Electron layer lives in `electron/` and wraps the existing Vite SPA without
 modifying the renderer source.
 
@@ -2744,8 +2763,11 @@ modifying the renderer source.
   bundled as local TTF variable fonts. The main process injects
   `electron/fonts.css` via `webContents.insertCSS` so the app works fully
   offline.
-- **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub
-  Releases; checks for updates shortly after launch and notifies the renderer.
+- **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub Releases and checks
+  the beta channel shortly after launch. Windows NSIS and Linux AppImage download updates and install
+  them on quit. Windows portable and Linux DEB update manually. The unsigned macOS beta also updates
+  manually because electron-updater requires a signed macOS application. Update state is logged;
+  there is no renderer progress or restart UI in this version.
 
 ### Model Context Protocol server
 
@@ -2809,9 +2831,14 @@ user-action surface — including the separate safety boundary for study-history
 - `bun run electron:dev` — runs Vite dev server and Electron in parallel.
 - `bun run release:scenario -- --scenario canonical` — runs the isolated canonical domain and
   import-preview release checks and writes a machine-readable evidence report.
-- `bun run electron:build:win` — compiles the Electron TypeScript, builds the
-  Vite SPA with `--base ./`, and packages via electron-builder (NSIS
-  installer).
+- `bun run electron:build:win` — builds Windows x64 NSIS and portable artefacts.
+- `bun run electron:build:linux` — builds Linux x64 AppImage and DEB artefacts.
+- `bun run electron:build:mac` — builds macOS arm64 DMG and ZIP artefacts.
+
+The tag-triggered release workflow requires `v<package version>`, runs the complete release gate,
+builds Windows and Linux separately and lets one publisher create a GitHub pre-release draft. It
+uploads only distributable files, update metadata and SHA-256 checksums. The local Mac artefacts are
+uploaded to that same draft before publication.
 
 ### Build output
 

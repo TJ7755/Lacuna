@@ -10,11 +10,12 @@ import { GeneratedQuestionConfiguration } from '../components/questions/Generate
 import { useCourseQuestionData, useQuestionRecord } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { NavigationGuard } from '../components/ui/NavigationGuard';
 import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
 import { ChevronLeftIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
 import type { ItemFixture, NumericAnswerSpec } from '../db/types';
-import { compileMarkScheme, serialiseMarkScheme } from '../items/markSchemeCompiler';
+import { compileMarkScheme } from '../items/markSchemeCompiler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import {
   createConcept,
@@ -26,17 +27,13 @@ import {
 } from '../questions/repository';
 import type { QuestionPayload } from '../questions/types';
 import { useCourse, useLessons } from '../state/useCourseData';
-
-type EditorKind = 'fixed' | 'generated';
-type AnswerKind = 'numeric' | 'working';
-
-const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
-const DEFAULT_GENERATOR_CONFIG: Record<string, string | number | boolean> = {
-  minimumRootMagnitude: 1,
-  maximumRootMagnitude: 5,
-  maximumLeadingCoefficient: 2,
-  allowRepeatedRoots: false,
-};
+import {
+  newQuestionState,
+  questionDraftKey,
+  questionStateFromRecord,
+  type QuestionAnswerKind,
+  useQuestionDraft,
+} from './questionDraft';
 
 const inputClass =
   'min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20';
@@ -51,60 +48,40 @@ export function QuestionEditor() {
   const record = useQuestionRecord(questionId);
   const editing = Boolean(questionId);
 
-  const [loaded, setLoaded] = useState(false);
-  const [kind, setKind] = useState<EditorKind>('fixed');
-  const [name, setName] = useState('');
-  const [lessonId, setLessonId] = useState<string>('');
-  const [targetConceptId, setTargetConceptId] = useState('');
-  const [prerequisiteConceptIds, setPrerequisiteConceptIds] = useState<string[]>([]);
-  const [newConceptName, setNewConceptName] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [suspended, setSuspended] = useState(false);
-  const [prompt, setPrompt] = useState('');
-  const [explanation, setExplanation] = useState('');
-  const [answerKind, setAnswerKind] = useState<AnswerKind>('numeric');
-  const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
-  const [workingSource, setWorkingSource] = useState('');
-  const [workingFixtures, setWorkingFixtures] = useState<ItemFixture[]>([]);
-  const [generatorConfig, setGeneratorConfig] = useState(DEFAULT_GENERATOR_CONFIG);
+  const draft = useQuestionDraft(questionDraftKey(courseId ?? 'missing', questionId));
+  const {
+    kind,
+    name,
+    newConceptName = '',
+    lessonId,
+    targetConceptId,
+    prerequisiteConceptIds,
+    tags,
+    suspended,
+    prompt,
+    explanation,
+    answerKind,
+    numericAnswer,
+    workingSource,
+    workingFixtures,
+    generatorConfig,
+  } = draft.state;
   const [saving, setSaving] = useState(false);
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const generator = questionGeneratorRegistry.list()[0];
 
   useEffect(() => {
-    if (loaded || data === undefined || (editing && record === undefined)) return;
+    if (draft.loaded || data === undefined || (editing && record === undefined)) return;
     if (!editing) {
-      setTargetConceptId(data.concepts[0]?.id ?? '');
-      setLoaded(true);
+      draft.initialise(newQuestionState(data.concepts[0]?.id ?? ''));
       return;
     }
     if (!record) {
-      setLoaded(true);
+      draft.initialise(newQuestionState(''));
       return;
     }
-    const { question, conceptSet } = record;
-    setKind(question.kind);
-    setName(question.name);
-    setLessonId(question.primaryLessonId ?? '');
-    setTargetConceptId(conceptSet.targetConceptIds[0] ?? '');
-    setPrerequisiteConceptIds(conceptSet.prerequisiteConceptIds);
-    setTags(question.tags);
-    setSuspended(question.suspended);
-    if (question.kind === 'fixed') {
-      setPrompt(question.prompt);
-      setExplanation(question.explanation);
-      setAnswerKind(question.payload.kind);
-      if (question.payload.kind === 'numeric') {
-        setNumericAnswer(question.payload.answer);
-      } else {
-        setWorkingSource(serialiseMarkScheme(question.payload.scheme));
-        setWorkingFixtures(question.payload.fixtures ?? []);
-      }
-    } else {
-      setGeneratorConfig(question.generatorConfig as Record<string, string | number | boolean>);
-    }
-    setLoaded(true);
-  }, [data, editing, loaded, record]);
+    draft.initialise(questionStateFromRecord(record.question, record.conceptSet));
+  }, [data, draft, editing, record]);
 
   const save = async () => {
     if (!courseId || !targetConceptId || !name.trim()) {
@@ -159,6 +136,7 @@ export function QuestionEditor() {
           });
         }
       }
+      draft.finish();
       notify(questionId ? 'Question updated.' : 'Question created.', 'positive');
       navigate(`/course/${courseId}/questions`);
     } catch (error) {
@@ -172,8 +150,7 @@ export function QuestionEditor() {
     if (!courseId || !newConceptName.trim()) return;
     try {
       const concept = await createConcept(courseId, newConceptName);
-      setTargetConceptId(concept.id);
-      setNewConceptName('');
+      draft.update({ targetConceptId: concept.id, newConceptName: '' });
       notify('Concept created.', 'positive');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not create the Concept.', 'negative');
@@ -188,6 +165,7 @@ export function QuestionEditor() {
     )
       return;
     await deleteQuestion(questionId);
+    draft.finish();
     notify('Question deleted.', 'positive');
     navigate(`/course/${courseId}/questions`);
   };
@@ -197,7 +175,7 @@ export function QuestionEditor() {
     lessons === undefined ||
     data === undefined ||
     (editing && record === undefined) ||
-    !loaded
+    !draft.loaded
   ) {
     return (
       <DelayedFallback>
@@ -215,6 +193,12 @@ export function QuestionEditor() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 pb-28 md:px-10">
+      <NavigationGuard
+        active={draft.shouldBlock}
+        onAttempt={draft.flushDraft}
+        title="Leave this Question?"
+        message="Your unsaved changes are kept as a draft and can be restored when you return."
+      />
       <Link
         to={`/course/${courseId}/questions`}
         className="mb-7 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition hover:text-ink"
@@ -232,6 +216,23 @@ export function QuestionEditor() {
         </h1>
       </header>
 
+      {draft.draftPrompt && (
+        <section
+          role="status"
+          className="mb-8 flex flex-col gap-4 rounded-2xl border border-accent/30 bg-accent-soft p-5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="text-sm text-ink">A saved draft from a previous session was found.</p>
+          <div className="flex gap-2">
+            <Button type="button" variant="primary" onClick={draft.restoreDraft}>
+              Restore draft
+            </Button>
+            <Button type="button" onClick={draft.discardDraft}>
+              Discard draft
+            </Button>
+          </div>
+        </section>
+      )}
+
       <div className="space-y-8">
         {!editing && (
           <fieldset>
@@ -244,7 +245,7 @@ export function QuestionEditor() {
                   key={option}
                   type="button"
                   aria-pressed={kind === option}
-                  onClick={() => setKind(option)}
+                  onClick={() => draft.update({ kind: option })}
                   className={`min-h-11 rounded-lg px-4 text-sm transition ${
                     kind === option
                       ? 'bg-surface text-ink shadow-sm'
@@ -265,7 +266,7 @@ export function QuestionEditor() {
             </span>
             <input
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => draft.update({ name: event.target.value })}
               placeholder="Completing the square"
               className={inputClass}
               autoFocus
@@ -277,7 +278,7 @@ export function QuestionEditor() {
             </span>
             <select
               value={lessonId}
-              onChange={(event) => setLessonId(event.target.value)}
+              onChange={(event) => draft.update({ lessonId: event.target.value })}
               className={inputClass}
             >
               <option value="">No primary Lesson</option>
@@ -296,8 +297,12 @@ export function QuestionEditor() {
               value={targetConceptId}
               onChange={(event) => {
                 const nextTarget = event.target.value;
-                setTargetConceptId(nextTarget);
-                setPrerequisiteConceptIds((current) => current.filter((id) => id !== nextTarget));
+                draft.update((current) => ({
+                  targetConceptId: nextTarget,
+                  prerequisiteConceptIds: current.prerequisiteConceptIds.filter(
+                    (id) => id !== nextTarget,
+                  ),
+                }));
               }}
               className={inputClass}
             >
@@ -316,7 +321,7 @@ export function QuestionEditor() {
             <div className="flex gap-2">
               <input
                 value={newConceptName}
-                onChange={(event) => setNewConceptName(event.target.value)}
+                onChange={(event) => draft.update({ newConceptName: event.target.value })}
                 placeholder="A single piece of knowledge"
                 className={inputClass}
               />
@@ -346,11 +351,11 @@ export function QuestionEditor() {
                         type="button"
                         aria-pressed={selected}
                         onClick={() =>
-                          setPrerequisiteConceptIds((current) =>
-                            selected
-                              ? current.filter((id) => id !== concept.id)
-                              : [...current, concept.id],
-                          )
+                          draft.update((current) => ({
+                            prerequisiteConceptIds: selected
+                              ? current.prerequisiteConceptIds.filter((id) => id !== concept.id)
+                              : [...current.prerequisiteConceptIds, concept.id],
+                          }))
                         }
                         className={`min-h-11 rounded-full border px-4 text-sm transition ${
                           selected
@@ -372,7 +377,7 @@ export function QuestionEditor() {
             <MarkdownEditor
               label="Prompt"
               value={prompt}
-              onChange={setPrompt}
+              onChange={(value) => draft.update({ prompt: value })}
               minRows={7}
               placeholder="Apply the idea in a concrete problem."
               onError={(message) => notify(message, 'negative')}
@@ -387,7 +392,7 @@ export function QuestionEditor() {
                     key={option}
                     type="button"
                     aria-pressed={answerKind === option}
-                    onClick={() => setAnswerKind(option)}
+                    onClick={() => draft.update({ answerKind: option })}
                     className={`min-h-11 rounded-lg border px-4 text-sm transition ${
                       answerKind === option
                         ? 'border-accent bg-accent-soft text-accent'
@@ -400,19 +405,22 @@ export function QuestionEditor() {
               </div>
             </div>
             {answerKind === 'numeric' ? (
-              <NumericAnswerEditor value={numericAnswer} onChange={setNumericAnswer} />
+              <NumericAnswerEditor
+                value={numericAnswer}
+                onChange={(value) => draft.update({ numericAnswer: value })}
+              />
             ) : (
               <MarkSchemeEditor
                 value={workingSource}
-                onChange={setWorkingSource}
+                onChange={(value) => draft.update({ workingSource: value })}
                 fixtures={workingFixtures}
-                onFixturesChange={setWorkingFixtures}
+                onFixturesChange={(value) => draft.update({ workingFixtures: value })}
               />
             )}
             <MarkdownEditor
               label="Worked explanation"
               value={explanation}
-              onChange={setExplanation}
+              onChange={(value) => draft.update({ explanation: value })}
               minRows={7}
               placeholder="Show why the answer follows, not merely what it is."
               onError={(message) => notify(message, 'negative')}
@@ -422,7 +430,7 @@ export function QuestionEditor() {
           <GeneratedQuestionConfiguration
             generator={generator}
             configuration={generatorConfig}
-            onChange={setGeneratorConfig}
+            onChange={(value) => draft.update({ generatorConfig: value })}
           />
         ) : null}
 
@@ -430,7 +438,7 @@ export function QuestionEditor() {
           <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
           <TagInput
             tags={tags}
-            onChange={setTags}
+            onChange={(value) => draft.update({ tags: value })}
             suggestions={tagSuggestions}
             placeholder="Add tags…"
           />
@@ -440,7 +448,7 @@ export function QuestionEditor() {
             <input
               type="checkbox"
               checked={suspended}
-              onChange={(event) => setSuspended(event.target.checked)}
+              onChange={(event) => draft.update({ suspended: event.target.checked })}
               className="accent-accent"
             />
             Suspend this Question
@@ -468,7 +476,7 @@ export function QuestionEditor() {
 }
 
 function fixedPayload(
-  answerKind: AnswerKind,
+  answerKind: QuestionAnswerKind,
   numericAnswer: NumericAnswerSpec,
   workingCompilation: ReturnType<typeof compileMarkScheme>,
   fixtures: ItemFixture[],
