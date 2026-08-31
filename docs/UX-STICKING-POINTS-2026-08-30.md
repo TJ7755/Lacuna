@@ -10,6 +10,10 @@ were compatibility/import wording or had already moved. QW-7 remains open becaus
 exam date optional changes the assessment, scheduler and persistence contract rather than one
 form default. EH, IM and LG findings remain roadmap work.
 
+The 31 August follow-up removed the stale Undo action from answers that have already finalised a
+session and restored batch-revision focus to **Accept all clean** when successful revisions remove
+their trigger. Ordinary in-session answers retain both the visible Undo action and `U` shortcut.
+
 ## How this was produced
 
 Three parallel audits were run over (a) the core study surfaces (`LearnMode`,
@@ -376,7 +380,6 @@ Findings drawn from the project's own records (UX-MAP, MANUAL_WALKTHROUGH,
 course-terminology-audit, BROWSER_QA_AUDIT) exclude everything those documents record as
 fixed in the August follow-up verification. Code-level findings were verified against the
 source at commit `3e3ec76`; line numbers refer to that tree and will drift.
-
 
 
 

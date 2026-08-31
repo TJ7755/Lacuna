@@ -289,8 +289,11 @@ describe('useLearnSession answer boundary', () => {
   });
 
   it('grades a card with a null payload like an ordinary card', async () => {
-    const deck = await createCourse('Null payload');
-    const card = await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {
+    const deck = await createCourse('Null payload', { newCardsPerDay: 2 });
+    await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {
+      payload: null as never,
+    });
+    await createCard(deck.id, 'front_back', 'Next question', 'Next answer', [], {
       payload: null as never,
     });
     const params = {
@@ -317,7 +320,8 @@ describe('useLearnSession answer boundary', () => {
     };
     const { result } = renderHook(() => useLearnSession(params));
 
-    await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+    await waitFor(() => expect(result.current.current).not.toBeNull());
+    const currentCardId = result.current.current!.id;
 
     act(() => {
       result.current.reveal();
@@ -332,7 +336,7 @@ describe('useLearnSession answer boundary', () => {
     expect(undoAvailable).toBe(true);
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
-    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
+    expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(1);
   });
 });
 

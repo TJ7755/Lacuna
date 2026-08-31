@@ -301,6 +301,7 @@ describe('ItemStagingReview', () => {
     await waitFor(() => expect(screen.getByText('First repaired')).toBeInTheDocument());
     expect(screen.getByText('Second repaired')).toBeInTheDocument();
     expect(screen.getByText('Already clean')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Accept all clean' })).toHaveFocus();
     expect(notify).toHaveBeenCalledWith('Applied 2 revised items.', 'positive');
   });
 
