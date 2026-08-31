@@ -22,6 +22,21 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  category: Education
+  maintainer: "TJ7755 <tj7755@duck.com>"
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.education
 publish:
   provider: github
   owner: TJ7755

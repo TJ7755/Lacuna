@@ -13,15 +13,20 @@ archive.
 
 ## Now
 
-### Maintainability consolidation
+### v0.2.0 beta release
 
 **Status:** in progress.
 
-Maintainability now outranks new product scope. The first deletion-led slice moves revision-plan
-persistence out of the formerly 3,000-line general repository, removes its duplicated refresh path
-and sends callers directly to the narrower module. It also removes the obsolete July remediation plan: Git
-already preserves the diary, while a stale “draft for approval” in the live documentation merely
-creates a second, wrong roadmap.
+The next outcome is a real public beta, not another indefinite polish loop. Before the tag, the two
+remaining trust-breaking boundaries are closed: live Card and Question exits require confirmation
+and Simple sessions resume after interruption; Question authoring has complete recoverable drafts.
+The release pipeline then builds Windows x64 and Linux x64 in GitHub Actions, adds a local macOS
+arm64 build to the same draft, and publishes `v0.2.0` explicitly as a beta after the packaged
+artefacts pass their platform checks.
+
+### After the beta: maintainability consolidation
+
+**Status:** ready.
 
 The next maintenance slices, in order, are:
 

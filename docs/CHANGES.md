@@ -1,4 +1,35 @@
-# Lacuna — version 0.1.0
+# Lacuna — version 0.2.0
+
+## 0.2.0 beta — release hardening
+
+- Guarded outstanding Card and Question sessions against explicit Exit, application navigation,
+  browser back and page unload. The safe **Stay** action preserves the mounted answer; confirmed
+  departure reports how many items were answered, keeps committed evidence and abandons only the
+  current presentation.
+- Added versioned Simple-session recovery using Card identities, mastery, outcomes and session
+  events. Interrupted sessions reconcile the saved queue with currently eligible Cards; completion
+  or an explicit confirmed exit clears the recovery state.
+- Added recoverable Question-editor drafts for fixed, working and generated definitions, including
+  invalid in-progress mark-scheme source, fixtures and uncommitted Concept text. Drafts are isolated
+  by Course and Question, flush before navigation or unload, remain available after confirmed
+  departure and clear only after discard, successful save or deletion.
+- Closed the deferred Question-start exit race so an Attempt which finishes starting after unmount
+  is abandoned exactly once, and serialised a confirmed exit behind any answer write already in
+  flight.
+- Bumped the desktop application to `0.2.0` and added explicit Windows x64 NSIS/portable, Linux x64
+  AppImage/DEB and macOS arm64 DMG/ZIP builders. Windows and Linux build in GitHub Actions; macOS
+  builds locally so the release does not consume a hosted macOS runner.
+- Replaced concurrent electron-builder publishing with one gated draft publisher. The tag must
+  match the package version; typecheck, lint, unit, coverage, production, release-scenario,
+  performance and browser checks must pass; and only distributable artefacts plus update metadata
+  are uploaded with SHA-256 checksums.
+- Kept automatic beta-channel updates for Windows NSIS and Linux AppImage. Windows portable and
+  Linux DEB update manually. The unsigned macOS beta also updates manually because macOS requires
+  code signing for electron-updater.
+
+**Checks:** red-to-green navigation-guard, Question-draft, session-exit, Simple-resume, Attempt-race,
+release-configuration and updater tests; full validation is recorded by the pull request and release
+workflow.
 
 ## Unreleased — maintainability consolidation
 

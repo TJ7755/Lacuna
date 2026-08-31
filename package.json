@@ -1,11 +1,16 @@
 {
   "name": "lacuna",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packageManager": "bun@1.3.14",
   "type": "module",
   "main": "electron/dist-electron/main.js",
   "description": "Lacuna - a local-only FSRS-6 flashcard revision application.",
+  "homepage": "https://github.com/TJ7755/Lacuna#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TJ7755/Lacuna.git"
+  },
   "scripts": {
     "start": "vite",
     "dev": "vite",
@@ -33,9 +38,12 @@
     "ai:mcp": "node tooling/lacuna-ai-mcp/dist/index.js",
     "release:scenario": "node scripts/release-scenario.mjs",
     "icons:generate": "bun scripts/generate-icons.ts",
-    "electron:dev": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml",
-    "electron:build:win": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --win --config electron/electron-builder.yml"
+    "electron:prepare": "node scripts/prepare-electron-build.mjs",
+    "electron:dev": "bun run electron:prepare && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml --publish never",
+    "electron:build:win": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --win --x64 --config electron/electron-builder.yml --publish never",
+    "electron:build:linux": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --linux --x64 --config electron/electron-builder.yml --publish never",
+    "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "2.0.0",

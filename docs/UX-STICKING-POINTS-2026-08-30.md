@@ -4,11 +4,13 @@ Date: 30 August 2026. Scope: code at commit `3e3ec76`.
 
 ## Delivery status
 
-Implemented on 30–31 August 2026: QW-1–QW-10. The Course-facing terminology
+Implemented on 30–31 August 2026: QW-1–QW-10, EH-1, EH-2 and EH-4. The Course-facing terminology
 pass changed the two confirmed live strings in this scope; the other three reported strings
 were compatibility/import wording or had already moved. QW-7 added a persisted steady-retention
 target across assessments, scheduling units, backup and sharing rather than merely making one form
-field nullable. EH, IM and LG findings remain roadmap work.
+field nullable. EH-2 now guards every live Card and Question exit and resumes interrupted Simple
+sessions. EH-4 extends the existing draft system across the complete Question authoring state. The
+remaining EH, IM and LG findings remain roadmap work.
 
 The 31 August follow-up removed the stale Undo action from answers that have already finalised a
 session and restored batch-revision focus to **Accept all clean** when successful revisions remove
@@ -201,7 +203,7 @@ its most important feedback link is opaque. Fix: a brief post-answer confirmatio
 again in 4 days"), a one-time statement that timing matters, and a one-line disclosure when a
 hint step is revealed. No change to the grading logic itself.
 
-### EH-2 — Exit is instant, unconfirmed and unrecoverable (essential, medium)
+### EH-2 — Exit is instant, unconfirmed and unrecoverable (essential, medium; fixed 31 August 2026)
 
 `useLearnSession.ts:417-419` navigates away immediately on `backOut`; `LearnMode.tsx:472`
 wires Exit to it mid-session; `QuestionLearnMode.tsx:159-165` abandons the attempt and
@@ -218,7 +220,7 @@ scrolling to the note. A learner searching for content lands in a full editor wi
 — a context they did not ask for — and note hits are a genuine dead end. Fix: view-first
 results with edit as a secondary action; a real note deep link.
 
-### EH-4 — The Question editor silently discards unsaved work (essential, medium)
+### EH-4 — The Question editor silently discards unsaved work (essential, medium; fixed 31 August 2026)
 
 `QuestionEditor.tsx` has no draft persistence (no `saveDraft`/`loadDraft`), no `beforeunload`
 guard and no dirty check on its back link (lines 218-224). The fields at risk are the

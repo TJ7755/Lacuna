@@ -132,11 +132,15 @@ the same shared executor.
 
 ### Electron (desktop build)
 
-Lacuna can be packaged as a standalone Windows desktop application via Electron.
+Lacuna can be packaged as a standalone desktop application via Electron. The supported beta
+artefacts are Windows x64 NSIS and portable executables, Linux x64 AppImage and DEB packages, and
+macOS arm64 DMG and ZIP archives.
 
 ```bash
-bun run electron:dev         # run Vite + Electron in parallel (dev mode)
-bun run electron:build:win  # build the Windows NSIS installer
+bun run electron:dev          # run Vite + Electron in parallel (development mode)
+bun run electron:build:win    # Windows x64 NSIS + portable
+bun run electron:build:linux  # Linux x64 AppImage + DEB
+bun run electron:build:mac    # macOS arm64 DMG + ZIP
 ```
 
 The Electron layer lives in `electron/` and adds a custom titlebar, local font
@@ -146,6 +150,12 @@ companion, allowing an MCP-capable client to work with Lacuna's courses, lessons
 Concepts, Questions, sequences, image occlusions and summaries. Card and Question tools remain
 separate; structured numeric and working payloads belong to Questions. The web version does not host
 MCP and is otherwise unaffected.
+
+The installed Windows NSIS and Linux AppImage builds follow the GitHub beta release channel,
+download updates in the background and install them on quit. Windows portable and Linux DEB builds
+update manually. The macOS beta is unsigned and therefore also updates manually: macOS requires a
+signed application for electron-updater. All unsigned beta artefacts may trigger normal operating
+system trust warnings.
 
 Open Lacuna normally, then copy the JSON configuration from **Settings → MCP server** into
 your client's local stdio-server configuration. Its command is the installed Lacuna executable
