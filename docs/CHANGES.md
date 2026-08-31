@@ -36,6 +36,9 @@
 - Made Electron preparation execute TypeScript and the MCP builder through Node's JavaScript entry
   points. Windows no longer asks `spawnSync` to execute a `.cmd` shell shim while explicitly
   disabling the shell.
+- Gave the Windows installer and portable executable explicit URL-safe artefact names. GitHub no
+  longer rewrites spaces differently from electron-builder's `latest.yml`, so update metadata and
+  SHA-256 manifests point at files that actually exist.
 - Kept automatic beta-channel updates for Windows NSIS and Linux AppImage. Windows portable and
   Linux DEB update manually. The unsigned macOS beta also updates manually because macOS requires
   code signing for electron-updater.

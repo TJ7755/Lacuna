@@ -50,6 +50,12 @@ describe('v0.2.0 release configuration', () => {
 
   it('builds the supported Windows and Linux artefacts', () => {
     expect(builderConfig).toMatch(/target:\s*[\s\S]*?target:\s*nsis[\s\S]*?target:\s*portable/);
+    expect(builderConfig).toMatch(
+      /artifactName:\s*['"]\$\{productName\}-Setup-\$\{version\}\.\$\{ext\}['"]/,
+    );
+    expect(builderConfig).toMatch(
+      /artifactName:\s*['"]\$\{productName\}-Portable-\$\{version\}\.\$\{ext\}['"]/,
+    );
     expect(builderConfig).toMatch(/linux:\s*[\s\S]*?target:\s*AppImage[\s\S]*?target:\s*deb/);
     expect(builderConfig).toMatch(/maintainer:\s*[^\s#]+/);
     expect(builderConfig).toMatch(/arch:\s*[\s\S]*?- x64/);
