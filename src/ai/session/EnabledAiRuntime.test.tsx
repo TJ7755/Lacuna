@@ -1,27 +1,39 @@
 import { render, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AiSession } from './types';
 
 const runtime = vi.hoisted(() => {
   const unregister = vi.fn();
   const activate = vi.fn();
   const dispose = vi.fn();
-  const session = {
+  const relaySession = {
+    activate,
+    dispose,
+    replacementParticipant: {},
+  } as unknown as AiSession & { replacementParticipant: object };
+  const localSession = {
     activate,
     dispose,
     replacementParticipant: {},
   } as unknown as AiSession & { replacementParticipant: object };
   return {
-    session,
+    relaySession,
+    localSession,
     activate,
     dispose,
     unregister,
     register: vi.fn(() => unregister),
-    createRelayAiSession: vi.fn(() => session),
+    createRelayAiSession: vi.fn(() => relaySession),
+    createLocalAiSession: vi.fn(() => localSession),
+    createElectronLocalAiRequestSource: vi.fn(() => ({})),
   };
 });
 
 vi.mock('./relay', () => ({ createRelayAiSession: runtime.createRelayAiSession }));
+vi.mock('./local', () => ({ createLocalAiSession: runtime.createLocalAiSession }));
+vi.mock('./localIpc', () => ({
+  createElectronLocalAiRequestSource: runtime.createElectronLocalAiRequestSource,
+}));
 vi.mock('../relayClient', () => ({ createRelayClient: vi.fn(() => ({})) }));
 vi.mock('../settings', () => ({ readAiSettings: vi.fn(() => ({})) }));
 vi.mock('../instructions', () => ({ buildAiInstructionBundle: vi.fn(() => ({})) }));
@@ -32,12 +44,19 @@ vi.mock('../../db/replacementLifecycle', () => ({
 import { EnabledAiRuntime } from './EnabledAiRuntime';
 
 describe('EnabledAiRuntime', () => {
-  it('publishes an active session and clears it before disposal', async () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'electronAPI');
+    vi.clearAllMocks();
+  });
+
+  it('publishes an active relay session on the web and clears it before disposal', async () => {
     const onSessionChange = vi.fn();
     const view = render(<EnabledAiRuntime onSessionChange={onSessionChange} />);
 
-    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.session));
-    expect(runtime.register).toHaveBeenCalledWith(runtime.session.replacementParticipant);
+    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.relaySession));
+    expect(runtime.register).toHaveBeenCalledWith(runtime.relaySession.replacementParticipant);
+    expect(runtime.createRelayAiSession).toHaveBeenCalledOnce();
+    expect(runtime.createLocalAiSession).not.toHaveBeenCalled();
     expect(runtime.activate).toHaveBeenCalledOnce();
 
     view.unmount();
@@ -48,5 +67,25 @@ describe('EnabledAiRuntime', () => {
     expect(onSessionChange.mock.invocationCallOrder.at(-1)).toBeLessThan(
       runtime.dispose.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it('uses only the direct local session in Electron', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true },
+    });
+    const onSessionChange = vi.fn();
+    const view = render(<EnabledAiRuntime onSessionChange={onSessionChange} />);
+
+    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.localSession));
+    expect(runtime.createElectronLocalAiRequestSource).toHaveBeenCalledOnce();
+    expect(runtime.createLocalAiSession).toHaveBeenCalledWith({
+      source: {},
+      getInstructions: expect.any(Function),
+    });
+    expect(runtime.createRelayAiSession).not.toHaveBeenCalled();
+
+    view.unmount();
+    expect(onSessionChange).toHaveBeenLastCalledWith(null);
   });
 });

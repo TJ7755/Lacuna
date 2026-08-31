@@ -3,6 +3,8 @@ import { readAiSettings } from '../settings';
 import { buildAiInstructionBundle } from '../instructions';
 import { createRelayClient } from '../relayClient';
 import { createRelayAiSession } from './relay';
+import { createLocalAiSession } from './local';
+import { createElectronLocalAiRequestSource } from './localIpc';
 import { replacementLifecycle } from '../../db/replacementLifecycle';
 import type { AiSession } from './types';
 
@@ -16,10 +18,15 @@ export function EnabledAiRuntime({
   onSessionChange: (session: AiSession | null) => void;
 }) {
   const [session] = useState(() =>
-    createRelayAiSession({
-      relay: createRelayClient(),
-      getInstructions: () => buildAiInstructionBundle(readAiSettings()),
-    }),
+    window.electronAPI?.isElectron
+      ? createLocalAiSession({
+          source: createElectronLocalAiRequestSource(),
+          getInstructions: () => buildAiInstructionBundle(readAiSettings()),
+        })
+      : createRelayAiSession({
+          relay: createRelayClient(),
+          getInstructions: () => buildAiInstructionBundle(readAiSettings()),
+        }),
   );
 
   useEffect(() => {
