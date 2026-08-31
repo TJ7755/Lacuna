@@ -403,7 +403,7 @@ export function Welcome() {
             {!window.electronAPI?.isElectron && (
               <Link
                 to="/download"
-                className="inline-flex min-h-12 items-center rounded-[10px] border border-line-strong bg-surface-raised px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                className="hidden min-h-12 items-center rounded-[10px] border border-line-strong bg-surface-raised px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:inline-flex"
               >
                 Download desktop app
               </Link>
@@ -723,7 +723,7 @@ function CheckpointSection({
               {!window.electronAPI?.isElectron && (
                 <Link
                   to="/download"
-                  className="inline-flex min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"
+                  className="hidden min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent sm:inline-flex"
                 >
                   Download desktop app
                 </Link>

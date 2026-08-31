@@ -13,6 +13,27 @@ describe('desktop download selection', () => {
     expect(detectDesktopPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')).toBe('macos');
     expect(detectDesktopPlatform('Mozilla/5.0 (X11; Linux x86_64)')).toBe('linux');
     expect(detectDesktopPlatform('Mozilla/5.0 (Linux; Android 15)')).toBeNull();
+    expect(
+      detectDesktopPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile'),
+    ).toBeNull();
+  });
+
+  it('does not silently recommend a Windows executable to mobile visitors', () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Linux; Android 15)',
+    });
+
+    render(<Download />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('heading', { name: 'Choose your computer' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Windows portable' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Windows' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Windows' }));
+    expect(screen.getByRole('heading', { name: 'Windows portable' })).toBeVisible();
   });
 
   it('recommends the no-admin portable build on Windows and explains its update trade-off', () => {

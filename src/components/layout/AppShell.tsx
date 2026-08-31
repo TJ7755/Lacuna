@@ -157,9 +157,9 @@ export function AppShell() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const previousPath = mainRef.current?.dataset.settingsPath;
+    const previousPath = mainRef.current?.dataset.routePath;
     if (previousPath && previousPath !== location.pathname) mainRef.current?.scrollTo({ top: 0 });
-    if (mainRef.current) mainRef.current.dataset.settingsPath = location.pathname;
+    if (mainRef.current) mainRef.current.dataset.routePath = location.pathname;
   }, [location.pathname]);
 
   useEffect(() => {

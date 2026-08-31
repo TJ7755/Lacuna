@@ -282,10 +282,13 @@ export async function unpair(): Promise<void> {
 /** Purge the shared relay channel, then clear only this device's local pairing. */
 export async function deleteChannel(
   state: SyncState,
-  access: string | SyncCredentials,
+  passphraseOrCredentials: string | SyncCredentials,
   options: PairingOperationOptions = {},
 ): Promise<void> {
-  const credentials = typeof access === 'string' ? await unlockSyncState(state, access) : access;
+  const credentials =
+    typeof passphraseOrCredentials === 'string'
+      ? await unlockSyncState(state, passphraseOrCredentials)
+      : passphraseOrCredentials;
   const stateRelayUrl = state.relayUrl ? normaliseRelayUrl(state.relayUrl) : null;
   if (
     !state.channelId ||

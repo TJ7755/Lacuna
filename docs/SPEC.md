@@ -2752,11 +2752,12 @@ Windows x64 NSIS and portable, Linux x64 AppImage and DEB, and macOS arm64 DMG a
 The Electron layer lives in `electron/` and wraps the existing Vite SPA without
 modifying the renderer source.
 
-The public `/download` route selects Windows, macOS or Linux from the browser user agent while
-keeping all three choices available. It recommends the Windows portable executable for managed
-computers, the macOS Apple Silicon DMG and the Linux AppImage, with the installer or DEB demoted to
-clearly labelled alternatives. The page states signing and update limitations rather than exposing
-GitHub's updater metadata as user choices.
+The public `/download` route selects Windows, macOS or Linux from a desktop browser user agent while
+keeping all three choices available. Mobile and unknown agents remain neutral until the visitor
+chooses the computer where Lacuna will run. It recommends the Windows portable executable for
+managed computers, the macOS Apple Silicon DMG and the Linux AppImage, with the installer or DEB
+demoted to clearly labelled alternatives. The page states signing and update limitations rather
+than exposing GitHub's updater metadata as user choices.
 
 ### Architecture
 

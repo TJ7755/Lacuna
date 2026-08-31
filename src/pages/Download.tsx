@@ -20,9 +20,10 @@ export const DOWNLOADS = {
 } as const;
 
 export function detectDesktopPlatform(userAgent: string): DesktopPlatform | null {
+  if (/android|iphone|ipad|ipod|mobile/i.test(userAgent)) return null;
   if (/windows/i.test(userAgent)) return 'windows';
   if (/macintosh|mac os x/i.test(userAgent)) return 'macos';
-  if (/linux/i.test(userAgent) && !/android/i.test(userAgent)) return 'linux';
+  if (/linux/i.test(userAgent)) return 'linux';
   return null;
 }
 
@@ -140,8 +141,8 @@ const platformDownloads: Record<DesktopPlatform, () => ReactNode> = {
 
 export function Download() {
   const detected = detectDesktopPlatform(navigator.userAgent);
-  const [selected, setSelected] = useState<DesktopPlatform>(detected ?? 'windows');
-  const SelectedDownload = platformDownloads[selected];
+  const [selected, setSelected] = useState<DesktopPlatform | null>(detected);
+  const SelectedDownload = selected ? platformDownloads[selected] : null;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -192,7 +193,20 @@ export function Download() {
         </div>
 
         <section className="shadow-paper mt-8 rounded-[14px] border border-line-strong bg-surface-raised p-7 sm:p-10">
-          <SelectedDownload />
+          {SelectedDownload ? (
+            <SelectedDownload />
+          ) : (
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
+                Desktop download
+              </p>
+              <h2 className="mt-3 text-3xl text-balance sm:text-4xl">Choose your computer</h2>
+              <p className="mt-4 max-w-xl leading-relaxed text-ink-soft">
+                Lacuna’s desktop app runs on Windows, macOS and Linux. Choose the computer where
+                you plan to use it to see the correct download and setup guidance.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="mt-10 rounded-[10px] border border-warning/40 bg-warning/10 p-5 sm:p-6">

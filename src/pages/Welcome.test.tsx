@@ -56,6 +56,8 @@ describe('Welcome import entry points', () => {
       'border-accent-ink/40',
     );
     expect(screen.getAllByRole('link', { name: 'Download desktop app' })[0]).toHaveClass(
+      'hidden',
+      'sm:inline-flex',
       'border-line-strong',
       'bg-surface-raised',
       'text-ink',

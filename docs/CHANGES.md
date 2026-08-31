@@ -49,6 +49,8 @@ focused unit tests, web typecheck and focused lint.
 - Simplified the welcome page's first decision to opening Lacuna or downloading the desktop app,
   with shared-course import demoted to a text link and desktop prompts omitted inside Electron.
 - Kept first-run routing from replacing an intentional visit to the public download page.
+- Kept desktop-download calls to action off phone layouts and made direct mobile visits neutral
+  until the visitor chooses the computer where Lacuna will run, rather than defaulting to Windows.
 
 **Checks:** red-to-green download selection, welcome hierarchy, first-run routing and public route
 transition tests; web typecheck and focused unit tests.
