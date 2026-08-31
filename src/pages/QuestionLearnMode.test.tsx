@@ -1,5 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  useNavigate,
+} from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import { questionGeneratorRegistry } from '../questions/generators';
@@ -170,32 +177,131 @@ describe('QuestionLearnMode', () => {
     );
     expect(await screen.findByText('Full marks')).toBeInTheDocument();
     expect(screen.getByText(/Adding two and two gives/)).toBeInTheDocument();
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
   });
 
-  it('abandons the active presentation when browser navigation unmounts the session', async () => {
+  it('guards explicit Exit and browser unload only while a Question is outstanding', async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/course/:courseId/questions/learn',
+          element: <QuestionLearnMode />,
+        },
+        { path: '/course/:courseId/questions', element: <p>Question bank</p> },
+      ],
+      { initialEntries: ['/course/course-1/questions/learn'] },
+    );
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toHaveTextContent(
+      '0 of 1 Question answered',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+
+    expect(await screen.findByText('Question bank')).toBeInTheDocument();
+    expect(mocks.abandon).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for an in-flight answer before leaving and does not abandon the answered attempt', async () => {
+    let resolveAnswer: ((result: Awaited<ReturnType<typeof mocks.answer>>) => void) | undefined;
+    mocks.answer.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAnswer = resolve;
+        }),
+    );
+    const router = createMemoryRouter(
+      [
+        { path: '/course/:courseId/questions/learn', element: <QuestionLearnMode /> },
+        { path: '/course/:courseId/questions', element: <p>Question bank</p> },
+      ],
+      { initialEntries: ['/course/course-1/questions/learn'] },
+    );
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show worked feedback' }));
+    await waitFor(() => expect(mocks.answer).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+    expect(screen.queryByText('Question bank')).not.toBeInTheDocument();
+    expect(mocks.abandon).not.toHaveBeenCalled();
+
+    const started = shownAttempt({
+      sessionId: 'session',
+      attemptId: mocks.answer.mock.calls[0][0].attemptId,
+    });
+    resolveAnswer!({
+      recorded: true,
+      question: question(),
+      attempt: {
+        ...started,
+        status: 'answered',
+        answeredAt: 2,
+        submittedAnswer: '4',
+        marksEarned: 1,
+        marksAvailable: 1,
+        grade: 3,
+        scheduleEffect: { kind: 'replay', grade: 3 },
+      },
+    });
+
+    expect(await screen.findByText('Question bank')).toBeInTheDocument();
+    expect(mocks.abandon).not.toHaveBeenCalled();
+  });
+
+  it('blocks browser navigation, keeps typed work on Stay, then abandons once on Leave', async () => {
     function BrowserBack() {
       const navigate = useNavigate();
       return <button onClick={() => navigate(-1)}>Browser back</button>;
     }
 
-    render(
-      <MemoryRouter
-        initialEntries={['/previous', '/course/course-1/questions/learn']}
-        initialIndex={1}
-      >
-        <BrowserBack />
-        <Routes>
-          <Route path="/previous" element={<p>Previous page</p>} />
-          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
-        </Routes>
-      </MemoryRouter>,
+    const router = createMemoryRouter(
+      [
+        { path: '/previous', element: <p>Previous page</p> },
+        {
+          path: '/course/:courseId/questions/learn',
+          element: (
+            <>
+              <BrowserBack />
+              <QuestionLearnMode />
+            </>
+          ),
+        },
+      ],
+      {
+        initialEntries: ['/previous', '/course/course-1/questions/learn'],
+        initialIndex: 1,
+      },
     );
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
 
     expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Browser back' }));
 
+    expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stay' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
+    expect(screen.getByLabelText('Your answer')).toHaveValue('4');
+    expect(mocks.abandon).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browser back' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
     expect(await screen.findByText('Previous page')).toBeInTheDocument();
     await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(expect.any(String)));
+    expect(mocks.abandon).toHaveBeenCalledTimes(1);
   });
 
   it('abandons the active presentation when the page is hidden for unload', async () => {
@@ -211,6 +317,32 @@ describe('QuestionLearnMode', () => {
     window.dispatchEvent(new Event('pagehide'));
 
     await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(expect.any(String)));
+  });
+
+  it('abandons an attempt that finishes starting after the session unmounts', async () => {
+    let resolveStart: ((attempt: QuestionAttempt) => void) | undefined;
+    let startInput: { sessionId: string; attemptId: string } | undefined;
+    mocks.start.mockImplementationOnce((input: { sessionId: string; attemptId: string }) => {
+      startInput = input;
+      return new Promise<QuestionAttempt>((resolve) => {
+        resolveStart = resolve;
+      });
+    });
+
+    const rendered = render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(startInput).toBeDefined());
+    rendered.unmount();
+    resolveStart!(shownAttempt(startInput!));
+
+    await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(startInput!.attemptId));
+    expect(mocks.abandon).toHaveBeenCalledTimes(1);
   });
 
   it('offers inline retry and exit controls when a Question cannot start', async () => {
@@ -229,6 +361,9 @@ describe('QuestionLearnMode', () => {
     expect(recovery).toHaveTextContent('The Question could not be loaded.');
     expect(within(recovery).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(within(recovery).getByRole('button', { name: 'Exit' })).toBeInTheDocument();
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
 
     fireEvent.click(within(recovery).getByRole('button', { name: 'Retry' }));
 

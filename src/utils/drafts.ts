@@ -15,11 +15,11 @@ export interface DraftData {
   timestamp: number;
 }
 
-export function draftKey(deckId: string, cardId: string | 'new' | 'session'): string {
-  return `${DRAFT_PREFIX}:${deckId}:${cardId}`;
+export function draftKey(scope: string, recordId: string): string {
+  return `${DRAFT_PREFIX}:${scope}:${recordId}`;
 }
 
-export function saveDraft(key: string, data: DraftData): void {
+export function saveDraft<T>(key: string, data: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch {
@@ -27,11 +27,11 @@ export function saveDraft(key: string, data: DraftData): void {
   }
 }
 
-export function loadDraft(key: string): DraftData | null {
+export function loadDraft<T = DraftData>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
-    return JSON.parse(raw) as DraftData;
+    return JSON.parse(raw) as T;
   } catch {
     return null;
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { QuestionFeedback } from '../components/questions/QuestionFeedback';
 import {
@@ -9,6 +9,8 @@ import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { ChevronLeftIcon } from '../components/ui/icons';
+import { SessionExitGuard } from '../components/learn/SessionExitGuard';
+import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 import { makeId } from '../db/schema';
 import { questionGeneratorRegistry } from '../questions/generators';
 import {
@@ -36,7 +38,22 @@ export function QuestionLearnMode() {
   const [startError, setStartError] = useState<string | null>(null);
   const [startVersion, setStartVersion] = useState(0);
   const activeAttemptRef = useRef<QuestionAttempt | null>(null);
+  const abandonedAttemptIds = useRef(new Set<string>());
+  const answerWriteRef = useRef<Promise<void> | null>(null);
   const [busy, setBusy] = useState(false);
+  const exitGuardRef = useRef<NavigationGuardHandle>(null);
+
+  const abandonAttemptOnce = useCallback(async (candidate: QuestionAttempt | null) => {
+    if (candidate?.status !== 'shown' || abandonedAttemptIds.current.has(candidate.id)) return;
+    abandonedAttemptIds.current.add(candidate.id);
+    if (activeAttemptRef.current?.id === candidate.id) activeAttemptRef.current = null;
+    await abandonQuestionAttempt(candidate.id);
+  }, []);
+
+  const settleAnswerAndAbandon = useCallback(async () => {
+    await answerWriteRef.current;
+    await abandonAttemptOnce(activeAttemptRef.current);
+  }, [abandonAttemptOnce]);
 
   useEffect(() => {
     activeAttemptRef.current = attempt;
@@ -44,17 +61,14 @@ export function QuestionLearnMode() {
 
   useEffect(() => {
     const abandonActivePresentation = () => {
-      const active = activeAttemptRef.current;
-      if (active?.status === 'shown') {
-        void abandonQuestionAttempt(active.id).catch(() => undefined);
-      }
+      void settleAnswerAndAbandon().catch(() => undefined);
     };
     window.addEventListener('pagehide', abandonActivePresentation);
     return () => {
       window.removeEventListener('pagehide', abandonActivePresentation);
       abandonActivePresentation();
     };
-  }, []);
+  }, [settleAnswerAndAbandon]);
 
   useEffect(() => {
     if (!data || questionIds !== null) return;
@@ -104,6 +118,8 @@ export function QuestionLearnMode() {
         if (!cancelled) {
           setAttempt(started);
           setStartError(null);
+        } else {
+          void abandonAttemptOnce(started).catch(() => undefined);
         }
       })
       .catch((error) => {
@@ -114,27 +130,33 @@ export function QuestionLearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [attempt, index, question, questionIds, sessionId, startVersion]);
+  }, [abandonAttemptOnce, attempt, index, question, questionIds, sessionId, startVersion]);
 
-  const submit = async (answer: CheckedQuestionAnswer) => {
-    if (!attempt) return;
+  const submit = (answer: CheckedQuestionAnswer) => {
+    if (!attempt || answerWriteRef.current) return;
+    const attemptId = attempt.id;
     setBusy(true);
-    try {
-      const result = await answerQuestionAttempt({
-        attemptId: attempt.id,
-        submittedAnswer: answer.submittedAnswer,
-        marksEarned: answer.marksEarned,
-        marksAvailable: answer.marksAvailable,
-        lineVerdicts: answer.lineVerdicts,
-        checkerDisputes: answer.checkerDisputes,
-        responseTimeSeconds: answer.responseTimeSeconds,
-      });
-      setAttempt(result.attempt);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not record the answer.', 'negative');
-    } finally {
-      setBusy(false);
-    }
+    const write = (async () => {
+      try {
+        const result = await answerQuestionAttempt({
+          attemptId,
+          submittedAnswer: answer.submittedAnswer,
+          marksEarned: answer.marksEarned,
+          marksAvailable: answer.marksAvailable,
+          lineVerdicts: answer.lineVerdicts,
+          checkerDisputes: answer.checkerDisputes,
+          responseTimeSeconds: answer.responseTimeSeconds,
+        });
+        activeAttemptRef.current = result.attempt;
+        setAttempt(result.attempt);
+      } catch (error) {
+        notify(error instanceof Error ? error.message : 'Could not record the answer.', 'negative');
+      } finally {
+        answerWriteRef.current = null;
+        setBusy(false);
+      }
+    })();
+    answerWriteRef.current = write;
   };
 
   const correct = async (correction: Parameters<typeof recordQuestionCorrection>[0]) => {
@@ -166,13 +188,7 @@ export function QuestionLearnMode() {
     }
   };
 
-  const exit = async () => {
-    if (attempt?.status === 'shown') {
-      await abandonQuestionAttempt(attempt.id);
-      activeAttemptRef.current = null;
-    }
-    navigate(`/course/${courseId}/questions`);
-  };
+  const exit = () => exitGuardRef.current?.requestLeave();
 
   if (course === undefined || data === undefined || questionIds === null) {
     return <QuestionSessionSkeleton />;
@@ -184,6 +200,10 @@ export function QuestionLearnMode() {
   }
 
   const finished = index >= questionIds.length;
+  const answeredCount = new Set(
+    questionIds.slice(0, index + (attempt?.status === 'answered' ? 1 : 0)),
+  ).size;
+  const uniqueQuestionCount = new Set(questionIds).size;
   if (finished || questionIds.length === 0) {
     return (
       <main className="grid min-h-screen place-items-center bg-paper px-6 text-ink">
@@ -194,7 +214,7 @@ export function QuestionLearnMode() {
           </h1>
           <p className="mt-3 text-sm leading-6 text-ink-soft">
             {questionIds.length
-              ? `${questionIds.length} ${questionIds.length === 1 ? 'Question' : 'Questions'} completed.`
+              ? `${answeredCount} ${answeredCount === 1 ? 'Question' : 'Questions'} completed.`
               : 'There are no eligible Questions in this selection.'}
           </p>
           <Button
@@ -211,11 +231,20 @@ export function QuestionLearnMode() {
 
   return (
     <main className="min-h-screen bg-paper px-4 py-5 text-ink md:px-8 md:py-7">
+      <SessionExitGuard
+        ref={exitGuardRef}
+        active={() => activeAttemptRef.current?.status === 'shown'}
+        itemName="Question"
+        answeredCount={answeredCount}
+        totalCount={uniqueQuestionCount}
+        onConfirm={settleAnswerAndAbandon}
+        onExplicitLeave={() => navigate(`/course/${courseId}/questions`)}
+      />
       <div className="mx-auto max-w-4xl">
         <header className="mb-5 flex items-center justify-between gap-4">
           <button
             type="button"
-            onClick={() => void exit()}
+            onClick={exit}
             className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition hover:text-ink"
           >
             <ChevronLeftIcon width={16} height={16} />
@@ -224,7 +253,7 @@ export function QuestionLearnMode() {
           <div className="text-right">
             <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">{course.name}</p>
             <p className="mt-1 font-mono text-sm tabular-nums text-ink-soft">
-              {index + 1} / {questionIds.length}
+              {Math.min(answeredCount + 1, uniqueQuestionCount)} / {uniqueQuestionCount}
             </p>
           </div>
         </header>
@@ -232,7 +261,7 @@ export function QuestionLearnMode() {
           <div
             className="h-full rounded-full bg-accent transition-[width] duration-300"
             style={{
-              width: `${((index + (attempt?.status === 'answered' ? 1 : 0)) / questionIds.length) * 100}%`,
+              width: `${(answeredCount / uniqueQuestionCount) * 100}%`,
             }}
           />
         </div>
@@ -251,7 +280,7 @@ export function QuestionLearnMode() {
               </h1>
               <p className="mt-3 text-sm leading-6 text-ink-soft">{startError}</p>
               <div className="mt-7 grid grid-cols-2 gap-3">
-                <Button variant="secondary" onClick={() => void exit()}>
+                <Button variant="secondary" onClick={exit}>
                   Exit
                 </Button>
                 <Button
