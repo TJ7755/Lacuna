@@ -226,6 +226,143 @@ describe('local AI session', () => {
     });
   });
 
+  it('revokes tool authority on Stop and rejects an approval decision that resolves afterwards', async () => {
+    const transport = requestSource();
+    const approval = {
+      approvalId: 'approval-1',
+      kind: 'write_grant' as const,
+      toolName: 'lacuna.create_card',
+      targetLabel: 'Biology',
+      summary: 'Allow writes to Biology',
+      requestedAt: 2_000,
+      status: 'pending' as const,
+    };
+    let resolveDecision: ((decision: Awaited<ReturnType<AiToolSession['decide']>>) => void) | null =
+      null;
+    const decide = vi.fn<AiToolSession['decide']>(
+      () =>
+        new Promise((resolve) => {
+          resolveDecision = resolve;
+        }),
+    );
+    const clear = vi.fn();
+    const toolSession = {
+      invoke: vi.fn<AiToolSession['invoke']>().mockResolvedValue({
+        response: {
+          ok: false,
+          error: {
+            kind: 'approval_required',
+            approvalId: approval.approvalId,
+            approvalKind: approval.kind,
+            message: 'Approval required.',
+          },
+        },
+        effects: { approval },
+      }),
+      decide,
+      clear,
+    } as unknown as AiToolSession;
+    const session = createLocalAiSession({
+      source: transport.source,
+      toolSession,
+      now: () => 2_000,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+    await session.send('Add a card to Biology.');
+    await transport.request('channel-1', {
+      type: 'claim_message',
+      connectionId: 'connection-1',
+      timeoutMs: 250,
+      leaseMs: 300_000,
+    });
+    await transport.request('channel-1', {
+      type: 'invoke_tool',
+      connectionId: 'connection-1',
+      runId: 'run-1',
+      callId: 'call-1',
+      call: { name: 'lacuna.create_card', input: { courseId: 'course-1' } },
+    });
+    expect(session.getSnapshot().approval).toEqual(approval);
+
+    const deciding = session.decide(approval.approvalId, true);
+    await session.stop('run-1');
+
+    expect(session.getSnapshot().approval).toBeNull();
+    expect(clear).toHaveBeenCalledTimes(2);
+    resolveDecision!({
+      ok: true,
+      approval: { ...approval, status: 'approved', decidedAt: 2_000 },
+      effects: {},
+    });
+    await expect(deciding).resolves.toEqual({
+      ok: false,
+      error: { kind: 'conflict', message: 'That approval is no longer pending.' },
+    });
+    expect(session.getSnapshot()).toMatchObject({
+      run: { status: 'stop_requested' },
+      approval: null,
+    });
+  });
+
+  it('expires an unacknowledged Stop at the claim lease without requeueing the stopped prompt', async () => {
+    const transport = requestSource();
+    let clock = 5_000;
+    let expireLease: () => void = () => undefined;
+    const session = createLocalAiSession({
+      source: transport.source,
+      now: () => clock,
+      timers: {
+        schedule(task) {
+          expireLease = task;
+          return vi.fn();
+        },
+      },
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+    await session.send('Stop this prompt.');
+    await transport.request('channel-1', {
+      type: 'claim_message',
+      connectionId: 'connection-1',
+      timeoutMs: 250,
+      leaseMs: 300_000,
+    });
+    await session.send('Keep this follow-up as a draft.');
+    await session.stop('run-1');
+
+    clock = 305_000;
+    expireLease();
+
+    expect(session.getSnapshot()).toMatchObject({
+      run: { status: 'expired', runId: 'run-1', expiredAt: 305_000 },
+      draft: 'Keep this follow-up as a draft.',
+      queuedFollowUp: null,
+      items: [{ kind: 'user', content: 'Stop this prompt.', delivery: 'stopped' }],
+      activity: { status: 'failed', summary: 'Stop acknowledgement expired' },
+    });
+    await expect(session.send('Start a new prompt.')).resolves.toMatchObject({ ok: true });
+    await expect(
+      transport.request('channel-1', {
+        type: 'list_pending',
+        connectionId: 'connection-1',
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { messages: [{ content: 'Start a new prompt.' }] },
+    });
+  });
+
   it('cancels a bounded wait and clears authority when the owning channel disappears', async () => {
     const transport = requestSource();
     const cancelTimeout = vi.fn();

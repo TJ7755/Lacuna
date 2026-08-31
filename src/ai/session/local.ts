@@ -174,8 +174,34 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
   function expireRun(runId: string): void {
     cancelLeaseExpiry = null;
     const run = snapshot.run;
-    if (!run || run.runId !== runId || run.status !== 'active') return;
+    if (
+      !run ||
+      run.runId !== runId ||
+      (run.status !== 'active' && run.status !== 'stop_requested')
+    )
+      return;
     const expiredAt = now();
+    if (run.status === 'stop_requested') {
+      messages = messages.filter((message) => message.runId !== runId);
+      toolSession.clear();
+      publish({
+        ...snapshot,
+        items: snapshot.items.map((item) =>
+          item.kind === 'user' && item.id === run.messageId
+            ? { ...item, delivery: 'stopped' as const }
+            : item,
+        ),
+        run: { ...run, status: 'expired', expiredAt },
+        activity: {
+          runId,
+          status: 'failed',
+          summary: 'Stop acknowledgement expired',
+          updatedAt: expiredAt,
+        },
+        approval: null,
+      });
+      return;
+    }
     const message = messages.find(
       (candidate) => candidate.runId === runId && candidate.delivery === 'claimed',
     );
@@ -643,6 +669,7 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
         return conflictCommand('That AI run is no longer active.');
       }
       const stopRequestedAt = now();
+      toolSession.clear();
       const queued = messages.find(
         (message) => message.delivery === 'queued' && message.content === snapshot.queuedFollowUp,
       );
@@ -652,6 +679,7 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
         draft: snapshot.queuedFollowUp ?? snapshot.draft,
         queuedFollowUp: null,
         run: { ...run, status: 'stop_requested', stopRequestedAt },
+        approval: null,
         activity: {
           runId,
           status: 'stop_requested',
@@ -662,11 +690,30 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
       return { ok: true, data: undefined };
     },
     async decide(approvalId, approved) {
+      const pendingApproval = snapshot.approval;
+      const run = snapshot.run;
+      if (
+        !pendingApproval ||
+        pendingApproval.approvalId !== approvalId ||
+        pendingApproval.status !== 'pending' ||
+        !run ||
+        run.status !== 'active'
+      ) {
+        return conflictCommand('That approval is no longer pending.');
+      }
       const decision = await toolSession.decide(approvalId, approved);
       if (!decision.ok) {
         const message =
           decision.error.kind === 'tool' ? decision.error.error.message : decision.error.message;
         return conflictCommand(message);
+      }
+      if (
+        snapshot.run?.runId !== run.runId ||
+        snapshot.run.status !== 'active' ||
+        snapshot.approval?.approvalId !== approvalId ||
+        snapshot.approval.status !== 'pending'
+      ) {
+        return conflictCommand('That approval is no longer pending.');
       }
       publish({
         ...snapshot,
