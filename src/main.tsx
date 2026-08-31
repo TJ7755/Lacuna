@@ -5,8 +5,11 @@ import { Analytics } from '@vercel/analytics/react';
 import './index.css';
 import { App } from './App';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
+import { installHostedFontLinks, registerProductionServiceWorker } from './webBootstrap';
 
 installStaleChunkRecovery();
+installHostedFontLinks();
+void registerProductionServiceWorker();
 
 async function clearDevelopmentPwaState(): Promise<void> {
   if (!import.meta.env.DEV || !('serviceWorker' in navigator)) return;

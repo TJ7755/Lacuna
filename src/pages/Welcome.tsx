@@ -7,6 +7,7 @@ import { ExamCurve, type ExamWeeks } from '../components/welcome/ExamCurve';
 import { PathDemo } from '../components/welcome/PathDemo';
 import { PracticeDeck } from '../components/welcome/PracticeDeck';
 import { LandingCta } from '../components/welcome/LandingCta';
+import { PublicHeader } from '../components/welcome/PublicHeader';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 import type { ScrollDrivenDemoHandle } from '../components/welcome/scrollDrivenDemo';
 
@@ -371,7 +372,8 @@ export function Welcome() {
 
       {/* ——— Hero: the course opens ——— */}
       <header className="bg-dot-grid relative overflow-hidden border-b border-line">
-        <div className="relative mx-auto flex min-h-[70dvh] max-w-3xl flex-col justify-center px-6 pb-10 pt-[max(6rem,calc(env(safe-area-inset-top)+3.5rem))] sm:px-10">
+        <PublicHeader />
+        <div className="relative mx-auto flex min-h-[60dvh] max-w-3xl flex-col justify-center px-6 pb-10 pt-12 sm:px-10 sm:pt-16">
           <p
             className="hero-rise font-mono text-[11px] uppercase tracking-[0.18em] text-accent"
             style={{ animationDelay: '40ms' }}
@@ -388,34 +390,34 @@ export function Welcome() {
             className="hero-rise mt-8 max-w-xl text-lg leading-relaxed text-ink-soft"
             style={{ animationDelay: '240ms' }}
           >
-            Lacuna is a spaced-revision app with one fixed point: your exam date. Every card is
-            scheduled backwards from it, so your memory peaks in the room where it matters.
+            Lacuna is a spaced-revision app with one fixed point: your exam date. Use it in your
+            browser or download the same core app for your computer. Your study data stays on the
+            device you choose.
           </p>
 
           <div
             className="hero-rise mt-10 flex flex-wrap items-center gap-4"
             style={{ animationDelay: '360ms' }}
           >
-            <LandingCta>Create your first course</LandingCta>
-            <button
-              type="button"
-              onClick={() => {
-                const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                document
-                  .getElementById('lesson-grading')
-                  ?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-              }}
-              className="inline-flex min-h-12 items-center rounded-[10px] border border-line-strong bg-surface-raised px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-            >
-              Try one card first
-            </button>
+            <LandingCta>Open Lacuna</LandingCta>
+            {!window.electronAPI?.isElectron && (
+              <Link
+                to="/download"
+                className="inline-flex min-h-12 items-center rounded-[10px] border border-line-strong bg-surface-raised px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              >
+                Download desktop app
+              </Link>
+            )}
+          </div>
+          <p className="hero-rise mt-5 text-sm text-ink-faint" style={{ animationDelay: '420ms' }}>
+            Already have a share code?{' '}
             <Link
               to="/share?intent=import"
-              className="inline-flex min-h-12 items-center rounded-[10px] border border-line-strong bg-paper px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:border-accent/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="text-ink-soft underline underline-offset-4 transition-colors hover:text-accent"
             >
               Import a shared course
             </Link>
-          </div>
+          </p>
         </div>
 
         {/* The dashboard itself, unfolding onto the desk as you scroll. */}
@@ -606,9 +608,11 @@ export function Welcome() {
               Lacuna — fill the gap before it is examined.
             </p>
             <div className="flex flex-wrap gap-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint">
-              <Link to="/settings" className="transition-colors hover:text-ink-soft">
-                Settings
-              </Link>
+              {!window.electronAPI?.isElectron && (
+                <Link to="/download" className="transition-colors hover:text-ink-soft">
+                  Download
+                </Link>
+              )}
               <a
                 href="https://github.com/TJ7755/Lacuna"
                 target="_blank"
@@ -715,7 +719,15 @@ function CheckpointSection({
               Demo horizon · {examDateLabel} · {predicted}% predicted readiness
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <LandingCta>Open the dashboard</LandingCta>
+              <LandingCta>Open Lacuna</LandingCta>
+              {!window.electronAPI?.isElectron && (
+                <Link
+                  to="/download"
+                  className="inline-flex min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"
+                >
+                  Download desktop app
+                </Link>
+              )}
               <Link
                 to="/share?intent=import"
                 className="inline-flex min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"

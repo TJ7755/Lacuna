@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import config, { workbox } from '../vite.config';
+import config, { pwaInjectRegister, workbox } from '../vite.config';
 
 describe('service-worker asset caching', () => {
+  it('leaves worker registration to the protocol-aware application bootstrap', () => {
+    expect(pwaInjectRegister).toBeNull();
+  });
+
   it('keeps optional CSS out of the install-time application shell', () => {
     expect(workbox.globPatterns).toContain('assets/index-*.css');
     expect(workbox.globPatterns).not.toContain('**/*.{html,css,ico,png,svg}');

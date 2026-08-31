@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -61,6 +61,20 @@ describe('v0.2.0 release configuration', () => {
     expect(builderConfig).toMatch(/arch:\s*[\s\S]*?- x64/);
     expect(builderConfig).toMatch(/linux:[\s\S]*?icon: electron\/assets\/icon\.png/);
     expect(builderConfig).toMatch(/mac:[\s\S]*?icon: electron\/assets\/icon\.png/);
+  });
+
+  it('shows immediate branded feedback while the Windows portable build extracts', () => {
+    expect(builderConfig).toMatch(
+      /portable:\s*[\s\S]*?splashImage:\s*electron\/assets\/portable-splash\.bmp/,
+    );
+    const splashPath = resolve(root, 'electron/assets/portable-splash.bmp');
+    expect(existsSync(splashPath)).toBe(true);
+
+    const splash = readFileSync(splashPath);
+    expect(splash.subarray(0, 2).toString('ascii')).toBe('BM');
+    expect(splash.readInt32LE(18)).toBe(560);
+    expect(splash.readInt32LE(22)).toBe(260);
+    expect(splash.readUInt16LE(28)).toBe(24);
   });
 
   it('keeps updater distribution rules explicit', () => {

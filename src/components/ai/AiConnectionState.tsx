@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 
+const TERMINAL_SETUP_URL = 'https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat';
+
 export interface AiPairingState {
   code: string;
   expiresAt: number;
@@ -41,7 +43,7 @@ export function AiConnectionState({
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const pairingCode = pairing?.code ?? null;
   const instruction = pairingCode
-    ? `Connect to Lacuna with code ${pairingCode}. Keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`
+    ? `Connect to Lacuna with code ${pairingCode}. If lacuna.wait_for_message is unavailable, read ${TERMINAL_SETUP_URL} and help me set up the Lacuna terminal companion; tell me when I must restart this terminal before continuing. If it is available, keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`
     : '';
 
   useEffect(() => {
@@ -132,6 +134,17 @@ export function AiConnectionState({
             onFocus={(event) => event.currentTarget.select()}
             className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
           />
+          <p className="mt-2 text-xs text-ink-soft">
+            Need to set it up first?{' '}
+            <a
+              href={TERMINAL_SETUP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent underline underline-offset-2"
+            >
+              Set up the terminal companion
+            </a>
+          </p>
 
           {error && (
             <p

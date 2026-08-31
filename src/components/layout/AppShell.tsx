@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Sidebar } from './Sidebar';
@@ -22,12 +22,14 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AiActivityCapsule } from '../ai/AiActivityCapsule';
 import { loadAiPanel } from '../ai/loaders';
 import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
+import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 
 const AiPanel = lazy(loadAiPanel);
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 const AI_DESKTOP_QUERY = '(min-width: 1024px)';
+const SCROLL_POSITION_KEY = 'lacuna-shell-scroll-position';
 
 /** Sideways for a move between course sections, a crossfade otherwise.
  *  Fade must not write a transform, or `position: fixed` descendants pin to this wrapper. */
@@ -90,6 +92,10 @@ export function AppShell() {
   const inCourse = courseIdFromPath(location.pathname) !== null;
   const studySheet = useStudySheetState();
   const capsuleSuppressed = mobileOpen || paletteOpen || hintsOpen || studySheet.open;
+  const mobileNavigationSwipe = useMobileNavigationSwipe({
+    enabled: !mobileOpen && !paletteOpen && !hintsOpen && !studySheet.open,
+    onOpen: () => setMobileOpen(true),
+  });
 
   useEffect(() => {
     const capsule = aiCapsuleRef.current;
@@ -131,10 +137,42 @@ export function AppShell() {
     return () => window.clearTimeout(id);
   }, [collapsed]);
 
-  // Each page change starts at the top, so the entrance animation reveals the new
-  // page from its header rather than from wherever the last one was scrolled to.
+  // The optional AI runtime historically sat above RouterProvider. Enabling or
+  // disabling it could therefore remount the whole shell and discard the page's
+  // scroll position. Keep that position across same-route remounts while retaining
+  // the deliberate top reset for ordinary navigation.
+  useLayoutEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SCROLL_POSITION_KEY) ?? 'null') as {
+        path?: string;
+        top?: number;
+      } | null;
+      if (saved?.path === location.pathname && typeof saved.top === 'number') {
+        mainRef.current?.scrollTo({ top: saved.top });
+        sessionStorage.removeItem(SCROLL_POSITION_KEY);
+      }
+    } catch {
+      sessionStorage.removeItem(SCROLL_POSITION_KEY);
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0 });
+    const previousPath = mainRef.current?.dataset.settingsPath;
+    if (previousPath && previousPath !== location.pathname) mainRef.current?.scrollTo({ top: 0 });
+    if (mainRef.current) mainRef.current.dataset.settingsPath = location.pathname;
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    return () => {
+      const top = main?.scrollTop ?? 0;
+      if (top > 0) {
+        sessionStorage.setItem(
+          SCROLL_POSITION_KEY,
+          JSON.stringify({ path: location.pathname, top }),
+        );
+      }
+    };
   }, [location.pathname]);
 
   // Close the mobile drawer whenever the route changes.
@@ -303,9 +341,7 @@ export function AppShell() {
                 animate={{ x: 0 }}
                 exit={motionEnabled ? { x: -280 } : undefined}
                 transition={
-                  motionEnabled
-                    ? { type: 'spring', stiffness: 260, damping: 30 }
-                    : { duration: 0 }
+                  motionEnabled ? { type: 'spring', stiffness: 260, damping: 30 } : { duration: 0 }
                 }
                 role="dialog"
                 aria-modal="true"
@@ -350,6 +386,8 @@ export function AppShell() {
           ref={appContentRef}
           aria-hidden={mobileOpen || undefined}
           className="flex min-w-0 flex-1 flex-col"
+          style={{ touchAction: 'pan-y' }}
+          {...mobileNavigationSwipe}
         >
           {/* Mobile top bar */}
           <div className="flex items-center gap-3 border-b border-line bg-surface py-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:hidden">

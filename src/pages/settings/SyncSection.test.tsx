@@ -198,6 +198,22 @@ describe('SyncSection', () => {
     expect(unlockSyncStateMock).not.toHaveBeenCalled();
   });
 
+  it('deletes the shared channel with the credentials remembered by an unlocked device', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(<SyncSection />);
+    await screen.findByText(/this device remembers its key/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
+
+    await waitFor(() => expect(deleteChannelMock).toHaveBeenCalledWith(state, credentials));
+    expect(notify).not.toHaveBeenCalledWith('Enter a recovery passphrase.', 'negative');
+    expect(
+      await screen.findByText('No sync channel is configured on this device.'),
+    ).toBeInTheDocument();
+  });
+
   it('locking forgets the remembered copy and asks for the passphrase again', async () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);

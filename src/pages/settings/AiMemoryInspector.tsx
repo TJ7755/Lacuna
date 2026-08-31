@@ -97,7 +97,7 @@ export function AiMemoryInspector({
 
   return (
     <div className="mt-6 border-t border-line pt-5">
-      <div className="flex items-end justify-between gap-4">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] sm:items-end">
         <div>
           <SettingsSubsectionHeading className="text-sm font-medium text-ink">
             Teaching memory
@@ -106,8 +106,8 @@ export function AiMemoryInspector({
             Inspect and correct what the AI retains about how you learn.
           </p>
         </div>
-        <div className="flex min-w-0 max-w-64 flex-1 flex-col items-end gap-2">
-          <label className="w-full text-xs text-ink-soft">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 text-xs text-ink-soft">
             <span className="sr-only">Search teaching memory</span>
             <input
               type="search"

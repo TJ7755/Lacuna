@@ -314,15 +314,17 @@ export function SyncSection() {
 
   async function handleDeleteChannel() {
     if (!syncState) return;
-    const passphraseError = validateRecoveryPassphrase(actionPassphrase);
-    if (passphraseError) {
-      notify(passphraseError, 'negative');
-      return;
+    if (!unlocked) {
+      const passphraseError = validateRecoveryPassphrase(actionPassphrase);
+      if (passphraseError) {
+        notify(passphraseError, 'negative');
+        return;
+      }
     }
     setBusy('delete');
     try {
       if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
-      await deleteChannel(syncState, actionPassphrase);
+      await deleteChannel(syncState, unlocked ?? actionPassphrase);
       setSyncState(null);
       setUnlocked(null);
       setActionPassphrase('');
@@ -343,7 +345,9 @@ export function SyncSection() {
     <section id="settings-sync" className="mb-8 rounded-2xl border border-line bg-surface p-6">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <ShareIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Device sync</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl">
+          Device sync
+        </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
         Keep courses, cards and review history aligned across your devices. The relay stores only

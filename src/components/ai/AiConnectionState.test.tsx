@@ -41,7 +41,7 @@ describe('AiConnectionState', () => {
     const onCancel = vi.fn();
     const expiresAt = Date.now() + 90_000;
     const instruction =
-      'Connect to Lacuna with code A7K9-Q2. Keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.';
+      'Connect to Lacuna with code A7K9-Q2. If lacuna.wait_for_message is unavailable, read https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat and help me set up the Lacuna terminal companion; tell me when I must restart this terminal before continuing. If it is available, keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.';
 
     render(
       <AiConnectionState
@@ -55,6 +55,10 @@ describe('AiConnectionState', () => {
 
     expect(screen.getByText('A7K9-Q2')).toHaveClass('font-mono', 'whitespace-nowrap', 'text-xl');
     expect(screen.getByRole('textbox', { name: 'Terminal instruction' })).toHaveValue(instruction);
+    expect(screen.getByRole('link', { name: 'Set up the terminal companion' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat',
+    );
     expect(screen.getByText(/^Expires /)).toHaveAttribute(
       'datetime',
       new Date(expiresAt).toISOString(),

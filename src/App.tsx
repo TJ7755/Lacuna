@@ -55,6 +55,10 @@ function RouterWithOptionalAi() {
 
 const McpBridgeController = lazy(loadMcpBridgeController);
 
+function isPublicEntry(hash: string): boolean {
+  return /^#\/(?:welcome|download)(?:[?#]|$)/.test(hash);
+}
+
 export function App() {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
@@ -106,7 +110,7 @@ export function App() {
         // A genuinely fresh browser opens on the landing page; anyone with
         // existing data goes straight to the app they know. Decided before
         // seeding, because the seed itself creates a course.
-        if ((await isFirstRun()) && !window.location.hash.startsWith('#/welcome')) {
+        if ((await isFirstRun()) && !isPublicEntry(window.location.hash)) {
           window.location.hash = '#/welcome';
         }
 

@@ -49,22 +49,21 @@ vi.mock('../db/repository', () => ({
 }));
 
 describe('Welcome import entry points', () => {
-  it('gives every first-run action a defined, high-contrast surface', () => {
+  it('gives the welcome journey one primary app action and one desktop alternative', () => {
     render(<Welcome />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('button', { name: 'Create your first course' })).toHaveClass(
+    expect(screen.getAllByRole('button', { name: 'Open Lacuna' })[0]).toHaveClass(
       'border-accent-ink/40',
     );
-    expect(screen.getByRole('button', { name: 'Try one card first' })).toHaveClass(
+    expect(screen.getAllByRole('link', { name: 'Download desktop app' })[0]).toHaveClass(
       'border-line-strong',
       'bg-surface-raised',
       'text-ink',
     );
     expect(screen.getAllByRole('link', { name: 'Import a shared course' })[0]).toHaveClass(
-      'border-line-strong',
-      'bg-paper',
       'text-ink-soft',
     );
+    expect(screen.queryByRole('button', { name: 'Try one card first' })).not.toBeInTheDocument();
   });
 
   it('sends both current-facing import links to the shared-course importer', () => {

@@ -22,6 +22,12 @@ Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and uns
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.
 
+## Windows portable startup begins before Electron exists
+
+electron-builder's portable target runs a silent NSIS extraction before launching Lacuna's
+Electron process. Keep the configured branded BMP for honest extraction feedback; renderer code
+cannot cover this phase, and the BMP cannot appear during an earlier Defender or SmartScreen scan.
+
 ## Accelerated E2E polling must retain wall-clock deadlines
 
 The AI relay fixture may cap each polling sleep to keep successful tests fast, but its client clock
@@ -88,7 +94,10 @@ and the relay is a separate origin, so every relay fetch is refused until its or
 The web meta policy is extended at runtime by `allowRelayConnect` (`src/sync/csp.ts`) from the
 Settings sync flow; Electron's injected header is static and lists only the default relay. Do not
 tighten `connect-src` back to `'self'` without restoring these origins, and keep the two static
-policies in step with `DEFAULT_RELAY_URL` in `src/sync/pairing.ts`.
+policies in step with `DEFAULT_RELAY_URL` in `src/sync/pairing.ts`. Managed-device intermediaries
+can strip the unusual `app://.` CORS value even when the live relay emits it correctly, so Electron
+also repairs response CORS for that exact relay and exact renderer origin; do not broaden that
+exception to arbitrary origins or disable `webSecurity`.
 
 ## Sync credentials are remembered on device by design
 
@@ -408,3 +417,10 @@ runs can pop or conflict with stashes that are not the agent's own, and an inter
 the working tree half-stashed. To compare behaviour against a merge-base, use
 `git worktree add /tmp/<name> <ref>` with a symlinked `node_modules` instead, then
 `git worktree remove`. Verify `git status` after any stash-like operation before continuing.
+
+## Mobile Safari owns its native history edge gesture
+
+The application shell uses `overscroll-behavior-x: none` and a left-edge pointer gesture to open
+mobile navigation where the browser permits it. Chromium and Firefox can suppress horizontal
+history overscroll, but iOS Safari may intercept its native edge-back gesture before page pointer
+events arrive. Do not claim that a web page can reliably override that operating-system gesture.

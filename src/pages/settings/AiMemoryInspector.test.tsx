@@ -112,4 +112,21 @@ describe('AiMemoryInspector', () => {
       includeExpired: true,
     });
   });
+
+  it('keeps the memory heading and filters in one responsive section header', () => {
+    const repo = repository();
+    render(
+      <ToastProvider>
+        <AiMemoryInspector repository={repo} />
+      </ToastProvider>,
+    );
+
+    const heading = screen.getByRole('heading', { name: 'Teaching memory' });
+    const header = heading.parentElement?.parentElement;
+    expect(header).toHaveClass('grid', 'sm:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]');
+    expect(screen.getByPlaceholderText('Search memory').parentElement?.parentElement).toHaveClass(
+      'flex',
+      'sm:flex-row',
+    );
+  });
 });

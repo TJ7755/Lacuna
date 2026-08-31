@@ -93,4 +93,15 @@ describe('App initialisation', () => {
 
     expect(localStorage.getItem('lacuna-ai-relay-session-v1')).toBeNull();
   });
+
+  it('does not redirect a first-time visitor away from the public download page', async () => {
+    window.location.hash = '#/download';
+    dependencies.isFirstRun.mockResolvedValue(true);
+    dependencies.seedIfFirstRun.mockClear();
+
+    render(<App />);
+
+    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    expect(window.location.hash).toBe('#/download');
+  });
 });
