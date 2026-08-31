@@ -218,9 +218,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const answerWithUndo = useCallback(
     (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
       void (async () => {
-        const undoAvailable = await answer(input, source);
-        if (undoAvailable) {
-          notify('Answer recorded', 'neutral', {
+        const result = await answer(input, source);
+        if (result.undoAvailable) {
+          notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
             actionLabel: 'Undo',
             onAction: () => void undoLast(),
             replaceKey: 'learn-answer',
@@ -565,6 +565,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         isLinesModeCard={isLinesModeCard}
                         hintStep={hintStep}
                         onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
+                        hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
                         answerStrictness={answerStrictness}
                         occlusion={occlusion}
                         occlusionAnswerText={occlusionAnswerText}

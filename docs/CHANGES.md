@@ -1,5 +1,18 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — grading transparency
+
+- Replace the generic "Answer recorded" notification with the FSRS grade Lacuna actually stored
+  and a plain-language next interval, such as "Good · again in 4 days". The existing Undo action
+  remains attached to the same notification.
+- Disclose the 1.5-second silent-grading adjustment beside a revealed lines-mode hint. Manual
+  grading and Simple mode remain unaffected.
+- Keep the general explanation of response-time grading in Settings and Help instead of repeating
+  it in every study card's grading controls.
+
+**Checks:** red-to-green grade/interval formatting, Learn notification, hint disclosure and session
+boundary tests; full validation is recorded with the pull request.
+
 ## Unreleased — optional exam dates and steady retention
 
 - Card analytics now labels an expired exam's rolling horizon as a predicted maintenance target

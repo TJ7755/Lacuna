@@ -219,11 +219,13 @@ describe('useLearnSession answer boundary', () => {
 
     let undoAvailable: boolean | undefined;
     await act(async () => {
-      undoAvailable = await result.current.answer({
-        correct: true,
-        marksEarned: 1,
-        marksAvailable: 1,
-      });
+      undoAvailable = (
+        await result.current.answer({
+          correct: true,
+          marksEarned: 1,
+          marksAvailable: 1,
+        })
+      ).undoAvailable;
     });
 
     expect(undoAvailable).toBe(false);
@@ -330,7 +332,7 @@ describe('useLearnSession answer boundary', () => {
 
     let undoAvailable: boolean | undefined;
     await act(async () => {
-      undoAvailable = await result.current.answer(true);
+      undoAvailable = (await result.current.answer(true)).undoAvailable;
     });
 
     expect(undoAvailable).toBe(true);

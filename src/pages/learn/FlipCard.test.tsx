@@ -71,3 +71,34 @@ describe('FlipCard audio replay', () => {
     expect(screen.getByText('audio face')).toBeInTheDocument();
   });
 });
+
+describe('FlipCard hint disclosure', () => {
+  it('states the silent-grading timing adjustment beside a revealed hint', () => {
+    render(
+      <FlipCard
+        card={{ ...card, front: 'Prompt' }}
+        revealed={false}
+        phase="question"
+        motionSpeed="normal"
+        isTouchMode={false}
+        menuOpen={false}
+        editing={false}
+        navOpen={false}
+        hintsOpen={false}
+        onReveal={vi.fn()}
+        onHide={vi.fn()}
+        onAnswer={vi.fn()}
+        mode="fsrs"
+        isLinesModeCard
+        hintStep={1}
+        onRevealHint={vi.fn()}
+        hintAffectsScheduling
+        answerStrictness="standard"
+      />,
+    );
+
+    expect(
+      screen.getByText('Hints add 1.5 seconds to the response time used for silent grading.'),
+    ).toBeInTheDocument();
+  });
+});

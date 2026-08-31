@@ -68,6 +68,7 @@ import {
   HINT_TIME_PENALTY_SEC,
   updatePerformance,
 } from '../../fsrs/grading';
+import { reviewFeedbackMessage } from '../../fsrs/gradingFeedback';
 import { applyCooldown, decrementCooldowns } from '../../fsrs/cooldown';
 import type { CooldownMap } from '../../fsrs/cooldown';
 import { progressHeading } from '../../fsrs/objective';
@@ -128,6 +129,11 @@ interface AnswerSnapshot {
   revisionRetryAt: Map<string, number>;
   revisionFailures: Map<string, number>;
   revisionReviewEventIds: string[];
+}
+
+export interface AnswerResult {
+  undoAvailable: boolean;
+  feedbackMessage?: string;
 }
 
 type SessionSchedulingConfig = SchedulerConfig & {
@@ -1270,7 +1276,7 @@ export function useLearnSession({
       input: boolean | Grade | MachineMarkedAnswer,
       source: 'touch' | 'keyboard' = 'keyboard',
     ) => {
-      if (submitting.current) return false;
+      if (submitting.current) return { undoAvailable: false };
       submitting.current = true;
       const phaseNow = phaseRef.current;
       const cardNow = currentRef.current;
@@ -1282,7 +1288,7 @@ export function useLearnSession({
         isUnrenderableItemPayload(cardNow)
       ) {
         submitting.current = false;
-        return false;
+        return { undoAvailable: false };
       }
 
       try {
@@ -1344,7 +1350,7 @@ export function useLearnSession({
           } else {
             serveNext();
           }
-          return false;
+          return { undoAvailable: false };
         }
 
         const ctx = ctxRef.current;
@@ -1358,7 +1364,7 @@ export function useLearnSession({
         const schedulingConfig = isGlobal ? deck : schedulingConfigRef.current;
         if (!ctx || !deck || !schedulingConfig) {
           submitting.current = false;
-          return false;
+          return { undoAvailable: false };
         }
 
         const manualGrade: Grade | null = typeof input === 'number' ? input : null;
@@ -1496,19 +1502,25 @@ export function useLearnSession({
             }
           : null;
         setCanUndo(recorded);
+        const answerResult: AnswerResult = {
+          undoAvailable: recorded,
+          ...(recorded && updated.due !== null
+            ? { feedbackMessage: reviewFeedbackMessage(grade, updated.due) }
+            : {}),
+        };
 
         progressCacheRef.current.dirty = true;
 
         const limit = schedulingConfig.maxReviewsPerDay;
         if (!limitOverride && limit && limit > 0 && deckReviews >= limit) {
           finish(false, true);
-          return false;
+          return { undoAvailable: false };
         }
 
         const goal = schedulingConfig.dailyReviewGoal;
         if (!limitOverride && goal && goal > 0 && deckReviews >= goal) {
           finish(true);
-          return false;
+          return { undoAvailable: false };
         }
 
         const revisionPlan = revisionPlanRef.current;
@@ -1521,7 +1533,7 @@ export function useLearnSession({
           Date.now() >= revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
         ) {
           finish(false, false, true);
-          return false;
+          return { undoAvailable: false };
         }
 
         const timeLimit = schedulingConfig.sessionTimeLimitMinutes;
@@ -1529,20 +1541,20 @@ export function useLearnSession({
           const elapsedMinutes = (Date.now() - sessionStartMs.current) / 60000;
           if (elapsedMinutes >= timeLimit) {
             finish(false, false, true);
-            return false;
+            return { undoAvailable: false };
           }
         }
 
         if (revisionPlanRef.current) {
           serveNext();
-          return recorded && lastAnswer.current !== null;
+          return lastAnswer.current !== null ? answerResult : { undoAvailable: false };
         }
         if (sessionComplete(nextCards, ctx)) {
           finish(true);
-          return false;
+          return { undoAvailable: false };
         }
         serveNext();
-        return recorded;
+        return answerResult;
       } finally {
         submitting.current = false;
       }
