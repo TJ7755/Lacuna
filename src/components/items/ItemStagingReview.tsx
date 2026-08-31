@@ -52,6 +52,7 @@ export function ItemStagingReview({
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const batchRevisionTriggerRef = useRef<HTMLButtonElement>(null);
+  const acceptAllCleanRef = useRef<HTMLButtonElement>(null);
   const batchComplaintRef = useRef<HTMLTextAreaElement>(null);
   const previousBatchRevisionOpen = useRef(batchRevisionOpen);
 
@@ -59,7 +60,7 @@ export function ItemStagingReview({
     if (batchRevisionOpen && !previousBatchRevisionOpen.current) {
       batchComplaintRef.current?.focus();
     } else if (!batchRevisionOpen && previousBatchRevisionOpen.current) {
-      batchRevisionTriggerRef.current?.focus();
+      (batchRevisionTriggerRef.current ?? acceptAllCleanRef.current)?.focus();
     }
     previousBatchRevisionOpen.current = batchRevisionOpen;
   }, [batchRevisionOpen]);
@@ -316,6 +317,7 @@ export function ItemStagingReview({
                   </Button>
                 )}
                 <Button
+                  ref={acceptAllCleanRef}
                   variant="primary"
                   disabled={cleanCandidates.length === 0 || importing}
                   onClick={() => void acceptAllClean()}

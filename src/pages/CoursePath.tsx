@@ -471,7 +471,11 @@ export function CoursePath() {
           Study action. */}
       <CourseHeader
         className="mb-12"
-        eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
+        eyebrow={
+          nearestExam === undefined
+            ? 'Steady retention'
+            : `Exam ${formatDate(nearestExam, course.timeZone)}`
+        }
         examUrgent={examUrgent}
         title={course.name}
         onRename={
@@ -495,7 +499,11 @@ export function CoursePath() {
           <HeaderStats
             dueCount={dueCardCount}
             masteryPct={masteryPct}
-            daysToExam={Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)}
+            daysToExam={
+              nearestExam === undefined
+                ? undefined
+                : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
+            }
             totalCards={courseCards.length}
             unseenCount={unseenCount}
             lessonProgress={{ reached, total }}

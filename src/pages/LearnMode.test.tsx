@@ -923,6 +923,34 @@ describe('LearnMode course/lesson scope', () => {
     expect(await screen.findByText(firstQuestion ?? '')).toBeInTheDocument();
   });
 
+  it('does not offer Undo after the answer has finished the session', async () => {
+    const deck = await createCourse('Terminal answer');
+    await createCard(deck.id, 'front_back', 'Only question', 'Answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await screen.findByText('Only question');
+    await answerYes();
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+    expect(await db.reviewHistory.count()).toBe(1);
+  });
+
   it('checks a numeric answer and records full marks without self-grading', async () => {
     const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
     const deck = await createCourse('Numeric deck');

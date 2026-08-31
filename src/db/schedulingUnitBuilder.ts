@@ -4,12 +4,16 @@ function assessmentDate(
   courseId: string,
   assessments: CourseAssessment[],
   fallbackExamDate: number,
-): { examDate: number; timeZone?: string } {
+): { examDate?: number; timeZone?: string } {
   const final =
-    assessments.find((assessment) => assessment.courseId === courseId && assessment.kind === 'final') ??
-    assessments.find((assessment) => assessment.courseId === courseId);
+    assessments.find(
+      (assessment) => assessment.courseId === courseId && assessment.kind === 'final',
+    ) ?? assessments.find((assessment) => assessment.courseId === courseId);
   return final
-    ? { examDate: final.examDate, ...(final.timeZone ? { timeZone: final.timeZone } : {}) }
+    ? {
+        ...(final.examDate === undefined ? {} : { examDate: final.examDate }),
+        ...(final.timeZone ? { timeZone: final.timeZone } : {}),
+      }
     : { examDate: fallbackExamDate };
 }
 
@@ -30,7 +34,7 @@ export function schedulingUnitFromCourse(
     courseId: course.id,
     lessonId: null,
     name: course.name,
-    examDate: date.examDate,
+    ...(date.examDate === undefined ? {} : { examDate: date.examDate }),
     ...(date.timeZone ? { timeZone: date.timeZone } : {}),
     fsrsVersion: course.fsrsVersion,
     fsrsParameters: course.fsrsParameters,
@@ -57,6 +61,8 @@ export function schedulingUnitFromLesson(
   assessments: CourseAssessment[],
 ): SchedulingUnitRecord {
   const courseUnit = schedulingUnitFromCourse(course, assessments);
+  const examDate = lesson.examDate ?? courseUnit.examDate;
+  const timeZone = lesson.timeZone ?? courseUnit.timeZone;
   return {
     ...courseUnit,
     id: lesson.id,
@@ -65,9 +71,7 @@ export function schedulingUnitFromLesson(
     kind: 'lesson',
     lessonId: lesson.id,
     name: lesson.name,
-    examDate: lesson.examDate ?? courseUnit.examDate,
-    ...(lesson.timeZone ?? courseUnit.timeZone
-      ? { timeZone: lesson.timeZone ?? courseUnit.timeZone }
-      : {}),
+    ...(examDate === undefined ? {} : { examDate }),
+    ...(timeZone ? { timeZone } : {}),
   };
 }

@@ -654,13 +654,13 @@ export function nearestExamDate(
   course: Course,
   assessments: CourseAssessment[],
   now: number = Date.now(),
-): number {
+): number | undefined {
   const futureDates = [
     course.examDate,
     ...assessments
       .filter((assessment) => assessment.kind === 'checkpoint')
       .map((assessment) => assessment.examDate),
-  ].filter((d) => d > now);
+  ].filter((date): date is number => date !== undefined && date > now);
   return futureDates.length > 0 ? Math.min(...futureDates) : course.examDate;
 }
 
@@ -672,6 +672,10 @@ export const EXAM_URGENT_DAYS = 3;
  * upcoming and within `EXAM_URGENT_DAYS` of `now`. Shared by CoursePath and
  * LessonView so both headers agree on when to flag urgency.
  */
-export function examIsUrgent(nearestExam: number, now: number = Date.now()): boolean {
-  return nearestExam > now && nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY;
+export function examIsUrgent(nearestExam: number | undefined, now: number = Date.now()): boolean {
+  return (
+    nearestExam !== undefined &&
+    nearestExam > now &&
+    nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY
+  );
 }

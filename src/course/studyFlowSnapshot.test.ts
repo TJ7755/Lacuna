@@ -226,12 +226,12 @@ describe('buildCourseStudyFlowSnapshot', () => {
     const farSnapshot = buildCourseStudyFlowSnapshot({
       ...common,
       course: far,
-      examDateContext: makeExamDateContext(far, lessons, [assessment('far', far.examDate, 'l1')]),
+      examDateContext: makeExamDateContext(far, lessons, [assessment('far', far.examDate!, 'l1')]),
     });
     expect(farSnapshot.practiceByKey.get('p1')?.active).toBe(false);
 
     const urgent = course({ examDate: NOW + MS_PER_DAY });
-    const urgentAssessment = assessment('urgent', urgent.examDate, 'l1');
+    const urgentAssessment = assessment('urgent', urgent.examDate!, 'l1');
     const urgentSnapshot = buildCourseStudyFlowSnapshot({
       ...common,
       course: urgent,
@@ -274,7 +274,7 @@ describe('buildCourseStudyFlowSnapshot', () => {
       NOW,
       { exposures: [taught], lessonCompletions: [], practiceMilestones: [] },
     );
-    const urgentAssessment = assessment('urgent', c.examDate, 'l1');
+    const urgentAssessment = assessment('urgent', c.examDate!, 'l1');
     const snapshot = buildCourseStudyFlowSnapshot({
       course: c,
       nodes,

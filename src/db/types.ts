@@ -187,7 +187,8 @@ export interface CheckerDisputeReport {
  */
 export interface SchedulerConfig {
   id: string;
-  examDate: number;
+  /** Absent for steady-retention courses, which use a rolling maintenance horizon. */
+  examDate?: number;
   examObjective: ExamObjective;
   fsrsParameters: FsrsParameters;
   archived?: boolean;
@@ -402,8 +403,12 @@ export interface CourseDistributedCopy {
  * migration. The compatibility date fields are derived from the course's one final
  * assessment and are never persisted on the course row.
  */
+export type CourseSchedulingMode = 'exam' | 'steady';
+
 export interface Course extends CourseRecord {
-  readonly examDate: number;
+  /** Derived from the final assessment; old dated rows infer `exam`. */
+  readonly schedulingMode?: CourseSchedulingMode;
+  readonly examDate?: number;
   readonly timeZone?: string;
 }
 
@@ -414,8 +419,10 @@ interface CourseAssessmentBase {
   courseId: string;
   name: string;
   kind: AssessmentKind;
-  /** Assessment date/time as epoch milliseconds in UTC. */
-  examDate: number;
+  /** `steady` is valid only for the sole final assessment; old dated finals infer `exam`. */
+  schedulingMode?: CourseSchedulingMode;
+  /** Assessment date/time as epoch milliseconds in UTC; absent for steady retention. */
+  examDate?: number;
   timeZone?: string;
   /** Stable path anchor, independent of which lessons the assessment covers. */
   afterLessonId: string | null;

@@ -13,6 +13,38 @@
 **Checks:** red-to-green grade/interval formatting, Learn notification, hint disclosure and session
 boundary tests; full validation is recorded with the pull request.
 
+## Unreleased — optional exam dates and steady retention
+
+- Card analytics now labels an expired exam's rolling horizon as a predicted maintenance target
+  rather than pretending the elapsed deadline is still the active exam target.
+- Course creation now requires an explicit choice between a dated exam and steady long-term
+  retention. The form no longer invents a seven-day deadline before the learner has chosen one.
+- A steady course stores that target on its sole final assessment without an `examDate` or time
+  zone. Course hydration, scheduling units, backups and v3 share codes preserve the distinction;
+  existing dated assessments continue to infer the exam mode without a schema migration.
+- Steady courses reuse the scheduler's rolling seven-day maintenance horizon. Exam-only behaviour
+  such as countdowns, urgency, cram mode and revision-plan deadlines is hidden or rejected, while
+  Course headers, cards and settings describe the ongoing retention target directly.
+- The final assessment editor can switch an existing Course between the two targets. Checkpoints
+  remain dated and continue to override the Course target for cards in their coverage.
+
+**Checks:** red-to-green creation, settings, repository, backup and share tests; focused scheduler,
+assessment, path and revision-plan suites; full validation is recorded with the pull request.
+
+## Unreleased — audit regression follow-up
+
+- Stop offering the short-lived Undo action when the recorded answer has already finalised the
+  study session. Completion clears the single-answer reversal boundary while it writes milestones,
+  revision-window state and unlock progress; the old toast therefore advertised an action that
+  could no longer do anything.
+- Restore focus to **Accept all clean** when a batch revision fixes every failing staged Question
+  and removes its **Revise N with AI** trigger.
+- Replaced the delivered-only roadmap head with the selected next slices: optional exam dates and
+  steady long-term retention first, followed by grading transparency.
+
+**Checks:** merge-base red-to-green UI tests cover terminal-answer Undo and batch-revision focus;
+full validation is recorded with the pull request.
+
 ## Unreleased — review fixes for the audit implementation
 
 - Flush the Card editor's pending draft when navigating directly between two card routes inside

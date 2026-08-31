@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 30 August 2026.
+Reviewed 31 August 2026.
 
 This file is the current decision surface: what is active, what follows it, and what is
 deliberately parked. Detailed specifications, implementation diaries and completed arcs do
@@ -13,47 +13,27 @@ archive.
 
 ## Now
 
-### UX flow consolidation
+### Optional exam dates and steady retention
 
-**Status:** delivered.
+**Status:** ready.
 
-The implementation plan is [UX flow consolidation](plans/ux-flow-consolidation.md), grounded in the
-[UX map](UX-MAP.html). It repairs the audit's concrete contradictions: honest import and search
-entry points, one Study/Author decision beside course content, path-native authoring, task-oriented
-Settings, deliberate disclosure of scheduling internals, and confirmation before deleting a restore
-point from Lacuna. The consolidated desktop and narrow-width browser gate passed first, followed by
-the focused regressions, merge-base red-to-green proof, lint, all TypeScript targets, production
-build, 2,582 unit tests and 15 web end-to-end scenarios.
+QW-7 in the [UX sticking-point audit](UX-STICKING-POINTS-2026-08-30.md) is the remaining essential
+quick win. Course creation currently invents an exam seven days away when the learner has none. The
+next slice must make that choice explicit: either a dated exam objective or steady long-term
+retention. This is a scheduling, assessment and persistence contract, not permission to make the
+date input nullable and hope the rest of the application develops telepathy.
 
-### AI sidebar — final verification
+The implementation must preserve backup, share, sync and existing-database behaviour and prove the
+new scheduling semantics at their public boundaries. This work takes precedence while the database
+still contains no irreplaceable study history.
 
-**Status:** delivered.
+### Grading transparency
 
-The implementation plan is [the AI sidebar prototype](plans/ai-sidebar.md). PRs #96–#101 delivered
-the optional desktop panel, encrypted relay pairing, chat-only terminal companion, cooperative Stop,
-reload continuity and recovery from ambiguous relay writes or a dead terminal. PR #101 merged on
-28 August 2026 as `5275266`; its full GitHub check suite and deployed-browser gate passed.
+**Status:** proposed.
 
-The completed implementation extends that transport through authored-content tools, a per-message
-`teaching-v1` instruction bundle, durable learner-correctable memories, and coordinated data
-replacement. Memories are bounded, inspectable, correctable, included in full backup and encrypted
-peer sync, and exposed to AI only through explicit global or Course scope. Peer and recovery
-application preserve the connected AI session; successful full replacement revokes and clears its
-device-local state.
-
-The final connection-health follow-up adds throttled companion heartbeats, honest idle
-**Connection quiet** expiry and persistent transcript failures for expired or explicitly
-disconnected runs. Quiet recovers on the next terminal write and does not pretend browser polling
-can prove that a terminal process has died.
-
-Browser scenarios 4 and 6 passed on 28 August 2026. The teaching run stored an uncertain
-misconception after approval, confronted it with a failed prediction, resolved it from learner
-evidence and tested transfer. The lifecycle run preserved the terminal and transcript across a
-focus-triggered peer deletion, marked the stale Course receipt **Unavailable**, then proved that a
-full backup replacement disconnected and cleared the AI session.
-
-Lacuna remains model- and harness-agnostic. This is a terminal MCP integration, not an embedded LLM
-provider or permission to add model credentials to the app.
+EH-1 and IM-2 follow QW-7. The learner should see the inferred grade and resulting interval after an
+answer, receive one concise disclosure that response time affects silent grading, and see the cost
+of a hint when requesting it. The grading algorithm itself does not change.
 
 ## Close-out queue
 
