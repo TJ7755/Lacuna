@@ -13,6 +13,10 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
 const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8');
+const prepareElectronBuild = readFileSync(
+  resolve(root, 'scripts/prepare-electron-build.mjs'),
+  'utf8',
+);
 
 describe('v0.2.0 release configuration', () => {
   it('identifies the public app repository and release version', () => {
@@ -37,6 +41,13 @@ describe('v0.2.0 release configuration', () => {
     }
   });
 
+  it('runs Electron build tools without platform shell shims', () => {
+    expect(prepareElectronBuild).toContain('process.execPath');
+    expect(prepareElectronBuild).toContain("'node_modules/typescript/bin/tsc'");
+    expect(prepareElectronBuild).not.toContain('tsc.cmd');
+    expect(prepareElectronBuild).not.toContain('shell: true');
+  });
+
   it('builds the supported Windows and Linux artefacts', () => {
     expect(builderConfig).toMatch(/target:\s*[\s\S]*?target:\s*nsis[\s\S]*?target:\s*portable/);
     expect(builderConfig).toMatch(/linux:\s*[\s\S]*?target:\s*AppImage[\s\S]*?target:\s*deb/);
@@ -49,8 +60,12 @@ describe('v0.2.0 release configuration', () => {
   it('keeps updater distribution rules explicit', () => {
     expect(updaterSource).toContain('process.env.PORTABLE_EXECUTABLE_FILE');
     expect(updaterSource).toContain('process.env.APPIMAGE');
-    expect(updaterSource).toMatch(/process\.platform === ['"]linux['"][\s\S]*?process\.env\.APPIMAGE/);
-    expect(updaterSource).toMatch(/process\.platform === ['"]win32['"][\s\S]*?PORTABLE_EXECUTABLE_FILE/);
+    expect(updaterSource).toMatch(
+      /process\.platform === ['"]linux['"][\s\S]*?process\.env\.APPIMAGE/,
+    );
+    expect(updaterSource).toMatch(
+      /process\.platform === ['"]win32['"][\s\S]*?PORTABLE_EXECUTABLE_FILE/,
+    );
     expect(updaterSource).toContain('autoUpdater.allowPrerelease = true');
     expect(updaterSource).toContain('autoUpdater.checkForUpdates()');
   });

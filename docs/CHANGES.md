@@ -33,6 +33,9 @@
 - Kept the AI terminal fixture's accelerated polling on a real wall clock. Its previous synthetic
   clock compressed a nominal 25-second tool timeout to roughly 2.5 seconds and made the release
   browser gate fail under ordinary hosted-runner contention.
+- Made Electron preparation execute TypeScript and the MCP builder through Node's JavaScript entry
+  points. Windows no longer asks `spawnSync` to execute a `.cmd` shell shim while explicitly
+  disabling the shell.
 - Kept automatic beta-channel updates for Windows NSIS and Linux AppImage. Windows portable and
   Linux DEB update manually. The unsigned macOS beta also updates manually because macOS requires
   code signing for electron-updater.

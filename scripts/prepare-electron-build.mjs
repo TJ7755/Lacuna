@@ -2,14 +2,13 @@ import { existsSync, renameSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const commands = [
-  ['tsc', ['-p', 'electron/tsconfig.json']],
-  ['tsc', ['-p', 'electron/tsconfig.preload.json']],
-  ['bun', ['run', 'build:mcp']],
+  [process.execPath, ['node_modules/typescript/bin/tsc', '-p', 'electron/tsconfig.json']],
+  [process.execPath, ['node_modules/typescript/bin/tsc', '-p', 'electron/tsconfig.preload.json']],
+  [process.execPath, ['electron/mcp/build.mjs']],
 ];
 
 for (const [command, args] of commands) {
-  const executable = command === 'tsc' && process.platform === 'win32' ? 'tsc.cmd' : command;
-  const result = spawnSync(executable, args, { stdio: 'inherit', shell: false });
+  const result = spawnSync(command, args, { stdio: 'inherit', shell: false });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
