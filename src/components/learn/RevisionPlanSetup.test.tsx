@@ -7,8 +7,11 @@ import {
   createCourseAssessment,
   createLesson,
   createLessonCard,
+  createOrResumeRevisionPlan,
+  updateCourseAssessment,
   upsertLessonCardExposure,
 } from '../../db/repository';
+import { revisionProjection } from '../../course/revisionProjection';
 import { RevisionPlanSetup } from './RevisionPlanSetup';
 
 async function reset() {
@@ -72,5 +75,26 @@ describe('RevisionPlanSetup', () => {
         updated?.windows.find((window) => window.day !== created?.windows[0].day)?.budgetMinutes,
       ).toBe(35);
     });
+  });
+
+  it('does not refresh an old revision plan after its final target switches to steady retention', async () => {
+    const course = await createCourse('Spanish');
+    const assessment = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .filter((candidate) => candidate.kind === 'final')
+      .first();
+    expect(assessment).toBeDefined();
+    await createOrResumeRevisionPlan(assessment!.id, 20, revisionProjection);
+    await updateCourseAssessment(assessment!.id, { schedulingMode: 'steady' });
+
+    render(
+      <RevisionPlanSetup assessmentId={assessment!.id} onStart={vi.fn()} onExit={vi.fn()} />,
+    );
+
+    expect(
+      await screen.findByText('Steady retention has no deadline, so it does not use a revision plan.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Revision unavailable')).not.toBeInTheDocument();
   });
 });

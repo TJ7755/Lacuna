@@ -36,7 +36,10 @@ export function UpcomingAssessmentsStrip({
   // Future-only, nearest first — the same comparison assessmentPracticeOptions
   // and nearestExamDate use elsewhere for "is this assessment still ahead of us".
   const upcoming = assessments
-    .filter((assessment) => assessment.examDate > now)
+    .filter(
+      (assessment): assessment is CourseAssessment & { examDate: number } =>
+        assessment.examDate !== undefined && assessment.examDate > now,
+    )
     .sort((left, right) => left.examDate - right.examDate);
 
   if (upcoming.length === 0) return null;
@@ -56,7 +59,9 @@ export function UpcomingAssessmentsStrip({
         >
           <FlagIcon width={14} height={14} className="shrink-0 text-ink-faint" />
           <span className="font-medium text-ink">{assessment.name}</span>
-          <span className="text-ink-faint">{formatDate(assessment.examDate, assessment.timeZone)}</span>
+          <span className="text-ink-faint">
+            {formatDate(assessment.examDate, assessment.timeZone)}
+          </span>
         </button>
       ))}
     </div>

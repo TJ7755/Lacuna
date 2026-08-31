@@ -206,7 +206,7 @@ describe('revision plan lifecycle', () => {
   it('archives an elapsed plan and makes its schedule read-only', async () => {
     const f = await fixture();
     const plan = await createOrResumeRevisionPlan(f.assessment.id, 20, fallback, f.now);
-    const elapsed = f.assessment.examDate + 1;
+    const elapsed = f.assessment.examDate! + 1;
     const archived = await refreshRevisionPlan(plan.id, fallback, elapsed);
 
     expect(archived.status).toBe('completed');

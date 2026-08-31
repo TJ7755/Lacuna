@@ -71,7 +71,8 @@ export function assessmentPracticePool(
   context: Omit<AssessmentPracticeContext, 'assessments' | 'course'> & { course: Course },
 ): Card[] {
   const now = context.now ?? Date.now();
-  if (context.course.archived || assessment.examDate <= now) return [];
+  const examDate = assessment.examDate;
+  if (context.course.archived || examDate === undefined || examDate <= now) return [];
   const reachedAndExposed = practiceCardScope(
     context.cards,
     context.links,
@@ -102,7 +103,7 @@ export function assessmentPracticePool(
     (card) =>
       assessmentCardIds.has(card.id) &&
       isAvailable(card, now) &&
-      rAtExam(card, assessment.examDate, now, decay) < MASTERY_R,
+      rAtExam(card, examDate, now, decay) < MASTERY_R,
   );
 }
 
@@ -115,7 +116,10 @@ export function assessmentPracticeOptions(
   const now = context.now ?? Date.now();
   const triggerCardIds = new Set(triggerScope.map((card) => card.id));
   return context.assessments
-    .filter((assessment) => assessment.examDate > now)
+    .filter(
+      (assessment): assessment is CourseAssessment & { examDate: number } =>
+        assessment.examDate !== undefined && assessment.examDate > now,
+    )
     .sort(
       (left, right) =>
         left.examDate - right.examDate ||

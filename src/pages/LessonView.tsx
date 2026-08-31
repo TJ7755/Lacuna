@@ -215,7 +215,11 @@ export function LessonView({
           Study action. */}
       <CourseHeader
         className="mb-8"
-        eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
+        eyebrow={
+          nearestExam === undefined
+            ? 'Steady retention'
+            : `Exam ${formatDate(nearestExam, course.timeZone)}`
+        }
         examUrgent={examUrgent}
         title={lesson.name}
         onRename={
@@ -239,7 +243,11 @@ export function LessonView({
           <HeaderStats
             dueCount={lessonDueCount}
             masteryPct={Math.round(lessonMastery * 100)}
-            daysToExam={Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)}
+            daysToExam={
+              nearestExam === undefined
+                ? undefined
+                : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
+            }
             totalCards={lessonCards.length}
             unseenCount={lessonCards.filter((c) => c.lastReviewed === null || c.state === 0).length}
           />

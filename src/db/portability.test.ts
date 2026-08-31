@@ -265,6 +265,21 @@ describe('exportDatabase', () => {
     expect(backup.courseExamDates).toBeUndefined();
   });
 
+  it('preserves steady retention through backup replacement', async () => {
+    const course = await createCourse('Spanish', { schedulingMode: 'steady' });
+    const backup = await exportDatabase();
+
+    await importBackup(backup, 'replace');
+
+    const [finalAssessment] = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .toArray();
+    expect(finalAssessment).toMatchObject({ schedulingMode: 'steady' });
+    expect(finalAssessment).not.toHaveProperty('examDate');
+    expect(await db.schedulingUnits.get(course.id)).not.toHaveProperty('examDate');
+  });
+
   it('preserves final and checkpoint identities through replace restore', async () => {
     const course = await createCourse('Chemistry');
     const lesson = await createLesson(course.id, 'Bonding');
@@ -663,7 +678,7 @@ describe('importBackup', () => {
           id: checkpoint.id,
           courseId: course.id,
           name: checkpoint.name,
-          examDate: checkpoint.examDate,
+          examDate: checkpoint.examDate!,
           lessonIds: [lesson.id],
           createdAt: checkpoint.createdAt,
         },
@@ -690,13 +705,13 @@ describe('importBackup', () => {
     // millisecond (the merge tie-break favours the backup, so local must be
     // unambiguously newer).
     await db.schedulingUnits.update(deck.id, {
-      examDate: deck.examDate + 1000,
+      examDate: deck.examDate! + 1000,
       lastInteractedAt: (deck.lastInteractedAt ?? deck.createdAt) + 1000,
     });
     await importBackup(backup, 'merge');
 
     const updated = await db.schedulingUnits.get(deck.id);
-    expect(updated!.examDate).toBe(deck.examDate + 1000); // local wins because more recently interacted
+    expect(updated!.examDate).toBe(deck.examDate! + 1000); // local wins because more recently interacted
   });
 
   it('keeps same-event reviews from different cards when merging', async () => {

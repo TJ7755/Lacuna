@@ -10,15 +10,12 @@ import {
   MilestoneIcon,
 } from '../ui/icons';
 import { cn } from '../ui/cn';
-import {
-  useCourseHeaderSettings,
-  type CourseStatId,
-} from '../../state/courseHeaderSettings';
+import { useCourseHeaderSettings, type CourseStatId } from '../../state/courseHeaderSettings';
 
 export interface HeaderStatsProps {
   dueCount: number;
   masteryPct: number;
-  daysToExam: number;
+  daysToExam?: number;
   totalCards: number;
   unseenCount: number;
   /** Lesson progress within a course — omit on LessonView, which has no path. */
@@ -105,8 +102,22 @@ export function HeaderStats({
       <Pill
         key="exam"
         icon={<CalendarClockIcon width={15} height={15} />}
-        value={daysToExam <= 0 ? 'Exam day' : String(Math.max(daysToExam, 0))}
-        label={daysToExam <= 0 ? 'is here' : daysToExam === 1 ? 'day to go' : 'days to go'}
+        value={
+          daysToExam === undefined
+            ? 'Ongoing'
+            : daysToExam <= 0
+              ? 'Exam day'
+              : String(Math.max(daysToExam, 0))
+        }
+        label={
+          daysToExam === undefined
+            ? 'retention'
+            : daysToExam <= 0
+              ? 'is here'
+              : daysToExam === 1
+                ? 'day to go'
+                : 'days to go'
+        }
       />
     ),
     lessons: lessonProgress ? (
@@ -150,5 +161,4 @@ export function HeaderStats({
       {pills}
     </div>
   );
-
 }

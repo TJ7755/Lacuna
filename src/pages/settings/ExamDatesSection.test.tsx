@@ -126,4 +126,24 @@ describe('ExamDatesSection', () => {
     expect(screen.getByText('Path position')).toBeInTheDocument();
     expect(screen.getByText('Coverage')).toBeInTheDocument();
   });
+
+  it('changes the final assessment to steady retention without retaining its date', async () => {
+    mockExamDates = [{ ...mockExamDate, id: 'final-1', kind: 'final', name: 'Final exam' }];
+    render(<ExamDatesSection courseId="course-1" />);
+
+    fireEvent.click(screen.getByLabelText('Edit Final exam'));
+    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(updateCourseAssessment).toHaveBeenCalledWith(
+        'final-1',
+        expect.objectContaining({
+          schedulingMode: 'steady',
+          examDate: undefined,
+          timeZone: undefined,
+        }),
+      ),
+    );
+  });
 });

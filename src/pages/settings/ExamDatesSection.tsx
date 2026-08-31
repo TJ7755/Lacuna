@@ -86,7 +86,10 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
       if (editingId === id) cancel();
       setConfirmDeleteId(null);
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not delete the assessment.', 'negative');
+      notify(
+        error instanceof Error ? error.message : 'Could not delete the assessment.',
+        'negative',
+      );
     }
   }
 
@@ -115,8 +118,10 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
                   )}
                 </div>
                 <div className="mt-0.5 text-xs text-ink-faint">
-                  {formatDateTime(assessment.examDate, assessment.timeZone ?? timeZone)} ·{' '}
-                  {resolved.coveredLessons.length} lesson
+                  {assessment.examDate === undefined
+                    ? 'Steady retention'
+                    : formatDateTime(assessment.examDate, assessment.timeZone ?? timeZone)}{' '}
+                  · {resolved.coveredLessons.length} lesson
                   {resolved.coveredLessons.length === 1 ? '' : 's'} · {resolved.cards.length} card
                   {resolved.cards.length === 1 ? '' : 's'}
                 </div>

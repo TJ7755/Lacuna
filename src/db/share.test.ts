@@ -208,6 +208,26 @@ describe('share codes', () => {
 });
 
 describe('course share codes (v2)', () => {
+  it('round-trips a steady-retention target without inventing a date', async () => {
+    const course = await createCourse('Spanish', { schedulingMode: 'steady' });
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v === 1) throw new Error('expected a course payload');
+
+    expect(payload.course.sm).toBe(1);
+    expect(payload.course.e).toBeUndefined();
+    expect(payload.exams?.find((assessment) => assessment.k === 'f')).toMatchObject({ sm: 1 });
+
+    await reset();
+    const result = await importSharePayload(payload);
+    const [importedFinal] = await db.courseAssessments
+      .where('courseId')
+      .equals(result.courseIds[0])
+      .toArray();
+    expect(importedFinal).toMatchObject({ kind: 'final', schedulingMode: 'steady' });
+    expect(importedFinal).not.toHaveProperty('examDate');
+    expect(await db.schedulingUnits.get(result.courseIds[0])).not.toHaveProperty('examDate');
+  });
+
   it('round-trips structured item payloads without changing their contents', async () => {
     const course = await createCourse('Mathematics');
     const lesson = await createLesson(course.id, 'Algebra');

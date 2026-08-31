@@ -17,7 +17,7 @@ import { dueCards, studyPool } from '../fsrs/eligibility';
 import { nearestExamDate, examIsUrgent } from './path';
 
 export interface CourseHeaderStats {
-  nearestExam: number;
+  nearestExam?: number;
   examUrgent: boolean;
   mastery: number;
   dueCardCount: number;

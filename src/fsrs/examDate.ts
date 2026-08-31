@@ -16,14 +16,14 @@
 //      future (>= now). Once a checkpoint passes it is ignored, so the next-nearest
 //      checkpoint (or the course default) naturally takes over. (Here we use
 //      nearest-future-applicable, NOT a fixed priority.)
-//   3. Otherwise: the course's primary `examDate`.
+//   3. Otherwise: the course's primary `examDate`, if it has one.
 
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
 
 export interface ExamDateContext {
   /** The Course.examDate default, used when nothing nearer applies. */
-  courseExamDate: number;
+  courseExamDate?: number;
   /** Lessons keyed by id, for the lesson-level examDate override lookup. */
   lessonsById: Map<string, Lesson>;
   /** Checkpoints / extra exam dates for the course. */
@@ -40,7 +40,7 @@ export function makeExamDateContext(
   lessonCardLinks: LessonCardLink[] = [],
 ): ExamDateContext {
   return {
-    courseExamDate: course.examDate,
+    ...(course.examDate === undefined ? {} : { courseExamDate: course.examDate }),
     lessonsById: new Map(lessons.map((l) => [l.id, l])),
     courseAssessments: assessments,
     lessonCardLinks,
@@ -70,7 +70,7 @@ export function resolveCardExamDate(
   card: Card,
   ctx: ExamDateContext,
   now: number = Date.now(),
-): number {
+): number | undefined {
   // 1. Lesson override wins outright (past or future).
   if (card.primaryLessonId !== null && card.primaryLessonId !== undefined) {
     const lesson = ctx.lessonsById.get(card.primaryLessonId);
@@ -80,7 +80,13 @@ export function resolveCardExamDate(
   // 2. Nearest applicable future checkpoint.
   let nearest: number | undefined;
   for (const assessment of ctx.courseAssessments) {
-    if (assessment.kind !== 'checkpoint' || assessment.examDate < now) continue;
+    if (
+      assessment.kind !== 'checkpoint' ||
+      assessment.examDate === undefined ||
+      assessment.examDate < now
+    ) {
+      continue;
+    }
     if (!checkpointApplies(assessment, card, ctx)) continue;
     if (nearest === undefined || assessment.examDate < nearest) {
       nearest = assessment.examDate;

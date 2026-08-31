@@ -10,6 +10,7 @@ import type {
   CourseAssessment,
   CoursePerformance,
   CourseRecord,
+  CourseSchedulingMode,
   Grade,
   ItemPayload,
   LineVerdict,
@@ -1219,6 +1220,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export type CreateCourseOptions = Partial<CourseRecord> & {
+  schedulingMode?: CourseSchedulingMode;
   examDate?: number;
   timeZone?: string;
 };
@@ -1227,14 +1229,25 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
   try {
     const createdAt = Date.now();
     const practiceDefaults = readPracticeDefaults();
+    const {
+      schedulingMode = 'exam',
+      examDate: requestedExamDate,
+      timeZone: requestedTimeZone,
+      ...recordOptions
+    } = opts ?? {};
+    if (schedulingMode === 'steady' && requestedExamDate !== undefined) {
+      throw new Error('A steady-retention course cannot also have an exam date.');
+    }
+    const examDate =
+      schedulingMode === 'exam' ? (requestedExamDate ?? defaultExamDate(createdAt)) : undefined;
+    const timeZone =
+      schedulingMode === 'exam' ? (requestedTimeZone ?? getLocalTimeZone()) : undefined;
     const course = stampUpdatedAt(
       {
         id: makeId(),
         name: name.trim() || 'Untitled course',
         description: '',
         createdAt,
-        examDate: defaultExamDate(createdAt),
-        timeZone: getLocalTimeZone(),
         fsrsVersion: FSRS_VERSION,
         fsrsParameters: defaultFsrsParameters(),
         examObjective: 'expectedMarks',
@@ -1243,7 +1256,10 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
         // Share-code import (src/db/share.ts) overrides this to 'study' via opts.
         lessonViewMode: 'edit',
         ...practiceDefaults,
-        ...opts,
+        ...recordOptions,
+        schedulingMode,
+        ...(examDate === undefined ? {} : { examDate }),
+        ...(timeZone === undefined ? {} : { timeZone }),
       } as Course,
       createdAt,
     );
@@ -1252,9 +1268,10 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
       {
         id: makeId(),
         courseId: record.id,
-        name: 'Final exam',
+        name: schedulingMode === 'steady' ? 'Steady retention' : 'Final exam',
         kind: 'final',
-        examDate: course.examDate,
+        schedulingMode,
+        ...(course.examDate === undefined ? {} : { examDate: course.examDate }),
         ...(course.timeZone !== undefined ? { timeZone: course.timeZone } : {}),
         afterLessonId: null,
         coverageMode: 'prefix',
@@ -1751,8 +1768,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
     finalAssessmentForCourse(snapshot.course.id, snapshot.courseAssessments);
     const cardsToRestore = projectCardsForStorage(snapshot.cards);
     const reviewHistoryToRestore =
-      snapshot.reviewHistory ??
-      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
+      snapshot.reviewHistory ?? snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     for (const assessment of snapshot.courseAssessments) {
       if (assessment.courseId !== snapshot.course.id) {
         throw new Error('A course snapshot cannot contain assessments from another course.');
@@ -2105,8 +2121,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
   try {
     const cardsToRestore = projectCardsForStorage(snapshot.cards);
     const reviewHistoryToRestore =
-      snapshot.reviewHistory ??
-      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
+      snapshot.reviewHistory ?? snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     await db.transaction(
       'rw',
       [
@@ -2512,8 +2527,19 @@ function validateAssessmentStructure(assessment: CourseAssessment): void {
   ) {
     throw new Error('An assessment path position must be a lesson id or null.');
   }
-  if (!Number.isFinite(assessment.examDate)) {
-    throw new Error('An assessment date must be a finite timestamp.');
+  if (assessment.kind === 'checkpoint') {
+    if (assessment.schedulingMode === 'steady') {
+      throw new Error('Only the final assessment can use steady retention.');
+    }
+    if (!Number.isFinite(assessment.examDate)) {
+      throw new Error('An assessment date must be a finite timestamp.');
+    }
+  } else if (assessment.schedulingMode === 'steady') {
+    if (assessment.examDate !== undefined || assessment.timeZone !== undefined) {
+      throw new Error('Steady retention cannot store an exam date or time zone.');
+    }
+  } else if (!Number.isFinite(assessment.examDate)) {
+    throw new Error('An exam-targeted final assessment must have a finite timestamp.');
   }
   if (
     assessment.needsAuthorConfirmation !== undefined &&
@@ -2664,6 +2690,10 @@ export async function updateCourseAssessment(
           courseId: existing.courseId,
           createdAt: existing.createdAt,
         } as CourseAssessment);
+        if (updated.kind === 'final' && updated.schedulingMode === 'steady') {
+          delete updated.examDate;
+          delete updated.timeZone;
+        }
         validateAssessmentStructure(updated);
         await validateAssessmentReferences(updated);
         const assessments = await db.courseAssessments
@@ -2732,6 +2762,10 @@ async function resolveCurrentRevisionInput(
 ) {
   const assessment = await db.courseAssessments.get(assessmentId);
   if (!assessment) throw new Error('The assessment could not be found.');
+  if (assessment.examDate === undefined) {
+    throw new Error('Steady retention does not have an assessment deadline.');
+  }
+  const datedAssessment = assessment as CourseAssessment & { examDate: number };
   const [courseRecord, assessments, lessons, cards, links, exposures, completions] =
     await Promise.all([
       db.courses.get(assessment.courseId),
@@ -2758,9 +2792,9 @@ async function resolveCurrentRevisionInput(
     now,
   }).reachedLessonIds;
   return {
-    assessment,
+    assessment: datedAssessment,
     resolved: resolveRevisionPlanInput({
-      assessment,
+      assessment: datedAssessment,
       lessons,
       cards: hydratedCards,
       links,

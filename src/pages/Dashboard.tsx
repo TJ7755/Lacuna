@@ -64,7 +64,10 @@ export function Dashboard() {
         );
         break;
       case 'exam':
-        sorted.sort((a, b) => a.examDate - b.examDate);
+        sorted.sort(
+          (a, b) =>
+            (a.examDate ?? Number.POSITIVE_INFINITY) - (b.examDate ?? Number.POSITIVE_INFINITY),
+        );
         break;
       case 'name':
         sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -207,7 +210,8 @@ export function Dashboard() {
         <section className="mt-10 rounded-2xl border border-line bg-surface p-6">
           <h2 className="font-display text-xl">Archived courses</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Archived courses stay on this device but are excluded from the dashboard and Review today.
+            Archived courses stay on this device but are excluded from the dashboard and Review
+            today.
           </p>
           <ul className="mt-4 flex flex-col gap-2">
             {archivedCourses.map((course) => (
@@ -435,10 +439,7 @@ function CourseSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5"
-        >
+        <div key={i} className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5">
           <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
           <div className="mb-4 h-7 w-3/4 animate-pulse rounded bg-ink/10" />
           <div className="mt-auto">
@@ -454,15 +455,9 @@ function CourseSkeleton() {
   );
 }
 
-function EmptyState({
-  onCreateCourse,
-}: {
-  onCreateCourse: () => void;
-}) {
+function EmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
   return (
-    <div
-      className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center"
-    >
+    <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center">
       <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
       <div className="relative">
         <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm shadow-accent/20">

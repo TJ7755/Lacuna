@@ -137,6 +137,41 @@ describe('createCourse', () => {
     expect(course.autoPractice).toBe(false);
   });
 
+  it('persists steady retention without an invented final date', async () => {
+    const course = await createCourse('Spanish', { schedulingMode: 'steady' });
+    const [finalAssessment] = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .toArray();
+    const schedulingUnit = await db.schedulingUnits.get(course.id);
+
+    expect(course.schedulingMode).toBe('steady');
+    expect(course).not.toHaveProperty('examDate');
+    expect(finalAssessment).toMatchObject({ kind: 'final', schedulingMode: 'steady' });
+    expect(finalAssessment).not.toHaveProperty('examDate');
+    expect(schedulingUnit).not.toHaveProperty('examDate');
+  });
+
+  it('can replace a dated final target with steady retention', async () => {
+    const course = await createCourse('Spanish');
+    const [finalAssessment] = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .toArray();
+
+    await updateCourseAssessment(finalAssessment.id, {
+      schedulingMode: 'steady',
+      examDate: undefined,
+      timeZone: undefined,
+    });
+
+    const updatedFinal = await db.courseAssessments.get(finalAssessment.id);
+    expect(updatedFinal).toMatchObject({ schedulingMode: 'steady' });
+    expect(updatedFinal).not.toHaveProperty('examDate');
+    expect(updatedFinal).not.toHaveProperty('timeZone');
+    expect(await db.schedulingUnits.get(course.id)).not.toHaveProperty('examDate');
+  });
+
   it('seeds practice fields from the global practice defaults', async () => {
     const { writePracticeDefaults } = await import('../state/practiceDefaults');
     writePracticeDefaults({
@@ -165,7 +200,7 @@ describe('createCourse', () => {
 
   it('keeps compatibility fields out of course writes and updates the final explicitly', async () => {
     const course = await createCourse('Biology');
-    const movedDate = course.examDate + 86_400_000;
+    const movedDate = course.examDate! + 86_400_000;
     const final = await db.courseAssessments
       .where('courseId')
       .equals(course.id)
@@ -190,7 +225,7 @@ describe('createCourse', () => {
   it('rejects compatibility date fields at the course repository boundary', async () => {
     const course = await createCourse('Biology');
     await expect(
-      updateCourse(course.id, { examDate: course.examDate + 1 } as Parameters<
+      updateCourse(course.id, { examDate: course.examDate! + 1 } as Parameters<
         typeof updateCourse
       >[1]),
     ).rejects.toThrow('derived, read-only assessment values');
