@@ -2767,7 +2767,8 @@ than exposing GitHub's updater metadata as user choices.
   exact default sync relay when a managed-device intermediary strips that response header, and
   manages window lifecycle (single-instance lock, close/minimise/maximise).
 - **Preload** (`electron/preload.ts`): exposes a minimal `electronAPI` via
-  `contextBridge` for platform detection, window controls and the narrow MCP IPC surface.
+  `contextBridge` for platform detection, window controls and narrow, schema-validated data-MCP and
+  local-AI IPC surfaces. Raw Electron IPC and native sockets are never exposed to the renderer.
 - **Titlebar** (`src/components/layout/Titlebar.tsx`): a custom React component which reserves the
   native traffic-light inset and omits duplicate controls on macOS. Windows and Linux render the
   custom minimise, maximise/restore and close controls; the restore glyph uses two complete,
@@ -2796,6 +2797,15 @@ stdio companion attaches to the already-running application through a token-auth
 user-local Unix-domain socket (macOS/Linux) or named pipe (Windows). There is no TCP/HTTP endpoint
 or browser MCP server. The normal renderer window must remain open because it owns IndexedDB.
 Modern SDK v2 and legacy stdio negotiation are both accepted.
+
+The broker has a second purpose-bound attachment for the optional desktop AI panel. An
+`--ai-companion` process exposes exactly `lacuna.connect`, `lacuna.wait_for_message`,
+`lacuna.invoke_tool`, `lacuna.reply` and `lacuna.disconnect`; it cannot call the broader data-MCP
+surface directly. Main-process authentication proves attachment to this installation, while the
+enabled renderer remains the authority for session ownership, Stop, call-id ledgering, course
+creation and destructive one-shot approval. No localhost TCP, HTTP or WebSocket origin is
+introduced. The hosted web build retains its encrypted HTTPS mailbox transport because browsers
+cannot host the native socket.
 
 | Component                      | Pinned version | Compatibility                                                       |
 | ------------------------------ | -------------- | ------------------------------------------------------------------- |

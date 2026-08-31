@@ -17,6 +17,7 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   const [connectionBusy, setConnectionBusy] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const connection = snapshot.connection;
+  const local = window.electronAPI?.isElectron === true && window.electronAPI.ai !== undefined;
   const disconnected = connection.status === 'disconnected' || connection.status === 'pairing';
   const pendingApproval = snapshot.approval?.status === 'pending';
   const stoppableRun =
@@ -25,7 +26,9 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
       : null;
   const connectionLabel =
     connection.status === 'disconnected'
-      ? 'Not connected'
+      ? local
+        ? 'Waiting for terminal'
+        : 'Not connected'
       : connection.status === 'pairing'
         ? 'Waiting for terminal'
         : connection.status === 'quiet'
@@ -138,7 +141,8 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
             connectionError ??
             (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
           }
-          compact={connection.status === 'disconnected' && snapshot.items.length > 0}
+          local={local}
+          compact={!local && connection.status === 'disconnected' && snapshot.items.length > 0}
           onStartPairing={() => {
             setConnectionBusy(true);
             setConnectionError(null);

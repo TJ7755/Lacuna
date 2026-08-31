@@ -14,6 +14,55 @@ beforeEach(() => {
 });
 
 describe('AiConnectionState', () => {
+  it('shows a copyable native companion instruction without offering relay pairing', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        isElectron: true,
+        mcp: {
+          getStatus: vi.fn().mockResolvedValue({
+            running: true,
+            toolCount: 1,
+            toolSurfaceVersion: 1,
+            aiCompanion: {
+              command: 'C:\\Program Files\\Lacuna\\Lacuna.exe',
+              args: ['--ai-companion'],
+            },
+          }),
+        },
+      },
+    });
+    const onStartPairing = vi.fn();
+
+    render(
+      <AiConnectionState
+        pairing={null}
+        busy={false}
+        error={null}
+        local
+        onStartPairing={onStartPairing}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Pairing code')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Connect a terminal' })).toBeInTheDocument();
+    expect(
+      screen.getByText('The desktop app connects locally. No pairing code or internet connection is needed.'),
+    ).toBeVisible();
+
+    const setupPrompt = await screen.findByRole('textbox', { name: 'Terminal setup prompt' });
+    expect((setupPrompt as HTMLTextAreaElement).value).toContain('Program Files');
+    expect((setupPrompt as HTMLTextAreaElement).value).toContain('--ai-companion');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy setup prompt' }));
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith((setupPrompt as HTMLTextAreaElement).value),
+    );
+    expect(onStartPairing).not.toHaveBeenCalled();
+  });
+
   it('offers one focused primary action while disconnected', () => {
     const onStartPairing = vi.fn();
     render(

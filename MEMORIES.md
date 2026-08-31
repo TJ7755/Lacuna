@@ -53,12 +53,13 @@ Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all r
 preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
 and stale-chunk recovery must retain its one-reload guard.
 
-## Web AI chat is not the Electron data MCP server
+## AI and data MCP companions have different authority
 
-The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
-encrypted HTTP relay mailboxes. Its five-tool companion carries chat, Stop and disconnect events
-and asks the browser to execute approved domain tools. The Electron `--mcp-companion` uses local
-IPC; neither surface implies the transport or trust model of the other.
+The web AI panel uses short-lived codes and encrypted relay mailboxes; packaged Electron AI uses a
+purpose-bound local token and `--ai-companion`. Both expose only the five conversation tools and
+leave Stop, call ledgers and exact approvals in the renderer. Electron's separate
+`--mcp-companion` exposes the broader data surface with connection-scoped grants. Never merge those
+tool surfaces merely because they share the authenticated native broker.
 
 ## AI tool results need a real JSON wire projection
 

@@ -82,7 +82,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ) => {
       let active = true;
       let ready = false;
-      let readyTimer: ReturnType<typeof setInterval> | undefined;
       const requestHandler = (_event: unknown, value: unknown) => {
         const envelope = aiRequestEnvelope(value);
         if (!active || !envelope) return;
@@ -111,7 +110,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       };
       const readyHandler = () => {
         ready = true;
-        if (readyTimer) clearInterval(readyTimer);
+        clearInterval(readyTimer);
       };
       ipcRenderer.on('ai:request', requestHandler);
       ipcRenderer.on('ai:disconnected', disconnectHandler);
@@ -120,14 +119,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         if (!ready) ipcRenderer.send('ai:renderer-ready');
       };
       announceReady();
-      readyTimer = setInterval(announceReady, 250);
+      const readyTimer = setInterval(announceReady, 250);
       return () => {
         if (!active) return;
         active = false;
         ipcRenderer.removeListener('ai:request', requestHandler);
         ipcRenderer.removeListener('ai:disconnected', disconnectHandler);
         ipcRenderer.removeListener('ai:renderer-ready-ack', readyHandler);
-        if (readyTimer) clearInterval(readyTimer);
+        clearInterval(readyTimer);
         ipcRenderer.send('ai:renderer-unavailable');
       };
     },

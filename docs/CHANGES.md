@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Local desktop AI transport
+
+- Added a packaged `--ai-companion` with only the five AI conversation tools. Electron now carries
+  AI requests over its authenticated Unix socket or Windows named pipe instead of the HTTPS relay,
+  so a managed network cannot redirect or block the desktop AI connection.
+- Kept web AI on the encrypted relay and kept device sync relay-dependent. The local transport does
+  not claim that model inference is local and does not bypass operating-system policies which ban
+  unsigned applications.
+- Kept the renderer authoritative for optional-AI enablement, one active companion, Stop, call-id
+  ledgering and exact one-shot approvals. Native requests fail closed before the renderer listener
+  mounts and after it disposes; long message waits are cancellable across disconnect and shutdown.
+- Replaced Electron's redundant pairing action with one copyable setup prompt containing the
+  installed or portable companion command. Browser builds retain their short-lived pairing code.
+- Corrected Windows portable companion discovery to advertise the stable wrapper executable rather
+  than electron-builder's temporary extraction path.
+
+**Checks:** red-to-green purpose-bound authentication, malformed-message, portable-command,
+renderer lifecycle, single-owner, Stop and local/web runtime-selection regressions; native
+companion smoke; full unit, typecheck, lint and production builds; desktop and mobile browser
+screenshots; packaged Electron verification.
+
 ### Desktop AI and Settings reliability
 
 - Kept the router and application shell mounted while optional AI starts or stops. Toggling AI no
