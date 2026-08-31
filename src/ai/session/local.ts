@@ -568,6 +568,12 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
     activate() {
       if (active) return;
       active = true;
+      if (
+        snapshot.connection.status === 'disconnected' &&
+        snapshot.connection.reason === 'AI was disabled.'
+      ) {
+        publish({ ...snapshot, connection: { status: 'disconnected' } });
+      }
       stopListening = options.source.listen(handleRequest, (channelId) => {
         if (channelId === ownerChannelId) recoverDisconnectedState('Terminal disconnected');
       });

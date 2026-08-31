@@ -41,6 +41,23 @@ describe('local AI session', () => {
     });
   });
 
+  it('clears the disabled reason when the same runtime is activated again', () => {
+    const transport = requestSource();
+    const session = createLocalAiSession({ source: transport.source });
+
+    session.activate();
+    session.dispose();
+    expect(session.getSnapshot().connection).toEqual({
+      status: 'disconnected',
+      reason: 'AI was disabled.',
+    });
+
+    session.activate();
+
+    expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
+    expect(transport.listening()).toBe(true);
+  });
+
   it('connects one purpose-bound companion and completes a message through the AiSession seam', async () => {
     const transport = requestSource();
     const session = createLocalAiSession({
