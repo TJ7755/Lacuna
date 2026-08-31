@@ -2747,7 +2747,7 @@ menu.
 
 ## 19. Electron desktop build
 
-Lacuna can be packaged as a standalone desktop application via Electron. The v0.2.0 beta matrix is
+Lacuna can be packaged as a standalone desktop application via Electron. The current beta matrix is
 Windows x64 NSIS and portable, Linux x64 AppImage and DEB, and macOS arm64 DMG and ZIP.
 The Electron layer lives in `electron/` and wraps the existing Vite SPA without
 modifying the renderer source.

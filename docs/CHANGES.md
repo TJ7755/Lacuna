@@ -1,6 +1,8 @@
-# Lacuna — version 0.2.0
+# Lacuna — version 0.2.1
 
-## Unreleased — mobile edge navigation
+## 0.2.1 beta — desktop onboarding and reliability
+
+### Mobile edge navigation
 
 - Added a deliberate left-edge rightward swipe to open the mobile navigation drawer. It is limited
   to touch at the mobile breakpoint, ignores interactive targets and rejects vertical or ambiguous
@@ -12,7 +14,7 @@
 **Checks:** red-to-green drawer-opening and gesture-rejection regressions; existing course-section
 swipe regressions; web typecheck and focused lint.
 
-## Unreleased — packaged-app network bootstrap
+### Packaged-app network bootstrap
 
 - Made Electron repair CORS response headers for the exact default sync relay and exact packaged
   renderer origin. This keeps sync working when a managed-device proxy strips the unusual
@@ -28,7 +30,7 @@ swipe regressions; web typecheck and focused lint.
 **Checks:** red-to-green exact-relay CORS, hosted-font and service-worker protocol regressions;
 focused unit tests, typecheck, focused lint and production asset build.
 
-## Unreleased — unlocked sync channel deletion
+### Unlocked sync channel deletion
 
 - Fixed the Device sync deletion path when the device already remembers its unlocked credentials.
   The existing destructive confirmation now purges with that authenticated write-token capability
@@ -41,7 +43,7 @@ focused unit tests, typecheck, focused lint and production asset build.
 **Checks:** red-to-green Settings deletion regression, credential-boundary purge and mismatch tests;
 focused unit tests, web typecheck and focused lint.
 
-## Unreleased — public download journey
+### Public download journey
 
 - Added an operating-system-aware download page with direct links to supported release artefacts.
   Managed Windows computers receive the portable build as the primary recommendation; installer,
@@ -57,7 +59,7 @@ focused unit tests, web typecheck and focused lint.
 trailing slash), public route transition and browser first-launch tests; web typecheck and focused
 unit tests.
 
-## Unreleased — Windows packaging polish
+### Windows packaging polish
 
 - Corrected the Windows maximise/restore control's incomplete restore outline without changing the
   established caption-button sizing or placement.
@@ -69,7 +71,7 @@ unit tests.
 **Checks:** red-to-green titlebar glyph and portable splash configuration tests; Electron builder
 configuration validation, typecheck and focused lint.
 
-## Unreleased — MCP setup guidance
+### MCP setup guidance
 
 - Expanded the copied AI terminal pairing instruction with a fallback to the README's terminal
   companion setup when `lacuna.wait_for_message` is unavailable, including the need to restart the

@@ -15,9 +15,9 @@ electron-builder writes unpacked application directories beside installers in `r
 Keep the release workflow's per-platform installer, blockmap and update-metadata allowlists; macOS
 artefacts join the same draft only after the Windows/Linux publisher finishes.
 
-## The v0.2.0 desktop channel is an unsigned beta
+## The desktop release channel is an unsigned beta
 
-GitHub marks `v0.2.0` as a pre-release and the application deliberately follows prereleases.
+GitHub marks desktop beta releases as pre-releases and the application deliberately follows them.
 Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and unsigned macOS builds
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.

@@ -8,6 +8,12 @@ afterEach(() => {
 });
 
 describe('desktop download selection', () => {
+  it('links to the current desktop release', () => {
+    expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.1/');
+    expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.1/');
+    expect(DOWNLOADS.linuxAppImage).toContain('/releases/download/v0.2.1/');
+  });
+
   it('detects supported desktop platforms without mistaking Android for Linux', () => {
     expect(detectDesktopPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('windows');
     expect(detectDesktopPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')).toBe('macos');

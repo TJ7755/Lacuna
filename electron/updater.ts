@@ -20,7 +20,7 @@ export function initAutoUpdater(): void {
   }
 
   autoUpdater.logger = log;
-  // v0.2.0 is a beta; disable this for the first stable release channel.
+  // The desktop channel is a beta; disable this for the first stable release.
   autoUpdater.allowPrerelease = true;
 
   autoUpdater.on('error', (err) => {
