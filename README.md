@@ -143,7 +143,7 @@ bun run electron:build:linux  # Linux x64 AppImage + DEB
 bun run electron:build:mac    # macOS arm64 DMG + ZIP
 ```
 
-The Electron layer lives in `electron/` and adds a custom titlebar, local font
+The Electron layer lives in `electron/` and adds a platform-aware titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 `electron-updater`. It also hosts an authenticated local **Model Context Protocol (MCP)**
 companion, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, Cards,
