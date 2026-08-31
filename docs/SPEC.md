@@ -1563,7 +1563,9 @@ what the prompt asks for and all a bare item carries. A count mismatch applies n
 pairing the wrong items. Revision replies are read more leniently than a first batch — a bare item,
 a bare array, a missing wrapper or a missing closing delimiter are all accepted, because the tutor
 already knows how many items they asked about — but every item still passes through the unchanged
-staging validation.
+staging validation. Focus returns to the batch revision trigger when it remains available; if
+successful revisions remove every failure and therefore remove that trigger, focus moves to
+**Accept all clean** instead.
 Acceptance calls `createBatchFixedQuestion`, which resolves the named Concept graph and delegates to
 the ordinary Question repository transaction; staging has no second persistence model. The MCP
 `lacuna.create_fixed_question` and `lacuna.update_fixed_question` tools accept the same numeric and
@@ -1650,8 +1652,10 @@ Simple mode):
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
   events list, and deletes the written `SessionHistory` row. Every recorded FSRS answer exposes
-  this through a short-lived **Undo** toast as well as the `U` shortcut; no toast is shown when
-  the write was skipped or rejected.
+  this through a short-lived **Undo** toast as well as the `U` shortcut while the session remains
+  active. An answer that finalises the session exposes no stale Undo action: completion has already
+  closed the single-answer reversal boundary while committing milestone, revision-window and unlock
+  state. No toast is shown when the write was skipped or rejected either.
 - **Focus Mode** (F): hides the shared Learn header without moving the card. Reaching the
   top edge reveals the controls temporarily; on touch, the top-edge affordance can be tapped.
   `Esc` leaves Focus Mode. Settings can make new Learn sessions start focused without changing
