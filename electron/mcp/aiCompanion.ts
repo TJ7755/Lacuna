@@ -33,6 +33,7 @@ import { readCompanionConnectionFile } from './connectionFile.js';
 const CONNECT_TIMEOUT_MS = 3_000;
 const REQUEST_GRACE_MS = 5_000;
 const DEFAULT_WAIT_MS = MAX_AI_WAIT_MS;
+const WRITE_DRAIN_TIMEOUT_MS = MAX_AI_WAIT_MS + (REQUEST_GRACE_MS * 2);
 
 interface ActiveRun {
   runId: string;
@@ -58,12 +59,14 @@ function silenceStdoutNoise(): void {
   console.debug = toStderr;
 }
 
-class LocalAiAppClient {
+export class LocalAiAppClient {
   private socket: Socket | null = null;
   private connecting: Promise<void> | null = null;
   private readonly pending = new Map<string, PendingRequest>();
   private connectionId: string | null = null;
   private activeRun: ActiveRun | null = null;
+
+  constructor(private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS) {}
 
   async connect(identity: AiClientIdentity, signal: AbortSignal): Promise<object> {
     if (this.connectionId) throw new Error('Lacuna AI is already connected.');
@@ -115,6 +118,7 @@ class LocalAiAppClient {
       call: { name: toolName, input },
     }, timeoutMs + REQUEST_GRACE_MS, signal);
     if (!result.ok) {
+      if (result.error.kind === 'unavailable') this.close();
       if (result.error.kind === 'tool') return { ok: false, error: result.error.error };
       throw new Error(result.error.message);
     }
@@ -199,6 +203,7 @@ class LocalAiAppClient {
     type: string,
   ): Record<string, unknown> {
     if (!result.ok) {
+      if (result.error.kind === 'unavailable') this.close();
       throw new Error(result.error.kind === 'tool' ? result.error.error.message : result.error.message);
     }
     if (result.data.type !== type) throw new Error('Lacuna returned the wrong AI response.');
@@ -219,22 +224,35 @@ class LocalAiAppClient {
     if (signal?.aborted) throw new Error('The Lacuna AI request was cancelled.');
     const id = randomUUID();
     return new Promise((resolve, reject) => {
+      const drainAfterCancellation = request.type === 'invoke_tool' || request.type === 'reply';
       const abort = () => {
         clearTimeout(timeout);
-        this.pending.delete(id);
-        this.close();
+        if (!drainAfterCancellation) {
+          this.pending.delete(id);
+          this.close();
+        } else {
+          this.armWriteDrainTimeout(id);
+        }
         reject(new Error('The Lacuna AI request was cancelled.'));
       };
       const timeout = setTimeout(() => {
         signal?.removeEventListener('abort', abort);
-        this.pending.delete(id);
-        this.close();
+        if (!drainAfterCancellation) {
+          this.pending.delete(id);
+          this.close();
+        } else {
+          this.armWriteDrainTimeout(id);
+        }
         reject(new Error('Lacuna did not answer the local AI companion in time.'));
       }, timeoutMs);
       this.pending.set(id, {
         timeout,
         resolve: (result) => {
           signal?.removeEventListener('abort', abort);
+          if (request.type === 'reply' && result.ok && result.data.type === 'reply_recorded' &&
+            this.activeRun?.runId === request.runId) {
+            this.activeRun = null;
+          }
           resolve(result);
         },
         reject: (error) => {
@@ -245,6 +263,16 @@ class LocalAiAppClient {
       signal?.addEventListener('abort', abort, { once: true });
       this.socket!.write(encodeCompanionMessage({ type: 'ai_request', id, request }));
     });
+  }
+
+  private armWriteDrainTimeout(id: string): void {
+    const pending = this.pending.get(id);
+    if (!pending) return;
+    clearTimeout(pending.timeout);
+    pending.timeout = setTimeout(() => {
+      if (!this.pending.delete(id)) return;
+      this.close();
+    }, this.writeDrainTimeoutMs);
   }
 
   private async open(): Promise<void> {

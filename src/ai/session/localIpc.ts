@@ -7,6 +7,9 @@ export function createElectronLocalAiRequestSource(
 ): LocalAiRequestSource {
   const api = providedApi ?? electronAiApi();
   return {
+    disconnect(channelId) {
+      api?.disconnect(channelId);
+    },
     listen(handler, onDisconnected) {
       if (!api) return () => undefined;
       return api.listen(handler, onDisconnected);

@@ -21,6 +21,7 @@ declare global {
       onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
       ai?: {
         readonly protocolVersion: 1;
+        disconnect: (channelId: string) => void;
         listen: (
           onRequest: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
           onDisconnected: (channelId: string) => void,

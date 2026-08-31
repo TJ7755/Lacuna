@@ -36,6 +36,7 @@ interface LocalMessage extends AiUserMessage {
 }
 
 export interface LocalAiRequestSource {
+  disconnect?(channelId: string): void;
   listen(
     handler: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
     onDisconnected: (channelId: string) => void,
@@ -726,7 +727,9 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
       return { ok: true, data: undefined };
     },
     async resetConnection() {
+      const disconnectedChannelId = ownerChannelId;
       recoverDisconnectedState();
+      if (disconnectedChannelId) options.source.disconnect?.(disconnectedChannelId);
       return { ok: true, data: undefined };
     },
   };

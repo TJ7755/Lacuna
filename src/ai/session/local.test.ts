@@ -9,7 +9,9 @@ function requestSource() {
     | ((channelId: string, request: AiBridgeRequest) => Promise<unknown>)
     | undefined;
   let disconnected: ((channelId: string) => void) | undefined;
+  const terminate = vi.fn();
   const source: LocalAiRequestSource = {
+    disconnect: terminate,
     listen(next, onDisconnected) {
       handler = next;
       disconnected = onDisconnected;
@@ -23,6 +25,7 @@ function requestSource() {
     source,
     request: (channelId: string, request: AiBridgeRequest) => handler!(channelId, request),
     disconnect: (channelId: string) => disconnected!(channelId),
+    terminate,
     listening: () => handler !== undefined,
   };
 }
@@ -56,6 +59,54 @@ describe('local AI session', () => {
 
     expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
     expect(transport.listening()).toBe(true);
+  });
+
+  it('terminates an idle companion channel when the user disconnects it', async () => {
+    const transport = requestSource();
+    const session = createLocalAiSession({
+      source: transport.source,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+
+    await expect(session.resetConnection()).resolves.toEqual({ ok: true, data: undefined });
+
+    expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
+    expect(transport.terminate).toHaveBeenCalledOnce();
+    expect(transport.terminate).toHaveBeenCalledWith('channel-1');
+  });
+
+  it('resolves a pending wait and terminates its channel when the user disconnects it', async () => {
+    const transport = requestSource();
+    const session = createLocalAiSession({
+      source: transport.source,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+    const pendingWait = transport.request('channel-1', {
+      type: 'claim_message',
+      connectionId: 'connection-1',
+      timeoutMs: 25_000,
+      leaseMs: 300_000,
+    });
+
+    await session.resetConnection();
+
+    await expect(pendingWait).resolves.toMatchObject({
+      ok: false,
+      error: { kind: 'unavailable', reason: 'disconnected' },
+    });
+    expect(transport.terminate).toHaveBeenCalledWith('channel-1');
   });
 
   it('connects one purpose-bound companion and completes a message through the AiSession seam', async () => {

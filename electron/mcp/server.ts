@@ -60,6 +60,7 @@ import {
 import { authoriseCompanionHello, type CompanionPurpose } from './companionAuth.js';
 import { AiRendererDispatcher } from './aiDispatcher.js';
 import { AiRendererAvailability } from './rendererAvailability.js';
+import { AiChannelRegistry } from './aiChannelRegistry.js';
 
 const RENDERER_TIMEOUT_MS = 10_000;
 
@@ -78,9 +79,13 @@ let stdioHandle: StdioServerHandle | null = null;
 let companionServer: NetServer | null = null;
 let companionConnection: CompanionConnectionFile | null = null;
 const companionSockets = new Set<Socket>();
+const aiCompanionChannels = new AiChannelRegistry();
 const companionClients = new McpConnectionStore();
 const aiDispatcher = new AiRendererDispatcher();
-const aiRendererAvailability = new AiRendererAvailability(() => aiDispatcher.close());
+const aiRendererAvailability = new AiRendererAvailability(() => {
+  aiDispatcher.close();
+  aiCompanionChannels.terminateAll();
+});
 let started = false;
 const pendingConsent = new Map<string, (approved: boolean) => void>();
 const pendingScopes = new Map<string, (response: McpScopeResolutionResponse) => void>();
@@ -97,6 +102,12 @@ function sendAiCompanion(socket: Socket, response: AiCompanionResponse): void {
 function rendererCanHandleAi(getWindow: () => BrowserWindow | null): boolean {
   const window = getWindow();
   return !!window && !window.isDestroyed() && aiRendererAvailability.canHandle(window.webContents);
+}
+
+function rendererSubscriptionId(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : undefined;
 }
 
 function notifyAiDisconnected(channelId: string, getWindow: () => BrowserWindow | null): void {
@@ -124,6 +135,7 @@ async function startCompanionBroker(
     const close = () => {
       closing = true;
       companionSockets.delete(socket);
+      if (aiChannelId) aiCompanionChannels.delete(aiChannelId);
       if (connectionId) companionClients.disconnect(connectionId);
       if (aiChannelId) {
         aiDispatcher.cancelChannel(aiChannelId);
@@ -159,6 +171,7 @@ async function startCompanionBroker(
         if (authoriseCompanionHello(value, 'ai', companionConnection.aiToken)) {
           aiChannelId = randomUUID();
           purpose = 'ai';
+          aiCompanionChannels.add(aiChannelId, socket);
           sendAiCompanion(socket, {
             type: 'ai_ready',
             protocolVersion: companionConnection.protocolVersion,
@@ -201,6 +214,10 @@ async function startCompanionBroker(
               },
             };
         sendAiCompanion(socket, { type: 'ai_result', id: value.id, result });
+        if (value.request.type === 'disconnect' ||
+          (!result.ok && result.error.kind === 'unavailable')) {
+          socket.end();
+        }
         return;
       }
 
@@ -368,6 +385,7 @@ export function getMcpStatus(): McpStatus {
     isPackaged: app.isPackaged,
     platform: process.platform,
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
+    appImageFile: process.env.APPIMAGE,
   };
   return {
     running: started,
@@ -507,15 +525,23 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
     if (!isActiveRendererEvent(event, getWindow) || !isMcpScopeResolutionResponse(response)) return;
     pendingScopes.get(response.id)?.(response);
   });
-  ipcMain.on('ai:renderer-ready', (event) => {
+  ipcMain.on('ai:renderer-ready', (event, value: unknown) => {
     if (!isActiveRendererEvent(event, getWindow)) return;
-    aiRendererAvailability.markReady(event.sender);
-    event.sender.send('ai:renderer-ready-ack');
+    const subscriptionId = rendererSubscriptionId(value);
+    if (subscriptionId === undefined) return;
+    aiRendererAvailability.markReady(event.sender, subscriptionId);
+    event.sender.send('ai:renderer-ready-ack', subscriptionId);
   });
-  ipcMain.on('ai:renderer-unavailable', (event) => {
+  ipcMain.on('ai:renderer-unavailable', (event, value: unknown) => {
     if (!isActiveRendererEvent(event, getWindow)) return;
-    aiRendererAvailability.markUnavailable(event.sender);
-    aiDispatcher.close();
+    const subscriptionId = rendererSubscriptionId(value);
+    if (subscriptionId === undefined) return;
+    aiRendererAvailability.markUnavailable(event.sender, subscriptionId);
+  });
+  ipcMain.on('ai:disconnect-channel', (event, value: unknown) => {
+    if (!isActiveRendererEvent(event, getWindow) || typeof value !== 'string' ||
+      value.length === 0 || value.length > 160) return;
+    aiCompanionChannels.terminate(value);
   });
   ipcMain.on('ai:reply', (event, response: unknown) => {
     if (!isActiveRendererEvent(event, getWindow) || !isAiRendererReply(response)) return;
@@ -588,6 +614,7 @@ export async function stopMcpServer(): Promise<void> {
   ipcMain.removeAllListeners('mcp:scope:reply');
   ipcMain.removeAllListeners('ai:renderer-ready');
   ipcMain.removeAllListeners('ai:renderer-unavailable');
+  ipcMain.removeAllListeners('ai:disconnect-channel');
   ipcMain.removeAllListeners('ai:reply');
   aiRendererAvailability.dispose();
   aiDispatcher.close();
@@ -606,6 +633,7 @@ export async function stopMcpServer(): Promise<void> {
   pendingScopes.clear();
   for (const socket of companionSockets) socket.destroy();
   companionSockets.clear();
+  aiCompanionChannels.terminateAll();
   if (companionServer) {
     await new Promise<void>((resolve) => companionServer!.close(() => resolve()));
     companionServer = null;

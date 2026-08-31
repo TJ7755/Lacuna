@@ -60,6 +60,8 @@ function safeAiResult(value: unknown): AiBridgeResult {
   };
 }
 
+let aiRendererSubscriptionId = 0;
+
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   isElectron: true,
@@ -76,10 +78,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   ai: {
     protocolVersion: 1,
+    disconnect: (channelId: string) => ipcRenderer.send('ai:disconnect-channel', channelId),
     listen: (
       onRequest: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
       onDisconnected: (channelId: string) => void,
     ) => {
+      const subscriptionId = ++aiRendererSubscriptionId;
       let active = true;
       let ready = false;
       const requestHandler = (_event: unknown, value: unknown) => {
@@ -87,14 +91,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         if (!active || !envelope) return;
         void Promise.resolve(onRequest(envelope.channelId, envelope.request))
           .then((result) => {
-            if (active) ipcRenderer.send('ai:reply', {
+            ipcRenderer.send('ai:reply', {
               channelId: envelope.channelId,
               id: envelope.id,
               result: safeAiResult(result),
             });
           })
           .catch(() => {
-            if (active) ipcRenderer.send('ai:reply', {
+            ipcRenderer.send('ai:reply', {
               channelId: envelope.channelId,
               id: envelope.id,
               result: {
@@ -108,7 +112,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         const envelope = aiDisconnectEnvelope(value);
         if (active && envelope) onDisconnected(envelope.channelId);
       };
-      const readyHandler = () => {
+      const readyHandler = (_event: unknown, acknowledgedId: unknown) => {
+        if (acknowledgedId !== subscriptionId) return;
         ready = true;
         clearInterval(readyTimer);
       };
@@ -116,7 +121,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('ai:disconnected', disconnectHandler);
       ipcRenderer.on('ai:renderer-ready-ack', readyHandler);
       const announceReady = () => {
-        if (!ready) ipcRenderer.send('ai:renderer-ready');
+        if (!ready) ipcRenderer.send('ai:renderer-ready', subscriptionId);
       };
       announceReady();
       const readyTimer = setInterval(announceReady, 250);
@@ -127,7 +132,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.removeListener('ai:disconnected', disconnectHandler);
         ipcRenderer.removeListener('ai:renderer-ready-ack', readyHandler);
         clearInterval(readyTimer);
-        ipcRenderer.send('ai:renderer-unavailable');
+        ipcRenderer.send('ai:renderer-unavailable', subscriptionId);
       };
     },
   },

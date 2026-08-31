@@ -9,6 +9,7 @@ describe('Electron local AI request source', () => {
     const unsubscribe = vi.fn();
     const api: LocalAiPreloadApi = {
       protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      disconnect: vi.fn(),
       listen(request, disconnected) {
         onRequest = request;
         onDisconnected = disconnected;
@@ -35,6 +36,8 @@ describe('Electron local AI request source', () => {
     expect(handler).toHaveBeenCalledWith('channel-1', request);
     onDisconnected!('channel-1');
     expect(disconnected).toHaveBeenCalledWith('channel-1');
+    source.disconnect?.('channel-1');
+    expect(api.disconnect).toHaveBeenCalledWith('channel-1');
 
     stop();
     expect(unsubscribe).toHaveBeenCalledOnce();
