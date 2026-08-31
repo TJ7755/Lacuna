@@ -48,12 +48,14 @@ focused unit tests, web typecheck and focused lint.
   DEB, signing and update trade-offs are stated beside the relevant choice.
 - Simplified the welcome page's first decision to opening Lacuna or downloading the desktop app,
   with shared-course import demoted to a text link and desktop prompts omitted inside Electron.
-- Kept first-run routing from replacing an intentional visit to the public download page.
+- Kept first-run routing from replacing an intentional visit to the public download page,
+  including hashes with the router's accepted trailing slash.
 - Kept desktop-download calls to action off phone layouts and made direct mobile visits neutral
   until the visitor chooses the computer where Lacuna will run, rather than defaulting to Windows.
 
-**Checks:** red-to-green download selection, welcome hierarchy, first-run routing and public route
-transition tests; web typecheck and focused unit tests.
+**Checks:** red-to-green download selection, welcome hierarchy, first-run routing (including a
+trailing slash), public route transition and browser first-launch tests; web typecheck and focused
+unit tests.
 
 ## Unreleased — Windows packaging polish
 
@@ -73,11 +75,12 @@ configuration validation, typecheck and focused lint.
   companion setup when `lacuna.wait_for_message` is unavailable, including the need to restart the
   terminal after configuring MCP. The pairing panel now also exposes that setup link directly.
 - Reworked the Teaching memory controls into a cohesive responsive header and preserved Settings
-  scroll position when the optional AI runtime remounts the application shell.
+  scroll position when the optional AI runtime remounts the application shell. Ordinary route
+  changes still reset to the top without persisting the outgoing page position.
 - Removed the redundant Dashboard study banner; course cards still open a resumable course study
   flow, while Review today in the sidebar still opens the shared course-picker sheet.
 
-**Checks:** focused AI, Settings and Dashboard tests.
+**Checks:** focused AI, Settings and Dashboard tests, plus the full browser suite.
 
 ## 0.2.0 beta — release hardening
 

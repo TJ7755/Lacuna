@@ -101,6 +101,7 @@ function renderShell() {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
   mediaQueryState.aiDesktop = true;
   mediaQueryState.mobileViewport = true;
   aiSessionState.current = createInMemoryAiSession();
@@ -253,6 +254,19 @@ describe('AppShell mobile navigation', () => {
     renderShell();
 
     expect(HTMLElement.prototype.scrollTo).toHaveBeenLastCalledWith({ top: 420 });
+  });
+
+  it('does not persist the outgoing page scroll during ordinary navigation', async () => {
+    renderShell();
+    const main = document.querySelector('main');
+    expect(main).not.toBeNull();
+    main!.scrollTop = 420;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Navigate page' }));
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible());
+    expect(sessionStorage.getItem('lacuna-shell-scroll-position')).toBeNull();
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledWith({ top: 0 });
   });
 });
 

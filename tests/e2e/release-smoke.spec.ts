@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 async function openSeededDashboard(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Study for the day that counts.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Create your first course' }).click();
+  await page.getByRole('button', { name: 'Open Lacuna', exact: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
 }

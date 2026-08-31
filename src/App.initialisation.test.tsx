@@ -104,4 +104,15 @@ describe('App initialisation', () => {
     await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/download');
   });
+
+  it('does not redirect a first-time visitor away from a trailing-slash public route', async () => {
+    window.location.hash = '#/download/';
+    dependencies.isFirstRun.mockResolvedValue(true);
+    dependencies.seedIfFirstRun.mockClear();
+
+    render(<App />);
+
+    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    expect(window.location.hash).toBe('#/download/');
+  });
 });

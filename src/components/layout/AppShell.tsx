@@ -65,6 +65,8 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
   const location = useLocation();
+  const currentPathRef = useRef(location.pathname);
+  currentPathRef.current = location.pathname;
   const navigate = useNavigate();
   const outlet = useOutlet();
   const mainRef = useRef<HTMLElement>(null);
@@ -169,11 +171,11 @@ export function AppShell() {
       if (top > 0) {
         sessionStorage.setItem(
           SCROLL_POSITION_KEY,
-          JSON.stringify({ path: location.pathname, top }),
+          JSON.stringify({ path: currentPathRef.current, top }),
         );
       }
     };
-  }, [location.pathname]);
+  }, []);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
