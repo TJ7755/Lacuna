@@ -29,6 +29,7 @@ export const EXAM_EVE_WINDOW_HOURS = 48;
  *  Accepts any SchedulerConfig (a Deck or a Course). */
 export function examEveAvailable(deck: SchedulerConfig, now: number = Date.now()): boolean {
   if (deck.archived) return false;
+  if (deck.examDate === undefined) return false;
   const msUntil = deck.examDate - now;
   return msUntil > 0 && msUntil <= EXAM_EVE_WINDOW_HOURS * 60 * 60 * 1000;
 }
@@ -39,16 +40,11 @@ export function examEveAvailable(deck: SchedulerConfig, now: number = Date.now()
  * under securedTopics, effectively certain under expectedMarks) is pushed below
  * every still-improvable card so cram time is never spent on it.
  */
-export function cramScore(
-  card: Card,
-  oc: ObjectiveContext,
-  now: number = Date.now(),
-): number {
+export function cramScore(card: Card, oc: ObjectiveContext, now: number = Date.now()): number {
   const horizon = cardSchedulingHorizon(card, oc.deck, oc.examDateContext, now);
   const rNo = rAtExam(card, horizon, now, oc.ctx.decay);
 
-  const finished =
-    oc.objective === 'securedTopics' ? rNo >= MASTERY_R : rNo >= 0.999;
+  const finished = oc.objective === 'securedTopics' ? rNo >= MASTERY_R : rNo >= 0.999;
   // Weakest first: 1 - rNo rises as the card gets weaker. Finished cards are
   // shifted into a strictly lower band (negative) so they always rank last.
   return finished ? rNo - 2 : 1 - rNo;

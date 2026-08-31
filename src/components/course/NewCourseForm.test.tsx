@@ -40,13 +40,19 @@ describe('NewCourseForm', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the seven-day local default at 23:59', () => {
+  it('requires an explicit scheduling target before showing an exam date', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     expect(screen.getByRole('dialog', { name: 'New course' }).parentElement?.parentElement).toBe(
       document.body,
     );
-    const picker = screen.getByRole('button', { name: 'Exam date' });
+    expect(screen.getByRole('radio', { name: /Exam date/ })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /Steady retention/ })).not.toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Exam date and time' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
+
+    const picker = screen.getByRole('button', { name: 'Exam date and time' });
     const expected = defaultExamDate(Date.parse('2026-08-11T12:00:00Z'));
     const expectedDate = new Date(expected).toLocaleDateString('en-GB', {
       day: '2-digit',
@@ -56,19 +62,20 @@ describe('NewCourseForm', () => {
     });
 
     expect(picker).toHaveTextContent(`${expectedDate} · 23:59`);
-    expect(screen.getByText('Lacuna schedules this course towards your exam.')).toBeInTheDocument();
   });
 
-  it('keeps ordinary course creation as the default path', async () => {
+  it('creates an exam-targeted course after that target is selected', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText('Course name'), {
       target: { value: 'Biology' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() =>
       expect(mocks.createCourse).toHaveBeenCalledWith('Biology', {
+        schedulingMode: 'exam',
         examDate: defaultExamDate(Date.parse('2026-08-11T12:00:00Z')),
         timeZone: getLocalTimeZone(),
       }),
@@ -77,19 +84,50 @@ describe('NewCourseForm', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course');
   });
 
-  it('passes a changed wall-clock time without shifting its time zone', async () => {
+  it('does not create a named course until its scheduling target is chosen', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText('Course name'), {
       target: { value: 'Biology' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exam date' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose an exam date or steady retention.');
+    expect(screen.getByRole('radio', { name: /Exam date/ })).toHaveFocus();
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+  });
+
+  it('creates a steady-retention course without fabricating an exam date', async () => {
+    render(<NewCourseForm onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+      target: { value: 'Spanish' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() =>
+      expect(mocks.createCourse).toHaveBeenCalledWith('Spanish', {
+        schedulingMode: 'steady',
+      }),
+    );
+  });
+
+  it('passes a changed wall-clock time without shifting its time zone', async () => {
+    render(<NewCourseForm onClose={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+      target: { value: 'Biology' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
     fireEvent.click(screen.getByRole('button', { name: '20 August 2026' }));
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() =>
       expect(mocks.createCourse).toHaveBeenCalledWith('Biology', {
+        schedulingMode: 'exam',
         examDate: fromDateTimeLocalValue('2026-08-20T23:59', getLocalTimeZone()),
         timeZone: getLocalTimeZone(),
       }),
@@ -108,8 +146,9 @@ describe('NewCourseForm', () => {
     fireEvent.change(screen.getByPlaceholderText('Course name'), {
       target: { value: 'Biology' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exam date' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
     const hour = screen.getByRole('textbox', { name: 'Hour' });
     const minute = screen.getByRole('textbox', { name: 'Minute' });
     fireEvent.change(hour, { target: { value: '2' } });
@@ -128,8 +167,9 @@ describe('NewCourseForm', () => {
     fireEvent.change(screen.getByPlaceholderText('Course name'), {
       target: { value: 'Biology' },
     });
+    fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
 
-    const trigger = screen.getByRole('button', { name: 'Exam date' });
+    const trigger = screen.getByRole('button', { name: 'Exam date and time' });
     fireEvent.keyDown(trigger, { key: 'Enter' });
     expect(mocks.createCourse).not.toHaveBeenCalled();
 

@@ -4,11 +4,11 @@ Date: 30 August 2026. Scope: code at commit `3e3ec76`.
 
 ## Delivery status
 
-Implemented on 30 August 2026: QW-1–QW-6 and QW-8–QW-10. The Course-facing terminology
+Implemented on 30–31 August 2026: QW-1–QW-10. The Course-facing terminology
 pass changed the two confirmed live strings in this scope; the other three reported strings
-were compatibility/import wording or had already moved. QW-7 remains open because making an
-exam date optional changes the assessment, scheduler and persistence contract rather than one
-form default. EH, IM and LG findings remain roadmap work.
+were compatibility/import wording or had already moved. QW-7 added a persisted steady-retention
+target across assessments, scheduling units, backup and sharing rather than merely making one form
+field nullable. EH, IM and LG findings remain roadmap work.
 
 The 31 August follow-up removed the stale Undo action from answers that have already finalised a
 session and restored batch-revision focus to **Accept all clean** when successful revisions remove
@@ -26,8 +26,8 @@ verified directly against the source; all evidence below cites files and lines.
 Every finding is rated on two axes:
 
 - **Essential?** — does it block or actively damage the core loop of study, authoring, or
-  trust in a local-first app? *Essential*, *Important*, *Optional*.
-- **Effort** — *small* (hours, localised change), *medium* (a focused arc), *large*
+  trust in a local-first app? _Essential_, _Important_, _Optional_.
+- **Effort** — _small_ (hours, localised change), _medium_ (a focused arc), _large_
   (information-architecture or cross-surface work).
 
 The general picture: the single-card study surface is unusually polished; the friction
@@ -37,60 +37,63 @@ intent and shipped state.
 
 ## Priority matrix
 
+This matrix records the priorities at the time of the audit. QW-1–QW-10 are now delivered, as
+recorded above; the EH, IM and LG rows remain roadmap work.
+
 ### Easiest AND essential — do these first
 
-| # | Finding | Effort |
-| --- | --- | --- |
-| QW-1 | Restore points report wrong "N lessons" count on a safety surface | small |
-| QW-2 | Failed Question start leaves an endless skeleton with no exit | small |
-| QW-3 | "Continue" on the study-flow transition can silently do nothing | small |
-| QW-4 | Card-editor autosave fabricates phantom drafts and can destroy a real one | small |
-| QW-5 | Question working input locks the moment it is checked — no "edit answer" | small |
-| QW-6 | Expose learn-mode undo as a control, not a hidden keyboard shortcut | small |
-| QW-7 | Exam date is a hard gate with a silently invented 7-day default | small–medium |
-| QW-8 | Landing-page CTAs read as disabled/decorative in the light theme | small |
-| QW-9 | Five user-facing "deck" strings on Course-facing screens | small |
-| QW-10 | Learn-mode screen-reader announcements drown card content | small |
+| #     | Finding                                                                   | Effort       |
+| ----- | ------------------------------------------------------------------------- | ------------ |
+| QW-1  | Restore points report wrong "N lessons" count on a safety surface         | small        |
+| QW-2  | Failed Question start leaves an endless skeleton with no exit             | small        |
+| QW-3  | "Continue" on the study-flow transition can silently do nothing           | small        |
+| QW-4  | Card-editor autosave fabricates phantom drafts and can destroy a real one | small        |
+| QW-5  | Question working input locks the moment it is checked — no "edit answer"  | small        |
+| QW-6  | Expose learn-mode undo as a control, not a hidden keyboard shortcut       | small        |
+| QW-7  | Exam date is a hard gate with a silently invented 7-day default           | small–medium |
+| QW-8  | Landing-page CTAs read as disabled/decorative in the light theme          | small        |
+| QW-9  | Five user-facing "deck" strings on Course-facing screens                  | small        |
+| QW-10 | Learn-mode screen-reader announcements drown card content                 | small        |
 
 ### Essential but heavier — schedule as arcs
 
-| # | Finding | Effort |
-| --- | --- | --- |
-| EH-1 | Silent grading: the learner never learns what the scheduler decided | medium |
-| EH-2 | Exit is instant, unconfirmed and unrecoverable mid-session | medium |
-| EH-3 | Search routes to editors; note hits dead-end | medium |
-| EH-4 | Question editor silently discards unsaved work | medium |
+| #    | Finding                                                                        | Effort |
+| ---- | ------------------------------------------------------------------------------ | ------ |
+| EH-1 | Silent grading: the learner never learns what the scheduler decided            | medium |
+| EH-2 | Exit is instant, unconfirmed and unrecoverable mid-session                     | medium |
+| EH-3 | Search routes to editors; note hits dead-end                                   | medium |
+| EH-4 | Question editor silently discards unsaved work                                 | medium |
 | EH-5 | Study entry-point consolidation (UX-MAP R-01, P0) recorded but never delivered | medium |
-| EH-6 | Destructive actions lack one confirm-and-undo standard (R-12 remainder) | medium |
+| EH-6 | Destructive actions lack one confirm-and-undo standard (R-12 remainder)        | medium |
 
 ### Important, moderate effort
 
-| # | Finding | Effort |
-| --- | --- | --- |
-| IM-1 | Checker disputes are collected, then go nowhere — and disputing costs the learner | medium |
-| IM-2 | Hint penalty invisible at the point of use | small |
-| IM-3 | Scheduler internals leak onto learner surfaces (Stability / Leech badges) | small |
-| IM-4 | Question deletion is unrecoverable where course deletion is not | small–medium |
-| IM-5 | Empty course path dead-ends non-authors; authoring hint is desktop-only | small |
-| IM-6 | Focus-mode exit depends on hover; no touch affordance or first-use hint | small |
-| IM-7 | Denied browser permissions leave no recovery path | small–medium |
-| IM-8 | Course settings commit instantly with inconsistent commitment models | medium |
-| IM-9 | Global analytics speaks scheduler jargon to non-technical learners | medium |
-| IM-10 | Share page offers near-identical verbs in internal terms | medium |
-| IM-11 | "Undo scheduling" ghost button sits beside "Next Question" on every question | small |
+| #     | Finding                                                                           | Effort       |
+| ----- | --------------------------------------------------------------------------------- | ------------ |
+| IM-1  | Checker disputes are collected, then go nowhere — and disputing costs the learner | medium       |
+| IM-2  | Hint penalty invisible at the point of use                                        | small        |
+| IM-3  | Scheduler internals leak onto learner surfaces (Stability / Leech badges)         | small        |
+| IM-4  | Question deletion is unrecoverable where course deletion is not                   | small–medium |
+| IM-5  | Empty course path dead-ends non-authors; authoring hint is desktop-only           | small        |
+| IM-6  | Focus-mode exit depends on hover; no touch affordance or first-use hint           | small        |
+| IM-7  | Denied browser permissions leave no recovery path                                 | small–medium |
+| IM-8  | Course settings commit instantly with inconsistent commitment models              | medium       |
+| IM-9  | Global analytics speaks scheduler jargon to non-technical learners                | medium       |
+| IM-10 | Share page offers near-identical verbs in internal terms                          | medium       |
+| IM-11 | "Undo scheduling" ghost button sits beside "Next Question" on every question      | small        |
 
 ### Optional / larger arcs — deliberate roadmap items, not defects
 
-| # | Finding | Effort |
-| --- | --- | --- |
-| LG-1 | Payload flows (publish, import, backup, sync) have no single data centre (R-03, P0) | large |
-| LG-2 | Item families sit outside the course path (R-05) | large |
-| LG-3 | Course-level vs global settings: no inherited/overridden indicator | large (intermediate: medium) |
-| LG-4 | AI trust flow (pairing, permissions, revocation) not consolidated (R-11) | medium |
-| LG-5 | Electron update state invisible (R-14) | small |
-| LG-6 | Dashboard sort configured in global Settings, not on the dashboard | small |
-| LG-7 | Sequence preview keeps wrong terminology after a type change | small |
-| LG-8 | Question practice lags the card surface (keyboard, undo, progress, exit conventions) | medium–large |
+| #    | Finding                                                                              | Effort                       |
+| ---- | ------------------------------------------------------------------------------------ | ---------------------------- |
+| LG-1 | Payload flows (publish, import, backup, sync) have no single data centre (R-03, P0)  | large                        |
+| LG-2 | Item families sit outside the course path (R-05)                                     | large                        |
+| LG-3 | Course-level vs global settings: no inherited/overridden indicator                   | large (intermediate: medium) |
+| LG-4 | AI trust flow (pairing, permissions, revocation) not consolidated (R-11)             | medium                       |
+| LG-5 | Electron update state invisible (R-14)                                               | small                        |
+| LG-6 | Dashboard sort configured in global Settings, not on the dashboard                   | small                        |
+| LG-7 | Sequence preview keeps wrong terminology after a type change                         | small                        |
+| LG-8 | Question practice lags the card surface (keyboard, undo, progress, exit conventions) | medium–large                 |
 
 ## The findings in detail
 
@@ -150,7 +153,7 @@ already supports reversal (`undoReview`, `repository.ts:1162`) and the hook alre
 `canUndo`; the gap is purely exposure. Fix: surface undo as a brief post-answer toast button
 or a menu entry. (Multi-level undo is a separate, larger improvement.)
 
-### QW-7 — Exam date is a hard gate with a silently invented default (essential, small–medium)
+### QW-7 — Exam date is a hard gate with a silently invented default (essential, small–medium; fixed 31 August 2026)
 
 `NewCourseForm.tsx` requires an exam date (lines 41, 58-64, 203-214); `datetime.ts:14`
 defaults to creation + 7 days; there is no "no exam" escape. A self-study learner, or a teacher
@@ -159,6 +162,10 @@ drives urgency pills and pacing that can be actively wrong. The first thing a ne
 the thing the app handles least gracefully. Fix: make the date optional with an explicit
 "steady long-term retention" mode, and stop anchoring the course header on a date that may not
 exist.
+
+Delivered: Course creation requires an explicit exam/steady choice; steady final assessments carry
+no fabricated date; settings can switch the target; scheduler, Course headers, backups and share
+codes preserve the distinction. Dated checkpoints remain available in either mode.
 
 ### QW-8 — Landing-page CTAs read as disabled or decorative (essential, small)
 
@@ -362,9 +369,7 @@ the card surface's standard would resolve roughly a third of the study findings 
 
 ## Recommended sequence
 
-1. **One quick-win pass** (QW-1 to QW-10): all small, all essential, and several are
-   data-loss or dead-end defects rather than polish. This is roughly a week of focused work
-   and removes every "the app destroyed or trapped my work" case.
+1. **One quick-win pass** (QW-1 to QW-10): delivered 31 August 2026.
 2. **The grading transparency arc** (EH-1 + IM-2): post-answer grade/interval feedback, the
    timing disclosure, and the hint-cost caption. Highest trust payoff in the product.
 3. **The session-boundary arc** (EH-2 + IM-6): confirm-on-exit, resume, focus-mode touch exit.
@@ -380,7 +385,3 @@ Findings drawn from the project's own records (UX-MAP, MANUAL_WALKTHROUGH,
 course-terminology-audit, BROWSER_QA_AUDIT) exclude everything those documents record as
 fixed in the August follow-up verification. Code-level findings were verified against the
 source at commit `3e3ec76`; line numbers refer to that tree and will drift.
-
-
-
-

@@ -96,10 +96,13 @@ export function CourseCard({
     onArchiveMenu(position, buttonRef.current);
   }
 
-  const examPassed = course.examDate < Date.now();
-  const examLabel = examPassed
-    ? 'Exam date passed'
-    : `Exam ${relativeExam(course.examDate, Date.now(), course.timeZone)}`;
+  const examPassed = course.examDate !== undefined && course.examDate < Date.now();
+  const examLabel =
+    course.examDate === undefined
+      ? 'Steady retention'
+      : examPassed
+        ? 'Exam date passed'
+        : `Exam ${relativeExam(course.examDate, Date.now(), course.timeZone)}`;
 
   const lessonCount = summary?.lessonCount ?? 0;
   const cardCount = summary?.cardCount ?? 0;

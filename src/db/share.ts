@@ -33,7 +33,11 @@
 import { z } from 'zod';
 import { db, makeId } from './schema';
 import { createCards, createCourse } from './repository';
-import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
+import {
+  ensureCourseBankBackingDeck,
+  ensureLessonBackingDeck,
+  syncCourseSchedulingUnits,
+} from './backingDecks';
 import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import type { ParsedCard } from './import';
 import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
@@ -238,31 +242,69 @@ const ShareLessonSchema = z.object({
 });
 
 /** Course metadata in a v2 share payload, mirroring ShareDeck's conventions. */
-const ShareCourseSchema = z.object({
-  n: z.string().min(1),
-  d: z.string().optional(), // description
-  o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics
-  c: z.number(), // createdAt
-  e: z.number(), // examDate (primary date due)
-  r: z.number().optional(), // requestRetention
-  p: z.number().optional(), // newCardsPerDay
-  l: z.string().optional(), // colour
-  um: z.union([z.literal('linear'), z.literal('semi-linear'), z.literal('open')]),
-});
+const ShareCourseSchema = z
+  .object({
+    n: z.string().min(1),
+    d: z.string().optional(), // description
+    o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics
+    c: z.number(), // createdAt
+    e: z.number().optional(), // examDate (primary date due)
+    sm: z.literal(1).optional(), // steady retention; absent means exam-targeted
+    r: z.number().optional(), // requestRetention
+    p: z.number().optional(), // newCardsPerDay
+    l: z.string().optional(), // colour
+    um: z.union([z.literal('linear'), z.literal('semi-linear'), z.literal('open')]),
+  })
+  .superRefine((course, context) => {
+    if (course.sm === 1 && course.e !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Steady retention cannot include an exam date.',
+      });
+    } else if (course.sm !== 1 && course.e === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'An exam-targeted course requires an exam date.',
+      });
+    }
+  });
 
-const ShareExamSchema = z.object({
-  id: z.string().optional(),
-  n: z.string(), // name
-  e: z.number(), // examDate
-  tz: z.string().optional(), // timeZone
-  ls: z.array(z.number()).optional(), // indices into the payload's lessons array
-  k: z.union([z.literal('f'), z.literal('c')]).optional(),
-  a: z.number().nullable().optional(),
-  m: z.union([z.literal('p'), z.literal('c')]).optional(),
-  x: z.array(z.string()).optional(),
-  ac: z.literal(1).optional(),
-  c: z.number().optional(),
-});
+const ShareExamSchema = z
+  .object({
+    id: z.string().optional(),
+    n: z.string(), // name
+    e: z.number().optional(), // examDate
+    sm: z.literal(1).optional(), // steady retention; valid only for the final assessment
+    tz: z.string().optional(), // timeZone
+    ls: z.array(z.number()).optional(), // indices into the payload's lessons array
+    k: z.union([z.literal('f'), z.literal('c')]).optional(),
+    a: z.number().nullable().optional(),
+    m: z.union([z.literal('p'), z.literal('c')]).optional(),
+    x: z.array(z.string()).optional(),
+    ac: z.literal(1).optional(),
+    c: z.number().optional(),
+  })
+  .superRefine((assessment, context) => {
+    if (assessment.sm === 1) {
+      if (assessment.k !== 'f') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Only a final assessment can use steady retention.',
+        });
+      }
+      if (assessment.e !== undefined || assessment.tz !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Steady retention cannot include an exam date or time zone.',
+        });
+      }
+    } else if (assessment.e === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A dated assessment requires an exam date.',
+      });
+    }
+  });
 
 /** A single SequenceItem in a v2 share payload. */
 const ShareSequenceItemSchema = z.object({
@@ -467,7 +509,8 @@ interface ShareCourse {
   d?: string; // description
   o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
   c: number; // createdAt
-  e: number; // examDate (primary date due)
+  e?: number; // examDate (primary date due)
+  sm?: 1; // steady retention; absent means exam-targeted
   r?: number; // requestRetention
   p?: number; // newCardsPerDay
   l?: string; // colour
@@ -478,7 +521,8 @@ interface ShareCourse {
 interface ShareExam {
   id?: string;
   n: string; // name
-  e: number; // examDate
+  e?: number; // examDate
+  sm?: 1; // steady retention; final assessment only
   tz?: string; // timeZone
   ls?: number[]; // indices into the payload's lessons array (scoped lessons)
   k?: 'f' | 'c';
@@ -1064,7 +1108,8 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
     return {
       id: assessment.id,
       n: assessment.name,
-      e: assessment.examDate,
+      ...(assessment.examDate === undefined ? {} : { e: assessment.examDate }),
+      ...(assessment.schedulingMode === 'steady' ? { sm: 1 as const } : {}),
       ...(assessment.timeZone ? { tz: assessment.timeZone } : {}),
       k: assessment.kind === 'final' ? 'f' : 'c',
       a:
@@ -1084,7 +1129,8 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
     ...(course.description ? { d: course.description } : {}),
     o: course.examObjective === 'securedTopics' ? 1 : 0,
     c: course.createdAt,
-    e: finalAssessment.examDate,
+    ...(finalAssessment.examDate === undefined ? {} : { e: finalAssessment.examDate }),
+    ...(finalAssessment.schedulingMode === 'steady' ? { sm: 1 as const } : {}),
     r: course.fsrsParameters.requestRetention,
     ...(course.newCardsPerDay ? { p: course.newCardsPerDay } : {}),
     ...(course.colour ? { l: course.colour } : {}),
@@ -1327,7 +1373,8 @@ async function importCourseSharePayload(
         description: payload.course.d ?? '',
         examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
         createdAt: payload.course.c,
-        examDate: payload.course.e,
+        schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
+        ...(payload.course.e === undefined ? {} : { examDate: payload.course.e }),
         fsrsParameters: {
           ...defaultFsrsParameters(),
           ...(typeof payload.course.r === 'number'
@@ -1500,7 +1547,8 @@ async function importCourseSharePayload(
             courseId: course.id,
             name: shareExam.n || 'Exam',
             kind: shareExam.k === 'f' ? ('final' as const) : ('checkpoint' as const),
-            examDate: shareExam.e,
+            ...(shareExam.e === undefined ? {} : { examDate: shareExam.e }),
+            ...(shareExam.sm === 1 ? { schedulingMode: 'steady' as const } : {}),
             createdAt: shareExam.c ?? importedAt + index,
             updatedAt: shareExam.c ?? importedAt + index,
             afterLessonId,
@@ -1523,6 +1571,7 @@ async function importCourseSharePayload(
           }
         }
         await db.courseAssessments.bulkAdd(importedAssessments);
+        await syncCourseSchedulingUnits(course.id);
       }
 
       // Insert the sequences themselves once lessonIds is complete (for primaryLessonId)

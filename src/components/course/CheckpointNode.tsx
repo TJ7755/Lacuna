@@ -50,7 +50,9 @@ export function CheckpointNode({ assessment, onClick, authoring = false }: Check
       <span className="max-w-[7rem] text-center text-xs font-medium leading-tight text-ink-soft">
         {assessment.name}
         <span className="mt-0.5 block text-[0.65rem] text-ink-faint">
-          {formatDate(assessment.examDate, assessment.timeZone)}
+          {assessment.examDate === undefined
+            ? 'Steady retention'
+            : formatDate(assessment.examDate, assessment.timeZone)}
         </span>
       </span>
     </div>

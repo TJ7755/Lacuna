@@ -22,9 +22,10 @@ export interface CourseAssessmentMigrationResult {
 
 /** Remove the final-assessment compatibility fields before persisting a course row. */
 export function courseToRecord(course: Course): CourseRecord {
-  const { examDate, timeZone, ...record } = course;
+  const { examDate, timeZone, schedulingMode, ...record } = course;
   void examDate;
   void timeZone;
+  void schedulingMode;
   return record;
 }
 
@@ -53,7 +54,8 @@ export function hydrateCourse(record: CourseRecord, finalAssessment: CourseAsses
   }
   return {
     ...record,
-    examDate: finalAssessment.examDate,
+    schedulingMode: finalAssessment.schedulingMode ?? 'exam',
+    ...(finalAssessment.examDate === undefined ? {} : { examDate: finalAssessment.examDate }),
     ...(finalAssessment.timeZone === undefined ? {} : { timeZone: finalAssessment.timeZone }),
   };
 }

@@ -405,7 +405,9 @@ Courses                                              [ + New course ]
 ```
 
 Header with title and New-course button; a motivation strip (`StudySignals`); an inline
-new-course composer; a course grid ordered by a configurable **sort** (recent, ready to study,
+new-course composer which requires an explicit **Exam date** or **Steady retention** target (the
+dated choice starts with a seven-day suggestion only after it is selected); a course grid ordered
+by a configurable **sort** (recent, ready to study,
 mastery, exam date, name, or created — Settings → Sidebar has no sort control; the sort lives on
 the dashboard itself and persists to `localStorage`); and a review-activity heatmap for anyone
 arriving from Anki. Cross-course due review is opened from the sidebar's **Review today** item,
@@ -1220,13 +1222,16 @@ card in strict order:
    that apply to the card (respecting resolved coverage and `excludedCardIds`), the
    soonest one still `>= now`. A passed checkpoint is ignored, so the next-nearest
    checkpoint (or the course default) naturally takes over.
-3. **Course default** — the course's own `examDate`.
+3. **Course default** — the course's own `examDate`, when its final assessment is dated.
 
 `cardSchedulingHorizon` then applies the same "keep revising" fallback
 `schedulingHorizon` has always had: once the resolved date is in the past, the horizon
 rolls forward to `now + MAINTENANCE_HORIZON_DAYS` (7 days) rather than letting
 `daysRemaining` clamp to 0 (which would read every card as R = 1 and pin the bar to a
-bogus 100%).
+bogus 100%). A Course whose final assessment has `schedulingMode: 'steady'` stores no exam date
+and uses that rolling horizon from the start. Checkpoint and lesson dates still override it for
+the cards they cover. Exam countdowns, urgency, cram mode and revision plans remain date-only;
+Course headers and cards label the undated state as **Steady retention**.
 
 Per-card resolution is used wherever a specific card is being scored or counted:
 `scoreCard`/`isObjectiveComplete` (`objective.ts`), `masteryFraction`/
@@ -1272,7 +1277,12 @@ the ts-fsrs authors (`@open-spaced-repetition/binding`, fsrs-rs compiled to WASM
   (on) and a per-course `autoOptimise` override govern whether the action is offered
   (§15).
 
-### 8.2 Post-exam state
+### 8.2 Dated and steady-retention states
+
+A Course's one final `CourseAssessment` is also its scheduling-target record. Existing dated rows
+infer exam mode; new rows may explicitly store `schedulingMode: 'steady'` and omit both `examDate`
+and `timeZone`. This additive representation requires no IndexedDB schema migration and survives
+Course hydration, derived scheduling-unit synchronisation, full backup/restore and share import.
 
 A course whose `examDate` has passed is detected (`examHasPassed`) and surfaced clearly
 rather than silently stopping: the course card on the dashboard reads "Exam date passed".
@@ -2048,7 +2058,7 @@ backup export: a share code carries only the **material** needed to recreate the
 never one person's scheduling progress or review history.
 
 - **What a code contains (current, v3 payload):** course metadata (name, exam objective,
-  date created, date due, target retention, new-card cap), its ordered lessons each with
+  date created, an exam date or steady-retention marker, target retention, new-card cap), its ordered lessons each with
   their notes and cards (type, front, back, tags), and current `CourseAssessment`
   checkpoints. **Sequences**
   (§5) ride along as an additive optional field: each `Sequence` and its `SequenceItem`s
@@ -2594,7 +2604,7 @@ learning/relearning steps, leech threshold/action, daily review goal and session
 `UnlockModeSection` owns semi-linear versus linear lesson unlocking and its linear cadence fields;
 `PracticeSettingsSection` (auto-practice toggle and the four threshold/window/gap fields
 feeding `shouldInsertPractice`, §-linked to `src/fsrs/practice.ts`), `ExamDatesSection`
-(per-course exam-date list), `LessonManagementSection` (reorder/rename/delete lessons)
+(the final exam/steady-retention target plus dated checkpoints), `LessonManagementSection` (reorder/rename/delete lessons)
 and `PracticeNodesSection` (list existing teacher-authored manual practice nodes and link to their
 path editor; see §5's Course architecture section), plus the `OptimisationPanel` (§8.1): a
 per-course on/off override for scheduling optimisation, a review-count gate, and an

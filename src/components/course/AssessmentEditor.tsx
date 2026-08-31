@@ -1,23 +1,32 @@
 import { useMemo, useState } from 'react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
-import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
+import type {
+  Card,
+  CourseAssessment,
+  CourseSchedulingMode,
+  Lesson,
+  LessonCardLink,
+} from '../../db/types';
+import { defaultExamDate } from '../../utils/datetime';
 import { DateTimePicker } from '../ui/DateTimePicker';
 
-export type AssessmentDraft = Pick<
-  CourseAssessment,
-  | 'name'
-  | 'examDate'
-  | 'timeZone'
-  | 'afterLessonId'
-  | 'coverageMode'
-  | 'excludedCardIds'
-  | 'needsAuthorConfirmation'
-> & { lessonIds: string[] };
+export interface AssessmentDraft {
+  name: string;
+  schedulingMode: CourseSchedulingMode;
+  examDate: number;
+  timeZone?: string;
+  afterLessonId: string | null;
+  coverageMode: CourseAssessment['coverageMode'];
+  lessonIds: string[];
+  excludedCardIds: string[];
+  needsAuthorConfirmation?: boolean;
+}
 
 export function draftFromAssessment(assessment: CourseAssessment): AssessmentDraft {
   return {
     name: assessment.name,
-    examDate: assessment.examDate,
+    schedulingMode: assessment.schedulingMode ?? 'exam',
+    examDate: assessment.examDate ?? defaultExamDate(),
     timeZone: assessment.timeZone,
     afterLessonId: assessment.afterLessonId,
     coverageMode: assessment.coverageMode,
@@ -30,6 +39,7 @@ export function draftFromAssessment(assessment: CourseAssessment): AssessmentDra
 export function emptyAssessmentDraft(lessons: Lesson[], timeZone?: string): AssessmentDraft {
   return {
     name: '',
+    schedulingMode: 'exam',
     examDate: Date.now(),
     timeZone,
     afterLessonId: lessons[lessons.length - 1]?.id ?? null,
@@ -42,8 +52,9 @@ export function emptyAssessmentDraft(lessons: Lesson[], timeZone?: string): Asse
 export function assessmentChanges(draft: AssessmentDraft): Partial<CourseAssessment> {
   const common = {
     name: draft.name.trim() || 'Untitled assessment',
-    examDate: draft.examDate,
-    timeZone: draft.timeZone,
+    schedulingMode: draft.schedulingMode === 'steady' ? ('steady' as const) : undefined,
+    examDate: draft.schedulingMode === 'exam' ? draft.examDate : undefined,
+    timeZone: draft.schedulingMode === 'exam' ? draft.timeZone : undefined,
     afterLessonId: draft.afterLessonId,
     excludedCardIds: draft.excludedCardIds,
     needsAuthorConfirmation: draft.needsAuthorConfirmation,
@@ -95,12 +106,8 @@ export function AssessmentEditor({
   );
   const candidates = useMemo(
     () =>
-      resolveAssessmentCoverage(
-        { ...assessment, excludedCardIds: [] },
-        lessons,
-        cards,
-        links,
-      ).cards,
+      resolveAssessmentCoverage({ ...assessment, excludedCardIds: [] }, lessons, cards, links)
+        .cards,
     [assessment, cards, lessons, links],
   );
   const coveredLessonIds = new Set(resolved.coveredLessons.map((lesson) => lesson.id));
@@ -147,12 +154,51 @@ export function AssessmentEditor({
         />
       </label>
 
-      <DateTimePicker
-        value={draft.examDate}
-        onChange={(examDate) => onChange({ ...draft, examDate })}
-        timeZone={draft.timeZone ?? timeZone}
-        label="Date and time"
-      />
+      {kind === 'final' && (
+        <fieldset>
+          <legend className="mb-2 text-sm text-ink-soft">Study target</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['exam', 'Exam date', 'Schedule towards a deadline.'],
+                ['steady', 'Steady retention', 'Maintain knowledge without a deadline.'],
+              ] as const
+            ).map(([mode, label, description]) => (
+              <label
+                key={mode}
+                className={
+                  'cursor-pointer rounded-lg border px-3 py-2 transition-colors ' +
+                  (draft.schedulingMode === mode
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-line hover:border-line-strong')
+                }
+              >
+                <span className="flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="assessment-scheduling-mode"
+                    checked={draft.schedulingMode === mode}
+                    onChange={() => onChange({ ...draft, schedulingMode: mode })}
+                  />
+                  {label}
+                </span>
+                <span className="mt-1 block pl-6 text-xs leading-relaxed text-ink-faint">
+                  {description}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {(kind === 'checkpoint' || draft.schedulingMode === 'exam') && (
+        <DateTimePicker
+          value={draft.examDate}
+          onChange={(examDate) => onChange({ ...draft, examDate })}
+          timeZone={draft.timeZone ?? timeZone}
+          label="Date and time"
+        />
+      )}
 
       <label className="block text-sm text-ink-soft">
         Path position
@@ -252,7 +298,10 @@ export function AssessmentEditor({
                       {lesson.name}
                     </div>
                     {lessonCards.map((card) => (
-                      <label key={`${lesson.id}-${card.id}`} className="flex gap-2 px-3 py-2 text-sm">
+                      <label
+                        key={`${lesson.id}-${card.id}`}
+                        className="flex gap-2 px-3 py-2 text-sm"
+                      >
                         <input
                           type="checkbox"
                           checked={draft.excludedCardIds.includes(card.id)}

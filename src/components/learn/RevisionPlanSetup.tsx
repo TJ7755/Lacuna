@@ -45,11 +45,16 @@ export function RevisionPlanSetup({
     try {
       const target = await db.courseAssessments.get(assessmentId);
       if (!target) throw new Error('The assessment could not be found.');
+      setAssessment(target);
+      if (target.examDate === undefined) {
+        setPlan(null);
+        setError(null);
+        return;
+      }
       const existing = await getRevisionPlanForAssessment(assessmentId);
       const refreshed = existing
         ? await refreshRevisionPlan(existing.id, revisionProjection)
         : null;
-      setAssessment(target);
       setPlan(refreshed);
       const firstBudget = refreshed?.windows.find(
         (window) => window.status !== 'completed',
@@ -69,7 +74,7 @@ export function RevisionPlanSetup({
 
   const today = useMemo(
     () =>
-      assessment
+      assessment?.examDate !== undefined
         ? revisionPlanDays(Date.now(), assessment.examDate, assessment.timeZone)[0]
         : undefined,
     [assessment],
@@ -125,6 +130,16 @@ export function RevisionPlanSetup({
     return (
       <PlanShell title="Revision unavailable" onExit={onExit}>
         <p className="text-sm text-negative">{error ?? 'The assessment could not be found.'}</p>
+      </PlanShell>
+    );
+  }
+
+  if (assessment.examDate === undefined) {
+    return (
+      <PlanShell title={assessment.name} onExit={onExit}>
+        <p className="text-sm text-ink-soft">
+          Steady retention has no deadline, so it does not use a revision plan.
+        </p>
       </PlanShell>
     );
   }

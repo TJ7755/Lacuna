@@ -72,6 +72,10 @@ function projectionKey(projection: RevisionProjection): string {
 
 /** Resolve the frozen scope and compact change-detection inputs without producing predictions. */
 export function resolveRevisionPlanInput(context: RevisionPlanContext): ResolvedRevisionPlanInput {
+  const deadlineAt = context.assessment.examDate;
+  if (deadlineAt === undefined) {
+    throw new Error('Steady retention does not have an assessment deadline.');
+  }
   const resolved = resolveAssessmentCoverage(
     context.assessment,
     context.lessons,
@@ -141,7 +145,7 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
   );
   const input: RevisionPlanInputSnapshot = {
     coverageVersion,
-    deadlineAt: context.assessment.examDate,
+    deadlineAt,
     ...(context.assessment.timeZone ? { timeZone: context.assessment.timeZone } : {}),
     reachedLessonIds,
     exposureVersion,
@@ -156,9 +160,7 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
       excludedCardIds,
       eligibleCardIds,
       unavailableCardIds,
-      unreachedLessonIds: coveredLessonIds
-        .filter((id) => !context.reachedLessonIds.has(id))
-        .sort(),
+      unreachedLessonIds: coveredLessonIds.filter((id) => !context.reachedLessonIds.has(id)).sort(),
       untaughtLessonIds,
     },
     cardStates: [
@@ -352,8 +354,9 @@ export function applyPendingRevisionPlanInput(plan: RevisionPlan, now: number): 
 
 export function mergeRevisionPlans(local: RevisionPlan, incoming: RevisionPlan): RevisionPlan {
   const newer = incoming.updatedAt > local.updatedAt ? incoming : local;
-  const mergeById = <T extends { id: string }>(left: T[], right: T[]): T[] =>
-    [...new Map([...left, ...right].map((entry) => [entry.id, entry])).values()];
+  const mergeById = <T extends { id: string }>(left: T[], right: T[]): T[] => [
+    ...new Map([...left, ...right].map((entry) => [entry.id, entry])).values(),
+  ];
   const activeLocal = local.windows.find((window) => window.status === 'active');
   const localWindows = new Map(local.windows.map((window) => [window.id, window]));
   const windows = mergeById(local.windows, incoming.windows).map((window) => {
@@ -364,7 +367,8 @@ export function mergeRevisionPlans(local: RevisionPlan, incoming: RevisionPlan):
   });
   const pendingReasons = REPLAN_ORDER.filter(
     (reason) =>
-      local.pendingReplan?.reasons.includes(reason) || incoming.pendingReplan?.reasons.includes(reason),
+      local.pendingReplan?.reasons.includes(reason) ||
+      incoming.pendingReplan?.reasons.includes(reason),
   );
   const pendingBase =
     incoming.pendingReplan &&
@@ -387,7 +391,9 @@ export function appendCompletedSession(
   sessions: RevisionPlanSession[],
   session: RevisionPlanSession,
 ): RevisionPlanSession[] {
-  return sessions.some((existing) => existing.id === session.id) ? sessions : [...sessions, session];
+  return sessions.some((existing) => existing.id === session.id)
+    ? sessions
+    : [...sessions, session];
 }
 
 export function makeReplan(

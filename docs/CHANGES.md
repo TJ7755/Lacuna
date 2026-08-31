@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — optional exam dates and steady retention
+
+- Card analytics now labels an expired exam's rolling horizon as a predicted maintenance target
+  rather than pretending the elapsed deadline is still the active exam target.
+- Course creation now requires an explicit choice between a dated exam and steady long-term
+  retention. The form no longer invents a seven-day deadline before the learner has chosen one.
+- A steady course stores that target on its sole final assessment without an `examDate` or time
+  zone. Course hydration, scheduling units, backups and v3 share codes preserve the distinction;
+  existing dated assessments continue to infer the exam mode without a schema migration.
+- Steady courses reuse the scheduler's rolling seven-day maintenance horizon. Exam-only behaviour
+  such as countdowns, urgency, cram mode and revision-plan deadlines is hidden or rejected, while
+  Course headers, cards and settings describe the ongoing retention target directly.
+- The final assessment editor can switch an existing Course between the two targets. Checkpoints
+  remain dated and continue to override the Course target for cards in their coverage.
+
+**Checks:** red-to-green creation, settings, repository, backup and share tests; focused scheduler,
+assessment, path and revision-plan suites; full validation is recorded with the pull request.
+
 ## Unreleased — audit regression follow-up
 
 - Stop offering the short-lived Undo action when the recorded answer has already finalised the

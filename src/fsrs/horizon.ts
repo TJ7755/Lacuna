@@ -31,7 +31,7 @@ export const MAINTENANCE_HORIZON_DAYS = 7;
  * a Course); only examDate is read.
  */
 export function schedulingHorizon(deck: SchedulerConfig, now: number = Date.now()): number {
-  if (deck.examDate >= now) return deck.examDate;
+  if (deck.examDate !== undefined && deck.examDate >= now) return deck.examDate;
   return now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY;
 }
 
@@ -48,7 +48,7 @@ export function cardSchedulingHorizon(
 ): number {
   if (!examDateContext) return schedulingHorizon(deck, now);
   const examDate = resolveCardExamDate(card, examDateContext, now);
-  return examDate >= now
+  return examDate !== undefined && examDate >= now
     ? examDate
     : now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY;
 }

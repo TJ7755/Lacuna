@@ -15,6 +15,7 @@ import { useChartColours } from '../analytics/useChartColours';
 import { forgettingCurve } from '../../fsrs/forwardSim';
 import { decayOf } from '../../fsrs/fsrs';
 import { MS_PER_DAY } from '../../fsrs/params';
+import { schedulingHorizon } from '../../fsrs/horizon';
 import type { Card, Grade, SchedulerConfig } from '../../db/types';
 
 interface CardAnalyticsProps {
@@ -27,12 +28,15 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
   const m = motionMultiplier ?? 1;
   const c = useChartColours();
   const now = Date.now();
+  const hasActiveExam =
+    schedulingConfig.examDate !== undefined && schedulingConfig.examDate >= now;
+  const targetDate = schedulingHorizon(schedulingConfig, now);
   const decay = decayOf(schedulingConfig.fsrsParameters);
 
   const curveData = useMemo(() => {
     if (card.stability === null || card.lastReviewed === null) return [];
     const start = card.lastReviewed;
-    const end = schedulingConfig.examDate + 14 * MS_PER_DAY;
+    const end = targetDate + 14 * MS_PER_DAY;
     const points: { t: number; r: number }[] = [];
     for (let t = start; t <= end; t += MS_PER_DAY) {
       const days = (t - card.lastReviewed) / MS_PER_DAY;
@@ -40,7 +44,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
       points.push({ t, r: Math.round(r * 100) });
     }
     return points;
-  }, [card, schedulingConfig.examDate, decay]);
+  }, [card, decay, targetDate]);
 
   const reviewDots = useMemo(() => {
     const dots: { x: number; y: number; grade: Grade }[] = [];
@@ -73,9 +77,12 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
       stats.push({ label: 'Current R', value: `${(r * 100).toFixed(0)}%` });
     }
     if (card.stability !== null && card.lastReviewed !== null) {
-      const days = Math.max(schedulingConfig.examDate - card.lastReviewed, 0) / MS_PER_DAY;
+      const days = Math.max(targetDate - card.lastReviewed, 0) / MS_PER_DAY;
       const r = forgettingCurve(days, card.stability, decay);
-      stats.push({ label: 'Predicted exam R', value: `${(r * 100).toFixed(0)}%` });
+      stats.push({
+        label: hasActiveExam ? 'Predicted exam R' : 'Predicted target R',
+        value: `${(r * 100).toFixed(0)}%`,
+      });
     }
     stats.push({ label: 'Total reviews', value: String(card.reps) });
     stats.push({ label: 'Lapses', value: String(card.lapses) });
@@ -134,10 +141,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
         {hasData ? (
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={curveData}
-                margin={{ top: 8, right: 12, bottom: 0, left: -8 }}
-              >
+              <ComposedChart data={curveData} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
                 <defs>
                   <linearGradient id={`card-traj-${card.id}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
