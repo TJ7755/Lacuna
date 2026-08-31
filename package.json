@@ -6,6 +6,7 @@
   "type": "module",
   "main": "electron/dist-electron/main.js",
   "description": "Lacuna - a local-only FSRS-6 flashcard revision application.",
+  "author": "TJ7755",
   "homepage": "https://github.com/TJ7755/Lacuna#readme",
   "repository": {
     "type": "git",

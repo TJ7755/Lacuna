@@ -19,6 +19,8 @@
 - Bumped the desktop application to `0.2.0` and added explicit Windows x64 NSIS/portable, Linux x64
   AppImage/DEB and macOS arm64 DMG/ZIP builders. Windows and Linux build in GitHub Actions; macOS
   builds locally so the release does not consume a hosted macOS runner.
+- Generated native macOS and Linux icons from the canonical web SVG instead of falling back to
+  Electron's stock application icon.
 - Replaced concurrent electron-builder publishing with one gated draft publisher. The tag must
   match the package version; typecheck, lint, unit, coverage, production, release-scenario,
   performance and browser checks must pass; and only distributable artefacts plus update metadata

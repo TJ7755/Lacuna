@@ -4,9 +4,13 @@ import sharp from 'sharp';
 
 const sourcePath = fileURLToPath(new URL('../public/icon.svg', import.meta.url));
 const outputDirectory = fileURLToPath(new URL('../public/icons/', import.meta.url));
+const electronAssetDirectory = fileURLToPath(new URL('../electron/assets/', import.meta.url));
 const background = '#0a0a0b';
 
-await mkdir(outputDirectory, { recursive: true });
+await Promise.all([
+  mkdir(outputDirectory, { recursive: true }),
+  mkdir(electronAssetDirectory, { recursive: true }),
+]);
 
 async function writeFullBleedIcon(filename: string, size: number): Promise<void> {
   await sharp(sourcePath)
@@ -39,4 +43,5 @@ await Promise.all([
       .png()
       .toFile(`${outputDirectory}/icon-maskable-512.png`);
   })(),
+  sharp(sourcePath).resize(1024, 1024).png().toFile(`${electronAssetDirectory}/icon.png`),
 ]);
