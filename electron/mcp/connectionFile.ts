@@ -34,6 +34,7 @@ export interface CompanionLaunchEnvironment {
   isPackaged: boolean;
   platform: NodeJS.Platform;
   portableExecutableFile?: string;
+  appImageFile?: string;
 }
 
 export function companionLaunchCommand(
@@ -42,7 +43,9 @@ export function companionLaunchCommand(
 ): { command: string; args: string[] } {
   const command = environment.platform === 'win32' && environment.portableExecutableFile
     ? environment.portableExecutableFile
-    : environment.execPath;
+    : environment.platform === 'linux' && environment.appImageFile
+      ? path.resolve(environment.appImageFile)
+      : environment.execPath;
   return {
     command,
     args: environment.isPackaged ? [mode] : [environment.appPath, mode],

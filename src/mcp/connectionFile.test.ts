@@ -59,6 +59,19 @@ describe('companion connection metadata', () => {
     });
   });
 
+  it('advertises the stable AppImage wrapper instead of its temporary mount executable', () => {
+    expect(companionLaunchCommand({
+      appPath: '/tmp/.mount_Lacuna/resources/app.asar',
+      execPath: '/tmp/.mount_Lacuna/lacuna',
+      isPackaged: true,
+      platform: 'linux',
+      appImageFile: '/home/student/Applications/Lacuna.AppImage',
+    }, '--ai-companion')).toEqual({
+      command: '/home/student/Applications/Lacuna.AppImage',
+      args: ['--ai-companion'],
+    });
+  });
+
   it('keeps the development app path before the companion flag', () => {
     expect(companionLaunchCommand({
       appPath: '/repo',
