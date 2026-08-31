@@ -33,6 +33,9 @@ intent and shipped state.
 
 ## Priority matrix
 
+This matrix records the priorities at the time of the audit. QW-1–QW-10 are now delivered, as
+recorded above; the EH, IM and LG rows remain roadmap work.
+
 ### Easiest AND essential — do these first
 
 | #     | Finding                                                                   | Effort       |

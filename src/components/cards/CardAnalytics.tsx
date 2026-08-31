@@ -28,6 +28,8 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
   const m = motionMultiplier ?? 1;
   const c = useChartColours();
   const now = Date.now();
+  const hasActiveExam =
+    schedulingConfig.examDate !== undefined && schedulingConfig.examDate >= now;
   const targetDate = schedulingHorizon(schedulingConfig, now);
   const decay = decayOf(schedulingConfig.fsrsParameters);
 
@@ -78,7 +80,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
       const days = Math.max(targetDate - card.lastReviewed, 0) / MS_PER_DAY;
       const r = forgettingCurve(days, card.stability, decay);
       stats.push({
-        label: schedulingConfig.examDate === undefined ? 'Predicted target R' : 'Predicted exam R',
+        label: hasActiveExam ? 'Predicted exam R' : 'Predicted target R',
         value: `${(r * 100).toFixed(0)}%`,
       });
     }

@@ -2,6 +2,8 @@
 
 ## Unreleased — optional exam dates and steady retention
 
+- Card analytics now labels an expired exam's rolling horizon as a predicted maintenance target
+  rather than pretending the elapsed deadline is still the active exam target.
 - Course creation now requires an explicit choice between a dated exam and steady long-term
   retention. The form no longer invents a seven-day deadline before the learner has chosen one.
 - A steady course stores that target on its sole final assessment without an `examDate` or time
