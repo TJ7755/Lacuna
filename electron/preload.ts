@@ -16,6 +16,49 @@ type McpGrantNotice = { courseId: string; tool: string; client?: McpClientIdenti
 type McpClientConnection = McpClientIdentity & { connectedAt: number; lastActivityAt: number; grants: McpGrant[] };
 type McpScopeResolutionRequest = { id: string; tool: string; input: unknown };
 type McpScopeResolutionResponse = { id: string; ok: true; targets: { courseId: string; label?: string }[] } | { id: string; ok: false; error: { kind: string; message: string } };
+type AiBridgeRequest = Record<string, unknown> & { type: string };
+type AiBridgeResult =
+  | { ok: true; data: unknown }
+  | { ok: false; error: Record<string, unknown> & { kind: string; message: string } };
+
+function record(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+}
+
+function aiRequestEnvelope(value: unknown): {
+  channelId: string;
+  id: string;
+  request: AiBridgeRequest;
+} | undefined {
+  const item = record(value);
+  const request = record(item?.request);
+  if (!item || Object.keys(item).length !== 3 || typeof item.channelId !== 'string' ||
+    item.channelId.length === 0 || typeof item.id !== 'string' || item.id.length === 0 ||
+    !request || typeof request.type !== 'string') return undefined;
+  return { channelId: item.channelId, id: item.id, request: request as AiBridgeRequest };
+}
+
+function aiDisconnectEnvelope(value: unknown): { channelId: string } | undefined {
+  const item = record(value);
+  return item && Object.keys(item).length === 1 && typeof item.channelId === 'string' &&
+    item.channelId.length > 0 ? { channelId: item.channelId } : undefined;
+}
+
+function safeAiResult(value: unknown): AiBridgeResult {
+  const item = record(value);
+  if (item && Object.keys(item).length === 2 && item.ok === true) {
+    const data = record(item.data);
+    if (data && typeof data.type === 'string') return value as AiBridgeResult;
+  }
+  if (item && Object.keys(item).length === 2 && item.ok === false) {
+    const error = record(item.error);
+    if (error && typeof error.kind === 'string') return value as AiBridgeResult;
+  }
+  return {
+    ok: false,
+    error: { kind: 'internal', message: 'The local AI renderer returned an invalid response.' },
+  };
+}
 
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
@@ -30,6 +73,64 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => {
       ipcRenderer.removeListener('window:maximizedChange', handler);
     };
+  },
+  ai: {
+    protocolVersion: 1,
+    listen: (
+      onRequest: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
+      onDisconnected: (channelId: string) => void,
+    ) => {
+      let active = true;
+      let ready = false;
+      let readyTimer: ReturnType<typeof setInterval> | undefined;
+      const requestHandler = (_event: unknown, value: unknown) => {
+        const envelope = aiRequestEnvelope(value);
+        if (!active || !envelope) return;
+        void Promise.resolve(onRequest(envelope.channelId, envelope.request))
+          .then((result) => {
+            if (active) ipcRenderer.send('ai:reply', {
+              channelId: envelope.channelId,
+              id: envelope.id,
+              result: safeAiResult(result),
+            });
+          })
+          .catch(() => {
+            if (active) ipcRenderer.send('ai:reply', {
+              channelId: envelope.channelId,
+              id: envelope.id,
+              result: {
+                ok: false,
+                error: { kind: 'internal', message: 'The local AI renderer request failed.' },
+              },
+            });
+          });
+      };
+      const disconnectHandler = (_event: unknown, value: unknown) => {
+        const envelope = aiDisconnectEnvelope(value);
+        if (active && envelope) onDisconnected(envelope.channelId);
+      };
+      const readyHandler = () => {
+        ready = true;
+        if (readyTimer) clearInterval(readyTimer);
+      };
+      ipcRenderer.on('ai:request', requestHandler);
+      ipcRenderer.on('ai:disconnected', disconnectHandler);
+      ipcRenderer.on('ai:renderer-ready-ack', readyHandler);
+      const announceReady = () => {
+        if (!ready) ipcRenderer.send('ai:renderer-ready');
+      };
+      announceReady();
+      readyTimer = setInterval(announceReady, 250);
+      return () => {
+        if (!active) return;
+        active = false;
+        ipcRenderer.removeListener('ai:request', requestHandler);
+        ipcRenderer.removeListener('ai:disconnected', disconnectHandler);
+        ipcRenderer.removeListener('ai:renderer-ready-ack', readyHandler);
+        if (readyTimer) clearInterval(readyTimer);
+        ipcRenderer.send('ai:renderer-unavailable');
+      };
+    },
   },
   // Narrow surface for the stdio MCP server hosted in the main process (Arc 2, Task 9).
   // No raw ipcRenderer passthrough, matching the rest of this file's pattern.

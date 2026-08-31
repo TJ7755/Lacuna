@@ -8,6 +8,7 @@ export interface CompanionConnectionFile {
   protocolVersion: typeof MCP_COMPANION_PROTOCOL_VERSION;
   endpoint: string;
   token: string;
+  aiToken: string;
   pid: number;
   appVersion: string;
   createdAt: number;
@@ -22,9 +23,30 @@ export function companionConnectionFilePath(userDataPath: string): string {
 }
 
 export function companionEndpoint(userDataPath: string, platform = process.platform): string {
+  if (platform === 'win32') return `\\\\.\\pipe\\LOCAL\\lacuna-${randomBytes(16).toString('hex')}`;
   const digest = createHash('sha256').update(userDataPath).digest('hex').slice(0, 20);
-  if (platform === 'win32') return `\\\\.\\pipe\\lacuna-mcp-${digest}`;
   return path.join(os.tmpdir(), `lacuna-mcp-${process.getuid?.() ?? 'user'}-${digest}.sock`);
+}
+
+export interface CompanionLaunchEnvironment {
+  appPath: string;
+  execPath: string;
+  isPackaged: boolean;
+  platform: NodeJS.Platform;
+  portableExecutableFile?: string;
+}
+
+export function companionLaunchCommand(
+  environment: CompanionLaunchEnvironment,
+  mode: '--mcp-companion' | '--ai-companion',
+): { command: string; args: string[] } {
+  const command = environment.platform === 'win32' && environment.portableExecutableFile
+    ? environment.portableExecutableFile
+    : environment.execPath;
+  return {
+    command,
+    args: environment.isPackaged ? [mode] : [environment.appPath, mode],
+  };
 }
 
 export async function writeCompanionConnectionFile(
@@ -38,6 +60,7 @@ export async function writeCompanionConnectionFile(
     protocolVersion: MCP_COMPANION_PROTOCOL_VERSION,
     endpoint: companionEndpoint(userDataPath),
     token: randomBytes(32).toString('hex'),
+    aiToken: randomBytes(32).toString('hex'),
     pid: process.pid,
     appVersion,
     createdAt: Date.now(),
@@ -54,7 +77,8 @@ export async function readCompanionConnectionFile(userDataPath: string): Promise
   const raw = await fs.readFile(companionConnectionFilePath(userDataPath), 'utf8');
   const value = JSON.parse(raw) as Partial<CompanionConnectionFile>;
   if (value.protocolVersion !== MCP_COMPANION_PROTOCOL_VERSION || typeof value.endpoint !== 'string' ||
-    typeof value.token !== 'string' || value.token.length < 32 || typeof value.pid !== 'number' ||
+    typeof value.token !== 'string' || !/^[a-f0-9]{64}$/.test(value.token) || typeof value.pid !== 'number' ||
+    typeof value.aiToken !== 'string' || !/^[a-f0-9]{64}$/.test(value.aiToken) || value.aiToken === value.token ||
     typeof value.appVersion !== 'string' || typeof value.createdAt !== 'number') {
     throw new Error('Lacuna MCP connection metadata is invalid or incompatible.');
   }

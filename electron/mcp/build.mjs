@@ -28,6 +28,7 @@ await build({
   entryPoints: {
     server: path.join(__dirname, 'server.ts'),
     companion: path.join(__dirname, 'companion.ts'),
+    aiCompanion: path.join(__dirname, 'aiCompanion.ts'),
   },
   outdir: path.join(__dirname, '..', 'dist-electron', 'mcp'),
   bundle: true,

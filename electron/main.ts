@@ -31,9 +31,15 @@ interface McpCompanionModule {
   startMcpCompanion: () => { close: () => Promise<void> };
 }
 
+interface AiCompanionModule {
+  startAiCompanion: () => { close: () => Promise<void> };
+}
+
 const isDev = !app.isPackaged;
 const rendererEnvironment: RendererEnvironment = isDev ? 'development' : 'production';
 const isMcpCompanionProcess = process.argv.includes('--mcp-companion');
+const isAiCompanionProcess = process.argv.includes('--ai-companion');
+const isCompanionProcess = isMcpCompanionProcess || isAiCompanionProcess;
 let mainWindow: BrowserWindow | null = null;
 let mcpModule: McpServerModule | null = null;
 
@@ -353,18 +359,29 @@ function createWindow(): void {
 }
 
 /** Single instance lock — prevent multiple windows. */
-const gotTheLock = isMcpCompanionProcess ? false : app.requestSingleInstanceLock();
+const gotTheLock = isCompanionProcess ? false : app.requestSingleInstanceLock();
 
-if (isMcpCompanionProcess) {
+if (isCompanionProcess) {
   void app.whenReady().then(async () => {
-    const companionModulePath = './mcp/companion.js';
-    const companion = (await import(companionModulePath)) as McpCompanionModule;
-    const handle = companion.startMcpCompanion();
-    process.stdin.once('end', () => {
+    const companionModulePath = isAiCompanionProcess
+      ? './mcp/aiCompanion.js'
+      : './mcp/companion.js';
+    const companion = await import(companionModulePath) as McpCompanionModule | AiCompanionModule;
+    const handle = 'startAiCompanion' in companion
+      ? companion.startAiCompanion()
+      : companion.startMcpCompanion();
+    let closing = false;
+    const close = () => {
+      if (closing) return;
+      closing = true;
       void handle.close().finally(() => app.quit());
-    });
+    };
+    process.stdin.once('end', close);
+    process.stdin.once('error', close);
+    process.once('SIGINT', close);
+    process.once('SIGTERM', close);
   }).catch((error) => {
-    process.stderr.write(`Could not start the Lacuna MCP companion: ${String(error)}\n`);
+    process.stderr.write(`Could not start the Lacuna ${isAiCompanionProcess ? 'AI ' : ''}MCP companion: ${String(error)}\n`);
     app.exit(1);
   });
 } else if (!gotTheLock) {
@@ -437,12 +454,21 @@ if (isMcpCompanionProcess) {
   });
 }
 
-if (!isMcpCompanionProcess) {
+if (!isCompanionProcess) {
   app.on('window-all-closed', () => {
     app.quit();
   });
 
-  app.on('before-quit', () => {
-    void mcpModule?.stopMcpServer();
+  let shutdownComplete = false;
+  let shutdownStarted = false;
+  app.on('before-quit', (event) => {
+    if (shutdownComplete) return;
+    event.preventDefault();
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+    void (mcpModule?.stopMcpServer() ?? Promise.resolve()).finally(() => {
+      shutdownComplete = true;
+      app.quit();
+    });
   });
 }
