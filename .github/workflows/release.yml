@@ -21,6 +21,8 @@ jobs:
           bun-version: 1.3.14
 
       - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+        working-directory: relay
 
       - name: Validate release tag
         shell: bash
