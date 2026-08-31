@@ -12,6 +12,13 @@ vi.mock('../../state/useCourseData', () => ({
 }));
 
 describe('Sidebar', () => {
+  it('fills its shell container without extending beneath the Electron titlebar', () => {
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('complementary')).toHaveClass('h-full');
+    expect(screen.getByRole('complementary')).not.toHaveClass('h-screen');
+  });
+
   it('exposes cross-course review as Review today', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 

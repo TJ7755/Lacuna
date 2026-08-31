@@ -326,7 +326,8 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
   sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
   per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
-  (configured in Settings → Sidebar) and take effect immediately.
+  (configured in Settings → Sidebar) and take effect immediately. Its height follows the shell
+  body rather than the viewport so the footer remains visible below the Electron titlebar.
 - **Search navigation:** when the compact overlay is available, the sidebar entry is
   **Quick search**, opens that overlay directly, and shows the `Ctrl/Cmd+K` shortcut hint inline
   (collapsed sidebar: as a title tooltip). Surfaces without overlay wiring (for example,
@@ -2755,10 +2756,10 @@ modifying the renderer source.
   manages window lifecycle (single-instance lock, close/minimise/maximise).
 - **Preload** (`electron/preload.ts`): exposes a minimal `electronAPI` via
   `contextBridge` for platform detection, window controls and the narrow MCP IPC surface.
-- **Titlebar** (`src/components/layout/Titlebar.tsx`): a custom React component
-  that renders window controls (minimise, maximise/restore, close) when running
-  inside Electron. Only mounts when `window.electronAPI.isElectron` is truthy,
-  so the web version is completely unaffected.
+- **Titlebar** (`src/components/layout/Titlebar.tsx`): a custom React component which reserves the
+  native traffic-light inset and omits duplicate controls on macOS. Windows and Linux render the
+  custom minimise, maximise/restore and close controls. It only mounts when
+  `window.electronAPI.isElectron` is truthy, so the web version is completely unaffected.
 - **Fonts** (`electron/assets/fonts/`): Fraunces, Geist and JetBrains Mono
   bundled as local TTF variable fonts. The main process injects
   `electron/fonts.css` via `webContents.insertCSS` so the app works fully
