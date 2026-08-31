@@ -23,19 +23,21 @@ import type {
 } from '../../db/types';
 import {
   buryCard,
-  completeRevisionWindow,
   listNotes,
   ratchetLessonUnlock,
   recordReview,
-  refreshRevisionPlan,
   savePracticeMilestoneProgress,
   setCardFlag,
-  startRevisionWindow,
   suspendCard,
   undoReview,
   upsertLessonCardExposure,
 } from '../../db/repository';
 import type { ReviewUndo } from '../../db/repository';
+import {
+  completeRevisionWindow,
+  refreshRevisionPlan,
+  startRevisionWindow,
+} from '../../db/revisionPlanRepository';
 import { nextLessonUnlockCondition } from '../../course/unlock';
 import {
   buildPath,

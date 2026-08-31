@@ -12,11 +12,11 @@ import {
   createLesson,
   createLessonCard,
   createPracticeNode,
-  createOrResumeRevisionPlan,
   createSequence,
   linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
+import { createOrResumeRevisionPlan } from '../db/revisionPlanRepository';
 import * as linesModeCards from '../db/linesModeCards';
 import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';

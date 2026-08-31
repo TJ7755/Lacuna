@@ -13,34 +13,41 @@ archive.
 
 ## Now
 
-### Optional exam dates and steady retention
+### Maintainability consolidation
 
-**Status:** ready.
+**Status:** in progress.
 
-QW-7 in the [UX sticking-point audit](UX-STICKING-POINTS-2026-08-30.md) is the remaining essential
-quick win. Course creation currently invents an exam seven days away when the learner has none. The
-next slice must make that choice explicit: either a dated exam objective or steady long-term
-retention. This is a scheduling, assessment and persistence contract, not permission to make the
-date input nullable and hope the rest of the application develops telepathy.
+Maintainability now outranks new product scope. The first deletion-led slice moves revision-plan
+persistence out of the formerly 3,000-line general repository, removes its duplicated refresh path
+and sends callers directly to the narrower module. It also removes the obsolete July remediation plan: Git
+already preserves the diary, while a stale “draft for approval” in the live documentation merely
+creates a second, wrong roadmap.
 
-The implementation must preserve backup, share, sync and existing-database behaviour and prove the
-new scheduling semantics at their public boundaries. This work takes precedence while the database
-still contains no irreplaceable study history.
+The next maintenance slices, in order, are:
 
-### Grading transparency
+1. Make the full unit-test run quiet. Its assertions pass, but known React `act`, forwarded-ref,
+   router-future and expected-boundary messages still bury new stderr failures.
+2. Continue replacing `src/db/repository.ts` ownership clusters with directly imported persistence
+   modules. Assessment persistence is the next candidate; transaction scope and rollback behaviour
+   decide the seam, not a line-count quota.
+3. Reassess `useLearnSession.ts` only after persistence ownership is clearer. Extract pure
+   derivations or command adapters; do not split mutable session state across competing hooks.
 
-**Status:** proposed.
+Every slice must preserve behaviour, keep or improve the quality gates, and remove more code than it
+adds where that does not damage clarity.
 
-EH-1 and IM-2 follow QW-7. The learner should see the inferred grade and resulting interval after an
-answer, receive one concise disclosure that response time affects silent grading, and see the cost
-of a hint when requesting it. The grading algorithm itself does not change.
+### Recently delivered
+
+Optional exam dates and steady retention shipped in PR #115. Grading transparency, including the
+hint-cost disclosure, shipped in PR #116. The [UX sticking-point audit](UX-STICKING-POINTS-2026-08-30.md)
+remains the source for unselected product work; it is not an active implementation queue.
 
 ## Close-out queue
 
-No verification debt remains. The prompter completed the real two- then three-device P9 pass against
-the live sync relay on 28 August 2026 and confirmed it works. Multi-device sync P1–P9 is delivered.
-Arc 14, the learn screen redesign and Arc 11 are also delivered. Their detailed records remain in
-their plans, `docs/SPEC.md`, `docs/CHANGES.md` and the historical roadmap.
+No manual verification debt remains. The prompter completed the real two- then three-device P9 pass
+against the live sync relay on 28 August 2026 and confirmed it works. Multi-device sync P1–P9, Arc
+14, the learn screen redesign and Arc 11 are delivered. Their detailed records remain in their
+plans, `docs/SPEC.md`, `docs/CHANGES.md` and the historical roadmap.
 
 ## Deployment status
 
@@ -60,13 +67,13 @@ corpus as a problem to be engineered around.
 
 ## Later candidates
 
-These require a fresh product decision after the current AI sidebar plan:
+These require a fresh product decision after the maintenance queue:
 
 | Candidate                               | Current position                                | Decision gate                                                                   |
 | --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
 | Mobile reminders and PWA installation   | Scoped only                                     | Verify platform behaviour; return rate is not measurable before September 2026  |
 | Progress receipts and encrypted relay   | Detailed outline only                           | Identify a real tutor/parent reporting workflow before infrastructure work      |
-| Further MCP product expansion           | Current AI plan is deliberately bounded         | Prioritise concrete agent workflows instead of exposing every repository method |
+| Further MCP product expansion           | Delivered AI scope is deliberately bounded       | Prioritise concrete agent workflows instead of exposing every repository method |
 | Item-family and generated-practice work | Research direction                              | Prove authored mark-scheme demand and define stable skill identity first        |
 | Prediction calibration harness          | Considered 12 August 2026 and deferred; no data | A real corpus cannot exist before September 2026; see below                     |
 

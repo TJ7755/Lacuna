@@ -189,6 +189,7 @@ The shipped MCP surface and its deliberate exclusions are specified in `docs/SPE
 | Cooldown slotting                        | `src/fsrs/cooldown.ts`                                                               |
 | Exam-day mastery / progress              | `src/fsrs/progress.ts`                                                               |
 | IndexedDB schema & operations            | `src/db/`                                                                            |
+| Revision-plan persistence                | `src/db/revisionPlanRepository.ts`                                                    |
 | Course/lesson data layer                 | `src/state/useCourseData.ts`, `src/course/path.ts`                                   |
 | Course path, Cards and Questions         | `src/pages/CoursePath.tsx`, `src/pages/CardsPage.tsx`, `src/pages/QuestionsPage.tsx` |
 | Sequence generation & editor             | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx`                       |

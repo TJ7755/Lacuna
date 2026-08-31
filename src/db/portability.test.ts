@@ -24,9 +24,8 @@ import {
   recordReview,
   savePracticeMilestoneProgress,
   upsertLessonCardExposure,
-  createOrResumeRevisionPlan,
-  startRevisionWindow,
 } from './repository';
+import { createOrResumeRevisionPlan, startRevisionWindow } from './revisionPlanRepository';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { createOcclusion } from './occlusionRepository';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
