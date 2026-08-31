@@ -37,6 +37,10 @@ beforeEach(() => {
     configurable: true,
     value: undefined,
   });
+  Object.defineProperty(navigator, 'userAgent', {
+    configurable: true,
+    value: 'Mozilla/5.0',
+  });
 });
 
 describe('AiPanel', () => {
@@ -51,6 +55,21 @@ describe('AiPanel', () => {
 
     expect(screen.getByText('Waiting for terminal')).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Terminal setup prompt' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
+    expect(session.pair).not.toHaveBeenCalled();
+  });
+
+  it('keeps the local setup path when the Electron preload failed to load', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 Electron/42.3.3',
+    });
+    const session = sessionWith();
+
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText(/desktop app connects locally/i)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/desktop integration failed to load/i);
     expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
     expect(session.pair).not.toHaveBeenCalled();
   });

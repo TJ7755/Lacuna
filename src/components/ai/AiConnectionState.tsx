@@ -63,8 +63,13 @@ export function AiConnectionState({
 
     let cancelled = false;
     setLocalSetupError(null);
-    void window.electronAPI?.mcp
-      ?.getStatus()
+    const mcp = window.electronAPI?.mcp;
+    if (!mcp) {
+      setLocalSetupError('Desktop integration failed to load. Restart Lacuna.');
+      return;
+    }
+    void mcp
+      .getStatus()
       .then((status) => {
         if (cancelled) return;
         const companion = status.aiCompanion;
@@ -129,7 +134,12 @@ export function AiConnectionState({
             id="ai-terminal-setup-prompt"
             readOnly
             rows={7}
-            value={localInstruction ?? 'Reading the packaged companion command…'}
+            value={
+              localInstruction ??
+              (localSetupError
+                ? 'The packaged companion command is unavailable.'
+                : 'Reading the packaged companion command…')
+            }
             onFocus={(event) => event.currentTarget.select()}
             className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
           />

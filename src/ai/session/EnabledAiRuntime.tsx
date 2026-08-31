@@ -7,6 +7,7 @@ import { createLocalAiSession } from './local';
 import { createElectronLocalAiRequestSource } from './localIpc';
 import { replacementLifecycle } from '../../db/replacementLifecycle';
 import type { AiSession } from './types';
+import { isElectronRuntime } from '../../electron/runtime';
 
 /**
  * Owns the optional relay runtime. Keeping this behind a dynamic import means
@@ -18,7 +19,7 @@ export function EnabledAiRuntime({
   onSessionChange: (session: AiSession | null) => void;
 }) {
   const [session] = useState(() =>
-    window.electronAPI?.isElectron
+    isElectronRuntime()
       ? createLocalAiSession({
           source: createElectronLocalAiRequestSource(),
           getInstructions: () => buildAiInstructionBundle(readAiSettings()),

@@ -46,6 +46,10 @@ import { EnabledAiRuntime } from './EnabledAiRuntime';
 describe('EnabledAiRuntime', () => {
   afterEach(() => {
     Reflect.deleteProperty(window, 'electronAPI');
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0',
+    });
     vi.clearAllMocks();
   });
 
@@ -87,5 +91,20 @@ describe('EnabledAiRuntime', () => {
 
     view.unmount();
     expect(onSessionChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('fails closed to the local session when the Electron preload is unavailable', async () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 Electron/42.3.3',
+    });
+    const onSessionChange = vi.fn();
+    const view = render(<EnabledAiRuntime onSessionChange={onSessionChange} />);
+
+    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.localSession));
+    expect(runtime.createLocalAiSession).toHaveBeenCalledOnce();
+    expect(runtime.createRelayAiSession).not.toHaveBeenCalled();
+
+    view.unmount();
   });
 });

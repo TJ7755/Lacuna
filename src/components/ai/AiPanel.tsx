@@ -6,6 +6,7 @@ import { AiApprovalCard } from './AiApprovalCard';
 import { AiComposer } from './AiComposer';
 import { AiConnectionState } from './AiConnectionState';
 import { AiConversation } from './AiConversation';
+import { isElectronRuntime } from '../../electron/runtime';
 
 export function AiPanel({ session, onClose }: { session: AiSession; onClose: () => void }) {
   const snapshot = useSyncExternalStore(
@@ -17,7 +18,7 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   const [connectionBusy, setConnectionBusy] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const connection = snapshot.connection;
-  const local = window.electronAPI?.isElectron === true && window.electronAPI.ai !== undefined;
+  const local = isElectronRuntime();
   const disconnected = connection.status === 'disconnected' || connection.status === 'pairing';
   const pendingApproval = snapshot.approval?.status === 'pending';
   const stoppableRun =
