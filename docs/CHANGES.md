@@ -15,8 +15,21 @@
   mounts and after it disposes; long message waits are cancellable across disconnect and shutdown.
 - Replaced Electron's redundant pairing action with one copyable setup prompt containing the
   installed or portable companion command. Browser builds retain their short-lived pairing code.
-- Corrected Windows portable companion discovery to advertise the stable wrapper executable rather
-  than electron-builder's temporary extraction path.
+- Corrected packaged companion discovery to advertise the stable Windows portable or Linux
+  AppImage wrapper rather than electron-builder's temporary extraction path.
+- Kept active local waits alive across brief React listener remounts while still failing closed on
+  real renderer navigation. Electron now rejects stale listener shutdown events by generation.
+- Prevented an Electron launch with a missing preload bridge from silently falling back to web
+  relay pairing; the AI panel instead reports that desktop integration failed to load.
+- Restyled user and assistant turns as compact, opposing chat bubbles while leaving errors,
+  approvals and action receipts on their specialised surfaces.
+- Made explicit Disconnect terminate the exact owning AI channel, and made genuine renderer loss
+  close every AI-purpose channel without touching the broader data companion.
+- Kept cancelled or timed-out write calls draining on their authenticated channel so a retry with
+  the same call ID reaches the renderer ledger instead of risking a duplicate mutation. Abandoned
+  drains now have a bounded cleanup deadline rather than leaking indefinitely.
+- Made Stop revoke pending approvals, temporary grants and replay authority immediately. An
+  unacknowledged Stop now expires at the claim lease without resurrecting the stopped prompt.
 
 **Checks:** red-to-green purpose-bound authentication, malformed-message, portable-command,
 renderer lifecycle, single-owner, Stop and local/web runtime-selection regressions; native
