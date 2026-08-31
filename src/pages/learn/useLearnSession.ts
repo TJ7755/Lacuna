@@ -1502,13 +1502,13 @@ export function useLearnSession({
         const limit = schedulingConfig.maxReviewsPerDay;
         if (!limitOverride && limit && limit > 0 && deckReviews >= limit) {
           finish(false, true);
-          return recorded;
+          return false;
         }
 
         const goal = schedulingConfig.dailyReviewGoal;
         if (!limitOverride && goal && goal > 0 && deckReviews >= goal) {
           finish(true);
-          return recorded;
+          return false;
         }
 
         const revisionPlan = revisionPlanRef.current;
@@ -1521,7 +1521,7 @@ export function useLearnSession({
           Date.now() >= revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
         ) {
           finish(false, false, true);
-          return recorded;
+          return false;
         }
 
         const timeLimit = schedulingConfig.sessionTimeLimitMinutes;
@@ -1529,13 +1529,19 @@ export function useLearnSession({
           const elapsedMinutes = (Date.now() - sessionStartMs.current) / 60000;
           if (elapsedMinutes >= timeLimit) {
             finish(false, false, true);
-            return recorded;
+            return false;
           }
         }
 
-        if (revisionPlanRef.current) serveNext();
-        else if (sessionComplete(nextCards, ctx)) finish(true);
-        else serveNext();
+        if (revisionPlanRef.current) {
+          serveNext();
+          return recorded && lastAnswer.current !== null;
+        }
+        if (sessionComplete(nextCards, ctx)) {
+          finish(true);
+          return false;
+        }
+        serveNext();
         return recorded;
       } finally {
         submitting.current = false;

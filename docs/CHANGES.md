@@ -18,6 +18,20 @@
 **Checks:** red-to-green creation, settings, repository, backup and share tests; focused scheduler,
 assessment, path and revision-plan suites; full validation is recorded with the pull request.
 
+## Unreleased — audit regression follow-up
+
+- Stop offering the short-lived Undo action when the recorded answer has already finalised the
+  study session. Completion clears the single-answer reversal boundary while it writes milestones,
+  revision-window state and unlock progress; the old toast therefore advertised an action that
+  could no longer do anything.
+- Restore focus to **Accept all clean** when a batch revision fixes every failing staged Question
+  and removes its **Revise N with AI** trigger.
+- Replaced the delivered-only roadmap head with the selected next slices: optional exam dates and
+  steady long-term retention first, followed by grading transparency.
+
+**Checks:** merge-base red-to-green UI tests cover terminal-answer Undo and batch-revision focus;
+full validation is recorded with the pull request.
+
 ## Unreleased — review fixes for the audit implementation
 
 - Flush the Card editor's pending draft when navigating directly between two card routes inside
