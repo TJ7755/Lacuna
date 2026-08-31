@@ -28,6 +28,12 @@ The AI relay fixture may cap each polling sleep to keep successful tests fast, b
 must remain `Date.now`. Advancing a synthetic clock by the uncapped sleep compresses the client's
 25-second deadline to about 2.5 real seconds and flakes under hosted-runner contention.
 
+## Cross-platform build scripts must execute JavaScript entry points
+
+Node 22 on Windows rejects `spawnSync('tool.cmd', ..., { shell: false })` with `EINVAL`. Invoke local
+JavaScript tools through `process.execPath` and their real entry files; do not add `shell: true` merely
+to make a package-manager shim executable.
+
 ## Hash routing needs no SPA catch-all
 
 Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to
