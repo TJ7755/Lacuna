@@ -38,8 +38,8 @@ import {
   stampMissingLessonViewModes,
   updateCourse,
   updateCourseAssessment,
-  createOrResumeRevisionPlan,
 } from './repository';
+import { createOrResumeRevisionPlan } from './revisionPlanRepository';
 import { FSRS_VERSION } from '../fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';

@@ -1,5 +1,19 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — maintainability consolidation
+
+- Moved revision-plan persistence from the general database repository into
+  `src/db/revisionPlanRepository.ts`; UI, session and test callers now depend on that narrower
+  interface directly.
+- Removed the duplicate current-input refresh path shared by plan creation/resume and refresh while
+  preserving the existing transaction scope and error behaviour.
+- Replaced the delivered roadmap head with the maintainability queue and removed the obsolete July
+  code-quality draft. The current roadmap now distinguishes passing assertions from the remaining
+  noisy-test-signal work instead of claiming both are complete.
+
+**Checks:** focused revision-plan, repository transaction, portability, read, Learn and setup tests;
+web typecheck; full validation is recorded with the pull request.
+
 ## Unreleased — grading transparency
 
 - Replace the generic "Answer recorded" notification with the FSRS grade Lacuna actually stored
@@ -467,7 +481,12 @@ lint and the full test suite.
 
 ## Unreleased — Full audit 2026-08-24: code, quality, accuracy and science
 
-Six concurrent audit streams examined scheduling science, grading accuracy, analytics, code quality, security/privacy/deployment, data integrity/sync and UX/accessibility against `docs/lacuna-objective-audit.html`, `docs/lacuna-interrogation-report.html` and `docs/code-quality-remediation-plan.html`. The fixes below address the highest-severity open items; remaining ranked remediation is archived in `.agent-mail/` and `docs/next_plan.md` for follow-up. This is a behaviour-preserving maintenance arc except where noted.
+Six concurrent audit streams examined scheduling science, grading accuracy, analytics, code quality,
+security/privacy/deployment, data integrity/sync and UX/accessibility against
+`docs/lacuna-objective-audit.html`, `docs/lacuna-interrogation-report.html` and the then-current
+code-quality remediation draft. The fixes below address the highest-severity open items; remaining
+ranked remediation is archived in `.agent-mail/` and `docs/next_plan.md` for follow-up. This is a
+behaviour-preserving maintenance arc except where noted.
 
 - **Calendar popover containment.** The date/time picker now renders outside overflow-clipping dialog panels while remaining inside the owning modal layer, uses fixed viewport-clamped positioning, and behaves as a popover rather than falsely declaring a nested modal. A browser pass against New Course confirmed the full calendar stays inside the viewport without clipping, restores initial day focus and logs no errors; the regression test covers the clipping-dialog placement.
 - **Electron security hardening.** New windows remain denied and only ordinary HTTP(S) links may open externally; renderer navigation is restricted to the exact packaged-app origin or exact Vite development origin. Pure policy tests now cover those boundaries. Permission handling allows only audio/video capture and sanitised clipboard writes from Lacuna's trusted main renderer, preserving microphone recording, QR scanning and copy actions while denying unrelated permissions and untrusted frames.

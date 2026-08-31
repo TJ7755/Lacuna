@@ -8,7 +8,7 @@ import {
   refreshRevisionPlan,
   removeRevisionDay,
   setRevisionDayBudget,
-} from '../../db/repository';
+} from '../../db/revisionPlanRepository';
 import type { CourseAssessment, RevisionPlan } from '../../db/types';
 import { formatDateTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';

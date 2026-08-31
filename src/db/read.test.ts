@@ -10,8 +10,8 @@ import {
   createPracticeNode,
   createSequence,
   linkCardToLesson,
-  createOrResumeRevisionPlan,
 } from './repository';
+import { createOrResumeRevisionPlan } from './revisionPlanRepository';
 import {
   diagnosticsSummary,
   getCard,

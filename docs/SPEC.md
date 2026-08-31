@@ -679,14 +679,11 @@ A course's static metadata includes `name`, `description`, and optional `examBoa
 Course Settings and included in batch-generation prompt context only when present; they do not
 create a first-class exam-board or specification entity.
 
-`src/db/repository.ts` and the React-free read module `src/db/read.ts` expose the course
-operations — `createCourse`/`updateCourse`/`deleteCourse` with `listCourses`/`getCourse`,
-`createLesson`/`updateLesson`/`deleteLesson`/`reorderLessons` with `listLessons`,
-`createNote`/`updateNote`/`deleteNote`/`listNotes`/`reorderNotes`,
-`linkCardToLesson`/`linkCardsToLesson`/`unlinkCardFromLesson` with course/lesson card reads,
-`createPracticeNode`/`updatePracticeNode`/`deletePracticeNode` with `listPracticeNodes`,
-and `createCourseAssessment`/`updateCourseAssessment`/`deleteCourseAssessment` with
-`listCourseAssessments`. The current assessment API replaces the old course-exam-date API.
+The React-free persistence modules in `src/db/` expose course operations. The general
+`repository.ts` still owns Course, Lesson, Card, review and assessment writes; cohesive Note,
+Practice-node, Sequence and revision-plan writes live in their named repository modules. Read
+operations live in `read.ts`. The current assessment interface replaces the old course-exam-date
+interface.
 Batch linking validates lesson/card existence, same-course membership and non-primary
 membership in one `lessonCards` write transaction; IndexedDB serialises overlapping writes
 to that store, making the idempotent duplicate check safe without another schema index.
@@ -1388,6 +1385,10 @@ existing Practice player. Scope is frozen from the assessment's resolved coverag
 with reached lessons and exposed cards, minus authored exclusions and unavailable cards; no
 untaught material leaks into revision. Completed windows record reviewed, improved and parked
 card ids plus review-event provenance, never a curricular Practice milestone.
+
+`src/db/revisionPlanRepository.ts` owns the six persistence operations for creating, refreshing,
+editing and completing those plans. UI and session callers import that module directly; the broad
+repository is not a compatibility barrel for this interface.
 
 The planner stores daily time budgets rather than a fixed queue. Edits to assessment coverage,
 deadline or time zone, reached/exposed/available scope, review evidence or the selected model

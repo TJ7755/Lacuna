@@ -7,10 +7,10 @@ import {
   createCourseAssessment,
   createLesson,
   createLessonCard,
-  createOrResumeRevisionPlan,
   updateCourseAssessment,
   upsertLessonCardExposure,
 } from '../../db/repository';
+import { createOrResumeRevisionPlan } from '../../db/revisionPlanRepository';
 import { revisionProjection } from '../../course/revisionProjection';
 import { RevisionPlanSetup } from './RevisionPlanSetup';
 
@@ -88,12 +88,12 @@ describe('RevisionPlanSetup', () => {
     await createOrResumeRevisionPlan(assessment!.id, 20, revisionProjection);
     await updateCourseAssessment(assessment!.id, { schedulingMode: 'steady' });
 
-    render(
-      <RevisionPlanSetup assessmentId={assessment!.id} onStart={vi.fn()} onExit={vi.fn()} />,
-    );
+    render(<RevisionPlanSetup assessmentId={assessment!.id} onStart={vi.fn()} onExit={vi.fn()} />);
 
     expect(
-      await screen.findByText('Steady retention has no deadline, so it does not use a revision plan.'),
+      await screen.findByText(
+        'Steady retention has no deadline, so it does not use a revision plan.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText('Revision unavailable')).not.toBeInTheDocument();
   });

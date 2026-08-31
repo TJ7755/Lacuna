@@ -3,19 +3,21 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { RevisionPlanInputSnapshot, RevisionProjection } from './types';
 import { db } from './schema';
 import {
-  completeRevisionWindow,
   createCourse,
   createCourseAssessment,
   createLesson,
   createLessonCard,
+  updateCourseAssessment,
+  upsertLessonCardExposure,
+} from './repository';
+import {
+  completeRevisionWindow,
   createOrResumeRevisionPlan,
   refreshRevisionPlan,
   removeRevisionDay,
   setRevisionDayBudget,
   startRevisionWindow,
-  updateCourseAssessment,
-  upsertLessonCardExposure,
-} from './repository';
+} from './revisionPlanRepository';
 import {
   buildRevisionWindows,
   revisionReplanReasons,
