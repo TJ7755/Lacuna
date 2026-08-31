@@ -99,6 +99,12 @@ can strip the unusual `app://.` CORS value even when the live relay emits it cor
 also repairs response CORS for that exact relay and exact renderer origin; do not broaden that
 exception to arbitrary origins or disable `webSecurity`.
 
+On the managed Windows Enterprise test device, blocked outbound requests are redirected to
+`https://localhost:6543/block?...`. That address is the organisation's filtering software, not a
+Lacuna bridge. A CSP error naming it means the original relay request was intercepted; do not add
+localhost to `connect-src`, because doing so would weaken the boundary without making the relay
+reachable.
+
 ## Sync credentials are remembered on device by design
 
 `SyncState.remembered` stores the unwrapped channel key and write token, restored at trigger

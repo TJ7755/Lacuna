@@ -31,10 +31,14 @@ describe('AiConnectionState', () => {
     expect(connect).toHaveFocus();
     expect(connect).toHaveClass('min-h-11');
     expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.getByText('Before connecting')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open terminal setup instructions' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat',
+    );
 
     fireEvent.click(connect);
     expect(onStartPairing).toHaveBeenCalledOnce();
-    expect(screen.getByText(/MCP/)).toBeInTheDocument();
   });
 
   it('presents a short-lived pairing code and copies the terminal instruction', async () => {

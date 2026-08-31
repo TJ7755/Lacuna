@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
@@ -18,6 +18,8 @@ import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
+import { AiSessionProvider } from './ai/session/AiSessionContext';
+import type { AiSession } from './ai/session/types';
 
 export { router } from './routes/router';
 
@@ -43,13 +45,16 @@ const EnabledAiRuntime = lazy(() =>
 
 function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
-  if (!settings.enabled) return <RouterWithQuotaWarning />;
+  const [session, setSession] = useState<AiSession | null>(null);
+  const handleSessionChange = useCallback((next: AiSession | null) => setSession(next), []);
+
   return (
-    <Suspense fallback={<RouterWithQuotaWarning />}>
-      <EnabledAiRuntime>
-        <RouterWithQuotaWarning />
-      </EnabledAiRuntime>
-    </Suspense>
+    <AiSessionProvider session={settings.enabled ? session : null}>
+      <Suspense fallback={null}>
+        {settings.enabled && <EnabledAiRuntime onSessionChange={handleSessionChange} />}
+      </Suspense>
+      <RouterWithQuotaWarning />
+    </AiSessionProvider>
   );
 }
 

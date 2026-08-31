@@ -171,7 +171,6 @@ function SettingsGroup({
       className="scroll-mt-20 first:mt-0 [&>section]:scroll-mt-20"
     >
       <div className="mb-5 border-b border-line pb-4">
-        <p className="mb-1 text-xs uppercase tracking-[0.18em] text-ink-faint">Settings group</p>
         <h2 id={headingId} className="font-display text-2xl tracking-tight">
           {title}
         </h2>

@@ -1,16 +1,20 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { readAiSettings } from '../settings';
 import { buildAiInstructionBundle } from '../instructions';
 import { createRelayClient } from '../relayClient';
-import { AiSessionProvider } from './AiSessionContext';
 import { createRelayAiSession } from './relay';
 import { replacementLifecycle } from '../../db/replacementLifecycle';
+import type { AiSession } from './types';
 
 /**
  * Owns the optional relay runtime. Keeping this behind a dynamic import means
  * disabled AI contributes neither its transport nor its tool stack to first paint.
  */
-export function EnabledAiRuntime({ children }: { children: ReactNode }) {
+export function EnabledAiRuntime({
+  onSessionChange,
+}: {
+  onSessionChange: (session: AiSession | null) => void;
+}) {
   const [session] = useState(() =>
     createRelayAiSession({
       relay: createRelayClient(),
@@ -20,12 +24,14 @@ export function EnabledAiRuntime({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unregister = replacementLifecycle.register(session.replacementParticipant);
+    onSessionChange(session);
     session.activate();
     return () => {
+      onSessionChange(null);
       unregister();
       session.dispose();
     };
-  }, [session]);
+  }, [onSessionChange, session]);
 
-  return <AiSessionProvider session={session}>{children}</AiSessionProvider>;
+  return null;
 }

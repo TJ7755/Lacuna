@@ -1,6 +1,24 @@
 # Lacuna — version 0.2.1
 
-## Unreleased — Node 24 GitHub Actions
+## Unreleased
+
+### Desktop AI and Settings reliability
+
+- Kept the router and application shell mounted while optional AI starts or stops. Toggling AI no
+  longer reloads the current Settings view or loses its scroll position; the shell-level
+  scroll-restoration workaround has been removed because the remount itself no longer occurs.
+- Replaced the collapsed, markerless terminal setup disclosure with visible setup guidance and a
+  direct README link before pairing. A browser-level relay failure now explains that the network
+  must permit `lacuna-relay.vercel.app` instead of reporting an unspecified internal error.
+- Removed the repeated `Settings group` eyebrow from all five task groups. Reworked Teaching
+  memory filters into a wider responsive column and replaced the raw checkbox with Lacuna's
+  established toggle control.
+
+**Checks:** red-to-green router-identity and scroll regression; blocked-relay classification;
+terminal setup discoverability; Settings-group and Teaching memory layout regressions; focused
+unit suite, typecheck and lint.
+
+### Node 24 GitHub Actions
 
 - Updated checkout, upload-artifact and download-artifact across CI and release workflows to the
   current official Node 24 action majors. Permissions, job ordering and release artefact allowlists

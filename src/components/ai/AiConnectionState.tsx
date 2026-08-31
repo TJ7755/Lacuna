@@ -17,16 +17,23 @@ export interface AiConnectionStateProps {
   onCancel: () => void;
 }
 
-function TerminalSetupDisclosure() {
+function TerminalSetupGuide() {
   return (
-    <details className="mt-4 border-t border-line text-sm text-ink-soft">
-      <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60">
-        Terminal setup
-      </summary>
-      <p className="pb-2 text-xs leading-5 text-ink-faint">
-        Use a terminal harness that can connect to Lacuna through MCP and keep waiting for work.
+    <div className="mt-4 border-t border-line pt-4 text-sm text-ink-soft">
+      <p className="font-medium text-ink">Before connecting</p>
+      <p className="mt-1 text-xs leading-5 text-ink-faint">
+        Install Lacuna&apos;s MCP companion in your terminal, then return here to create a pairing
+        code.
       </p>
-    </details>
+      <a
+        href={TERMINAL_SETUP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-2"
+      >
+        Open terminal setup instructions
+      </a>
+    </div>
   );
 }
 
@@ -177,7 +184,6 @@ export function AiConnectionState({
                 : ''}
           </p>
 
-          <TerminalSetupDisclosure />
         </div>
       </section>
     );
@@ -219,7 +225,7 @@ export function AiConnectionState({
           {busy ? 'Connecting…' : 'Connect terminal'}
         </Button>
 
-        <TerminalSetupDisclosure />
+        <TerminalSetupGuide />
       </div>
     </section>
   );
