@@ -69,6 +69,9 @@ describe('v0.2.0 release configuration', () => {
       expect(releaseWorkflow).toContain(command);
     }
     expect(releaseWorkflow).toContain('needs: verify');
+    expect(releaseWorkflow).toMatch(
+      /verify:[\s\S]*?- run: bun install --frozen-lockfile\s+working-directory: relay[\s\S]*?bun run test:e2e:web\s*\n\s*build-win:/,
+    );
     expect(releaseWorkflow).toContain('windows-latest');
     expect(releaseWorkflow).toContain('ubuntu-latest');
     expect(releaseWorkflow).toContain('actions/upload-artifact@v4');

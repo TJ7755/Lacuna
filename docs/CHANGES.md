@@ -28,6 +28,8 @@
   match the package version; typecheck, lint, unit, coverage, production, release-scenario,
   performance and browser checks must pass; and only distributable artefacts plus update metadata
   are uploaded with SHA-256 checksums.
+- Installed the relay dependency tree in the release verifier so the browser tests can import the
+  real relay store on a clean GitHub runner.
 - Kept automatic beta-channel updates for Windows NSIS and Linux AppImage. Windows portable and
   Linux DEB update manually. The unsigned macOS beta also updates manually because macOS requires
   code signing for electron-updater.
