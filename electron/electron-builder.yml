@@ -32,11 +32,13 @@ linux:
         - x64
   category: Education
   maintainer: "TJ7755 <tj7755@duck.com>"
+  icon: electron/assets/icon.png
 mac:
   target:
     - dmg
     - zip
   category: public.app-category.education
+  icon: electron/assets/icon.png
 publish:
   provider: github
   owner: TJ7755

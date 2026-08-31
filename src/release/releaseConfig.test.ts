@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '../..');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
   version: string;
+  author?: string;
   homepage?: string;
   repository?: { type?: string; url?: string };
   scripts?: Record<string, string>;
@@ -16,6 +17,7 @@ const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.ym
 describe('v0.2.0 release configuration', () => {
   it('identifies the public app repository and release version', () => {
     expect(packageJson.version).toBe('0.2.0');
+    expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({
       type: 'git',
@@ -40,6 +42,8 @@ describe('v0.2.0 release configuration', () => {
     expect(builderConfig).toMatch(/linux:\s*[\s\S]*?target:\s*AppImage[\s\S]*?target:\s*deb/);
     expect(builderConfig).toMatch(/maintainer:\s*[^\s#]+/);
     expect(builderConfig).toMatch(/arch:\s*[\s\S]*?- x64/);
+    expect(builderConfig).toMatch(/linux:[\s\S]*?icon: electron\/assets\/icon\.png/);
+    expect(builderConfig).toMatch(/mac:[\s\S]*?icon: electron\/assets\/icon\.png/);
   });
 
   it('keeps updater distribution rules explicit', () => {
