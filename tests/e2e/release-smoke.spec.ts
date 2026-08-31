@@ -17,6 +17,7 @@ test('creates a course with its first lesson', async ({ page }) => {
   await openSeededDashboard(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   await page.getByRole('textbox', { name: 'Course name' }).fill('Browser smoke course');
+  await page.getByRole('radio', { name: /Steady retention/ }).click();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
@@ -25,7 +26,8 @@ test('creates a course with its first lesson', async ({ page }) => {
 test('keeps the New Course calendar visible and focused', async ({ page }) => {
   await openSeededDashboard(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
-  await page.getByRole('button', { name: 'Exam date' }).click();
+  await page.getByRole('radio', { name: /Exam date/ }).click();
+  await page.getByRole('button', { name: 'Exam date and time' }).click();
 
   const calendar = page.getByRole('dialog', { name: 'Choose date and time' });
   await expect(calendar).toBeVisible();
