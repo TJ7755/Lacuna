@@ -1,5 +1,13 @@
 # Lacuna — version 0.2.1
 
+## Unreleased — Node 24 GitHub Actions
+
+- Updated checkout, upload-artifact and download-artifact across CI and release workflows to the
+  current official Node 24 action majors. Permissions, job ordering and release artefact allowlists
+  are unchanged.
+
+**Checks:** workflow configuration regression coverage in `src/release/releaseConfig.test.ts`.
+
 ## 0.2.1 beta — desktop onboarding and reliability
 
 ### Mobile edge navigation

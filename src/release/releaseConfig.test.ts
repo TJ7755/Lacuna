@@ -12,6 +12,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
+const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8');
 const prepareElectronBuild = readFileSync(
   resolve(root, 'scripts/prepare-electron-build.mjs'),
@@ -109,7 +110,7 @@ describe('v0.2.1 release configuration', () => {
     );
     expect(releaseWorkflow).toContain('windows-latest');
     expect(releaseWorkflow).toContain('ubuntu-latest');
-    expect(releaseWorkflow).toContain('actions/upload-artifact@v4');
+    expect(releaseWorkflow).toContain('actions/upload-artifact@v7');
     expect(releaseWorkflow).toContain('release/*.exe');
     expect(releaseWorkflow).toContain('release/*.exe.blockmap');
     expect(releaseWorkflow).toContain('release/latest.yml');
@@ -127,5 +128,15 @@ describe('v0.2.1 release configuration', () => {
     expect(releaseWorkflow).toContain("--jq '.assets[].name'");
     expect(releaseWorkflow).not.toContain('--publish always');
     expect(releaseWorkflow).toMatch(/publish-draft:[\s\S]*?needs:\s*\[build-win, build-linux\]/);
+  });
+
+  it('uses Node 24 action majors throughout CI and release workflows', () => {
+    for (const workflow of [ciWorkflow, releaseWorkflow]) {
+      expect(workflow).toContain('actions/checkout@v7');
+      expect(workflow).not.toMatch(/actions\/checkout@v[1-6](?:\D|$)/);
+      expect(workflow).not.toMatch(/actions\/(?:upload|download)-artifact@v[1-6](?:\D|$)/);
+    }
+    expect(releaseWorkflow).toContain('actions/upload-artifact@v7');
+    expect(releaseWorkflow).toContain('actions/download-artifact@v8');
   });
 });
