@@ -17,11 +17,14 @@ win:
         - x64
   icon: electron/assets/icon.ico
 nsis:
+  artifactName: '${productName}-Setup-${version}.${ext}'
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+portable:
+  artifactName: '${productName}-Portable-${version}.${ext}'
 linux:
   target:
     - target: AppImage
@@ -31,7 +34,7 @@ linux:
       arch:
         - x64
   category: Education
-  maintainer: "TJ7755 <tj7755@duck.com>"
+  maintainer: 'TJ7755 <tj7755@duck.com>'
   icon: electron/assets/icon.png
 mac:
   target:

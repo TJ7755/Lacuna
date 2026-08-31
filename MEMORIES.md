@@ -34,6 +34,12 @@ Node 22 on Windows rejects `spawnSync('tool.cmd', ..., { shell: false })` with `
 JavaScript tools through `process.execPath` and their real entry files; do not add `shell: true` merely
 to make a package-manager shim executable.
 
+## Release artefact names must already be URL-safe
+
+GitHub normalises spaces in uploaded filenames, while electron-builder writes a separately
+normalised safe name into updater metadata. Set explicit hyphenated `artifactName` values for every
+Windows target so `latest.yml`, the hosted asset and `SHA256SUMS.txt` name the same file.
+
 ## Hash routing needs no SPA catch-all
 
 Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to
