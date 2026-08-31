@@ -916,6 +916,7 @@ describe('LearnMode course/lesson scope', () => {
 
     const firstQuestion = (await screen.findByText(/undo question/i)).textContent;
     await answerYes();
+    expect(await screen.findByText(/^(Easy|Good|Hard) · again in /)).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
 
     await waitFor(async () => expect(await db.reviewHistory.count()).toBe(0));

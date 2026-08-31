@@ -1613,6 +1613,10 @@ Simple mode):
   - **Adaptive** (>= 20 correct): `< μ - 0.75σ -> Easy(4)`,
     `> μ + 0.75σ -> Hard(2)`, else `Good(3)`, where μ and σ are the deck's
     running mean/stddev of correct response times.
+- After a recorded FSRS answer, the existing Undo notification states the grade Lacuna stored and
+  the resulting interval in plain language (`Good · again in 4 days`). Settings and Help explain
+  response-time grading; that generic explanation is deliberately not repeated inside every card's
+  grading controls. Simple-mode answers and rejected or replayed writes do not claim a new interval.
 - After a correct review, `UserPerformance` is updated by **Welford's online
   algorithm**:
   ```
@@ -1638,7 +1642,8 @@ Simple mode):
   `history` is an embedded array, not an indexed column) is logged alongside the true
   time specifically so the constant can later be replaced with a value fitted from real
   review history rather than a guess. Manual grading mode is unaffected — the penalty only
-  ever feeds `gradeFromResponse`, which manual mode bypasses entirely.
+  ever feeds `gradeFromResponse`, which manual mode bypasses entirely. Once a lines-mode hint is
+  visible in silent grading, the card states this 1.5-second adjustment beside the hint.
 
 ### Per-card actions & state
 
@@ -1650,8 +1655,8 @@ Simple mode):
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
   events list, and deletes the written `SessionHistory` row. Every recorded FSRS answer exposes
-  this through a short-lived **Undo** toast as well as the `U` shortcut; no toast is shown when
-  the write was skipped or rejected.
+  this through a short-lived grade-and-interval notification with an **Undo** action as well as the
+  `U` shortcut; no notification is shown when the write was skipped or rejected.
 - **Focus Mode** (F): hides the shared Learn header without moving the card. Reaching the
   top edge reveals the controls temporarily; on touch, the top-edge affordance can be tapped.
   `Esc` leaves Focus Mode. Settings can make new Learn sessions start focused without changing

@@ -13,6 +13,7 @@ import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { LearnModeType, Phase } from './types';
 import { isAudioCardFront } from '../../media/audio';
+import { HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
 
 function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
   if (!revealed) return 'border-line shadow-xl shadow-black/5';
@@ -57,6 +58,7 @@ export function FlipCard({
   isLinesModeCard,
   hintStep,
   onRevealHint,
+  hintAffectsScheduling,
   answerStrictness,
   occlusion,
   occlusionAnswerText,
@@ -79,6 +81,7 @@ export function FlipCard({
   isLinesModeCard?: boolean;
   hintStep?: 0 | 1 | 2;
   onRevealHint?: () => void;
+  hintAffectsScheduling?: boolean;
   answerStrictness: AnswerStrictness;
   /** The owning Occlusion for an occlusion-generated card, resolved by useLearnSession. */
   occlusion?: Occlusion;
@@ -421,11 +424,19 @@ export function FlipCard({
                 onKeyDown={(e) => e.stopPropagation()}
               >
                 {(hintStep ?? 0) > 0 && (
-                  <LineHintDisplay
-                    answer={typingExpectedAnswer(card)}
-                    step={hintStep as 1 | 2}
-                    m={m}
-                  />
+                  <>
+                    <LineHintDisplay
+                      answer={typingExpectedAnswer(card)}
+                      step={hintStep as 1 | 2}
+                      m={m}
+                    />
+                    {hintAffectsScheduling && (
+                      <p className="mx-auto mt-2 max-w-prose text-center text-xs text-ink-faint">
+                        Hints add {HINT_TIME_PENALTY_SEC} seconds to the response time used for
+                        silent grading.
+                      </p>
+                    )}
+                  </>
                 )}
                 {(hintStep ?? 0) < 2 && (
                   <LineHintButton
