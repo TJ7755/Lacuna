@@ -22,6 +22,12 @@ Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and uns
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.
 
+## Accelerated E2E polling must retain wall-clock deadlines
+
+The AI relay fixture may cap each polling sleep to keep successful tests fast, but its client clock
+must remain `Date.now`. Advancing a synthetic clock by the uncapped sleep compresses the client's
+25-second deadline to about 2.5 real seconds and flakes under hosted-runner contention.
+
 ## Hash routing needs no SPA catch-all
 
 Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to
