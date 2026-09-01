@@ -388,7 +388,8 @@ describe('parseApkg zip bomb guards', () => {
   });
 
   it('rejects highly compressed bomb via ZIP central-directory metadata', async () => {
-    const spy = vi.spyOn(fflate, 'unzipSync');
+    const unzipSync = vi.mocked(fflate.unzipSync);
+    unzipSync.mockClear();
     // 10 × 11 MiB zeros compress to a few kilobytes but declare 110 MiB uncompressed.
     const chunk = new Uint8Array(11 * 1024 * 1024);
     const entries: Record<string, Uint8Array> = {};
@@ -402,8 +403,7 @@ describe('parseApkg zip bomb guards', () => {
 
     await expect(parseApkgBuffer(buf)).rejects.toThrow(/uncompressed size too large/);
     // Central-directory check should reject before any entry is inflated.
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
+    expect(unzipSync).not.toHaveBeenCalled();
   });
 
   it('rejects mismatched EOCD entry counts before inflating', async () => {

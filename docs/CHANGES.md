@@ -32,6 +32,26 @@ unpacked application but this Apple Silicon host cannot execute Electron Builder
 compiler without Rosetta; Windows NSIS/portable and Linux AppImage/DEB remain authoritative on their
 native CI runners.
 
+## Vitest 3 security migration
+
+- Moved the root application, sync relay, handwriting prototype and standalone AI MCP tool from
+  Vitest 2.1.9 to the patched 3.2.7 release. The root coverage provider is pinned to the same exact
+  version, while Vite remains on the supported 6.4.3 line.
+- Added an explicit Vite 6 relay development dependency and override. This prevents Bun from
+  retaining the old Vite 5 resolution or selecting Vite 7 through Vitest's broad peer range, and
+  keeps every tracked test lockfile on one maintained Vite major.
+- Covered the manifest and lockfile alignment with a release-toolchain regression. Existing fake
+  timers, `performance.now`, error assertions and promise-valued mock results required no semantic
+  changes under Vitest 3.
+- Reduced the root audit from 7 findings to 2 moderate React Router findings. Relay and handwriting
+  audits now report no vulnerabilities, down from 5 findings each; no critical or high finding
+  remains in these three tracked lockfiles.
+
+**Checks:** red-to-green Vitest and Vite toolchain regression; focused fake-timer,
+`performance.now` and promise-valued mock-result suites; frozen Bun installs; root typecheck, lint,
+unit and coverage suites; relay typecheck, lint and tests; handwriting build and tests; standalone AI
+MCP typecheck, lint, tests and build; root, relay and handwriting audits.
+
 ## Repository governance
 
 - Added contributor and security policies, enforceable CODEOWNERS, pull-request and issue templates,
