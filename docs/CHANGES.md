@@ -1,5 +1,68 @@
 # Lacuna — version 0.2.2
 
+## Unreleased
+
+### Bun 1.4 toolchain
+
+- Aligned the declared package manager and every CI and release job on Bun 1.4.0. The local 1.4.0
+  runtime passed the full browser suite, Electron AI lifecycle test, typecheck and lint before the
+  project pin was advanced.
+- Resolved the native E2E executable through Electron's package entry point instead of rebuilding
+  a path beneath `electron/dist`. Electron 42 deliberately downloads its platform runtime on first
+  use, so a clean Windows runner must not assume that directory exists immediately after install.
+
+### Desktop AI connection recovery
+
+- Moved direct desktop AI companion commands onto Electron's supported run-as-Node entry point.
+  Windows no longer starts a second Chromium browser process which exits before the MCP handshake;
+  the shipped Electron runtime now hosts only the stdio bridge while Lacuna remains open normally.
+- Made the native AI broker wait briefly for an enabled renderer which is still mounting instead
+  of rejecting the companion's first request immediately. A renderer which never becomes ready
+  still fails within five seconds with an actionable connection error.
+- Added renderer readiness to the existing desktop status bridge and a targeted **Restart AI
+  runtime** action. Recovery disposes and remounts only the optional AI runtime; it does not reload
+  the router, current page or database.
+- Replaced the vague terminal-restart setup prompt with AI-client-aware MCP guidance. It preserves the
+  exact companion command and profile, distinguishes `--ai-companion` from `--mcp-companion`, tells
+  Codex users how to reload and verify the active tool list, and forbids launching a duplicate app
+  as a diagnostic. Configuration status is no longer treated as proof of a live connection, and
+  every claimed message must receive a fresh model-authored reply rather than canned harness text.
+- Added a real Electron lifecycle test using an isolated profile and the official MCP client. It
+  enables AI through the UI and proves the exact five-tool surface, connection, message claim,
+  reply rendering, renderer reload recovery and disconnection. Windows CI and release packaging
+  now run this lifecycle gate instead of merely documenting a local command.
+
+**Checks:** red-to-green renderer readiness, restart IPC, AI-only remount and setup-prompt tests;
+real Electron companion lifecycle; web and Electron typecheck; focused lint; browser suite.
+
+### Passed-final-exam course lifecycle
+
+- Added a dedicated **Archived** sidebar destination and removed archived courses from the normal
+  dashboard and sidebar course lists. Restoration now lives on that page rather than in a second
+  dashboard section.
+- Replaced the retired **Show archived courses** toggle with an **After the final exam** policy:
+  **Ask me** by default, **Archive automatically**, or **Keep revising**. The ask flow offers
+  archive, direct final-date editing and rolling maintenance, remembers the exact handled exam date,
+  and re-arms when a replacement final exam later passes. Explicitly unarchiving a passed course
+  also overrides automatic archiving for that exact exam instead of producing an absurd archive
+  loop. Checkpoints never trigger it.
+- Excluded archived-course cards from Review today and future workload forecasts without deleting
+  or filtering their historical reviews from streaks, reviewed-today figures or activity history.
+
+**Checks:** red-to-green lifecycle persistence, policy controller, Archived page, sidebar filtering,
+dashboard removal, final-assessment editor and forecast-history regressions; focused Settings,
+Course Settings and route-prefetch suites; web/Electron typecheck and lint. The full unit run passed
+2,804 tests; its unrelated native companion socket test could not bind inside the sandbox (`EPERM`).
+
+### Windows application icon integrity
+
+- Removed the stale hand-authored Windows ICO whose every embedded size omitted the bright left
+  Lacuna stroke. Windows packaging now gives Electron Builder the same generated PNG used by the
+  other desktop targets and lets its platform converter produce the executable icon.
+
+**Checks:** red-to-green Windows release-configuration regression; direct Electron Builder icon
+conversion with a pixel assertion for the previously missing stroke.
+
 ## 0.2.2 beta — local desktop AI companion
 
 ### Local desktop AI transport

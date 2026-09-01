@@ -45,6 +45,9 @@ vi.mock('./Sidebar', () => ({
 }));
 
 vi.mock('./Titlebar', () => ({ Titlebar: () => null }));
+vi.mock('../course/FinalExamLifecycleController', () => ({
+  FinalExamLifecycleController: () => null,
+}));
 vi.mock('./ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => children,
 }));

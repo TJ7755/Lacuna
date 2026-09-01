@@ -36,7 +36,10 @@ interface McpCompanionModule {
 }
 
 interface AiCompanionModule {
-  startAiCompanion: () => { close: () => Promise<void> };
+  startAiCompanion: (options: {
+    appVersion: string;
+    hostUserDataPath: string;
+  }) => { close: () => Promise<void> };
 }
 
 const isDev = !app.isPackaged;
@@ -44,8 +47,14 @@ const rendererEnvironment: RendererEnvironment = isDev ? 'development' : 'produc
 const isMcpCompanionProcess = process.argv.includes('--mcp-companion');
 const isAiCompanionProcess = process.argv.includes('--ai-companion');
 const isCompanionProcess = isMcpCompanionProcess || isAiCompanionProcess;
+const companionHostUserDataArgument = '--lacuna-host-user-data-dir=';
 let mainWindow: BrowserWindow | null = null;
 let mcpModule: McpServerModule | null = null;
+
+function companionHostUserDataPath(): string {
+  const argument = process.argv.find((value) => value.startsWith(companionHostUserDataArgument));
+  return argument?.slice(companionHostUserDataArgument.length) || app.getPath('userData');
+}
 
 // ---------------------------------------------------------------------------
 // Window state persistence
@@ -372,7 +381,10 @@ if (isCompanionProcess) {
       : './mcp/companion.js';
     const companion = await import(companionModulePath) as McpCompanionModule | AiCompanionModule;
     const handle = 'startAiCompanion' in companion
-      ? companion.startAiCompanion()
+      ? companion.startAiCompanion({
+          appVersion: app.getVersion(),
+          hostUserDataPath: companionHostUserDataPath(),
+        })
       : companion.startMcpCompanion();
     registerCompanionProcessShutdown({
       handle,

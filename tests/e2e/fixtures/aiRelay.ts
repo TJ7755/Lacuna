@@ -38,12 +38,12 @@ export async function pairBrowserAndTerminal(
   await page.getByRole('switch', { name: 'Enable AI' }).click();
   await page.getByRole('button', { name: 'AI', exact: true }).first().click();
   await expect(page.getByRole('complementary', { name: 'AI conversation' })).toBeVisible();
-  await page.getByRole('button', { name: 'Connect terminal' }).click();
+  await page.getByRole('button', { name: 'Connect AI client' }).click();
 
   const pairingCode = await pairingCodeFrom(page);
-  const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
+  const instruction = page.getByRole('textbox', { name: 'AI client instruction' });
   await expect(instruction).toHaveValue(
-    `Connect to Lacuna with code ${pairingCode}. If lacuna.wait_for_message is unavailable, read https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat and help me set up the Lacuna terminal companion; tell me when I must restart this terminal before continuing. If it is available, keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`,
+    `Connect to Lacuna with code ${pairingCode}. First verify this active AI client exposes lacuna.wait_for_message. If it does not, use the client's normal MCP registration flow, read https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat for client-specific reload steps, and continue only after this task exposes the tool; do not run Lacuna or its companion directly for diagnostics. Then keep calling lacuna.wait_for_message. For every claimed message, this same live task must follow the returned versioned instructions, perform the permitted work and send a fresh authored response with lacuna.reply; never substitute canned transport-test text. Continue until I ask you to disconnect.`,
   );
   const composer = page.getByRole('textbox', { name: 'Message AI' });
   await expect(composer).toBeDisabled();
@@ -61,7 +61,7 @@ export async function pairBrowserAndTerminal(
 }
 
 export async function pairingCodeFrom(page: Page): Promise<string> {
-  const instruction = page.getByRole('textbox', { name: 'Terminal instruction' });
+  const instruction = page.getByRole('textbox', { name: 'AI client instruction' });
   const pairingCode = (await instruction.inputValue()).match(PAIRING_CODE_RE)?.[0];
   expect(pairingCode).toBeTruthy();
   await expect(page.locator('p').getByText(pairingCode!, { exact: true })).toBeVisible();

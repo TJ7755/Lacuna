@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
 
@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run lint
 
@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
 
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/4
@@ -59,7 +59,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run test:coverage
 
@@ -86,7 +86,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bun run typecheck
@@ -104,7 +104,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
@@ -125,7 +125,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run build:assets
       - run: bun run release:scenario
@@ -138,9 +138,21 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:e2e:web
+
+  electron-ai:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run test:e2e:electron-ai

@@ -10,6 +10,9 @@ export const loadSharePage = () =>
 export const loadAnalytics = () =>
   import('../pages/Analytics').then((module) => ({ default: module.Analytics }));
 
+export const loadArchivedCourses = () =>
+  import('../pages/ArchivedCourses').then((module) => ({ default: module.ArchivedCourses }));
+
 export const loadHelpPage = () =>
   import('../pages/HelpPage').then((module) => ({ default: module.HelpPage }));
 

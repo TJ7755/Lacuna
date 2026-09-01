@@ -10,6 +10,20 @@ import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { useTypingSetting } from '../../state/typingSetting';
 import { cn } from '../../components/ui/cn';
 import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
+import {
+  useAfterFinalExamPolicy,
+  type AfterFinalExamPolicy,
+} from '../../state/finalExamLifecycle';
+
+const FINAL_EXAM_POLICIES: Array<{
+  value: AfterFinalExamPolicy;
+  label: string;
+  description: string;
+}> = [
+  { value: 'ask', label: 'Ask me', description: 'Choose when the final exam passes.' },
+  { value: 'archive', label: 'Archive automatically', description: 'Move it out of active study.' },
+  { value: 'keep-revising', label: 'Keep revising', description: 'Continue steady maintenance.' },
+];
 
 export function StudySection() {
   const [gradingMode, setGradingMode] = useGradingMode();
@@ -130,6 +144,7 @@ export function StudySection() {
 export function CourseDefaultsSection() {
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
+  const [afterFinalExam, setAfterFinalExam] = useAfterFinalExamPolicy();
 
   return (
     <section
@@ -152,6 +167,33 @@ export function CourseDefaultsSection() {
         checked={practiceDefaults.autoPractice}
         onChange={(checked) => setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })}
       />
+
+      <div className="mt-6 border-t border-line pt-5">
+        <div className="text-sm">After the final exam</div>
+        <p className="mt-1 text-sm text-ink-soft">
+          Decide what happens after a course’s final exam. Checkpoints never trigger this.
+        </p>
+        <div className="mt-3 grid gap-2" role="radiogroup" aria-label="After the final exam">
+          {FINAL_EXAM_POLICIES.map((policy) => (
+            <button
+              key={policy.value}
+              type="button"
+              role="radio"
+              aria-checked={afterFinalExam === policy.value}
+              onClick={() => setAfterFinalExam(policy.value)}
+              className={cn(
+                'rounded-xl border px-4 py-3 text-left transition-colors',
+                afterFinalExam === policy.value
+                  ? 'border-accent bg-accent-soft'
+                  : 'border-line hover:border-line-strong',
+              )}
+            >
+              <span className="block text-sm text-ink">{policy.label}</span>
+              <span className="mt-0.5 block text-xs text-ink-soft">{policy.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <details className="group mt-6 border-t border-line pt-5">
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">

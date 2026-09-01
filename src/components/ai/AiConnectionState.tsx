@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 
 const TERMINAL_SETUP_URL = 'https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat';
+const RENDERER_STATUS_POLL_MS = 1_000;
+type AiRendererStatus = 'ready' | 'waiting' | 'unavailable';
 
 export interface AiPairingState {
   code: string;
@@ -18,12 +20,12 @@ export interface AiConnectionStateProps {
   onCancel: () => void;
 }
 
-function TerminalSetupGuide() {
+function AiClientSetupGuide() {
   return (
     <div className="mt-4 border-t border-line pt-4 text-sm text-ink-soft">
       <p className="font-medium text-ink">Before connecting</p>
       <p className="mt-1 text-xs leading-5 text-ink-faint">
-        Install Lacuna&apos;s MCP companion in your terminal, then return here to create a pairing
+        Install Lacuna&apos;s MCP companion in your AI client, then return here to create a pairing
         code.
       </p>
       <a
@@ -32,7 +34,7 @@ function TerminalSetupGuide() {
         rel="noopener noreferrer"
         className="mt-2 inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-2"
       >
-        Open terminal setup instructions
+        Open AI client setup instructions
       </a>
     </div>
   );
@@ -52,9 +54,11 @@ export function AiConnectionState({
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [localInstruction, setLocalInstruction] = useState<string | null>(null);
   const [localSetupError, setLocalSetupError] = useState<string | null>(null);
+  const [rendererStatus, setRendererStatus] = useState<AiRendererStatus | null>(null);
+  const [rendererRestarting, setRendererRestarting] = useState(false);
   const pairingCode = pairing?.code ?? null;
   const relayInstruction = pairingCode
-    ? `Connect to Lacuna with code ${pairingCode}. If lacuna.wait_for_message is unavailable, read ${TERMINAL_SETUP_URL} and help me set up the Lacuna terminal companion; tell me when I must restart this terminal before continuing. If it is available, keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`
+    ? `Connect to Lacuna with code ${pairingCode}. First verify this active AI client exposes lacuna.wait_for_message. If it does not, use the client's normal MCP registration flow, read ${TERMINAL_SETUP_URL} for client-specific reload steps, and continue only after this task exposes the tool; do not run Lacuna or its companion directly for diagnostics. Then keep calling lacuna.wait_for_message. For every claimed message, this same live task must follow the returned versioned instructions, perform the permitted work and send a fresh authored response with lacuna.reply; never substitute canned transport-test text. Continue until I ask you to disconnect.`
     : '';
   const instruction = local ? (localInstruction ?? '') : relayInstruction;
 
@@ -62,31 +66,47 @@ export function AiConnectionState({
     if (!local) return;
 
     let cancelled = false;
+    let statusTimer: number | undefined;
+    let commandLoaded = false;
     setLocalSetupError(null);
     const mcp = window.electronAPI?.mcp;
     if (!mcp) {
       setLocalSetupError('Desktop integration failed to load. Restart Lacuna.');
       return;
     }
-    void mcp
-      .getStatus()
-      .then((status) => {
+    const refreshStatus = async () => {
+      try {
+        const status = await mcp.getStatus();
         if (cancelled) return;
         const companion = status.aiCompanion;
         if (!companion) throw new Error('The local AI companion is unavailable.');
-        const command = JSON.stringify({ command: companion.command, args: companion.args });
-        setLocalInstruction(
-          `Set up Lacuna's desktop AI companion as an MCP server named lacuna using ${command}. If you need client-specific steps, read ${TERMINAL_SETUP_URL}. Restart this terminal session if required, call lacuna.connect, then keep calling lacuna.wait_for_message and honour the returned versioned instructions, permission checks and Stop rules until I ask you to disconnect.`,
-        );
-      })
-      .catch(() => {
-        if (!cancelled) {
+        if (!commandLoaded) {
+          commandLoaded = true;
+          const command = JSON.stringify({
+            command: companion.command,
+            args: companion.args,
+            ...(companion.env ? { env: companion.env } : {}),
+          });
+          setLocalInstruction(
+            `Configure this AI client with an stdio MCP server named lacuna using exactly ${command}; preserve every argument, including --user-data-dir when present. Use conversation --ai-companion, never data --mcp-companion. Let the client spawn it; never launch another Lacuna app, run the command manually or inspect source to test setup. Save, restart or reload the client, and start a fresh task if tools are task-scoped. Success means this task exposes lacuna.connect and lacuna.wait_for_message and lacuna.connect succeeds, not merely that registration says connected. Codex app/extension: Save then Restart; CLI: codex mcp list then /mcp. Other clients: ${TERMINAL_SETUP_URL}. If connect says the AI runtime is not ready, keep Lacuna open with AI enabled, select Restart AI runtime, then retry. Next, keep calling lacuna.wait_for_message. For each claimed message, follow its versioned instructions, do the permitted work and reply with fresh authored text via lacuna.reply; never use canned test text. Continue until I ask you to disconnect.`,
+          );
+        }
+        const nextRendererStatus = status.aiRenderer?.status ?? null;
+        setRendererStatus(nextRendererStatus);
+        if (nextRendererStatus && nextRendererStatus !== 'ready') {
+          statusTimer = window.setTimeout(() => void refreshStatus(), RENDERER_STATUS_POLL_MS);
+        }
+      } catch {
+        if (!cancelled && !commandLoaded) {
           setLocalSetupError('Lacuna could not read its packaged companion command.');
         }
-      });
+      }
+    };
+    void refreshStatus();
 
     return () => {
       cancelled = true;
+      if (statusTimer !== undefined) window.clearTimeout(statusTimer);
     };
   }, [local]);
 
@@ -106,6 +126,24 @@ export function AiConnectionState({
     }
   }
 
+  async function restartRenderer() {
+    const ai = window.electronAPI?.ai;
+    if (!ai?.requestRestart) {
+      setLocalSetupError('The AI runtime cannot be restarted. Restart Lacuna instead.');
+      return;
+    }
+    setRendererRestarting(true);
+    setLocalSetupError(null);
+    try {
+      await ai.requestRestart();
+      setRendererStatus('waiting');
+    } catch {
+      setLocalSetupError('The AI runtime could not restart. Restart Lacuna and try again.');
+    } finally {
+      setRendererRestarting(false);
+    }
+  }
+
   if (local) {
     return (
       <section
@@ -118,22 +156,58 @@ export function AiConnectionState({
             Connection
           </p>
           <h2 id="ai-connect-title" className="mt-2 font-display text-2xl text-ink">
-            Connect a terminal
+            Connect an AI client
           </h2>
           <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
             The desktop app connects locally. No pairing code or internet connection is needed.
           </p>
 
+          {rendererStatus && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-4 flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2"
+            >
+              <span
+                aria-hidden="true"
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                  rendererStatus === 'ready'
+                    ? 'bg-positive'
+                    : rendererStatus === 'waiting'
+                      ? 'bg-warning'
+                      : 'bg-negative'
+                }`}
+              />
+              <span className="min-w-0 flex-1 text-xs text-ink-soft">
+                {rendererStatus === 'ready'
+                  ? 'AI runtime ready'
+                  : rendererStatus === 'waiting'
+                    ? 'AI runtime is still starting'
+                    : 'AI runtime unavailable'}
+              </span>
+              {rendererStatus !== 'ready' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={rendererRestarting}
+                  onClick={() => void restartRenderer()}
+                >
+                  {rendererRestarting ? 'Restarting' : 'Restart AI runtime'}
+                </Button>
+              )}
+            </div>
+          )}
+
           <label
-            htmlFor="ai-terminal-setup-prompt"
+            htmlFor="ai-client-setup-prompt"
             className="mt-5 block text-xs font-medium text-ink-soft"
           >
-            Terminal setup prompt
+            AI client setup prompt
           </label>
           <textarea
-            id="ai-terminal-setup-prompt"
+            id="ai-client-setup-prompt"
             readOnly
-            rows={7}
+            rows={9}
             value={
               localInstruction ??
               (localSetupError
@@ -169,7 +243,7 @@ export function AiConnectionState({
             rel="noopener noreferrer"
             className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-accent underline underline-offset-2"
           >
-            Open terminal setup instructions
+            Open AI client setup instructions
           </a>
           <p role="status" aria-live="polite" className="min-h-5 text-xs text-ink-soft">
             {copyStatus === 'copied'
@@ -192,7 +266,7 @@ export function AiConnectionState({
       >
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-ink">Terminal disconnected</p>
+            <p className="text-sm font-medium text-ink">AI client disconnected</p>
             {error && error !== 'Terminal disconnected' && (
               <p role="alert" className="mt-1 text-xs leading-5 text-negative">
                 {error}
@@ -206,7 +280,7 @@ export function AiConnectionState({
             disabled={busy}
             onClick={onStartPairing}
           >
-            {busy ? 'Connecting…' : 'Connect terminal'}
+            {busy ? 'Connecting…' : 'Connect AI client'}
           </Button>
         </div>
       </section>
@@ -227,7 +301,7 @@ export function AiConnectionState({
             Connection
           </p>
           <h2 id="ai-pair-title" className="mt-2 font-display text-2xl text-ink">
-            Pair your terminal
+            Pair your AI client
           </h2>
 
           <div className="mt-5 rounded-xl border border-line-strong bg-surface-raised px-4 py-5 text-center shadow-sm">
@@ -246,7 +320,7 @@ export function AiConnectionState({
             htmlFor="ai-terminal-instruction"
             className="mt-5 block text-xs font-medium text-ink-soft"
           >
-            Terminal instruction
+            AI client instruction
           </label>
           <textarea
             id="ai-terminal-instruction"
@@ -264,7 +338,7 @@ export function AiConnectionState({
               rel="noopener noreferrer"
               className="font-medium text-accent underline underline-offset-2"
             >
-              Set up the terminal companion
+              Set up the AI client companion
             </a>
           </p>
 
@@ -298,7 +372,6 @@ export function AiConnectionState({
                 ? 'Copy failed. Select the instruction and copy it manually.'
                 : ''}
           </p>
-
         </div>
       </section>
     );
@@ -315,10 +388,10 @@ export function AiConnectionState({
           Connection
         </p>
         <h2 id="ai-connect-title" className="mt-2 font-display text-2xl text-ink">
-          Connect a terminal
+          Connect an AI client
         </h2>
         <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
-          Pair this Lacuna tab with a terminal session to begin.
+          Pair this Lacuna tab with an AI client to begin.
         </p>
 
         {error && (
@@ -337,10 +410,10 @@ export function AiConnectionState({
           disabled={busy}
           onClick={onStartPairing}
         >
-          {busy ? 'Connecting…' : 'Connect terminal'}
+          {busy ? 'Connecting…' : 'Connect AI client'}
         </Button>
 
-        <TerminalSetupGuide />
+        <AiClientSetupGuide />
       </div>
     </section>
   );

@@ -3,15 +3,30 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
+import type { Course } from '../../db/types';
+
+let mockCourses: Course[] = [];
 
 vi.mock('../../state/ThemeContext', () => ({
   useTheme: () => ({ resolvedTheme: 'light', toggleTheme: vi.fn() }),
 }));
 vi.mock('../../state/useCourseData', () => ({
-  useSidebarData: () => ({ courses: [], lessons: [], summaries: {}, stats: { streak: 0 } }),
+  useSidebarData: () => ({ courses: mockCourses, lessons: [], summaries: {}, stats: { streak: 0 } }),
 }));
 
 describe('Sidebar', () => {
+  it('provides a dedicated archive destination and never mixes archived courses into the list', () => {
+    mockCourses = [
+      { id: 'active', name: 'Active course', archived: false } as Course,
+      { id: 'archived', name: 'Finished course', archived: true } as Course,
+    ];
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('link', { name: 'Archived' })).toHaveAttribute('href', '/archived');
+    expect(screen.getByText('Active course')).toBeInTheDocument();
+    expect(screen.queryByText('Finished course')).not.toBeInTheDocument();
+    mockCourses = [];
+  });
   it('fills its shell container without extending beneath the Electron titlebar', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 

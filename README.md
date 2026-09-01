@@ -84,7 +84,7 @@ recovery** to back up or move your data as a single JSON file.
 ## Getting started
 
 Lacuna uses [Bun](https://bun.sh/) for its JavaScript runtime, package manager, and
-project scripts. The checked-in `bun.lock` is authoritative; use Bun 1.3.14 or newer.
+project scripts. The checked-in `bun.lock` is authoritative; use Bun 1.4.0 or newer.
 
 ```
 git clone https://github.com/TJ7755/Lacuna.git
@@ -103,28 +103,44 @@ Open the printed local URL. A small example course is seeded on first run (it ca
 ### Optional desktop AI chat
 
 Lacuna has an optional desktop-only AI conversation panel, disabled by default. The packaged
-Electron app connects a deliberately running terminal task through its bundled stdio MCP companion
+Electron app connects a deliberately running AI-client task through its bundled stdio MCP companion
 and authenticated local operating-system IPC. It opens no network port, needs no pairing code and
-keeps model credentials out of Lacuna. The model still runs wherever the terminal AI runs; only the
+keeps model credentials out of Lacuna. The model still runs wherever that AI client runs; only the
 connection to Lacuna is local.
 
-Enable **Settings → AI**, open the AI panel and copy its setup prompt into the terminal AI. The
-prompt contains the correct installed or Windows portable executable path and asks the terminal to
-configure it with `--ai-companion`; it also preserves a custom Electron user-data directory when
-Lacuna is running against an isolated profile. Keep the Lacuna window and terminal task running. The
-task must keep calling `lacuna.wait_for_message`; a sidebar message cannot wake a terminal task
-which has already ended.
+Enable **Settings → AI**, open the AI panel and copy its setup prompt into the AI client. The
+prompt contains the exact companion command, arguments and environment for that installation; it
+also preserves a custom Electron user-data directory when Lacuna is running against an isolated
+profile. The conversation companion has five tools and is separate from the data-oriented
+`--mcp-companion`. The client must use its normal MCP server registration flow, with the copied
+configuration left exactly as provided. Do not manually launch another normal Lacuna instance or
+run the executable separately as a connection test.
+
+For Codex, follow the [official MCP setup](https://developers.openai.com/codex/mcp/):
+
+- Desktop app: add the server in Settings, save it, then restart the app.
+- IDE extension: add and save the server, then restart the extension.
+- CLI: use `codex mcp list` to check the saved registration and `/mcp` in the TUI to check which
+  tools the active session exposes.
+
+Other clients have their own reload or restart action after an MCP configuration change. Before
+attempting connection diagnostics, confirm that the active client exposes both `lacuna.connect` and
+`lacuna.wait_for_message`; saved configuration alone does not prove that the running client loaded
+the tools. The AI panel reports whether its renderer runtime is ready; if it remains stuck while
+Lacuna is open and AI is enabled, use **Restart AI runtime** rather than launching another app
+process. Keep the Lacuna window and AI-client task running. The task must keep calling
+`lacuna.wait_for_message`; a sidebar message cannot wake a task which has already ended.
 
 The hosted web app retains the encrypted HTTPS relay because a browser cannot host a native local
-socket. To use that route, build the standalone web companion, then configure the MCP-capable
-terminal harness to run it:
+socket. To use that route, build the standalone web companion, then configure the MCP-capable AI
+client to run it:
 
 ```bash
 bun run build:ai-mcp
 node /absolute/path/to/Lacuna/tooling/lacuna-ai-mcp/dist/index.js
 ```
 
-The web panel supplies a short-lived pairing code. Browser and terminal then exchange encrypted
+The web panel supplies a short-lived pairing code. Browser and AI client then exchange encrypted
 mailbox records through the relay, which cannot read the conversation. See
 [`tooling/lacuna-ai-mcp/README.md`](tooling/lacuna-ai-mcp/README.md) for the shared five-tool
 contract. Managed networks can block the web relay; use the packaged desktop app's local companion
@@ -136,7 +152,7 @@ use exact one-shot approval, retries are keyed by `callId`, and successful write
 receipts. Stop blocks later tool calls as well as replies. Every claimed message includes the live
 `teaching-v1` instruction bundle. Learner memories require explicit global or Course scope, remain
 inspectable and correctable under Settings → AI, and participate in full backup and encrypted peer
-sync. Peer sync preserves the terminal and device-local transcript; successful full replacement
+sync. Peer sync preserves the AI-client and device-local transcript; successful full replacement
 disconnects and clears them. The Electron data MCP companion below remains a separate, broader
 surface with its own executable argument and permission model.
 
@@ -153,6 +169,16 @@ bun run electron:build:linux  # Linux x64 AppImage + DEB
 bun run electron:build:mac    # macOS arm64 DMG + ZIP
 ```
 
+Before creating a release, run the native AI lifecycle gate on both macOS and Windows:
+
+```bash
+bun run test:e2e:electron-ai
+```
+
+It uses an isolated temporary profile, enables AI through the real Electron UI, connects through
+the official MCP client, completes a message/reply cycle, reloads the renderer and reconnects. It
+does not touch an installed Lacuna profile.
+
 The Electron layer lives in `electron/` and adds a platform-aware titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 `electron-updater`. It also hosts an authenticated local **Model Context Protocol (MCP)**
@@ -161,11 +187,13 @@ Concepts, Questions, sequences, image occlusions and summaries. Card and Questio
 separate; structured numeric and working payloads belong to Questions. The web version does not host
 MCP and is otherwise unaffected.
 
-The same native broker accepts the separate `--ai-companion` used by the optional conversation
-panel. Its purpose-bound token exposes only connect, wait, approved tool invocation, reply and
-disconnect. The preload bridge is schema-validated and never exposes raw Electron IPC, sockets or
-arbitrary channel names. Starting the companion while AI is disabled or the renderer is unavailable
-fails closed.
+The same native broker accepts the separate AI companion used by the optional conversation panel.
+Direct installations run its bundled entry point through Electron's supported run-as-Node mode,
+without starting another Chromium browser. Its purpose-bound token exposes only connect, wait,
+approved tool invocation, reply and disconnect. The preload bridge is schema-validated and never
+exposes raw Electron IPC, sockets or arbitrary channel names. The broker gives an enabled renderer
+up to five seconds to finish mounting; if AI remains disabled or unavailable after that, it fails
+closed with recovery guidance.
 
 The installed Windows NSIS and Linux AppImage builds follow the GitHub beta release channel,
 download updates in the background and install them on quit. Windows portable and Linux DEB builds
@@ -226,7 +254,7 @@ The shipped MCP surface and its deliberate exclusions are specified in `docs/SPE
 | Occlusion generation & editor            | `src/db/occlusionGeneration.ts`, `src/pages/OcclusionEditor.tsx`                     |
 | Question domain, checking and scheduling | `src/questions/`, `src/items/verify.ts`, `src/items/markSchemeCompiler.ts`           |
 | MCP tool surface and Electron bridge     | `src/mcp/`, `electron/mcp/`                                                          |
-| Optional web AI chat and terminal relay  | `src/ai/`, `tooling/lacuna-ai-mcp/`, `relay/src/aiRelay.ts`                          |
+| Optional web AI chat and client relay    | `src/ai/`, `tooling/lacuna-ai-mcp/`, `relay/src/aiRelay.ts`                          |
 | Learn session                            | `src/pages/LearnMode.tsx`                                                            |
 | Analytics charts                         | `src/components/analytics/`                                                          |
 

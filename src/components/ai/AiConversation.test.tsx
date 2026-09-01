@@ -7,7 +7,7 @@ describe('AiConversation', () => {
   it('describes the current terminal chat without promising Lacuna actions', () => {
     render(<AiConversation items={[]} />);
 
-    expect(screen.getByText('Chat with your connected terminal agent.')).toBeInTheDocument();
+    expect(screen.getByText('Chat with your connected AI client.')).toBeInTheDocument();
     expect(screen.queryByText(/build course material|change something in Lacuna/i)).toBeNull();
   });
 

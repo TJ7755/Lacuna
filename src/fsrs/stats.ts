@@ -96,6 +96,7 @@ export function computeStudyStats(
   cards: Card[],
   deckSeconds: Map<string, number>,
   now: number = Date.now(),
+  forecastSourceIds?: ReadonlySet<string>,
 ): StudyStats {
   const today = startOfDay(now);
 
@@ -138,12 +139,13 @@ export function computeStudyStats(
 
   for (const card of cards) {
     if (card.suspended) continue;
+    const sourceId = card.courseId ?? card.schedulingUnitId!;
+    if (forecastSourceIds && !forecastSourceIds.has(sourceId)) continue;
     const secondsPerReview =
       (card.courseId ? deckSeconds.get(card.courseId) : undefined) ??
       (card.schedulingUnitId ? deckSeconds.get(card.schedulingUnitId) : undefined) ??
       DEFAULT_REVIEW_SECONDS;
     const minutes = secondsPerReview / 60;
-    const sourceId = card.courseId ?? card.schedulingUnitId!;
 
     if (card.due === null || card.due === undefined) {
       // Never-reviewed card: count as new today only if not buried.

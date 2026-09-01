@@ -215,7 +215,7 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   await expect(page.getByText('Data replaced from backup.')).toBeVisible();
 
   await ensureAiPanelOpen(page);
-  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect AI client' })).toBeVisible();
   await expect(page.getByText(createdReply, { exact: true })).toHaveCount(0);
   await expect(page.getByText(preservedReply, { exact: true })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();

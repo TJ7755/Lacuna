@@ -458,7 +458,12 @@ export function useSidebarData():
       )
     ).flat();
     const summaries = computeCourseSummaries(courses, lessons, hydratedCards, assessments);
-    const stats = computeStudyStats(hydratedCards, buildDeckSecondsMap(perf));
+    const stats = computeStudyStats(
+      hydratedCards,
+      buildDeckSecondsMap(perf),
+      Date.now(),
+      new Set(courses.filter((course) => !course.archived).map((course) => course.id)),
+    );
     return { courses, lessons, summaries, stats };
   }, []);
 }
@@ -538,7 +543,12 @@ export function useCourseDashboardData():
         courseSeconds.set(row.courseId, row.runningMeanResponseTime);
       }
     }
-    const stats = computeStudyStats(hydratedCards, courseSeconds);
+    const stats = computeStudyStats(
+      hydratedCards,
+      courseSeconds,
+      Date.now(),
+      new Set(courses.filter((course) => !course.archived).map((course) => course.id)),
+    );
     return { courses, lessons, allCards: hydratedCards, summaries, stats };
   }, []);
 }

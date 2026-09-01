@@ -79,6 +79,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ai: {
     protocolVersion: 1,
     disconnect: (channelId: string) => ipcRenderer.send('ai:disconnect-channel', channelId),
+    requestRestart: (): Promise<void> => ipcRenderer.invoke('ai:restart-renderer'),
+    onRestartRequested: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('ai:restart-requested', handler);
+      return () => ipcRenderer.removeListener('ai:restart-requested', handler);
+    },
     listen: (
       onRequest: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
       onDisconnected: (channelId: string) => void,

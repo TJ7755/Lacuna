@@ -6,13 +6,10 @@
 // renderer over IPC, using the pure correlation/timeout logic in
 // src/mcp/bridge/dispatcher.ts.
 //
-// Invocation. An MCP client launches Lacuna itself as its stdio subprocess, e.g.:
-//   claude mcp add lacuna -- /Applications/Lacuna.app/Contents/MacOS/Lacuna
-// (Windows: the installed .exe; dev smoke test: `electron .` from the repo root after
-// `bun run electron:build`'s tsc/esbuild steps, or `bun run electron:dev` while the app is
-// already open). The MCP server starts unconditionally alongside the normal renderer
-// window (Section 2.6) — there is no separate headless mode, since tool execution needs
-// the renderer's IndexedDB regardless of how the process was launched.
+// Invocation. The normal application owns the renderer and authenticated local broker. MCP
+// clients launch a disposable --mcp-companion or --ai-companion stdio process, which forwards to
+// that broker while keeping IndexedDB and permission decisions inside the renderer. The embedded
+// stdio server remains for legacy cold-start clients.
 //
 // Stdout corruption (Section 2.10, "Bridge deadlock" neighbour risk; Task 9's brief calls
 // this out explicitly). StdioServerTransport speaks newline-delimited JSON-RPC over
@@ -53,6 +50,7 @@ import {
 } from '../../src/mcp/companionProtocol.js';
 import {
   companionLaunchCommand,
+  companionProcessUserDataPath,
   removeCompanionConnectionFile,
   writeCompanionConnectionFile,
   type CompanionConnectionFile,
@@ -63,14 +61,16 @@ import { AiRendererAvailability } from './rendererAvailability.js';
 import { AiChannelRegistry } from './aiChannelRegistry.js';
 
 const RENDERER_TIMEOUT_MS = 10_000;
+const AI_RENDERER_READY_TIMEOUT_MS = 5_000;
 
 export interface McpStatus {
   running: boolean;
   toolCount: number;
   toolSurfaceVersion: number;
   clients: McpClientConnection[];
-  companion: { command: string; args: string[] };
-  aiCompanion: { command: string; args: string[] };
+  companion: { command: string; args: string[]; env?: Record<string, string> };
+  aiCompanion: { command: string; args: string[]; env?: Record<string, string> };
+  aiRenderer: { status: 'ready' | 'waiting' | 'unavailable' };
 }
 
 let dispatcher: InvokeDispatcher | null = null;
@@ -78,6 +78,8 @@ let grantStore: GrantStore | null = null;
 let stdioHandle: StdioServerHandle | null = null;
 let companionServer: NetServer | null = null;
 let companionConnection: CompanionConnectionFile | null = null;
+let companionLaunchCommands: Pick<McpStatus, 'companion' | 'aiCompanion'> | null = null;
+let activeWindowProvider: (() => BrowserWindow | null) | null = null;
 const companionSockets = new Set<Socket>();
 const aiCompanionChannels = new AiChannelRegistry();
 const companionClients = new McpConnectionStore();
@@ -102,6 +104,16 @@ function sendAiCompanion(socket: Socket, response: AiCompanionResponse): void {
 function rendererCanHandleAi(getWindow: () => BrowserWindow | null): boolean {
   const window = getWindow();
   return !!window && !window.isDestroyed() && aiRendererAvailability.canHandle(window.webContents);
+}
+
+async function waitForAiRenderer(getWindow: () => BrowserWindow | null): Promise<boolean> {
+  const window = getWindow();
+  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return false;
+  if (!await aiRendererAvailability.waitUntilReady(
+    window.webContents,
+    AI_RENDERER_READY_TIMEOUT_MS,
+  )) return false;
+  return getWindow() === window && rendererCanHandleAi(getWindow);
 }
 
 function rendererSubscriptionId(value: unknown): number | undefined {
@@ -201,7 +213,7 @@ async function startCompanionBroker(
           socket.end();
           return;
         }
-        const result = rendererCanHandleAi(getWindow)
+        const result = await waitForAiRenderer(getWindow)
           ? await aiDispatcher.dispatch(aiChannelId, value.id, value.request, (request) => {
               getWindow()!.webContents.send('ai:request', request);
             })
@@ -210,7 +222,7 @@ async function startCompanionBroker(
               error: {
                 kind: 'unavailable' as const,
                 reason: 'disconnected' as const,
-                message: 'The Lacuna renderer is unavailable.',
+                message: 'Lacuna AI did not become ready. Keep Lacuna open with AI enabled, restart the AI runtime, then reconnect.',
               },
             };
         sendAiCompanion(socket, { type: 'ai_result', id: value.id, result });
@@ -384,17 +396,35 @@ export function getMcpStatus(): McpStatus {
     execPath: process.execPath,
     isPackaged: app.isPackaged,
     platform: process.platform,
+    appVersion: app.getVersion(),
     userDataPath: app.getPath('userData'),
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
     appImageFile: process.env.APPIMAGE,
   };
+  companionLaunchCommands ??= {
+    companion: companionLaunchCommand({
+      ...environment,
+      companionUserDataPath: companionProcessUserDataPath(),
+    }, '--mcp-companion'),
+    aiCompanion: companionLaunchCommand({
+      ...environment,
+      companionUserDataPath: companionProcessUserDataPath(),
+    }, '--ai-companion'),
+  };
+  const window = activeWindowProvider?.() ?? null;
   return {
     running: started,
     toolCount: TOOL_REGISTRY.length + 1,
     toolSurfaceVersion: MCP_TOOL_SURFACE_VERSION,
     clients: companionClients.list(),
-    companion: companionLaunchCommand(environment, '--mcp-companion'),
-    aiCompanion: companionLaunchCommand(environment, '--ai-companion'),
+    ...companionLaunchCommands,
+    aiRenderer: {
+      status: aiRendererAvailability.status(
+        window && !window.isDestroyed() && !window.webContents.isDestroyed()
+          ? window.webContents
+          : null,
+      ),
+    },
   };
 }
 
@@ -496,6 +526,7 @@ function registerServerInfoTool(server: McpServer, store: GrantStore, getWindow:
 export async function startMcpServer(getWindow: () => BrowserWindow | null): Promise<void> {
   if (started) return;
   silenceStdoutNoise();
+  companionLaunchCommands = null;
 
   grantStore = new GrantStore();
   dispatcher = new InvokeDispatcher((request) => {
@@ -547,6 +578,15 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
   ipcMain.on('ai:reply', (event, response: unknown) => {
     if (!isActiveRendererEvent(event, getWindow) || !isAiRendererReply(response)) return;
     aiDispatcher.resolve(response);
+  });
+  ipcMain.handle('ai:restart-renderer', (event) => {
+    if (!isActiveRendererEvent(event, getWindow)) {
+      throw new Error('Untrusted AI renderer restart request.');
+    }
+    if (!aiRendererAvailability.beginRestart(event.sender)) {
+      throw new Error('The AI renderer is not ready to restart.');
+    }
+    event.sender.send('ai:restart-requested');
   });
   ipcMain.handle('mcp:grants:list', (event) => {
     if (!isActiveRendererEvent(event, getWindow)) throw new Error('Untrusted MCP grant request.');
@@ -604,6 +644,7 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
     legacy: 'serve',
     onerror: (error) => log.error('MCP stdio transport failed', error),
   });
+  activeWindowProvider = getWindow;
   started = true;
 }
 
@@ -617,6 +658,7 @@ export async function stopMcpServer(): Promise<void> {
   ipcMain.removeAllListeners('ai:renderer-unavailable');
   ipcMain.removeAllListeners('ai:disconnect-channel');
   ipcMain.removeAllListeners('ai:reply');
+  ipcMain.removeHandler('ai:restart-renderer');
   aiRendererAvailability.dispose();
   aiDispatcher.close();
   ipcMain.removeHandler('mcp:grants:list');
@@ -647,5 +689,7 @@ export async function stopMcpServer(): Promise<void> {
   stdioHandle = null;
   dispatcher = null;
   grantStore = null;
+  activeWindowProvider = null;
+  companionLaunchCommands = null;
   started = false;
 }

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AssessmentEditor,
   assessmentChanges,
@@ -26,9 +26,10 @@ import { formatDateTime } from '../../utils/datetime';
 export interface ExamDatesSectionProps {
   courseId: string;
   timeZone?: string;
+  editFinalOnMount?: boolean;
 }
 
-export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) {
+export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamDatesSectionProps) {
   const assessments = useCourseAssessments(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
@@ -42,6 +43,7 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
   const [draft, setDraft] = useState<AssessmentDraft>();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const loaded = assessments && lessons && cards && links;
+  const openedRequestedFinal = useRef(false);
 
   function startAdd() {
     if (!lessons) return;
@@ -58,6 +60,14 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
     setEditingId(null);
     setDraft(undefined);
   }
+
+  useEffect(() => {
+    if (!editFinalOnMount || !loaded || openedRequestedFinal.current) return;
+    const final = assessments.find((assessment) => assessment.kind === 'final');
+    if (!final) return;
+    openedRequestedFinal.current = true;
+    startEdit(final);
+  }, [assessments, editFinalOnMount, loaded]);
 
   async function save() {
     if (!draft || !loaded) return;

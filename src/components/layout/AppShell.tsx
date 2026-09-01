@@ -23,6 +23,7 @@ import { AiActivityCapsule } from '../ai/AiActivityCapsule';
 import { loadAiPanel } from '../ai/loaders';
 import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
+import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 
 const AiPanel = lazy(loadAiPanel);
 
@@ -439,6 +440,7 @@ export function AppShell() {
         onClose={() => setPaletteOpen(false)}
         returnFocusTarget={paletteReturnFocusRef}
       />
+      <FinalExamLifecycleController />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
     </motion.div>
   );

@@ -22,6 +22,8 @@ declare global {
       ai?: {
         readonly protocolVersion: 1;
         disconnect: (channelId: string) => void;
+        requestRestart: () => Promise<void>;
+        onRestartRequested: (callback: () => void) => () => void;
         listen: (
           onRequest: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
           onDisconnected: (channelId: string) => void,
@@ -36,7 +38,8 @@ declare global {
           toolSurfaceVersion: number;
           clients?: McpClientConnection[];
           companion?: { command: string; args: string[] };
-          aiCompanion?: { command: string; args: string[] };
+          aiCompanion?: { command: string; args: string[]; env?: Record<string, string> };
+          aiRenderer?: { status: 'ready' | 'waiting' | 'unavailable' };
         }>;
         getGrants: () => Promise<McpGrant[]>;
         grant: (courseId: string, scope: McpScope, label?: string) => Promise<McpGrant>;

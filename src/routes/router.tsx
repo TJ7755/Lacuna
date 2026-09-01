@@ -9,6 +9,7 @@ import { LazyRoute } from './LazyRoute';
 import { LegacyBankRedirect } from './LegacyBankRedirect';
 import {
   loadAnalytics,
+  loadArchivedCourses,
   loadCardEditor,
   loadCardsPage,
   loadCourseAnalytics,
@@ -39,6 +40,7 @@ const Settings = lazy(loadSettings);
 const SearchPage = lazy(loadSearchPage);
 const SharePage = lazy(loadSharePage);
 const Analytics = lazy(loadAnalytics);
+const ArchivedCourses = lazy(loadArchivedCourses);
 const HelpPage = lazy(loadHelpPage);
 const LearnMode = lazy(loadLearnMode);
 const CourseStudyFlow = lazy(loadCourseStudyFlow);
@@ -85,6 +87,7 @@ export const router = createHashRouter([
           { path: 'search', element: lazyRoute(SearchPage) },
           { path: 'share', element: lazyRoute(SharePage) },
           { path: 'analytics', element: lazyRoute(Analytics) },
+          { path: 'archived', element: lazyRoute(ArchivedCourses) },
           { path: 'help', element: lazyRoute(HelpPage) },
           { path: 'study', element: <Navigate to="/" replace /> },
           { path: 'course/:courseId', element: lazyRoute(CoursePath) },

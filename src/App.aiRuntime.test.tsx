@@ -15,9 +15,24 @@ const dependencies = vi.hoisted(() => ({
   isFirstRun: vi.fn(),
   seedIfFirstRun: vi.fn(),
 }));
+interface TestAiSession extends AiSession {
+  testId: string;
+  dispose: ReturnType<typeof vi.fn>;
+}
 const runtime = vi.hoisted(() => ({
-  session: { dispose: vi.fn() } as unknown as AiSession,
+  createdSessions: [] as TestAiSession[],
+  mountedSessions: [] as TestAiSession[],
+  restartListener: null as (() => void) | null,
 }));
+
+function createTestSession(): TestAiSession {
+  const session = {
+    testId: crypto.randomUUID(),
+    dispose: vi.fn(),
+  } as unknown as TestAiSession;
+  runtime.createdSessions.push(session);
+  return session;
+}
 
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactRouterDom>()),
@@ -28,7 +43,7 @@ vi.mock('react-router-dom', async (importOriginal) => ({
       <main
         data-testid="router-surface"
         data-instance={instance}
-        data-ai-connected={session === runtime.session ? 'true' : 'false'}
+        data-ai-session={(session as TestAiSession | null)?.testId ?? 'none'}
       />
     );
   },
@@ -64,10 +79,13 @@ vi.mock('./ai/session/EnabledAiRuntime', () => ({
     retainedSession: AiSession | null;
     onSessionReady: (session: AiSession) => void;
   }) => {
+    const [instance] = useState(() => crypto.randomUUID());
+    const [session] = useState(() => retainedSession ?? createTestSession());
     useEffect(() => {
-      onSessionReady(retainedSession ?? runtime.session);
-    }, [onSessionReady, retainedSession]);
-    return <span data-testid="enabled-ai-runtime" />;
+      runtime.mountedSessions.push(session as TestAiSession);
+      onSessionReady(session);
+    }, [onSessionReady, session]);
+    return <span data-testid="enabled-ai-runtime" data-instance={instance} />;
   },
 }));
 
@@ -77,6 +95,28 @@ import { writeAiSettings } from './ai/settings';
 describe('optional AI runtime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runtime.createdSessions.length = 0;
+    runtime.mountedSessions.length = 0;
+    runtime.restartListener = null;
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        platform: 'win32',
+        isElectron: true,
+        ai: {
+          protocolVersion: 1,
+          disconnect: vi.fn(),
+          requestRestart: vi.fn(),
+          onRestartRequested: vi.fn((listener: () => void) => {
+            runtime.restartListener = listener;
+            return () => {
+              if (runtime.restartListener === listener) runtime.restartListener = null;
+            };
+          }),
+          listen: vi.fn(),
+        },
+      },
+    });
     localStorage.removeItem('lacuna.aiSettings');
     localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
     window.location.hash = '#/';
@@ -97,19 +137,57 @@ describe('optional AI runtime', () => {
     originalSurface.scrollTop = 420;
 
     act(() => writeAiSettings({ enabled: true }));
-    await screen.findByTestId('enabled-ai-runtime');
+    await screen.findByTestId('enabled-ai-runtime', {}, { timeout: 5_000 });
 
     await waitFor(() => expect(screen.getByTestId('router-surface')).toBe(originalSurface));
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
-    expect(screen.getByTestId('router-surface')).toHaveAttribute('data-ai-connected', 'true');
+    expect(screen.getByTestId('router-surface')).not.toHaveAttribute('data-ai-session', 'none');
+    const activeSession = runtime.createdSessions[0];
 
     act(() => writeAiSettings({ enabled: false }));
 
     await waitFor(() =>
-      expect(screen.getByTestId('router-surface')).toHaveAttribute('data-ai-connected', 'false'),
+      expect(screen.getByTestId('router-surface')).toHaveAttribute('data-ai-session', 'none'),
     );
     expect(screen.getByTestId('router-surface')).toBe(originalSurface);
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
-    expect(runtime.session.dispose).toHaveBeenCalledOnce();
+    expect(activeSession.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('remounts only the enabled AI runtime when Electron requests recovery', async () => {
+    writeAiSettings({ enabled: true });
+    render(<App />);
+
+    const originalSurface = await screen.findByTestId('router-surface');
+    const originalRuntime = await screen.findByTestId(
+      'enabled-ai-runtime',
+      {},
+      { timeout: 5_000 },
+    );
+    const originalRuntimeInstance = originalRuntime.getAttribute('data-instance');
+    await waitFor(() => expect(runtime.restartListener).not.toBeNull());
+    const originalSession = runtime.createdSessions[0];
+    const originalSessionId = originalSession.testId;
+    expect(screen.getByTestId('router-surface')).toHaveAttribute(
+      'data-ai-session',
+      originalSessionId,
+    );
+
+    act(() => runtime.restartListener?.());
+
+    await waitFor(() =>
+      expect(screen.getByTestId('enabled-ai-runtime')).not.toHaveAttribute(
+        'data-instance',
+        originalRuntimeInstance,
+      ),
+    );
+    expect(screen.getByTestId('router-surface')).toBe(originalSurface);
+    expect(runtime.createdSessions).toHaveLength(1);
+    expect(runtime.mountedSessions).toEqual([originalSession, originalSession]);
+    expect(originalSession.dispose).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('router-surface')).toHaveAttribute(
+      'data-ai-session',
+      originalSessionId,
+    );
   });
 });

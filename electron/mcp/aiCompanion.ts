@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
 import net, { type Socket } from 'node:net';
 import log from 'electron-log';
@@ -28,7 +27,11 @@ import {
   isAiCompanionResponse,
   type AiCompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
-import { readCompanionConnectionFile } from './connectionFile.js';
+import {
+  companionAppVersion,
+  companionHostUserDataPath,
+  readCompanionConnectionFile,
+} from './connectionFile.js';
 
 const CONNECT_TIMEOUT_MS = 3_000;
 const REQUEST_GRACE_MS = 5_000;
@@ -66,7 +69,10 @@ export class LocalAiAppClient {
   private connectionId: string | null = null;
   private activeRun: ActiveRun | null = null;
 
-  constructor(private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS) {}
+  constructor(
+    private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS,
+    private readonly hostUserDataPath = '',
+  ) {}
 
   async connect(identity: AiClientIdentity, signal: AbortSignal): Promise<object> {
     if (this.connectionId) throw new Error('Lacuna AI is already connected.');
@@ -285,7 +291,7 @@ export class LocalAiAppClient {
   private async connectSocket(): Promise<void> {
     let connection;
     try {
-      connection = await readCompanionConnectionFile(app.getPath('userData'));
+      connection = await readCompanionConnectionFile(this.hostUserDataPath);
     } catch {
       throw new Error('Lacuna is not running or its local AI endpoint is unavailable.');
     }
@@ -374,11 +380,22 @@ async function callTool<T extends object>(operation: () => Promise<T>): Promise<
   }
 }
 
-export function startAiCompanion(): StdioServerHandle {
+export interface AiCompanionOptions {
+  appVersion: string;
+  hostUserDataPath: string;
+}
+
+export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandle {
   silenceStdoutNoise();
-  const appClient = new LocalAiAppClient();
+  const appVersion = options?.appVersion ?? companionAppVersion(process.argv, '0.0.0');
+  const hostUserDataPath = options?.hostUserDataPath ?? companionHostUserDataPath(process.argv, '');
+  if (!hostUserDataPath) throw new Error('The Lacuna host profile was not provided.');
+  const appClient = new LocalAiAppClient(
+    WRITE_DRAIN_TIMEOUT_MS,
+    hostUserDataPath,
+  );
   return serveStdio(() => {
-    const server = new McpServer({ name: 'lacuna-ai', version: app.getVersion() });
+    const server = new McpServer({ name: 'lacuna-ai', version: appVersion });
     server.registerTool(
       'lacuna.connect',
       {

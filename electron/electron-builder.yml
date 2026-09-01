@@ -15,7 +15,7 @@ win:
     - target: portable
       arch:
         - x64
-  icon: electron/assets/icon.ico
+  icon: electron/assets/icon.png
 nsis:
   artifactName: '${productName}-Setup-${version}.${ext}'
   oneClick: false

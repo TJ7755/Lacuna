@@ -4,15 +4,19 @@ const electron = vi.hoisted(() => {
   type Listener = (event: unknown, value: unknown) => void;
   const listeners = new Map<string, Set<Listener>>();
   const send = vi.fn();
+  const invoke = vi.fn();
   let exposed: unknown;
   return {
     listeners,
     send,
+    invoke,
     exposeInMainWorld: vi.fn((_name: string, value: unknown) => {
       exposed = value;
     }),
     api: () => exposed as {
       ai: {
+        requestRestart(): Promise<void>;
+        onRestartRequested(callback: () => void): () => void;
         listen(
           onRequest: (channelId: string, request: { type: string }) => Promise<unknown>,
           onDisconnected: (channelId: string) => void,
@@ -29,7 +33,7 @@ vi.mock('electron', () => ({
   contextBridge: { exposeInMainWorld: electron.exposeInMainWorld },
   ipcRenderer: {
     send: electron.send,
-    invoke: vi.fn(),
+    invoke: electron.invoke,
     on(channel: string, listener: (event: unknown, value: unknown) => void) {
       const channelListeners = electron.listeners.get(channel) ?? new Set();
       channelListeners.add(listener);
@@ -46,6 +50,7 @@ await import('../../electron/preload');
 describe('Electron preload AI request lifecycle', () => {
   beforeEach(() => {
     electron.send.mockClear();
+    electron.invoke.mockReset();
   });
 
   it('returns a request result accepted before its listener remounts', async () => {
@@ -72,5 +77,19 @@ describe('Electron preload AI request lifecycle', () => {
       id: 'request-1',
       result: { ok: true, data: { type: 'message_claim', message: null } },
     });
+  });
+
+  it('requests a trusted runtime restart and removes its restart listener', async () => {
+    electron.invoke.mockResolvedValue(undefined);
+    const onRestart = vi.fn();
+    const stopListening = electron.api().ai.onRestartRequested(onRestart);
+
+    await electron.api().ai.requestRestart();
+    electron.emit('ai:restart-requested', undefined);
+    stopListening();
+    electron.emit('ai:restart-requested', undefined);
+
+    expect(electron.invoke).toHaveBeenCalledWith('ai:restart-renderer');
+    expect(onRestart).toHaveBeenCalledOnce();
   });
 });

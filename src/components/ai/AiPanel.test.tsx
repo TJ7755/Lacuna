@@ -53,9 +53,9 @@ describe('AiPanel', () => {
 
     render(<AiPanel session={session} onClose={vi.fn()} />);
 
-    expect(screen.getByText('Waiting for terminal')).toBeVisible();
-    expect(screen.getByRole('textbox', { name: 'Terminal setup prompt' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
+    expect(screen.getByText('Waiting for AI client')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'AI client setup prompt' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Connect AI client' })).not.toBeInTheDocument();
     expect(session.pair).not.toHaveBeenCalled();
   });
 
@@ -70,7 +70,7 @@ describe('AiPanel', () => {
 
     expect(screen.getByText(/desktop app connects locally/i)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/desktop integration failed to load/i);
-    expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Connect AI client' })).not.toBeInTheDocument();
     expect(session.pair).not.toHaveBeenCalled();
   });
 
@@ -78,7 +78,7 @@ describe('AiPanel', () => {
     const session = sessionWith();
     render(<AiPanel session={session} onClose={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Connect terminal' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Connect AI client' }));
     await waitFor(() => expect(session.pair).toHaveBeenCalledOnce());
     expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
@@ -117,7 +117,7 @@ describe('AiPanel', () => {
         exact: true,
       }),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Connect AI client' })).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
   });
@@ -232,7 +232,7 @@ describe('AiPanel', () => {
 
     expect(screen.getByRole('button', { name: 'Stop' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Close AI' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Disconnect terminal' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect AI client' }));
 
     await waitFor(() => expect(session.resetConnection).toHaveBeenCalledOnce());
     expect(session.stop).not.toHaveBeenCalled();

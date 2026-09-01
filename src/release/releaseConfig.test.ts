@@ -18,6 +18,10 @@ const prepareElectronBuild = readFileSync(
   resolve(root, 'scripts/prepare-electron-build.mjs'),
   'utf8',
 );
+const electronAiE2e = readFileSync(
+  resolve(root, 'tests/e2e-electron/ai-companion.spec.ts'),
+  'utf8',
+);
 
 describe('v0.2.2 release configuration', () => {
   it('identifies the public app repository and release version', () => {
@@ -49,6 +53,12 @@ describe('v0.2.2 release configuration', () => {
     expect(prepareElectronBuild).not.toContain('shell: true');
   });
 
+  it('lets Electron 42 lazily install its platform runtime for desktop tests', () => {
+    expect(electronAiE2e).toContain("createRequire(import.meta.url)");
+    expect(electronAiE2e).toContain("require('electron')");
+    expect(electronAiE2e).not.toContain("node_modules/electron/dist");
+  });
+
   it('builds the supported Windows and Linux artefacts', () => {
     expect(builderConfig).toMatch(/target:\s*[\s\S]*?target:\s*nsis[\s\S]*?target:\s*portable/);
     expect(builderConfig).toMatch(
@@ -62,6 +72,12 @@ describe('v0.2.2 release configuration', () => {
     expect(builderConfig).toMatch(/arch:\s*[\s\S]*?- x64/);
     expect(builderConfig).toMatch(/linux:[\s\S]*?icon: electron\/assets\/icon\.png/);
     expect(builderConfig).toMatch(/mac:[\s\S]*?icon: electron\/assets\/icon\.png/);
+  });
+
+  it('builds the Windows icon from the generated desktop artwork', () => {
+    const windowsConfig = builderConfig.match(/^win:\n([\s\S]*?)^nsis:/m)?.[1] ?? '';
+    expect(windowsConfig).toContain('icon: electron/assets/icon.png');
+    expect(existsSync(resolve(root, 'electron/assets/icon.ico'))).toBe(false);
   });
 
   it('shows immediate branded feedback while the Windows portable build extracts', () => {

@@ -418,8 +418,9 @@ the dashboard itself and persists to `localStorage`); and a review-activity heat
 arriving from Anki. Cross-course due review is opened from the sidebar's **Review today** item,
 not a separate Dashboard "Study all" button. Empty state invites creating the first course. All
 transitions between these regions are coordinated by `LayoutGroup` so adding or reordering
-courses does not stutter. Archived courses are excluded from the active grid and shown in a separate
-**Archived courses** section with an explicit **Unarchive** action. A course card's context menu (right-click,
+courses does not stutter. Archived courses are excluded from the active grid and normal sidebar
+course list. The sidebar's dedicated **Archived** destination (`/archived`) is their restoration
+home and provides an explicit **Unarchive** action. A course card's context menu (right-click,
 keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
 lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
 
@@ -1286,15 +1287,22 @@ infer exam mode; new rows may explicitly store `schedulingMode: 'steady'` and om
 and `timeZone`. This additive representation requires no IndexedDB schema migration and survives
 Course hydration, derived scheduling-unit synchronisation, full backup/restore and share import.
 
-A course whose `examDate` has passed is detected (`examHasPassed`) and surfaced clearly
-rather than silently stopping: the course card on the dashboard reads "Exam date passed".
-Course Settings lets the exam date be changed (**set a new exam date**), and with no further
-action the course simply keeps revising against the rolling maintenance horizon above. The
-underlying `archived` flag withdraws the course from active study and dashboard totals while
-retaining its data. The dashboard course-card context menu exposes this through a confirmation
-dialog, with a reversible Undo toast. Archived courses appear in the dashboard's **Archived
-courses** group with an **Unarchive** action. Course Settings does not expose the archive action;
-its scheduling controls only change the exam date or leave the course revising.
+A course whose final assessment date has passed follows the device-local **After the final exam**
+policy. **Ask me** is the default and never changes data silently: it offers **Archive course**,
+**Set a new exam date**, and **Keep revising**. Choosing Keep revising records the exact handled
+final-exam timestamp, so the decision does not reappear for that date; explicitly unarchiving a
+passed course records the same override so automatic policy cannot immediately archive it again.
+Replacing the final with a later date re-arms the lifecycle when the replacement passes. **Archive
+automatically** sets the existing `archived` flag after an unhandled final timestamp passes.
+**Keep revising** retains the rolling maintenance horizon. Checkpoints never trigger any of these
+lifecycle actions.
+
+Archiving withdraws the course from active study, the dashboard grid and totals, the normal sidebar
+course list, Review today and future workload forecasts while retaining every lesson, card and
+review. Historical activity still contributes to the review heatmap, reviewed-today count and
+streak. The dashboard course-card context menu remains the manual archive entry point, with a
+reversible Undo toast; `/archived` owns restoration. Course Settings remains the place to edit the
+final assessment date.
 
 ---
 
@@ -2484,13 +2492,13 @@ its navigation cannot drift from the rendered groups.
   (off by default).
 - **Course defaults:** automatic Practice placement and the global **Optimise scheduling** default
   (on -> fit FSRS weights to review history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per
-  course, applied only on confirmation). Practice timing, FSRS retention/interval fields and
+  course, applied only on confirmation), plus the device-local **After the final exam** policy
+  (**Ask me** by default, or **Archive automatically** / **Keep revising**). Practice timing, FSRS retention/interval fields and
   optimisation controls sit behind native **Advanced practice timing** or **Advanced scheduling**
   disclosures. Workload and session-goal fields remain visible.
-- **Sidebar:** show due counts (on by default), show archived courses (on by default;
-  courses can be archived from the dashboard card context menu), compact
-  mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Dashboard, Review today, Search, Share, Analytics, Settings, Help). The rendered search
+- **Sidebar:** show due counts (on by default), compact mode (off by default), and per-nav-item visibility toggles for every primary nav
+  entry (Dashboard, Review today, Search, Share, Analytics, Archived, Settings, Help). Archived
+  courses never appear in the ordinary Courses list. The rendered search
   trigger is **Quick search** when the overlay is available and **Search content** when it must link
   to the full page. Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
@@ -2523,10 +2531,11 @@ its navigation cannot drift from the rendered groups.
   The production `AiSession` boundary has two transports. The hosted web build creates a ten-minute
   pairing code, persists the local conversation and relay credentials across reload, and polls two
   encrypted directional HTTP mailboxes. Its deliberately running terminal task launches
-  `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead
-  launches the installed Lacuna executable with `--ai-companion` and attaches through the
-  authenticated native broker; it uses no pairing code, web relay or network listener. Both
-  transports expose exactly `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
+  `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead runs
+  the bundled AI companion entry point through the shipped Electron binary in run-as-Node mode and
+  attaches through the authenticated native broker; it does not start a second Chromium browser
+  and uses no pairing code, web relay or network listener. Both transports expose exactly
+  `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
   `lacuna.reply` and `lacuna.disconnect`, with the enabled renderer retaining session and approval
   authority. On the web transport, browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
   the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
@@ -2667,8 +2676,9 @@ defaults** is always available.
 - **Legacy lesson session filter:** `Lesson.sessionFilter` is retained only so old imports
   remain readable. It has no settings control and does not alter live lesson study, which
   always serves unseen lesson members in Simple mode.
-- Once the **exam date has passed** (§8.2), the course can be given a new date or simply
-  kept on its rolling maintenance horizon. Archiving is a separate, dashboard-only action.
+- Once the **final exam date has passed** (§8.2), the configured lifecycle policy asks what to do,
+  archives automatically, or keeps the course on its rolling maintenance horizon. Checkpoints do
+  not participate. Manual archiving remains available from the dashboard course card.
 - **Danger zone:** course deletion uses a confirmation followed by the snapshot + undo-toast
   pattern (`DangerZoneSection`): deleting is performed after the inline confirmation, with an
   "Undo" toast that restores everything from a `CourseSnapshot`
@@ -2805,8 +2815,10 @@ user-local Unix-domain socket (macOS/Linux) or named pipe (Windows). There is no
 or browser MCP server. The normal renderer window must remain open because it owns IndexedDB.
 Modern SDK v2 and legacy stdio negotiation are both accepted.
 
-The broker has a second purpose-bound attachment for the optional desktop AI panel. An
-`--ai-companion` process exposes exactly `lacuna.connect`, `lacuna.wait_for_message`,
+The broker has a second purpose-bound attachment for the optional desktop AI panel. A direct
+installation runs the bundled AI companion entry point through the shipped Electron binary with
+`ELECTRON_RUN_AS_NODE=1`; it does not bootstrap another Chromium process. The companion exposes
+exactly `lacuna.connect`, `lacuna.wait_for_message`,
 `lacuna.invoke_tool`, `lacuna.reply` and `lacuna.disconnect`; it cannot call the broader data-MCP
 surface directly. Main-process authentication proves attachment to this installation, while the
 enabled renderer remains the authority for session ownership, Stop, call-id ledgering, course
@@ -2814,7 +2826,11 @@ creation and destructive one-shot approval. No localhost TCP, HTTP or WebSocket 
 introduced. Generated AI and data companion commands carry Electron's active user-data directory,
 so custom and isolated profiles resolve the same authenticated endpoint as the open renderer. The
 hosted web build retains its encrypted HTTPS mailbox transport because browsers cannot host the
-native socket.
+native socket. The native broker waits for at most five seconds when a live renderer is still
+mounting before returning an actionable unavailable result. Renderer readiness is exposed only
+through the trusted Electron status bridge, not as a sixth AI companion tool. The disconnected AI
+panel shows that status and can request a targeted restart which remounts the optional AI runtime
+without reloading the application shell or data layer.
 
 | Component                      | Pinned version | Compatibility                                                       |
 | ------------------------------ | -------------- | ------------------------------------------------------------------- |

@@ -81,10 +81,6 @@ export function Dashboard() {
     }
     return sorted;
   }, [courses, summaries, dashboardSort]);
-  const archivedCourses = useMemo(
-    () => courses?.filter((course) => course.archived).sort((a, b) => a.name.localeCompare(b.name)),
-    [courses],
-  );
 
   // Cards grouped by course, for the card hover detail modules.
   const cardsByCourse = useMemo(() => {
@@ -141,7 +137,10 @@ export function Dashboard() {
           <CourseSkeleton />
         </DelayedFallback>
       ) : activeCourses.length === 0 ? (
-        <EmptyState onCreateCourse={() => setCreatingCourse(true)} />
+        <EmptyState
+          hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
+          onCreateCourse={() => setCreatingCourse(true)}
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {activeCourses.map((course) => (
@@ -167,37 +166,6 @@ export function Dashboard() {
             </div>
           ))}
         </div>
-      )}
-
-      {archivedCourses && archivedCourses.length > 0 && (
-        <section className="mt-10 rounded-2xl border border-line bg-surface p-6">
-          <h2 className="font-display text-xl">Archived courses</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Archived courses stay on this device but are excluded from the dashboard and Review
-            today.
-          </p>
-          <ul className="mt-4 flex flex-col gap-2">
-            {archivedCourses.map((course) => (
-              <li
-                key={course.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3"
-              >
-                <span className="text-sm text-ink">{course.name}</span>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    void updateCourse(course.id, { archived: false })
-                      .then(() => notify(`${course.name} restored to the dashboard`, 'positive'))
-                      .catch(() => notify(`Could not restore ${course.name}`, 'negative'));
-                  }}
-                >
-                  Unarchive
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
 
       {/* Review activity heatmap */}
@@ -418,7 +386,13 @@ function CourseSkeleton() {
   );
 }
 
-function EmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
+function EmptyState({
+  hasArchivedCourses,
+  onCreateCourse,
+}: {
+  hasArchivedCourses: boolean;
+  onCreateCourse: () => void;
+}) {
   return (
     <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center">
       <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
@@ -426,9 +400,13 @@ function EmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
         <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm shadow-accent/20">
           <LacunaIcon width={28} height={28} />
         </div>
-        <h2 className="mb-2 font-display text-2xl">No courses yet</h2>
+        <h2 className="mb-2 font-display text-2xl">
+          {hasArchivedCourses ? 'No active courses' : 'No courses yet'}
+        </h2>
         <p className="mb-6 max-w-sm text-ink-soft">
-          Start a course to organise your lessons and cards.
+          {hasArchivedCourses
+            ? 'Restore a course from Archived or start another one.'
+            : 'Start a course to organise your lessons and cards.'}
         </p>
         <Button variant="primary" onClick={onCreateCourse}>
           <PlusIcon width={16} height={16} />

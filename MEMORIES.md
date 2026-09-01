@@ -22,6 +22,18 @@ Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and uns
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.
 
+## Desktop packages share one generated icon source
+
+Windows, Linux and macOS packaging all consume `electron/assets/icon.png`; Electron Builder performs
+the platform conversion. Do not restore a separately maintained `icon.ico`: the old binary drifted
+from the source artwork and silently shipped incomplete frames because nothing regenerated it.
+
+## Electron 42 installs its runtime lazily
+
+Electron 42 removed the npm postinstall download and resolves the platform runtime through its
+package entry point on first use. Native tooling must resolve `require('electron')` rather than
+constructing a path under `node_modules/electron/dist`, which is absent after a clean install.
+
 ## Windows portable startup begins before Electron exists
 
 electron-builder's portable target runs a silent NSIS extraction before launching Lacuna's
@@ -74,6 +86,14 @@ A successful native claim and reply proves the transport, not that a terminal mo
 reply. A helper can label itself as any MCP client and return hard-coded text. For an end-to-end chat
 check, verify that the live model task itself owns the companion and calls the Lacuna tools; record a
 deterministic wire harness only as transport evidence.
+
+## MCP registration and active tools are different states
+
+Saving a local MCP server does not prove the running client loaded its tools. Codex desktop and the
+IDE extension require their documented restart action; CLI users must verify the active TUI with
+`/mcp`. Setup guidance must preserve every companion argument, then verify `lacuna.connect` and
+`lacuna.wait_for_message` before diagnosing Lacuna. Never test registration by launching another
+normal Lacuna instance directly.
 
 ## AI tool results need a real JSON wire projection
 
@@ -445,3 +465,10 @@ The application shell uses `overscroll-behavior-x: none` and a left-edge pointer
 mobile navigation where the browser permits it. Chromium and Firefox can suppress horizontal
 history overscroll, but iOS Safari may intercept its native edge-back gesture before page pointer
 events arrive. Do not claim that a web page can reliably override that operating-system gesture.
+
+## The AI companion is a Node process, not a second browser
+
+Direct `--ai-companion` configurations run `aiCompanionEntry.js` through the shipped Electron
+binary with `ELECTRON_RUN_AS_NODE=1`. The host app profile is passed separately through
+`--lacuna-host-user-data-dir`. Launching the full Electron app for this headless stdio bridge can
+exit cleanly before JavaScript starts on Windows.

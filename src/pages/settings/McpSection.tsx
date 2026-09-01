@@ -13,7 +13,7 @@ interface McpStatus {
   toolCount: number;
   toolSurfaceVersion: number;
   clients?: McpClientConnection[];
-  companion?: { command: string; args: string[] };
+  companion?: { command: string; args: string[]; env?: Record<string, string> };
 }
 const SCOPES = ['read', 'write', 'destructive'] as const;
 const MCP_STATUS_POLL_MS = 10_000;
@@ -96,6 +96,7 @@ export function McpSection() {
     const configuration = JSON.stringify({ mcpServers: { lacuna: {
       command: status.companion.command,
       args: status.companion.args,
+      ...(status.companion.env ? { env: status.companion.env } : {}),
     } } }, null, 2);
     try {
       await navigator.clipboard.writeText(configuration);
@@ -120,7 +121,7 @@ export function McpSection() {
           <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">MCP client configuration</div>
           <Button variant="secondary" size="sm" onClick={() => void copyConfiguration()}>Copy</Button>
         </div>
-        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink">{JSON.stringify({ mcpServers: { lacuna: { command: status.companion.command, args: status.companion.args } } }, null, 2)}</pre>
+        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink">{JSON.stringify({ mcpServers: { lacuna: { command: status.companion.command, args: status.companion.args, ...(status.companion.env ? { env: status.companion.env } : {}) } } }, null, 2)}</pre>
       </div>}
       <div className="space-y-4">
         {visibleConnections.length === 0 && <p className="rounded-xl border border-line px-4 py-3 text-sm text-ink-faint">No MCP clients connected.</p>}

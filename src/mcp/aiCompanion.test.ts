@@ -126,7 +126,7 @@ describe('local AI companion request lifecycle', () => {
       server.listen(connection.endpoint, resolve);
     });
 
-    const client = new LocalAiAppClient(100);
+    const client = new LocalAiAppClient(100, userDataPath);
     await client.connect({ name: 'Codex' }, new AbortController().signal);
     const abort = new AbortController();
     const abandoned = client.invokeTool(

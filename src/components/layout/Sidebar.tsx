@@ -6,6 +6,7 @@ import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import {
+  ArchiveIcon,
   CardsIcon,
   ChartIcon,
   ChevronDownIcon,
@@ -433,11 +434,9 @@ export function Sidebar({
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [creatingCourse, setCreatingCourse] = useState(false);
 
-  // Courses shown in the sidebar list; archived courses are included only when the
-  // "Show archived courses" setting is on.
   const sidebarCourses = useMemo(
-    () => courses?.filter((c) => sidebarSettings.showArchived || !c.archived) ?? [],
-    [courses, sidebarSettings.showArchived],
+    () => courses?.filter((course) => !course.archived) ?? [],
+    [courses],
   );
 
   // Group lessons by course, preserving per-course orderIndex order.
@@ -553,6 +552,8 @@ export function Sidebar({
                     <ShareIcon />
                   ) : n.id === 'analytics' ? (
                     <ChartIcon />
+                  ) : n.id === 'archived' ? (
+                    <ArchiveIcon />
                   ) : n.id === 'settings' ? (
                     <SettingsIcon />
                   ) : n.id === 'help' ? (
