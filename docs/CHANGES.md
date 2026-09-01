@@ -30,10 +30,14 @@ web and Electron typecheck; focused lint and production build.
 - Kept the five-tool conversation surface separate from the broader data MCP authority. Durable
   model execution, client tool-registry reload and waking a finished task remain client-owned MCP
   limitations rather than fake background behaviour inside Lacuna.
+- Made the device-local AI setting a snapshot-checked external store. An enable or disable write
+  which lands between render and listener subscription is now observed instead of being silently
+  lost, which was the real cause behind the intermittent lazy-runtime CI failure.
 
 **Checks:** red-to-green protocol, lease renewal, idempotent reply, error-redaction, tool-catalogue,
-natural Course resolution, compact pagination and scope-resolution regressions; native Electron AI
-lifecycle; browser suite; web/Electron typecheck, lint and production build.
+natural Course resolution, compact pagination, scope-resolution and settings-subscription
+regressions; native Electron AI lifecycle; browser suite; web/Electron typecheck, lint and
+production build.
 
 ## Dashboard polish
 

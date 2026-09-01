@@ -2536,7 +2536,9 @@ its navigation cannot drift from the rendered groups.
   stored misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
   navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the
   existing navigation to its 72 px rail without changing the saved collapse preference; closing
-  restores focus to the trigger. Below the breakpoint the inactive surface is absent.
+  restores focus to the trigger. Below the breakpoint the inactive surface is absent. Device-local
+  AI setting subscribers recheck the stored snapshot when they attach, so an enable or disable
+  write between render and subscription is not dropped.
 
   The production `AiSession` boundary has two transports. The hosted web build creates a ten-minute
   pairing code, persists the local conversation and relay credentials across reload, and polls two
