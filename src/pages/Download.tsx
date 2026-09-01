@@ -7,7 +7,7 @@ declare const __APP_VERSION__: string;
 
 export type DesktopPlatform = 'windows' | 'macos' | 'linux';
 
-const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.2.1';
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.2.2';
 const RELEASE_BASE = `https://github.com/TJ7755/Lacuna/releases/download/v${APP_VERSION}`;
 
 export const DOWNLOADS = {

@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.1
+# Lacuna — version 0.2.2
 
-## Unreleased
+## 0.2.2 beta — local desktop AI companion
 
 ### Local desktop AI transport
 

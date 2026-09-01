@@ -9,9 +9,9 @@ afterEach(() => {
 
 describe('desktop download selection', () => {
   it('links to the current desktop release', () => {
-    expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.1/');
-    expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.1/');
-    expect(DOWNLOADS.linuxAppImage).toContain('/releases/download/v0.2.1/');
+    expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.2/');
+    expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.2/');
+    expect(DOWNLOADS.linuxAppImage).toContain('/releases/download/v0.2.2/');
   });
 
   it('detects supported desktop platforms without mistaking Android for Linux', () => {
