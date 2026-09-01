@@ -37,6 +37,22 @@ suite, typecheck, lint and production build.
 manual-route and restart-consent tests; shared-contract/preload-validator parity; native Electron
 preload/Settings lifecycle; web and Electron typecheck; lint.
 
+## Archived-course navigation and inspection
+
+- Moved **Archived** out of the customisable primary navigation and pinned it directly beneath the
+  **Courses** heading. Active courses retain their own scroll region, so the archive destination
+  does not disappear when the course list is long.
+- Made archived-course cards open the existing course path with a native card hover and keyboard
+  focus state. **Unarchive** remains a separate action and cannot trigger card navigation.
+- Added an explicit archived, read-only state to course and single-lesson views. Archived content
+  remains inspectable, while study, practice, authoring, update-review and path mutation controls
+  stay unavailable until the course is restored.
+- Removed the decorative **Course library** eyebrow from the Archived page and rebalanced its
+  header spacing.
+
+**Checks:** red-to-green Archived page, sidebar preference migration, course-path and lesson-view
+regressions; focused path-node tests; web typecheck and lint; production build and browser pass.
+
 ## 0.2.3 beta — archived courses and desktop AI recovery
 
 ### Bun 1.4 toolchain

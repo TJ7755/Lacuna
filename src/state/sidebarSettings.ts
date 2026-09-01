@@ -22,7 +22,6 @@ export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
   { id: 'search', label: 'Search', visible: true },
   { id: 'share', label: 'Share', visible: true },
   { id: 'analytics', label: 'Analytics', visible: true },
-  { id: 'archived', label: 'Archived', visible: true },
   { id: 'settings', label: 'Settings', visible: true },
   { id: 'help', label: 'Help', visible: true },
 ];

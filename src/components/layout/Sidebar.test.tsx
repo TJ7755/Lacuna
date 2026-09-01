@@ -1,5 +1,5 @@
 import { createRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
@@ -15,16 +15,23 @@ vi.mock('../../state/useCourseData', () => ({
 }));
 
 describe('Sidebar', () => {
-  it('provides a dedicated archive destination and never mixes archived courses into the list', () => {
+  it('keeps the archive destination fixed in the Courses group and archived courses out of the list', () => {
     mockCourses = [
       { id: 'active', name: 'Active course', archived: false } as Course,
       { id: 'archived', name: 'Finished course', archived: true } as Course,
     ];
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('link', { name: 'Archived' })).toHaveAttribute('href', '/archived');
-    expect(screen.getByText('Active course')).toBeInTheDocument();
-    expect(screen.queryByText('Finished course')).not.toBeInTheDocument();
+    const primary = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const courseNavigation = screen.getByRole('navigation', { name: 'Courses' });
+
+    expect(within(primary).queryByRole('link', { name: 'Archived' })).not.toBeInTheDocument();
+    expect(within(courseNavigation).getByRole('link', { name: 'Archived' })).toHaveAttribute(
+      'href',
+      '/archived',
+    );
+    expect(within(courseNavigation).getByText('Active course')).toBeInTheDocument();
+    expect(within(courseNavigation).queryByText('Finished course')).not.toBeInTheDocument();
     mockCourses = [];
   });
   it('fills its shell container without extending beneath the Electron titlebar', () => {

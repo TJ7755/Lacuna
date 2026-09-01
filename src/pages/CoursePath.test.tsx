@@ -282,6 +282,25 @@ beforeEach(() => {
 });
 
 describe('CoursePath Study mode', () => {
+  it('renders archived courses as a read-only path with no study or authoring exits', () => {
+    mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
+
+    renderPage();
+
+    expect(screen.getByText('Archived course')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
+      'href',
+      '/archived',
+    );
+    expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kinematics' })).toBeDisabled();
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+  });
+
   it('offers one explicit Author mode beside the course sections', () => {
     renderPage();
 

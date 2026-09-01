@@ -78,9 +78,15 @@ test('starts a real lesson study interaction', async ({ page }) => {
   // Exact, because the dashboard also carries "Study Choose a course" and a per-course
   // "Study <name>" control. Without it, strict mode matches all three.
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await page.getByRole('button', { name: /Start:|Continue:/ }).first().click();
+  await page
+    .getByRole('button', { name: /Start:|Continue:/ })
+    .first()
+    .click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: /Show answer/i }).last().click();
+  await page
+    .getByRole('button', { name: /Show answer/i })
+    .last()
+    .click();
   const card = page.locator('[data-study-card-id]').first();
   const cardId = await card.getAttribute('data-study-card-id');
   expect(cardId).not.toBeNull();
@@ -109,6 +115,33 @@ test('starts a real lesson study interaction', async ({ page }) => {
   const centres = await centreSamples;
   expect(centres.length).toBeGreaterThan(1);
   expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(1);
+});
+
+test('opens an archived course as read-only content', async ({ page }) => {
+  await openSeededDashboard(page);
+  const courseCard = page
+    .locator('main')
+    .getByRole('button', { name: /Exam in .* Welcome to Lacuna/ });
+
+  await courseCard.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Archive' }).click();
+  await page.getByRole('button', { name: 'Archive course' }).click();
+
+  const courseNavigation = page.getByRole('navigation', { name: 'Courses' });
+  await expect(courseNavigation.getByRole('link', { name: 'Archived' })).toBeVisible();
+  await courseNavigation.getByRole('link', { name: 'Archived' }).click();
+  await expect(page.getByRole('heading', { name: 'Archived' })).toBeVisible();
+
+  const archivedCourse = page.getByRole('link', { name: 'Open Welcome to Lacuna' });
+  await archivedCourse.focus();
+  await expect(archivedCourse).toBeFocused();
+  await archivedCourse.click();
+
+  await expect(page.getByText('Archived course', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Archived courses' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Course sections' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Study', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Author mode' })).toHaveCount(0);
 });
 
 test('downloads a full backup from recovery settings', async ({ page }) => {

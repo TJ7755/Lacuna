@@ -22,15 +22,22 @@ describe('readStored', () => {
     expect(settings.navItems).toEqual(DEFAULT_NAV_ITEMS);
   });
 
-  it('ignores the retired showArchived preference', () => {
+  it('ignores retired archive visibility controls', () => {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ showArchived: false, compactMode: true }),
+      JSON.stringify({
+        showArchived: false,
+        compactMode: true,
+        navItems: [
+          { id: 'archived', label: 'Archived', visible: false },
+          { id: 'dashboard', label: 'Dashboard', visible: true },
+        ],
+      }),
     );
 
     expect(readStored()).toMatchObject({ compactMode: true });
     expect(readStored()).not.toHaveProperty('showArchived');
-    expect(DEFAULT_NAV_ITEMS.some((item) => item.id === 'archived')).toBe(true);
+    expect(readStored().navItems.some((item) => item.id === 'archived')).toBe(false);
   });
 
   it('returns merged nav items when stored items are missing new defaults', () => {

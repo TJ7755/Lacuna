@@ -64,10 +64,10 @@ export function PathNodeWithLine({
   lessonDetail?: LessonNodeDetail;
   practiceProgress?: { fraction: number; completed: boolean };
   practiceAssessment?: AssessmentPracticeOption;
-  onLessonClick: (lessonId: string) => void;
-  onPracticeClick: (node: PracticePathNode) => void;
-  onPracticeAssessmentClick: (assessmentId: string) => void;
-  onCheckpointClick: (assessmentId: string) => void;
+  onLessonClick?: (lessonId: string) => void;
+  onPracticeClick?: (node: PracticePathNode) => void;
+  onPracticeAssessmentClick?: (assessmentId: string) => void;
+  onCheckpointClick?: (assessmentId: string) => void;
   onPracticeEdit?: (node: PracticePathNode) => void;
   authoring: boolean;
   lessonReorder?: LessonReorderInteraction;
@@ -89,17 +89,20 @@ export function PathNodeWithLine({
         practiceAssessment={practiceAssessment}
         onLessonClick={onLessonClick}
         onPracticeClick={
-          node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
+          onPracticeClick &&
+          (node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual')
             ? () => onPracticeClick(node)
             : undefined
         }
         onPracticeAssessmentClick={
-          practiceAssessment
+          practiceAssessment && onPracticeAssessmentClick
             ? () => onPracticeAssessmentClick(practiceAssessment.assessmentId)
             : undefined
         }
         onCheckpointClick={
-          node.nodeType === 'checkpoint' ? () => onCheckpointClick(node.assessment.id) : undefined
+          node.nodeType === 'checkpoint' && onCheckpointClick
+            ? () => onCheckpointClick(node.assessment.id)
+            : undefined
         }
         onPracticeEdit={authoring ? onPracticeEdit : undefined}
         authoring={authoring}
