@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { ManualUpdateReason, UpdatePhase, UpdateState } from './updaterContract';
 
 // The mcp.onInvoke/reply payloads are plain JSON envelopes (src/mcp/bridge/protocol.ts);
 // typed loosely here since the preload script's own tsconfig (tsconfig.preload.json) does
@@ -20,9 +21,76 @@ type AiBridgeRequest = Record<string, unknown> & { type: string };
 type AiBridgeResult =
   | { ok: true; data: unknown }
   | { ok: false; error: Record<string, unknown> & { kind: string; message: string } };
+const UPDATE_PHASES = new Set<UpdatePhase>([
+  'idle',
+  'checking',
+  'available',
+  'downloading',
+  'downloaded',
+  'up-to-date',
+  'error',
+  'manual',
+]);
+const MANUAL_REASONS = new Set<ManualUpdateReason>([
+  'development',
+  'unsigned-macos',
+  'windows-portable',
+  'linux-deb',
+]);
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+}
+
+function safeUpdateState(value: unknown): UpdateState | undefined {
+  const item = record(value);
+  if (
+    !item ||
+    !UPDATE_PHASES.has(item.phase as UpdatePhase) ||
+    (item.mode !== 'automatic' && item.mode !== 'manual') ||
+    typeof item.currentVersion !== 'string'
+  )
+    return undefined;
+  if (item.availableVersion !== undefined && typeof item.availableVersion !== 'string')
+    return undefined;
+  if (item.error !== undefined && typeof item.error !== 'string') return undefined;
+  if (
+    item.manualReason !== undefined &&
+    !MANUAL_REASONS.has(item.manualReason as ManualUpdateReason)
+  ) {
+    return undefined;
+  }
+  const progress = item.progress === undefined ? undefined : record(item.progress);
+  if (
+    item.progress !== undefined &&
+    (!progress ||
+      !['percent', 'transferred', 'total', 'bytesPerSecond'].every(
+        (key) => typeof progress[key] === 'number' && Number.isFinite(progress[key]),
+      ))
+  )
+    return undefined;
+  return {
+    phase: item.phase as UpdatePhase,
+    mode: item.mode,
+    currentVersion: item.currentVersion,
+    ...(typeof item.availableVersion === 'string'
+      ? { availableVersion: item.availableVersion }
+      : {}),
+    ...(typeof item.manualReason === 'string'
+      ? { manualReason: item.manualReason as ManualUpdateReason }
+      : {}),
+    ...(progress
+      ? {
+          progress: {
+            percent: progress.percent as number,
+            transferred: progress.transferred as number,
+            total: progress.total as number,
+            bytesPerSecond: progress.bytesPerSecond as number,
+          },
+        }
+      : {}),
+    ...(typeof item.error === 'string' ? { error: item.error } : {}),
+  };
 }
 
 function aiRequestEnvelope(value: unknown): {
@@ -75,6 +143,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => {
       ipcRenderer.removeListener('window:maximizedChange', handler);
     };
+  },
+  updater: {
+    getState: async (): Promise<UpdateState> => {
+      const state = safeUpdateState(await ipcRenderer.invoke('updater:get-state'));
+      if (!state) throw new Error('The desktop updater returned invalid status.');
+      return state;
+    },
+    checkForUpdates: (): Promise<void> => ipcRenderer.invoke('updater:check'),
+    restartAndInstall: (): Promise<void> => ipcRenderer.invoke('updater:restart-and-install'),
+    onStateChange: (callback: (state: UpdateState) => void) => {
+      const handler = (_event: unknown, value: unknown) => {
+        const state = safeUpdateState(value);
+        if (state) callback(state);
+      };
+      ipcRenderer.on('updater:state', handler);
+      return () => ipcRenderer.removeListener('updater:state', handler);
+    },
   },
   ai: {
     protocolVersion: 1,

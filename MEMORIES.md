@@ -2,12 +2,6 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
-## Pull-request review has no third-party bot gate
-
-The CodeRabbit trial expired and it is no longer part of the repository's review workflow. Use
-targeted independent agent review and the normal CI gates; do not hold a pull request waiting for a
-CodeRabbit review which will never arrive.
-
 ## Release publishing must whitelist packaged artefacts
 
 electron-builder writes unpacked application directories beside installers in `release/`. A broad

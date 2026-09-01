@@ -1,8 +1,10 @@
 import { app, BrowserWindow, session, protocol, ipcMain, screen, shell } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
+import type { DesktopUpdater, UpdateState } from './updaterService.js';
 import {
   createApplicationShutdownHandler,
   registerCompanionProcessShutdown,
@@ -50,6 +52,7 @@ const isCompanionProcess = isMcpCompanionProcess || isAiCompanionProcess;
 const companionHostUserDataArgument = '--lacuna-host-user-data-dir=';
 let mainWindow: BrowserWindow | null = null;
 let mcpModule: McpServerModule | null = null;
+let desktopUpdater: DesktopUpdater | null = null;
 
 function companionHostUserDataPath(): string {
   const argument = process.argv.find((value) => value.startsWith(companionHostUserDataArgument));
@@ -371,6 +374,21 @@ function createWindow(): void {
   }
 }
 
+function isTrustedRendererInvoke(event: IpcMainInvokeEvent): boolean {
+  return (
+    !!mainWindow &&
+    !mainWindow.isDestroyed() &&
+    !mainWindow.webContents.isDestroyed() &&
+    event.sender === mainWindow.webContents &&
+    event.senderFrame === mainWindow.webContents.mainFrame
+  );
+}
+
+function publishUpdateState(state: UpdateState): void {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
+  mainWindow.webContents.send('updater:state', state);
+}
+
 /** Single instance lock — prevent multiple windows. */
 const gotTheLock = isCompanionProcess ? false : app.requestSingleInstanceLock();
 
@@ -415,10 +433,25 @@ if (isCompanionProcess) {
     }
 
     createWindow();
+    desktopUpdater = initAutoUpdater({
+      currentVersion: app.getVersion(),
+      packaged: app.isPackaged,
+      publishState: publishUpdateState,
+    });
 
-    if (!isDev) {
-      initAutoUpdater();
-    }
+    ipcMain.handle('updater:get-state', (event) => {
+      if (!isTrustedRendererInvoke(event)) throw new Error('Untrusted updater status request.');
+      if (!desktopUpdater) throw new Error('The desktop updater is unavailable.');
+      return desktopUpdater.getState();
+    });
+    ipcMain.handle('updater:check', async (event) => {
+      if (!isTrustedRendererInvoke(event)) throw new Error('Untrusted updater check request.');
+      await desktopUpdater?.checkForUpdates();
+    });
+    ipcMain.handle('updater:restart-and-install', (event) => {
+      if (!isTrustedRendererInvoke(event)) throw new Error('Untrusted updater install request.');
+      desktopUpdater?.restartAndInstall();
+    });
 
     // Window control IPC handlers for the custom titlebar.
     ipcMain.on('window:minimize', () => {

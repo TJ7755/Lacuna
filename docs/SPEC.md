@@ -2801,10 +2801,15 @@ than exposing GitHub's updater metadata as user choices.
   offline. The hosted Google Fonts links are added only on HTTP(S), so Electron does not make a
   request which its production CSP would reject.
 - **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub Releases and checks
-  the beta channel shortly after launch. Windows NSIS and Linux AppImage download updates and install
-  them on quit. Windows portable and Linux DEB update manually. The unsigned macOS beta also updates
-  manually because electron-updater requires a signed macOS application. Update state is logged;
-  there is no renderer progress or restart UI in this version.
+  the beta channel shortly after launch. A narrow, validated preload surface exposes only current
+  state, a deliberate check, state-change subscription and explicit restart-and-install. Settings
+  shows the installed version, check/download/error state and byte progress; checking and downloads
+  also use a compact application-level notice with percentage and transferred/total size when the
+  updater supplies it. A downloaded update never restarts Lacuna or installs on ordinary quit: the
+  user chooses **Restart and install** or **Later**. Windows portable and Linux DEB update manually.
+  The unsigned macOS beta also updates manually because electron-updater
+  requires a signed macOS application. Those packages receive package-specific guidance and a link
+  to the beta releases page. Release-note HTML is not exposed to the renderer.
 
 ### Model Context Protocol server
 

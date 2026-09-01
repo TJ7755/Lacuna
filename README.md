@@ -195,11 +195,13 @@ exposes raw Electron IPC, sockets or arbitrary channel names. The broker gives a
 up to five seconds to finish mounting; if AI remains disabled or unavailable after that, it fails
 closed with recovery guidance.
 
-The installed Windows NSIS and Linux AppImage builds follow the GitHub beta release channel,
-download updates in the background and install them on quit. Windows portable and Linux DEB builds
-update manually. The macOS beta is unsigned and therefore also updates manually: macOS requires a
-signed application for electron-updater. All unsigned beta artefacts may trigger normal operating
-system trust warnings.
+The installed Windows NSIS and Linux AppImage builds follow the GitHub beta release channel. Lacuna
+shows checking and download progress, then waits for **Restart and install**; choosing **Later** does
+not install the update on ordinary quit. Settings also shows the installed version, update status
+and a manual check/retry action. Windows portable and Linux DEB builds update manually. The macOS
+beta is unsigned and therefore also updates manually: macOS requires a signed application for
+electron-updater. Lacuna links each manual package to the beta releases page. All unsigned beta
+artefacts may trigger normal operating system trust warnings.
 
 The web app's `#/download` page provides direct, operating-system-aware links without asking users
 to decipher GitHub's release asset list. It recommends the portable executable for managed Windows
