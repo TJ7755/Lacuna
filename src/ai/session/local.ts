@@ -16,6 +16,7 @@ import { appendConversationItems } from './relayEvents';
 import type { AiSession, AiSessionCommandResult, AiSessionSnapshot } from './types';
 
 const DEFAULT_CLAIM_LEASE_MS = 5 * 60_000;
+const MAX_COMPLETED_REPLIES = 100;
 
 const EMPTY_SNAPSHOT: AiSessionSnapshot = {
   revision: 0,
@@ -86,6 +87,18 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
   let pendingClaim: PendingClaim | null = null;
   let cancelLeaseExpiry: (() => void) | null = null;
   let stopListening: (() => void) | null = null;
+  const completedReplies = new Map<string, string>();
+
+  function completedReplyKey(runId: string, messageId: string): string {
+    return `${runId}\u0000${messageId}`;
+  }
+
+  function rememberCompletedReply(runId: string, messageId: string, content: string): void {
+    completedReplies.set(completedReplyKey(runId, messageId), content);
+    while (completedReplies.size > MAX_COMPLETED_REPLIES) {
+      completedReplies.delete(completedReplies.keys().next().value as string);
+    }
+  }
 
   function publish(next: Omit<AiSessionSnapshot, 'revision'>): void {
     snapshot = { ...next, revision: snapshot.revision + 1 };
@@ -397,6 +410,27 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
           return snapshot.run?.runId === request.runId
             ? { ok: true, data: { type: 'run_state', run: snapshot.run } }
             : conflictBridge('That AI run is no longer available.');
+        case 'renew_lease': {
+          const run = snapshot.run;
+          if (!run || run.runId !== request.runId || run.status !== 'active') {
+            return stoppedOrConflict(request.runId, run);
+          }
+          const renewedAt = now();
+          if (renewedAt >= run.leaseExpiresAt) {
+            expireRun(run.runId);
+            return conflictBridge('That AI run lease has expired.');
+          }
+          const leaseMs = request.leaseMs ?? DEFAULT_CLAIM_LEASE_MS;
+          const leaseExpiresAt = renewedAt + leaseMs;
+          const renewedRun: AiRunState = { ...run, leaseExpiresAt };
+          cancelLeaseExpiry?.();
+          cancelLeaseExpiry = timers.schedule(() => expireRun(run.runId), leaseMs);
+          publish({ ...snapshot, run: renewedRun });
+          return {
+            ok: true,
+            data: { type: 'lease_renewed', runId: run.runId, leaseExpiresAt },
+          };
+        }
         case 'acknowledge_stop': {
           const run = snapshot.run;
           if (!run || run.runId !== request.runId || run.status !== 'stop_requested') {
@@ -468,6 +502,17 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
             : { ok: false, error: outcome.response.error };
         }
         case 'reply': {
+          const completedContent = completedReplies.get(
+            completedReplyKey(request.runId, request.messageId),
+          );
+          if (completedContent !== undefined) {
+            return completedContent === request.reply.content
+              ? {
+                  ok: true,
+                  data: { type: 'reply_recorded', messageId: request.messageId },
+                }
+              : conflictBridge('That AI reply was already recorded with different content.');
+          }
           const run = snapshot.run;
           if (
             !run ||
@@ -485,6 +530,7 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
           cancelLeaseExpiry?.();
           cancelLeaseExpiry = null;
           messages = messages.filter((message) => message.messageId !== request.messageId);
+          rememberCompletedReply(request.runId, request.messageId, request.reply.content);
           publish({
             ...snapshot,
             items: appendConversationItems(
@@ -577,6 +623,7 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
     ownerChannelId = null;
     ownerConnectedAt = null;
     messages = [];
+    completedReplies.clear();
     snapshot = { ...EMPTY_SNAPSHOT, revision: snapshot.revision + 1 };
     listeners.forEach((listener) => listener());
   }

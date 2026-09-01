@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
+  LEGACY_AI_COMPANION_PROTOCOL_VERSION,
   MCP_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
   isAiCompanionRequest,
@@ -34,6 +36,13 @@ describe('companion protocol', () => {
       protocolVersion: MCP_COMPANION_PROTOCOL_VERSION,
       token: 'a'.repeat(64),
       unexpected: true,
+    })).toBe(false);
+    expect(isCompanionRequest({
+      type: 'call',
+      id: 'request-1',
+      tool: `lacuna.${'x'.repeat(10_000)}`,
+      input: {},
+      client,
     })).toBe(false);
   });
 
@@ -69,6 +78,31 @@ describe('companion protocol', () => {
       tool: 'lacuna.list_courses',
       input: {},
       client,
+    })).toBe(false);
+  });
+
+  it('negotiates lease renewal only on the versioned AI companion protocol', () => {
+    expect(isAiCompanionRequest({
+      type: 'ai_hello',
+      protocolVersion: LEGACY_AI_COMPANION_PROTOCOL_VERSION,
+      token: 'b'.repeat(64),
+    })).toBe(true);
+    expect(isAiCompanionRequest({
+      type: 'ai_hello',
+      protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+      token: 'b'.repeat(64),
+    })).toBe(true);
+    expect(isAiCompanionResponse({
+      type: 'ai_ready',
+      protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+      appVersion: '0.2.4',
+      capabilities: { leaseRenewal: true },
+    })).toBe(true);
+    expect(isAiCompanionResponse({
+      type: 'ai_ready',
+      protocolVersion: LEGACY_AI_COMPANION_PROTOCOL_VERSION,
+      appVersion: '0.2.3',
+      capabilities: { leaseRenewal: true },
     })).toBe(false);
   });
 

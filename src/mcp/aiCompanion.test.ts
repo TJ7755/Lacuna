@@ -3,8 +3,13 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CompanionLineDecoder, encodeCompanionMessage } from './companionProtocol';
-import type { AiBridgeRequest } from '../ai/protocol';
+import {
+  AI_COMPANION_PROTOCOL_VERSION,
+  CompanionLineDecoder,
+  LEGACY_AI_COMPANION_PROTOCOL_VERSION,
+  encodeCompanionMessage,
+} from './companionProtocol';
+import { LACUNA_AI_PROTOCOL_VERSION, type AiBridgeRequest } from '../ai/protocol';
 import { writeCompanionConnectionFile } from '../../electron/mcp/connectionFile';
 
 let userDataPath = '';
@@ -23,7 +28,8 @@ vi.mock('electron-log', () => ({
   },
 }));
 
-import { LocalAiAppClient } from '../../electron/mcp/aiCompanion';
+import { callAiCompanionTool, LocalAiAppClient } from '../../electron/mcp/aiCompanion';
+import { AiCompanionOperationError } from '../ai/companionErrors';
 
 const temporaryDirectories: string[] = [];
 const servers: Server[] = [];
@@ -41,6 +47,192 @@ afterEach(async () => {
 });
 
 describe('local AI companion request lifecycle', () => {
+  it('returns structured, actionable and redacted MCP errors', async () => {
+    const result = await callAiCompanionTool(async () => {
+      throw new AiCompanionOperationError({
+        kind: 'renderer_unavailable',
+        message: 'Lacuna AI is not ready.',
+        retryable: true,
+        suggestedAction: 'restart_ai_runtime',
+        userActionRequired: true,
+        commitState: 'not_started',
+      });
+    });
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        ok: false,
+        error: {
+          kind: 'renderer_unavailable',
+          retryable: true,
+          suggestedAction: 'restart_ai_runtime',
+          userActionRequired: true,
+          commitState: 'not_started',
+        },
+      },
+    });
+
+    const privateFailure = await callAiCompanionTool(async () => {
+      throw new Error('/Users/Private/Library/Application Support/Lacuna');
+    });
+    expect(JSON.stringify(privateFailure)).not.toContain('/Users/Private');
+  });
+
+  it('reports a pre-aborted request as cancelled without opening the app socket', async () => {
+    const abort = new AbortController();
+    abort.abort();
+    const client = new LocalAiAppClient(100, userDataPath);
+
+    const result = await callAiCompanionTool(() =>
+      client.connect({ name: 'Codex' }, abort.signal),
+    );
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        ok: false,
+        error: {
+          kind: 'cancelled',
+          retryable: true,
+          commitState: 'not_started',
+        },
+      },
+    });
+  });
+
+  it.each(['reply', 'tool write'] as const)(
+    'reports an ambiguous %s outcome as safely retryable when the socket closes',
+    async (operation) => {
+    const connection = await writeCompanionConnectionFile(userDataPath, '0.2.4');
+    const server = createServer((socket) => {
+      sockets.push(socket);
+      const decoder = new CompanionLineDecoder();
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk: string) => {
+        for (const value of decoder.push(chunk)) {
+          const message = value as {
+            type: string;
+            id?: string;
+            request?: AiBridgeRequest;
+          };
+          if (message.type === 'ai_hello') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_ready',
+              protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+              appVersion: connection.appVersion,
+              capabilities: { leaseRenewal: true },
+            }));
+          } else if (message.id && message.request?.type === 'connect') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'connection',
+                  connectionId: 'connection-1',
+                  client: message.request.client,
+                  connectedAt: 1,
+                },
+              },
+            }));
+          } else if (message.request?.type === (operation === 'reply' ? 'reply' : 'invoke_tool')) {
+            socket.destroy();
+          }
+        }
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(connection.endpoint, resolve);
+    });
+    const client = new LocalAiAppClient(100, userDataPath);
+    await client.connect({ name: 'Codex' }, new AbortController().signal);
+
+    const result = await callAiCompanionTool(() => operation === 'reply'
+      ? client.reply(
+          'run-1',
+          'message-1',
+          'A complete model-authored reply.',
+          new AbortController().signal,
+        ).then(() => ({}))
+      : client.invokeTool(
+          'run-1',
+          'call-1',
+          'lacuna.create_card',
+          {},
+          5_000,
+          new AbortController().signal,
+        ));
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        ok: false,
+        error: {
+          kind: 'app_unavailable',
+          retryable: true,
+          suggestedAction: 'retry_same_request',
+          userActionRequired: false,
+          commitState: 'unknown',
+        },
+      },
+    });
+    },
+  );
+
+  it.each(['timeout', 'rejected', 'malformed', 'closed'] as const)(
+    'returns retry guidance when the native handshake is %s',
+    async (failure) => {
+      const connection = await writeCompanionConnectionFile(userDataPath, '0.2.4');
+      const server = createServer((socket) => {
+        sockets.push(socket);
+        const decoder = new CompanionLineDecoder();
+        socket.setEncoding('utf8');
+        socket.on('data', (chunk: string) => {
+          for (const value of decoder.push(chunk)) {
+            const message = value as { type: string };
+            if (message.type !== 'ai_hello') continue;
+            if (failure === 'rejected') {
+              socket.write(encodeCompanionMessage({
+                type: 'fatal',
+                error: { kind: 'forbidden', message: 'Handshake rejected.' },
+              }));
+            }
+            if (failure === 'malformed') socket.write('{"type":"nonsense"}\n');
+            if (failure !== 'timeout') socket.end();
+          }
+        });
+      });
+      servers.push(server);
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(connection.endpoint, resolve);
+      });
+      const client = new LocalAiAppClient(100, userDataPath, 10, 20);
+
+      const result = await callAiCompanionTool(() =>
+        client.connect({ name: 'Codex' }, new AbortController().signal),
+      );
+
+      expect(result).toMatchObject({
+        isError: true,
+        structuredContent: {
+          ok: false,
+          error: {
+            kind: 'app_unavailable',
+            retryable: true,
+            suggestedAction: 'open_lacuna',
+            userActionRequired: true,
+            commitState: 'not_started',
+          },
+        },
+      });
+    },
+  );
+
   it('drains an aborted tool request on the existing channel so a callId retry remains ledger-safe', async () => {
     const connection = await writeCompanionConnectionFile(userDataPath, '0.2.2');
     let handshakes = 0;
@@ -69,8 +261,9 @@ describe('local AI companion request lifecycle', () => {
             handshakes += 1;
             socket.write(encodeCompanionMessage({
               type: 'ai_ready',
-              protocolVersion: connection.protocolVersion,
+              protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
               appVersion: connection.appVersion,
+              capabilities: { leaseRenewal: true },
             }));
             continue;
           }
@@ -179,6 +372,349 @@ describe('local AI companion request lifecycle', () => {
     stuckAbort.abort();
     await expect(stuck).rejects.toThrow('cancelled');
     await expect(socketClosed).resolves.toBeUndefined();
+    client.close();
+  });
+
+  it('renews a claimed message lease while the model is working', async () => {
+    const connection = await writeCompanionConnectionFile(userDataPath, '0.2.2');
+    let resolveRenewed: (() => void) | undefined;
+    const renewed = new Promise<void>((resolve) => { resolveRenewed = resolve; });
+    const server = createServer((socket) => {
+      sockets.push(socket);
+      const decoder = new CompanionLineDecoder();
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk: string) => {
+        for (const value of decoder.push(chunk)) {
+          const message = value as { type: string; id?: string; request?: AiBridgeRequest };
+          if (message.type === 'ai_hello') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_ready',
+              protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+              appVersion: connection.appVersion,
+              capabilities: { leaseRenewal: true },
+            }));
+            continue;
+          }
+          if (!message.id || !message.request) continue;
+          const request = message.request;
+          if (request.type === 'connect') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'connection',
+                  connectionId: 'connection-1',
+                  client: request.client,
+                  connectedAt: 1,
+                },
+              },
+            }));
+          } else if (request.type === 'claim_message') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'message_claim',
+                  message: {
+                    messageId: 'message-1',
+                    conversationId: 'conversation-1',
+                    runId: 'run-1',
+                    content: 'Take your time.',
+                    createdAt: 1,
+                    claimedAt: 2,
+                    leaseExpiresAt: 300_002,
+                  },
+                },
+              },
+            }));
+          } else if (request.type === 'get_instructions') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'instructions',
+                  protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+                  instructionVersion: 'teaching-v1',
+                  content: 'Follow Lacuna instructions.',
+                  misconceptionFirstEnabled: false,
+                },
+              },
+            }));
+          } else if (request.type === 'renew_lease') {
+            resolveRenewed?.();
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'lease_renewed',
+                  runId: request.runId,
+                  leaseExpiresAt: 600_002,
+                },
+              },
+            }));
+          }
+        }
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(connection.endpoint, resolve);
+    });
+
+    const client = new LocalAiAppClient(100, userDataPath, 10);
+    await client.connect({ name: 'Codex' }, new AbortController().signal);
+    await client.waitForMessage(250, new AbortController().signal);
+
+    await expect(renewed).resolves.toBeUndefined();
+    client.close();
+  });
+
+  it('stops renewal and surfaces a permanent renewal failure before another tool call', async () => {
+    const connection = await writeCompanionConnectionFile(userDataPath, '0.2.4');
+    let renewalCount = 0;
+    let toolCount = 0;
+    const server = createServer((socket) => {
+      sockets.push(socket);
+      const decoder = new CompanionLineDecoder();
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk: string) => {
+        for (const value of decoder.push(chunk)) {
+          const message = value as { type: string; id?: string; request?: AiBridgeRequest };
+          if (message.type === 'ai_hello') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_ready',
+              protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+              appVersion: connection.appVersion,
+              capabilities: { leaseRenewal: true },
+            }));
+            continue;
+          }
+          if (!message.id || !message.request) continue;
+          const request = message.request;
+          if (request.type === 'connect') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'connection',
+                  connectionId: 'connection-1',
+                  client: request.client,
+                  connectedAt: 1,
+                },
+              },
+            }));
+          } else if (request.type === 'claim_message') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'message_claim',
+                  message: {
+                    messageId: 'message-1',
+                    conversationId: 'conversation-1',
+                    runId: 'run-1',
+                    content: 'Take your time.',
+                    createdAt: 1,
+                    claimedAt: 2,
+                    leaseExpiresAt: 300_002,
+                  },
+                },
+              },
+            }));
+          } else if (request.type === 'get_instructions') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'instructions',
+                  protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+                  instructionVersion: 'teaching-v1',
+                  content: 'Follow Lacuna instructions.',
+                  misconceptionFirstEnabled: false,
+                },
+              },
+            }));
+          } else if (request.type === 'renew_lease') {
+            renewalCount += 1;
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: false,
+                error: {
+                  kind: 'version_mismatch',
+                  message: 'Lease renewal is not supported.',
+                  supportedVersion: LACUNA_AI_PROTOCOL_VERSION,
+                },
+              },
+            }));
+          } else if (request.type === 'invoke_tool') {
+            toolCount += 1;
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: { type: 'tool_result', callId: request.callId, result: {} },
+              },
+            }));
+          }
+        }
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(connection.endpoint, resolve);
+    });
+
+    const client = new LocalAiAppClient(100, userDataPath, 10);
+    await client.connect({ name: 'Codex' }, new AbortController().signal);
+    await client.waitForMessage(250, new AbortController().signal);
+    await vi.waitFor(() => expect(renewalCount).toBe(1));
+
+    const result = await callAiCompanionTool(() => client.invokeTool(
+      'run-1',
+      'call-1',
+      'lacuna.list_tools',
+      {},
+      5_000,
+      new AbortController().signal,
+    ));
+
+    expect(result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        error: { kind: 'validation', retryable: false, commitState: 'not_started' },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(renewalCount).toBe(1);
+    expect(toolCount).toBe(0);
+    client.close();
+  });
+
+  it('falls back to the v0.2.3 handshake without sending unsupported lease renewals', async () => {
+    const connection = await writeCompanionConnectionFile(userDataPath, '0.2.3');
+    const handshakes: number[] = [];
+    let renewalCount = 0;
+    const server = createServer((socket) => {
+      sockets.push(socket);
+      const decoder = new CompanionLineDecoder();
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk: string) => {
+        for (const value of decoder.push(chunk)) {
+          const message = value as {
+            type: string;
+            protocolVersion?: number;
+            id?: string;
+            request?: AiBridgeRequest;
+          };
+          if (message.type === 'ai_hello') {
+            handshakes.push(message.protocolVersion ?? 0);
+            if (message.protocolVersion === AI_COMPANION_PROTOCOL_VERSION) {
+              socket.write(encodeCompanionMessage({
+                type: 'fatal',
+                error: { kind: 'forbidden', message: 'AI companion authentication failed.' },
+              }));
+              socket.end();
+            } else {
+              socket.write(encodeCompanionMessage({
+                type: 'ai_ready',
+                protocolVersion: LEGACY_AI_COMPANION_PROTOCOL_VERSION,
+                appVersion: connection.appVersion,
+              }));
+            }
+            continue;
+          }
+          if (!message.id || !message.request) continue;
+          const request = message.request;
+          if (request.type === 'connect') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'connection',
+                  connectionId: 'connection-legacy',
+                  client: request.client,
+                  connectedAt: 1,
+                },
+              },
+            }));
+          } else if (request.type === 'claim_message') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'message_claim',
+                  message: {
+                    messageId: 'message-legacy',
+                    conversationId: 'conversation-legacy',
+                    runId: 'run-legacy',
+                    content: 'Keep working.',
+                    createdAt: 1,
+                    claimedAt: 2,
+                    leaseExpiresAt: 300_002,
+                  },
+                },
+              },
+            }));
+          } else if (request.type === 'get_instructions') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'instructions',
+                  protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+                  instructionVersion: 'teaching-v1',
+                  content: 'Follow Lacuna instructions.',
+                  misconceptionFirstEnabled: false,
+                },
+              },
+            }));
+          } else if (request.type === 'renew_lease') {
+            renewalCount += 1;
+          }
+        }
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(connection.endpoint, resolve);
+    });
+
+    const client = new LocalAiAppClient(100, userDataPath, 10);
+    await client.connect({ name: 'Codex' }, new AbortController().signal);
+    await client.waitForMessage(250, new AbortController().signal);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(handshakes).toEqual([
+      AI_COMPANION_PROTOCOL_VERSION,
+      LEGACY_AI_COMPANION_PROTOCOL_VERSION,
+    ]);
+    expect(renewalCount).toBe(0);
     client.close();
   });
 });

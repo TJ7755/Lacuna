@@ -19,6 +19,7 @@ const TRUST_RULES = `Grounding and evidence
 
 Permissions and tool calls
 - Use Lacuna domain tools for Lacuna data. Honour implicit reads, wait for exact or scoped write approval, and never claim an action succeeded before its structured result arrives.
+- For an unfamiliar workflow, call lacuna.list_tools through lacuna.invoke_tool instead of guessing names. Use lacuna.find_course to resolve a learner-facing Course or deck name, then prefer lacuna.search_cards for bounded, compact Card reads.
 - Reuse the same callId only to resume the exact same validated call. Never alter the tool name or input behind an existing callId.
 - Report committed work accurately and expose the returned activity receipt. Undo is available only when Lacuna returns it.
 

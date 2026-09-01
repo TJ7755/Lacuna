@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'lacuna.aiSettings';
 const CHANGE_EVENT = 'lacuna:ai-settings';
@@ -13,6 +13,9 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   enabled: false,
   misconceptionFirstEnabled: true,
 };
+
+let cachedSnapshotKey = '';
+let cachedSnapshot = { ...DEFAULT_AI_SETTINGS };
 
 function readPersistedAiSettings(): AiSettings {
   try {
@@ -47,35 +50,41 @@ export function writeAiSettings(patch: Partial<AiSettings>): void {
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: next }));
 }
 
+function getAiSettingsSnapshot(): AiSettings {
+  const settings = readAiSettings();
+  const key = `${settings.enabled}:${settings.misconceptionFirstEnabled}`;
+  if (key !== cachedSnapshotKey) {
+    cachedSnapshotKey = key;
+    cachedSnapshot = settings;
+  }
+  return cachedSnapshot;
+}
+
+function subscribeToAiSettings(onChange: () => void): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (
+      event.storageArea !== localStorage ||
+      (event.key !== null && event.key !== STORAGE_KEY)
+    ) {
+      return;
+    }
+    unsavedSettings = null;
+    onChange();
+  };
+  window.addEventListener('storage', onStorage);
+  window.addEventListener(CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.removeEventListener(CHANGE_EVENT, onChange);
+  };
+}
+
 export function useAiSettings(): [AiSettings, (patch: Partial<AiSettings>) => void] {
-  const [settings, setSettings] = useState(readAiSettings);
+  const settings = useSyncExternalStore(
+    subscribeToAiSettings,
+    getAiSettingsSnapshot,
+    () => DEFAULT_AI_SETTINGS,
+  );
 
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (
-        event.storageArea !== localStorage ||
-        (event.key !== null && event.key !== STORAGE_KEY)
-      ) {
-        return;
-      }
-      unsavedSettings = null;
-      setSettings(readPersistedAiSettings());
-    };
-    const onChange = (event: Event) => {
-      setSettings((event as CustomEvent<AiSettings>).detail);
-    };
-    window.addEventListener('storage', onStorage);
-    window.addEventListener(CHANGE_EVENT, onChange);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener(CHANGE_EVENT, onChange);
-    };
-  }, []);
-
-  return [
-    settings,
-    (patch) => {
-      writeAiSettings(patch);
-    },
-  ];
+  return [settings, writeAiSettings];
 }

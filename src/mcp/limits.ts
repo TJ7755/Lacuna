@@ -1,0 +1,1 @@
+export const MCP_TOOL_NAME_MAX_LENGTH = 160;

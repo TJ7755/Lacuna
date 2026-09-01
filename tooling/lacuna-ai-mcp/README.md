@@ -30,6 +30,11 @@ into the running terminal task. The agent calls `lacuna.connect`, waits for side
 returns complete replies with `lacuna.reply`. Domain work uses `lacuna.invoke_tool` with a stable
 `callId`; exact retries replay the recorded result instead of repeating the mutation.
 
+Use `lacuna.invoke_tool` to call `lacuna.list_tools` before guessing a domain-tool name. The
+catalogue contains descriptions, input schemas and permission levels; unknown names return likely
+alternatives. For learner-facing requests, `lacuna.find_course` resolves Course or deck wording and
+`lacuna.search_cards` returns compact, cursor-paginated content rather than full scheduling records.
+
 Pairing uses outbound HTTPS from the browser and terminal. It needs no browser extension,
 WebSocket, inbound localhost listener or terminal access to the browser profile.
 

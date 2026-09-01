@@ -6,6 +6,8 @@
 
 import { z } from 'zod';
 import * as read from '../../db/read';
+import { searchCardsInScope } from '../../db/search';
+import { courseChoiceMessage, findCourseMatches } from '../courseLookup';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 const courseIdSchema = z.string().describe('The id of the course to query.');
@@ -15,6 +17,8 @@ const limitSchema = z
   .positive()
   .optional()
   .describe('Maximum number of results to return. Omit for no limit.');
+
+const boundedLimitSchema = z.number().int().min(1).max(50);
 
 function ok<T>(data: T): ToolResult<T> {
   return { data };
@@ -31,6 +35,142 @@ const listCourses: ToolDefinition<Record<string, never>, Awaited<ReturnType<type
   requiredScope: 'read',
   async handler() {
     return ok(await read.listCourses());
+  },
+};
+
+const findCourseSchema = z.object({
+  query: z.string().trim().min(1).max(500).describe('Course id, exact name or partial name.'),
+  limit: z.number().int().min(1).max(20).optional(),
+}).strict();
+const findCourse: ToolDefinition<z.infer<typeof findCourseSchema>, {
+  matches: Array<{
+    courseId: string;
+    name: string;
+    archived: boolean;
+    lessonCount: number;
+    cardCount: number;
+  }>;
+}> = {
+  name: 'lacuna.find_course',
+  description:
+    'Resolve a Course (sometimes called a deck) by id, exact name or partial name. Returns compact choices rather than full scheduling records.',
+  inputSchema: findCourseSchema,
+  requiredScope: 'read',
+  async handler({ query, limit = 10 }) {
+    const matches = (await findCourseMatches(query)).slice(0, limit);
+    return ok({
+      matches: await Promise.all(matches.map(async (course) => {
+        const [lessonCount, cardCount] = await Promise.all([
+          read.countLessonsForCourse(course.id),
+          read.countCardsForCourse(course.id),
+        ]);
+        return {
+          courseId: course.id,
+          name: course.name,
+          archived: course.archived === true,
+          lessonCount,
+          cardCount,
+        };
+      })),
+    });
+  },
+};
+
+const searchCardsSchema = z.object({
+  course: z.string().trim().min(1).max(500).describe('Course id, exact name or unambiguous partial name.'),
+  query: z.string().trim().max(1_000).optional().describe('Optional text matched against Card content, tags and Lesson name.'),
+  limit: boundedLimitSchema.optional(),
+  cursor: z.string().max(100).optional(),
+  includePayload: z.boolean().optional().describe('Include structured numeric or working payloads. Off by default.'),
+}).strict();
+
+interface CompactCardResult {
+  course: { courseId: string; name: string; archived: boolean };
+  total: number;
+  topics: string[];
+  cards: Array<{
+    cardId: string;
+    type: string;
+    front: string;
+    back: string;
+    tags: string[];
+    lesson?: string;
+    payload?: unknown;
+  }>;
+  nextCursor?: string;
+}
+
+function normaliseCursorQuery(query: string): string {
+  return query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase();
+}
+
+async function cardCursorScope(courseId: string, query: string): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify([courseId, normaliseCursorQuery(query)]));
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function parseCardCursor(cursor: string | undefined, scope: string): number {
+  if (cursor === undefined) return 0;
+  const match = /^cards-v2\.([a-f0-9]{64})\.([0-9a-z]+)$/.exec(cursor);
+  const offset = match && match[1] === scope ? Number.parseInt(match[2], 36) : Number.NaN;
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new McpToolException({ kind: 'validation', message: 'The Card cursor is invalid or expired.' });
+  }
+  return offset;
+}
+
+const searchCards: ToolDefinition<z.infer<typeof searchCardsSchema>, CompactCardResult> = {
+  name: 'lacuna.search_cards',
+  description:
+    'Resolve one Course by name or id, then return compact, cursor-paginated Card content without FSRS state or review history.',
+  inputSchema: searchCardsSchema,
+  requiredScope: 'read',
+  async handler({ course: query, query: cardQuery = '', limit = 20, cursor, includePayload = false }) {
+    const matches = await findCourseMatches(query);
+    if (matches.length !== 1) {
+      throw new McpToolException({
+        kind: matches.length === 0 ? 'not_found' : 'conflict',
+        message: courseChoiceMessage(query, matches),
+      });
+    }
+    const course = matches[0];
+    const [cards, lessons] = await Promise.all([
+      read.listCardRecordsForCourse(course.id),
+      read.listLessons(course.id),
+    ]);
+    const hits = cardQuery === ''
+      ? cards.map((card) => ({ card, lesson: lessons.find((lesson) => lesson.id === card.primaryLessonId) }))
+      : searchCardsInScope(cardQuery, { cards, courses: [course], lessons });
+    const cursorScope = await cardCursorScope(course.id, cardQuery);
+    const offset = parseCardCursor(cursor, cursorScope);
+    if (offset > hits.length) {
+      throw new McpToolException({ kind: 'validation', message: 'The Card cursor is invalid or expired.' });
+    }
+    const page = hits.slice(offset, offset + limit);
+    const nextOffset = offset + page.length;
+    const topics = [...new Set(cards.flatMap((card) => card.tags ?? []))]
+      .sort((left, right) => left.localeCompare(right))
+      .slice(0, 20);
+    return ok({
+      course: { courseId: course.id, name: course.name, archived: course.archived === true },
+      total: hits.length,
+      topics,
+      cards: page.map(({ card, lesson }) => ({
+        cardId: card.id,
+        type: card.type,
+        front: card.front,
+        back: card.back,
+        tags: card.tags ?? [],
+        ...(lesson ? { lesson: lesson.name } : {}),
+        ...(includePayload && card.payload ? { payload: card.payload } : {}),
+      })),
+      ...(nextOffset < hits.length
+        ? { nextCursor: `cards-v2.${cursorScope}.${nextOffset.toString(36)}` }
+        : {}),
+    });
   },
 };
 
@@ -246,11 +386,13 @@ const diagnosticsSummary: ToolDefinition<z.infer<typeof diagnosticsSummarySchema
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a heterogeneous tool list is necessarily ToolDefinition<any, any>; each entry above is still checked against its own concrete Input/Output.
 export const READ_TOOLS: readonly ToolDefinition<any, any>[] = [
   listCourses,
+  findCourse,
   getCourse,
   listCourseAssessments,
   getCourseAssessment,
   listLessons,
   listCards,
+  searchCards,
   getCard,
   listDueCards,
   getWeakCards,
@@ -266,11 +408,13 @@ export const READ_TOOLS: readonly ToolDefinition<any, any>[] = [
 // Also export individually for direct handler-level unit tests.
 export {
   listCourses,
+  findCourse,
   getCourse,
   listCourseAssessments,
   getCourseAssessment,
   listLessons,
   listCards,
+  searchCards,
   getCard,
   listDueCards,
   getWeakCards,

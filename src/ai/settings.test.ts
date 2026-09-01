@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { useLayoutEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readAiSettings, useAiSettings, writeAiSettings } from './settings';
 
@@ -21,6 +22,16 @@ describe('AI settings', () => {
       enabled: true,
       misconceptionFirstEnabled: false,
     });
+  });
+
+  it('observes a setting written between render and subscription', async () => {
+    const { result } = renderHook(() => {
+      const settings = useAiSettings();
+      useLayoutEffect(() => writeAiSettings({ enabled: true }), []);
+      return settings;
+    });
+
+    await waitFor(() => expect(result.current[0].enabled).toBe(true));
   });
 
   it('rejects malformed stored values instead of coercing them', () => {

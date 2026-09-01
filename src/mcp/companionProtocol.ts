@@ -1,5 +1,6 @@
 import type { McpToolError } from './bridge/protocol';
 import type { McpClientIdentity } from './connections';
+import { MCP_TOOL_NAME_MAX_LENGTH } from './limits';
 import {
   isAiBridgeError,
   isAiBridgeRequest,
@@ -8,7 +9,13 @@ import {
 } from '../ai/protocol';
 
 export const MCP_COMPANION_PROTOCOL_VERSION = 1;
+export const LEGACY_AI_COMPANION_PROTOCOL_VERSION = 1;
+export const AI_COMPANION_PROTOCOL_VERSION = 2;
 export const MCP_COMPANION_MAX_MESSAGE_BYTES = 10 * 1024 * 1024;
+
+export type AiCompanionProtocolVersion =
+  | typeof LEGACY_AI_COMPANION_PROTOCOL_VERSION
+  | typeof AI_COMPANION_PROTOCOL_VERSION;
 
 export type CompanionRequest =
   | {
@@ -28,7 +35,7 @@ export type CompanionResponse =
 export type AiCompanionRequest =
   | {
       type: 'ai_hello';
-      protocolVersion: typeof MCP_COMPANION_PROTOCOL_VERSION;
+      protocolVersion: AiCompanionProtocolVersion;
       token: string;
     }
   | { type: 'ai_request'; id: string; request: AiBridgeRequest };
@@ -36,8 +43,14 @@ export type AiCompanionRequest =
 export type AiCompanionResponse =
   | {
       type: 'ai_ready';
-      protocolVersion: typeof MCP_COMPANION_PROTOCOL_VERSION;
+      protocolVersion: typeof LEGACY_AI_COMPANION_PROTOCOL_VERSION;
       appVersion: string;
+    }
+  | {
+      type: 'ai_ready';
+      protocolVersion: typeof AI_COMPANION_PROTOCOL_VERSION;
+      appVersion: string;
+      capabilities: { leaseRenewal: true };
     }
   | { type: 'ai_result'; id: string; result: AiBridgeResult }
   | { type: 'fatal'; error: McpToolError };
@@ -80,7 +93,7 @@ export function isCompanionRequest(value: unknown): value is CompanionRequest {
   }
   return item.type === 'call' && Object.keys(item).length === 5 &&
     typeof item.id === 'string' && item.id.length > 0 &&
-    typeof item.tool === 'string' && item.tool.length > 0 &&
+    typeof item.tool === 'string' && item.tool.length > 0 && item.tool.length <= MCP_TOOL_NAME_MAX_LENGTH &&
     Object.prototype.hasOwnProperty.call(item, 'input') && isMcpClientIdentity(item.client);
 }
 
@@ -89,7 +102,8 @@ export function isAiCompanionRequest(value: unknown): value is AiCompanionReques
   if (!item) return false;
   if (item.type === 'ai_hello') {
     return Object.keys(item).length === 3 &&
-      item.protocolVersion === MCP_COMPANION_PROTOCOL_VERSION &&
+      (item.protocolVersion === LEGACY_AI_COMPANION_PROTOCOL_VERSION ||
+        item.protocolVersion === AI_COMPANION_PROTOCOL_VERSION) &&
       typeof item.token === 'string' && /^[a-f0-9]{64}$/.test(item.token);
   }
   return item.type === 'ai_request' && Object.keys(item).length === 3 &&
@@ -102,6 +116,7 @@ const AI_SUCCESS_TYPES = new Set([
   'message_claim',
   'pending_messages',
   'run_state',
+  'lease_renewed',
   'activity_recorded',
   'tool_result',
   'reply_recorded',
@@ -129,8 +144,14 @@ export function isAiCompanionResponse(value: unknown): value is AiCompanionRespo
   const item = record(value);
   if (!item) return false;
   if (item.type === 'ai_ready') {
-    return Object.keys(item).length === 3 &&
-      item.protocolVersion === MCP_COMPANION_PROTOCOL_VERSION && typeof item.appVersion === 'string';
+    if (item.protocolVersion === LEGACY_AI_COMPANION_PROTOCOL_VERSION) {
+      return Object.keys(item).length === 3 && typeof item.appVersion === 'string';
+    }
+    const capabilities = record(item.capabilities);
+    return item.protocolVersion === AI_COMPANION_PROTOCOL_VERSION &&
+      Object.keys(item).length === 4 && typeof item.appVersion === 'string' &&
+      !!capabilities && Object.keys(capabilities).length === 1 &&
+      capabilities.leaseRenewal === true;
   }
   if (item.type === 'ai_result') {
     return Object.keys(item).length === 3 && isIdentifier(item.id) && isAiBridgeResult(item.result);

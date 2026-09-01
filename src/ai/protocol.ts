@@ -172,6 +172,9 @@ const aiBridgeRequestSchema = z.discriminatedUnion('type', [
     .strict(),
   connectedRequestSchema.extend({ type: z.literal('list_pending') }).strict(),
   runRequestSchema.extend({ type: z.literal('get_run') }).strict(),
+  runRequestSchema
+    .extend({ type: z.literal('renew_lease'), leaseMs: leaseSchema.optional() })
+    .strict(),
   runRequestSchema.extend({ type: z.literal('acknowledge_stop') }).strict(),
   runRequestSchema
     .extend({
@@ -351,6 +354,7 @@ export type AiBridgeSuccess =
   | { type: 'message_claim'; message: AiClaimedMessage | null }
   | { type: 'pending_messages'; messages: AiUserMessage[] }
   | { type: 'run_state'; run: AiRunState }
+  | { type: 'lease_renewed'; runId: string; leaseExpiresAt: number }
   | { type: 'activity_recorded'; runId: string }
   | { type: 'tool_result'; callId: string; result: JsonValue; receipt?: AiActionReceipt }
   | { type: 'reply_recorded'; messageId: string }

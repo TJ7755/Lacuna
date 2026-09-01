@@ -74,6 +74,11 @@ export async function listLessons(courseId: string): Promise<Lesson[]> {
   return db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
 }
 
+/** Count a Course's lessons without materialising their records. */
+export async function countLessonsForCourse(courseId: string): Promise<number> {
+  return db.lessons.where('courseId').equals(courseId).count();
+}
+
 /** A single lesson, or null if it does not exist. */
 export async function getLesson(lessonId: string): Promise<Lesson | null> {
   return (await db.lessons.get(lessonId)) ?? null;
@@ -86,6 +91,19 @@ export async function getLesson(lessonId: string): Promise<Lesson | null> {
 /** Every card belonging to a course (mirrors useCourseCards). */
 export async function listCardsForCourse(courseId: string): Promise<Card[]> {
   return hydrateCardsWithHistory(await db.cards.where('courseId').equals(courseId).toArray());
+}
+
+/** Count a Course's cards without loading Card bodies or review history. */
+export async function countCardsForCourse(courseId: string): Promise<number> {
+  return db.cards.where('courseId').equals(courseId).count();
+}
+
+/**
+ * Stored Card rows for compact content queries that do not expose review history.
+ * Callers needing canonical review history must use `listCardsForCourse` instead.
+ */
+export async function listCardRecordsForCourse(courseId: string): Promise<Card[]> {
+  return db.cards.where('courseId').equals(courseId).toArray();
 }
 
 /**

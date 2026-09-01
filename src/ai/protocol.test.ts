@@ -66,6 +66,7 @@ describe('AI browser protocol', () => {
       { type: 'claim_message', connectionId, timeoutMs: 20_000, leaseMs: 60_000 },
       { type: 'list_pending', connectionId },
       { type: 'get_run', connectionId, runId },
+      { type: 'renew_lease', connectionId, runId, leaseMs: 300_000 },
       { type: 'acknowledge_stop', connectionId, runId },
       {
         type: 'set_activity',
