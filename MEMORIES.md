@@ -61,6 +61,20 @@ leave Stop, call ledgers and exact approvals in the renderer. Electron's separat
 `--mcp-companion` exposes the broader data surface with connection-scoped grants. Never merge those
 tool surfaces merely because they share the authenticated native broker.
 
+## Companion commands must preserve Electron's active profile
+
+The authenticated connection file lives beneath Electron's resolved user-data directory. Generated
+`--ai-companion` and `--mcp-companion` commands must therefore carry that exact directory; otherwise
+an isolated or custom-profile client starts successfully over stdio but searches the wrong profile
+for the native endpoint and falsely reports that Lacuna is not running.
+
+## Native AI validation must identify the real author
+
+A successful native claim and reply proves the transport, not that a terminal model authored the
+reply. A helper can label itself as any MCP client and return hard-coded text. For an end-to-end chat
+check, verify that the live model task itself owns the companion and calls the Lacuna tools; record a
+deterministic wire harness only as transport evidence.
+
 ## AI tool results need a real JSON wire projection
 
 Repository records may contain own optional properties whose value is `undefined`; Cards do this

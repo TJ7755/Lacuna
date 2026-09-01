@@ -17,8 +17,16 @@
   installed or portable companion command. Browser builds retain their short-lived pairing code.
 - Corrected packaged companion discovery to advertise the stable Windows portable or Linux
   AppImage wrapper rather than electron-builder's temporary extraction path.
-- Kept active local waits alive across brief React listener remounts while still failing closed on
-  real renderer navigation. Electron now rejects stale listener shutdown events by generation.
+- Kept the renderer-owned local session above the hot-reloaded runtime listener so active waits and
+  ownership survive a brief React remount. Disabling AI still disposes the retained session
+  immediately, and real renderer navigation still fails closed.
+- Included Electron's active user-data directory in both generated companion commands. Development,
+  packaged and isolated-profile clients now read the same authenticated connection metadata as the
+  running Lacuna instance.
+- Routed companion signals, stdin closure and application quit through tested close-once shutdown
+  coordinators. Lacuna waits for native broker shutdown before completing application quit.
+- Restored an unclaimed local prompt to the editable draft when its owning companion channel dies,
+  rather than stopping the transcript item and silently discarding the text.
 - Prevented an Electron launch with a missing preload bridge from silently falling back to web
   relay pairing; the AI panel instead reports that desktop integration failed to load.
 - Restyled user and assistant turns as compact, opposing chat bubbles while leaving errors,
@@ -31,10 +39,10 @@
 - Made Stop revoke pending approvals, temporary grants and replay authority immediately. An
   unacknowledged Stop now expires at the claim lease without resurrecting the stopped prompt.
 
-**Checks:** red-to-green purpose-bound authentication, malformed-message, portable-command,
-renderer lifecycle, single-owner, Stop and local/web runtime-selection regressions; native
-companion smoke; full unit, typecheck, lint and production builds; desktop and mobile browser
-screenshots; packaged Electron verification.
+**Checks:** red-to-green purpose-bound authentication, malformed-message, portable/profile command,
+renderer remount and shutdown lifecycle, single-owner, Stop and local/web runtime-selection
+regressions; native companion smoke; full unit, typecheck, lint and production builds; desktop and
+mobile browser screenshots; packaged Electron verification.
 
 ### Desktop AI and Settings reliability
 
