@@ -1,0 +1,52 @@
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      electron-release-tooling:
+        patterns:
+          - electron
+          - electron-builder
+          - electron-updater
+      root-runtime:
+        dependency-type: production
+        exclude-patterns:
+          - electron-updater
+      root-test-and-build-tooling:
+        dependency-type: development
+        exclude-patterns:
+          - electron
+          - electron-builder
+
+  - package-ecosystem: bun
+    directory: /relay
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      relay-dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: bun
+    directory: /tooling/handwriting-maths
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      handwriting-tooling:
+        patterns:
+          - '*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns:
+          - '*'

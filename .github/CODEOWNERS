@@ -1,0 +1,18 @@
+# The repository currently has one enforceable maintainer. Do not list a person as an owner without
+# confirmed GitHub write access; review coverage is handled by branch protection and human approval.
+* @TJ7755
+
+# High-consequence boundaries (kept explicit so future ownership can be split safely).
+/src/db/** @TJ7755
+/src/fsrs/** @TJ7755
+/src/sync/** @TJ7755
+/electron/** @TJ7755
+/relay/** @TJ7755
+/tooling/lacuna-ai-mcp/** @TJ7755
+
+# User-facing workflows, accessibility and project policy.
+/src/components/** @TJ7755
+/src/pages/** @TJ7755
+/docs/** @TJ7755
+/*.md @TJ7755
+/.github/** @TJ7755

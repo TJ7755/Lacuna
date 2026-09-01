@@ -1,0 +1,41 @@
+name: Data-integrity incident
+description: Report lost, duplicated, corrupted or unexpectedly changed learner data
+title: "[Data integrity]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Incident summary
+      description: State what data changed, disappeared, duplicated or became unreadable, and when it was first noticed.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and impact
+      description: Include the version, surface, platform and affected courses, lessons, cards, reviews, backups or sync records. Say whether local study is safe to continue.
+    validations:
+      required: true
+  - type: textarea
+    id: timeline
+    attributes:
+      label: Timeline and reproduction
+      description: Record the last known-good state, actions taken, observed result and whether it reproduces. Do not restore, purge or retry an ambiguous sync write until a maintainer advises you.
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Evidence and recovery state
+      description: Attach redacted logs, backup metadata or screenshots. Never attach raw learner data, credentials, write tokens or channel keys. Say whether an untouched backup or device copy still exists.
+    validations:
+      required: true
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security check
+      options:
+        - label: I have checked that this does not expose another person's data or allow unauthorised alteration. If it does, I will stop and use SECURITY.md's private reporting route.
+          required: true
