@@ -4,6 +4,10 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
 import {
+  createApplicationShutdownHandler,
+  registerCompanionProcessShutdown,
+} from './companionLifecycle.js';
+import {
   addElectronSecurityHeaders,
   canGrantRendererPermission,
   decideWindowOpen,
@@ -370,16 +374,12 @@ if (isCompanionProcess) {
     const handle = 'startAiCompanion' in companion
       ? companion.startAiCompanion()
       : companion.startMcpCompanion();
-    let closing = false;
-    const close = () => {
-      if (closing) return;
-      closing = true;
-      void handle.close().finally(() => app.quit());
-    };
-    process.stdin.once('end', close);
-    process.stdin.once('error', close);
-    process.once('SIGINT', close);
-    process.once('SIGTERM', close);
+    registerCompanionProcessShutdown({
+      handle,
+      stdin: process.stdin,
+      signals: process,
+      quit: () => app.quit(),
+    });
   }).catch((error) => {
     process.stderr.write(`Could not start the Lacuna ${isAiCompanionProcess ? 'AI ' : ''}MCP companion: ${String(error)}\n`);
     app.exit(1);
@@ -459,16 +459,8 @@ if (!isCompanionProcess) {
     app.quit();
   });
 
-  let shutdownComplete = false;
-  let shutdownStarted = false;
-  app.on('before-quit', (event) => {
-    if (shutdownComplete) return;
-    event.preventDefault();
-    if (shutdownStarted) return;
-    shutdownStarted = true;
-    void (mcpModule?.stopMcpServer() ?? Promise.resolve()).finally(() => {
-      shutdownComplete = true;
-      app.quit();
-    });
-  });
+  app.on('before-quit', createApplicationShutdownHandler({
+    stop: () => mcpModule?.stopMcpServer() ?? Promise.resolve(),
+    quit: () => app.quit(),
+  }));
 }
