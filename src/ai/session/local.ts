@@ -261,8 +261,10 @@ export function createLocalAiSession(options: LocalAiSessionOptions): LocalAiSes
     const interruptedMessage = interrupted
       ? messages.find((message) => message.messageId === interrupted.messageId)
       : undefined;
+    const unclaimedMessage = messages.find((message) => message.delivery === 'queued');
     const recoveredDraft =
-      snapshot.queuedFollowUp ?? (snapshot.draft || interruptedMessage?.content || '');
+      snapshot.queuedFollowUp ??
+      (snapshot.draft || interruptedMessage?.content || unclaimedMessage?.content || '');
     cancelLeaseExpiry?.();
     cancelLeaseExpiry = null;
     resolvePendingClaim(unavailableBridge('The local AI companion disconnected.'));

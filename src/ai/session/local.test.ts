@@ -456,6 +456,35 @@ describe('local AI session', () => {
     ).resolves.toMatchObject({ ok: false, error: { kind: 'unavailable' } });
   });
 
+  it('restores an unclaimed prompt as a draft when the owning channel disappears', async () => {
+    const transport = requestSource();
+    const session = createLocalAiSession({
+      source: transport.source,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+    await session.send('Keep this prompt available to resend.');
+
+    transport.disconnect('channel-1');
+
+    expect(session.getSnapshot()).toMatchObject({
+      connection: { status: 'disconnected', reason: 'Terminal disconnected' },
+      draft: 'Keep this prompt available to resend.',
+      items: [
+        {
+          kind: 'user',
+          content: 'Keep this prompt available to resend.',
+          delivery: 'stopped',
+        },
+      ],
+    });
+  });
+
   it('delivers a message into an existing 25-second wait without polling', async () => {
     const transport = requestSource();
     const cancelWait = vi.fn();
