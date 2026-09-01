@@ -12,6 +12,29 @@
 **Checks:** red-to-green Electron-platform, browser-fallback and sidebar component regressions;
 web and Electron typecheck; focused lint and production build.
 
+## Desktop AI companion hardening
+
+- Added automatic native message-lease renewal while a claimed run is active, so legitimate model
+  work is not rejected merely because several domain calls exceed the original five-minute lease.
+  Stop and expiry remain renderer-authoritative and cancel renewal.
+- Made local reply recording idempotent for the exact run, message and content. Retrying after an
+  ambiguous acknowledgement now returns success without duplicating the assistant turn; changed
+  content still conflicts.
+- Added structured, actionable AI-companion errors with retryability, recovery action, user-action
+  and commit-state fields. Unexpected exception text is redacted at the companion boundary rather
+  than exposing native paths or endpoint details.
+- Added a searchable domain-tool catalogue with JSON schemas and permission levels, plus likely
+  alternatives for unknown names. New `find_course` and `search_cards` reads resolve learner-facing
+  Course/deck names and return compact, cursor-paginated Card content without FSRS state or review
+  history by default.
+- Kept the five-tool conversation surface separate from the broader data MCP authority. Durable
+  model execution, client tool-registry reload and waking a finished task remain client-owned MCP
+  limitations rather than fake background behaviour inside Lacuna.
+
+**Checks:** red-to-green protocol, lease renewal, idempotent reply, error-redaction, tool-catalogue,
+natural Course resolution, compact pagination and scope-resolution regressions; native Electron AI
+lifecycle; browser suite; web/Electron typecheck, lint and production build.
+
 ## Dashboard polish
 
 - Removed the decorative dashboard eyebrow and tightened the header's vertical rhythm around its

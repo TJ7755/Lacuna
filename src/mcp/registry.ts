@@ -3,6 +3,7 @@
 // `server.registerTool`; src/mcp/bridge/renderer.ts looks tools up here by name to
 // execute them. This module has no IPC/SDK/Electron dependency of its own.
 
+import { z } from 'zod';
 import type { McpToolError } from './bridge/protocol';
 import { McpToolException, type ToolContext, type ToolDefinition, type ToolResult } from './types';
 import { READ_TOOLS } from './tools/read';
@@ -20,6 +21,61 @@ import { MEMORY_TOOLS } from './tools/memories';
  * (a later task) so an agent can detect a stale cached tool list.
  */
 export const MCP_TOOL_SURFACE_VERSION = 3;
+
+const listToolsSchema = z.object({
+  query: z.string().trim().max(200).optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+  cursor: z.string().max(100).optional(),
+}).strict();
+
+function catalogueOffset(cursor: string | undefined): number {
+  if (cursor === undefined) return 0;
+  const match = /^tools-v1\.([0-9a-z]+)$/.exec(cursor);
+  const offset = match ? Number.parseInt(match[1], 36) : Number.NaN;
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw new McpToolException({ kind: 'validation', message: 'The tool catalogue cursor is invalid.' });
+  }
+  return offset;
+}
+
+function catalogueInputSchema(tool: ToolDefinition<unknown, unknown>): unknown {
+  // Zod's schema objects are JSON-serialisable but can retain implementation-specific
+  // prototypes. Cross the actual JSON boundary here so the AI wire validator receives plain data.
+  return JSON.parse(JSON.stringify(z.toJSONSchema(tool.inputSchema))) as unknown;
+}
+
+const listTools: ToolDefinition<z.infer<typeof listToolsSchema>, unknown> = {
+  name: 'lacuna.list_tools',
+  description:
+    'Search the Lacuna domain-tool catalogue, including descriptions, input schemas and permission levels. Use this before guessing a tool name.',
+  inputSchema: listToolsSchema,
+  requiredScope: 'read',
+  async handler({ query = '', limit = 20, cursor }) {
+    const wanted = query.toLocaleLowerCase();
+    const matches = TOOL_REGISTRY.filter((tool) =>
+      wanted === '' || `${tool.name} ${tool.description}`.toLocaleLowerCase().includes(wanted),
+    );
+    const offset = catalogueOffset(cursor);
+    if (offset > matches.length) {
+      throw new McpToolException({ kind: 'validation', message: 'The tool catalogue cursor is invalid.' });
+    }
+    const page = matches.slice(offset, offset + limit);
+    const nextOffset = offset + page.length;
+    return {
+      data: {
+        tools: page.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          requiredScope: tool.requiredScope,
+          inputSchema: catalogueInputSchema(tool),
+        })),
+        ...(nextOffset < matches.length
+          ? { nextCursor: `tools-v1.${nextOffset.toString(36)}` }
+          : {}),
+      },
+    };
+  },
+};
 
 /**
  * Deliberate exclusions from the tool surface (Arc 2 §2.3) — documented here, not just
@@ -40,6 +96,7 @@ export const MCP_TOOL_SURFACE_VERSION = 3;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see src/mcp/tools/read.ts's READ_TOOLS comment.
 export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [
+  listTools,
   ...READ_TOOLS,
   ...CONTENT_TOOLS,
   ...QUESTION_TOOLS,
@@ -52,6 +109,47 @@ export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [
 /** Looks up a tool definition by its `lacuna.<verb>_<noun>` name, or undefined if unknown. */
 export function getTool(name: string): ToolDefinition<unknown, unknown> | undefined {
   return TOOL_REGISTRY.find((tool) => tool.name === name);
+}
+
+function editDistance(left: string, right: string): number {
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    const current = [leftIndex];
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      current[rightIndex] = Math.min(
+        current[rightIndex - 1] + 1,
+        previous[rightIndex] + 1,
+        previous[rightIndex - 1] + Number(left[leftIndex - 1] !== right[rightIndex - 1]),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length];
+}
+
+function comparableToolName(name: string): string {
+  return name
+    .replace(/^lacuna\./, '')
+    .replace(/decks?/g, 'course')
+    .replace(/banks?/g, 'card');
+}
+
+export function suggestToolNames(name: string, limit = 3): string[] {
+  const wanted = comparableToolName(name);
+  const maximumDistance = Math.max(2, Math.floor(wanted.length * 0.35));
+  return TOOL_REGISTRY
+    .map((tool) => ({ tool: tool.name, distance: editDistance(wanted, comparableToolName(tool.name)) }))
+    .filter(({ distance }) => distance <= maximumDistance)
+    .sort((left, right) => left.distance - right.distance || left.tool.localeCompare(right.tool))
+    .slice(0, limit)
+    .map(({ tool }) => tool);
+}
+
+export function unknownToolMessage(name: string): string {
+  const suggestions = suggestToolNames(name);
+  return suggestions.length > 0
+    ? `Unknown tool "${name}". Did you mean ${suggestions.join(', ')}? Use lacuna.list_tools to search the catalogue.`
+    : `Unknown tool "${name}". Use lacuna.list_tools to search the catalogue.`;
 }
 
 /**

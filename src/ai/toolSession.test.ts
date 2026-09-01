@@ -62,6 +62,56 @@ function invoke(
 }
 
 describe('AiToolSession', () => {
+  it('suggests valid tools when an agent guesses a legacy deck name', async () => {
+    const { session } = makeSession();
+
+    await expect(
+      invoke(session, { toolName: 'lacuna.list_decks' }),
+    ).resolves.toMatchObject({
+      response: {
+        ok: false,
+        error: {
+          kind: 'tool',
+          error: {
+            kind: 'not_found',
+            message: expect.stringContaining('lacuna.list_courses'),
+          },
+        },
+      },
+    });
+  });
+
+  it('does not label arbitrary tools as likely alternatives', async () => {
+    const { session } = makeSession();
+
+    const outcome = await invoke(session, { toolName: 'lacuna.teleport_spaceship' });
+
+    expect(JSON.stringify(outcome)).toContain('Use lacuna.list_tools');
+    expect(JSON.stringify(outcome)).not.toContain('Did you mean');
+  });
+
+  it('redacts unexpected domain-handler details before returning them to the model', async () => {
+    const executeToolCall = vi.fn(async (): Promise<ToolExecutionOutcome> => ({
+      ok: false,
+      error: {
+        kind: 'internal',
+        message: 'Failed beneath /Users/Private/Library/Application Support/Lacuna',
+      },
+    }));
+    const { session } = makeSession(executeToolCall as ReturnType<typeof makeExecutor>);
+
+    const outcome = await invoke(session);
+
+    expect(outcome.response).toMatchObject({
+      ok: false,
+      error: {
+        kind: 'tool',
+        error: { kind: 'internal', message: 'The Lacuna domain tool failed.' },
+      },
+    });
+    expect(JSON.stringify(outcome)).not.toContain('/Users/Private');
+  });
+
   it('executes reads with an implicit exact read grant', async () => {
     const { session, executeToolCall } = makeSession();
 

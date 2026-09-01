@@ -102,6 +102,7 @@ const AI_SUCCESS_TYPES = new Set([
   'message_claim',
   'pending_messages',
   'run_state',
+  'lease_renewed',
   'activity_recorded',
   'tool_result',
   'reply_recorded',

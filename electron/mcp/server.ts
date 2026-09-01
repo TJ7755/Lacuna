@@ -30,7 +30,7 @@ import log from 'electron-log';
 import { z } from 'zod';
 import { McpServer, type CallToolResult, type ServerContext } from '@modelcontextprotocol/server';
 import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
-import { TOOL_REGISTRY, MCP_TOOL_SURFACE_VERSION, getTool } from '../../src/mcp/registry.js';
+import { TOOL_REGISTRY, MCP_TOOL_SURFACE_VERSION, getTool, unknownToolMessage } from '../../src/mcp/registry.js';
 import type { McpConsentRequest, McpInvokeRequest, McpScopeResolutionRequest, McpScopeResolutionResponse, McpScopeTarget, McpToolError } from '../../src/mcp/bridge/protocol.js';
 import { InvokeDispatcher } from '../../src/mcp/bridge/dispatcher.js';
 import { ConsentCoordinator } from '../../src/mcp/bridge/consentCoordinator.js';
@@ -249,7 +249,7 @@ async function startCompanionBroker(
       companionClients.touch(value.client.connectionId);
       const tool = getTool(value.tool);
       if (!tool) {
-        sendCompanion(socket, { type: 'result', id: value.id, ok: false, error: { kind: 'not_found', message: `Unknown tool "${value.tool}".` } });
+        sendCompanion(socket, { type: 'result', id: value.id, ok: false, error: { kind: 'not_found', message: unknownToolMessage(value.tool) } });
         return;
       }
       const result = await executeBridgedTool(

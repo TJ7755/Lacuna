@@ -21,6 +21,11 @@ import {
   type JsonValue,
 } from '../../src/ai/protocol.js';
 import {
+  AiCompanionOperationError,
+  bridgeOperationError,
+  companionErrorDetails,
+} from '../../src/ai/companionErrors.js';
+import {
   CompanionLineDecoder,
   MCP_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
@@ -36,11 +41,24 @@ import {
 const CONNECT_TIMEOUT_MS = 3_000;
 const REQUEST_GRACE_MS = 5_000;
 const DEFAULT_WAIT_MS = MAX_AI_WAIT_MS;
+const CLAIM_LEASE_MS = 5 * 60_000;
+const LEASE_RENEW_INTERVAL_MS = 60_000;
 const WRITE_DRAIN_TIMEOUT_MS = MAX_AI_WAIT_MS + (REQUEST_GRACE_MS * 2);
 
 interface ActiveRun {
   runId: string;
   messageId: string;
+}
+
+function cancelledOperation(commitState: 'not_started' | 'unknown'): AiCompanionOperationError {
+  return new AiCompanionOperationError({
+    kind: 'cancelled',
+    message: 'The Lacuna AI request was cancelled.',
+    retryable: true,
+    suggestedAction: 'retry_same_request',
+    userActionRequired: false,
+    commitState,
+  });
 }
 
 interface PendingRequest {
@@ -68,14 +86,25 @@ export class LocalAiAppClient {
   private readonly pending = new Map<string, PendingRequest>();
   private connectionId: string | null = null;
   private activeRun: ActiveRun | null = null;
+  private leaseRenewTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS,
     private readonly hostUserDataPath = '',
+    private readonly leaseRenewIntervalMs = LEASE_RENEW_INTERVAL_MS,
   ) {}
 
   async connect(identity: AiClientIdentity, signal: AbortSignal): Promise<object> {
-    if (this.connectionId) throw new Error('Lacuna AI is already connected.');
+    if (this.connectionId) {
+      throw new AiCompanionOperationError({
+        kind: 'conflict',
+        message: 'Lacuna AI is already connected.',
+        retryable: false,
+        suggestedAction: 'stop',
+        userActionRequired: false,
+        commitState: 'not_started',
+      });
+    }
     const result = await this.request({
       type: 'connect',
       protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
@@ -94,7 +123,7 @@ export class LocalAiAppClient {
       type: 'claim_message',
       connectionId,
       timeoutMs,
-      leaseMs: 5 * 60_000,
+      leaseMs: CLAIM_LEASE_MS,
     }, timeoutMs + REQUEST_GRACE_MS, signal);
     const claimData = this.expectSuccess(claim, 'message_claim');
     const message = claimData.message as AiClaimedMessage | null;
@@ -105,6 +134,7 @@ export class LocalAiAppClient {
     }, CONNECT_TIMEOUT_MS, signal);
     const instructionData = this.expectSuccess(instructions, 'instructions') as unknown as AiInstructionBundle;
     this.activeRun = { runId: message.runId, messageId: message.messageId };
+    this.scheduleLeaseRenewal();
     return { type: 'message', ...message, instructions: instructionData };
   }
 
@@ -126,7 +156,7 @@ export class LocalAiAppClient {
     if (!result.ok) {
       if (result.error.kind === 'unavailable') this.close();
       if (result.error.kind === 'tool') return { ok: false, error: result.error.error };
-      throw new Error(result.error.message);
+      throw bridgeOperationError(result.error);
     }
     if (result.data.type !== 'tool_result') throw new Error('Lacuna returned the wrong AI response.');
     return {
@@ -150,7 +180,10 @@ export class LocalAiAppClient {
       reply: { content },
     }, DEFAULT_WAIT_MS + REQUEST_GRACE_MS, signal);
     this.expectSuccess(result, 'reply_recorded');
-    if (this.activeRun?.runId === runId) this.activeRun = null;
+    if (this.activeRun?.runId === runId) {
+      this.activeRun = null;
+      this.stopLeaseRenewal();
+    }
   }
 
   async disconnect(signal?: AbortSignal): Promise<void> {
@@ -165,6 +198,7 @@ export class LocalAiAppClient {
     } finally {
       this.connectionId = null;
       this.activeRun = null;
+      this.stopLeaseRenewal();
       this.close();
     }
   }
@@ -175,6 +209,7 @@ export class LocalAiAppClient {
     this.connecting = null;
     this.connectionId = null;
     this.activeRun = null;
+    this.stopLeaseRenewal();
     socket?.destroy();
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timeout);
@@ -201,7 +236,50 @@ export class LocalAiAppClient {
     }, CONNECT_TIMEOUT_MS, signal);
     this.expectSuccess(acknowledged, 'stop_acknowledged');
     this.activeRun = null;
+    this.stopLeaseRenewal();
     return { type: 'stop_requested', runId: active.runId, messageId: active.messageId };
+  }
+
+  private scheduleLeaseRenewal(): void {
+    this.stopLeaseRenewal();
+    if (!this.activeRun || !this.connectionId) return;
+    this.leaseRenewTimer = setTimeout(() => {
+      this.leaseRenewTimer = null;
+      void this.renewActiveLease();
+    }, this.leaseRenewIntervalMs);
+    this.leaseRenewTimer.unref?.();
+  }
+
+  private async renewActiveLease(): Promise<void> {
+    const active = this.activeRun;
+    const connectionId = this.connectionId;
+    if (!active || !connectionId) return;
+    try {
+      const result = await this.request({
+        type: 'renew_lease',
+        connectionId,
+        runId: active.runId,
+        leaseMs: CLAIM_LEASE_MS,
+      }, CONNECT_TIMEOUT_MS);
+      this.expectSuccess(result, 'lease_renewed');
+      if (this.activeRun?.runId === active.runId) this.scheduleLeaseRenewal();
+    } catch (error) {
+      if (
+        this.activeRun?.runId === active.runId &&
+        this.connectionId === connectionId &&
+        (!(error instanceof AiCompanionOperationError) || error.details.kind !== 'stopped')
+      ) {
+        this.scheduleLeaseRenewal();
+      } else {
+        this.stopLeaseRenewal();
+      }
+    }
+  }
+
+  private stopLeaseRenewal(): void {
+    if (!this.leaseRenewTimer) return;
+    clearTimeout(this.leaseRenewTimer);
+    this.leaseRenewTimer = null;
   }
 
   private expectSuccess(
@@ -210,14 +288,23 @@ export class LocalAiAppClient {
   ): Record<string, unknown> {
     if (!result.ok) {
       if (result.error.kind === 'unavailable') this.close();
-      throw new Error(result.error.kind === 'tool' ? result.error.error.message : result.error.message);
+      throw bridgeOperationError(result.error);
     }
     if (result.data.type !== type) throw new Error('Lacuna returned the wrong AI response.');
     return result.data as unknown as Record<string, unknown>;
   }
 
   private requireConnection(): string {
-    if (!this.connectionId) throw new Error('Lacuna AI is not connected.');
+    if (!this.connectionId) {
+      throw new AiCompanionOperationError({
+        kind: 'not_connected',
+        message: 'Lacuna AI is not connected.',
+        retryable: true,
+        suggestedAction: 'connect',
+        userActionRequired: false,
+        commitState: 'not_started',
+      });
+    }
     return this.connectionId;
   }
 
@@ -226,11 +313,13 @@ export class LocalAiAppClient {
     timeoutMs: number,
     signal?: AbortSignal,
   ): Promise<AiBridgeResult> {
+    if (signal?.aborted) throw cancelledOperation('not_started');
     await this.open();
-    if (signal?.aborted) throw new Error('The Lacuna AI request was cancelled.');
+    if (signal?.aborted) throw cancelledOperation('not_started');
     const id = randomUUID();
     return new Promise((resolve, reject) => {
-      const drainAfterCancellation = request.type === 'invoke_tool' || request.type === 'reply';
+      const drainAfterCancellation = request.type === 'invoke_tool' || request.type === 'reply' ||
+        request.type === 'renew_lease';
       const abort = () => {
         clearTimeout(timeout);
         if (!drainAfterCancellation) {
@@ -239,7 +328,7 @@ export class LocalAiAppClient {
         } else {
           this.armWriteDrainTimeout(id);
         }
-        reject(new Error('The Lacuna AI request was cancelled.'));
+        reject(cancelledOperation(drainAfterCancellation ? 'unknown' : 'not_started'));
       };
       const timeout = setTimeout(() => {
         signal?.removeEventListener('abort', abort);
@@ -249,7 +338,14 @@ export class LocalAiAppClient {
         } else {
           this.armWriteDrainTimeout(id);
         }
-        reject(new Error('Lacuna did not answer the local AI companion in time.'));
+        reject(new AiCompanionOperationError({
+          kind: 'timeout',
+          message: 'Lacuna did not answer the local AI companion in time.',
+          retryable: true,
+          suggestedAction: 'retry_same_request',
+          userActionRequired: false,
+          commitState: drainAfterCancellation ? 'unknown' : 'not_started',
+        }));
       }, timeoutMs);
       this.pending.set(id, {
         timeout,
@@ -293,7 +389,14 @@ export class LocalAiAppClient {
     try {
       connection = await readCompanionConnectionFile(this.hostUserDataPath);
     } catch {
-      throw new Error('Lacuna is not running or its local AI endpoint is unavailable.');
+      throw new AiCompanionOperationError({
+        kind: 'app_unavailable',
+        message: 'Lacuna is not running or its local AI endpoint is unavailable.',
+        retryable: true,
+        suggestedAction: 'open_lacuna',
+        userActionRequired: true,
+        commitState: 'not_started',
+      });
     }
     await new Promise<void>((resolve, reject) => {
       const socket = net.createConnection(connection.endpoint);
@@ -306,7 +409,14 @@ export class LocalAiAppClient {
         socket.destroy();
       };
       socket.setEncoding('utf8');
-      socket.once('error', (error) => fail(new Error(`Could not connect to the running Lacuna application: ${error.message}`)));
+      socket.once('error', () => fail(new AiCompanionOperationError({
+        kind: 'app_unavailable',
+        message: 'Could not connect to the running Lacuna application.',
+        retryable: true,
+        suggestedAction: 'open_lacuna',
+        userActionRequired: true,
+        commitState: 'not_started',
+      })));
       socket.once('connect', () => {
         socket.write(encodeCompanionMessage({
           type: 'ai_hello',
@@ -367,7 +477,7 @@ function reportedIdentity(server: McpServer, context: ServerContext): AiClientId
   };
 }
 
-async function callTool<T extends object>(operation: () => Promise<T>): Promise<CallToolResult> {
+export async function callAiCompanionTool<T extends object>(operation: () => Promise<T>): Promise<CallToolResult> {
   try {
     const data = await operation();
     return {
@@ -375,8 +485,13 @@ async function callTool<T extends object>(operation: () => Promise<T>): Promise<
       structuredContent: data,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'The Lacuna AI companion failed.';
-    return { isError: true, content: [{ type: 'text', text: message }] };
+    const details = companionErrorDetails(error);
+    const data = { ok: false as const, error: details };
+    return {
+      isError: true,
+      content: [{ type: 'text', text: JSON.stringify(data) }],
+      structuredContent: data,
+    };
   }
 }
 
@@ -402,7 +517,7 @@ export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandl
         description: 'Connect this terminal task to the local AI session in the running Lacuna app.',
         inputSchema: z.object({}).strict(),
       },
-      async (_input, context) => callTool(() => appClient.connect(reportedIdentity(server, context), context.mcpReq.signal)),
+      async (_input, context) => callAiCompanionTool(() => appClient.connect(reportedIdentity(server, context), context.mcpReq.signal)),
     );
     server.registerTool(
       'lacuna.wait_for_message',
@@ -412,7 +527,7 @@ export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandl
           timeoutMs: z.number().int().min(MIN_AI_WAIT_MS).max(MAX_AI_WAIT_MS).optional(),
         }).strict(),
       },
-      async (input, context) => callTool(() => appClient.waitForMessage(input.timeoutMs ?? DEFAULT_WAIT_MS, context.mcpReq.signal)),
+      async (input, context) => callAiCompanionTool(() => appClient.waitForMessage(input.timeoutMs ?? DEFAULT_WAIT_MS, context.mcpReq.signal)),
     );
     server.registerTool(
       'lacuna.invoke_tool',
@@ -426,9 +541,18 @@ export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandl
           timeoutMs: z.number().int().min(MIN_AI_WAIT_MS).max(MAX_AI_WAIT_MS).optional(),
         }).strict(),
       },
-      async (input, context) => callTool(async () => {
+      async (input, context) => callAiCompanionTool(async () => {
         const parsedInput = boundedJsonValueSchema.safeParse(input.input);
-        if (!parsedInput.success) throw new Error('The Lacuna AI tool input is invalid.');
+        if (!parsedInput.success) {
+          throw new AiCompanionOperationError({
+            kind: 'validation',
+            message: 'The Lacuna AI tool input is invalid.',
+            retryable: false,
+            suggestedAction: 'inspect_input',
+            userActionRequired: false,
+            commitState: 'not_started',
+          });
+        }
         return {
           runId: input.runId,
           callId: input.callId,
@@ -453,7 +577,7 @@ export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandl
           content: contentSchema,
         }).strict(),
       },
-      async (input, context) => callTool(async () => {
+      async (input, context) => callAiCompanionTool(async () => {
         await appClient.reply(input.runId, input.messageId, input.content, context.mcpReq.signal);
         return { replied: true, runId: input.runId, messageId: input.messageId };
       }),
@@ -461,7 +585,7 @@ export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandl
     server.registerTool(
       'lacuna.disconnect',
       { description: 'Disconnect this terminal task from local Lacuna AI.', inputSchema: z.object({}).strict() },
-      async (_input, context) => callTool(async () => {
+      async (_input, context) => callAiCompanionTool(async () => {
         await appClient.disconnect(context.mcpReq.signal);
         return { disconnected: true };
       }),

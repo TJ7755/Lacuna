@@ -1,7 +1,7 @@
 import { aiApprovalStateSchema } from './protocol';
 import type { AiApprovalState, AiBridgeError } from './protocol';
 import { executeToolCall as defaultExecuteToolCall } from '../mcp/executor';
-import { getTool } from '../mcp/registry';
+import { getTool, unknownToolMessage } from '../mcp/registry';
 import { CREATE_COURSE_SCOPE_KEY, resolveToolScopes } from '../mcp/bridge/scopeResolver';
 import type { McpGrant } from '../mcp/types';
 import { canonicalJson, defaultCreateId, defaultDigest } from './toolSession/digest';
@@ -132,7 +132,7 @@ export class AiToolSession {
         return {
           response: {
             ok: false,
-            error: toolError({ kind: 'not_found', message: `Unknown tool "${request.toolName}".` }),
+            error: toolError({ kind: 'not_found', message: unknownToolMessage(request.toolName) }),
           },
           effects: EMPTY_EFFECTS,
         };
@@ -473,7 +473,10 @@ export class AiToolSession {
       grant,
     });
     if (!outcome.ok) {
-      const error = toolError(outcome.error);
+      const safeError = outcome.error.kind === 'internal'
+        ? { ...outcome.error, message: 'The Lacuna domain tool failed.' }
+        : outcome.error;
+      const error = toolError(safeError);
       const response: AiToolWireResponse = { ok: false, error };
       storeLedger(
         this.ledger,

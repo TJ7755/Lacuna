@@ -173,6 +173,108 @@ describe('local AI session', () => {
     });
   });
 
+  it('renews an active run lease without changing its identity', async () => {
+    const transport = requestSource();
+    let clock = 1_000;
+    const scheduled: Array<{ task: () => void; delayMs: number; cancel: ReturnType<typeof vi.fn> }> = [];
+    const session = createLocalAiSession({
+      source: transport.source,
+      now: () => clock,
+      timers: {
+        schedule(task, delayMs) {
+          const cancel = vi.fn();
+          scheduled.push({ task, delayMs, cancel });
+          return cancel;
+        },
+      },
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+    await session.send('Take the time needed.');
+    await transport.request('channel-1', {
+      type: 'claim_message',
+      connectionId: 'connection-1',
+      timeoutMs: 250,
+      leaseMs: 300_000,
+    });
+
+    clock = 61_000;
+    await expect(
+      transport.request('channel-1', {
+        type: 'renew_lease',
+        connectionId: 'connection-1',
+        runId: 'run-1',
+        leaseMs: 300_000,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: {
+        type: 'lease_renewed',
+        runId: 'run-1',
+        leaseExpiresAt: 361_000,
+      },
+    });
+    expect(scheduled[0].cancel).toHaveBeenCalledOnce();
+    expect(scheduled[1].delayMs).toBe(300_000);
+    expect(session.getSnapshot().run).toMatchObject({
+      status: 'active',
+      runId: 'run-1',
+      leaseExpiresAt: 361_000,
+    });
+  });
+
+  it('records an identical retried reply once and rejects changed content', async () => {
+    const transport = requestSource();
+    const session = createLocalAiSession({
+      source: transport.source,
+      now: () => 1_000,
+      createId: (prefix) => `${prefix}-1`,
+    });
+    session.activate();
+    await transport.request('channel-1', {
+      type: 'connect',
+      protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+      client: { name: 'Codex' },
+    });
+    await session.send('Reply once.');
+    await transport.request('channel-1', {
+      type: 'claim_message',
+      connectionId: 'connection-1',
+      timeoutMs: 250,
+      leaseMs: 300_000,
+    });
+    const reply = {
+      type: 'reply' as const,
+      connectionId: 'connection-1',
+      runId: 'run-1',
+      messageId: 'message-1',
+      reply: { content: 'Delivered exactly once.' },
+    };
+
+    await expect(transport.request('channel-1', reply)).resolves.toEqual({
+      ok: true,
+      data: { type: 'reply_recorded', messageId: 'message-1' },
+    });
+    await expect(transport.request('channel-1', reply)).resolves.toEqual({
+      ok: true,
+      data: { type: 'reply_recorded', messageId: 'message-1' },
+    });
+    await expect(
+      transport.request('channel-1', {
+        ...reply,
+        reply: { content: 'A conflicting second answer.' },
+      }),
+    ).resolves.toMatchObject({ ok: false, error: { kind: 'conflict' } });
+    expect(
+      session.getSnapshot().items.filter((item) => item.kind === 'assistant'),
+    ).toHaveLength(1);
+  });
+
   it('rejects a second owner and requests from a foreign native channel', async () => {
     const transport = requestSource();
     const session = createLocalAiSession({

@@ -159,20 +159,44 @@ test('the enabled Electron renderer accepts a companion and completes a message 
       messageId: expect.any(String),
     });
 
+    const catalogue = toolData(
+      await client.callTool({
+        name: 'lacuna.invoke_tool',
+        arguments: {
+          runId: claim.runId,
+          callId: 'catalogue-call-1',
+          toolName: 'lacuna.list_tools',
+          input: { query: 'course', limit: 5 },
+        },
+      }),
+    );
+    expect(catalogue).toMatchObject({
+      ok: true,
+      result: {
+        tools: expect.arrayContaining([
+          expect.objectContaining({ name: 'lacuna.find_course', requiredScope: 'read' }),
+        ]),
+      },
+    });
+
     const reply = 'Transport reply recorded by the Playwright harness.';
-    expect(
-      toolData(
-        await client.callTool({
-          name: 'lacuna.reply',
-          arguments: {
-            runId: claim.runId,
-            messageId: claim.messageId,
-            content: reply,
-          },
-        }),
-      ),
-    ).toMatchObject({ replied: true, runId: claim.runId, messageId: claim.messageId });
+    const replyArguments = {
+      runId: claim.runId,
+      messageId: claim.messageId,
+      content: reply,
+    };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      expect(
+        toolData(
+          await client.callTool({
+            name: 'lacuna.reply',
+            arguments: replyArguments,
+          }),
+        ),
+      ).toMatchObject({ replied: true, runId: claim.runId, messageId: claim.messageId });
+    }
     await expect(panel.getByText(reply, { exact: true })).toBeVisible();
+    await expect(panel.getByText(reply, { exact: true })).toHaveCount(1);
 
     expect(
       toolData(await client.callTool({ name: 'lacuna.disconnect', arguments: {} })),

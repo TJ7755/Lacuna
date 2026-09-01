@@ -156,6 +156,19 @@ sync. Peer sync preserves the AI-client and device-local transcript; successful 
 disconnects and clears them. The Electron data MCP companion below remains a separate, broader
 surface with its own executable argument and permission model.
 
+Agents should invoke `lacuna.list_tools` through `lacuna.invoke_tool` before guessing a domain-tool
+name. The catalogue returns descriptions, input schemas and permission levels; unknown names also
+return likely alternatives. `lacuna.find_course` resolves a Course from an id, exact name or partial
+name, and `lacuna.search_cards` returns compact, cursor-paginated Card content without review history
+or FSRS fields. The native companion renews an active message lease while the model is working, and
+an identical retry of a completed reply is acknowledged without adding a duplicate conversation
+item. Companion failures return a structured recovery action and never include raw local paths.
+
+The client task still has to remain alive and repeat `lacuna.wait_for_message`. MCP cannot wake a
+model task after it has ended, reload a client's tool registry, or make a client continue generating
+in the background. Lacuna can preserve and report its side of the session, but those client lifecycle
+operations belong to Codex, OpenCode or whichever MCP host is running the model.
+
 ### Electron (desktop build)
 
 Lacuna can be packaged as a standalone desktop application via Electron. The supported beta

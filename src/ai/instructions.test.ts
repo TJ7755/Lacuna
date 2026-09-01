@@ -12,6 +12,9 @@ describe('buildAiInstructionBundle', () => {
     expect(bundle.content).toContain('Permissions and tool calls');
     expect(bundle.content).toContain('Stop');
     expect(bundle.content).toContain('Never fabricate a Card review or Question Attempt');
+    expect(bundle.content).toContain('lacuna.list_tools');
+    expect(bundle.content).toContain('lacuna.find_course');
+    expect(bundle.content).toContain('lacuna.search_cards');
   });
 
   it('enables misconception-first teaching without applying it to every request', () => {

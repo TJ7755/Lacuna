@@ -2,6 +2,7 @@ import { db } from '../../db/schema';
 import { GLOBAL_SCOPE_KEY } from '../grants';
 import { agentMemoryRepository } from '../../db/agentMemoryRepository';
 import type { McpScopeTarget, McpToolError } from './protocol';
+import { courseChoiceMessage, findCourseMatches } from '../courseLookup';
 
 type Resolution = { ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError };
 
@@ -22,6 +23,25 @@ export async function resolveToolScopes(input: unknown, toolName?: string): Prom
         },
       ],
     };
+  }
+  if (toolName === 'lacuna.search_cards') {
+    if (typeof value.course !== 'string' || value.course.trim() === '') {
+      return {
+        ok: false,
+        error: { kind: 'validation', message: 'course must be a non-empty Course name or id.' },
+      };
+    }
+    const matches = await findCourseMatches(value.course);
+    if (matches.length !== 1) {
+      return {
+        ok: false,
+        error: {
+          kind: matches.length === 0 ? 'not_found' : 'conflict',
+          message: courseChoiceMessage(value.course, matches),
+        },
+      };
+    }
+    return { ok: true, targets: [{ courseId: matches[0].id, label: matches[0].name }] };
   }
   if (toolName === 'lacuna.search_memories' || toolName === 'lacuna.create_memory') {
     const scope = value.scope;

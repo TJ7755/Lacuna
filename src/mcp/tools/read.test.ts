@@ -43,6 +43,84 @@ describe('mcp read tools', () => {
     });
   });
 
+  describe('lacuna.find_course', () => {
+    it('resolves names without returning full scheduling records', async () => {
+      const biology = await createCourse('Biology Core');
+      await createCourse('Chemistry');
+      await createLesson(biology.id, 'Cells');
+      await createLessonCard(biology.id, (await createLesson(biology.id, 'Genetics')).id, 'front_back', 'DNA', 'A polymer');
+
+      const res = await tools.findCourse.handler({ query: 'biology', limit: 10 }, ctx);
+
+      expect(res.data).toEqual({
+        matches: [{
+          courseId: biology.id,
+          name: 'Biology Core',
+          archived: false,
+          lessonCount: 2,
+          cardCount: 1,
+        }],
+      });
+      expect(res.data.matches[0]).not.toHaveProperty('fsrsParameters');
+    });
+  });
+
+  describe('lacuna.search_cards', () => {
+    it('accepts a course name and returns compact cursor-paginated cards', async () => {
+      const course = await createCourse('Religious Studies');
+      const lesson = await createLesson(course.id, 'Ethics');
+      await createLessonCard(course.id, lesson.id, 'front_back', 'Abortion', 'A moral issue');
+      await createLessonCard(course.id, lesson.id, 'front_back', 'Euthanasia', 'Another issue');
+
+      const first = await tools.searchCards.handler(
+        { course: 'religious studies', query: 'issue', limit: 1, includePayload: false },
+        ctx,
+      );
+      expect(first.data).toMatchObject({
+        course: { courseId: course.id, name: 'Religious Studies' },
+        total: 2,
+        cards: [{ front: 'Abortion', back: 'A moral issue', lesson: 'Ethics' }],
+        nextCursor: expect.any(String),
+      });
+      expect(first.data.cards[0]).not.toHaveProperty('history');
+      expect(first.data.cards[0]).not.toHaveProperty('stability');
+
+      const second = await tools.searchCards.handler(
+        {
+          course: course.id,
+          query: 'issue',
+          limit: 1,
+          cursor: first.data.nextCursor,
+          includePayload: false,
+        },
+        ctx,
+      );
+      expect(second.data.cards).toEqual([
+        expect.objectContaining({ front: 'Euthanasia', lesson: 'Ethics' }),
+      ]);
+      expect(second.data.nextCursor).toBeUndefined();
+    });
+
+    it('returns concise choices instead of guessing an ambiguous course', async () => {
+      const core = await createCourse('Biology Core');
+      const full = await createCourse('Biology Full');
+
+      const result = await validateAndRun(
+        tools.searchCards,
+        { course: 'biology', query: 'cell' },
+        ctx,
+      );
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { kind: 'conflict', message: expect.stringContaining('Biology Core') },
+      });
+      if (result.ok) throw new Error('Expected an ambiguous Course error.');
+      expect(result.error.message).toContain(core.id);
+      expect(result.error.message).toContain(full.id);
+    });
+  });
+
   describe('lacuna.get_course', () => {
     it('fetches a course by id', async () => {
       const course = await createCourse('Course A');
