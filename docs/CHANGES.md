@@ -1,5 +1,22 @@
 # Lacuna — next beta
 
+## Controlled offline browser reload
+
+- Added a production-build Chromium journey that installs and waits for control by the service
+  worker, authors a Card, visits the Cards library, clears Chromium's ordinary HTTP cache, then
+  reloads offline. The check proves the shell, persisted Card and in-page search remain usable and
+  that both the Cards JavaScript and lazy Markdown stylesheet have successful Cache Storage entries
+  before and after the reload.
+- Added a bounded Cache First rule for content-hashed lazy styles. The install shell now also
+  includes only the named shared modules needed by the Cards spine but loaded before a newly
+  installed worker gains control; unrelated lazy pages remain visit-cached.
+- Stale-chunk recovery now requires a successful no-store origin probe before it unregisters the
+  worker, clears caches or reloads. Offline preload failures continue to their existing callers, so
+  an unreliable early `navigator.onLine` signal cannot destroy the usable cached shell.
+
+**Checks:** red-to-green PWA configuration and stale-chunk unit tests; production build; hermetic
+Chromium offline reload with its HTTP cache cleared; performance budget; root typecheck and lint.
+
 ## Data-recovery guidance
 
 - Retained the database-open failure reason so quota failures show recovery guidance that tells
