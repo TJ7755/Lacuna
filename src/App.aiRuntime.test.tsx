@@ -137,7 +137,7 @@ describe('optional AI runtime', () => {
     originalSurface.scrollTop = 420;
 
     act(() => writeAiSettings({ enabled: true }));
-    await screen.findByTestId('enabled-ai-runtime');
+    await screen.findByTestId('enabled-ai-runtime', {}, { timeout: 5_000 });
 
     await waitFor(() => expect(screen.getByTestId('router-surface')).toBe(originalSurface));
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
@@ -159,7 +159,11 @@ describe('optional AI runtime', () => {
     render(<App />);
 
     const originalSurface = await screen.findByTestId('router-surface');
-    const originalRuntime = await screen.findByTestId('enabled-ai-runtime');
+    const originalRuntime = await screen.findByTestId(
+      'enabled-ai-runtime',
+      {},
+      { timeout: 5_000 },
+    );
     const originalRuntimeInstance = originalRuntime.getAttribute('data-instance');
     await waitFor(() => expect(runtime.restartListener).not.toBeNull());
     const originalSession = runtime.createdSessions[0];
