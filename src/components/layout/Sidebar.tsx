@@ -29,6 +29,7 @@ import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
 import type { StudyStats } from '../../fsrs/stats';
 import { prefetchRoute } from '../../routes/prefetch';
+import { quickSearchShortcutLabel } from '../../electron/runtime';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -154,11 +155,12 @@ function SearchNavItem({
   collapsed: boolean;
   compact?: boolean;
 }) {
+  const shortcutLabel = quickSearchShortcutLabel();
   return (
     <button
       type="button"
       onClick={onOpenPalette}
-      title={collapsed ? 'Quick search (Ctrl/Cmd+K)' : undefined}
+      title={collapsed ? `Quick search (${shortcutLabel})` : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
         compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
@@ -173,7 +175,7 @@ function SearchNavItem({
         <>
           <span className="flex-1 truncate">Quick search</span>
           <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
-            Ctrl/Cmd+K
+            {shortcutLabel}
           </kbd>
         </>
       )}
