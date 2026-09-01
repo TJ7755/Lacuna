@@ -107,6 +107,11 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     await expect(page.getByRole('link', { name: 'Settings', exact: true }).first()).toBeVisible();
     await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
 
+    await expect(page.getByRole('heading', { name: 'Install & updates' })).toBeVisible();
+    await expect(
+      page.getByText('This development build does not check for packaged updates.'),
+    ).toBeVisible();
+
     const enableAi = page.getByRole('switch', { name: 'Enable AI' });
     await expect(enableAi).toBeVisible();
     await enableAi.click();

@@ -20,6 +20,21 @@
 **Checks:** red-to-green Settings, Help and shared section-rail layout regressions; focused unit
 suite, typecheck, lint and production build.
 
+## Controlled desktop updates
+
+- Added a narrow, validated updater bridge from Electron to the renderer. Settings now shows the
+  installed version, current update state, manual **Check for updates**, download percentage and
+  transferred size, plus a retry path when a check fails.
+- Added a compact application-level checking/downloading indicator. Once an update has downloaded,
+  Lacuna presents **Restart and install** and **Later** rather than closing or restarting without
+  permission. Ordinary application quit no longer installs a deferred update.
+- Kept distribution limits explicit: Windows portable, Linux DEB and unsigned Apple Silicon macOS
+  builds link to the beta releases page for manual replacement; only Windows NSIS and Linux
+  AppImage use the automatic route. Release-note HTML is not passed into the renderer.
+
+**Checks:** red-to-green updater policy, Settings state/progress/manual-route and restart-consent
+tests; native Electron preload/Settings lifecycle; web and Electron typecheck; lint.
+
 ## 0.2.3 beta — archived courses and desktop AI recovery
 
 ### Bun 1.4 toolchain

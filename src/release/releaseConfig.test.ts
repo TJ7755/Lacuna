@@ -12,6 +12,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
+const updaterServiceSource = readFileSync(resolve(root, 'electron/updaterService.ts'), 'utf8');
 const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8');
 const prepareElectronBuild = readFileSync(
@@ -95,16 +96,18 @@ describe('v0.2.3 release configuration', () => {
   });
 
   it('keeps updater distribution rules explicit', () => {
-    expect(updaterSource).toContain('process.env.PORTABLE_EXECUTABLE_FILE');
-    expect(updaterSource).toContain('process.env.APPIMAGE');
-    expect(updaterSource).toMatch(
-      /process\.platform === ['"]linux['"][\s\S]*?process\.env\.APPIMAGE/,
+    expect(updaterSource).toContain('environment: process.env');
+    expect(updaterServiceSource).toContain('options.environment.PORTABLE_EXECUTABLE_FILE');
+    expect(updaterServiceSource).toContain('options.environment.APPIMAGE');
+    expect(updaterServiceSource).toMatch(
+      /options\.platform === ['"]linux['"][\s\S]*?!options\.environment\.APPIMAGE/,
     );
-    expect(updaterSource).toMatch(
-      /process\.platform === ['"]win32['"][\s\S]*?PORTABLE_EXECUTABLE_FILE/,
+    expect(updaterServiceSource).toMatch(
+      /options\.platform === ['"]win32['"][\s\S]*?PORTABLE_EXECUTABLE_FILE/,
     );
-    expect(updaterSource).toContain('autoUpdater.allowPrerelease = true');
-    expect(updaterSource).toContain('autoUpdater.checkForUpdates()');
+    expect(updaterServiceSource).toContain('options.updater.allowPrerelease = true');
+    expect(updaterServiceSource).toContain('options.updater.checkForUpdates()');
+    expect(updaterServiceSource).toContain('options.updater.autoInstallOnAppQuit = false');
   });
 
   it('gates one draft publisher on complete release verification', () => {

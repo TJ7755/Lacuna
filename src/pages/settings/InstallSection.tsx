@@ -2,6 +2,7 @@ import { Button } from '../../components/ui/Button';
 import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { DesktopUpdatePanel } from './DesktopUpdatePanel';
 
 export function InstallSection() {
   return (
@@ -11,9 +12,15 @@ export function InstallSection() {
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <DownloadIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Install</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl">
+          {window.electronAPI?.isElectron ? 'Install & updates' : 'Install'}
+        </SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">Add Lacuna to your home screen for quick access and offline use.</p>
+      <p className="mb-5 text-sm text-ink-soft">
+        {window.electronAPI?.isElectron
+          ? 'Keep the desktop application current.'
+          : 'Add Lacuna to your home screen for quick access and offline use.'}
+      </p>
       <InstallPanel />
     </section>
   );
@@ -22,6 +29,8 @@ export function InstallSection() {
 function InstallPanel() {
   const { isInstalled, method, promptInstall } = useInstallPrompt();
   const isWindows = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Win');
+
+  if (window.electronAPI?.isElectron) return <DesktopUpdatePanel />;
 
   if (isInstalled) {
     return <p className="text-sm text-ink-soft">Lacuna is installed on this device and can be used offline.</p>;

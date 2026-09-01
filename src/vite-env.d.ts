@@ -4,6 +4,7 @@ import type { McpConsentRequest, McpConsentResponse, McpGrantNotice, McpInvokeRe
 import type { McpGrant } from './mcp/types';
 import type { McpClientConnection } from './mcp/connections';
 import type { AiBridgeRequest, AiBridgeResult } from './ai/protocol';
+import type { DesktopUpdateState } from './electron/updateTypes';
 
 export {};
 
@@ -19,6 +20,12 @@ declare global {
       closeWindow: () => void;
       isMaximized: () => Promise<boolean>;
       onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
+      updater?: {
+        getState: () => Promise<DesktopUpdateState>;
+        checkForUpdates: () => Promise<void>;
+        restartAndInstall: () => Promise<void>;
+        onStateChange: (callback: (state: DesktopUpdateState) => void) => () => void;
+      };
       ai?: {
         readonly protocolVersion: 1;
         disconnect: (channelId: string) => void;

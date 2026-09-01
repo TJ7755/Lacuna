@@ -20,6 +20,7 @@ import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
 import type { EnabledAiSession } from './ai/session/EnabledAiRuntime';
+import { DesktopUpdateController } from './components/updates/DesktopUpdateController';
 
 export { router } from './routes/router';
 
@@ -254,6 +255,7 @@ export function App() {
         <AccentProvider>
           <FontScaleProvider>
             <ToastProvider>
+              {window.electronAPI?.updater && <DesktopUpdateController />}
               {window.electronAPI?.isElectron && (
                 <Suspense fallback={null}>
                   <McpBridgeController />
