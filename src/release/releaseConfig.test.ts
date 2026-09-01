@@ -9,6 +9,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
   homepage?: string;
   repository?: { type?: string; url?: string };
   scripts?: Record<string, string>;
+  trustedDependencies?: string[];
 };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
@@ -47,6 +48,10 @@ describe('v0.2.2 release configuration', () => {
     expect(prepareElectronBuild).toContain("'node_modules/typescript/bin/tsc'");
     expect(prepareElectronBuild).not.toContain('tsc.cmd');
     expect(prepareElectronBuild).not.toContain('shell: true');
+  });
+
+  it('allows Bun to install the Electron runtime used by desktop tests', () => {
+    expect(packageJson.trustedDependencies).toContain('electron');
   });
 
   it('builds the supported Windows and Linux artefacts', () => {

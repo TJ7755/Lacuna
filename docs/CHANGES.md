@@ -7,6 +7,9 @@
 - Aligned the declared package manager and every CI and release job on Bun 1.4.0. The local 1.4.0
   runtime passed the full browser suite, Electron AI lifecycle test, typecheck and lint before the
   project pin was advanced.
+- Declared Electron as a trusted dependency so clean Bun installs run its platform-runtime
+  extraction script. Without that declaration, a Windows runner receives the JavaScript wrapper
+  but no `electron/dist` directory and cannot launch the native lifecycle gate.
 
 ### Desktop AI connection recovery
 

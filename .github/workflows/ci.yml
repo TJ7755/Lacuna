@@ -158,6 +158,8 @@ jobs:
       - name: Verify Electron runtime installation
         shell: pwsh
         run: |
-          Get-ChildItem node_modules/electron/dist
+          if (-not (Test-Path node_modules/electron/dist/electron.exe)) {
+            throw "Electron runtime was not extracted during bun install."
+          }
           & node_modules/electron/dist/electron.exe --version
       - run: bun run test:e2e:electron-ai
