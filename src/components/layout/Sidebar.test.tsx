@@ -1,7 +1,7 @@
 import { createRef } from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
 import type { Course } from '../../db/types';
 
@@ -13,6 +13,10 @@ vi.mock('../../state/ThemeContext', () => ({
 vi.mock('../../state/useCourseData', () => ({
   useSidebarData: () => ({ courses: mockCourses, lessons: [], summaries: {}, stats: { streak: 0 } }),
 }));
+
+afterEach(() => {
+  Reflect.deleteProperty(window, 'electronAPI');
+});
 
 describe('Sidebar', () => {
   it('keeps the archive destination fixed in the Courses group and archived courses out of the list', () => {
@@ -47,7 +51,11 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Review today' })).toHaveAttribute('href', '/learn');
   });
 
-  it('opens quick search from a distinctly labelled control showing the shortcut', () => {
+  it('shows the macOS quick-search shortcut exposed by the trusted Electron bridge', () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { platform: 'darwin', isElectron: true },
+    });
     const onOpenPalette = vi.fn();
     render(
       <Sidebar collapsed={false} onToggleCollapsed={vi.fn()} onOpenPalette={onOpenPalette} />,
@@ -55,7 +63,7 @@ describe('Sidebar', () => {
     );
 
     const search = screen.getByRole('button', { name: /quick search/i });
-    expect(search).toHaveTextContent('Ctrl/Cmd+K');
+    expect(search).toHaveTextContent('⌘K');
 
     fireEvent.click(search);
     expect(onOpenPalette).toHaveBeenCalledTimes(1);

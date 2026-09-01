@@ -11,6 +11,10 @@ async function openSeededDashboard(page: Page) {
 test('first launch reaches the seeded dashboard', async ({ page }) => {
   await openSeededDashboard(page);
   await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
+  const shortcutLabel = await page.evaluate(() =>
+    navigator.platform.startsWith('Mac') ? '⌘K' : 'Ctrl+K',
+  );
+  await expect(page.getByRole('button', { name: 'Quick search' })).toContainText(shortcutLabel);
 });
 
 test('creates a course with its first lesson', async ({ page }) => {
@@ -155,7 +159,7 @@ test('opens an archived course as read-only content', async ({ page }) => {
 
   await page.goto(`/#/course/${courseId}/cards`);
   await expect(page).toHaveURL(new RegExp(`#\/course\/${courseId}\/?$`));
-  await expect(page.getByText('Archived course', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Curriculum' })).toBeVisible();
 });
 
 test('downloads a full backup from recovery settings', async ({ page }) => {

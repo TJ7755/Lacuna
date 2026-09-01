@@ -330,9 +330,10 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   (configured in Settings → Sidebar) and take effect immediately. Its height follows the shell
   body rather than the viewport so the footer remains visible below the Electron titlebar.
 - **Search navigation:** when the compact overlay is available, the sidebar entry is
-  **Quick search**, opens that overlay directly, and shows the `Ctrl/Cmd+K` shortcut hint inline
-  (collapsed sidebar: as a title tooltip). Surfaces without overlay wiring (for example,
-  LearnMode's own nav drawer) expose **Search content** as a plain `/search` link instead.
+  **Quick search**, opens that overlay directly, and shows the platform-native shortcut hint
+  inline: `⌘K` on macOS and `Ctrl+K` on Windows and Linux (collapsed sidebar: as a title tooltip).
+  Surfaces without overlay wiring (for example, LearnMode's own nav drawer) expose **Search
+  content** as a plain `/search` link instead.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger or a deliberate
   left-edge rightward swipe; the scrim closes it; it auto-closes on navigation. The edge
   gesture rejects vertical movement and starts on non-interactive content only, so ordinary

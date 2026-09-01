@@ -1,5 +1,17 @@
 # Lacuna — next beta
 
+## Platform-aware quick-search hint
+
+- Replaced the ambiguous sidebar `Ctrl/Cmd+K` reminder with the native `⌘K` label on macOS and
+  `Ctrl+K` on Windows and Linux. Electron uses its preload-provided platform; the web app falls
+  back conservatively to browser platform information and remains safe during server-side and
+  test rendering.
+- Kept the existing Ctrl/Meta+K shortcut behaviour unchanged, including the collapsed sidebar's
+  accessible tooltip.
+
+**Checks:** red-to-green Electron-platform, browser-fallback and sidebar component regressions;
+web and Electron typecheck; focused lint and production build.
+
 ## Dashboard polish
 
 - Removed the decorative dashboard eyebrow and tightened the header's vertical rhythm around its
