@@ -100,13 +100,50 @@ describe('remembered sync trigger credentials', () => {
     ['study session completion', () => window.dispatchEvent(new Event('lacuna:study-session-end'))],
   ])('runs with credentials published by manual sync after %s', async (_name, trigger) => {
     vi.useFakeTimers();
+    // eslint-disable-next-line no-console
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn');
     publishUnlockedCredentials(credentials);
     const dispose = installSyncTriggers();
 
-    trigger();
-    await vi.advanceTimersByTimeAsync(1500);
+    try {
+      trigger();
+      await vi.advanceTimersByTimeAsync(1500);
 
-    expect(syncWithCredentialsMock).toHaveBeenCalledWith(credentials);
-    dispose();
+      expect(syncWithCredentialsMock).toHaveBeenCalledWith(credentials);
+      expect(log).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      dispose();
+      log.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it('warns when an automatic sync fails', async () => {
+    vi.useFakeTimers();
+    const error = new Error('relay unavailable');
+    // eslint-disable-next-line no-console
+    const originalWarn = console.warn;
+    const warn = vi.spyOn(console, 'warn').mockImplementation((...args) => {
+      if (args[0] !== '[sync] auto focus failed' || args[1] !== error) {
+        // Preserve unrelated warnings while containing this expected one.
+        // eslint-disable-next-line no-console
+        originalWarn(...args);
+      }
+    });
+    syncWithCredentialsMock.mockRejectedValue(error);
+    publishUnlockedCredentials(credentials);
+    const dispose = installSyncTriggers();
+
+    try {
+      window.dispatchEvent(new Event('focus'));
+      await vi.advanceTimersByTimeAsync(1500);
+
+      expect(warn).toHaveBeenCalledWith('[sync] auto focus failed', error);
+    } finally {
+      dispose();
+      warn.mockRestore();
+    }
   });
 });

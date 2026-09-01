@@ -84,6 +84,18 @@ describe('App initialisation', () => {
     persistence.reject(new Error('denied'));
   });
 
+  it('opts into start transitions without emitting the React Router future warning', async () => {
+    const warn = vi.spyOn(console, 'warn');
+    try {
+      render(<App />);
+
+      await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('v7_startTransition'));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('clears persisted relay device state after replacement while AI is disabled', async () => {
     localStorage.setItem('lacuna-ai-relay-session-v1', '{"persisted":true}');
 

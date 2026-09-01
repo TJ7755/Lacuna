@@ -11,7 +11,7 @@ import { router } from './App';
 
 describe('application routes', () => {
   it('redirects a Deck bookmark to the dashboard', async () => {
-    render(<RouterProvider router={router} />);
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
 
     await act(async () => {
       await router.navigate('/deck/anything');
@@ -23,7 +23,7 @@ describe('application routes', () => {
   });
 
   it('opens the public download route outside the application shell', async () => {
-    render(<RouterProvider router={router} />);
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
 
     await act(async () => {
       await router.navigate('/download');

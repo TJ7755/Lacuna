@@ -183,7 +183,7 @@ describe('SearchPage', () => {
     const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
       initialEntries: ['/search'],
     });
-    render(<RouterProvider router={router} />);
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
 
     fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
       target: { value: 'final velocity' },

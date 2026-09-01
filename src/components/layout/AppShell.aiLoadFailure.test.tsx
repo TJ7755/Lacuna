@@ -70,25 +70,44 @@ beforeEach(() => {
 });
 
 it('contains a rejected AI panel import and lets the learner close it', async () => {
-  render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Routes>
-        <Route path="/" element={<AppShell />}>
-          <Route index element={<h1>Dashboard</h1>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
-  );
+  const originalError = console.error;
+  const error = vi.spyOn(console, 'error').mockImplementation((...args) => {
+    if (
+      !args.some(
+        (argument) =>
+          typeof argument === 'string' &&
+          (argument.includes('AiPanelLoadBoundary') ||
+            argument.includes('AI panel chunk unavailable')),
+      )
+    ) {
+      originalError(...args);
+    }
+  });
 
-  const trigger = screen.getByRole('button', { name: 'AI' });
-  trigger.focus();
-  fireEvent.click(trigger);
+  try {
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<AppShell />}>
+            <Route index element={<h1>Dashboard</h1>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('AI could not load');
-  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: 'AI' });
+    trigger.focus();
+    fireEvent.click(trigger);
 
-  fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('AI could not load');
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(error).toHaveBeenCalled();
 
-  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-  expect(trigger).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  } finally {
+    error.mockRestore();
+  }
 });
