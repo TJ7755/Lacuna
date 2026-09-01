@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ReplacementParticipant } from '../../db/replacementLifecycle';
 import type { AiSession } from './types';
 
 const runtime = vi.hoisted(() => {
@@ -10,12 +11,12 @@ const runtime = vi.hoisted(() => {
     activate,
     dispose,
     replacementParticipant: {},
-  } as unknown as AiSession & { replacementParticipant: object };
+  } as unknown as AiSession & { replacementParticipant: ReplacementParticipant };
   const localSession = {
     activate,
     dispose,
     replacementParticipant: {},
-  } as unknown as AiSession & { replacementParticipant: object };
+  } as unknown as AiSession & { replacementParticipant: ReplacementParticipant };
   return {
     relaySession,
     localSession,
@@ -53,11 +54,13 @@ describe('EnabledAiRuntime', () => {
     vi.clearAllMocks();
   });
 
-  it('publishes an active relay session on the web and clears it before disposal', async () => {
-    const onSessionChange = vi.fn();
-    const view = render(<EnabledAiRuntime onSessionChange={onSessionChange} />);
+  it('publishes an active relay session on the web and unregisters it on unmount', async () => {
+    const onSessionReady = vi.fn();
+    const view = render(
+      <EnabledAiRuntime retainedSession={null} onSessionReady={onSessionReady} />,
+    );
 
-    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.relaySession));
+    await waitFor(() => expect(onSessionReady).toHaveBeenCalledWith(runtime.relaySession));
     expect(runtime.register).toHaveBeenCalledWith(runtime.relaySession.replacementParticipant);
     expect(runtime.createRelayAiSession).toHaveBeenCalledOnce();
     expect(runtime.createLocalAiSession).not.toHaveBeenCalled();
@@ -65,12 +68,8 @@ describe('EnabledAiRuntime', () => {
 
     view.unmount();
 
-    expect(onSessionChange).toHaveBeenLastCalledWith(null);
     expect(runtime.unregister).toHaveBeenCalledOnce();
-    expect(runtime.dispose).toHaveBeenCalledOnce();
-    expect(onSessionChange.mock.invocationCallOrder.at(-1)).toBeLessThan(
-      runtime.dispose.mock.invocationCallOrder[0]!,
-    );
+    expect(runtime.dispose).not.toHaveBeenCalled();
   });
 
   it('uses only the direct local session in Electron', async () => {
@@ -78,10 +77,12 @@ describe('EnabledAiRuntime', () => {
       configurable: true,
       value: { isElectron: true },
     });
-    const onSessionChange = vi.fn();
-    const view = render(<EnabledAiRuntime onSessionChange={onSessionChange} />);
+    const onSessionReady = vi.fn();
+    const view = render(
+      <EnabledAiRuntime retainedSession={null} onSessionReady={onSessionReady} />,
+    );
 
-    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.localSession));
+    await waitFor(() => expect(onSessionReady).toHaveBeenCalledWith(runtime.localSession));
     expect(runtime.createElectronLocalAiRequestSource).toHaveBeenCalledOnce();
     expect(runtime.createLocalAiSession).toHaveBeenCalledWith({
       source: {},
@@ -90,7 +91,30 @@ describe('EnabledAiRuntime', () => {
     expect(runtime.createRelayAiSession).not.toHaveBeenCalled();
 
     view.unmount();
-    expect(onSessionChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('retains the direct local session across a runtime remount', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true },
+    });
+    const onSessionReady = vi.fn();
+    const first = render(
+      <EnabledAiRuntime retainedSession={null} onSessionReady={onSessionReady} />,
+    );
+
+    await waitFor(() => expect(onSessionReady).toHaveBeenCalledWith(runtime.localSession));
+    first.unmount();
+
+    const second = render(
+      <EnabledAiRuntime onSessionReady={onSessionReady} retainedSession={runtime.localSession} />,
+    );
+
+    await waitFor(() => expect(runtime.activate).toHaveBeenCalledTimes(2));
+    expect(runtime.createLocalAiSession).toHaveBeenCalledOnce();
+    expect(runtime.dispose).not.toHaveBeenCalled();
+
+    second.unmount();
   });
 
   it('fails closed to the local session when the Electron preload is unavailable', async () => {
@@ -98,10 +122,12 @@ describe('EnabledAiRuntime', () => {
       configurable: true,
       value: 'Mozilla/5.0 Electron/42.3.3',
     });
-    const onSessionChange = vi.fn();
-    const view = render(<EnabledAiRuntime onSessionChange={onSessionChange} />);
+    const onSessionReady = vi.fn();
+    const view = render(
+      <EnabledAiRuntime retainedSession={null} onSessionReady={onSessionReady} />,
+    );
 
-    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith(runtime.localSession));
+    await waitFor(() => expect(onSessionReady).toHaveBeenCalledWith(runtime.localSession));
     expect(runtime.createLocalAiSession).toHaveBeenCalledOnce();
     expect(runtime.createRelayAiSession).not.toHaveBeenCalled();
 

@@ -19,7 +19,7 @@ import { router } from './routes/router';
 import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
-import type { AiSession } from './ai/session/types';
+import type { EnabledAiSession } from './ai/session/EnabledAiRuntime';
 
 export { router } from './routes/router';
 
@@ -45,13 +45,36 @@ const EnabledAiRuntime = lazy(() =>
 
 function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
-  const [session, setSession] = useState<AiSession | null>(null);
-  const handleSessionChange = useCallback((next: AiSession | null) => setSession(next), []);
+  const [session, setSession] = useState<EnabledAiSession | null>(null);
+  const sessionRef = useRef<EnabledAiSession | null>(null);
+  const handleSessionReady = useCallback((next: EnabledAiSession) => {
+    sessionRef.current = next;
+    setSession(next);
+  }, []);
+
+  useEffect(() => {
+    if (settings.enabled) return;
+    const current = sessionRef.current;
+    if (!current) return;
+    sessionRef.current = null;
+    setSession((existing) => (existing === current ? null : existing));
+    current.dispose();
+  }, [settings.enabled]);
+
+  useEffect(
+    () => () => {
+      sessionRef.current?.dispose();
+      sessionRef.current = null;
+    },
+    [],
+  );
 
   return (
     <AiSessionProvider session={settings.enabled ? session : null}>
       <Suspense fallback={null}>
-        {settings.enabled && <EnabledAiRuntime onSessionChange={handleSessionChange} />}
+        {settings.enabled && (
+          <EnabledAiRuntime retainedSession={session} onSessionReady={handleSessionReady} />
+        )}
       </Suspense>
       <RouterWithQuotaWarning />
     </AiSessionProvider>

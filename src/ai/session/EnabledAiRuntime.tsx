@@ -6,40 +6,47 @@ import { createRelayAiSession } from './relay';
 import { createLocalAiSession } from './local';
 import { createElectronLocalAiRequestSource } from './localIpc';
 import { replacementLifecycle } from '../../db/replacementLifecycle';
+import type { ReplacementParticipant } from '../../db/replacementLifecycle';
 import type { AiSession } from './types';
 import { isElectronRuntime } from '../../electron/runtime';
 
+export interface EnabledAiSession extends AiSession {
+  readonly replacementParticipant: ReplacementParticipant;
+}
+
 /**
- * Owns the optional relay runtime. Keeping this behind a dynamic import means
- * disabled AI contributes neither its transport nor its tool stack to first paint.
+ * Binds the optional AI runtime to its active transport listener. Keeping this behind a dynamic
+ * import means disabled AI contributes neither its transport nor its tool stack to first paint.
  */
 export function EnabledAiRuntime({
-  onSessionChange,
+  retainedSession,
+  onSessionReady,
 }: {
-  onSessionChange: (session: AiSession | null) => void;
+  retainedSession: EnabledAiSession | null;
+  onSessionReady: (session: EnabledAiSession) => void;
 }) {
-  const [session] = useState(() =>
-    isElectronRuntime()
-      ? createLocalAiSession({
-          source: createElectronLocalAiRequestSource(),
-          getInstructions: () => buildAiInstructionBundle(readAiSettings()),
-        })
-      : createRelayAiSession({
-          relay: createRelayClient(),
-          getInstructions: () => buildAiInstructionBundle(readAiSettings()),
-        }),
+  const [session] = useState(
+    () =>
+      retainedSession ??
+      (isElectronRuntime()
+        ? createLocalAiSession({
+            source: createElectronLocalAiRequestSource(),
+            getInstructions: () => buildAiInstructionBundle(readAiSettings()),
+          })
+        : createRelayAiSession({
+            relay: createRelayClient(),
+            getInstructions: () => buildAiInstructionBundle(readAiSettings()),
+          })),
   );
 
   useEffect(() => {
     const unregister = replacementLifecycle.register(session.replacementParticipant);
-    onSessionChange(session);
+    onSessionReady(session);
     session.activate();
     return () => {
-      onSessionChange(null);
       unregister();
-      session.dispose();
     };
-  }, [onSessionChange, session]);
+  }, [onSessionReady, session]);
 
   return null;
 }

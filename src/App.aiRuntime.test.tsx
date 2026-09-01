@@ -15,7 +15,9 @@ const dependencies = vi.hoisted(() => ({
   isFirstRun: vi.fn(),
   seedIfFirstRun: vi.fn(),
 }));
-const runtime = vi.hoisted(() => ({ session: {} as AiSession }));
+const runtime = vi.hoisted(() => ({
+  session: { dispose: vi.fn() } as unknown as AiSession,
+}));
 
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactRouterDom>()),
@@ -56,14 +58,15 @@ vi.mock('./components/layout/LandingTransition', () => ({
 }));
 vi.mock('./ai/session/EnabledAiRuntime', () => ({
   EnabledAiRuntime: ({
-    onSessionChange,
+    retainedSession,
+    onSessionReady,
   }: {
-    onSessionChange: (session: AiSession | null) => void;
+    retainedSession: AiSession | null;
+    onSessionReady: (session: AiSession) => void;
   }) => {
     useEffect(() => {
-      onSessionChange(runtime.session);
-      return () => onSessionChange(null);
-    }, [onSessionChange]);
+      onSessionReady(retainedSession ?? runtime.session);
+    }, [onSessionReady, retainedSession]);
     return <span data-testid="enabled-ai-runtime" />;
   },
 }));
@@ -73,6 +76,7 @@ import { writeAiSettings } from './ai/settings';
 
 describe('optional AI runtime', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     localStorage.removeItem('lacuna.aiSettings');
     localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
     window.location.hash = '#/';
@@ -106,5 +110,6 @@ describe('optional AI runtime', () => {
     );
     expect(screen.getByTestId('router-surface')).toBe(originalSurface);
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
+    expect(runtime.session.dispose).toHaveBeenCalledOnce();
   });
 });
