@@ -20,7 +20,7 @@ export function ArchivedCourses() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 md:px-10">
-      <header className="mb-8 rounded-2xl border border-line bg-surface p-6 md:p-8">
+      <header className="mb-8 rounded-2xl border border-line bg-surface p-7 md:p-9">
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">Archived</h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-soft">
           Finished courses stay here with their review history intact, outside active study and

@@ -30,6 +30,13 @@ beforeEach(() => {
 });
 
 describe('ArchivedCourses', () => {
+  it('uses the eyebrow-free page-header spacing', () => {
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('banner')).toHaveClass('p-7', 'md:p-9');
+    expect(screen.getByRole('banner')).not.toHaveClass('p-6', 'md:p-8');
+  });
+
   it('lists only archived courses and restores one explicitly', async () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
     expect(screen.getByText('Finished biology')).toBeInTheDocument();
@@ -54,7 +61,9 @@ describe('ArchivedCourses', () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
 
     fireEvent.click(screen.getByRole('button', { name: 'Unarchive Finished biology' }));
-    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Could not restore Finished biology', 'negative'));
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Could not restore Finished biology', 'negative'),
+    );
     expect(localStorage.getItem('lacuna.handledFinalExams')).toBe('{}');
   });
 });
