@@ -68,7 +68,7 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-qr-code": "^2.2.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.6",
     "recharts": "^2.13.3",
     "rehype-highlight": "^7.0.1",
     "rehype-katex": "^7.0.1",
@@ -82,7 +82,7 @@
     "zod": "4.2.0"
   },
   "overrides": {
-    "nanoid": "3.3.11",
+    "nanoid": "3.3.18",
     "@emnapi/core": "1.7.1",
     "@emnapi/runtime": "1.7.1",
     "@napi-rs/wasm-runtime": "1.1.0"
@@ -100,7 +100,7 @@
     "@vitejs/plugin-react-swc": "^4.3.1",
     "@vitest/coverage-v8": "2.1.9",
     "concurrently": "^8.2.2",
-    "electron": "^42.3.3",
+    "electron": "^42.11.0",
     "electron-builder": "^24.13.3",
     "esbuild": "^0.25.0",
     "eslint": "^8.57.0",
@@ -114,7 +114,7 @@
     "sharp": "^0.35.3",
     "tailwindcss": "4.1.18",
     "typescript": "^5.6.3",
-    "vite": "^6.0.3",
+    "vite": "^6.4.3",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^2.1.9",
     "wait-on": "^7.2.0"

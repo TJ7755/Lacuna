@@ -1,5 +1,18 @@
 # Lacuna — next beta
 
+## Dependency security refresh
+
+- Refreshed the root, relay and handwriting lockfiles with Bun 1.4.0 while preserving existing
+  major-version boundaries. Raised the explicit minimums for Electron (42.11.0), React Router
+  (6.30.6), Vite (6.4.3) and the nanoid override (3.3.18).
+- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at
+  5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
+  layers, plus Vite 5 transitive dependencies in the relay and handwriting workspaces.
+
+**Checks:** frozen Bun 1.4.0 installs in all workspaces; root typecheck, lint and asset build, with
+2,908 unit tests passing in the native environment; relay typecheck, lint and tests; handwriting
+typecheck, build and tests; package audits.
+
 ## Repository governance
 
 - Added contributor and security policies, enforceable CODEOWNERS, pull-request and issue templates,
