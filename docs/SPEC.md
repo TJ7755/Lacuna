@@ -320,8 +320,9 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 ```
 
 - **Sidebar** (`Sidebar`): brand; primary nav (Dashboard, Review today, Search, Share,
-  Analytics, Settings, Help — each independently hideable); a live course list (each with an
-  accent dot when active and an optional due-count badge); a **streak badge** on the Dashboard
+  Analytics, Settings, Help — each independently hideable); a fixed **Archived** destination below
+  the **Courses** heading; a separately scrolling live course list (each with an accent dot when
+  active and an optional due-count badge); a **streak badge** on the Dashboard
   item that springs in when a streak is active; footer with a theme toggle and a
   collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
   sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
@@ -419,8 +420,11 @@ arriving from Anki. Cross-course due review is opened from the sidebar's **Revie
 not a separate Dashboard "Study all" button. Empty state invites creating the first course. All
 transitions between these regions are coordinated by `LayoutGroup` so adding or reordering
 courses does not stutter. Archived courses are excluded from the active grid and normal sidebar
-course list. The sidebar's dedicated **Archived** destination (`/archived`) is their restoration
-home and provides an explicit **Unarchive** action. A course card's context menu (right-click,
+course list. The sidebar's fixed **Archived** destination (`/archived`) sits beneath the
+**Courses** heading outside the active-course scroll region. Its cards open the existing course
+path in an explicit read-only state; every lesson and course analytics remain inspectable, while
+a central route guard returns direct study, authoring or mutation URLs to that overview. A separate
+**Unarchive** action restores study and authoring controls. A course card's context menu (right-click,
 keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
 lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
 
@@ -1926,7 +1930,11 @@ retains its Attempt receipts as personal evidence.
   recalculates the next step from current course state rather than trusting stale session
   data (Arc 10 §10.1 folded the former standalone Study Today page into this dashboard).
 - **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
-  an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
+  an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14). An archived
+  course reuses this surface for inspection, marks itself as archived and keeps every lesson node
+  navigable into its read-only content. Practice, checkpoints and every study, authoring, settings,
+  update-review or mutation route remain inaccessible until restoration; direct URLs return to the
+  course overview. Read-only course analytics remain available.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
   notes-first teaching flow when it is the next available path step. In Author mode,
@@ -2497,8 +2505,9 @@ its navigation cannot drift from the rendered groups.
   optimisation controls sit behind native **Advanced practice timing** or **Advanced scheduling**
   disclosures. Workload and session-goal fields remain visible.
 - **Sidebar:** show due counts (on by default), compact mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Dashboard, Review today, Search, Share, Analytics, Archived, Settings, Help). Archived
-  courses never appear in the ordinary Courses list. The rendered search
+  entry (Dashboard, Review today, Search, Share, Analytics, Settings, Help). **Archived** is fixed
+  beneath the **Courses** heading and is not hideable or reorderable; archived courses never appear
+  in the ordinary course list. The rendered search
   trigger is **Quick search** when the overlay is available and **Search content** when it must link
   to the full page. Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The

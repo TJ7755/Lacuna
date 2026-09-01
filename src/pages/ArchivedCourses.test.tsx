@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ArchivedCourses } from './ArchivedCourses';
 import type { Course } from '../db/types';
 
@@ -29,10 +30,22 @@ beforeEach(() => {
 });
 
 describe('ArchivedCourses', () => {
+  it('uses the eyebrow-free page-header spacing', () => {
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('banner')).toHaveClass('p-7', 'md:p-9');
+    expect(screen.getByRole('banner')).not.toHaveClass('p-6', 'md:p-8');
+  });
+
   it('lists only archived courses and restores one explicitly', async () => {
-    render(<ArchivedCourses />);
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
     expect(screen.getByText('Finished biology')).toBeInTheDocument();
     expect(screen.queryByText('Active chemistry')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Finished biology' })).toHaveAttribute(
+      'href',
+      '/course/course-1',
+    );
+    expect(screen.queryByText('Course library')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Unarchive Finished biology' }));
     await waitFor(() =>
@@ -45,10 +58,12 @@ describe('ArchivedCourses', () => {
 
   it('does not suppress lifecycle handling when restoration fails', async () => {
     mockUpdateCourse.mockRejectedValue(new Error('write failed'));
-    render(<ArchivedCourses />);
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
 
     fireEvent.click(screen.getByRole('button', { name: 'Unarchive Finished biology' }));
-    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Could not restore Finished biology', 'negative'));
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Could not restore Finished biology', 'negative'),
+    );
     expect(localStorage.getItem('lacuna.handledFinalExams')).toBe('{}');
   });
 });

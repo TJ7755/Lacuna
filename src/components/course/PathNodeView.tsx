@@ -32,6 +32,7 @@ interface PathNodeViewProps {
   practiceProgress?: { fraction: number; completed: boolean };
   practiceAssessment?: AssessmentPracticeOption;
   authoring?: boolean;
+  archivedInspection?: boolean;
   lessonReorder?: LessonReorderInteraction;
 }
 
@@ -66,6 +67,7 @@ export function PathNodeView({
   practiceProgress,
   practiceAssessment,
   authoring,
+  archivedInspection,
   lessonReorder,
 }: PathNodeViewProps) {
   switch (node.nodeType) {
@@ -78,6 +80,7 @@ export function PathNodeView({
           lockHint={lockHint}
           detail={lessonDetail}
           authoring={authoring}
+          archivedInspection={archivedInspection}
           reorder={lessonReorder}
           onClick={onLessonClick ? () => onLessonClick(node.lesson.id) : undefined}
         />

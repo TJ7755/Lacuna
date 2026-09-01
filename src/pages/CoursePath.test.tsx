@@ -282,6 +282,35 @@ beforeEach(() => {
 });
 
 describe('CoursePath Study mode', () => {
+  it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
+    mockCourse = {
+      ...course,
+      archived: true,
+      lessonViewMode: 'edit',
+      unlockMode: 'semi-linear',
+    };
+
+    renderPage();
+
+    expect(screen.getByText('Archived course')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
+      'href',
+      '/archived',
+    );
+    expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
+    const previouslyLockedLesson = screen.getByRole('button', { name: 'Dynamics' });
+    expect(previouslyLockedLesson).not.toHaveAttribute('aria-disabled');
+    fireEvent.click(previouslyLockedLesson);
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+  });
+
   it('offers one explicit Author mode beside the course sections', () => {
     renderPage();
 
@@ -404,7 +433,9 @@ describe('CoursePath Study mode', () => {
     expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' }),
+    ).not.toBeInTheDocument();
   });
 });
 

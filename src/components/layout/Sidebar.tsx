@@ -516,7 +516,10 @@ export function Sidebar({
       </div>
 
       {/* Primary nav */}
-      <nav className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}>
+      <nav
+        aria-label="Primary navigation"
+        className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}
+      >
         {sidebarSettings.navItems
           .filter((n) => n.visible)
           .map((n) =>
@@ -552,8 +555,6 @@ export function Sidebar({
                     <ShareIcon />
                   ) : n.id === 'analytics' ? (
                     <ChartIcon />
-                  ) : n.id === 'archived' ? (
-                    <ArchiveIcon />
                   ) : n.id === 'settings' ? (
                     <SettingsIcon />
                   ) : n.id === 'help' ? (
@@ -589,7 +590,8 @@ export function Sidebar({
       </nav>
 
       {/* Course list */}
-      <div
+      <nav
+        aria-label="Courses"
         className={cn(
           'flex min-h-0 flex-1 flex-col px-3',
           sidebarSettings.compactMode ? 'mt-3' : 'mt-6',
@@ -621,6 +623,15 @@ export function Sidebar({
             </button>
           </motion.div>
         )}
+        <div className={cn(sidebarSettings.compactMode ? 'mb-1' : 'mb-2')}>
+          <NavItem
+            to="/archived"
+            icon={<ArchiveIcon />}
+            label="Archived"
+            collapsed={collapsed}
+            compact={sidebarSettings.compactMode}
+          />
+        </div>
         <div
           className={cn(
             'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
@@ -672,7 +683,7 @@ export function Sidebar({
             </motion.p>
           )}
         </div>
-      </div>
+      </nav>
 
       {/* Footer: theme toggle + collapse button */}
       <div

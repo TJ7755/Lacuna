@@ -7,6 +7,7 @@ import { Dashboard } from '../pages/Dashboard';
 import { NotFound } from '../pages/NotFound';
 import { LazyRoute } from './LazyRoute';
 import { LegacyBankRedirect } from './LegacyBankRedirect';
+import { ArchivedCourseAccessGuard } from './ArchivedCourseAccessGuard';
 import {
   loadAnalytics,
   loadArchivedCourses,
@@ -72,6 +73,10 @@ function isolatedRoute(label: string, child: ReactNode) {
   return <ErrorBoundary label={label}>{child}</ErrorBoundary>;
 }
 
+function courseAccessRoute(child: ReactNode) {
+  return <ArchivedCourseAccessGuard>{child}</ArchivedCourseAccessGuard>;
+}
+
 // Hash routing keeps the app deployable as plain static files with no server rewrites.
 export const router = createHashRouter([
   {
@@ -90,61 +95,79 @@ export const router = createHashRouter([
           { path: 'archived', element: lazyRoute(ArchivedCourses) },
           { path: 'help', element: lazyRoute(HelpPage) },
           { path: 'study', element: <Navigate to="/" replace /> },
-          { path: 'course/:courseId', element: lazyRoute(CoursePath) },
+          { path: 'course/:courseId', element: courseAccessRoute(lazyRoute(CoursePath)) },
           {
             path: 'course/:courseId/lesson/:lessonId',
-            element: lazyRoute(LessonView),
+            element: courseAccessRoute(lazyRoute(LessonView)),
           },
-          { path: 'course/:courseId/bank', element: <LegacyBankRedirect /> },
-          { path: 'course/:courseId/cards', element: lazyRoute(CardsPage) },
-          { path: 'course/:courseId/questions', element: lazyRoute(QuestionsPage) },
+          {
+            path: 'course/:courseId/bank',
+            element: courseAccessRoute(<LegacyBankRedirect />),
+          },
+          { path: 'course/:courseId/cards', element: courseAccessRoute(lazyRoute(CardsPage)) },
+          {
+            path: 'course/:courseId/questions',
+            element: courseAccessRoute(lazyRoute(QuestionsPage)),
+          },
           {
             path: 'course/:courseId/questions/new',
-            element: lazyRoute(QuestionEditor),
+            element: courseAccessRoute(lazyRoute(QuestionEditor)),
           },
           {
             path: 'course/:courseId/questions/:questionId/edit',
-            element: lazyRoute(QuestionEditor),
+            element: courseAccessRoute(lazyRoute(QuestionEditor)),
           },
-          { path: 'course/:courseId/cards/new', element: lazyRoute(CardEditor) },
+          {
+            path: 'course/:courseId/cards/new',
+            element: courseAccessRoute(lazyRoute(CardEditor)),
+          },
           {
             path: 'course/:courseId/cards/:cardId/edit',
-            element: lazyRoute(CardEditor),
+            element: courseAccessRoute(lazyRoute(CardEditor)),
           },
-          { path: 'course/:courseId/settings', element: lazyRoute(CourseSettings) },
-          { path: 'course/:courseId/analytics', element: lazyRoute(CourseAnalytics) },
-          { path: 'course/:courseId/updates', element: lazyRoute(MergeReviewPanel) },
+          {
+            path: 'course/:courseId/settings',
+            element: courseAccessRoute(lazyRoute(CourseSettings)),
+          },
+          {
+            path: 'course/:courseId/analytics',
+            element: courseAccessRoute(lazyRoute(CourseAnalytics)),
+          },
+          {
+            path: 'course/:courseId/updates',
+            element: courseAccessRoute(lazyRoute(MergeReviewPanel)),
+          },
           {
             path: 'course/:courseId/lesson/:lessonId/cards/new',
-            element: lazyRoute(CardEditor),
+            element: courseAccessRoute(lazyRoute(CardEditor)),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
-            element: lazyRoute(CardEditor),
+            element: courseAccessRoute(lazyRoute(CardEditor)),
           },
           {
             path: 'course/:courseId/sequence/new',
-            element: lazyRoute(SequenceEditor),
+            element: courseAccessRoute(lazyRoute(SequenceEditor)),
           },
           {
             path: 'course/:courseId/sequence/:sequenceId/edit',
-            element: lazyRoute(SequenceEditor),
+            element: courseAccessRoute(lazyRoute(SequenceEditor)),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/sequence/new',
-            element: lazyRoute(SequenceEditor),
+            element: courseAccessRoute(lazyRoute(SequenceEditor)),
           },
           {
             path: 'course/:courseId/occlusion/new',
-            element: lazyRoute(OcclusionEditor),
+            element: courseAccessRoute(lazyRoute(OcclusionEditor)),
           },
           {
             path: 'course/:courseId/occlusion/:occlusionId/edit',
-            element: lazyRoute(OcclusionEditor),
+            element: courseAccessRoute(lazyRoute(OcclusionEditor)),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/occlusion/new',
-            element: lazyRoute(OcclusionEditor),
+            element: courseAccessRoute(lazyRoute(OcclusionEditor)),
           },
           { path: '*', element: <NotFound /> },
         ],
@@ -169,13 +192,17 @@ export const router = createHashRouter([
         // scheduling evidence is being validated. It deliberately does not enter
         // the Card-based course conductor or Path yet.
         path: '/course/:courseId/questions/learn',
-        element: isolatedRoute('the Question session', lazyRoute(QuestionLearnMode)),
+        element: courseAccessRoute(
+          isolatedRoute('the Question session', lazyRoute(QuestionLearnMode)),
+        ),
       },
       {
         // Persistent course conductor. It owns lesson/Practice transitions and
         // remains mounted until the learner explicitly finishes the study period.
         path: '/course/:courseId/study',
-        element: isolatedRoute('the course study flow', lazyRoute(CourseStudyFlow)),
+        element: courseAccessRoute(
+          isolatedRoute('the course study flow', lazyRoute(CourseStudyFlow)),
+        ),
       },
       {
         // Learn mode is a full-screen, focused experience outside the shell. The
@@ -186,12 +213,12 @@ export const router = createHashRouter([
       {
         // A course Practice session selected by the curricular objective engine.
         path: '/course/:courseId/learn',
-        element: isolatedRoute('the Learn session', lazyRoute(LearnMode)),
+        element: courseAccessRoute(isolatedRoute('the Learn session', lazyRoute(LearnMode))),
       },
       {
         // A Simple lesson session for cards not yet exposed in that lesson.
         path: '/lesson/:lessonId/learn',
-        element: isolatedRoute('the Learn session', lazyRoute(LearnMode)),
+        element: courseAccessRoute(isolatedRoute('the Learn session', lazyRoute(LearnMode))),
       },
     ],
   },

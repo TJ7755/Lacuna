@@ -43,6 +43,10 @@ import { CourseTabs } from '../components/course/CourseTabs';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
+import {
+  ArchivedCourseBadge,
+  ArchivedCourseRestoreNotice,
+} from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 
@@ -127,8 +131,9 @@ export function CoursePath() {
   // Per-deck response-time calibration is resolved behind the Course/Lesson
   // boundary and re-scoped into one course-wide mean below.
   const perf = useCoursePerformance(courseId, courseCards);
+  const archived = course?.archived === true;
   const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
-  const authoring = course ? isLessonAuthoringMode(course) : false;
+  const authoring = course ? !archived && isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(
     (message: string) => notify(message, 'negative'),
     [notify],
@@ -320,7 +325,7 @@ export function CoursePath() {
   }
 
   const lastLesson = lessons[lessons.length - 1];
-  const pathEditors = (
+  const pathEditors = archived ? null : (
     <AnimatePresence>
       {selectedAssessmentId &&
         assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
@@ -374,7 +379,7 @@ export function CoursePath() {
           <LazyLessonView
             courseId={courseId}
             lessonId={lessons[0].id}
-            showStudyNow
+            showStudyNow={!archived}
             practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
@@ -431,18 +436,18 @@ export function CoursePath() {
           the screen rather than below a stack of single-control rows. */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <Link
-          to="/"
+          to={archived ? '/archived' : '/'}
           className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
         >
           <ChevronLeftIcon width={16} height={16} />
-          All courses
+          {archived ? 'Archived courses' : 'All courses'}
         </Link>
         <div className="flex min-w-0 items-center gap-3">
-          <CourseTabs courseId={courseId ?? ''} />
+          {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId ?? ''} />}
           {/* Workspace mode governs the path and lessons, so it stays beside the
               content navigation rather than moving into CourseTabs, which is shared
               across course surfaces that do not have an authoring state. */}
-          {!canEditLessons(course) ? (
+          {archived ? null : !canEditLessons(course) ? (
             <span className="hidden text-xs text-ink-faint sm:inline">
               Authoring is locked for shared courses
             </span>
@@ -458,7 +463,7 @@ export function CoursePath() {
       {/* A single upcoming assessment is already named by the card's eyebrow and counted
           by its days-to-go pill, so the strip would be a third copy of one date. It earns
           its row only when there is a choice of assessment to select between. */}
-      {assessments.length > 1 && (
+      {!archived && assessments.length > 1 && (
         <UpcomingAssessmentsStrip
           assessments={assessments}
           now={now}
@@ -508,51 +513,55 @@ export function CoursePath() {
             unseenCount={unseenCount}
             lessonProgress={{ reached, total }}
           />
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={!studyTarget}
-              onClick={() => {
-                if (!studyTarget) return;
-                // Raises the study sheet rather than navigating: the choice is one tap
-                // to open and one to dismiss, and dismissing leaves this page in place.
-                openStudySheet(courseId);
-              }}
-            >
-              <PlayIcon width={18} height={18} />
-              Study
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              disabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0}
-              onClick={() => navigate(`/course/${courseId}/study?review=due`)}
-            >
-              Practice Now
-            </Button>
-            {pendingUpdate && (
-              <Link
-                to={`/course/${courseId}/updates`}
-                className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+          {archived ? (
+            <ArchivedCourseRestoreNotice />
+          ) : (
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={!studyTarget}
+                onClick={() => {
+                  if (!studyTarget) return;
+                  // Raises the study sheet rather than navigating: the choice is one tap
+                  // to open and one to dismiss, and dismissing leaves this page in place.
+                  openStudySheet(courseId);
+                }}
               >
-                Review updates
-              </Link>
-            )}
-            {/* The due count already leads the stat pills above, so this line
-                only speaks when there is something the pills don't say. */}
-            {(courseCards.length === 0 || dueCardCount === 0) && (
-              <p className="text-sm text-ink-faint">
-                {courseCards.length === 0
-                  ? 'Add cards to begin studying.'
-                  : 'Nothing due — next lesson available.'}
-              </p>
-            )}
-          </div>
+                <PlayIcon width={18} height={18} />
+                Study
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0}
+                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+              >
+                Practice Now
+              </Button>
+              {pendingUpdate && (
+                <Link
+                  to={`/course/${courseId}/updates`}
+                  className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+                >
+                  Review updates
+                </Link>
+              )}
+              {/* The due count already leads the stat pills above, so this line
+                  only speaks when there is something the pills don't say. */}
+              {(courseCards.length === 0 || dueCardCount === 0) && (
+                <p className="text-sm text-ink-faint">
+                  {courseCards.length === 0
+                    ? 'Add cards to begin studying.'
+                    : 'Nothing due — next lesson available.'}
+                </p>
+              )}
+            </div>
+          )}
           {/* Quiet pointer to where Study will draw from — the "you are here"
               lesson (currentLessonNode), reusing the same node the path
               highlights below rather than recomputing it. */}
-          {nextStudyLabel && (
+          {!archived && nextStudyLabel && (
             <p className="mt-1.5 break-words text-xs text-ink-faint">Next: {nextStudyLabel}</p>
           )}
         </div>
@@ -613,7 +622,7 @@ export function CoursePath() {
               key={node.id}
               node={node}
               isLast={i === visibleNodes.length - 1}
-              current={node.id === currentNodeId}
+              current={!archived && node.id === currentNodeId}
               lockHint={
                 node.nodeType === 'lesson'
                   ? lockHintFor(course, node.lesson.id, effectiveDates)
@@ -623,6 +632,7 @@ export function CoursePath() {
                 node.nodeType === 'lesson' ? detailForLesson(node.lesson.id) : undefined
               }
               onLessonClick={(lessonId) => navigate(`/course/${courseId}/lesson/${lessonId}`)}
+              archivedInspection={archived}
               practiceProgress={
                 node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
                   ? practiceProgressByKey.get(node.nodeKey)
@@ -633,25 +643,35 @@ export function CoursePath() {
                   ? practiceProgressByKey.get(node.nodeKey)?.assessment
                   : undefined
               }
-              onPracticeClick={(practiceNode) =>
-                navigate(
-                  `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
-                )
+              onPracticeClick={
+                archived
+                  ? undefined
+                  : (practiceNode) =>
+                      navigate(
+                        `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
+                      )
               }
-              onPracticeAssessmentClick={(assessmentId) =>
-                navigate(
-                  `/course/${courseId}/study?assessmentId=${encodeURIComponent(assessmentId)}`,
-                )
+              onPracticeAssessmentClick={
+                archived
+                  ? undefined
+                  : (assessmentId) =>
+                      navigate(
+                        `/course/${courseId}/study?assessmentId=${encodeURIComponent(assessmentId)}`,
+                      )
               }
-              onCheckpointClick={(assessmentId) => {
-                const assessment = assessments.find((item) => item.id === assessmentId);
-                if (!assessment) return;
-                if (authoring) {
-                  setAssessmentEditor({ assessment });
-                } else {
-                  setSelectedAssessmentId(assessmentId);
-                }
-              }}
+              onCheckpointClick={
+                archived
+                  ? undefined
+                  : (assessmentId) => {
+                      const assessment = assessments.find((item) => item.id === assessmentId);
+                      if (!assessment) return;
+                      if (authoring) {
+                        setAssessmentEditor({ assessment });
+                      } else {
+                        setSelectedAssessmentId(assessmentId);
+                      }
+                    }
+              }
               onPracticeEdit={
                 authoring
                   ? (pn) => pn.practiceNode && setPracticeEditor({ node: pn.practiceNode })
@@ -659,7 +679,7 @@ export function CoursePath() {
               }
               authoring={authoring}
               lessonReorder={
-                node.nodeType === 'lesson'
+                !archived && node.nodeType === 'lesson'
                   ? lessonReorder.interactionFor(node.lesson.id)
                   : undefined
               }

@@ -185,6 +185,31 @@ beforeEach(() => {
 });
 
 describe('LessonView Study mode', () => {
+  it('keeps an archived single-lesson course read-only', () => {
+    mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
+
+    const { container } = renderInline(true, true, {
+      onAddPractice: vi.fn(),
+      onAddCheckpoint: vi.fn(),
+    });
+
+    expect(screen.getByText('Archived course')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
+      'href',
+      '/archived',
+    );
+    expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-lesson-workspace-mode="study"]')).not.toBeNull();
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    expect(mockUpdateLesson).not.toHaveBeenCalled();
+  });
+
   it('offers the shared Author mode on a normal lesson route', () => {
     renderPage();
 

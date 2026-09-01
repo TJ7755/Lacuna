@@ -27,11 +27,12 @@ export function CheckpointNode({ assessment, onClick, authoring = false }: Check
         <motion.button
           type="button"
           onClick={onClick}
+          disabled={onClick === undefined}
           transition={
             m === 0 ? { duration: 0 } : { type: 'spring', stiffness: 600, damping: 28 * m }
           }
-          className="flex h-12 w-12 rotate-45 items-center justify-center rounded-md border-2 border-accent/60 bg-accent-soft text-accent-ink transition-colors hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-          aria-label={`${authoring ? 'Edit' : 'Open'} checkpoint: ${assessment.name}`}
+          className="flex h-12 w-12 rotate-45 items-center justify-center rounded-md border-2 border-accent/60 bg-accent-soft text-accent-ink transition-colors enabled:hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-default"
+          aria-label={`${authoring ? 'Edit' : onClick ? 'Open' : 'Archived'} checkpoint: ${assessment.name}`}
           title={authoring ? 'Edit checkpoint' : undefined}
         >
           <span className="-rotate-45">

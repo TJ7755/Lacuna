@@ -404,8 +404,14 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Ready counts exclude reviews scheduled in the future.
 - [ ] Right-click and keyboard context-menu invocation both open course actions.
 - [ ] Archiving removes the course from the active dashboard and Undo restores it reliably.
-- [ ] Archived courses never appear in the ordinary course list; the **Archived** navigation item
-      opens their restoration page and Unarchive returns a course to active study.
+- [ ] Archived courses never appear in the ordinary course list; the fixed **Archived** item beneath
+      the **Courses** heading remains visible with a long course list, opens their restoration page,
+      and Unarchive returns a course to active study.
+- [ ] An archived-course card opens its existing path in read-only mode; every lesson opens for
+      inspection, including previously locked lessons, without exposing study or authoring controls.
+- [ ] Direct archived-course bookmarks to Cards, Questions, Settings, update review, editors,
+      conductors and Learn sessions return to the read-only course overview; course analytics remains
+      inspectable until the separate Unarchive action restores the active routes.
 - [ ] After a final exam passes, **Ask me** offers archive, a new exam date and continued revision;
       the automatic and keep-revising preferences act without being triggered by checkpoints.
 - [ ] The study streak and review heatmap update after a completed review.

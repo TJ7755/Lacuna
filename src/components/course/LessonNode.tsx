@@ -35,6 +35,8 @@ interface LessonNodeProps {
   detail?: LessonNodeDetail;
   /** Allows a curriculum-locked lesson to open for authoring without changing its status. */
   authoring?: boolean;
+  /** Allows archived lesson content to open without enabling authoring or study. */
+  archivedInspection?: boolean;
   /** Edit-mode path reordering handlers. Course Settings remains the fallback. */
   reorder?: LessonReorderInteraction;
 }
@@ -58,13 +60,14 @@ export function LessonNode({
   lockHint,
   detail,
   authoring = false,
+  archivedInspection = false,
   reorder,
 }: LessonNodeProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
   const locked = status === 'locked';
-  const interactive = (!locked || authoring) && onClick !== undefined;
+  const interactive = (!locked || authoring || archivedInspection) && onClick !== undefined;
   const isExtension = lesson.isExtension;
   const here = current && status === 'available';
 
@@ -103,13 +106,13 @@ export function LessonNode({
           type="button"
           onClick={interactive ? onClick : undefined}
           disabled={!interactive}
-          aria-disabled={(locked && !authoring) || undefined}
+          aria-disabled={(locked && !authoring && !archivedInspection) || undefined}
           aria-label={locked && authoring ? `${lesson.name}, locked for study` : lesson.name}
           aria-describedby={reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined}
           aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
           aria-roledescription={reorder?.enabled ? 'sortable lesson' : undefined}
           title={
-            locked
+            locked && !archivedInspection
               ? authoring
                 ? 'Locked for study; open to edit'
                 : lockHint
@@ -175,9 +178,7 @@ export function LessonNode({
           ) : isExtension ? (
             <SparklesIcon width={22} height={22} />
           ) : (
-            <span className="text-base font-semibold tabular-nums">
-              {lesson.orderIndex + 1}
-            </span>
+            <span className="text-base font-semibold tabular-nums">{lesson.orderIndex + 1}</span>
           )}
         </motion.button>
       </div>

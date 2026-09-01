@@ -32,6 +32,10 @@ import { CourseTabs } from '../components/course/CourseTabs';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
+import {
+  ArchivedCourseBadge,
+  ArchivedCourseRestoreNotice,
+} from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
 import {
   canEditLessons,
@@ -139,8 +143,9 @@ export function LessonView({
 
   // Back link: course path when navigating normally; dashboard when rendered inline
   // for a single-lesson course (no path to navigate back to).
-  const backTo = isInline ? '/' : `/course/${courseId}`;
-  const backLabel = isInline ? 'Dashboard' : 'Course';
+  const archived = course.archived === true;
+  const backTo = archived ? '/archived' : isInline ? '/' : `/course/${courseId}`;
+  const backLabel = archived ? 'Archived courses' : isInline ? 'Dashboard' : 'Course';
 
   // Header stats, scoped to this lesson's own cards (reusing the same FSRS
   // helpers CoursePath uses at course scope — see CoursePath.tsx and
@@ -152,8 +157,8 @@ export function LessonView({
     examUrgent,
     dueCardCount: lessonDueCount,
   } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now);
-  const viewMode = resolveLessonViewMode(course);
-  const authoring = isLessonAuthoringMode(course);
+  const viewMode = archived ? 'study' : resolveLessonViewMode(course);
+  const authoring = !archived && isLessonAuthoringMode(course);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
@@ -167,8 +172,12 @@ export function LessonView({
           {backLabel}
         </Link>
         <div className="flex min-w-0 items-center gap-3">
-          {courseId && <CourseTabs courseId={courseId} />}
-          {!canEditLessons(course) ? (
+          {archived ? (
+            <ArchivedCourseBadge />
+          ) : courseId ? (
+            <CourseTabs courseId={courseId} />
+          ) : null}
+          {archived ? null : !canEditLessons(course) ? (
             <Link
               to={`/course/${courseId}/settings`}
               className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
@@ -251,7 +260,9 @@ export function LessonView({
             totalCards={lessonCards.length}
             unseenCount={lessonCards.filter((c) => c.lastReviewed === null || c.state === 0).length}
           />
-          {showStudyNow && (
+          {archived ? (
+            <ArchivedCourseRestoreNotice />
+          ) : showStudyNow ? (
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <Button
                 variant="primary"
@@ -279,7 +290,7 @@ export function LessonView({
                 </p>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </CourseHeader>
       {lesson.description && <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>}
