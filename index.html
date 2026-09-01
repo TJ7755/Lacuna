@@ -14,10 +14,10 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://lacuna-relay.vercel.app;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' blob: data:; connect-src 'self' https://lacuna-relay.vercel.app; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;"
     />
-    <!-- The sync relay is a separate origin; connect-src must list it. Keep this in step with
-         src/sync/pairing.ts DEFAULT_RELAY_URL and the electron/main.ts header. -->
+    <!-- Keep the relay and video origins in step with src/sync/pairing.ts and
+         electron/securityPolicy.ts. -->
     <title>Lacuna</title>
     <script>
       // Apply the stored theme before first paint to avoid a flash of the wrong colour scheme.

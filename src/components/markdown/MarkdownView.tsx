@@ -24,9 +24,9 @@ interface MarkdownViewProps {
   className?: string;
   /**
    * Opt-in to embed-aware rendering: collapsible `<details>` blocks and YouTube /
-   * Vimeo video embeds. Must only be set for trusted content such as lesson notes.
-   * Card rendering always uses the default (false) — do not set this on untrusted
-   * or imported content.
+   * Vimeo video embeds. Lesson notes use this path, including notes imported from
+   * shared courses, so its iframe sanitisation must remain strict. Card rendering
+   * uses the default (false).
    */
   allowEmbeds?: boolean;
   /** Play embedded card audio when this rendered face is mounted in Learn mode. */

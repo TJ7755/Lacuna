@@ -625,6 +625,12 @@ modes resolved by `src/course/lessonViewMode.ts`:
   `isLessonAuthoringMode` and is absent in Study mode. Settings, Cards, Questions, Analytics and
   Quick search are not.
 
+Embed-aware note Markdown recognises bare YouTube watch/short URLs and Vimeo URLs only, then emits
+iframes on `https://www.youtube-nocookie.com` and `https://player.vimeo.com`. The sanitiser accepts
+no other iframe source. The web CSP lists exactly those two remote `frame-src` origins; the packaged
+Electron policy lists the same origins alongside its local `'self'`, `app:` and `file:` sources.
+Notes imported through course sharing use this same strictly sanitised path.
+
 Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
 site-wide default. It is set directly via one compact Study/Author workspace control
 (`LessonViewModeToggle`, `src/components/course/`) beside course navigation on the Course Path and
@@ -2808,10 +2814,12 @@ than exposing GitHub's updater metadata as user choices.
 ### Architecture
 
 - **Main process** (`electron/main.ts`): creates a frameless `BrowserWindow`,
-  injects Cross-Origin Isolation headers (COOP/COEP) required by the FSRS WASM
-  trainer, registers a custom `app://` protocol for production builds, repairs CORS only for the
-  exact default sync relay when a managed-device intermediary strips that response header, and
-  manages window lifecycle (single-instance lock, close/minimise/maximise).
+  injects Cross-Origin Isolation headers (COOP/COEP) required by the FSRS WASM trainer and the
+  packaged renderer CSP only for Lacuna's trusted renderer URL, registers a custom `app://`
+  protocol for production builds, repairs CORS only for the exact default sync relay when a
+  managed-device intermediary strips that response header, and manages window lifecycle
+  (single-instance lock, close/minimise/maximise). Remote subframes keep their own response
+  headers; Lacuna does not overwrite provider CSP or isolation policy.
 - **Preload** (`electron/preload.ts`): exposes a minimal `electronAPI` via
   `contextBridge` for platform detection, window controls and narrow, schema-validated data-MCP and
   local-AI IPC surfaces. Raw Electron IPC and native sockets are never exposed to the renderer.

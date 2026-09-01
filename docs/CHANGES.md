@@ -1,5 +1,24 @@
 # Lacuna — next beta
 
+## Video embed content-security policy
+
+- Added the two existing note-video providers to the web and packaged-Electron `frame-src`
+  policies: `www.youtube-nocookie.com` and `player.vimeo.com`. No other remote frame origin is
+  allowed, and Electron retains its existing `'self'`, `app:` and `file:` allowances.
+- Moved the packaged renderer CSP into the testable Electron security-policy boundary. COOP,
+  COEP, CSP and the `app://` CORS header now apply only to Lacuna's trusted renderer URL, so a
+  provider subframe keeps its own response headers. The exact default-relay CORS repair remains
+  the sole narrow remote-response exception.
+- Corrected `MarkdownView`'s contract: imported notes also use embed-aware rendering. Its anchored
+  provider URL checks and sanitisation are therefore the security boundary, not an assumption that
+  all notes are locally authored.
+- Added hermetic web and Electron note-authoring tests. Both create and save a note containing the
+  two provider URLs, route the exact embed documents to deterministic HTML, and assert marker text
+  inside each iframe document rather than merely checking that iframe shells exist.
+
+**Checks:** focused Electron policy unit test (red to green); focused Chromium and Electron
+Playwright authoring flows; root typecheck, lint and asset build.
+
 ## Quiet root unit tests
 
 - Removed avoidable test-suite noise from mocked button refs, React Router future-flag opt-ins,
