@@ -13,6 +13,9 @@
 
 ### Desktop AI connection recovery
 
+- Disabled Chromium GPU initialisation for the headless desktop MCP companion processes. This
+  avoids native Windows GPU-process failures before the companion's JavaScript entry point can
+  start, while leaving the main Lacuna renderer unchanged.
 - Made the native AI broker wait briefly for an enabled renderer which is still mounting instead
   of rejecting the companion's first request immediately. A renderer which never becomes ready
   still fails within five seconds with an actionable connection error.

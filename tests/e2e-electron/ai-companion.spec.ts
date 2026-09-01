@@ -47,7 +47,7 @@ async function startCompanion(
   let stderr = '';
   const transport = new StdioClientTransport({
     command: executablePath,
-    args: [root, '--ai-companion', `--user-data-dir=${profile}`],
+    args: [root, '--ai-companion', '--disable-gpu', `--user-data-dir=${profile}`],
     stderr: 'pipe',
   });
   transport.stderr?.setEncoding('utf8');
