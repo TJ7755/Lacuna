@@ -48,7 +48,12 @@ async function startCompanion(
   const nativeLogPath = path.join(profile, `${name.replaceAll(' ', '-')}.log`);
   const transport = new StdioClientTransport({
     command: executablePath,
-    args: [root, '--ai-companion', `--user-data-dir=${profile}`],
+    args: [
+      root,
+      '--ai-companion',
+      ...(process.platform === 'win32' ? ['--disable-gpu'] : []),
+      `--user-data-dir=${profile}`,
+    ],
     env: {
       ELECTRON_ENABLE_LOGGING: '1',
       ELECTRON_LOG_FILE: nativeLogPath,
@@ -61,12 +66,18 @@ async function startCompanion(
     process.stderr.write(`[Lacuna AI companion] ${chunk}`);
   });
   const client = new Client({ name, version: '1.0.0' });
+  const connecting = client.connect(transport);
+  const child = (transport as unknown as {
+    _process?: { exitCode: number | null; signalCode: NodeJS.Signals | null };
+  })._process;
   try {
-    await client.connect(transport);
+    await connecting;
   } catch (error) {
     const nativeLog = await readFile(nativeLogPath, 'utf8').catch(() => '');
-    const detail = [stderr.trim(), nativeLog.trim()].filter(Boolean).join('\n') ||
+    const exit = `exitCode=${child?.exitCode ?? 'unknown'} signal=${child?.signalCode ?? 'none'}`;
+    const output = [stderr.trim(), nativeLog.trim()].filter(Boolean).join('\n') ||
       'The companion wrote no diagnostic output.';
+    const detail = `${exit}\n${output}`;
     throw new Error(`The Lacuna AI companion failed to start: ${detail}`, { cause: error });
   }
   return client;
