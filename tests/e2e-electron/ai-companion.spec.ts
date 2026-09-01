@@ -1,4 +1,4 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -45,9 +45,14 @@ async function startCompanion(
   name: string,
 ): Promise<Client> {
   let stderr = '';
+  const nativeLogPath = path.join(profile, `${name.replaceAll(' ', '-')}.log`);
   const transport = new StdioClientTransport({
     command: executablePath,
-    args: [root, '--ai-companion', '--disable-gpu', `--user-data-dir=${profile}`],
+    args: [root, '--ai-companion', `--user-data-dir=${profile}`],
+    env: {
+      ELECTRON_ENABLE_LOGGING: '1',
+      ELECTRON_LOG_FILE: nativeLogPath,
+    },
     stderr: 'pipe',
   });
   transport.stderr?.setEncoding('utf8');
@@ -59,7 +64,9 @@ async function startCompanion(
   try {
     await client.connect(transport);
   } catch (error) {
-    const detail = stderr.trim() || 'The companion wrote no diagnostic output.';
+    const nativeLog = await readFile(nativeLogPath, 'utf8').catch(() => '');
+    const detail = [stderr.trim(), nativeLog.trim()].filter(Boolean).join('\n') ||
+      'The companion wrote no diagnostic output.';
     throw new Error(`The Lacuna AI companion failed to start: ${detail}`, { cause: error });
   }
   return client;

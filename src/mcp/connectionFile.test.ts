@@ -56,11 +56,7 @@ describe('companion connection metadata', () => {
       portableExecutableFile: 'D:\\Apps\\Lacuna-Portable.exe',
     }, '--ai-companion')).toEqual({
       command: 'D:\\Apps\\Lacuna-Portable.exe',
-      args: [
-        '--ai-companion',
-        '--disable-gpu',
-        '--user-data-dir=C:\\Users\\managed\\AppData\\Roaming\\Lacuna',
-      ],
+      args: ['--ai-companion', '--user-data-dir=C:\\Users\\managed\\AppData\\Roaming\\Lacuna'],
     });
   });
 
@@ -74,7 +70,7 @@ describe('companion connection metadata', () => {
       appImageFile: '/home/student/Applications/Lacuna.AppImage',
     }, '--ai-companion')).toEqual({
       command: '/home/student/Applications/Lacuna.AppImage',
-      args: ['--ai-companion', '--disable-gpu', '--user-data-dir=/home/student/.config/Lacuna'],
+      args: ['--ai-companion', '--user-data-dir=/home/student/.config/Lacuna'],
     });
   });
 
@@ -87,12 +83,7 @@ describe('companion connection metadata', () => {
       userDataPath: '/Users/student/Library/Application Support/Lacuna',
     }, '--mcp-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-      args: [
-        '/repo',
-        '--mcp-companion',
-        '--disable-gpu',
-        '--user-data-dir=/Users/student/Library/Application Support/Lacuna',
-      ],
+      args: ['/repo', '--mcp-companion', '--user-data-dir=/Users/student/Library/Application Support/Lacuna'],
     });
   });
 
@@ -107,21 +98,11 @@ describe('companion connection metadata', () => {
 
     expect(companionLaunchCommand(environment, '--ai-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-      args: [
-        '/repo',
-        '--ai-companion',
-        '--disable-gpu',
-        '--user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
-      ],
+      args: ['/repo', '--ai-companion', '--user-data-dir=/tmp/lacuna-v022-manual.Q3lViI'],
     });
     expect(companionLaunchCommand(environment, '--mcp-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-      args: [
-        '/repo',
-        '--mcp-companion',
-        '--disable-gpu',
-        '--user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
-      ],
+      args: ['/repo', '--mcp-companion', '--user-data-dir=/tmp/lacuna-v022-manual.Q3lViI'],
     });
   });
 });

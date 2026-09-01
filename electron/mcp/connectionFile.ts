@@ -51,7 +51,6 @@ export function companionLaunchCommand(
     command,
     args: [
       ...(environment.isPackaged ? [mode] : [environment.appPath, mode]),
-      '--disable-gpu',
       `--user-data-dir=${environment.userDataPath}`,
     ],
   };

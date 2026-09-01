@@ -465,9 +465,3 @@ The application shell uses `overscroll-behavior-x: none` and a left-edge pointer
 mobile navigation where the browser permits it. Chromium and Firefox can suppress horizontal
 history overscroll, but iOS Safari may intercept its native edge-back gesture before page pointer
 events arrive. Do not claim that a web page can reliably override that operating-system gesture.
-
-## Desktop MCP companions do not need Chromium graphics
-
-Advertised `--mcp-companion` and `--ai-companion` launch commands include `--disable-gpu`.
-These processes are stdio bridges with no window; starting a GPU subprocess can crash before their
-JavaScript entry point runs on Windows hosts without a usable graphics session.
