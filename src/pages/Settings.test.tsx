@@ -257,6 +257,14 @@ describe('Settings', () => {
     });
   });
 
+  it('keeps a consistent gap after every settings group', () => {
+    render(<Settings />);
+
+    document.querySelectorAll('section[id^="settings-group-"]').forEach((group) => {
+      expect(group).toHaveClass('mb-8');
+    });
+  });
+
   it('renders task groups, sections and subsections at successive heading levels', () => {
     render(<Settings />);
 

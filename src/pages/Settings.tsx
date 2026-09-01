@@ -168,7 +168,7 @@ function SettingsGroup({
     <section
       id={id}
       aria-labelledby={headingId}
-      className="scroll-mt-20 first:mt-0 [&>section]:scroll-mt-20"
+      className="mb-8 scroll-mt-20 first:mt-0 [&>section]:scroll-mt-20"
     >
       <div className="mb-5 border-b border-line pb-4">
         <h2 id={headingId} className="font-display text-2xl tracking-tight">
