@@ -32,6 +32,7 @@ const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8')
 const updaterServiceSource = readFileSync(resolve(root, 'electron/updaterService.ts'), 'utf8');
 const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
 const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8');
+const securityWorkflow = readFileSync(resolve(root, '.github/workflows/security.yml'), 'utf8');
 const prepareElectronBuild = readFileSync(
   resolve(root, 'scripts/prepare-electron-build.mjs'),
   'utf8',
@@ -226,12 +227,38 @@ describe('v0.2.3 release configuration', () => {
   });
 
   it('uses Node 24 action majors throughout CI and release workflows', () => {
-    for (const workflow of [ciWorkflow, releaseWorkflow]) {
+    for (const workflow of [ciWorkflow, releaseWorkflow, securityWorkflow]) {
       expect(workflow).toContain('actions/checkout@v7');
       expect(workflow).not.toMatch(/actions\/checkout@v[1-6](?:\D|$)/);
       expect(workflow).not.toMatch(/actions\/(?:upload|download)-artifact@v[1-6](?:\D|$)/);
     }
     expect(releaseWorkflow).toContain('actions/upload-artifact@v7');
     expect(releaseWorkflow).toContain('actions/download-artifact@v8');
+  });
+
+  it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {
+    expect(securityWorkflow).toContain('push:');
+    expect(securityWorkflow).toContain('pull_request:');
+    expect(securityWorkflow).toContain('schedule:');
+    expect(securityWorkflow).toContain('branches: [master, main]');
+    expect(securityWorkflow).toContain("cron: '31 3 * * 1'");
+    expect(securityWorkflow).toMatch(/^permissions:\n {2}contents: read/m);
+
+    expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(3);
+    expect(securityWorkflow.match(/bun audit --audit-level=high/g)).toHaveLength(3);
+    expect(securityWorkflow).toContain('working-directory: relay');
+    expect(securityWorkflow).toContain('working-directory: tooling/handwriting-maths');
+    expect(securityWorkflow).not.toContain('continue-on-error: true');
+    expect(securityWorkflow).not.toContain('|| true');
+    expect(securityWorkflow).not.toContain('bun audit --ignore');
+
+    expect(securityWorkflow).toContain('language: [javascript-typescript, actions]');
+    expect(securityWorkflow).toContain('github/codeql-action/init@v4');
+    expect(securityWorkflow).toContain('github/codeql-action/analyze@v4');
+    expect(securityWorkflow).toContain('build-mode: none');
+    expect(securityWorkflow).toContain('security-events: write');
+    expect(securityWorkflow).toContain('actions: read');
+    expect(securityWorkflow).toContain('contents: read');
+    expect(securityWorkflow).not.toContain('pull_request_target');
   });
 });

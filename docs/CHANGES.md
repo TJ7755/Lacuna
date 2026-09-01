@@ -1,5 +1,19 @@
 # Lacuna — next beta
 
+## Security analysis and audit gates
+
+- Added a least-privilege security workflow for pull requests and pushes to `master`/`main`, plus a
+  weekly scheduled run. Root, relay and handwriting-maths each install with Bun 1.4.0's frozen lock
+  file and fail on high or critical `bun audit` findings; the existing moderate Router 6 findings
+  remain visible and are deliberately left to a separately owned major-version migration.
+- Added CodeQL v4 analysis for JavaScript/TypeScript and GitHub Actions with `build-mode: none`,
+  read-only checkout permissions and only the `security-events: write` permission required to
+  publish analysis results. Documented the ownership, threshold and the GitHub settings that cannot
+  be proved from repository files in `docs/maintenance/security.md`.
+
+**Checks:** security-workflow configuration regression; YAML structure and diff checks; frozen Bun
+installs and high-severity audits in the root, relay and handwriting-maths workspaces.
+
 ## Dependency security refresh
 
 - Refreshed the root, relay and handwriting lockfiles with Bun 1.4.0 while preserving existing
