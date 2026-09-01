@@ -1,4 +1,13 @@
-# Lacuna — version 0.2.3
+# Lacuna — next beta
+
+## Dashboard polish
+
+- Removed the decorative dashboard eyebrow and tightened the header's vertical rhythm around its
+  actual title.
+- Centred the Lacuna mark with the rest of the no-course empty state instead of leaving it aligned
+  to the text block's left edge.
+
+**Checks:** red-to-green dashboard component regressions; web typecheck and focused lint.
 
 ## 0.2.3 beta — archived courses and desktop AI recovery
 
