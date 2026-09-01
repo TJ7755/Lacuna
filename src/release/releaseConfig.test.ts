@@ -64,6 +64,12 @@ describe('v0.2.2 release configuration', () => {
     expect(builderConfig).toMatch(/mac:[\s\S]*?icon: electron\/assets\/icon\.png/);
   });
 
+  it('builds the Windows icon from the generated desktop artwork', () => {
+    const windowsConfig = builderConfig.match(/^win:\n([\s\S]*?)^nsis:/m)?.[1] ?? '';
+    expect(windowsConfig).toContain('icon: electron/assets/icon.png');
+    expect(existsSync(resolve(root, 'electron/assets/icon.ico'))).toBe(false);
+  });
+
   it('shows immediate branded feedback while the Windows portable build extracts', () => {
     expect(builderConfig).toMatch(
       /portable:\s*[\s\S]*?splashImage:\s*electron\/assets\/portable-splash\.bmp/,

@@ -1,5 +1,16 @@
 # Lacuna — version 0.2.2
 
+## Unreleased
+
+### Windows application icon integrity
+
+- Removed the stale hand-authored Windows ICO whose every embedded size omitted the bright left
+  Lacuna stroke. Windows packaging now gives Electron Builder the same generated PNG used by the
+  other desktop targets and lets its platform converter produce the executable icon.
+
+**Checks:** red-to-green Windows release-configuration regression; direct Electron Builder icon
+conversion with a pixel assertion for the previously missing stroke.
+
 ## 0.2.2 beta — local desktop AI companion
 
 ### Local desktop AI transport

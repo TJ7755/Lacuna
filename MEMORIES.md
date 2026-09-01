@@ -22,6 +22,12 @@ Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and uns
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.
 
+## Desktop packages share one generated icon source
+
+Windows, Linux and macOS packaging all consume `electron/assets/icon.png`; Electron Builder performs
+the platform conversion. Do not restore a separately maintained `icon.ico`: the old binary drifted
+from the source artwork and silently shipped incomplete frames because nothing regenerated it.
+
 ## Windows portable startup begins before Electron exists
 
 electron-builder's portable target runs a silent NSIS extraction before launching Lacuna's
