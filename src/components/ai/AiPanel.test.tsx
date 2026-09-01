@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiSession, AiSessionSnapshot } from '../../ai/session/types';
 import { AiPanel } from './AiPanel';
 
@@ -32,7 +32,48 @@ function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
   };
 }
 
+beforeEach(() => {
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    value: undefined,
+  });
+  Object.defineProperty(navigator, 'userAgent', {
+    configurable: true,
+    value: 'Mozilla/5.0',
+  });
+});
+
 describe('AiPanel', () => {
+  it('waits for the native companion in Electron instead of starting relay pairing', () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true, ai: { listen: vi.fn() } },
+    });
+    const session = sessionWith();
+
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText('Waiting for terminal')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Terminal setup prompt' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
+    expect(session.pair).not.toHaveBeenCalled();
+  });
+
+  it('keeps the local setup path when the Electron preload failed to load', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 Electron/42.3.3',
+    });
+    const session = sessionWith();
+
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText(/desktop app connects locally/i)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/desktop integration failed to load/i);
+    expect(screen.queryByRole('button', { name: 'Connect terminal' })).not.toBeInTheDocument();
+    expect(session.pair).not.toHaveBeenCalled();
+  });
+
   it('starts pairing from the disconnected state and prevents messages', async () => {
     const session = sessionWith();
     render(<AiPanel session={session} onClose={vi.fn()} />);

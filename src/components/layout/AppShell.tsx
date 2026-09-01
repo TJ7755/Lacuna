@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Sidebar } from './Sidebar';
@@ -29,7 +29,6 @@ const AiPanel = lazy(loadAiPanel);
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 const AI_DESKTOP_QUERY = '(min-width: 1024px)';
-const SCROLL_POSITION_KEY = 'lacuna-shell-scroll-position';
 
 /** Sideways for a move between course sections, a crossfade otherwise.
  *  Fade must not write a transform, or `position: fixed` descendants pin to this wrapper. */
@@ -65,8 +64,6 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
   const location = useLocation();
-  const currentPathRef = useRef(location.pathname);
-  currentPathRef.current = location.pathname;
   const navigate = useNavigate();
   const outlet = useOutlet();
   const mainRef = useRef<HTMLElement>(null);
@@ -139,43 +136,11 @@ export function AppShell() {
     return () => window.clearTimeout(id);
   }, [collapsed]);
 
-  // The optional AI runtime historically sat above RouterProvider. Enabling or
-  // disabling it could therefore remount the whole shell and discard the page's
-  // scroll position. Keep that position across same-route remounts while retaining
-  // the deliberate top reset for ordinary navigation.
-  useLayoutEffect(() => {
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(SCROLL_POSITION_KEY) ?? 'null') as {
-        path?: string;
-        top?: number;
-      } | null;
-      if (saved?.path === location.pathname && typeof saved.top === 'number') {
-        mainRef.current?.scrollTo({ top: saved.top });
-        sessionStorage.removeItem(SCROLL_POSITION_KEY);
-      }
-    } catch {
-      sessionStorage.removeItem(SCROLL_POSITION_KEY);
-    }
-  }, [location.pathname]);
-
   useEffect(() => {
     const previousPath = mainRef.current?.dataset.routePath;
     if (previousPath && previousPath !== location.pathname) mainRef.current?.scrollTo({ top: 0 });
     if (mainRef.current) mainRef.current.dataset.routePath = location.pathname;
   }, [location.pathname]);
-
-  useEffect(() => {
-    const main = mainRef.current;
-    return () => {
-      const top = main?.scrollTop ?? 0;
-      if (top > 0) {
-        sessionStorage.setItem(
-          SCROLL_POSITION_KEY,
-          JSON.stringify({ path: currentPathRef.current, top }),
-        );
-      }
-    };
-  }, []);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
@@ -283,24 +248,26 @@ export function AppShell() {
           />
         </div>
 
-        <AnimatePresence initial={false}>
-          {aiOpen && aiSession && aiDesktop && (
-            <motion.div
-              key="ai-panel"
-              initial={motionEnabled ? { width: 0, opacity: 0 } : false}
-              animate={{ width: 400, opacity: 1 }}
-              exit={motionEnabled ? { width: 0, opacity: 0 } : undefined}
-              transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="hidden shrink-0 overflow-hidden lg:block"
-            >
-              <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
-                <Suspense fallback={null}>
-                  <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
-                </Suspense>
-              </AiPanelLoadBoundary>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {aiSession && (
+          <AnimatePresence initial={false}>
+            {aiOpen && aiDesktop && (
+              <motion.div
+                key="ai-panel"
+                initial={motionEnabled ? { width: 0, opacity: 0 } : false}
+                animate={{ width: 400, opacity: 1 }}
+                exit={motionEnabled ? { width: 0, opacity: 0 } : undefined}
+                transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="hidden shrink-0 overflow-hidden lg:block"
+              >
+                <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
+                  <Suspense fallback={null}>
+                    <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
+                  </Suspense>
+                </AiPanelLoadBoundary>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
 
         {!aiOpen && aiSettings.enabled && aiSession && (
           <div

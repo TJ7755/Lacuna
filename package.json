@@ -35,6 +35,7 @@
     "lint:fix": "eslint src electron --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\" \"*.cjs\" \".prettierrc\" \".eslintignore\"",
     "build:mcp": "node electron/mcp/build.mjs",
+    "smoke:ai-mcp": "node scripts/ai-mcp-smoke.mjs",
     "build:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp build",
     "ai:mcp": "node tooling/lacuna-ai-mcp/dist/index.js",
     "release:scenario": "node scripts/release-scenario.mjs",

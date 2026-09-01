@@ -581,7 +581,12 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           publish({ ...snapshot, connection, approval: null });
           if (active) startPolling();
           return { ok: true, data: { code: created.pairingCode, expiresAt: created.expiresAt } };
-        } catch {
+        } catch (error) {
+          if (error instanceof TypeError) {
+            return unavailable(
+              'Lacuna could not reach the relay. Check that this network permits lacuna-relay.vercel.app.',
+            );
+          }
           return internal('The terminal pairing session could not be created.');
         }
       });

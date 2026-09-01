@@ -104,7 +104,7 @@ describe('AiMemoryInspector', () => {
       includeExpired: false,
     });
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Include expired' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Include expired' }));
     await liveQuery.querier?.();
     expect(repo.search).toHaveBeenLastCalledWith({
       scope: { kind: 'all' },
@@ -123,10 +123,9 @@ describe('AiMemoryInspector', () => {
 
     const heading = screen.getByRole('heading', { name: 'Teaching memory' });
     const header = heading.parentElement?.parentElement;
-    expect(header).toHaveClass('grid', 'sm:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]');
+    expect(header).toHaveClass('grid', 'sm:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)]');
     expect(screen.getByPlaceholderText('Search memory').parentElement?.parentElement).toHaveClass(
-      'flex',
-      'sm:flex-row',
+      'space-y-3',
     );
   });
 });

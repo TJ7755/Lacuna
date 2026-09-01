@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
@@ -18,6 +18,8 @@ import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
+import { AiSessionProvider } from './ai/session/AiSessionContext';
+import type { EnabledAiSession } from './ai/session/EnabledAiRuntime';
 
 export { router } from './routes/router';
 
@@ -43,13 +45,39 @@ const EnabledAiRuntime = lazy(() =>
 
 function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
-  if (!settings.enabled) return <RouterWithQuotaWarning />;
+  const [session, setSession] = useState<EnabledAiSession | null>(null);
+  const sessionRef = useRef<EnabledAiSession | null>(null);
+  const handleSessionReady = useCallback((next: EnabledAiSession) => {
+    sessionRef.current = next;
+    setSession(next);
+  }, []);
+
+  useEffect(() => {
+    if (settings.enabled) return;
+    const current = sessionRef.current;
+    if (!current) return;
+    sessionRef.current = null;
+    setSession((existing) => (existing === current ? null : existing));
+    current.dispose();
+  }, [settings.enabled]);
+
+  useEffect(
+    () => () => {
+      sessionRef.current?.dispose();
+      sessionRef.current = null;
+    },
+    [],
+  );
+
   return (
-    <Suspense fallback={<RouterWithQuotaWarning />}>
-      <EnabledAiRuntime>
-        <RouterWithQuotaWarning />
-      </EnabledAiRuntime>
-    </Suspense>
+    <AiSessionProvider session={settings.enabled ? session : null}>
+      <Suspense fallback={null}>
+        {settings.enabled && (
+          <EnabledAiRuntime retainedSession={session} onSessionReady={handleSessionReady} />
+        )}
+      </Suspense>
+      <RouterWithQuotaWarning />
+    </AiSessionProvider>
   );
 }
 

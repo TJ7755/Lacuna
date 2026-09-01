@@ -1,6 +1,66 @@
 # Lacuna — version 0.2.1
 
-## Unreleased — Node 24 GitHub Actions
+## Unreleased
+
+### Local desktop AI transport
+
+- Added a packaged `--ai-companion` with only the five AI conversation tools. Electron now carries
+  AI requests over its authenticated Unix socket or Windows named pipe instead of the HTTPS relay,
+  so a managed network cannot redirect or block the desktop AI connection.
+- Kept web AI on the encrypted relay and kept device sync relay-dependent. The local transport does
+  not claim that model inference is local and does not bypass operating-system policies which ban
+  unsigned applications.
+- Kept the renderer authoritative for optional-AI enablement, one active companion, Stop, call-id
+  ledgering and exact one-shot approvals. Native requests fail closed before the renderer listener
+  mounts and after it disposes; long message waits are cancellable across disconnect and shutdown.
+- Replaced Electron's redundant pairing action with one copyable setup prompt containing the
+  installed or portable companion command. Browser builds retain their short-lived pairing code.
+- Corrected packaged companion discovery to advertise the stable Windows portable or Linux
+  AppImage wrapper rather than electron-builder's temporary extraction path.
+- Kept the renderer-owned local session above the hot-reloaded runtime listener so active waits and
+  ownership survive a brief React remount. Disabling AI still disposes the retained session
+  immediately, and real renderer navigation still fails closed.
+- Included Electron's active user-data directory in both generated companion commands. Development,
+  packaged and isolated-profile clients now read the same authenticated connection metadata as the
+  running Lacuna instance.
+- Routed companion signals, stdin closure and application quit through tested close-once shutdown
+  coordinators. Lacuna waits for native broker shutdown before completing application quit.
+- Restored an unclaimed local prompt to the editable draft when its owning companion channel dies,
+  rather than stopping the transcript item and silently discarding the text.
+- Prevented an Electron launch with a missing preload bridge from silently falling back to web
+  relay pairing; the AI panel instead reports that desktop integration failed to load.
+- Restyled user and assistant turns as compact, opposing chat bubbles while leaving errors,
+  approvals and action receipts on their specialised surfaces.
+- Made explicit Disconnect terminate the exact owning AI channel, and made genuine renderer loss
+  close every AI-purpose channel without touching the broader data companion.
+- Kept cancelled or timed-out write calls draining on their authenticated channel so a retry with
+  the same call ID reaches the renderer ledger instead of risking a duplicate mutation. Abandoned
+  drains now have a bounded cleanup deadline rather than leaking indefinitely.
+- Made Stop revoke pending approvals, temporary grants and replay authority immediately. An
+  unacknowledged Stop now expires at the claim lease without resurrecting the stopped prompt.
+
+**Checks:** red-to-green purpose-bound authentication, malformed-message, portable/profile command,
+renderer remount and shutdown lifecycle, single-owner, Stop and local/web runtime-selection
+regressions; native companion smoke; full unit, typecheck, lint and production builds; desktop and
+mobile browser screenshots; packaged Electron verification.
+
+### Desktop AI and Settings reliability
+
+- Kept the router and application shell mounted while optional AI starts or stops. Toggling AI no
+  longer reloads the current Settings view or loses its scroll position; the shell-level
+  scroll-restoration workaround has been removed because the remount itself no longer occurs.
+- Replaced the collapsed, markerless terminal setup disclosure with visible setup guidance and a
+  direct README link before pairing. A browser-level relay failure now explains that the network
+  must permit `lacuna-relay.vercel.app` instead of reporting an unspecified internal error.
+- Removed the repeated `Settings group` eyebrow from all five task groups. Reworked Teaching
+  memory filters into a wider responsive column and replaced the raw checkbox with Lacuna's
+  established toggle control.
+
+**Checks:** red-to-green router-identity and scroll regression; blocked-relay classification;
+terminal setup discoverability; Settings-group and Teaching memory layout regressions; focused
+unit suite, typecheck and lint.
+
+### Node 24 GitHub Actions
 
 - Updated checkout, upload-artifact and download-artifact across CI and release workflows to the
   current official Node 24 action majors. Permissions, job ordering and release artefact allowlists

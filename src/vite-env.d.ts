@@ -3,6 +3,7 @@
 import type { McpConsentRequest, McpConsentResponse, McpGrantNotice, McpInvokeRequest, McpInvokeResponse, McpScope, McpScopeResolutionRequest, McpScopeResolutionResponse } from './mcp/bridge/protocol';
 import type { McpGrant } from './mcp/types';
 import type { McpClientConnection } from './mcp/connections';
+import type { AiBridgeRequest, AiBridgeResult } from './ai/protocol';
 
 export {};
 
@@ -18,6 +19,14 @@ declare global {
       closeWindow: () => void;
       isMaximized: () => Promise<boolean>;
       onMaximizedChange: (callback: (isMaximized: boolean) => void) => (() => void);
+      ai?: {
+        readonly protocolVersion: 1;
+        disconnect: (channelId: string) => void;
+        listen: (
+          onRequest: (channelId: string, request: AiBridgeRequest) => Promise<AiBridgeResult>,
+          onDisconnected: (channelId: string) => void,
+        ) => () => void;
+      };
       /** The stdio MCP server hosted in the Electron main process (Arc 2, Task 9). */
       mcp?: {
         /** Current server status, for settings/McpSection.tsx (Task 11). */
@@ -27,6 +36,7 @@ declare global {
           toolSurfaceVersion: number;
           clients?: McpClientConnection[];
           companion?: { command: string; args: string[] };
+          aiCompanion?: { command: string; args: string[] };
         }>;
         getGrants: () => Promise<McpGrant[]>;
         grant: (courseId: string, scope: McpScope, label?: string) => Promise<McpGrant>;

@@ -34,6 +34,64 @@ describe('AiConversation', () => {
     expect(screen.getByText('Newton’s laws')).toBeInTheDocument();
   });
 
+  it('presents user messages on the right and assistant messages on a neutral surface', () => {
+    const items: AiConversationItem[] = [
+      {
+        kind: 'user',
+        id: 'user-1',
+        content: 'What should I revise next?',
+        createdAt: 1,
+        delivery: 'claimed',
+      },
+      {
+        kind: 'assistant',
+        id: 'assistant-1',
+        content: 'Start with the topics due today.',
+        createdAt: 2,
+        sources: [],
+      },
+    ];
+
+    render(<AiConversation items={items} />);
+
+    const userMessage = screen.getByRole('article', { name: 'Your message' });
+    const assistantMessage = screen.getByRole('article', { name: 'AI response' });
+    expect(userMessage).toHaveAttribute('data-speaker', 'user');
+    expect(userMessage).toHaveClass('ml-auto');
+    expect(assistantMessage).toHaveAttribute('data-speaker', 'assistant');
+    expect(assistantMessage).toHaveClass('mr-auto', 'bg-surface-raised');
+  });
+
+  it('keeps long and multiline messages constrained for the narrow panel', () => {
+    const items: AiConversationItem[] = [
+      {
+        kind: 'user',
+        id: 'user-long',
+        content: 'A'.repeat(240) + '\nwith a second line',
+        createdAt: 1,
+        delivery: 'claimed',
+      },
+      {
+        kind: 'assistant',
+        id: 'assistant-long',
+        content: 'A'.repeat(240) + '\nAnd a second line.',
+        createdAt: 2,
+        sources: [],
+      },
+    ];
+
+    render(<AiConversation items={items} />);
+
+    const userMessage = screen.getByRole('article', { name: 'Your message' });
+    const assistantMessage = screen.getByRole('article', { name: 'AI response' });
+    expect(userMessage).toHaveClass('max-w-[88%]');
+    expect(userMessage.querySelector('p.mt-1')).toHaveClass('break-words', 'whitespace-pre-wrap');
+    expect(assistantMessage).toHaveClass('max-w-[92%]');
+    expect(assistantMessage.querySelector('.prose-lacuna')).toHaveClass('break-words');
+    expect(screen.getByText(/with a second line/)).toBeInTheDocument();
+    expect(screen.getByText(/And a second line/)).toBeInTheDocument();
+  });
+
   it('scrolls the conversation log only when an item is appended', () => {
     const firstItem: AiConversationItem = {
       kind: 'assistant',

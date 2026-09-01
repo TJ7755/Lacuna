@@ -51,6 +51,20 @@ describe('relay AI session connection lifecycle', () => {
     expect(timers.repeat).toHaveBeenCalledOnce();
   });
 
+  it('reports a blocked relay connection as a network failure', async () => {
+    const { session, relay } = relaySessionHarness();
+    vi.mocked(relay.create).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await expect(session.pair()).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: 'unavailable',
+        message:
+          'Lacuna could not reach the relay. Check that this network permits lacuna-relay.vercel.app.',
+      },
+    });
+  });
+
   it('revokes a remote pairing session created after local disposal wins', async () => {
     const { session, relay, storage } = relaySessionHarness();
     let releaseCreate!: (created: typeof CREATED) => void;

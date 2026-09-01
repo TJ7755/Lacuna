@@ -3,7 +3,13 @@ import type { AiSession } from './types';
 
 const AiSessionContext = createContext<AiSession | null>(null);
 
-export function AiSessionProvider({ session, children }: { session: AiSession; children: ReactNode }) {
+export function AiSessionProvider({
+  session,
+  children,
+}: {
+  session: AiSession | null;
+  children: ReactNode;
+}) {
   return <AiSessionContext.Provider value={session}>{children}</AiSessionContext.Provider>;
 }
 

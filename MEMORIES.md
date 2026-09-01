@@ -2,11 +2,11 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
-## Pull-request review uses CodeRabbit
+## Pull-request review has no third-party bot gate
 
-CodeRabbit is the repository's automated reviewer; Copilot review output is irrelevant. CodeRabbit
-reviews the initial pull-request head but does not re-review follow-up fixes, so address its findings
-and rely on the normal CI gate before merging the updated head.
+The CodeRabbit trial expired and it is no longer part of the repository's review workflow. Use
+targeted independent agent review and the normal CI gates; do not hold a pull request waiting for a
+CodeRabbit review which will never arrive.
 
 ## Release publishing must whitelist packaged artefacts
 
@@ -53,12 +53,27 @@ Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all r
 preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
 and stale-chunk recovery must retain its one-reload guard.
 
-## Web AI chat is not the Electron data MCP server
+## AI and data MCP companions have different authority
 
-The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
-encrypted HTTP relay mailboxes. Its five-tool companion carries chat, Stop and disconnect events
-and asks the browser to execute approved domain tools. The Electron `--mcp-companion` uses local
-IPC; neither surface implies the transport or trust model of the other.
+The web AI panel uses short-lived codes and encrypted relay mailboxes; packaged Electron AI uses a
+purpose-bound local token and `--ai-companion`. Both expose only the five conversation tools and
+leave Stop, call ledgers and exact approvals in the renderer. Electron's separate
+`--mcp-companion` exposes the broader data surface with connection-scoped grants. Never merge those
+tool surfaces merely because they share the authenticated native broker.
+
+## Companion commands must preserve Electron's active profile
+
+The authenticated connection file lives beneath Electron's resolved user-data directory. Generated
+`--ai-companion` and `--mcp-companion` commands must therefore carry that exact directory; otherwise
+an isolated or custom-profile client starts successfully over stdio but searches the wrong profile
+for the native endpoint and falsely reports that Lacuna is not running.
+
+## Native AI validation must identify the real author
+
+A successful native claim and reply proves the transport, not that a terminal model authored the
+reply. A helper can label itself as any MCP client and return hard-coded text. For an end-to-end chat
+check, verify that the live model task itself owns the companion and calls the Lacuna tools; record a
+deterministic wire harness only as transport evidence.
 
 ## AI tool results need a real JSON wire projection
 
@@ -98,6 +113,12 @@ policies in step with `DEFAULT_RELAY_URL` in `src/sync/pairing.ts`. Managed-devi
 can strip the unusual `app://.` CORS value even when the live relay emits it correctly, so Electron
 also repairs response CORS for that exact relay and exact renderer origin; do not broaden that
 exception to arbitrary origins or disable `webSecurity`.
+
+On the managed Windows Enterprise test device, blocked outbound requests are redirected to
+`https://localhost:6543/block?...`. That address is the organisation's filtering software, not a
+Lacuna bridge. A CSP error naming it means the original relay request was intercepted; do not add
+localhost to `connect-src`, because doing so would weaken the boundary without making the relay
+reachable.
 
 ## Sync credentials are remembered on device by design
 

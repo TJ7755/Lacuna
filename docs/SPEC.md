@@ -2514,17 +2514,21 @@ its navigation cannot drift from the rendered groups.
   Lacuna; an independently mirrored folder file is not removed.
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
-- **AI** (desktop web only): a device-local opt-in which is off by default, plus an independent
+- **AI** (desktop layouts): a device-local opt-in which is off by default, plus an independent
   stored misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
   navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the
   existing navigation to its 72 px rail without changing the saved collapse preference; closing
   restores focus to the trigger. Below the breakpoint the inactive surface is absent.
 
-  The production `AiSession` adapter creates a ten-minute pairing code, persists the local
-  conversation and relay credentials across reload, and polls two encrypted directional HTTP
-  mailboxes. A deliberately running terminal task launches `tooling/lacuna-ai-mcp` as a standard
-  stdio MCP server and calls `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
-  `lacuna.reply` and `lacuna.disconnect`. Browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
+  The production `AiSession` boundary has two transports. The hosted web build creates a ten-minute
+  pairing code, persists the local conversation and relay credentials across reload, and polls two
+  encrypted directional HTTP mailboxes. Its deliberately running terminal task launches
+  `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead
+  launches the installed Lacuna executable with `--ai-companion` and attaches through the
+  authenticated native broker; it uses no pairing code, web relay or network listener. Both
+  transports expose exactly `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
+  `lacuna.reply` and `lacuna.disconnect`, with the enabled renderer retaining session and approval
+  authority. On the web transport, browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
   the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
   peer writes each mailbox. `If-Match` accepts either the backing-store ETag or a synthetic
   `"sha256:<lowercase ciphertext digest>"` generation. For a synthetic generation, the relay first
@@ -2567,8 +2571,11 @@ its navigation cannot drift from the rendered groups.
   the model is legitimately working. Quiet is deliberately not called disconnected because browser
   polling cannot prove that the terminal process has ended. If a claim expires or the terminal
   explicitly disconnects mid-run, Lacuna requeues or recovers the prompt and appends a persistent
-  failure record to the local transcript. Bounded failure identifiers include a fingerprint when
-  truncation is required, preserving uniqueness for long run and event identifiers.
+  failure record to the local transcript. If the native companion channel disappears before
+  claiming a queued prompt, Lacuna stops that transcript item and restores its text as an editable
+  draft for explicit resend rather than transferring it automatically to a new owner. Bounded
+  failure identifiers include a fingerprint when truncation is required, preserving uniqueness for
+  long run and event identifiers.
 
   Mailbox protocol v3 also carries typed tool calls, browser-owned responses and an immutable
   instruction bundle on every queued message. `buildAiInstructionBundle()` emits `teaching-v1`
@@ -2577,8 +2584,8 @@ its navigation cannot drift from the rendered groups.
   transfer; operational work, novel material and explicit direct-answer requests bypass that
   route. Every bundle retains grounding, conservative memory authorship, permission and Stop rules.
 
-  The browser uses
-  the shared executor over the existing Electron MCP tool registry: registry lookup, validation,
+  Both session adapters use the shared renderer executor over the existing Electron MCP tool
+  registry: registry lookup, validation,
   live scope resolution, repository execution and Undo capture have one implementation. Reads are
   implicit. Course-scoped writes require a connection/course grant; course creation uses a
   one-shot `write_call` approval bound to the exact call and validated-input digest; destructive
@@ -2767,7 +2774,8 @@ than exposing GitHub's updater metadata as user choices.
   exact default sync relay when a managed-device intermediary strips that response header, and
   manages window lifecycle (single-instance lock, close/minimise/maximise).
 - **Preload** (`electron/preload.ts`): exposes a minimal `electronAPI` via
-  `contextBridge` for platform detection, window controls and the narrow MCP IPC surface.
+  `contextBridge` for platform detection, window controls and narrow, schema-validated data-MCP and
+  local-AI IPC surfaces. Raw Electron IPC and native sockets are never exposed to the renderer.
 - **Titlebar** (`src/components/layout/Titlebar.tsx`): a custom React component which reserves the
   native traffic-light inset and omits duplicate controls on macOS. Windows and Linux render the
   custom minimise, maximise/restore and close controls; the restore glyph uses two complete,
@@ -2796,6 +2804,17 @@ stdio companion attaches to the already-running application through a token-auth
 user-local Unix-domain socket (macOS/Linux) or named pipe (Windows). There is no TCP/HTTP endpoint
 or browser MCP server. The normal renderer window must remain open because it owns IndexedDB.
 Modern SDK v2 and legacy stdio negotiation are both accepted.
+
+The broker has a second purpose-bound attachment for the optional desktop AI panel. An
+`--ai-companion` process exposes exactly `lacuna.connect`, `lacuna.wait_for_message`,
+`lacuna.invoke_tool`, `lacuna.reply` and `lacuna.disconnect`; it cannot call the broader data-MCP
+surface directly. Main-process authentication proves attachment to this installation, while the
+enabled renderer remains the authority for session ownership, Stop, call-id ledgering, course
+creation and destructive one-shot approval. No localhost TCP, HTTP or WebSocket origin is
+introduced. Generated AI and data companion commands carry Electron's active user-data directory,
+so custom and isolated profiles resolve the same authenticated endpoint as the open renderer. The
+hosted web build retains its encrypted HTTPS mailbox transport because browsers cannot host the
+native socket.
 
 | Component                      | Pinned version | Compatibility                                                       |
 | ------------------------------ | -------------- | ------------------------------------------------------------------- |

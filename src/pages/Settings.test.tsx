@@ -220,6 +220,8 @@ describe('Settings', () => {
   it('organises settings into five task groups while preserving existing section anchors', () => {
     render(<Settings />);
 
+    expect(screen.queryByText('Settings group')).not.toBeInTheDocument();
+
     const jumper = screen.getByLabelText('Jump to settings group');
     expect(
       Array.from(jumper.querySelectorAll('option')).map((option) => option.textContent),

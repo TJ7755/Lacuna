@@ -26,7 +26,7 @@
 // launched with --enable-logging=stdout, which nothing here does.
 
 import { app, ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import net, { type Server as NetServer, type Socket } from 'node:net';
 import log from 'electron-log';
@@ -45,14 +45,22 @@ import { McpConnectionStore } from '../../src/mcp/connections.js';
 import {
   CompanionLineDecoder,
   encodeCompanionMessage,
+  isAiCompanionRequest,
+  isAiRendererReply,
   isCompanionRequest,
+  type AiCompanionResponse,
   type CompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
 import {
+  companionLaunchCommand,
   removeCompanionConnectionFile,
   writeCompanionConnectionFile,
   type CompanionConnectionFile,
 } from './connectionFile.js';
+import { authoriseCompanionHello, type CompanionPurpose } from './companionAuth.js';
+import { AiRendererDispatcher } from './aiDispatcher.js';
+import { AiRendererAvailability } from './rendererAvailability.js';
+import { AiChannelRegistry } from './aiChannelRegistry.js';
 
 const RENDERER_TIMEOUT_MS = 10_000;
 
@@ -62,6 +70,7 @@ export interface McpStatus {
   toolSurfaceVersion: number;
   clients: McpClientConnection[];
   companion: { command: string; args: string[] };
+  aiCompanion: { command: string; args: string[] };
 }
 
 let dispatcher: InvokeDispatcher | null = null;
@@ -70,20 +79,40 @@ let stdioHandle: StdioServerHandle | null = null;
 let companionServer: NetServer | null = null;
 let companionConnection: CompanionConnectionFile | null = null;
 const companionSockets = new Set<Socket>();
+const aiCompanionChannels = new AiChannelRegistry();
 const companionClients = new McpConnectionStore();
+const aiDispatcher = new AiRendererDispatcher();
+const aiRendererAvailability = new AiRendererAvailability(() => {
+  aiDispatcher.close();
+  aiCompanionChannels.terminateAll();
+});
 let started = false;
 const pendingConsent = new Map<string, (approved: boolean) => void>();
 const pendingScopes = new Map<string, (response: McpScopeResolutionResponse) => void>();
 const consentCoordinator = new ConsentCoordinator();
 
-function tokensMatch(received: string, expected: string): boolean {
-  const left = Buffer.from(received);
-  const right = Buffer.from(expected);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
 function sendCompanion(socket: Socket, response: CompanionResponse): void {
   if (!socket.destroyed) socket.write(encodeCompanionMessage(response));
+}
+
+function sendAiCompanion(socket: Socket, response: AiCompanionResponse): void {
+  if (!socket.destroyed) socket.write(encodeCompanionMessage(response));
+}
+
+function rendererCanHandleAi(getWindow: () => BrowserWindow | null): boolean {
+  const window = getWindow();
+  return !!window && !window.isDestroyed() && aiRendererAvailability.canHandle(window.webContents);
+}
+
+function rendererSubscriptionId(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : undefined;
+}
+
+function notifyAiDisconnected(channelId: string, getWindow: () => BrowserWindow | null): void {
+  if (!rendererCanHandleAi(getWindow)) return;
+  getWindow()!.webContents.send('ai:disconnected', { channelId });
 }
 
 async function startCompanionBroker(
@@ -97,16 +126,23 @@ async function startCompanionBroker(
   companionServer = net.createServer((socket) => {
     companionSockets.add(socket);
     const decoder = new CompanionLineDecoder();
-    let authenticated = false;
+    let purpose: CompanionPurpose | null = null;
     let connectionId: string | null = null;
+    let aiChannelId: string | null = null;
     let processing = Promise.resolve();
     let closing = false;
 
     const close = () => {
       closing = true;
       companionSockets.delete(socket);
+      if (aiChannelId) aiCompanionChannels.delete(aiChannelId);
       if (connectionId) companionClients.disconnect(connectionId);
+      if (aiChannelId) {
+        aiDispatcher.cancelChannel(aiChannelId);
+        notifyAiDisconnected(aiChannelId, getWindow);
+      }
       connectionId = null;
+      aiChannelId = null;
     };
     const fail = (error: unknown) => {
       if (closing) return;
@@ -119,23 +155,79 @@ async function startCompanionBroker(
     };
     const processMessage = async (value: unknown): Promise<void> => {
       if (closing) return;
-      if (!isCompanionRequest(value)) throw new Error('Invalid MCP companion message.');
-      if (!authenticated) {
-        if (value.type !== 'hello' || !companionConnection ||
-          !tokensMatch(value.token, companionConnection.token)) {
-          sendCompanion(socket, { type: 'fatal', error: { kind: 'forbidden', message: 'MCP companion authentication failed.' } });
+      if (!purpose) {
+        if (!companionConnection) throw new Error('The companion broker is unavailable.');
+        if (authoriseCompanionHello(value, 'data', companionConnection.token)) {
+          companionClients.connect(value.client);
+          connectionId = value.client.connectionId;
+          purpose = 'data';
+          sendCompanion(socket, {
+            type: 'ready',
+            protocolVersion: companionConnection.protocolVersion,
+            appVersion: companionConnection.appVersion,
+          });
+          return;
+        }
+        if (authoriseCompanionHello(value, 'ai', companionConnection.aiToken)) {
+          aiChannelId = randomUUID();
+          purpose = 'ai';
+          aiCompanionChannels.add(aiChannelId, socket);
+          sendAiCompanion(socket, {
+            type: 'ai_ready',
+            protocolVersion: companionConnection.protocolVersion,
+            appVersion: companionConnection.appVersion,
+          });
+          return;
+        }
+        const aiHandshake = isAiCompanionRequest(value) && value.type === 'ai_hello';
+        const response = { type: 'fatal', error: {
+          kind: 'forbidden',
+          message: `${aiHandshake ? 'AI' : 'MCP'} companion authentication failed.`,
+        } } as const;
+        if (aiHandshake) sendAiCompanion(socket, response);
+        else sendCompanion(socket, response);
+        closing = true;
+        socket.end();
+        return;
+      }
+
+      if (purpose === 'ai') {
+        if (!isAiCompanionRequest(value) || value.type !== 'ai_request' || !aiChannelId) {
+          sendAiCompanion(socket, {
+            type: 'fatal',
+            error: { kind: 'forbidden', message: 'Invalid message for the AI companion connection.' },
+          });
           closing = true;
           socket.end();
           return;
         }
-        companionClients.connect(value.client);
-        connectionId = value.client.connectionId;
-        authenticated = true;
+        const result = rendererCanHandleAi(getWindow)
+          ? await aiDispatcher.dispatch(aiChannelId, value.id, value.request, (request) => {
+              getWindow()!.webContents.send('ai:request', request);
+            })
+          : {
+              ok: false as const,
+              error: {
+                kind: 'unavailable' as const,
+                reason: 'disconnected' as const,
+                message: 'The Lacuna renderer is unavailable.',
+              },
+            };
+        sendAiCompanion(socket, { type: 'ai_result', id: value.id, result });
+        if (value.request.type === 'disconnect' ||
+          (!result.ok && result.error.kind === 'unavailable')) {
+          socket.end();
+        }
+        return;
+      }
+
+      if (!isCompanionRequest(value)) {
         sendCompanion(socket, {
-          type: 'ready',
-          protocolVersion: companionConnection.protocolVersion,
-          appVersion: companionConnection.appVersion,
+          type: 'fatal',
+          error: { kind: 'forbidden', message: 'Invalid message for the data companion connection.' },
         });
+        closing = true;
+        socket.end();
         return;
       }
       if (value.type !== 'call' || value.client.connectionId !== connectionId) {
@@ -287,15 +379,22 @@ function errorToCallToolResult(error: McpToolError): CallToolResult {
 
 /** Reports the server's live status for `settings/McpSection.tsx` (Task 11) via `mcp:status`. */
 export function getMcpStatus(): McpStatus {
+  const environment = {
+    appPath: app.getAppPath(),
+    execPath: process.execPath,
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+    userDataPath: app.getPath('userData'),
+    portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
+    appImageFile: process.env.APPIMAGE,
+  };
   return {
     running: started,
     toolCount: TOOL_REGISTRY.length + 1,
     toolSurfaceVersion: MCP_TOOL_SURFACE_VERSION,
     clients: companionClients.list(),
-    companion: {
-      command: process.execPath,
-      args: app.isPackaged ? ['--mcp-companion'] : [app.getAppPath(), '--mcp-companion'],
-    },
+    companion: companionLaunchCommand(environment, '--mcp-companion'),
+    aiCompanion: companionLaunchCommand(environment, '--ai-companion'),
   };
 }
 
@@ -427,6 +526,28 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
     if (!isActiveRendererEvent(event, getWindow) || !isMcpScopeResolutionResponse(response)) return;
     pendingScopes.get(response.id)?.(response);
   });
+  ipcMain.on('ai:renderer-ready', (event, value: unknown) => {
+    if (!isActiveRendererEvent(event, getWindow)) return;
+    const subscriptionId = rendererSubscriptionId(value);
+    if (subscriptionId === undefined) return;
+    aiRendererAvailability.markReady(event.sender, subscriptionId);
+    event.sender.send('ai:renderer-ready-ack', subscriptionId);
+  });
+  ipcMain.on('ai:renderer-unavailable', (event, value: unknown) => {
+    if (!isActiveRendererEvent(event, getWindow)) return;
+    const subscriptionId = rendererSubscriptionId(value);
+    if (subscriptionId === undefined) return;
+    aiRendererAvailability.markUnavailable(event.sender, subscriptionId);
+  });
+  ipcMain.on('ai:disconnect-channel', (event, value: unknown) => {
+    if (!isActiveRendererEvent(event, getWindow) || typeof value !== 'string' ||
+      value.length === 0 || value.length > 160) return;
+    aiCompanionChannels.terminate(value);
+  });
+  ipcMain.on('ai:reply', (event, response: unknown) => {
+    if (!isActiveRendererEvent(event, getWindow) || !isAiRendererReply(response)) return;
+    aiDispatcher.resolve(response);
+  });
   ipcMain.handle('mcp:grants:list', (event) => {
     if (!isActiveRendererEvent(event, getWindow)) throw new Error('Untrusted MCP grant request.');
     return grantStore?.list() ?? [];
@@ -492,6 +613,12 @@ export async function stopMcpServer(): Promise<void> {
   ipcMain.removeAllListeners('mcp:invoke:reply');
   ipcMain.removeAllListeners('mcp:consent:reply');
   ipcMain.removeAllListeners('mcp:scope:reply');
+  ipcMain.removeAllListeners('ai:renderer-ready');
+  ipcMain.removeAllListeners('ai:renderer-unavailable');
+  ipcMain.removeAllListeners('ai:disconnect-channel');
+  ipcMain.removeAllListeners('ai:reply');
+  aiRendererAvailability.dispose();
+  aiDispatcher.close();
   ipcMain.removeHandler('mcp:grants:list');
   ipcMain.removeHandler('mcp:grants:grant');
   ipcMain.removeHandler('mcp:grants:revoke');
@@ -507,6 +634,7 @@ export async function stopMcpServer(): Promise<void> {
   pendingScopes.clear();
   for (const socket of companionSockets) socket.destroy();
   companionSockets.clear();
+  aiCompanionChannels.terminateAll();
   if (companionServer) {
     await new Promise<void>((resolve) => companionServer!.close(() => resolve()));
     companionServer = null;

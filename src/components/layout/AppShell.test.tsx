@@ -5,7 +5,11 @@ import type { AiSession } from '../../ai/session/types';
 import { createInMemoryAiSession } from '../../ai/session/inMemory';
 import { AppShell } from './AppShell';
 
-const mediaQueryState = vi.hoisted(() => ({ aiDesktop: true, mobileViewport: true }));
+const mediaQueryState = vi.hoisted(() => ({
+  aiDesktop: true,
+  mobileViewport: true,
+  motionMultiplier: 0,
+}));
 const aiSessionState = vi.hoisted<{ current: AiSession | null }>(() => ({ current: null }));
 
 vi.mock('./Sidebar', () => ({
@@ -51,7 +55,7 @@ vi.mock('../ui/KeyHints', () => ({ KeyHints: () => null }));
 vi.mock('./LandingTransition', () => ({ consumeLandingArrival: () => false }));
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
-  speedMultiplier: () => 0,
+  speedMultiplier: () => mediaQueryState.motionMultiplier,
 }));
 vi.mock('../../hooks/useMediaQuery', () => ({
   useMediaQuery: () => mediaQueryState.aiDesktop,
@@ -85,7 +89,11 @@ function RouteContent() {
 }
 
 function renderShell() {
-  return render(
+  return render(shellElement());
+}
+
+function shellElement() {
+  return (
     <MemoryRouter
       initialEntries={['/']}
       future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -96,7 +104,7 @@ function renderShell() {
           <Route path="settings" element={<h1>Settings</h1>} />
         </Route>
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -104,6 +112,7 @@ beforeEach(() => {
   sessionStorage.clear();
   mediaQueryState.aiDesktop = true;
   mediaQueryState.mobileViewport = true;
+  mediaQueryState.motionMultiplier = 0;
   aiSessionState.current = createInMemoryAiSession();
   vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
     matches:
@@ -244,18 +253,6 @@ describe('AppShell mobile navigation', () => {
     expect(screen.queryByRole('button', { name: 'Navigate page' })).not.toBeInTheDocument();
   });
 
-  it('restores the current page scroll after an application-shell remount', () => {
-    const first = renderShell();
-    const main = document.querySelector('main');
-    expect(main).not.toBeNull();
-    main!.scrollTop = 420;
-
-    first.unmount();
-    renderShell();
-
-    expect(HTMLElement.prototype.scrollTo).toHaveBeenLastCalledWith({ top: 420 });
-  });
-
   it('does not persist the outgoing page scroll during ordinary navigation', async () => {
     renderShell();
     const main = document.querySelector('main');
@@ -265,12 +262,25 @@ describe('AppShell mobile navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Navigate page' }));
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible());
-    expect(sessionStorage.getItem('lacuna-shell-scroll-position')).toBeNull();
     expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledWith({ top: 0 });
   });
 });
 
 describe('AppShell AI workspace', () => {
+  it('removes the AI panel immediately when its session disappears', async () => {
+    mediaQueryState.motionMultiplier = 1;
+    const view = renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    expect(
+      await screen.findByRole('complementary', { name: 'AI conversation' }),
+    ).toBeInTheDocument();
+
+    aiSessionState.current = null;
+    view.rerender(shellElement());
+
+    expect(screen.queryByRole('complementary', { name: 'AI conversation' })).not.toBeInTheDocument();
+  });
+
   it('shows the activity capsule only while the full conversation is closed', async () => {
     aiSessionState.current = createInMemoryAiSession({
       run: {

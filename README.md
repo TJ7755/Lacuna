@@ -102,33 +102,43 @@ Open the printed local URL. A small example course is seeded on first run (it ca
 
 ### Optional desktop AI chat
 
-The web app has an optional desktop-only AI conversation panel, disabled by default. It pairs with
-a deliberately running terminal task through a standard stdio MCP companion and a short-lived code.
-The browser and terminal exchange encrypted mailbox records through the HTTPS relay; the relay
-cannot read the conversation. No browser extension, WebSocket, inbound local port or model
-credential in Lacuna is involved.
+Lacuna has an optional desktop-only AI conversation panel, disabled by default. The packaged
+Electron app connects a deliberately running terminal task through its bundled stdio MCP companion
+and authenticated local operating-system IPC. It opens no network port, needs no pairing code and
+keeps model credentials out of Lacuna. The model still runs wherever the terminal AI runs; only the
+connection to Lacuna is local.
 
-Build the companion, then configure your chosen MCP-capable terminal harness to run it:
+Enable **Settings → AI**, open the AI panel and copy its setup prompt into the terminal AI. The
+prompt contains the correct installed or Windows portable executable path and asks the terminal to
+configure it with `--ai-companion`; it also preserves a custom Electron user-data directory when
+Lacuna is running against an isolated profile. Keep the Lacuna window and terminal task running. The
+task must keep calling `lacuna.wait_for_message`; a sidebar message cannot wake a terminal task
+which has already ended.
+
+The hosted web app retains the encrypted HTTPS relay because a browser cannot host a native local
+socket. To use that route, build the standalone web companion, then configure the MCP-capable
+terminal harness to run it:
 
 ```bash
 bun run build:ai-mcp
 node /absolute/path/to/Lacuna/tooling/lacuna-ai-mcp/dist/index.js
 ```
 
-Enable **Settings → AI**, open **AI → Connect terminal**, and copy the displayed instruction into
-the running task. The task must keep calling `lacuna.wait_for_message`; a sidebar message cannot
-wake a terminal task which has already ended. See
-[`tooling/lacuna-ai-mcp/README.md`](tooling/lacuna-ai-mcp/README.md) for the five-tool contract.
+The web panel supplies a short-lived pairing code. Browser and terminal then exchange encrypted
+mailbox records through the relay, which cannot read the conversation. See
+[`tooling/lacuna-ai-mcp/README.md`](tooling/lacuna-ai-mcp/README.md) for the shared five-tool
+contract. Managed networks can block the web relay; use the packaged desktop app's local companion
+when that happens. Device sync remains relay-dependent and is not carried over the AI companion.
 
-The web companion can invoke the existing typed `lacuna.*` domain tools for an active run. Reads
-remain implicit; writes block on Lacuna's browser approval, course creation and destructive calls
+Both companions can invoke the existing typed `lacuna.*` domain tools for an active run. Reads
+remain implicit; writes block on Lacuna's in-app approval, course creation and destructive calls
 use exact one-shot approval, retries are keyed by `callId`, and successful writes render local
 receipts. Stop blocks later tool calls as well as replies. Every claimed message includes the live
 `teaching-v1` instruction bundle. Learner memories require explicit global or Course scope, remain
 inspectable and correctable under Settings → AI, and participate in full backup and encrypted peer
 sync. Peer sync preserves the terminal and device-local transcript; successful full replacement
-disconnects and clears them. The Electron MCP companion below is a separate local-IPC adapter over
-the same shared executor.
+disconnects and clears them. The Electron data MCP companion below remains a separate, broader
+surface with its own executable argument and permission model.
 
 ### Electron (desktop build)
 
@@ -150,6 +160,12 @@ companion, allowing an MCP-capable client to work with Lacuna's courses, lessons
 Concepts, Questions, sequences, image occlusions and summaries. Card and Question tools remain
 separate; structured numeric and working payloads belong to Questions. The web version does not host
 MCP and is otherwise unaffected.
+
+The same native broker accepts the separate `--ai-companion` used by the optional conversation
+panel. Its purpose-bound token exposes only connect, wait, approved tool invocation, reply and
+disconnect. The preload bridge is schema-validated and never exposes raw Electron IPC, sockets or
+arbitrary channel names. Starting the companion while AI is disabled or the renderer is unavailable
+fails closed.
 
 The installed Windows NSIS and Linux AppImage builds follow the GitHub beta release channel,
 download updates in the background and install them on quit. Windows portable and Linux DEB builds

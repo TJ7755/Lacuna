@@ -12,21 +12,29 @@ export interface AiConnectionStateProps {
   pairing: AiPairingState | null;
   busy: boolean;
   error: string | null;
+  local?: boolean;
   compact?: boolean;
   onStartPairing: () => void;
   onCancel: () => void;
 }
 
-function TerminalSetupDisclosure() {
+function TerminalSetupGuide() {
   return (
-    <details className="mt-4 border-t border-line text-sm text-ink-soft">
-      <summary className="flex min-h-11 cursor-pointer items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60">
-        Terminal setup
-      </summary>
-      <p className="pb-2 text-xs leading-5 text-ink-faint">
-        Use a terminal harness that can connect to Lacuna through MCP and keep waiting for work.
+    <div className="mt-4 border-t border-line pt-4 text-sm text-ink-soft">
+      <p className="font-medium text-ink">Before connecting</p>
+      <p className="mt-1 text-xs leading-5 text-ink-faint">
+        Install Lacuna&apos;s MCP companion in your terminal, then return here to create a pairing
+        code.
       </p>
-    </details>
+      <a
+        href={TERMINAL_SETUP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-2"
+      >
+        Open terminal setup instructions
+      </a>
+    </div>
   );
 }
 
@@ -34,6 +42,7 @@ export function AiConnectionState({
   pairing,
   busy,
   error,
+  local = false,
   compact = false,
   onStartPairing,
   onCancel,
@@ -41,24 +50,137 @@ export function AiConnectionState({
   const connectRef = useRef<HTMLButtonElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [localInstruction, setLocalInstruction] = useState<string | null>(null);
+  const [localSetupError, setLocalSetupError] = useState<string | null>(null);
   const pairingCode = pairing?.code ?? null;
-  const instruction = pairingCode
+  const relayInstruction = pairingCode
     ? `Connect to Lacuna with code ${pairingCode}. If lacuna.wait_for_message is unavailable, read ${TERMINAL_SETUP_URL} and help me set up the Lacuna terminal companion; tell me when I must restart this terminal before continuing. If it is available, keep calling lacuna.wait_for_message, and honour the returned versioned instructions for each claimed message, including permission and Stop rules, until I ask you to disconnect.`
     : '';
+  const instruction = local ? (localInstruction ?? '') : relayInstruction;
+
+  useEffect(() => {
+    if (!local) return;
+
+    let cancelled = false;
+    setLocalSetupError(null);
+    const mcp = window.electronAPI?.mcp;
+    if (!mcp) {
+      setLocalSetupError('Desktop integration failed to load. Restart Lacuna.');
+      return;
+    }
+    void mcp
+      .getStatus()
+      .then((status) => {
+        if (cancelled) return;
+        const companion = status.aiCompanion;
+        if (!companion) throw new Error('The local AI companion is unavailable.');
+        const command = JSON.stringify({ command: companion.command, args: companion.args });
+        setLocalInstruction(
+          `Set up Lacuna's desktop AI companion as an MCP server named lacuna using ${command}. If you need client-specific steps, read ${TERMINAL_SETUP_URL}. Restart this terminal session if required, call lacuna.connect, then keep calling lacuna.wait_for_message and honour the returned versioned instructions, permission checks and Stop rules until I ask you to disconnect.`,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocalSetupError('Lacuna could not read its packaged companion command.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [local]);
 
   useEffect(() => {
     setCopyStatus('idle');
-    if (pairingCode) copyRef.current?.focus();
+    if (pairingCode || (local && localInstruction)) copyRef.current?.focus();
     else connectRef.current?.focus();
-  }, [pairingCode]);
+  }, [local, localInstruction, pairingCode]);
 
   async function copyInstruction() {
+    if (!instruction) return;
     try {
       await navigator.clipboard.writeText(instruction);
       setCopyStatus('copied');
     } catch {
       setCopyStatus('failed');
     }
+  }
+
+  if (local) {
+    return (
+      <section
+        aria-labelledby="ai-connect-title"
+        aria-busy={!localInstruction}
+        className="flex flex-1 flex-col overflow-y-auto p-5"
+      >
+        <div className="my-auto">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">
+            Connection
+          </p>
+          <h2 id="ai-connect-title" className="mt-2 font-display text-2xl text-ink">
+            Connect a terminal
+          </h2>
+          <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
+            The desktop app connects locally. No pairing code or internet connection is needed.
+          </p>
+
+          <label
+            htmlFor="ai-terminal-setup-prompt"
+            className="mt-5 block text-xs font-medium text-ink-soft"
+          >
+            Terminal setup prompt
+          </label>
+          <textarea
+            id="ai-terminal-setup-prompt"
+            readOnly
+            rows={7}
+            value={
+              localInstruction ??
+              (localSetupError
+                ? 'The packaged companion command is unavailable.'
+                : 'Reading the packaged companion command…')
+            }
+            onFocus={(event) => event.currentTarget.select()}
+            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
+          />
+
+          {(error || localSetupError) && (
+            <p
+              role="alert"
+              className="mt-3 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
+            >
+              {error ?? localSetupError}
+            </p>
+          )}
+
+          <Button
+            ref={copyRef}
+            variant="primary"
+            className="mt-3 w-full"
+            aria-label="Copy setup prompt"
+            disabled={!localInstruction}
+            onClick={() => void copyInstruction()}
+          >
+            {copyStatus === 'copied' ? 'Copied' : 'Copy setup prompt'}
+          </Button>
+          <a
+            href={TERMINAL_SETUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-accent underline underline-offset-2"
+          >
+            Open terminal setup instructions
+          </a>
+          <p role="status" aria-live="polite" className="min-h-5 text-xs text-ink-soft">
+            {copyStatus === 'copied'
+              ? 'Setup prompt copied'
+              : copyStatus === 'failed'
+                ? 'Copy failed. Select the prompt and copy it manually.'
+                : ''}
+          </p>
+        </div>
+      </section>
+    );
   }
 
   if (compact && !pairing) {
@@ -177,7 +299,6 @@ export function AiConnectionState({
                 : ''}
           </p>
 
-          <TerminalSetupDisclosure />
         </div>
       </section>
     );
@@ -219,7 +340,7 @@ export function AiConnectionState({
           {busy ? 'Connecting…' : 'Connect terminal'}
         </Button>
 
-        <TerminalSetupDisclosure />
+        <TerminalSetupGuide />
       </div>
     </section>
   );

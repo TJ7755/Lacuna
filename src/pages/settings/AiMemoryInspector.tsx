@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { TrashIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
+import { Toggle } from '../../components/ui/Toggle';
 import { aiEntityExists } from '../../ai/entityAvailability';
 import { SettingsSubsectionHeading } from './SettingsSectionHeading';
 
@@ -97,7 +98,7 @@ export function AiMemoryInspector({
 
   return (
     <div className="mt-6 border-t border-line pt-5">
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] sm:items-end">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] sm:items-start">
         <div>
           <SettingsSubsectionHeading className="text-sm font-medium text-ink">
             Teaching memory
@@ -106,8 +107,8 @@ export function AiMemoryInspector({
             Inspect and correct what the AI retains about how you learn.
           </p>
         </div>
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="min-w-0 flex-1 text-xs text-ink-soft">
+        <div className="min-w-0 space-y-3">
+          <label className="block min-w-0 text-xs text-ink-soft">
             <span className="sr-only">Search teaching memory</span>
             <input
               type="search"
@@ -118,15 +119,13 @@ export function AiMemoryInspector({
               className="min-h-10 w-full rounded-lg border border-line-strong bg-paper px-3 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
             />
           </label>
-          <label className="inline-flex min-h-8 items-center gap-2 text-xs text-ink-soft">
-            <input
-              type="checkbox"
+          <div className="flex justify-end">
+            <Toggle
               checked={includeExpired}
-              onChange={(event) => setIncludeExpired(event.target.checked)}
-              className="h-4 w-4 accent-accent"
+              onChange={setIncludeExpired}
+              label="Include expired"
             />
-            Include expired
-          </label>
+          </div>
         </div>
       </div>
 
