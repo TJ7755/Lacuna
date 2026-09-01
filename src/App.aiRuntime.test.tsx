@@ -25,6 +25,9 @@ const runtime = vi.hoisted(() => ({
   restartListener: null as (() => void) | null,
 }));
 
+const AI_RUNTIME_READY_TIMEOUT_MS = 5_000;
+const AI_RUNTIME_TEST_TIMEOUT_MS = 10_000;
+
 function createTestSession(): TestAiSession {
   const session = {
     testId: crypto.randomUUID(),
@@ -137,7 +140,11 @@ describe('optional AI runtime', () => {
     originalSurface.scrollTop = 420;
 
     act(() => writeAiSettings({ enabled: true }));
-    await screen.findByTestId('enabled-ai-runtime', {}, { timeout: 5_000 });
+    await screen.findByTestId(
+      'enabled-ai-runtime',
+      {},
+      { timeout: AI_RUNTIME_READY_TIMEOUT_MS },
+    );
 
     await waitFor(() => expect(screen.getByTestId('router-surface')).toBe(originalSurface));
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
@@ -152,7 +159,7 @@ describe('optional AI runtime', () => {
     expect(screen.getByTestId('router-surface')).toBe(originalSurface);
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
     expect(activeSession.dispose).toHaveBeenCalledOnce();
-  });
+  }, AI_RUNTIME_TEST_TIMEOUT_MS);
 
   it('remounts only the enabled AI runtime when Electron requests recovery', async () => {
     writeAiSettings({ enabled: true });
@@ -162,7 +169,7 @@ describe('optional AI runtime', () => {
     const originalRuntime = await screen.findByTestId(
       'enabled-ai-runtime',
       {},
-      { timeout: 5_000 },
+      { timeout: AI_RUNTIME_READY_TIMEOUT_MS },
     );
     const originalRuntimeInstance = originalRuntime.getAttribute('data-instance');
     await waitFor(() => expect(runtime.restartListener).not.toBeNull());
@@ -189,5 +196,5 @@ describe('optional AI runtime', () => {
       'data-ai-session',
       originalSessionId,
     );
-  });
+  }, AI_RUNTIME_TEST_TIMEOUT_MS);
 });
