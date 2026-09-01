@@ -109,13 +109,12 @@ keeps model credentials out of Lacuna. The model still runs wherever that AI cli
 connection to Lacuna is local.
 
 Enable **Settings → AI**, open the AI panel and copy its setup prompt into the AI client. The
-prompt contains the correct installed or Windows portable executable path and asks the client to
-configure it with `--ai-companion`; it also preserves a custom Electron user-data directory when
-Lacuna is running against an isolated profile. `--ai-companion` is the five-tool conversation
-companion; do not replace it with the separate data-oriented `--mcp-companion`. The client must use
-its normal MCP server registration flow, with the copied command and every argument left exactly as
-provided. Do not manually launch another normal Lacuna instance or run the executable separately as
-a connection test.
+prompt contains the exact companion command, arguments and environment for that installation; it
+also preserves a custom Electron user-data directory when Lacuna is running against an isolated
+profile. The conversation companion has five tools and is separate from the data-oriented
+`--mcp-companion`. The client must use its normal MCP server registration flow, with the copied
+configuration left exactly as provided. Do not manually launch another normal Lacuna instance or
+run the executable separately as a connection test.
 
 For Codex, follow the [official MCP setup](https://developers.openai.com/codex/mcp/):
 
@@ -188,11 +187,13 @@ Concepts, Questions, sequences, image occlusions and summaries. Card and Questio
 separate; structured numeric and working payloads belong to Questions. The web version does not host
 MCP and is otherwise unaffected.
 
-The same native broker accepts the separate `--ai-companion` used by the optional conversation
-panel. Its purpose-bound token exposes only connect, wait, approved tool invocation, reply and
-disconnect. The preload bridge is schema-validated and never exposes raw Electron IPC, sockets or
-arbitrary channel names. The broker gives an enabled renderer up to five seconds to finish mounting;
-if AI remains disabled or unavailable after that, it fails closed with recovery guidance.
+The same native broker accepts the separate AI companion used by the optional conversation panel.
+Direct installations run its bundled entry point through Electron's supported run-as-Node mode,
+without starting another Chromium browser. Its purpose-bound token exposes only connect, wait,
+approved tool invocation, reply and disconnect. The preload bridge is schema-validated and never
+exposes raw Electron IPC, sockets or arbitrary channel names. The broker gives an enabled renderer
+up to five seconds to finish mounting; if AI remains disabled or unavailable after that, it fails
+closed with recovery guidance.
 
 The installed Windows NSIS and Linux AppImage builds follow the GitHub beta release channel,
 download updates in the background and install them on quit. Windows portable and Linux DEB builds

@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
 import net, { type Socket } from 'node:net';
 import log from 'electron-log';
@@ -29,6 +28,7 @@ import {
   type AiCompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
 import {
+  companionAppVersion,
   companionHostUserDataPath,
   readCompanionConnectionFile,
 } from './connectionFile.js';
@@ -71,7 +71,7 @@ export class LocalAiAppClient {
 
   constructor(
     private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS,
-    private readonly hostUserDataPath = app.getPath('userData'),
+    private readonly hostUserDataPath = '',
   ) {}
 
   async connect(identity: AiClientIdentity, signal: AbortSignal): Promise<object> {
@@ -380,14 +380,22 @@ async function callTool<T extends object>(operation: () => Promise<T>): Promise<
   }
 }
 
-export function startAiCompanion(): StdioServerHandle {
+export interface AiCompanionOptions {
+  appVersion: string;
+  hostUserDataPath: string;
+}
+
+export function startAiCompanion(options?: AiCompanionOptions): StdioServerHandle {
   silenceStdoutNoise();
+  const appVersion = options?.appVersion ?? companionAppVersion(process.argv, '0.0.0');
+  const hostUserDataPath = options?.hostUserDataPath ?? companionHostUserDataPath(process.argv, '');
+  if (!hostUserDataPath) throw new Error('The Lacuna host profile was not provided.');
   const appClient = new LocalAiAppClient(
     WRITE_DRAIN_TIMEOUT_MS,
-    companionHostUserDataPath(process.argv, app.getPath('userData')),
+    hostUserDataPath,
   );
   return serveStdio(() => {
-    const server = new McpServer({ name: 'lacuna-ai', version: app.getVersion() });
+    const server = new McpServer({ name: 'lacuna-ai', version: appVersion });
     server.registerTool(
       'lacuna.connect',
       {

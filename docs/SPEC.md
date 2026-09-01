@@ -2531,10 +2531,11 @@ its navigation cannot drift from the rendered groups.
   The production `AiSession` boundary has two transports. The hosted web build creates a ten-minute
   pairing code, persists the local conversation and relay credentials across reload, and polls two
   encrypted directional HTTP mailboxes. Its deliberately running terminal task launches
-  `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead
-  launches the installed Lacuna executable with `--ai-companion` and attaches through the
-  authenticated native broker; it uses no pairing code, web relay or network listener. Both
-  transports expose exactly `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
+  `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead runs
+  the bundled AI companion entry point through the shipped Electron binary in run-as-Node mode and
+  attaches through the authenticated native broker; it does not start a second Chromium browser
+  and uses no pairing code, web relay or network listener. Both transports expose exactly
+  `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
   `lacuna.reply` and `lacuna.disconnect`, with the enabled renderer retaining session and approval
   authority. On the web transport, browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
   the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
@@ -2814,8 +2815,10 @@ user-local Unix-domain socket (macOS/Linux) or named pipe (Windows). There is no
 or browser MCP server. The normal renderer window must remain open because it owns IndexedDB.
 Modern SDK v2 and legacy stdio negotiation are both accepted.
 
-The broker has a second purpose-bound attachment for the optional desktop AI panel. An
-`--ai-companion` process exposes exactly `lacuna.connect`, `lacuna.wait_for_message`,
+The broker has a second purpose-bound attachment for the optional desktop AI panel. A direct
+installation runs the bundled AI companion entry point through the shipped Electron binary with
+`ELECTRON_RUN_AS_NODE=1`; it does not bootstrap another Chromium process. The companion exposes
+exactly `lacuna.connect`, `lacuna.wait_for_message`,
 `lacuna.invoke_tool`, `lacuna.reply` and `lacuna.disconnect`; it cannot call the broader data-MCP
 surface directly. Main-process authentication proves attachment to this installation, while the
 enabled renderer remains the authority for session ownership, Stop, call-id ledgering, course

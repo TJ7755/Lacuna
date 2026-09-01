@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  companionAppVersion,
   companionEndpoint,
   companionHostUserDataPath,
   companionLaunchCommand,
@@ -53,6 +54,7 @@ describe('companion connection metadata', () => {
       execPath: 'C:\\Users\\managed\\AppData\\Local\\Temp\\lacuna\\Lacuna.exe',
       isPackaged: true,
       platform: 'win32',
+      appVersion: '0.2.2',
       userDataPath: 'C:\\Users\\managed\\AppData\\Roaming\\Lacuna',
       companionUserDataPath: 'C:\\Users\\managed\\AppData\\Local\\Temp\\lacuna-companion-ai',
       portableExecutableFile: 'D:\\Apps\\Lacuna-Portable.exe',
@@ -72,6 +74,7 @@ describe('companion connection metadata', () => {
       execPath: '/tmp/.mount_Lacuna/lacuna',
       isPackaged: true,
       platform: 'linux',
+      appVersion: '0.2.2',
       userDataPath: '/home/student/.config/Lacuna',
       companionUserDataPath: '/tmp/lacuna-companion-ai',
       appImageFile: '/home/student/Applications/Lacuna.AppImage',
@@ -91,6 +94,7 @@ describe('companion connection metadata', () => {
       execPath: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
       isPackaged: false,
       platform: 'darwin',
+      appVersion: '0.2.2',
       userDataPath: '/Users/student/Library/Application Support/Lacuna',
       companionUserDataPath: '/tmp/lacuna-companion-data',
     }, '--mcp-companion')).toEqual({
@@ -110,6 +114,7 @@ describe('companion connection metadata', () => {
       execPath: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
       isPackaged: false,
       platform: 'darwin' as const,
+      appVersion: '0.2.2',
       userDataPath: '/tmp/lacuna-v022-manual.Q3lViI',
     };
 
@@ -119,11 +124,11 @@ describe('companion connection metadata', () => {
     }, '--ai-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
       args: [
-        '/repo',
-        '--ai-companion',
+        '/repo/electron/dist-electron/mcp/aiCompanionEntry.js',
         '--lacuna-host-user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
-        '--user-data-dir=/tmp/lacuna-companion-ai',
+        '--lacuna-app-version=0.2.2',
       ],
+      env: { ELECTRON_RUN_AS_NODE: '1' },
     });
     expect(companionLaunchCommand({
       ...environment,
@@ -147,5 +152,6 @@ describe('companion connection metadata', () => {
       '--user-data-dir=/tmp/lacuna companion',
     ], '/fallback')).toBe('/tmp/lacuna host');
     expect(companionHostUserDataPath(['/repo', '--ai-companion'], '/fallback')).toBe('/fallback');
+    expect(companionAppVersion(['/entry.js', '--lacuna-app-version=0.2.2'], '0.0.0')).toBe('0.2.2');
   });
 });

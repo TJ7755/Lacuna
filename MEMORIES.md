@@ -466,9 +466,9 @@ mobile navigation where the browser permits it. Chromium and Firefox can suppres
 history overscroll, but iOS Safari may intercept its native edge-back gesture before page pointer
 events arrive. Do not claim that a web page can reliably override that operating-system gesture.
 
-## Electron companions need a separate browser profile
+## The AI companion is a Node process, not a second browser
 
-The running app's `userData` directory owns `mcp/connection.json`, but a companion process must not
-also use that directory as Chromium's `--user-data-dir`; Windows then exits it as a duplicate
-browser process. Pass the host directory through `--lacuna-host-user-data-dir` and give each
-advertised companion command its own disposable Electron profile.
+Direct `--ai-companion` configurations run `aiCompanionEntry.js` through the shipped Electron
+binary with `ELECTRON_RUN_AS_NODE=1`. The host app profile is passed separately through
+`--lacuna-host-user-data-dir`. Launching the full Electron app for this headless stdio bridge can
+exit cleanly before JavaScript starts on Windows.

@@ -82,7 +82,11 @@ export function AiConnectionState({
         if (!companion) throw new Error('The local AI companion is unavailable.');
         if (!commandLoaded) {
           commandLoaded = true;
-          const command = JSON.stringify({ command: companion.command, args: companion.args });
+          const command = JSON.stringify({
+            command: companion.command,
+            args: companion.args,
+            ...(companion.env ? { env: companion.env } : {}),
+          });
           setLocalInstruction(
             `Configure this AI client with an stdio MCP server named lacuna using exactly ${command}; preserve every argument, including --user-data-dir when present. Use conversation --ai-companion, never data --mcp-companion. Let the client spawn it; never launch another Lacuna app, run the command manually or inspect source to test setup. Save, restart or reload the client, and start a fresh task if tools are task-scoped. Success means this task exposes lacuna.connect and lacuna.wait_for_message and lacuna.connect succeeds, not merely that registration says connected. Codex app/extension: Save then Restart; CLI: codex mcp list then /mcp. Other clients: ${TERMINAL_SETUP_URL}. If connect says the AI runtime is not ready, keep Lacuna open with AI enabled, select Restart AI runtime, then retry. Next, keep calling lacuna.wait_for_message. For each claimed message, follow its versioned instructions, do the permitted work and reply with fresh authored text via lacuna.reply; never use canned test text. Continue until I ask you to disconnect.`,
           );

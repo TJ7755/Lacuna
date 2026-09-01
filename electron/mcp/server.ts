@@ -68,8 +68,8 @@ export interface McpStatus {
   toolCount: number;
   toolSurfaceVersion: number;
   clients: McpClientConnection[];
-  companion: { command: string; args: string[] };
-  aiCompanion: { command: string; args: string[] };
+  companion: { command: string; args: string[]; env?: Record<string, string> };
+  aiCompanion: { command: string; args: string[]; env?: Record<string, string> };
   aiRenderer: { status: 'ready' | 'waiting' | 'unavailable' };
 }
 
@@ -396,6 +396,7 @@ export function getMcpStatus(): McpStatus {
     execPath: process.execPath,
     isPackaged: app.isPackaged,
     platform: process.platform,
+    appVersion: app.getVersion(),
     userDataPath: app.getPath('userData'),
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
     appImageFile: process.env.APPIMAGE,

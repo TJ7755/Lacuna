@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,6 +14,7 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(import.meta.url);
+const packageVersion = (require('../../package.json') as { version: string }).version;
 const expectedTools = [
   'lacuna.connect',
   'lacuna.disconnect',
@@ -42,22 +43,18 @@ function toolData(result: CallToolResult): Record<string, unknown> {
 async function startCompanion(
   executablePath: string,
   hostProfile: string,
-  companionProfile: string,
   name: string,
 ): Promise<Client> {
   let stderr = '';
-  const nativeLogPath = path.join(companionProfile, `${name.replaceAll(' ', '-')}.log`);
   const transport = new StdioClientTransport({
     command: executablePath,
     args: [
-      root,
-      '--ai-companion',
+      path.join(root, 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js'),
       `--lacuna-host-user-data-dir=${hostProfile}`,
-      `--user-data-dir=${companionProfile}`,
+      `--lacuna-app-version=${packageVersion}`,
     ],
     env: {
-      ELECTRON_ENABLE_LOGGING: '1',
-      ELECTRON_LOG_FILE: nativeLogPath,
+      ELECTRON_RUN_AS_NODE: '1',
     },
     stderr: 'pipe',
   });
@@ -70,9 +67,7 @@ async function startCompanion(
   try {
     await client.connect(transport);
   } catch (error) {
-    const nativeLog = await readFile(nativeLogPath, 'utf8').catch(() => '');
-    const detail = [stderr.trim(), nativeLog.trim()].filter(Boolean).join('\n') ||
-      'The companion wrote no diagnostic output.';
+    const detail = stderr.trim() || 'The companion wrote no diagnostic output.';
     throw new Error(`The Lacuna AI companion failed to start: ${detail}`, { cause: error });
   }
   return client;
@@ -85,9 +80,6 @@ test('the enabled Electron renderer accepts a companion and completes a message 
   );
 
   const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-electron-ai-')));
-  const companionProfile = await realpath(
-    await mkdtemp(path.join(tmpdir(), 'lacuna-electron-ai-companion-')),
-  );
   const executablePath = electronExecutable();
   let app: ElectronApplication | undefined;
   let client: Client | undefined;
@@ -98,6 +90,13 @@ test('the enabled Electron renderer accepts a companion and completes a message 
       args: [root, `--user-data-dir=${profile}`],
     });
     const page = await app.firstWindow();
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1200,
+      height: 800,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     await page.waitForLoadState('domcontentloaded');
     await page.emulateMedia({ reducedMotion: 'reduce' });
 
@@ -112,6 +111,8 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     await expect(enableAi).toBeVisible();
     await enableAi.click();
     await expect(enableAi).toHaveAttribute('aria-checked', 'true');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(enableAi).toHaveAttribute('aria-checked', 'true');
 
     const openAi = page.getByRole('button', { name: 'AI', exact: true }).first();
     await expect(openAi).toBeVisible();
@@ -124,7 +125,6 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     client = await startCompanion(
       executablePath,
       profile,
-      companionProfile,
       'Playwright native transport',
     );
 
@@ -179,7 +179,6 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     client = await startCompanion(
       executablePath,
       profile,
-      companionProfile,
       'Playwright reload probe',
     );
     const reconnecting = client.callTool({ name: 'lacuna.connect', arguments: {} });
@@ -196,9 +195,6 @@ test('the enabled Electron renderer accepts a companion and completes a message 
   } finally {
     await client?.close().catch(() => undefined);
     await app?.close().catch(() => undefined);
-    await Promise.all([
-      rm(profile, { recursive: true, force: true }),
-      rm(companionProfile, { recursive: true, force: true }),
-    ]);
+    await rm(profile, { recursive: true, force: true });
   }
 });

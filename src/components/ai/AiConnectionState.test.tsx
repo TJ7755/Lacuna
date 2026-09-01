@@ -27,6 +27,7 @@ describe('AiConnectionState', () => {
             aiRenderer: { status: 'ready' },
             aiCompanion: {
               command: 'C:\\Program Files\\Lacuna\\Lacuna.exe',
+              env: { ELECTRON_RUN_AS_NODE: '1' },
               args: [
                 '--ai-companion',
                 '--user-data-dir=C:\\Users\\student\\AppData\\Roaming\\Lacuna isolated',
@@ -62,7 +63,7 @@ describe('AiConnectionState', () => {
     const setupPrompt = await screen.findByRole('textbox', { name: 'AI client setup prompt' });
     const setupPromptValue = (setupPrompt as HTMLTextAreaElement).value;
     expect(setupPromptValue).toContain(
-      'using exactly {"command":"C:\\\\Program Files\\\\Lacuna\\\\Lacuna.exe","args":["--ai-companion","--user-data-dir=C:\\\\Users\\\\student\\\\AppData\\\\Roaming\\\\Lacuna isolated"]}',
+      'using exactly {"command":"C:\\\\Program Files\\\\Lacuna\\\\Lacuna.exe","args":["--ai-companion","--user-data-dir=C:\\\\Users\\\\student\\\\AppData\\\\Roaming\\\\Lacuna isolated"],"env":{"ELECTRON_RUN_AS_NODE":"1"}}',
     );
     expect(setupPromptValue).toContain(
       'preserve every argument, including --user-data-dir when present',
