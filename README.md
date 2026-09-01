@@ -160,9 +160,11 @@ Agents should invoke `lacuna.list_tools` through `lacuna.invoke_tool` before gue
 name. The catalogue returns descriptions, input schemas and permission levels; unknown names also
 return likely alternatives. `lacuna.find_course` resolves a Course from an id, exact name or partial
 name, and `lacuna.search_cards` returns compact, cursor-paginated Card content without review history
-or FSRS fields. The native companion renews an active message lease while the model is working, and
-an identical retry of a completed reply is acknowledged without adding a duplicate conversation
-item. Companion failures return a structured recovery action and never include raw local paths.
+or FSRS fields. Native protocol 2 companions renew an active message lease while the model is
+working; a current client falls back to the v0.2.3 protocol 1 contract without attempting renewal.
+An identical retry of a completed reply is acknowledged without adding a duplicate conversation
+item. Native companion failures return a structured recovery action and never include raw local
+paths. The hosted web companion retains its separate relay error contract.
 
 The client task still has to remain alive and repeat `lacuna.wait_for_message`. MCP cannot wake a
 model task after it has ended, reload a client's tool registry, or make a client continue generating

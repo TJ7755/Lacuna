@@ -60,16 +60,16 @@ const findCourse: ToolDefinition<z.infer<typeof findCourseSchema>, {
     const matches = (await findCourseMatches(query)).slice(0, limit);
     return ok({
       matches: await Promise.all(matches.map(async (course) => {
-        const [lessons, cards] = await Promise.all([
-          read.listLessons(course.id),
-          read.listCardsForCourse(course.id),
+        const [lessonCount, cardCount] = await Promise.all([
+          read.countLessonsForCourse(course.id),
+          read.countCardsForCourse(course.id),
         ]);
         return {
           courseId: course.id,
           name: course.name,
           archived: course.archived === true,
-          lessonCount: lessons.length,
-          cardCount: cards.length,
+          lessonCount,
+          cardCount,
         };
       })),
     });
@@ -100,10 +100,22 @@ interface CompactCardResult {
   nextCursor?: string;
 }
 
-function parseCardCursor(cursor: string | undefined): number {
+function normaliseCursorQuery(query: string): string {
+  return query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase();
+}
+
+async function cardCursorScope(courseId: string, query: string): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify([courseId, normaliseCursorQuery(query)]));
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function parseCardCursor(cursor: string | undefined, scope: string): number {
   if (cursor === undefined) return 0;
-  const match = /^cards-v1\.([0-9a-z]+)$/.exec(cursor);
-  const offset = match ? Number.parseInt(match[1], 36) : Number.NaN;
+  const match = /^cards-v2\.([a-f0-9]{64})\.([0-9a-z]+)$/.exec(cursor);
+  const offset = match && match[1] === scope ? Number.parseInt(match[2], 36) : Number.NaN;
   if (!Number.isSafeInteger(offset) || offset < 0) {
     throw new McpToolException({ kind: 'validation', message: 'The Card cursor is invalid or expired.' });
   }
@@ -126,13 +138,14 @@ const searchCards: ToolDefinition<z.infer<typeof searchCardsSchema>, CompactCard
     }
     const course = matches[0];
     const [cards, lessons] = await Promise.all([
-      read.listCardsForCourse(course.id),
+      read.listCardRecordsForCourse(course.id),
       read.listLessons(course.id),
     ]);
     const hits = cardQuery === ''
       ? cards.map((card) => ({ card, lesson: lessons.find((lesson) => lesson.id === card.primaryLessonId) }))
       : searchCardsInScope(cardQuery, { cards, courses: [course], lessons });
-    const offset = parseCardCursor(cursor);
+    const cursorScope = await cardCursorScope(course.id, cardQuery);
+    const offset = parseCardCursor(cursor, cursorScope);
     if (offset > hits.length) {
       throw new McpToolException({ kind: 'validation', message: 'The Card cursor is invalid or expired.' });
     }
@@ -154,7 +167,9 @@ const searchCards: ToolDefinition<z.infer<typeof searchCardsSchema>, CompactCard
         ...(lesson ? { lesson: lesson.name } : {}),
         ...(includePayload && card.payload ? { payload: card.payload } : {}),
       })),
-      ...(nextOffset < hits.length ? { nextCursor: `cards-v1.${nextOffset.toString(36)}` } : {}),
+      ...(nextOffset < hits.length
+        ? { nextCursor: `cards-v2.${cursorScope}.${nextOffset.toString(36)}` }
+        : {}),
     });
   },
 };

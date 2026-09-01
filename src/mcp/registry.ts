@@ -13,6 +13,7 @@ import { IMPORT_TOOLS } from './tools/import';
 import { LINEAGE_TOOLS } from './tools/lineage';
 import { QUESTION_TOOLS } from './tools/questions';
 import { MEMORY_TOOLS } from './tools/memories';
+import { MCP_TOOL_NAME_MAX_LENGTH } from './limits';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's
@@ -135,6 +136,7 @@ function comparableToolName(name: string): string {
 }
 
 export function suggestToolNames(name: string, limit = 3): string[] {
+  if (name.length > MCP_TOOL_NAME_MAX_LENGTH) return [];
   const wanted = comparableToolName(name);
   const maximumDistance = Math.max(2, Math.floor(wanted.length * 0.35));
   return TOOL_REGISTRY
@@ -146,6 +148,9 @@ export function suggestToolNames(name: string, limit = 3): string[] {
 }
 
 export function unknownToolMessage(name: string): string {
+  if (name.length > MCP_TOOL_NAME_MAX_LENGTH) {
+    return 'Unknown tool name is too long. Use lacuna.list_tools to search the catalogue.';
+  }
   const suggestions = suggestToolNames(name);
   return suggestions.length > 0
     ? `Unknown tool "${name}". Did you mean ${suggestions.join(', ')}? Use lacuna.list_tools to search the catalogue.`

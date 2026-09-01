@@ -2583,13 +2583,15 @@ its navigation cannot drift from the rendered groups.
   terminate inference already running in the model or terminal harness. The terminal task must
   remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
 
-  The native companion renews an active lease once per minute while its stdio process and claimed
-  run remain alive. Renewal is an additive internal bridge request and cannot revive an expired or
-  stopped run. The renderer remains the clock and authority for the new expiry. It also retains a
-  bounded record of completed local replies: repeating the same run, message and content is
-  acknowledged without adding a second assistant item, while changed content conflicts. This makes
-  an ambiguous reply acknowledgement safely retryable without pretending the model itself persists
-  across a terminated client task.
+  Native AI companion protocol 2 advertises lease renewal during its authenticated handshake. The
+  companion renews an active lease once per minute only when that capability was negotiated; a
+  current client falls back to the v0.2.3 protocol 1 handshake and does not send an unsupported
+  request. Renewal cannot revive an expired or stopped run, and a permanent renewal failure ends the
+  active run rather than scheduling an endless retry loop. The renderer remains the clock and
+  authority for the new expiry. It also retains a bounded record of completed local replies:
+  repeating the same run, message and content is acknowledged without adding a second assistant
+  item, while changed content conflicts. This makes an ambiguous reply acknowledgement safely
+  retryable without pretending the model itself persists across a terminated client task.
 
   A bounded wait publishes at most one terminal-mailbox heartbeat per minute. Its relay PUT is
   cancelled at the wait deadline; because the write outcome is then unknown, the companion requires
@@ -2862,7 +2864,8 @@ without reloading the application shell or data layer.
 | `@modelcontextprotocol/core`   | 2.0.0          | Shared protocol types and modern/legacy negotiation                 |
 | `@modelcontextprotocol/server` | 2.0.0          | Companion and embedded stdio server                                 |
 | `@modelcontextprotocol/client` | 2.0.0          | Portable smoke client                                               |
-| Lacuna companion protocol      | 1              | Authenticated native-IPC relay; independent of MCP protocol version |
+| Lacuna data companion protocol | 1              | Authenticated native-IPC relay; independent of MCP protocol version |
+| Lacuna AI companion protocol   | 2              | Capability-negotiated native AI relay; protocol 1 remains supported |
 
 The tool contract is transport-independent and versioned separately from the Dexie schema
 (`MCP_TOOL_SURFACE_VERSION`, currently 3 — additive tools never bump it). It exposes:
@@ -2871,7 +2874,8 @@ The tool contract is transport-independent and versioned separately from the Dex
   levels, plus recovery suggestions for unknown names;
 - read/query tools for courses, lessons, cards, due and weak cards, statistics, sequences,
   occlusions, notes and diagnostics, including natural-language `lacuna.find_course` resolution and
-  bounded `lacuna.search_cards` results which omit scheduling and review history by default;
+  bounded `lacuna.search_cards` results which omit scheduling and review history by default, use
+  query- and Course-bound cursors, and read stored Card content without hydrating review history;
 - content tools for course, lesson, note, card, sequence, occlusion and course-assessment
   creation/update;
 - destructive or bulk tools for cards, lessons, courses, sequences and occlusions, plus
@@ -2893,10 +2897,11 @@ manually. A client's grants are destroyed on disconnect. Destructive and bulk ha
 repository snapshots; their internal undo payload never reaches the
 client, but drives an in-app undo toast after the action completes.
 
-AI-companion MCP failures use a compact machine-readable envelope containing an error kind,
+Native AI-companion MCP failures use a compact machine-readable envelope containing an error kind,
 retryability, suggested action, whether user intervention is required and whether a write may have
-committed. Arbitrary thrown exception text is replaced at the companion boundary so a filesystem
-path, account name or native endpoint cannot leak into model-visible diagnostics.
+committed. Arbitrary thrown exception text is replaced at the native companion boundary so a
+filesystem path, account name or native endpoint cannot leak into model-visible diagnostics. The
+hosted web companion retains its existing encrypted-relay error contract.
 
 `create_occlusion` takes the hash of a diagram already stored in this install: there is no
 asset-upload tool, deliberately, since binary transport is not a natural MCP shape. Region

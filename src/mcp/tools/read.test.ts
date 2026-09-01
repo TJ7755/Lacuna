@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db/schema';
 import {
   createCourse,
@@ -33,6 +33,7 @@ const ctx: ToolContext = { grant: null, agentId: 'test-agent' };
 
 describe('mcp read tools', () => {
   beforeEach(clearAll);
+  afterEach(() => vi.restoreAllMocks());
 
   describe('lacuna.list_courses', () => {
     it('lists every course', async () => {
@@ -62,6 +63,18 @@ describe('mcp read tools', () => {
         }],
       });
       expect(res.data.matches[0]).not.toHaveProperty('fsrsParameters');
+    });
+
+    it('counts records without hydrating Card review history', async () => {
+      const course = await createCourse('Biology Core');
+      const lesson = await createLesson(course.id, 'Cells');
+      await createLessonCard(course.id, lesson.id, 'front_back', 'DNA', 'A polymer');
+      const historyQuery = vi.spyOn(db.reviewHistory, 'where');
+
+      const res = await tools.findCourse.handler({ query: course.id, limit: 10 }, ctx);
+
+      expect(res.data.matches[0]).toMatchObject({ lessonCount: 1, cardCount: 1 });
+      expect(historyQuery).not.toHaveBeenCalled();
     });
   });
 
@@ -118,6 +131,44 @@ describe('mcp read tools', () => {
       if (result.ok) throw new Error('Expected an ambiguous Course error.');
       expect(result.error.message).toContain(core.id);
       expect(result.error.message).toContain(full.id);
+    });
+
+    it('does not hydrate review history for compact search results', async () => {
+      const course = await createCourse('Biology');
+      const lesson = await createLesson(course.id, 'Cells');
+      await createLessonCard(course.id, lesson.id, 'front_back', 'DNA', 'A polymer');
+      const historyQuery = vi.spyOn(db.reviewHistory, 'where');
+
+      const result = await tools.searchCards.handler({ course: course.id, query: 'DNA' }, ctx);
+
+      expect(result.data.cards).toHaveLength(1);
+      expect(historyQuery).not.toHaveBeenCalled();
+    });
+
+    it('rejects a cursor reused with another query or Course', async () => {
+      const firstCourse = await createCourse('Biology');
+      const firstLesson = await createLesson(firstCourse.id, 'Cells');
+      await createLessonCard(firstCourse.id, firstLesson.id, 'front_back', 'DNA issue', 'A polymer');
+      await createLessonCard(firstCourse.id, firstLesson.id, 'front_back', 'RNA issue', 'Another polymer');
+      const secondCourse = await createCourse('Chemistry');
+      const secondLesson = await createLesson(secondCourse.id, 'Atoms');
+      await createLessonCard(secondCourse.id, secondLesson.id, 'front_back', 'Bond issue', 'One');
+      await createLessonCard(secondCourse.id, secondLesson.id, 'front_back', 'Ion issue', 'Two');
+      const first = await tools.searchCards.handler(
+        { course: firstCourse.id, query: 'issue', limit: 1 },
+        ctx,
+      );
+
+      for (const input of [
+        { course: firstCourse.id, query: 'polymer', limit: 1, cursor: first.data.nextCursor },
+        { course: secondCourse.id, query: 'issue', limit: 1, cursor: first.data.nextCursor },
+      ]) {
+        const result = await validateAndRun(tools.searchCards, input, ctx);
+        expect(result).toMatchObject({
+          ok: false,
+          error: { kind: 'validation', message: 'The Card cursor is invalid or expired.' },
+        });
+      }
     });
   });
 

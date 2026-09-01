@@ -1,9 +1,17 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { createAiToolSession } from '../ai/toolSession';
-import { getTool, validateAndRun } from './registry';
+import { getTool, unknownToolMessage, validateAndRun } from './registry';
 
 describe('lacuna.list_tools', () => {
+  it('rejects overlong suggestion input without reflecting it into the response', () => {
+    const overlongName = `lacuna.${'x'.repeat(10_000)}`;
+    const message = unknownToolMessage(overlongName);
+
+    expect(message).toBe('Unknown tool name is too long. Use lacuna.list_tools to search the catalogue.');
+    expect(message).not.toContain(overlongName);
+  });
+
   it('returns searchable schemas and permission levels through the generic AI invoker', async () => {
     const tool = getTool('lacuna.list_tools');
     expect(tool).toBeDefined();

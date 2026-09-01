@@ -16,17 +16,23 @@ web and Electron typecheck; focused lint and production build.
 
 - Added automatic native message-lease renewal while a claimed run is active, so legitimate model
   work is not rejected merely because several domain calls exceed the original five-minute lease.
-  Stop and expiry remain renderer-authoritative and cancel renewal.
+  Protocol 2 now negotiates that capability explicitly; current clients fall back to v0.2.3's
+  protocol 1 without sending an unsupported renewal request. Stop, expiry and permanent renewal
+  failures cancel renewal instead of starting an endless retry loop.
 - Made local reply recording idempotent for the exact run, message and content. Retrying after an
   ambiguous acknowledgement now returns success without duplicating the assistant turn; changed
   content still conflicts.
 - Added structured, actionable AI-companion errors with retryability, recovery action, user-action
   and commit-state fields. Unexpected exception text is redacted at the companion boundary rather
-  than exposing native paths or endpoint details.
+  than exposing native paths or endpoint details. Handshake failure and pre-acknowledgement socket
+  closure now preserve safe retry guidance; ambiguous replies and writes report unknown commit
+  state so their exact idempotency keys can be reused.
 - Added a searchable domain-tool catalogue with JSON schemas and permission levels, plus likely
   alternatives for unknown names. New `find_course` and `search_cards` reads resolve learner-facing
   Course/deck names and return compact, cursor-paginated Card content without FSRS state or review
-  history by default.
+  history by default. Tool-name suggestions reject oversized input before distance calculation;
+  compact reads count and search stored rows without hydrating review history, and Card cursors are
+  bound to their Course and query.
 - Kept the five-tool conversation surface separate from the broader data MCP authority. Durable
   model execution, client tool-registry reload and waking a finished task remain client-owned MCP
   limitations rather than fake background behaviour inside Lacuna.
@@ -34,8 +40,9 @@ web and Electron typecheck; focused lint and production build.
   which lands between render and listener subscription is now observed instead of being silently
   lost, which was the real cause behind the intermittent lazy-runtime CI failure.
 
-**Checks:** red-to-green protocol, lease renewal, idempotent reply, error-redaction, tool-catalogue,
-natural Course resolution, compact pagination, scope-resolution and settings-subscription
+**Checks:** red-to-green protocol negotiation and fallback, lease renewal and permanent-failure,
+ambiguous-write recovery, handshake recovery, error-redaction, bounded tool-catalogue,
+natural Course resolution, lightweight compact pagination, cursor-scope, scope-resolution and settings-subscription
 regressions; native Electron AI lifecycle; browser suite; web/Electron typecheck, lint and
 production build.
 
