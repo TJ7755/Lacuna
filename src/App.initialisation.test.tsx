@@ -54,6 +54,7 @@ describe('App initialisation', () => {
     localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
     window.location.hash = '#/';
     dependencies.ensurePreMigrationSnapshot.mockResolvedValue(undefined);
+    dependencies.requestPersistentStorage.mockClear();
     dependencies.openDatabase.mockResolvedValue({ ok: true });
     dependencies.requestPersistentStorage.mockResolvedValue({
       supported: true,
@@ -82,6 +83,27 @@ describe('App initialisation', () => {
     await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
 
     persistence.reject(new Error('denied'));
+  });
+
+  it('explains how to recover from a full database without suggesting site-data deletion', async () => {
+    dependencies.openDatabase.mockResolvedValue({
+      ok: false,
+      reason: 'quota',
+      message: 'Your browser storage is full.',
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Lacuna could not start' })).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Do not clear Lacuna site data — that would delete your cards and progress.',
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Free space in your browser or operating system, or leave private browsing, then reload Lacuna.',
+    );
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /backup|export/i })).not.toBeInTheDocument();
+    expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
   });
 
   it('opts into start transitions without emitting the React Router future warning', async () => {

@@ -32,7 +32,13 @@ export function useStorageQuotaWarning() {
           notify(
             `Storage is ${Math.round((usage / quota) * 100)}% full. Consider exporting your data to free up space.`,
             'negative',
-            { duration: 8000 },
+            {
+              duration: 8000,
+              actionLabel: 'Open backups',
+              onAction: () => {
+                window.location.hash = '#/settings#settings-backups';
+              },
+            },
           );
         }
       } catch {

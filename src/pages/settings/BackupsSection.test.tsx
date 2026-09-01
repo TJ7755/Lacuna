@@ -4,6 +4,8 @@ import { BackupsSection } from './BackupsSection';
 
 const mockDeleteBackup = vi.fn().mockResolvedValue(undefined);
 const mockNotify = vi.fn();
+const mockCheckPersistentStorage = vi.fn().mockResolvedValue(null);
+const mockRequestPersistentStorage = vi.fn();
 
 vi.mock('../../db/backups', () => ({
   backupFolderName: vi.fn().mockResolvedValue(null),
@@ -16,8 +18,8 @@ vi.mock('../../db/backups', () => ({
 }));
 
 vi.mock('../../db/persistence', () => ({
-  checkPersistentStorage: vi.fn().mockResolvedValue(null),
-  requestPersistentStorage: vi.fn(),
+  checkPersistentStorage: (...args: unknown[]) => mockCheckPersistentStorage(...args),
+  requestPersistentStorage: (...args: unknown[]) => mockRequestPersistentStorage(...args),
 }));
 
 vi.mock('../../state/useData', () => ({
@@ -40,6 +42,10 @@ describe('BackupsSection', () => {
     mockDeleteBackup.mockReset();
     mockDeleteBackup.mockResolvedValue(undefined);
     mockNotify.mockClear();
+    mockCheckPersistentStorage.mockReset();
+    mockCheckPersistentStorage.mockResolvedValue(null);
+    mockRequestPersistentStorage.mockReset();
+    window.location.hash = '#/';
   });
 
   it('requires explicit confirmation before deleting a restore point from Lacuna', async () => {
@@ -84,6 +90,34 @@ describe('BackupsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus());
+  });
+
+  it('offers a full backup when persistent storage is denied', async () => {
+    mockCheckPersistentStorage.mockResolvedValue({
+      supported: true,
+      persisted: false,
+      granted: false,
+    });
+    mockRequestPersistentStorage.mockResolvedValue({
+      supported: true,
+      persisted: false,
+      granted: false,
+    });
+
+    render(<BackupsSection />);
+
+    await screen.findByText('Storage is not persisted');
+    fireEvent.click(screen.getByRole('button', { name: 'Request persistence' }));
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Persistent storage was denied.', 'negative', {
+        actionLabel: 'Export backup',
+        onAction: expect.any(Function),
+      }),
+    );
+    const options = mockNotify.mock.calls.at(-1)?.[2] as { onAction: () => void };
+    options.onAction();
+    expect(window.location.hash).toBe('#/settings#settings-export');
   });
 
   it('states the AI consequence before confirming a full restore', async () => {
