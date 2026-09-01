@@ -43,6 +43,10 @@ import { CourseTabs } from '../components/course/CourseTabs';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
+import {
+  ArchivedCourseBadge,
+  ArchivedCourseRestoreNotice,
+} from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 
@@ -439,13 +443,7 @@ export function CoursePath() {
           {archived ? 'Archived courses' : 'All courses'}
         </Link>
         <div className="flex min-w-0 items-center gap-3">
-          {archived ? (
-            <span className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft">
-              Archived course
-            </span>
-          ) : (
-            <CourseTabs courseId={courseId ?? ''} />
-          )}
+          {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId ?? ''} />}
           {/* Workspace mode governs the path and lessons, so it stays beside the
               content navigation rather than moving into CourseTabs, which is shared
               across course surfaces that do not have an authoring state. */}
@@ -516,9 +514,7 @@ export function CoursePath() {
             lessonProgress={{ reached, total }}
           />
           {archived ? (
-            <p className="mt-6 text-sm text-ink-soft">
-              Restore this course from Archived to study or make changes.
-            </p>
+            <ArchivedCourseRestoreNotice />
           ) : (
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <Button
@@ -635,11 +631,8 @@ export function CoursePath() {
               lessonDetail={
                 node.nodeType === 'lesson' ? detailForLesson(node.lesson.id) : undefined
               }
-              onLessonClick={
-                archived
-                  ? undefined
-                  : (lessonId) => navigate(`/course/${courseId}/lesson/${lessonId}`)
-              }
+              onLessonClick={(lessonId) => navigate(`/course/${courseId}/lesson/${lessonId}`)}
+              archivedInspection={archived}
               practiceProgress={
                 node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
                   ? practiceProgressByKey.get(node.nodeKey)

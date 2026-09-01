@@ -282,8 +282,13 @@ beforeEach(() => {
 });
 
 describe('CoursePath Study mode', () => {
-  it('renders archived courses as a read-only path with no study or authoring exits', () => {
-    mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
+  it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
+    mockCourse = {
+      ...course,
+      archived: true,
+      lessonViewMode: 'edit',
+      unlockMode: 'semi-linear',
+    };
 
     renderPage();
 
@@ -297,7 +302,12 @@ describe('CoursePath Study mode', () => {
     expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kinematics' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
+    const previouslyLockedLesson = screen.getByRole('button', { name: 'Dynamics' });
+    expect(previouslyLockedLesson).not.toHaveAttribute('aria-disabled');
+    fireEvent.click(previouslyLockedLesson);
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
 
@@ -423,7 +433,9 @@ describe('CoursePath Study mode', () => {
     expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' }),
+    ).not.toBeInTheDocument();
   });
 });
 

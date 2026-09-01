@@ -14,6 +14,7 @@ import {
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
 import { CourseTabs } from '../components/course/CourseTabs';
+import { ArchivedCourseBadge } from '../components/course/ArchivedCourseState';
 import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { ChevronLeftIcon } from '../components/ui/icons';
@@ -97,13 +98,13 @@ export function CourseAnalytics() {
     <div className="mx-auto max-w-5xl px-6 py-8 md:px-10">
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <Link
-          to="/"
+          to={course.archived ? '/archived' : '/'}
           className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
         >
           <ChevronLeftIcon width={16} height={16} />
-          All courses
+          {course.archived ? 'Archived courses' : 'All courses'}
         </Link>
-        <CourseTabs courseId={course.id} />
+        {course.archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={course.id} />}
       </div>
 
       <motion.header

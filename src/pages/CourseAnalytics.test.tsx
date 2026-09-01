@@ -1,16 +1,17 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
 import { CourseAnalytics } from './CourseAnalytics';
 
 const mocks = vi.hoisted(() => ({
   questionData: undefined as CourseQuestionData | undefined,
+  course: { id: 'course-1', name: 'Mathematics', archived: false },
 }));
 
 vi.mock('../state/useCourseData', () => ({
-  useCourse: () => ({ id: 'course-1', name: 'Mathematics' }),
+  useCourse: () => mocks.course,
   useLessons: () => [],
   useCourseCards: () => [],
   useCourseReviewHistory: () => [],
@@ -99,6 +100,10 @@ function novelAttempt(): QuestionAttempt {
 }
 
 describe('CourseAnalytics', () => {
+  beforeEach(() => {
+    mocks.course = { id: 'course-1', name: 'Mathematics', archived: false };
+  });
+
   it('renders Question evidence separately with novel generated performance as the headline', () => {
     const question = generatedQuestion();
     mocks.questionData = {
@@ -122,5 +127,25 @@ describe('CourseAnalytics', () => {
     expect(screen.getByText(/not included in Card readiness/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Cards' })).toBeInTheDocument();
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
+  });
+
+  it('keeps archived analytics read-only without active-course navigation', () => {
+    mocks.course = { id: 'course-1', name: 'Mathematics', archived: true };
+    mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/analytics']}>
+        <Routes>
+          <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Archived course')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
+      'href',
+      '/archived',
+    );
+    expect(screen.queryByText('Course tabs')).not.toBeInTheDocument();
   });
 });

@@ -55,6 +55,7 @@ export function PathNodeWithLine({
   onCheckpointClick,
   onPracticeEdit,
   authoring,
+  archivedInspection,
   lessonReorder,
 }: {
   node: PathNode;
@@ -70,6 +71,7 @@ export function PathNodeWithLine({
   onCheckpointClick?: (assessmentId: string) => void;
   onPracticeEdit?: (node: PracticePathNode) => void;
   authoring: boolean;
+  archivedInspection?: boolean;
   lessonReorder?: LessonReorderInteraction;
 }) {
   // A segment is completed when the node it trails is a completed lesson.
@@ -77,9 +79,7 @@ export function PathNodeWithLine({
   const segmentCompleted = !isLast && node.nodeType === 'lesson' && node.status === 'completed';
 
   return (
-    <div
-      className="relative flex flex-col items-center"
-    >
+    <div className="relative flex flex-col items-center">
       <PathNodeView
         node={node}
         current={current}
@@ -106,6 +106,7 @@ export function PathNodeWithLine({
         }
         onPracticeEdit={authoring ? onPracticeEdit : undefined}
         authoring={authoring}
+        archivedInspection={archivedInspection}
         lessonReorder={lessonReorder}
       />
       {lessonReorder?.dropMarker && (

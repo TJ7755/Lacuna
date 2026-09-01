@@ -422,8 +422,9 @@ transitions between these regions are coordinated by `LayoutGroup` so adding or 
 courses does not stutter. Archived courses are excluded from the active grid and normal sidebar
 course list. The sidebar's fixed **Archived** destination (`/archived`) sits beneath the
 **Courses** heading outside the active-course scroll region. Its cards open the existing course
-path in an explicit read-only state, while a separate **Unarchive** action restores study and
-authoring controls. A course card's context menu (right-click,
+path in an explicit read-only state; every lesson and course analytics remain inspectable, while
+a central route guard returns direct study, authoring or mutation URLs to that overview. A separate
+**Unarchive** action restores study and authoring controls. A course card's context menu (right-click,
 keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
 lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
 
@@ -1930,8 +1931,10 @@ retains its Attempt receipts as personal evidence.
   data (Arc 10 §10.1 folded the former standalone Study Today page into this dashboard).
 - **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14). An archived
-  course reuses this surface for inspection, marks itself as archived and removes study, practice,
-  authoring, update-review and interactive path actions until restoration.
+  course reuses this surface for inspection, marks itself as archived and keeps every lesson node
+  navigable into its read-only content. Practice, checkpoints and every study, authoring, settings,
+  update-review or mutation route remain inaccessible until restoration; direct URLs return to the
+  course overview. Read-only course analytics remain available.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
   notes-first teaching flow when it is the next available path step. In Author mode,

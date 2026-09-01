@@ -32,6 +32,10 @@ import { CourseTabs } from '../components/course/CourseTabs';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
+import {
+  ArchivedCourseBadge,
+  ArchivedCourseRestoreNotice,
+} from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
 import {
   canEditLessons,
@@ -169,9 +173,7 @@ export function LessonView({
         </Link>
         <div className="flex min-w-0 items-center gap-3">
           {archived ? (
-            <span className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft">
-              Archived course
-            </span>
+            <ArchivedCourseBadge />
           ) : courseId ? (
             <CourseTabs courseId={courseId} />
           ) : null}
@@ -259,9 +261,7 @@ export function LessonView({
             unseenCount={lessonCards.filter((c) => c.lastReviewed === null || c.state === 0).length}
           />
           {archived ? (
-            <p className="mt-6 text-sm text-ink-soft">
-              Restore this course from Archived to study or make changes.
-            </p>
+            <ArchivedCourseRestoreNotice />
           ) : showStudyNow ? (
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <Button
