@@ -9,6 +9,17 @@
 
 **Checks:** red-to-green dashboard component regressions; web typecheck and focused lint.
 
+## Settings and Help layout
+
+- Removed the decorative header eyebrows from Settings and Help and tightened their header spacing.
+- Rebalanced both desktop layouts around the shared, narrower section rail so the primary content
+  uses the width previously left idle beside the navigation. Help now uses the established rail
+  component instead of maintaining a duplicate implementation; responsive rail visibility remains
+  unchanged.
+
+**Checks:** red-to-green Settings, Help and shared section-rail layout regressions; focused unit
+suite, typecheck, lint and production build.
+
 ## 0.2.3 beta — archived courses and desktop AI recovery
 
 ### Bun 1.4 toolchain

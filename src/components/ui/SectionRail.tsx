@@ -87,7 +87,7 @@ export function SectionRail({ sections, activeSection, onNavigate, motionMultipl
   if (!isDesktop) return null;
 
   return (
-    <aside className="w-64 shrink-0">
+    <aside className="w-56 shrink-0">
       <div className="sticky top-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

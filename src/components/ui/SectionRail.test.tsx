@@ -158,7 +158,9 @@ describe('SectionRail', () => {
   it('renders only the desktop rail at desktop widths', () => {
     mockViewport(true);
     render(<Harness />);
-    expect(screen.getByRole('button', { name: 'Section B' })).toBeInTheDocument();
+    const rail = screen.getByRole('button', { name: 'Section B' }).closest('aside');
+    expect(rail).toHaveClass('w-56');
+    expect(rail).not.toHaveClass('w-64');
     expect(screen.queryByLabelText('Jump to section')).not.toBeInTheDocument();
   });
 
