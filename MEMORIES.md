@@ -465,3 +465,10 @@ The application shell uses `overscroll-behavior-x: none` and a left-edge pointer
 mobile navigation where the browser permits it. Chromium and Firefox can suppress horizontal
 history overscroll, but iOS Safari may intercept its native edge-back gesture before page pointer
 events arrive. Do not claim that a web page can reliably override that operating-system gesture.
+
+## Electron companions need a separate browser profile
+
+The running app's `userData` directory owns `mcp/connection.json`, but a companion process must not
+also use that directory as Chromium's `--user-data-dir`; Windows then exits it as a duplicate
+browser process. Pass the host directory through `--lacuna-host-user-data-dir` and give each
+advertised companion command its own disposable Electron profile.

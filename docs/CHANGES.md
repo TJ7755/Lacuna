@@ -13,6 +13,9 @@
 
 ### Desktop AI connection recovery
 
+- Separated each headless companion's disposable Electron profile from the running Lacuna profile
+  that owns its broker metadata. Windows no longer treats the companion as a duplicate browser
+  process and exits it before the MCP handshake; isolated profiles still target the correct app.
 - Made the native AI broker wait briefly for an enabled renderer which is still mounting instead
   of rejecting the companion's first request immediately. A renderer which never becomes ready
   still fails within five seconds with an actionable connection error.

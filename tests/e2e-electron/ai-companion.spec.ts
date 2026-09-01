@@ -41,18 +41,19 @@ function toolData(result: CallToolResult): Record<string, unknown> {
 
 async function startCompanion(
   executablePath: string,
-  profile: string,
+  hostProfile: string,
+  companionProfile: string,
   name: string,
 ): Promise<Client> {
   let stderr = '';
-  const nativeLogPath = path.join(profile, `${name.replaceAll(' ', '-')}.log`);
+  const nativeLogPath = path.join(companionProfile, `${name.replaceAll(' ', '-')}.log`);
   const transport = new StdioClientTransport({
     command: executablePath,
     args: [
       root,
       '--ai-companion',
-      ...(process.platform === 'win32' ? ['--disable-gpu'] : []),
-      `--user-data-dir=${profile}`,
+      `--lacuna-host-user-data-dir=${hostProfile}`,
+      `--user-data-dir=${companionProfile}`,
     ],
     env: {
       ELECTRON_ENABLE_LOGGING: '1',
@@ -66,18 +67,12 @@ async function startCompanion(
     process.stderr.write(`[Lacuna AI companion] ${chunk}`);
   });
   const client = new Client({ name, version: '1.0.0' });
-  const connecting = client.connect(transport);
-  const child = (transport as unknown as {
-    _process?: { exitCode: number | null; signalCode: NodeJS.Signals | null };
-  })._process;
   try {
-    await connecting;
+    await client.connect(transport);
   } catch (error) {
     const nativeLog = await readFile(nativeLogPath, 'utf8').catch(() => '');
-    const exit = `exitCode=${child?.exitCode ?? 'unknown'} signal=${child?.signalCode ?? 'none'}`;
-    const output = [stderr.trim(), nativeLog.trim()].filter(Boolean).join('\n') ||
+    const detail = [stderr.trim(), nativeLog.trim()].filter(Boolean).join('\n') ||
       'The companion wrote no diagnostic output.';
-    const detail = `${exit}\n${output}`;
     throw new Error(`The Lacuna AI companion failed to start: ${detail}`, { cause: error });
   }
   return client;
@@ -90,6 +85,9 @@ test('the enabled Electron renderer accepts a companion and completes a message 
   );
 
   const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-electron-ai-')));
+  const companionProfile = await realpath(
+    await mkdtemp(path.join(tmpdir(), 'lacuna-electron-ai-companion-')),
+  );
   const executablePath = electronExecutable();
   let app: ElectronApplication | undefined;
   let client: Client | undefined;
@@ -123,7 +121,12 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     const composer = panel.getByRole('textbox', { name: 'Message AI' });
     await expect(composer).toBeDisabled();
 
-    client = await startCompanion(executablePath, profile, 'Playwright native transport');
+    client = await startCompanion(
+      executablePath,
+      profile,
+      companionProfile,
+      'Playwright native transport',
+    );
 
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name).sort()).toEqual(expectedTools);
@@ -173,7 +176,12 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     client = undefined;
 
     await page.reload({ waitUntil: 'commit' });
-    client = await startCompanion(executablePath, profile, 'Playwright reload probe');
+    client = await startCompanion(
+      executablePath,
+      profile,
+      companionProfile,
+      'Playwright reload probe',
+    );
     const reconnecting = client.callTool({ name: 'lacuna.connect', arguments: {} });
     await page.waitForLoadState('domcontentloaded');
     expect(toolData(await reconnecting).connectionId).toEqual(expect.any(String));
@@ -188,6 +196,9 @@ test('the enabled Electron renderer accepts a companion and completes a message 
   } finally {
     await client?.close().catch(() => undefined);
     await app?.close().catch(() => undefined);
-    await rm(profile, { recursive: true, force: true });
+    await Promise.all([
+      rm(profile, { recursive: true, force: true }),
+      rm(companionProfile, { recursive: true, force: true }),
+    ]);
   }
 });

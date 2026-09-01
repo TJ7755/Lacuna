@@ -13,7 +13,10 @@ import {
   encodeCompanionMessage,
   type CompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
-import { readCompanionConnectionFile } from './connectionFile.js';
+import {
+  companionHostUserDataPath,
+  readCompanionConnectionFile,
+} from './connectionFile.js';
 
 const CONNECT_TIMEOUT_MS = 3_000;
 const CALL_TIMEOUT_MS = 15_000;
@@ -41,7 +44,10 @@ class CompanionAppClient {
   private appVersion: string | null = null;
   private readonly pending = new Map<string, (response: CompanionResponse) => void>();
 
-  constructor(private identity: McpClientIdentity) {}
+  constructor(
+    private identity: McpClientIdentity,
+    private readonly hostUserDataPath: string,
+  ) {}
 
   updateIdentity(identity: McpClientIdentity): void {
     this.identity = identity;
@@ -111,7 +117,7 @@ class CompanionAppClient {
   private async open(): Promise<void> {
     let connection;
     try {
-      connection = await readCompanionConnectionFile(app.getPath('userData'));
+      connection = await readCompanionConnectionFile(this.hostUserDataPath);
     } catch {
       throw new Error('Lacuna is not running or its companion endpoint is unavailable.');
     }
@@ -177,10 +183,11 @@ function reportedIdentity(server: McpServer, context: ServerContext, connectionI
 
 export function startMcpCompanion(): StdioServerHandle {
   silenceStdoutNoise();
+  const hostUserDataPath = companionHostUserDataPath(process.argv, app.getPath('userData'));
   return serveStdio(() => {
     const connectionId = randomUUID();
     const fallback: McpClientIdentity = { connectionId, name: 'MCP client' };
-    const appClient = new CompanionAppClient(fallback);
+    const appClient = new CompanionAppClient(fallback, hostUserDataPath);
     const server = new McpServer({ name: 'lacuna', version: app.getVersion() });
     server.registerTool(
       'lacuna.get_server_info',

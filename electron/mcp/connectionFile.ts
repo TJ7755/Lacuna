@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { MCP_COMPANION_PROTOCOL_VERSION } from '../../src/mcp/companionProtocol.js';
 
+const HOST_USER_DATA_ARGUMENT = '--lacuna-host-user-data-dir=';
+
 export interface CompanionConnectionFile {
   protocolVersion: typeof MCP_COMPANION_PROTOCOL_VERSION;
   endpoint: string;
@@ -34,6 +36,7 @@ export interface CompanionLaunchEnvironment {
   isPackaged: boolean;
   platform: NodeJS.Platform;
   userDataPath: string;
+  companionUserDataPath: string;
   portableExecutableFile?: string;
   appImageFile?: string;
 }
@@ -51,9 +54,20 @@ export function companionLaunchCommand(
     command,
     args: [
       ...(environment.isPackaged ? [mode] : [environment.appPath, mode]),
-      `--user-data-dir=${environment.userDataPath}`,
+      `${HOST_USER_DATA_ARGUMENT}${environment.userDataPath}`,
+      `--user-data-dir=${environment.companionUserDataPath}`,
     ],
   };
+}
+
+export function companionHostUserDataPath(argv: string[], fallback: string): string {
+  const argument = argv.find((value) => value.startsWith(HOST_USER_DATA_ARGUMENT));
+  const value = argument?.slice(HOST_USER_DATA_ARGUMENT.length);
+  return value || fallback;
+}
+
+export function companionProcessUserDataPath(): string {
+  return path.join(os.tmpdir(), `lacuna-electron-companion-${randomBytes(16).toString('hex')}`);
 }
 
 export async function writeCompanionConnectionFile(

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   companionEndpoint,
+  companionHostUserDataPath,
   companionLaunchCommand,
   writeCompanionConnectionFile,
 } from '../../electron/mcp/connectionFile';
@@ -53,10 +54,15 @@ describe('companion connection metadata', () => {
       isPackaged: true,
       platform: 'win32',
       userDataPath: 'C:\\Users\\managed\\AppData\\Roaming\\Lacuna',
+      companionUserDataPath: 'C:\\Users\\managed\\AppData\\Local\\Temp\\lacuna-companion-ai',
       portableExecutableFile: 'D:\\Apps\\Lacuna-Portable.exe',
     }, '--ai-companion')).toEqual({
       command: 'D:\\Apps\\Lacuna-Portable.exe',
-      args: ['--ai-companion', '--user-data-dir=C:\\Users\\managed\\AppData\\Roaming\\Lacuna'],
+      args: [
+        '--ai-companion',
+        '--lacuna-host-user-data-dir=C:\\Users\\managed\\AppData\\Roaming\\Lacuna',
+        '--user-data-dir=C:\\Users\\managed\\AppData\\Local\\Temp\\lacuna-companion-ai',
+      ],
     });
   });
 
@@ -67,10 +73,15 @@ describe('companion connection metadata', () => {
       isPackaged: true,
       platform: 'linux',
       userDataPath: '/home/student/.config/Lacuna',
+      companionUserDataPath: '/tmp/lacuna-companion-ai',
       appImageFile: '/home/student/Applications/Lacuna.AppImage',
     }, '--ai-companion')).toEqual({
       command: '/home/student/Applications/Lacuna.AppImage',
-      args: ['--ai-companion', '--user-data-dir=/home/student/.config/Lacuna'],
+      args: [
+        '--ai-companion',
+        '--lacuna-host-user-data-dir=/home/student/.config/Lacuna',
+        '--user-data-dir=/tmp/lacuna-companion-ai',
+      ],
     });
   });
 
@@ -81,13 +92,19 @@ describe('companion connection metadata', () => {
       isPackaged: false,
       platform: 'darwin',
       userDataPath: '/Users/student/Library/Application Support/Lacuna',
+      companionUserDataPath: '/tmp/lacuna-companion-data',
     }, '--mcp-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-      args: ['/repo', '--mcp-companion', '--user-data-dir=/Users/student/Library/Application Support/Lacuna'],
+      args: [
+        '/repo',
+        '--mcp-companion',
+        '--lacuna-host-user-data-dir=/Users/student/Library/Application Support/Lacuna',
+        '--user-data-dir=/tmp/lacuna-companion-data',
+      ],
     });
   });
 
-  it('keeps both companion processes in the active isolated Electron profile', () => {
+  it('keeps the host mailbox separate from each companion Electron profile', () => {
     const environment = {
       appPath: '/repo',
       execPath: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
@@ -96,13 +113,39 @@ describe('companion connection metadata', () => {
       userDataPath: '/tmp/lacuna-v022-manual.Q3lViI',
     };
 
-    expect(companionLaunchCommand(environment, '--ai-companion')).toEqual({
+    expect(companionLaunchCommand({
+      ...environment,
+      companionUserDataPath: '/tmp/lacuna-companion-ai',
+    }, '--ai-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-      args: ['/repo', '--ai-companion', '--user-data-dir=/tmp/lacuna-v022-manual.Q3lViI'],
+      args: [
+        '/repo',
+        '--ai-companion',
+        '--lacuna-host-user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
+        '--user-data-dir=/tmp/lacuna-companion-ai',
+      ],
     });
-    expect(companionLaunchCommand(environment, '--mcp-companion')).toEqual({
+    expect(companionLaunchCommand({
+      ...environment,
+      companionUserDataPath: '/tmp/lacuna-companion-data',
+    }, '--mcp-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-      args: ['/repo', '--mcp-companion', '--user-data-dir=/tmp/lacuna-v022-manual.Q3lViI'],
+      args: [
+        '/repo',
+        '--mcp-companion',
+        '--lacuna-host-user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
+        '--user-data-dir=/tmp/lacuna-companion-data',
+      ],
     });
+  });
+
+  it('reads the host mailbox path without confusing it with Electron userData', () => {
+    expect(companionHostUserDataPath([
+      '/repo',
+      '--ai-companion',
+      '--lacuna-host-user-data-dir=/tmp/lacuna host',
+      '--user-data-dir=/tmp/lacuna companion',
+    ], '/fallback')).toBe('/tmp/lacuna host');
+    expect(companionHostUserDataPath(['/repo', '--ai-companion'], '/fallback')).toBe('/fallback');
   });
 });

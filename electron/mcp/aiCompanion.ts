@@ -28,7 +28,10 @@ import {
   isAiCompanionResponse,
   type AiCompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
-import { readCompanionConnectionFile } from './connectionFile.js';
+import {
+  companionHostUserDataPath,
+  readCompanionConnectionFile,
+} from './connectionFile.js';
 
 const CONNECT_TIMEOUT_MS = 3_000;
 const REQUEST_GRACE_MS = 5_000;
@@ -66,7 +69,10 @@ export class LocalAiAppClient {
   private connectionId: string | null = null;
   private activeRun: ActiveRun | null = null;
 
-  constructor(private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS) {}
+  constructor(
+    private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS,
+    private readonly hostUserDataPath = app.getPath('userData'),
+  ) {}
 
   async connect(identity: AiClientIdentity, signal: AbortSignal): Promise<object> {
     if (this.connectionId) throw new Error('Lacuna AI is already connected.');
@@ -285,7 +291,7 @@ export class LocalAiAppClient {
   private async connectSocket(): Promise<void> {
     let connection;
     try {
-      connection = await readCompanionConnectionFile(app.getPath('userData'));
+      connection = await readCompanionConnectionFile(this.hostUserDataPath);
     } catch {
       throw new Error('Lacuna is not running or its local AI endpoint is unavailable.');
     }
@@ -376,7 +382,10 @@ async function callTool<T extends object>(operation: () => Promise<T>): Promise<
 
 export function startAiCompanion(): StdioServerHandle {
   silenceStdoutNoise();
-  const appClient = new LocalAiAppClient();
+  const appClient = new LocalAiAppClient(
+    WRITE_DRAIN_TIMEOUT_MS,
+    companionHostUserDataPath(process.argv, app.getPath('userData')),
+  );
   return serveStdio(() => {
     const server = new McpServer({ name: 'lacuna-ai', version: app.getVersion() });
     server.registerTool(

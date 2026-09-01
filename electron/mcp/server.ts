@@ -50,6 +50,7 @@ import {
 } from '../../src/mcp/companionProtocol.js';
 import {
   companionLaunchCommand,
+  companionProcessUserDataPath,
   removeCompanionConnectionFile,
   writeCompanionConnectionFile,
   type CompanionConnectionFile,
@@ -77,6 +78,7 @@ let grantStore: GrantStore | null = null;
 let stdioHandle: StdioServerHandle | null = null;
 let companionServer: NetServer | null = null;
 let companionConnection: CompanionConnectionFile | null = null;
+let companionLaunchCommands: Pick<McpStatus, 'companion' | 'aiCompanion'> | null = null;
 let activeWindowProvider: (() => BrowserWindow | null) | null = null;
 const companionSockets = new Set<Socket>();
 const aiCompanionChannels = new AiChannelRegistry();
@@ -398,14 +400,23 @@ export function getMcpStatus(): McpStatus {
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
     appImageFile: process.env.APPIMAGE,
   };
+  companionLaunchCommands ??= {
+    companion: companionLaunchCommand({
+      ...environment,
+      companionUserDataPath: companionProcessUserDataPath(),
+    }, '--mcp-companion'),
+    aiCompanion: companionLaunchCommand({
+      ...environment,
+      companionUserDataPath: companionProcessUserDataPath(),
+    }, '--ai-companion'),
+  };
   const window = activeWindowProvider?.() ?? null;
   return {
     running: started,
     toolCount: TOOL_REGISTRY.length + 1,
     toolSurfaceVersion: MCP_TOOL_SURFACE_VERSION,
     clients: companionClients.list(),
-    companion: companionLaunchCommand(environment, '--mcp-companion'),
-    aiCompanion: companionLaunchCommand(environment, '--ai-companion'),
+    ...companionLaunchCommands,
     aiRenderer: {
       status: aiRendererAvailability.status(
         window && !window.isDestroyed() && !window.webContents.isDestroyed()
@@ -514,6 +525,7 @@ function registerServerInfoTool(server: McpServer, store: GrantStore, getWindow:
 export async function startMcpServer(getWindow: () => BrowserWindow | null): Promise<void> {
   if (started) return;
   silenceStdoutNoise();
+  companionLaunchCommands = null;
 
   grantStore = new GrantStore();
   dispatcher = new InvokeDispatcher((request) => {
@@ -677,5 +689,6 @@ export async function stopMcpServer(): Promise<void> {
   dispatcher = null;
   grantStore = null;
   activeWindowProvider = null;
+  companionLaunchCommands = null;
   started = false;
 }
