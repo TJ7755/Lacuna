@@ -1,5 +1,14 @@
 # Lacuna — next beta
 
+## Maintainership baseline truth
+
+- Reconciled the roadmap and specification with the current v0.2.3 beta, recorded the active feature
+  freeze and ordered maintenance programme, and clarified that older plans are parked.
+- Corrected the relay environment example: `RELAY_MINT_SECRET` is optional, providing a private
+  rate-limit bypass; public channel minting remains available when it is unset.
+
+**Checks:** documentation line-count, stale-version and environment-example searches; `git diff --check`.
+
 ## Platform-aware quick-search hint
 
 - Replaced the ambiguous sidebar `Ctrl/Cmd+K` reminder with the native `⌘K` label on macOS and
