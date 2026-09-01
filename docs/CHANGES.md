@@ -17,6 +17,20 @@
 71.70/71.64/86.36/71.70 for assets (statements/branches/functions/lines); existing coverage gate
 unchanged.
 
+## Compatibility and documentation truth correction
+
+- Corrected the specification's release boundary: it describes the development head after v0.2.3,
+  not exclusively the already-published v0.2.3 artefacts.
+- Corrected the storage note and current specification to match the retired v22 import boundary:
+  backups carrying Deck or Folder rows and v1 flat-Deck share payloads are rejected, rather than
+  converted. `LAC0`–`LAC3` remain encoding prefixes only; they are not support-version promises.
+- Moved the live PWA service-worker contract out of the historical v0.0.2 notes and corrected the
+  roadmap, CODEOWNERS wording and maintainer memory so GitHub settings, not repository text alone,
+  determine enforcement.
+- Corrected two further roadmap overclaims found in independent review: the new provenance workflow
+  cannot retrofit attestations onto the published v0.2.3 assets, and historical migration fixtures
+  still lack the required post-migration export proof.
+
 ## Controlled offline browser reload
 
 - Added a production-build Chromium journey that installs and waits for control by the service
@@ -190,8 +204,9 @@ MCP typecheck, lint, tests and build; root, relay and handwriting audits.
 
 ## Repository governance
 
-- Added contributor and security policies, enforceable CODEOWNERS, pull-request and issue templates,
-  and grouped Dependabot updates for the root, relay, handwriting tool and GitHub Actions. The policy
+- Added contributor and security policies, CODEOWNERS review requests, pull-request and issue
+  templates, and grouped Dependabot updates for the root, relay, handwriting tool and GitHub Actions.
+  GitHub branch-protection settings are still required to enforce CODEOWNERS. The policy
   records Bun 1.4.0 checks, red-to-green evidence, stacked-PR expectations, risk-bearing review and
   managed-device/data-integrity reporting without inventing a security email route.
 
@@ -1322,11 +1337,11 @@ behaviour-preserving maintenance arc except where noted.
   Measured against live Blob on 15 August 2026; see the evidence entry above.
 - Blob reads pass `useCache: false`. A cached pull is a wrong merge base.
 
-## Unreleased — Pre-v22 import boundary retired
+## Pre-v22 import boundary retired
 
-- Lacuna now refuses backup files that still carry Deck or Folder rows, and
-  refuses v1 deck share codes, with a specific error rather than converting
-  them. Current-shaped backups and v2 course share codes are unchanged.
+- Lacuna refuses backup files that still carry Deck or Folder rows, and refuses v1 deck share
+  codes, with a specific error rather than converting them. Current-shaped backups and v2 course
+  share codes are unchanged.
 - Restoring a pre-v22 snapshot from Automatic backups now shows that same
   specific refusal, rather than a flat "Restore failed."
 - Share decode still rejects a working item with no mark-scheme lines; the
@@ -1516,14 +1531,14 @@ behaviour-preserving maintenance arc except where noted.
   detail (which still grows by height so the card can follow the pointer) were
   kept as in-scene motion.
 
-## Unreleased — Schema v22 storage cutover
+## Schema v22 storage cutover
 
 - Removed the hidden Deck and Folder IndexedDB stores. `schedulingUnits` is now the sole scheduling
   record, with Course and scheduling-unit performance held in their explicit target stores.
-- Preserved legacy import compatibility through the existing `buildDomainStorageMigration` path.
-  Pre-v22 backups and `LAC0`–`LAC3` share codes convert on import without dropping, reordering or
-  re-identifying review events. Folder hierarchy is discarded and the import report names the
-  affected folders.
+- Preserved legacy on-device upgrade compatibility through the existing
+  `buildDomainStorageMigration` path. Standalone pre-v22 backups and v1 deck share payloads are
+  rejected by the current portability boundary; current course share payloads continue to use
+  the `LAC0`–`LAC3` encoding prefixes without treating them as support-version labels.
 - Changed untargeted Anki `.apkg` imports to create a Course named after the Anki deck and place its
   cards in the Course question bank, rather than creating a Lacuna Deck.
 - Made the destructive upgrade contingent on a separately committed pre-migration snapshot. A
@@ -2566,7 +2581,7 @@ deck/folder surfaces are removed. Internal backing decks remain in storage only.
 - `SharePage` now exports and imports whole courses instead of individual decks: pick a
   course, generate a share code, QR code or plain-text export directly from it. Share
   codes moved to payload v2 (course metadata, ordered lessons with notes and cards, exam
-  dates); legacy v1 deck codes still import and are auto-migrated into a single course.
+  dates); legacy v1 deck codes are now recognised and refused rather than converted.
   Typing-answer cards round-trip through the compact `k:3` type code alongside Basic and
   Reversed.
 - Added the Question Bank page (route `/course/:courseId/bank`): every card in a course
@@ -2938,11 +2953,11 @@ create/revoke churn on every card flip in a fast Learn session.
 removal can be specified once and implemented against a fixed target rather than negotiated
 commit by commit.
 
-- `docs/plans/storage-v22-removal.md`: states, per gate-holder, what is deleted, what compatibility
-  adapter replaces it, and what must be tested before the deletion lands. Two decisions are fixed:
-  full removal of the hidden backing Deck (`schedulingUnits` becomes the sole scheduling record),
-  and conversion-on-import for pre-v22 backups and `LAC0`-`LAC3` share codes, reusing
-  `buildDomainStorageMigration` rather than a second implementation.
+- `docs/plans/storage-v22-removal.md`: recorded, per gate-holder, what was deleted, what
+  compatibility adapter replaced it, and what had to be tested before the deletion landed. The
+  original plan proposed conversion-on-import for pre-v22 backups and `LAC0`-`LAC3` share codes;
+  the later implementation retained the on-device migration but retired those standalone import
+  paths, as recorded above.
 - The contract requires the existing `ensurePreMigrationSnapshot` mechanism to be hardened rather
   than replaced: its failure is currently caught and logged, which is acceptable for an additive
   migration but not for a destructive one. For v22 a failed snapshot must block the upgrade.

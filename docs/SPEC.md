@@ -1,4 +1,4 @@
-# Lacuna — Specification (v0.2.3 beta)
+# Lacuna — Specification (development head after v0.2.3 beta)
 
 Lacuna is a local-first, exam-driven spaced-revision application built on FSRS-6. Material is
 organised into **courses**, each made of an ordered path of **lessons** holding **notes** and
@@ -14,19 +14,17 @@ from the Course path in the current beta.
 
 **Course architecture.** The product was originally built around a flatter `Folder -> Deck ->
 Card` model. A staged migration (tracked in `docs/archive/roadmap-2026-08-11.md`, Arc 0) introduced `Course ->
-Lesson -> Note + Card` alongside it, then removed every Deck/Folder-facing UI surface once the
-new model covered the same ground. The Deck/Folder tables and the deck-shaped scheduling
-primitives (`Deck`, `SchedulerConfig`) still exist in storage — a lesson is, mechanically, a
-hidden single-lesson deck under a course, which is how the FSRS engine, cooldown, and objective
-modules keep working unchanged — but no route, page or sidebar entry exposes a deck or folder
-directly any more. Where this document says "deck" it means that internal backing structure,
-not a user-facing concept.
+Lesson -> Note + Card` alongside it, then removed every Deck/Folder-facing UI surface. Schema v22
+removed the live `decks` and `folders` stores; current scheduling uses `schedulingUnits`, while
+legacy Deck/Folder types remain only for migration, snapshot and rejection fixtures. Where this
+document says "deck" it means an internal scheduling-unit context, not a user-facing concept.
 
-**Current release: v0.2.3 beta.** The product is organised around **courses, lessons, notes and
+**Published release: v0.2.3 beta.** The product is organised around **courses, lessons, notes and
 cards** end to end, with no user-facing deck or folder surfaces. The earlier v0.1.0 Course
 Architecture milestone and v0.0.3 Simple learn mode, formal card types and touch-first polish are
-included in this current release. This specification describes the shipped beta; unreleased work
-and maintenance sequencing belong in `docs/next_plan.md` and `docs/CHANGES.md`.
+included in that release. This specification describes the current development head, including
+unreleased next-beta contracts. `docs/next_plan.md` distinguishes published evidence from remaining
+work, while `docs/CHANGES.md` records the unreleased changes in order.
 
 British English throughout. No emojis anywhere in the product or its copy.
 
@@ -1013,22 +1011,14 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   listing them loose. Enforced below the UI by the same `assertNoGeneratedCards` guard on
   `deleteCards`/`moveCards`.
 
-### Deck and Folder (legacy backing structures, no UI)
+### Deck and Folder (retired stores, compatibility types only)
 
-`Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
-fsrsParameters, examObjective, newCardsPerDay?, archived?, autoOptimise?, folderId?,
-colour?, timeZone?`) and `Folder` (`id, name, parentId?, createdAt`) are the tables the
-original Folder/Deck model was built on. They are **not deleted and not dead** — a course is,
-mechanically, a hidden deck-shaped `SchedulerConfig` (see §5's course section and §8), and
-every lesson is backed by one real `Deck` row so the FSRS engine, cooldown module and
-scheduling optimiser keep working exactly as before against a stable per-lesson scheduling
-context. The Cards page's course-wide view is similarly backed by a lazily created
-per-course bank deck. No page, route or sidebar entry lets a user see, name or manage a deck
-or folder directly; `fsrsVersion`, `fsrsParameters`, `examObjective`, `newCardsPerDay`,
-`autoOptimise` and `colour` are the fields a lesson/course still reads and writes through this
-backing structure. Dropping these tables and folding the backing mechanism into the course
-tables outright is a deferred, later migration (`docs/archive/roadmap-2026-08-11.md` §0.3) — not attempted while the
-course UI is still soaking.
+`LegacyDeckRecord` (`id, name, examDate, createdAt, ...`) and `LegacyFolder` (`id, name,
+parentId?, createdAt`) describe the retired stores at compatibility boundaries. Schema v22
+removed those live stores; `schedulingUnits` now holds the current Course/Lesson scheduling
+contexts. The legacy types remain for the Dexie upgrade chain, pre-migration snapshots and the
+explicit rejection of backups that still carry non-empty Deck or Folder rows. No page, route or
+sidebar entry exposes a Deck or Folder.
 
 ### Card
 
@@ -1103,19 +1093,22 @@ must not yet be treated as a settled scientific claim about the right calibratio
   payload). `tag = 'pre-migration'` marks a snapshot taken automatically before a schema
   upgrade; these are **exempt from daily-snapshot pruning** so a botched migration always
   has a fallback (§13).
-- `BackupFile { app:'lacuna', version, exportedAt, decks, cards, reviewHistory?, assets,
+- `BackupFile { app:'lacuna', version, exportedAt, decks?, cards, reviewHistory?, assets,
 sessionHistory, userPerformance, folders?, courses?, lessons?, notes?, lessonCards?,
 lessonCardExposures?, lessonCompletions?, practiceNodes?, practiceMilestones?,
 courseAssessments?, revisionPlans?, sequences?, occlusions?, concepts, questions,
 questionConcepts, questionAttempts, courseExamDates? }` — the
-  shape of both manual exports and snapshot payloads. Current exports include canonical
+  shape of both manual exports and snapshot payloads. `decks` and `folders` are legacy optional
+  fields retained only so non-empty pre-v22 rows can be rejected; current exports do not emit
+  them. Current exports include canonical
   `reviewHistory`, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions` and all four
   Question collections. Current `cards` carry an empty `history` projection; legacy inline history
   remains accepted and is normalised into `reviewHistory` before storage. The
   legacy `courseExamDates` field is accepted for old imports but is never emitted. `noteAnnotations`
   and lineage merge state are deliberately absent. `version` is the portability format version
   (currently 11), not the Dexie schema version. Current exports require the Question arrays; older
-  backups are normalised through the pure v24 converter before import.
+  backups are normalised through the pure v24 converter before import, but non-empty legacy Deck
+  or Folder rows are refused.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
   handle, sidebar settings, input mode, motion speed).
 
@@ -2161,10 +2154,9 @@ code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's
   every other portability format. Older payloads may still contain the legacy compact `sf`
   lesson-filter field; it is accepted for import compatibility but does not configure live
   lesson study.
-- **Legacy v1 payload:** the original shape — a flat list of decks, each becoming its own
-  single-lesson course on import — is still read for backward compatibility with codes
-  generated before the course model shipped (`docs/archive/roadmap-2026-08-11.md` §0.3 keeps this support in
-  scope).
+- **Legacy v1 payload:** the original flat list-of-decks shape is recognised so the importer can
+  give a specific refusal. It is no longer imported or converted; current course shares use v2 or
+  v3 payloads.
 - **Compression**, in order of impact:
   1. **Reverse-pair folding** — a front/back card and its exact mirror (one's front = the
      other's back and vice versa) are detected and stored **once** as a single "reversible"
@@ -2172,12 +2164,14 @@ code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's
      `createCardWithReverse` produces).
   2. Compact single-letter JSON keys.
   3. **DEFLATE** via the native `CompressionStream('deflate-raw')` when available.
-- **Format:** a short scheme tag followed by the encoded payload — `LAC1` (DEFLATE + base64,
+- **Format:** a short encoding prefix followed by the encoded payload — `LAC1` (DEFLATE + base64,
   the default for copy-paste text), `LAC0` (plain base64, legacy uncompressed fallback),
   `LAC2` (DEFLATE + Base45, densest for QR codes), `LAC3` (plain Base45, legacy uncompressed
   fallback). Base45 (RFC 9285) maps directly to the QR Alphanumeric mode for ~30% more
-  capacity than Base64. A payload version field (`v1`/`v2`/`v3`, distinct from the `LACn` prefix)
-  guards forward compatibility; an unknown or corrupted code yields a readable error.
+  capacity than Base64. `LAC0`–`LAC3` identify encoding choices only; they do not promise support
+  for a particular payload version. The payload version field (`v1`/`v2`/`v3`) is distinct from
+  the prefix and guards forward compatibility. v1 deck payloads are refused; v2 and v3 course
+  payloads are importable. An unknown or corrupted code yields a readable error.
 - **Export UI:** select one course, then "Generate share code" — the code is shown in a
   read-only monospace box with a one-click **Copy**, a character count, and (where the
   payload fits a single QR symbol, up to `MAX_QR_ALPHANUMERIC_CHARS`) a scannable **QR code**.
@@ -2185,9 +2179,9 @@ code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's
   "Read code" decodes and shows an inline confirmation preview (lesson/Card/Question counts, the share
   date, lesson names as chips) before committing. Importing always **creates a new course**
   — it never overwrites existing data.
-- Round-trip behaviour (content, cloze, reverse-pair expansion, v1 legacy decks becoming
-  single-lesson courses, date-due preservation, clean scheduling state, and rejection of
-  non-codes) is covered by `src/db/share.test.ts`.
+- Round-trip behaviour (content, cloze, reverse-pair expansion, date-due preservation, clean
+  scheduling state, v1 deck rejection and rejection of non-codes) is covered by
+  `src/db/share.test.ts`.
 
 ### Classroom distribution — versioned courses and re-import merge (schema v18)
 
@@ -2729,9 +2723,8 @@ defaults** is always available.
   pattern (`DangerZoneSection`): deleting is performed after the inline confirmation, with an
   "Undo" toast that restores everything from a `CourseSnapshot`
   (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
-  notes, lesson-card links, practice nodes, assessments, revision plans, cards, their hidden backing decks
-  (§5, Deck and Folder), and the session history/calibration profiles keyed to either the
-  course or those decks.
+  notes, lesson-card links, practice nodes, assessments, revision plans, cards, their scheduling
+  units, and the session history/calibration profiles keyed to the course or those units.
 - **Not-found handling:** the course is resolved via a null-sentinel
   `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
   stale or deleted `courseId` reaches a genuine not-found state instead of
@@ -2757,10 +2750,16 @@ defaults** is always available.
   course tables contain data. Card content is **excluded by default**; including
   a small sample is a separate, explicit opt-in. Nothing is transmitted — the
   bundle is the user's to paste into a bug report.
-- **Storage-quota warning** (v0.0.2, `src/hooks/useStorageQuotaWarning.ts`):
-  polls the Storage API on a long interval and surfaces a non-blocking toast
-  when the database is approaching its quota, with a "Back up now" action that
-  jumps to the Settings backup area.
+- **Storage-quota warning** (`src/hooks/useStorageQuotaWarning.ts`): polls the Storage API on a
+  long interval and surfaces a non-blocking toast when the database is approaching its quota,
+  with an **Open backups** action that jumps to the Settings backup area.
+- **PWA service worker:** production HTTP(S) pages register `/sw.js`. The install shell precaches
+  the eager application assets and the named shared modules needed by the Cards spine; visited
+  content-hashed scripts, workers and styles use bounded Cache First stores. Stale-chunk recovery
+  probes the origin before clearing worker/cache state and reloading, and never performs that
+  recovery after an offline preload failure. The packaged Electron app uses `app://` and does not
+  register a browser service worker. These are current implementation contracts, not v0.0.2
+  release-history claims.
 - Migrations live in `src/db/migrations.ts`; the schema is versioned in
   `src/db/schema.ts`, and every upgrade is fronted by a pre-migration restore
   point (§13).
@@ -3111,16 +3110,6 @@ cross-environment consistency.
   toast when the database is approaching its quota.
 - **Install-prompt panel** in Settings (PWA / Windows installer links where
   supported).
-- **PWA service worker** for offline use, registered at the application root on production HTTP(S)
-  pages. The install shell precaches the eager application assets and the small, named shared-module
-  closure required by the Cards spine before a first worker can control the page. Unrelated lazy
-  routes remain outside the install shell. Visited content-hashed scripts, workers and styles use
-  bounded Cache First stores, so an online visit to the Cards library retains its route JavaScript
-  and Markdown stylesheet for an offline reload while IndexedDB retains authored Cards and search
-  remains local. Stale-chunk recovery may unregister the worker, clear caches and reload only after
-  a no-store origin probe confirms network access; an offline preload failure never triggers that
-  destructive recovery. The packaged Electron app uses `app://` and does not attempt browser worker
-  registration. Automated coverage uses desktop Chromium and is not physical-device evidence.
 
 ### Storage layer
 
