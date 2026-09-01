@@ -73,6 +73,44 @@ function expectResolvedAtLeast(
   expect(versions.every((version) => isAtLeast(version, minimum))).toBe(true);
 }
 
+function workflowJob(workflow: string, name: string): string {
+  const lines = workflow.split('\n');
+  const start = lines.findIndex((line) => line === `  ${name}:`);
+  if (start === -1) throw new Error(`Workflow job ${name} does not exist`);
+
+  const nextJob = lines.findIndex(
+    (line, index) => index > start && /^ {2}[a-z0-9-]+:$/.test(line),
+  );
+  return lines.slice(start, nextJob === -1 ? lines.length : nextJob).join('\n');
+}
+
+function workflowStep(job: string, name: string): string {
+  const lines = job.split('\n');
+  const start = lines.findIndex((line) => line === `      - name: ${name}`);
+  if (start === -1) throw new Error(`Workflow step ${name} does not exist`);
+
+  const nextStep = lines.findIndex(
+    (line, index) => index > start && line.startsWith('      - '),
+  );
+  return lines.slice(start, nextStep === -1 ? lines.length : nextStep).join('\n');
+}
+
+function blockScalarValues(block: string, key: string): string[] {
+  const lines = block.split('\n');
+  const start = lines.findIndex((line) => line.trim() === `${key}: |`);
+  if (start === -1) throw new Error(`Block scalar ${key} does not exist`);
+
+  const indentation = lines[start].length - lines[start].trimStart().length;
+  const values: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    const value = line.trim();
+    const valueIndentation = line.length - line.trimStart().length;
+    if (!value || valueIndentation <= indentation) break;
+    values.push(value);
+  }
+  return values;
+}
+
 describe('v0.2.3 release configuration', () => {
   it('identifies the public app repository and release version', () => {
     expect(packageJson.version).toBe('0.2.3');
@@ -137,7 +175,7 @@ describe('v0.2.3 release configuration', () => {
     expect(electronAiE2e).not.toContain("node_modules/electron/dist");
   });
 
-  it('builds the supported Windows and Linux artefacts', () => {
+  it('builds the supported Windows, Linux and macOS artefacts', () => {
     expect(builderConfig).toMatch(/target:\s*[\s\S]*?target:\s*nsis[\s\S]*?target:\s*portable/);
     expect(builderConfig).toMatch(
       /artifactName:\s*['"]\$\{productName\}-Setup-\$\{version\}\.\$\{ext\}['"]/,
@@ -188,6 +226,7 @@ describe('v0.2.3 release configuration', () => {
   });
 
   it('gates one draft publisher on complete release verification', () => {
+    const verifyJob = workflowJob(releaseWorkflow, 'verify');
     for (const command of [
       'bun run typecheck',
       'bun run lint',
@@ -198,32 +237,144 @@ describe('v0.2.3 release configuration', () => {
       'bun run test:e2e:web',
       'bun run perf:check',
     ]) {
-      expect(releaseWorkflow).toContain(command);
+      expect(verifyJob).toContain(command);
     }
-    expect(releaseWorkflow).toContain('needs: verify');
-    expect(releaseWorkflow).toMatch(
-      /verify:[\s\S]*?- run: bun install --frozen-lockfile\s+working-directory: relay[\s\S]*?bun run test:e2e:web\s*\n\s*build-win:/,
+    expect(verifyJob).toContain('fetch-depth: 0');
+    expect(verifyJob).toContain(
+      'tag_commit="$(git rev-parse --verify "${GITHUB_REF}^{commit}")"',
     );
-    expect(releaseWorkflow).toContain('windows-latest');
-    expect(releaseWorkflow).toContain('ubuntu-latest');
-    expect(releaseWorkflow).toContain('actions/upload-artifact@v7');
-    expect(releaseWorkflow).toContain('release/*.exe');
-    expect(releaseWorkflow).toContain('release/*.exe.blockmap');
-    expect(releaseWorkflow).toContain('release/latest.yml');
-    expect(releaseWorkflow).toContain('release/*.AppImage');
-    expect(releaseWorkflow).toContain('release/*.AppImage.blockmap');
-    expect(releaseWorkflow).toContain('release/*.deb');
-    expect(releaseWorkflow).toContain('release/latest-linux.yml');
+    expect(verifyJob).toContain('if [[ "$tag_commit" != "$GITHUB_SHA" ]]');
+    const exactCommitChecks = workflowStep(verifyJob, 'Require successful CI for this commit');
+    expect(exactCommitChecks).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+    expect(exactCommitChecks).toContain('required_workflows=(CI Security)');
+    expect(exactCommitChecks).toContain('head_sha=${GITHUB_SHA}');
+    expect(exactCommitChecks).toContain('.event == "push"');
+    expect(exactCommitChecks).toContain('.head_branch == "master"');
+    expect(exactCommitChecks).toContain('.head_branch == "main"');
+    expect(exactCommitChecks).toContain('.conclusion == "success"');
+    expect(verifyJob).toContain('working-directory: relay');
+
+    const platforms = [
+      {
+        job: 'build-win',
+        runner: 'windows-latest',
+        build: 'bun run electron:build:win',
+        label: 'Windows',
+        artefact: 'lacuna-win-x64',
+        paths: [
+          'release/Lacuna-Setup-*.exe',
+          'release/Lacuna-Setup-*.exe.blockmap',
+          'release/Lacuna-Portable-*.exe',
+          'release/latest.yml',
+        ],
+      },
+      {
+        job: 'build-linux',
+        runner: 'ubuntu-latest',
+        build: 'bun run electron:build:linux',
+        label: 'Linux',
+        artefact: 'lacuna-linux-x64',
+        paths: [
+          'release/*.AppImage',
+          'release/*.AppImage.blockmap',
+          'release/*.deb',
+          'release/latest-linux.yml',
+        ],
+      },
+      {
+        job: 'build-mac',
+        runner: 'macos-15',
+        build: 'bun run electron:build:mac',
+        label: 'macOS',
+        artefact: 'lacuna-macos-arm64',
+        paths: [
+          'release/*.dmg',
+          'release/*.dmg.blockmap',
+          'release/*.zip',
+          'release/*.zip.blockmap',
+          'release/latest-mac.yml',
+        ],
+      },
+    ] as const;
+
+    for (const platform of platforms) {
+      const job = workflowJob(releaseWorkflow, platform.job);
+      const allowlistCheck = workflowStep(job, `Verify ${platform.label} artefact allowlist`);
+      const attest = workflowStep(job, `Attest ${platform.label} artefacts`);
+      const upload = workflowStep(job, `Upload ${platform.label} artefacts`);
+
+      expect(job).toContain('needs: verify');
+      expect(job).toContain(`runs-on: ${platform.runner}`);
+      expect(job).toContain(platform.build);
+      expect(job).toContain(
+        'permissions:\n      artifact-metadata: write\n      attestations: write\n' +
+          '      contents: read\n      id-token: write',
+      );
+      expect(job).not.toContain('contents: write');
+      for (const path of platform.paths) expect(allowlistCheck).toContain(path);
+      if (platform.job === 'build-win') {
+        expect(allowlistCheck).toContain('shell: pwsh');
+        expect(allowlistCheck).toContain('Get-ChildItem -Path $pattern -File');
+      } else {
+        expect(allowlistCheck).toContain('shell: bash');
+        expect(allowlistCheck).toContain('compgen -G "$pattern"');
+      }
+      expect(attest).toContain('uses: actions/attest@v4');
+      expect(blockScalarValues(attest, 'subject-path')).toEqual(platform.paths);
+      expect(upload).toContain('uses: actions/upload-artifact@v7');
+      expect(upload).toContain(`name: ${platform.artefact}`);
+      expect(blockScalarValues(upload, 'path')).toEqual(platform.paths);
+      expect(job.indexOf(allowlistCheck)).toBeLessThan(job.indexOf(attest));
+      expect(job.indexOf(attest)).toBeLessThan(job.indexOf(upload));
+    }
+
+    const macJob = workflowJob(releaseWorkflow, 'build-mac');
+    const windowsJob = workflowJob(releaseWorkflow, 'build-win');
+    expect(windowsJob).toContain('bun run test:e2e:electron-ai');
+    expect(macJob).toContain('bun run test:e2e:electron-ai');
+    expect(macJob.indexOf('bun run test:e2e:electron-ai')).toBeLessThan(
+      macJob.indexOf('bun run electron:build:mac'),
+    );
+    expect(macJob).toContain('CSC_IDENTITY_AUTO_DISCOVERY: "false"');
+
+    const publisher = workflowJob(releaseWorkflow, 'publish-draft');
+    expect(publisher).toContain('needs: [build-win, build-linux, build-mac]');
+    expect(publisher).toContain(
+      'permissions:\n      artifact-metadata: write\n      attestations: write\n' +
+        '      contents: write\n      id-token: write',
+    );
+    for (const artefact of platforms.map(({ artefact }) => artefact)) {
+      const download = workflowStep(publisher, `Download ${artefact}`);
+      expect(download).toContain('uses: actions/download-artifact@v8');
+      expect(download).toContain(`name: ${artefact}`);
+      expect(download).toContain('path: release-assets');
+    }
+
+    const checksumAttestation = workflowStep(publisher, 'Attest checksum manifest');
+    expect(checksumAttestation).toContain('uses: actions/attest@v4');
+    expect(checksumAttestation).toContain('subject-path: release-assets/SHA256SUMS.txt');
+    expect(publisher.indexOf('name: Create checksums')).toBeLessThan(
+      publisher.indexOf(checksumAttestation),
+    );
+    expect(publisher.indexOf(checksumAttestation)).toBeLessThan(
+      publisher.indexOf('name: Upload artefacts to draft release'),
+    );
+
+    const workflowHeader = releaseWorkflow.slice(0, releaseWorkflow.indexOf('\njobs:'));
+    expect(workflowHeader).toContain('actions: read');
+    expect(workflowHeader).toContain('contents: read');
+    expect(releaseWorkflow).not.toContain('release/*.exe');
     expect(releaseWorkflow).not.toContain('path: release/**');
     expect(releaseWorkflow).not.toContain('path: release/*');
-    expect(releaseWorkflow).toContain('--draft');
-    expect(releaseWorkflow).toContain('--prerelease');
-    expect(releaseWorkflow).toContain('--title "Lacuna ${GITHUB_REF_NAME#v} Beta"');
-    expect(releaseWorkflow).toContain('! -name SHA256SUMS.txt');
-    expect(releaseWorkflow).toContain('gh release delete-asset');
-    expect(releaseWorkflow).toContain("--jq '.assets[].name'");
+    expect(publisher).toContain('--draft');
+    expect(publisher).toContain('--prerelease');
+    expect(publisher).toContain('--title "Lacuna ${GITHUB_REF_NAME#v} Beta"');
+    expect(publisher).toContain('! -name SHA256SUMS.txt');
+    expect(publisher).toContain('gh release delete-asset');
+    expect(publisher).toContain("--jq '.assets[].name'");
     expect(releaseWorkflow).not.toContain('--publish always');
-    expect(releaseWorkflow).toMatch(/publish-draft:[\s\S]*?needs:\s*\[build-win, build-linux\]/);
+    expect(releaseWorkflow.match(/actions\/attest@v4/g)).toHaveLength(4);
+    expect(releaseWorkflow).not.toMatch(/actions\/attest@v[1-3](?:\D|$)/);
   });
 
   it('uses Node 24 action majors throughout CI and release workflows', () => {

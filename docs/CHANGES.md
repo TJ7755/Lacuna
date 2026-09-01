@@ -1,5 +1,29 @@
 # Lacuna — next beta
 
+## Hosted macOS releases and build provenance
+
+- Added a native Apple Silicon release job on GitHub's official `macos-15` runner. It runs the
+  Electron AI end-to-end gate, builds the existing arm64 DMG and ZIP targets, disables signing
+  identity discovery and uploads only the macOS package, blockmap and update-metadata allowlist.
+- Gated the draft publisher on Windows, Linux and macOS. Every native job now creates GitHub build
+  provenance for its exact uploaded files with `actions/attest@v4`; the publisher creates and
+  separately attests `SHA256SUMS.txt` after combining the three named workflow artefacts. Native
+  PowerShell and Bash checks fail first if any expected package, blockmap or metadata class is absent.
+- Reduced default release permissions to read-only, granting OIDC-token and attestation writes only
+  to attesting jobs alongside the action's artifact-metadata permission, and release-content writes
+  only to the publisher. The verifier now proves that the exact release tag resolves to
+  `GITHUB_SHA`, not merely that its text matches the package version.
+- Required successful ordinary `CI` and `Security` push workflows for the exact tagged commit before
+  release verification can proceed. A repeated subset of checks no longer disguises a red commit.
+- Replaced the Windows catch-all executable glob with separate NSIS installer, NSIS blockmap and
+  portable executable patterns, so either advertised package failing to build stops publication.
+- Documented the operator and verification contract in `docs/maintenance/release.md`, including the
+  strict upload allowlists and the limits of provenance. The macOS beta remains unsigned,
+  unnotarised and manual-update; hosted CI does not constitute physical-device evidence.
+
+**Checks:** red-to-green release-workflow configuration regression; focused release tests; YAML
+structure, full lint and diff checks; native Electron AI and macOS packaging checks.
+
 ## Security analysis and audit gates
 
 - Added a least-privilege security workflow for pull requests and pushes to `master`/`main`, plus a
