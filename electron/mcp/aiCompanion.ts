@@ -26,16 +26,19 @@ import {
   companionErrorDetails,
 } from '../../src/ai/companionErrors.js';
 import {
+  AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
-  MCP_COMPANION_PROTOCOL_VERSION,
+  LEGACY_AI_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
   isAiCompanionResponse,
+  type AiCompanionProtocolVersion,
   type AiCompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
 import {
   companionAppVersion,
   companionHostUserDataPath,
   readCompanionConnectionFile,
+  type CompanionConnectionFile,
 } from './connectionFile.js';
 
 const CONNECT_TIMEOUT_MS = 3_000;
@@ -61,11 +64,42 @@ function cancelledOperation(commitState: 'not_started' | 'unknown'): AiCompanion
   });
 }
 
+function appConnectionError(message: string): AiCompanionOperationError {
+  return new AiCompanionOperationError({
+    kind: 'app_unavailable',
+    message,
+    retryable: true,
+    suggestedAction: 'open_lacuna',
+    userActionRequired: true,
+    commitState: 'not_started',
+  });
+}
+
+function disconnectedOperation(request: AiBridgeRequest): AiCompanionOperationError {
+  const commitState = request.type === 'invoke_tool' || request.type === 'reply' ||
+    request.type === 'renew_lease'
+    ? 'unknown'
+    : 'not_started';
+  return new AiCompanionOperationError({
+    kind: 'app_unavailable',
+    message: commitState === 'unknown'
+      ? 'Lacuna disconnected before acknowledging the request. Retry the exact same request.'
+      : 'The running Lacuna application disconnected.',
+    retryable: true,
+    suggestedAction: commitState === 'unknown' ? 'retry_same_request' : 'open_lacuna',
+    userActionRequired: commitState === 'not_started',
+    commitState,
+  });
+}
+
 interface PendingRequest {
+  request: AiBridgeRequest;
   resolve: (result: AiBridgeResult) => void;
   reject: (error: Error) => void;
   timeout: ReturnType<typeof setTimeout>;
 }
+
+class AiProtocolFallbackError extends Error {}
 
 function silenceStdoutNoise(): void {
   log.transports.console.level = false;
@@ -87,11 +121,14 @@ export class LocalAiAppClient {
   private connectionId: string | null = null;
   private activeRun: ActiveRun | null = null;
   private leaseRenewTimer: ReturnType<typeof setTimeout> | null = null;
+  private leaseRenewalFailure: AiCompanionOperationError | null = null;
+  private supportsLeaseRenewal = false;
 
   constructor(
     private readonly writeDrainTimeoutMs = WRITE_DRAIN_TIMEOUT_MS,
     private readonly hostUserDataPath = '',
     private readonly leaseRenewIntervalMs = LEASE_RENEW_INTERVAL_MS,
+    private readonly connectTimeoutMs = CONNECT_TIMEOUT_MS,
   ) {}
 
   async connect(identity: AiClientIdentity, signal: AbortSignal): Promise<object> {
@@ -112,10 +149,12 @@ export class LocalAiAppClient {
     }, CONNECT_TIMEOUT_MS, signal);
     const data = this.expectSuccess(result, 'connection');
     this.connectionId = data.connectionId as string;
+    this.leaseRenewalFailure = null;
     return data;
   }
 
   async waitForMessage(timeoutMs: number, signal: AbortSignal): Promise<object> {
+    this.throwLeaseRenewalFailure();
     const connectionId = this.requireConnection();
     const stop = await this.requestedStop(connectionId, signal);
     if (stop) return stop;
@@ -134,6 +173,7 @@ export class LocalAiAppClient {
     }, CONNECT_TIMEOUT_MS, signal);
     const instructionData = this.expectSuccess(instructions, 'instructions') as unknown as AiInstructionBundle;
     this.activeRun = { runId: message.runId, messageId: message.messageId };
+    this.leaseRenewalFailure = null;
     this.scheduleLeaseRenewal();
     return { type: 'message', ...message, instructions: instructionData };
   }
@@ -146,6 +186,7 @@ export class LocalAiAppClient {
     timeoutMs: number,
     signal: AbortSignal,
   ): Promise<object> {
+    this.throwLeaseRenewalFailure();
     const result = await this.request({
       type: 'invoke_tool',
       connectionId: this.requireConnection(),
@@ -172,6 +213,7 @@ export class LocalAiAppClient {
     content: string,
     signal: AbortSignal,
   ): Promise<void> {
+    this.throwLeaseRenewalFailure();
     const result = await this.request({
       type: 'reply',
       connectionId: this.requireConnection(),
@@ -182,6 +224,7 @@ export class LocalAiAppClient {
     this.expectSuccess(result, 'reply_recorded');
     if (this.activeRun?.runId === runId) {
       this.activeRun = null;
+      this.leaseRenewalFailure = null;
       this.stopLeaseRenewal();
     }
   }
@@ -209,11 +252,12 @@ export class LocalAiAppClient {
     this.connecting = null;
     this.connectionId = null;
     this.activeRun = null;
+    this.supportsLeaseRenewal = false;
     this.stopLeaseRenewal();
     socket?.destroy();
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timeout);
-      pending.reject(new Error('The running Lacuna application disconnected.'));
+      pending.reject(disconnectedOperation(pending.request));
     }
     this.pending.clear();
   }
@@ -242,7 +286,7 @@ export class LocalAiAppClient {
 
   private scheduleLeaseRenewal(): void {
     this.stopLeaseRenewal();
-    if (!this.activeRun || !this.connectionId) return;
+    if (!this.supportsLeaseRenewal || !this.activeRun || !this.connectionId) return;
     this.leaseRenewTimer = setTimeout(() => {
       this.leaseRenewTimer = null;
       void this.renewActiveLease();
@@ -264,16 +308,30 @@ export class LocalAiAppClient {
       this.expectSuccess(result, 'lease_renewed');
       if (this.activeRun?.runId === active.runId) this.scheduleLeaseRenewal();
     } catch (error) {
-      if (
-        this.activeRun?.runId === active.runId &&
-        this.connectionId === connectionId &&
-        (!(error instanceof AiCompanionOperationError) || error.details.kind !== 'stopped')
-      ) {
+      if (this.activeRun?.runId !== active.runId || this.connectionId !== connectionId) {
+        this.stopLeaseRenewal();
+        return;
+      }
+      if (this.isTransientLeaseRenewalFailure(error)) {
         this.scheduleLeaseRenewal();
       } else {
+        this.activeRun = null;
+        this.leaseRenewalFailure = error instanceof AiCompanionOperationError
+          ? error
+          : new AiCompanionOperationError(companionErrorDetails(error));
         this.stopLeaseRenewal();
       }
     }
+  }
+
+  private isTransientLeaseRenewalFailure(error: unknown): boolean {
+    return error instanceof AiCompanionOperationError && error.details.retryable &&
+      (error.details.kind === 'timeout' || error.details.kind === 'app_unavailable' ||
+        error.details.kind === 'renderer_unavailable' || error.details.kind === 'cancelled');
+  }
+
+  private throwLeaseRenewalFailure(): void {
+    if (this.leaseRenewalFailure) throw this.leaseRenewalFailure;
   }
 
   private stopLeaseRenewal(): void {
@@ -348,6 +406,7 @@ export class LocalAiAppClient {
         }));
       }, timeoutMs);
       this.pending.set(id, {
+        request,
         timeout,
         resolve: (result) => {
           signal?.removeEventListener('abort', abort);
@@ -398,11 +457,27 @@ export class LocalAiAppClient {
         commitState: 'not_started',
       });
     }
+    try {
+      await this.connectSocketWithProtocol(connection, AI_COMPANION_PROTOCOL_VERSION);
+    } catch (error) {
+      if (!(error instanceof AiProtocolFallbackError)) throw error;
+      await this.connectSocketWithProtocol(connection, LEGACY_AI_COMPANION_PROTOCOL_VERSION);
+    }
+  }
+
+  private async connectSocketWithProtocol(
+    connection: CompanionConnectionFile,
+    protocolVersion: AiCompanionProtocolVersion,
+  ): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const socket = net.createConnection(connection.endpoint);
       const decoder = new CompanionLineDecoder();
       let ready = false;
-      const timeout = setTimeout(() => fail(new Error('Timed out while connecting to the running Lacuna application.')), CONNECT_TIMEOUT_MS);
+      const fallbackAllowed = protocolVersion === AI_COMPANION_PROTOCOL_VERSION;
+      const timeout = setTimeout(() => fail(fallbackAllowed
+        ? new AiProtocolFallbackError()
+        : appConnectionError('Timed out while connecting to the running Lacuna application.')),
+      this.connectTimeoutMs);
       const fail = (error: Error) => {
         clearTimeout(timeout);
         if (!ready) reject(error);
@@ -420,7 +495,7 @@ export class LocalAiAppClient {
       socket.once('connect', () => {
         socket.write(encodeCompanionMessage({
           type: 'ai_hello',
-          protocolVersion: MCP_COMPANION_PROTOCOL_VERSION,
+          protocolVersion,
           token: connection.aiToken,
         }));
       });
@@ -431,12 +506,24 @@ export class LocalAiAppClient {
             const response: AiCompanionResponse = value;
             if (!ready) {
               if (response.type !== 'ai_ready') {
-                fail(new Error(response.type === 'fatal' ? response.error.message : 'Lacuna rejected the AI companion handshake.'));
+                fail(fallbackAllowed
+                  ? new AiProtocolFallbackError()
+                  : appConnectionError(response.type === 'fatal'
+                    ? 'The running Lacuna application rejected the AI companion handshake.'
+                    : 'Lacuna returned an invalid AI companion handshake.'));
+                return;
+              }
+              if (response.protocolVersion !== protocolVersion) {
+                fail(fallbackAllowed
+                  ? new AiProtocolFallbackError()
+                  : appConnectionError('Lacuna returned an incompatible AI companion protocol.'));
                 return;
               }
               ready = true;
               clearTimeout(timeout);
               this.socket = socket;
+              this.supportsLeaseRenewal = response.protocolVersion === AI_COMPANION_PROTOCOL_VERSION &&
+                response.capabilities.leaseRenewal;
               resolve();
               continue;
             }
@@ -453,11 +540,19 @@ export class LocalAiAppClient {
             }
           }
         } catch (error) {
-          fail(error instanceof Error ? error : new Error('Invalid response from Lacuna.'));
+          if (!ready) {
+            fail(fallbackAllowed
+              ? new AiProtocolFallbackError()
+              : appConnectionError('Lacuna returned an invalid AI companion handshake.'));
+          } else {
+            fail(error instanceof Error ? error : new Error('Invalid response from Lacuna.'));
+          }
         }
       });
       socket.once('close', () => {
-        if (!ready) fail(new Error('The running Lacuna application closed the AI companion connection.'));
+        if (!ready) fail(fallbackAllowed
+          ? new AiProtocolFallbackError()
+          : appConnectionError('The running Lacuna application closed the AI companion connection.'));
         if (this.socket === socket) this.close();
       });
     });

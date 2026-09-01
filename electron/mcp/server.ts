@@ -36,16 +36,19 @@ import { InvokeDispatcher } from '../../src/mcp/bridge/dispatcher.js';
 import { ConsentCoordinator } from '../../src/mcp/bridge/consentCoordinator.js';
 import { isMcpConsentResponse, isMcpInvokeResponse, isMcpScopeResolutionResponse } from '../../src/mcp/bridge/ipcValidation.js';
 import { GrantStore, courseIdOrGlobal, resolveGrant } from '../../src/mcp/grants.js';
+import { LACUNA_AI_PROTOCOL_VERSION } from '../../src/ai/protocol.js';
 import type { McpGrant, ToolDefinition } from '../../src/mcp/types.js';
 import type { McpClientConnection, McpClientIdentity } from '../../src/mcp/connections.js';
 import { McpConnectionStore } from '../../src/mcp/connections.js';
 import {
+  AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
   encodeCompanionMessage,
   isAiCompanionRequest,
   isAiRendererReply,
   isCompanionRequest,
   type AiCompanionResponse,
+  type AiCompanionProtocolVersion,
   type CompanionResponse,
 } from '../../src/mcp/companionProtocol.js';
 import {
@@ -141,6 +144,7 @@ async function startCompanionBroker(
     let purpose: CompanionPurpose | null = null;
     let connectionId: string | null = null;
     let aiChannelId: string | null = null;
+    let aiProtocolVersion: AiCompanionProtocolVersion | null = null;
     let processing = Promise.resolve();
     let closing = false;
 
@@ -182,13 +186,21 @@ async function startCompanionBroker(
         }
         if (authoriseCompanionHello(value, 'ai', companionConnection.aiToken)) {
           aiChannelId = randomUUID();
+          aiProtocolVersion = value.protocolVersion;
           purpose = 'ai';
           aiCompanionChannels.add(aiChannelId, socket);
-          sendAiCompanion(socket, {
-            type: 'ai_ready',
-            protocolVersion: companionConnection.protocolVersion,
-            appVersion: companionConnection.appVersion,
-          });
+          sendAiCompanion(socket, value.protocolVersion === AI_COMPANION_PROTOCOL_VERSION
+            ? {
+                type: 'ai_ready',
+                protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+                appVersion: companionConnection.appVersion,
+                capabilities: { leaseRenewal: true },
+              }
+            : {
+                type: 'ai_ready',
+                protocolVersion: value.protocolVersion,
+                appVersion: companionConnection.appVersion,
+              });
           return;
         }
         const aiHandshake = isAiCompanionRequest(value) && value.type === 'ai_hello';
@@ -211,6 +223,22 @@ async function startCompanionBroker(
           });
           closing = true;
           socket.end();
+          return;
+        }
+        if (value.request.type === 'renew_lease' &&
+          aiProtocolVersion !== AI_COMPANION_PROTOCOL_VERSION) {
+          sendAiCompanion(socket, {
+            type: 'ai_result',
+            id: value.id,
+            result: {
+              ok: false,
+              error: {
+                kind: 'version_mismatch',
+                supportedVersion: LACUNA_AI_PROTOCOL_VERSION,
+                message: 'This AI companion connection did not negotiate lease renewal.',
+              },
+            },
+          });
           return;
         }
         const result = await waitForAiRenderer(getWindow)
