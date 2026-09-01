@@ -260,6 +260,19 @@ describe('Settings', () => {
     });
   });
 
+  it('uses the full content column without a decorative header eyebrow', () => {
+    render(<Settings />);
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Settings' });
+    const header = heading.closest('header');
+    const contentColumn = header?.parentElement;
+
+    expect(screen.queryByText('Preferences')).not.toBeInTheDocument();
+    expect(header).toHaveClass('p-7', 'md:p-9');
+    expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
+    expect(contentColumn).not.toHaveClass('max-w-2xl');
+  });
+
   it('keeps a consistent gap after every settings group', () => {
     render(<Settings />);
 

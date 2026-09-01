@@ -72,12 +72,11 @@ export function Settings() {
   }, []);
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-8 px-6 pb-10 pt-12 md:px-10 md:py-10">
-      <div className="min-w-0 flex-1 max-w-2xl">
-        <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
+    <div className="mx-auto flex max-w-6xl gap-6 px-6 pb-10 pt-12 md:px-10 md:py-10">
+      <div className="min-w-0 flex-1">
+        <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-7 md:p-9">
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
-            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Preferences</p>
             <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
           </div>
         </header>

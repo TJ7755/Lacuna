@@ -1,10 +1,8 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { m as motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { useIsTouchMode } from '../state/inputMode';
 import { Button } from '../components/ui/Button';
-import { cn } from '../components/ui/cn';
+import { SectionRail } from '../components/ui/SectionRail';
 import {
   PlayIcon,
   CheckIcon,
@@ -105,81 +103,6 @@ function ModeCard({
         )}
       </div>
     </div>
-  );
-}
-
-function NavItem({
-  section,
-  active,
-  onClick,
-  m,
-}: {
-  section: (typeof HELP_SECTIONS)[number];
-  active: boolean;
-  onClick: () => void;
-  m: number;
-}) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const bounds = useRef<DOMRect | null>(null);
-  const isTouchMode = useIsTouchMode();
-  const cursorFollowEnabled = m > 0 && !isTouchMode;
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 350, damping: 25 });
-  const springY = useSpring(mouseY, { stiffness: 350, damping: 25 });
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = bounds.current;
-    if (!cursorFollowEnabled || !rect) return;
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const distX = (e.clientX - centerX) * 0.12;
-    const distY = (e.clientY - centerY) * 0.12;
-    mouseX.set(distX);
-    mouseY.set(distY);
-  };
-
-  const handleMouseLeave = () => {
-    bounds.current = null;
-    mouseX.set(0);
-    mouseY.set(0);
-  };
-
-  const handleMouseEnter = () => {
-    if (cursorFollowEnabled && ref.current) bounds.current = ref.current.getBoundingClientRect();
-  };
-
-  return (
-    <motion.button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ x: cursorFollowEnabled ? springX : 0, y: cursorFollowEnabled ? springY : 0 }}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      className={cn(
-        'relative flex items-center rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-150',
-        active ? 'text-accent' : 'text-ink-soft hover:text-ink',
-      )}
-    >
-      {active && (
-        <motion.div
-          layoutId="helpActivePill"
-          className="absolute inset-0 rounded-lg bg-accent/10"
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        >
-          <motion.div
-            layoutId="helpActiveBar"
-            className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          />
-        </motion.div>
-      )}
-      <span className="relative z-10 truncate font-medium">{section.label}</span>
-    </motion.button>
   );
 }
 
@@ -880,8 +803,8 @@ export function HelpPage() {
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-8 px-6 py-8 md:px-10 md:py-10">
-      <div className="min-w-0 flex-1 max-w-4xl">
+    <div className="mx-auto flex max-w-6xl gap-6 px-6 py-8 md:px-10 md:py-10">
+      <div className="min-w-0 flex-1">
         <Link
           to="/"
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
@@ -891,12 +814,9 @@ export function HelpPage() {
         </Link>
 
         <div>
-          <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-8 md:p-10">
+          <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-7 md:p-9">
             <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
             <div className="relative">
-              <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">
-                Documentation
-              </p>
               <h1 className="font-display text-4xl tracking-tight md:text-6xl">Help</h1>
               <p className="mt-3 max-w-xl text-base text-ink-soft">
                 Everything you need to know about using Lacuna, from study modes to keyboard
@@ -949,34 +869,17 @@ export function HelpPage() {
         </div>
       </div>
 
-      {/* Right-side section nav */}
-      <aside className="hidden xl:block w-64 shrink-0">
-        <div className="sticky top-24">
-          <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm">
-            <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
-              On this page
-            </div>
-            <LayoutGroup>
-              <nav className="relative flex flex-col gap-1">
-                {HELP_SECTIONS.map((section) => (
-                  <NavItem
-                    key={section.id}
-                    section={section}
-                    active={activeSection === section.id}
-                    onClick={() => {
-                      const el = document.getElementById(section.id);
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }}
-                    m={m}
-                  />
-                ))}
-              </nav>
-            </LayoutGroup>
-          </div>
-        </div>
-      </aside>
+      <SectionRail
+        sections={HELP_SECTIONS}
+        activeSection={activeSection}
+        onNavigate={(id) => {
+          document.getElementById(id)?.scrollIntoView({
+            behavior: m > 0 ? 'smooth' : 'instant',
+            block: 'start',
+          });
+        }}
+        motionMultiplier={m}
+      />
     </div>
   );
 }
