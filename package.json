@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.2.2",
   "packageManager": "bun@1.4.0",
-  "trustedDependencies": ["electron"],
   "type": "module",
   "main": "electron/dist-electron/main.js",
   "description": "Lacuna - a local-only FSRS-6 flashcard revision application.",

@@ -28,11 +28,11 @@ Windows, Linux and macOS packaging all consume `electron/assets/icon.png`; Elect
 the platform conversion. Do not restore a separately maintained `icon.ico`: the old binary drifted
 from the source artwork and silently shipped incomplete frames because nothing regenerated it.
 
-## Clean Bun installs must trust Electron
+## Electron 42 installs its runtime lazily
 
-Electron's npm package extracts its platform runtime in an install lifecycle script. Keep Electron
-in the root `trustedDependencies`; otherwise a clean Bun install can leave no `electron/dist`
-directory, so native E2E fails before Lacuna starts even though source-only checks remain green.
+Electron 42 removed the npm postinstall download and resolves the platform runtime through its
+package entry point on first use. Native tooling must resolve `require('electron')` rather than
+constructing a path under `node_modules/electron/dist`, which is absent after a clean install.
 
 ## Windows portable startup begins before Electron exists
 

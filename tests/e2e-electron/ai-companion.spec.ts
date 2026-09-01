@@ -1,4 +1,5 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,7 @@ import {
 } from '@playwright/test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const require = createRequire(import.meta.url);
 const expectedTools = [
   'lacuna.connect',
   'lacuna.disconnect',
@@ -21,16 +23,11 @@ const expectedTools = [
 ];
 
 function electronExecutable(): string {
-  if (process.platform === 'darwin') {
-    return path.join(
-      root,
-      'node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
-    );
+  const executablePath: unknown = require('electron');
+  if (typeof executablePath !== 'string') {
+    throw new Error('Electron did not resolve to its platform executable.');
   }
-  if (process.platform === 'win32') {
-    return path.join(root, 'node_modules/electron/dist/electron.exe');
-  }
-  return path.join(root, 'node_modules/electron/dist/electron');
+  return executablePath;
 }
 
 function toolData(result: CallToolResult): Record<string, unknown> {

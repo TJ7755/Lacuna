@@ -155,11 +155,4 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
-      - name: Verify Electron runtime installation
-        shell: pwsh
-        run: |
-          if (-not (Test-Path node_modules/electron/dist/electron.exe)) {
-            throw "Electron runtime was not extracted during bun install."
-          }
-          & node_modules/electron/dist/electron.exe --version
       - run: bun run test:e2e:electron-ai

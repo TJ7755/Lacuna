@@ -9,7 +9,6 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
   homepage?: string;
   repository?: { type?: string; url?: string };
   scripts?: Record<string, string>;
-  trustedDependencies?: string[];
 };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
@@ -17,6 +16,10 @@ const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8
 const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8');
 const prepareElectronBuild = readFileSync(
   resolve(root, 'scripts/prepare-electron-build.mjs'),
+  'utf8',
+);
+const electronAiE2e = readFileSync(
+  resolve(root, 'tests/e2e-electron/ai-companion.spec.ts'),
   'utf8',
 );
 
@@ -50,8 +53,10 @@ describe('v0.2.2 release configuration', () => {
     expect(prepareElectronBuild).not.toContain('shell: true');
   });
 
-  it('allows Bun to install the Electron runtime used by desktop tests', () => {
-    expect(packageJson.trustedDependencies).toContain('electron');
+  it('lets Electron 42 lazily install its platform runtime for desktop tests', () => {
+    expect(electronAiE2e).toContain("createRequire(import.meta.url)");
+    expect(electronAiE2e).toContain("require('electron')");
+    expect(electronAiE2e).not.toContain("node_modules/electron/dist");
   });
 
   it('builds the supported Windows and Linux artefacts', () => {
