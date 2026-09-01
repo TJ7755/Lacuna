@@ -384,6 +384,7 @@ export function getMcpStatus(): McpStatus {
     execPath: process.execPath,
     isPackaged: app.isPackaged,
     platform: process.platform,
+    userDataPath: app.getPath('userData'),
     portableExecutableFile: process.env.PORTABLE_EXECUTABLE_FILE,
     appImageFile: process.env.APPIMAGE,
   };

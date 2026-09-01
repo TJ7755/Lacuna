@@ -110,9 +110,10 @@ connection to Lacuna is local.
 
 Enable **Settings → AI**, open the AI panel and copy its setup prompt into the terminal AI. The
 prompt contains the correct installed or Windows portable executable path and asks the terminal to
-configure it with `--ai-companion`. Keep the Lacuna window and terminal task running. The task must
-keep calling `lacuna.wait_for_message`; a sidebar message cannot wake a terminal task which has
-already ended.
+configure it with `--ai-companion`; it also preserves a custom Electron user-data directory when
+Lacuna is running against an isolated profile. Keep the Lacuna window and terminal task running. The
+task must keep calling `lacuna.wait_for_message`; a sidebar message cannot wake a terminal task
+which has already ended.
 
 The hosted web app retains the encrypted HTTPS relay because a browser cannot host a native local
 socket. To use that route, build the standalone web companion, then configure the MCP-capable

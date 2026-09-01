@@ -33,6 +33,7 @@ export interface CompanionLaunchEnvironment {
   execPath: string;
   isPackaged: boolean;
   platform: NodeJS.Platform;
+  userDataPath: string;
   portableExecutableFile?: string;
   appImageFile?: string;
 }
@@ -48,7 +49,10 @@ export function companionLaunchCommand(
       : environment.execPath;
   return {
     command,
-    args: environment.isPackaged ? [mode] : [environment.appPath, mode],
+    args: [
+      ...(environment.isPackaged ? [mode] : [environment.appPath, mode]),
+      `--user-data-dir=${environment.userDataPath}`,
+    ],
   };
 }
 
