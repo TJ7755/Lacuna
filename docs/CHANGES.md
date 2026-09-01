@@ -1,5 +1,19 @@
 # Lacuna — next beta
 
+## Complete exact-release workspace verification
+
+- Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone
+  AI MCP typecheck, lint, tests and build before any native packaging job starts. The ordinary CI
+  jobs remain separate rather than gaining another aggregate that overstates what it represents.
+- Kept exactly the root and relay frozen installations. The standalone AI MCP tool uses the root
+  dependency tree, while its in-process end-to-end test imports the relay store and therefore also
+  needs the relay dependency tree.
+- Preserved the three native gates, their strict artefact allowlists, least-privilege attestation
+  permissions and all four provenance attestations.
+
+**Checks:** red-to-green release-workflow configuration regression; relay typecheck, lint and tests;
+standalone AI MCP typecheck, lint, tests and build; root typecheck and lint; YAML parse and diff check.
+
 ## Recovery-risk coverage gate
 
 - Added a separate `test:coverage:recovery` gate for persistence, manual merge, storage-quota

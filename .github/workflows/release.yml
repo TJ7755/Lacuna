@@ -65,6 +65,21 @@ jobs:
             fi
           done
 
+      - name: Verify relay workspace
+        working-directory: relay
+        run: |
+          bun run typecheck
+          bun run lint
+          bun run test
+
+      - name: Verify standalone AI MCP
+        working-directory: tooling/lacuna-ai-mcp
+        run: |
+          bun run typecheck
+          bun run lint
+          bun run test
+          bun run build
+
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run test:ci:unit

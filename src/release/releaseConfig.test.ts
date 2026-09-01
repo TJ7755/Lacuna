@@ -252,7 +252,31 @@ describe('v0.2.3 release configuration', () => {
     expect(exactCommitChecks).toContain('.head_branch == "master"');
     expect(exactCommitChecks).toContain('.head_branch == "main"');
     expect(exactCommitChecks).toContain('.conclusion == "success"');
-    expect(verifyJob).toContain('working-directory: relay');
+    expect(verifyJob.match(/- run: bun install --frozen-lockfile/g)).toHaveLength(2);
+
+    const relayInstall =
+      '- run: bun install --frozen-lockfile\n        working-directory: relay';
+    const relayVerification = workflowStep(verifyJob, 'Verify relay workspace');
+    expect(relayVerification).toContain('working-directory: relay');
+    expect(blockScalarValues(relayVerification, 'run')).toEqual([
+      'bun run typecheck',
+      'bun run lint',
+      'bun run test',
+    ]);
+    expect(verifyJob.indexOf(relayInstall)).toBeLessThan(verifyJob.indexOf(relayVerification));
+
+    const aiMcpVerification = workflowStep(verifyJob, 'Verify standalone AI MCP');
+    expect(aiMcpVerification).toContain('working-directory: tooling/lacuna-ai-mcp');
+    expect(blockScalarValues(aiMcpVerification, 'run')).toEqual([
+      'bun run typecheck',
+      'bun run lint',
+      'bun run test',
+      'bun run build',
+    ]);
+    expect(verifyJob.indexOf(relayInstall)).toBeLessThan(verifyJob.indexOf(aiMcpVerification));
+    expect(verifyJob).not.toMatch(
+      /bun install --frozen-lockfile\n\s+working-directory: tooling\/lacuna-ai-mcp/,
+    );
 
     const platforms = [
       {

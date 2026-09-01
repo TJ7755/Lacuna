@@ -83,7 +83,9 @@ British English throughout. No emojis anywhere in the product or its copy.
   and `happy-dom` for UI component and hook tests. `test:coverage` retains the critical-domain
   gate; `test:coverage:recovery` separately measures persistence, sync merge, quota warnings,
   backups, portability and assets with explicit per-file floors rather than a global average. Both
-  coverage gates run in pull-request CI and exact-release verification.
+  coverage gates run in pull-request CI and exact-release verification. Exact-release verification
+  also requires the relay typecheck, lint and tests and the standalone AI MCP typecheck, lint, tests
+  and build before native packaging starts.
 - **Security checks:** Pull requests and pushes to `master`/`main` run frozen Bun installs and
   high-severity-or-worse audits for the root app, relay and handwriting tool. A weekly scheduled
   workflow also runs CodeQL v4 for JavaScript/TypeScript and GitHub Actions. The audit threshold
