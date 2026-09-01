@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Bun 1.4 toolchain
+
+- Aligned the declared package manager and every CI and release job on Bun 1.4.0. The local 1.4.0
+  runtime passed the full browser suite, Electron AI lifecycle test, typecheck and lint before the
+  project pin was advanced.
+
+### Desktop AI connection recovery
+
+- Made the native AI broker wait briefly for an enabled renderer which is still mounting instead
+  of rejecting the companion's first request immediately. A renderer which never becomes ready
+  still fails within five seconds with an actionable connection error.
+- Added renderer readiness to the existing desktop status bridge and a targeted **Restart AI
+  runtime** action. Recovery disposes and remounts only the optional AI runtime; it does not reload
+  the router, current page or database.
+- Replaced the vague terminal-restart setup prompt with AI-client-aware MCP guidance. It preserves the
+  exact companion command and profile, distinguishes `--ai-companion` from `--mcp-companion`, tells
+  Codex users how to reload and verify the active tool list, and forbids launching a duplicate app
+  as a diagnostic. Configuration status is no longer treated as proof of a live connection, and
+  every claimed message must receive a fresh model-authored reply rather than canned harness text.
+- Added a real Electron lifecycle test using an isolated profile and the official MCP client. It
+  enables AI through the UI and proves the exact five-tool surface, connection, message claim,
+  reply rendering, renderer reload recovery and disconnection. Windows CI and release packaging
+  now run this lifecycle gate instead of merely documenting a local command.
+
+**Checks:** red-to-green renderer readiness, restart IPC, AI-only remount and setup-prompt tests;
+real Electron companion lifecycle; web and Electron typecheck; focused lint; browser suite.
+
 ### Passed-final-exam course lifecycle
 
 - Added a dedicated **Archived** sidebar destination and removed archived courses from the normal

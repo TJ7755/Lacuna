@@ -10,6 +10,8 @@ describe('Electron local AI request source', () => {
     const api: LocalAiPreloadApi = {
       protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
       disconnect: vi.fn(),
+      requestRestart: vi.fn(),
+      onRestartRequested: vi.fn(() => vi.fn()),
       listen(request, disconnected) {
         onRequest = request;
         onDisconnected = disconnected;

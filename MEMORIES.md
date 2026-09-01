@@ -81,6 +81,14 @@ reply. A helper can label itself as any MCP client and return hard-coded text. F
 check, verify that the live model task itself owns the companion and calls the Lacuna tools; record a
 deterministic wire harness only as transport evidence.
 
+## MCP registration and active tools are different states
+
+Saving a local MCP server does not prove the running client loaded its tools. Codex desktop and the
+IDE extension require their documented restart action; CLI users must verify the active TUI with
+`/mcp`. Setup guidance must preserve every companion argument, then verify `lacuna.connect` and
+`lacuna.wait_for_message` before diagnosing Lacuna. Never test registration by launching another
+normal Lacuna instance directly.
+
 ## AI tool results need a real JSON wire projection
 
 Repository records may contain own optional properties whose value is `undefined`; Cards do this

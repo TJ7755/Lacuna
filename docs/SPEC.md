@@ -2823,7 +2823,11 @@ creation and destructive one-shot approval. No localhost TCP, HTTP or WebSocket 
 introduced. Generated AI and data companion commands carry Electron's active user-data directory,
 so custom and isolated profiles resolve the same authenticated endpoint as the open renderer. The
 hosted web build retains its encrypted HTTPS mailbox transport because browsers cannot host the
-native socket.
+native socket. The native broker waits for at most five seconds when a live renderer is still
+mounting before returning an actionable unavailable result. Renderer readiness is exposed only
+through the trusted Electron status bridge, not as a sixth AI companion tool. The disconnected AI
+panel shows that status and can request a targeted restart which remounts the optional AI runtime
+without reloading the application shell or data layer.
 
 | Component                      | Pinned version | Compatibility                                                       |
 | ------------------------------ | -------------- | ------------------------------------------------------------------- |

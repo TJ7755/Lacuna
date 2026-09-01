@@ -21,15 +21,15 @@ export function AiSection() {
         <SettingsSectionHeading className="font-display text-xl">AI</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
-        Pair a running terminal AI with Lacuna using an encrypted relay. Lacuna stores no model
-        credentials and does not choose the model or terminal harness.
+        Pair a running AI client with Lacuna using an encrypted relay. Lacuna stores no model
+        credentials and does not choose the model or client.
       </p>
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm text-ink">Enable AI</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
-            Adds desktop AI chat and short-code terminal pairing. Disabled by default and
+            Adds desktop AI chat and short-code client pairing. Disabled by default and
             unavailable on mobile.
           </p>
         </div>

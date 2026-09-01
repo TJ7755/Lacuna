@@ -46,6 +46,7 @@ const EnabledAiRuntime = lazy(() =>
 function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
   const [session, setSession] = useState<EnabledAiSession | null>(null);
+  const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const sessionRef = useRef<EnabledAiSession | null>(null);
   const handleSessionReady = useCallback((next: EnabledAiSession) => {
     sessionRef.current = next;
@@ -61,6 +62,17 @@ function RouterWithOptionalAi() {
     current.dispose();
   }, [settings.enabled]);
 
+  useEffect(() => {
+    if (!settings.enabled) return;
+    const ai = window.electronAPI?.ai;
+    if (!ai) return;
+    return ai.onRestartRequested(() => {
+      const current = sessionRef.current;
+      current?.dispose();
+      setRuntimeGeneration((generation) => generation + 1);
+    });
+  }, [settings.enabled]);
+
   useEffect(
     () => () => {
       sessionRef.current?.dispose();
@@ -73,7 +85,11 @@ function RouterWithOptionalAi() {
     <AiSessionProvider session={settings.enabled ? session : null}>
       <Suspense fallback={null}>
         {settings.enabled && (
-          <EnabledAiRuntime retainedSession={session} onSessionReady={handleSessionReady} />
+          <EnabledAiRuntime
+            key={runtimeGeneration}
+            retainedSession={session}
+            onSessionReady={handleSessionReady}
+          />
         )}
       </Suspense>
       <RouterWithQuotaWarning />

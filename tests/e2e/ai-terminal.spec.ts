@@ -31,7 +31,7 @@ test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) 
   await terminal.disconnect();
   await expect(page.getByText('Explain the testing effect.', { exact: true })).toBeVisible();
   await expect(page.getByText(reply, { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect AI client' })).toBeVisible();
   await expect(composer).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Send message' })).toBeDisabled();
 });
@@ -306,13 +306,13 @@ test('recovers a claimed prompt through a dead terminal replacement', async ({ p
   expect(abandonedClaim).toEqual(expect.objectContaining({ type: 'message', content: prompt }));
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Disconnect terminal' }).click();
-  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await page.getByRole('button', { name: 'Disconnect AI client' }).click();
+  await expect(page.getByRole('button', { name: 'Connect AI client' })).toBeVisible();
   await expect(page.getByRole('article').getByText(prompt, { exact: true })).toBeVisible();
   await expect(composer).toBeDisabled();
   await expect(composer).toHaveValue(prompt);
 
-  await page.getByRole('button', { name: 'Connect terminal' }).click();
+  await page.getByRole('button', { name: 'Connect AI client' }).click();
   const replacementCode = await pairingCodeFrom(page);
   await expect(composer).toBeDisabled();
   await expect(composer).toHaveValue(prompt);
@@ -340,7 +340,7 @@ test('recovers a claimed prompt through a dead terminal replacement', async ({ p
   await expect(composer).toHaveValue('');
 
   await replacement.disconnect();
-  await expect(page.getByRole('button', { name: 'Connect terminal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect AI client' })).toBeVisible();
   await expect(page.getByRole('article').getByText(prompt, { exact: true })).toHaveCount(2);
   await expect(page.getByText(reply, { exact: true })).toBeVisible();
   await expect(composer).toBeDisabled();

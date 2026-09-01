@@ -28,10 +28,10 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   const connectionLabel =
     connection.status === 'disconnected'
       ? local
-        ? 'Waiting for terminal'
+        ? 'Waiting for AI client'
         : 'Not connected'
       : connection.status === 'pairing'
-        ? 'Waiting for terminal'
+        ? 'Waiting for AI client'
         : connection.status === 'quiet'
           ? 'Connection quiet'
           : connection.client.name;
@@ -78,7 +78,7 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
               {!disconnected && (
                 <button
                   type="button"
-                  aria-label="Disconnect terminal"
+                  aria-label="Disconnect AI client"
                   disabled={connectionBusy}
                   onClick={resetConnection}
                   className="min-h-6 shrink-0 rounded px-1 py-0.5 text-xs font-medium text-ink-faint underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-40"
