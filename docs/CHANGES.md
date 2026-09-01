@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.2
+# Lacuna — version 0.2.3
 
-## Unreleased
+## 0.2.3 beta — archived courses and desktop AI recovery
 
 ### Bun 1.4 toolchain
 

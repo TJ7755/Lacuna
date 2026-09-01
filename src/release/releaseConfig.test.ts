@@ -23,9 +23,9 @@ const electronAiE2e = readFileSync(
   'utf8',
 );
 
-describe('v0.2.2 release configuration', () => {
+describe('v0.2.3 release configuration', () => {
   it('identifies the public app repository and release version', () => {
-    expect(packageJson.version).toBe('0.2.2');
+    expect(packageJson.version).toBe('0.2.3');
     expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({
