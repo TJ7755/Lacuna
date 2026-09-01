@@ -82,7 +82,10 @@ British English throughout. No emojis anywhere in the product or its copy.
 - **Fonts (loaded via `<link>` in `index.html`):** Fraunces (display), Geist (body),
   JetBrains Mono (code and the timer/tabular figures).
 - **Testing:** Vitest 3 with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
-  and `happy-dom` for UI component and hook tests.
+  and `happy-dom` for UI component and hook tests. `test:coverage` retains the critical-domain
+  gate; `test:coverage:recovery` separately measures persistence, sync merge, quota warnings,
+  backups, portability and assets with explicit per-file floors rather than a global average. Both
+  coverage gates run in pull-request CI and exact-release verification.
 - **Security checks:** Pull requests and pushes to `master`/`main` run frozen Bun installs and
   high-severity-or-worse audits for the root app, relay and handwriting tool. A weekly scheduled
   workflow also runs CodeQL v4 for JavaScript/TypeScript and GitHub Actions. The audit threshold
@@ -90,7 +93,7 @@ British English throughout. No emojis anywhere in the product or its copy.
   owned major-version decision; it does not ignore them permanently.
 
 Scripts: `dev`/`start` (Vite), `build` (`bun run typecheck && vite build`), `preview`, `typecheck`,
-`test`, `test:coverage`, `test:e2e:web`, `test:watch`, and `lint`. The Dashboard is the only eager page;
+`test`, `test:coverage`, `test:coverage:recovery`, `test:e2e:web`, `test:watch`, and `lint`. The Dashboard is the only eager page;
 settings, search, share, analytics, help, course pages, editors, the course conductor and
 full-screen routes are lazy-loaded on demand.
 

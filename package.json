@@ -25,6 +25,7 @@
     "test:ci:unit": "vitest run --maxWorkers=1 --minWorkers=1",
     "test:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp test",
     "test:coverage": "vitest run src/course/path.test.ts src/course/unlock.test.ts src/fsrs/session.test.ts src/db/lineageDiff.test.ts --coverage --maxWorkers=1 --minWorkers=1",
+    "test:coverage:recovery": "vitest run --config vitest.recovery.config.ts --coverage --maxWorkers=1 --minWorkers=1",
     "test:e2e:web": "playwright test -c playwright.web.config.ts",
     "test:e2e:electron-ai": "bun run electron:prepare && playwright test -c playwright.electron-ai.config.ts",
     "perf:audit": "bun scripts/performance-audit.ts",

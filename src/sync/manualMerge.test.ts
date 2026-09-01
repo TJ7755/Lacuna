@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BackupFile, Card, CourseRecord, Lesson } from '../db/types';
+import type { AgentMemory, BackupFile, Card, CourseRecord, Lesson } from '../db/types';
 import type * as DbPortability from '../db/portability';
 import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
 import { defaultFsrsParameters } from '../fsrs/params';
@@ -202,6 +202,34 @@ describe('manualMerge', () => {
       },
     );
     expect(takeAutoBackup).not.toHaveBeenCalled();
+    expect(importBackup).not.toHaveBeenCalled();
+  });
+
+  it('reports a merge conflict without modifying the database', async () => {
+    const memory: AgentMemory = {
+      id: 'memory-1',
+      courseId: null,
+      tags: ['context'],
+      status: 'active',
+      content: 'Local context.',
+      references: [],
+      basis: 'learner-stated',
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    takeAutoBackup.mockResolvedValue(backup({ agentMemories: [memory] }));
+
+    await expect(
+      manualMerge(
+        backup({
+          agentMemories: [{ ...memory, courseId: 'course-1' }],
+        }),
+      ),
+    ).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: false,
+      message: expect.stringContaining('global and Course scope'),
+    });
     expect(importBackup).not.toHaveBeenCalled();
   });
 

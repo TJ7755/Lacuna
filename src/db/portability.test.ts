@@ -922,6 +922,41 @@ describe('importBackup', () => {
     expect((await db.userPerformance.get(course.id))?.runningMeanResponseTime).toBe(99);
   });
 
+  it('uses incoming legacy calibration when its course was interacted with later', async () => {
+    const course = await createCourse('Biology');
+    await db.userPerformance.put({
+      deckId: course.id,
+      runningMeanResponseTime: 10,
+      runningStdDevResponseTime: 0,
+      m2: 0,
+      totalCorrectReviews: 1,
+    });
+    const backup = await exportDatabase();
+    backup.userPerformance = [
+      {
+        deckId: course.id,
+        runningMeanResponseTime: 42,
+        runningStdDevResponseTime: 1,
+        m2: 2,
+        totalCorrectReviews: 4,
+      },
+    ];
+    backup.courses = backup.courses?.map((record) => ({
+      ...record,
+      lastInteractedAt: (record.lastInteractedAt ?? record.createdAt) + 1000,
+    }));
+
+    await importBackup(backup, 'merge');
+
+    expect((await db.userPerformance.get(course.id))?.runningMeanResponseTime).toBe(42);
+  });
+
+  it('rejects a parsed file with an invalid backup shape', async () => {
+    await expect(
+      readBackupFile(new File([JSON.stringify({ app: 'not-lacuna' })], 'invalid.json')),
+    ).rejects.toThrow('This file is not a valid Lacuna backup.');
+  });
+
   it('adds a missing course in merge mode without clobbering an existing local one', async () => {
     const existing = await createCourse('Local Course');
     const backup = await exportDatabase();

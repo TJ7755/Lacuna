@@ -35,6 +35,18 @@ describe('persistent storage', () => {
     expect(state.persisted).toBe(false);
   });
 
+  it('returns unsupported when requesting persistence without the Storage API', async () => {
+    Object.defineProperty(navigator, 'storage', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    const state = await requestPersistentStorage();
+
+    expect(state).toEqual({ supported: false, persisted: false, granted: false });
+  });
+
   it('reads persisted true and estimate values when already granted', async () => {
     storageMock.persisted.mockResolvedValue(true);
     storageMock.estimate.mockResolvedValue({ usage: 1024 * 1024, quota: 1024 * 1024 * 100 });
@@ -56,6 +68,18 @@ describe('persistent storage', () => {
     expect(state.supported).toBe(true);
     expect(state.persisted).toBe(true);
     expect(state.granted).toBe(true);
+  });
+
+  it('does not ask again when persistence is already granted', async () => {
+    storageMock.persisted.mockResolvedValue(true);
+    storageMock.estimate.mockResolvedValue({ usage: 10, quota: 100 });
+
+    const state = await requestPersistentStorage();
+
+    expect(state).toMatchObject({ supported: true, persisted: true, granted: true });
+    expect(state.usage).toBe(10);
+    expect(state.quota).toBe(100);
+    expect(storageMock.persist).not.toHaveBeenCalled();
   });
 
   it('returns denied when the browser refuses persistence', async () => {

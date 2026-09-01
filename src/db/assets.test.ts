@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import {
   assetUrl,
+  backupAssetToMediaAsset,
   blobToArrayBuffer,
+  collectOrphanedAssets,
   extractMarkdownAssets,
   referencedAssetHashes,
   storeAudioBlob,
@@ -130,6 +132,48 @@ describe('image assets', () => {
     const imported = await db.notes.get(note.id);
     expect(referencedAssetHashes(imported!.content)).toHaveLength(1);
     expect(await db.assets.count()).toBe(1);
+  });
+
+  it('replaces references to missing assets with a broken-image placeholder', async () => {
+    const missingHash = 'a'.repeat(64);
+    const putAsset = vi.fn(async () => undefined);
+
+    const migrated = await extractMarkdownAssets(`![missing](${assetUrl(missingHash)})`, putAsset);
+
+    expect(migrated).not.toContain(assetUrl(missingHash));
+    expect(migrated).toContain('data:image/svg+xml;base64,');
+    expect(putAsset).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed base64 when converting a backup asset', async () => {
+    expect(() =>
+      // The hash is deliberately valid; the encoded bytes are not.
+      backupAssetToMediaAsset({
+        hash: 'b'.repeat(64),
+        data: 'not base64 %%%',
+        mimeType: 'image/png',
+        kind: 'image',
+        width: 1,
+        height: 1,
+        createdAt: 1,
+      }),
+    ).toThrow('Invalid base64 data in image asset.');
+  });
+
+  it('removes unreferenced assets while preserving card references', async () => {
+    const course = await createCourse('Assets');
+    const orphan = await storeImageBlob(
+      new Blob(['orphan'], { type: 'image/png' }),
+      'image/png',
+      1,
+      1,
+    );
+    const kept = await storeImageBlob(new Blob(['kept'], { type: 'image/png' }), 'image/png', 1, 1);
+    await createCard(course.id, 'front_back', `![kept](${assetUrl(kept.hash)})`, 'answer');
+
+    expect(await collectOrphanedAssets()).toBe(1);
+    expect(await db.assets.get(orphan.hash)).toBeUndefined();
+    expect(await db.assets.get(kept.hash)).toBeDefined();
   });
 });
 
