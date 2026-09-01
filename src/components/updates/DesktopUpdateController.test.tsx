@@ -50,9 +50,9 @@ describe('DesktopUpdateController', () => {
       availableVersion: '0.2.4',
       progress: {
         percent: 42,
-        transferred: 42,
-        total: 100,
-        bytesPerSecond: 10,
+        transferred: 25 * 1024 * 1024,
+        total: 100 * 1024 * 1024,
+        bytesPerSecond: 2 * 1024 * 1024,
       },
     };
 
@@ -63,6 +63,7 @@ describe('DesktopUpdateController', () => {
       'aria-valuenow',
       '42',
     );
+    expect(screen.getByText('25 MB of 100 MB')).toBeInTheDocument();
   });
 
   it('shows an actionable error when a background check fails', async () => {

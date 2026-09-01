@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { ManualUpdateReason, UpdatePhase, UpdateState } from './updaterContract';
 
 // The mcp.onInvoke/reply payloads are plain JSON envelopes (src/mcp/bridge/protocol.ts);
 // typed loosely here since the preload script's own tsconfig (tsconfig.preload.json) does
@@ -20,26 +21,6 @@ type AiBridgeRequest = Record<string, unknown> & { type: string };
 type AiBridgeResult =
   | { ok: true; data: unknown }
   | { ok: false; error: Record<string, unknown> & { kind: string; message: string } };
-type UpdatePhase =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'downloading'
-  | 'downloaded'
-  | 'up-to-date'
-  | 'error'
-  | 'manual';
-type ManualUpdateReason = 'development' | 'unsigned-macos' | 'windows-portable' | 'linux-deb';
-type UpdateState = {
-  phase: UpdatePhase;
-  mode: 'automatic' | 'manual';
-  currentVersion: string;
-  availableVersion?: string;
-  manualReason?: ManualUpdateReason;
-  progress?: { percent: number; transferred: number; total: number; bytesPerSecond: number };
-  error?: string;
-};
-
 const UPDATE_PHASES = new Set<UpdatePhase>([
   'idle',
   'checking',
@@ -98,7 +79,16 @@ function safeUpdateState(value: unknown): UpdateState | undefined {
     ...(typeof item.manualReason === 'string'
       ? { manualReason: item.manualReason as ManualUpdateReason }
       : {}),
-    ...(progress ? { progress: progress as UpdateState['progress'] } : {}),
+    ...(progress
+      ? {
+          progress: {
+            percent: progress.percent as number,
+            transferred: progress.transferred as number,
+            total: progress.total as number,
+            bytesPerSecond: progress.bytesPerSecond as number,
+          },
+        }
+      : {}),
     ...(typeof item.error === 'string' ? { error: item.error } : {}),
   };
 }

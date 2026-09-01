@@ -2804,9 +2804,10 @@ than exposing GitHub's updater metadata as user choices.
   the beta channel shortly after launch. A narrow, validated preload surface exposes only current
   state, a deliberate check, state-change subscription and explicit restart-and-install. Settings
   shows the installed version, check/download/error state and byte progress; checking and downloads
-  also use a compact application-level notice. A downloaded update never restarts Lacuna or installs
-  on ordinary quit: the user chooses **Restart and install** or **Later**. Windows portable and Linux
-  DEB update manually. The unsigned macOS beta also updates manually because electron-updater
+  also use a compact application-level notice with percentage and transferred/total size when the
+  updater supplies it. A downloaded update never restarts Lacuna or installs on ordinary quit: the
+  user chooses **Restart and install** or **Later**. Windows portable and Linux DEB update manually.
+  The unsigned macOS beta also updates manually because electron-updater
   requires a signed macOS application. Those packages receive package-specific guidance and a link
   to the beta releases page. Release-note HTML is not exposed to the renderer.
 

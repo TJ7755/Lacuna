@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useDesktopUpdater } from '../../electron/useDesktopUpdater';
+import { formatUpdateBytes } from '../../electron/updatePresentation';
 
 export function DesktopUpdateController() {
   const { state, checkForUpdates, restartAndInstall } = useDesktopUpdater();
@@ -78,12 +79,18 @@ function UpdateProgressNotice({
         )}
       </div>
       {downloading && state.progress && (
-        <ProgressBar
-          className="mt-2"
-          value={state.progress.percent / 100}
-          label="Update download"
-          height={4}
-        />
+        <>
+          <ProgressBar
+            className="mt-2"
+            value={state.progress.percent / 100}
+            label="Update download"
+            height={4}
+          />
+          <p className="mt-1 text-right text-[11px] tabular text-ink-soft">
+            {formatUpdateBytes(state.progress.transferred)} of{' '}
+            {formatUpdateBytes(state.progress.total)}
+          </p>
+        </>
       )}
     </div>
   );

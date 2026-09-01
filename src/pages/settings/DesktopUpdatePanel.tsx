@@ -2,6 +2,7 @@ import { Button } from '../../components/ui/Button';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { useDesktopUpdater } from '../../electron/useDesktopUpdater';
 import type { ManualUpdateReason } from '../../electron/updateTypes';
+import { formatUpdateBytes } from '../../electron/updatePresentation';
 
 const MANUAL_UPDATE_COPY: Record<ManualUpdateReason, string> = {
   development: 'This development build does not check for packaged updates.',
@@ -12,11 +13,6 @@ const MANUAL_UPDATE_COPY: Record<ManualUpdateReason, string> = {
   'linux-deb':
     'DEB packages update manually. Download the new package and install it with your package manager.',
 };
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${Math.round(bytes / (1024 * 1024))} MB`;
-}
 
 export function DesktopUpdatePanel() {
   const { state, checkForUpdates, restartAndInstall } = useDesktopUpdater();
@@ -102,7 +98,8 @@ export function DesktopUpdatePanel() {
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-ink-soft">
             <span>Downloading version {state.availableVersion}</span>
             <span className="tabular">
-              {formatBytes(state.progress.transferred)} of {formatBytes(state.progress.total)}
+              {formatUpdateBytes(state.progress.transferred)} of{' '}
+              {formatUpdateBytes(state.progress.total)}
             </span>
           </div>
           <ProgressBar value={state.progress.percent / 100} label="Update download" height={6} />

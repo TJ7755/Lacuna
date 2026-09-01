@@ -13,6 +13,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["./preload.ts"],
+  "include": ["./preload.ts", "./updaterContract.d.ts"],
   "exclude": ["node_modules", "dist-electron"]
 }

@@ -1,35 +1,10 @@
-export type UpdatePhase =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'downloading'
-  | 'downloaded'
-  | 'up-to-date'
-  | 'error'
-  | 'manual';
+import type {
+  ManualUpdateReason,
+  UpdateProgress,
+  UpdateState,
+} from './updaterContract.js';
 
-export type ManualUpdateReason =
-  | 'development'
-  | 'unsigned-macos'
-  | 'windows-portable'
-  | 'linux-deb';
-
-export interface UpdateProgress {
-  percent: number;
-  transferred: number;
-  total: number;
-  bytesPerSecond: number;
-}
-
-export interface UpdateState {
-  phase: UpdatePhase;
-  mode: 'automatic' | 'manual';
-  currentVersion: string;
-  availableVersion?: string;
-  manualReason?: ManualUpdateReason;
-  progress?: UpdateProgress;
-  error?: string;
-}
+export type { UpdateState } from './updaterContract.js';
 
 interface UpdateInfoPort {
   version: string;
