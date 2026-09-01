@@ -199,7 +199,9 @@ describe('Dashboard', () => {
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
     render(<Dashboard />);
-    expect(screen.getByText('No courses yet')).toBeInTheDocument();
+    const emptyHeading = screen.getByRole('heading', { name: 'No courses yet' });
+    expect(emptyHeading).toBeInTheDocument();
+    expect(emptyHeading.parentElement).toHaveClass('flex', 'flex-col', 'items-center');
   });
 
   it('renders course cards when courses exist', () => {
@@ -297,7 +299,10 @@ describe('Dashboard', () => {
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
     render(<Dashboard />);
-    expect(screen.getByText('Courses')).toBeInTheDocument();
+    const pageHeading = screen.getByRole('heading', { name: 'Courses' });
+    expect(pageHeading).toBeInTheDocument();
+    expect(pageHeading.closest('header')).toHaveClass('py-5', 'md:py-7');
+    expect(screen.queryByText('Your revision')).not.toBeInTheDocument();
   });
 
   it('does not show a cross-course review bar even when eligible cards exist', () => {

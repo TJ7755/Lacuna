@@ -94,17 +94,13 @@ export function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
       {/* Page header */}
-      {/* On a phone this header competed for about 280px of usable width between a 4xl
-          title and a button that would not shrink, so both labels wrapped and the card
-          grew to swallow the top of the screen. Tighter padding, a smaller title and
-          non-wrapping labels keep it to a single compact row; desktop is unchanged. */}
-      <header className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface p-4 md:mb-10 md:p-8">
+      {/* On a phone the title and non-shrinking action share limited horizontal space.
+          Keep the side padding tight while giving the single-line heading balanced
+          vertical space at each breakpoint. */}
+      <header className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface px-4 py-5 md:mb-10 md:px-8 md:py-7">
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
-        <div className="relative flex items-center justify-between gap-3 md:items-end md:gap-4">
+        <div className="relative flex items-center justify-between gap-3 md:gap-4">
           <div className="min-w-0">
-            <p className="mb-0.5 whitespace-nowrap text-xs uppercase tracking-[0.18em] text-ink-faint md:mb-1 md:text-sm">
-              Your revision
-            </p>
             <h1 className="font-display text-3xl tracking-tight md:text-6xl">Courses</h1>
           </div>
           {activeCourses && activeCourses.length > 0 && (
@@ -396,7 +392,7 @@ function EmptyState({
   return (
     <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center">
       <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-      <div className="relative">
+      <div className="relative flex flex-col items-center">
         <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm shadow-accent/20">
           <LacunaIcon width={28} height={28} />
         </div>
