@@ -38,6 +38,30 @@ describe('lacuna.list_tools', () => {
     expect(data.nextCursor).toEqual(expect.any(String));
   });
 
+  it('rejects a catalogue cursor reused with another query', async () => {
+    const tool = getTool('lacuna.list_tools');
+    expect(tool).toBeDefined();
+    const first = await validateAndRun(
+      tool!,
+      { query: '', limit: 1 },
+      { grant: null, agentId: 'test-agent' },
+    );
+    expect(first.ok).toBe(true);
+    if (!first.ok) throw new Error(first.error.message);
+    const cursor = (first.result.data as { nextCursor: string }).nextCursor;
+
+    const reused = await validateAndRun(
+      tool!,
+      { query: 'course', limit: 1, cursor },
+      { grant: null, agentId: 'test-agent' },
+    );
+
+    expect(reused).toMatchObject({
+      ok: false,
+      error: { kind: 'validation', message: 'The tool catalogue cursor is invalid.' },
+    });
+  });
+
   it('crosses the complete local AI permission and execution boundary', async () => {
     const session = createAiToolSession({
       now: () => 100,

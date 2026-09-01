@@ -2871,7 +2871,7 @@ The tool contract is transport-independent and versioned separately from the Dex
 (`MCP_TOOL_SURFACE_VERSION`, currently 3 — additive tools never bump it). It exposes:
 
 - a searchable `lacuna.list_tools` catalogue with descriptions, JSON input schemas and permission
-  levels, plus recovery suggestions for unknown names;
+  levels, plus recovery suggestions for unknown names and query/version-bound pagination cursors;
 - read/query tools for courses, lessons, cards, due and weak cards, statistics, sequences,
   occlusions, notes and diagnostics, including natural-language `lacuna.find_course` resolution and
   bounded `lacuna.search_cards` results which omit scheduling and review history by default, use

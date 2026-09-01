@@ -32,7 +32,10 @@ web and Electron typecheck; focused lint and production build.
   Course/deck names and return compact, cursor-paginated Card content without FSRS state or review
   history by default. Tool-name suggestions reject oversized input before distance calculation;
   compact reads count and search stored rows without hydrating review history, and Card cursors are
-  bound to their Course and query.
+  bound to their Course and query. Tool-catalogue cursors are likewise bound to the normalised query
+  and tool-surface version, so they cannot silently skip a different result set.
+- Extracted native socket negotiation, request draining and lease lifecycle behind the local AI app
+  client interface, leaving MCP stdio registration to describe only the five model-facing tools.
 - Kept the five-tool conversation surface separate from the broader data MCP authority. Durable
   model execution, client tool-registry reload and waking a finished task remain client-owned MCP
   limitations rather than fake background behaviour inside Lacuna.

@@ -29,10 +29,20 @@ const listToolsSchema = z.object({
   cursor: z.string().max(100).optional(),
 }).strict();
 
-function catalogueOffset(cursor: string | undefined): number {
+async function catalogueScope(query: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`${MCP_TOOL_SURFACE_VERSION}\0${query}`);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function catalogueOffset(cursor: string | undefined, scope: string): number {
   if (cursor === undefined) return 0;
-  const match = /^tools-v1\.([0-9a-z]+)$/.exec(cursor);
-  const offset = match ? Number.parseInt(match[1], 36) : Number.NaN;
+  const match = /^tools-v2\.([0-9]+)\.([a-f0-9]{64})\.([0-9a-z]+)$/.exec(cursor);
+  const offset = match && Number(match[1]) === MCP_TOOL_SURFACE_VERSION && match[2] === scope
+    ? Number.parseInt(match[3], 36)
+    : Number.NaN;
   if (!Number.isSafeInteger(offset) || offset < 0) {
     throw new McpToolException({ kind: 'validation', message: 'The tool catalogue cursor is invalid.' });
   }
@@ -56,7 +66,8 @@ const listTools: ToolDefinition<z.infer<typeof listToolsSchema>, unknown> = {
     const matches = TOOL_REGISTRY.filter((tool) =>
       wanted === '' || `${tool.name} ${tool.description}`.toLocaleLowerCase().includes(wanted),
     );
-    const offset = catalogueOffset(cursor);
+    const scope = await catalogueScope(wanted);
+    const offset = catalogueOffset(cursor, scope);
     if (offset > matches.length) {
       throw new McpToolException({ kind: 'validation', message: 'The tool catalogue cursor is invalid.' });
     }
@@ -71,7 +82,7 @@ const listTools: ToolDefinition<z.infer<typeof listToolsSchema>, unknown> = {
           inputSchema: catalogueInputSchema(tool),
         })),
         ...(nextOffset < matches.length
-          ? { nextCursor: `tools-v1.${nextOffset.toString(36)}` }
+          ? { nextCursor: `tools-v2.${MCP_TOOL_SURFACE_VERSION}.${scope}.${nextOffset.toString(36)}` }
           : {}),
       },
     };
