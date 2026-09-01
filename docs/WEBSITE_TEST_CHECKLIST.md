@@ -404,7 +404,10 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Ready counts exclude reviews scheduled in the future.
 - [ ] Right-click and keyboard context-menu invocation both open course actions.
 - [ ] Archiving removes the course from the active dashboard and Undo restores it reliably.
-- [ ] Archived courses appear only when the corresponding sidebar preference is enabled.
+- [ ] Archived courses never appear in the ordinary course list; the **Archived** navigation item
+      opens their restoration page and Unarchive returns a course to active study.
+- [ ] After a final exam passes, **Ask me** offers archive, a new exam date and continued revision;
+      the automatic and keep-revising preferences act without being triggered by checkpoints.
 - [ ] The study streak and review heatmap update after a completed review.
 - [ ] Storage quota warnings, when forced near the threshold, are visible and actionable.
 

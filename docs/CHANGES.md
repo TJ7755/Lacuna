@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Passed-final-exam course lifecycle
+
+- Added a dedicated **Archived** sidebar destination and removed archived courses from the normal
+  dashboard and sidebar course lists. Restoration now lives on that page rather than in a second
+  dashboard section.
+- Replaced the retired **Show archived courses** toggle with an **After the final exam** policy:
+  **Ask me** by default, **Archive automatically**, or **Keep revising**. The ask flow offers
+  archive, direct final-date editing and rolling maintenance, remembers the exact handled exam date,
+  and re-arms when a replacement final exam later passes. Explicitly unarchiving a passed course
+  also overrides automatic archiving for that exact exam instead of producing an absurd archive
+  loop. Checkpoints never trigger it.
+- Excluded archived-course cards from Review today and future workload forecasts without deleting
+  or filtering their historical reviews from streaks, reviewed-today figures or activity history.
+
+**Checks:** red-to-green lifecycle persistence, policy controller, Archived page, sidebar filtering,
+dashboard removal, final-assessment editor and forecast-history regressions; focused Settings,
+Course Settings and route-prefetch suites; web/Electron typecheck and lint. The full unit run passed
+2,804 tests; its unrelated native companion socket test could not bind inside the sandbox (`EPERM`).
+
 ### Windows application icon integrity
 
 - Removed the stale hand-authored Windows ICO whose every embedded size omitted the bright left

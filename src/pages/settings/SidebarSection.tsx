@@ -29,13 +29,6 @@ export function SidebarSection() {
       />
       <SettingToggle
         bordered
-        title="Show archived courses"
-        description="Include archived courses in the sidebar list. Archived courses are hidden from the dashboard by default but can still be accessed via the sidebar."
-        checked={sidebarSettings.showArchived}
-        onChange={(checked) => setSidebarSettings({ showArchived: checked })}
-      />
-      <SettingToggle
-        bordered
         title="Compact mode"
         description="Reduce padding and font sizes throughout the sidebar to fit more items on screen at once."
         checked={sidebarSettings.compactMode}

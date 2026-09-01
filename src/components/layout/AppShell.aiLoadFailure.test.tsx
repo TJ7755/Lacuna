@@ -24,6 +24,9 @@ vi.mock('./Sidebar', () => ({
   ),
 }));
 vi.mock('./Titlebar', () => ({ Titlebar: () => null }));
+vi.mock('../course/FinalExamLifecycleController', () => ({
+  FinalExamLifecycleController: () => null,
+}));
 vi.mock('../search/CommandPalette', () => ({ CommandPalette: () => null }));
 vi.mock('../learn/StudySheet', () => ({ StudySheet: () => null }));
 vi.mock('../course/CourseSectionBar', () => ({ CourseSectionBar: () => null }));

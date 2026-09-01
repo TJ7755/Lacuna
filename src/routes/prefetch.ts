@@ -1,5 +1,6 @@
 import {
   loadAnalytics,
+  loadArchivedCourses,
   loadCoursePath,
   loadHelpPage,
   loadLessonView,
@@ -12,6 +13,7 @@ type RouteLoader = () => Promise<unknown>;
 
 const PREFETCH_LOADERS: Record<string, RouteLoader> = {
   '/analytics': loadAnalytics,
+  '/archived': loadArchivedCourses,
   '/help': loadHelpPage,
   '/search': loadSearchPage,
   '/settings': loadSettings,

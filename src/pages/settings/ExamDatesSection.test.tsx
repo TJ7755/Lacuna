@@ -146,4 +146,12 @@ describe('ExamDatesSection', () => {
       ),
     );
   });
+
+  it('opens the final assessment editor when the lifecycle decision requests a new date', () => {
+    mockExamDates = [{ ...mockExamDate, id: 'final-1', kind: 'final', name: 'Final exam' }];
+    render(<ExamDatesSection courseId="course-1" editFinalOnMount />);
+
+    expect(screen.getByDisplayValue('Final exam')).toBeInTheDocument();
+    expect(screen.getByText('Path position')).toBeInTheDocument();
+  });
 });

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// Device-local sidebar preferences: whether to show due card counts, archived decks,
-// and whether to use a compact layout.
+// Device-local sidebar preferences.
 
 const KEY = 'lacuna.sidebarSettings';
 
@@ -13,7 +12,6 @@ export interface SidebarNavItem {
 
 export interface SidebarSettings {
   showDueCounts: boolean;
-  showArchived: boolean;
   compactMode: boolean;
   navItems: SidebarNavItem[];
 }
@@ -24,13 +22,13 @@ export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
   { id: 'search', label: 'Search', visible: true },
   { id: 'share', label: 'Share', visible: true },
   { id: 'analytics', label: 'Analytics', visible: true },
+  { id: 'archived', label: 'Archived', visible: true },
   { id: 'settings', label: 'Settings', visible: true },
   { id: 'help', label: 'Help', visible: true },
 ];
 
 export const DEFAULTS: SidebarSettings = {
   showDueCounts: true,
-  showArchived: true,
   compactMode: false,
   navItems: DEFAULT_NAV_ITEMS,
 };
@@ -52,7 +50,6 @@ export function readStored(): SidebarSettings {
       }
       return {
         showDueCounts: parsed.showDueCounts ?? DEFAULTS.showDueCounts,
-        showArchived: parsed.showArchived ?? DEFAULTS.showArchived,
         compactMode: parsed.compactMode ?? DEFAULTS.compactMode,
         navItems: merged,
       };

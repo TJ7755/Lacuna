@@ -65,7 +65,6 @@ vi.mock('../state/sidebarSettings', () => ({
   useSidebarSettings: () => [
     {
       showDueCounts: true,
-      showArchived: true,
       compactMode: false,
       navItems: [
         { id: 'dashboard', label: 'Dashboard', visible: true },
@@ -74,6 +73,9 @@ vi.mock('../state/sidebarSettings', () => ({
     },
     vi.fn(),
   ],
+}));
+vi.mock('../state/finalExamLifecycle', () => ({
+  useAfterFinalExamPolicy: () => ['ask', vi.fn()],
 }));
 vi.mock('../state/shortcutBindings', () => ({
   ACTION_LABELS: {},
@@ -191,7 +193,8 @@ describe('Settings', () => {
     render(<Settings />);
 
     expect(screen.getByRole('switch', { name: 'Show ready card counts' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Show archived courses' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'After the final exam' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Ask me/ })).toBeChecked();
     expect(screen.getByRole('switch', { name: 'Compact mode' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Manual four-point grading' })).toBeInTheDocument();
     expect(

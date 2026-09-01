@@ -89,6 +89,20 @@ describe('computeStudyStats — 7-day time forecast', () => {
     expect(forecast[0].dayStart).toBe(TODAY);
   });
 
+  it('filters only the forecast while retaining archived-course review history', () => {
+    const reviewed = card({
+      courseId: 'archived-course',
+      due: NOW,
+      history: [review(NOW - 1_000)],
+    });
+
+    const stats = computeStudyStats([reviewed], new Map(), NOW, new Set(['active-course']));
+
+    expect(stats.reviewedToday).toBe(1);
+    expect(stats.streak).toBe(1);
+    expect(stats.forecast[0].dueCount).toBe(0);
+  });
+
   it('folds overdue cards into today and uses the deck mean for minutes', () => {
     const deckSeconds = new Map([['d1', 30]]); // 30s per card
     const cards = [

@@ -1,6 +1,6 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { CourseTabs } from '../components/course/CourseTabs';
@@ -52,6 +52,7 @@ export function CourseSettings() {
   const m = speedMultiplier(motionSpeed);
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { notify } = useToast();
   const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m);
 
@@ -511,7 +512,11 @@ export function CourseSettings() {
             <div id="course-settings-assessments" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Assessments</h2>
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
-                <ExamDatesSection courseId={course.id} timeZone={timeZone} />
+                <ExamDatesSection
+                  courseId={course.id}
+                  timeZone={timeZone}
+                  editFinalOnMount={searchParams.get('editFinalExam') === '1'}
+                />
               </section>
             </div>
 

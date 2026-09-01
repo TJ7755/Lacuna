@@ -18,9 +18,19 @@ describe('readStored', () => {
   it('returns defaults when nothing is stored', () => {
     const settings = readStored();
     expect(settings.showDueCounts).toBe(DEFAULTS.showDueCounts);
-    expect(settings.showArchived).toBe(DEFAULTS.showArchived);
     expect(settings.compactMode).toBe(DEFAULTS.compactMode);
     expect(settings.navItems).toEqual(DEFAULT_NAV_ITEMS);
+  });
+
+  it('ignores the retired showArchived preference', () => {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ showArchived: false, compactMode: true }),
+    );
+
+    expect(readStored()).toMatchObject({ compactMode: true });
+    expect(readStored()).not.toHaveProperty('showArchived');
+    expect(DEFAULT_NAV_ITEMS.some((item) => item.id === 'archived')).toBe(true);
   });
 
   it('returns merged nav items when stored items are missing new defaults', () => {
