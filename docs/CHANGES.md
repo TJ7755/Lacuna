@@ -1,5 +1,19 @@
 # Lacuna — next beta
 
+## School-use browser spine and editor accessibility
+
+- Gave every Markdown editor textarea an accessible name. The visible field label is now the
+  default name, while an explicit `ariaLabel` continues to override it for specialised editors.
+- Added a fresh-profile Chromium journey covering course creation, Front/Back authoring through
+  accessible textbox roles, IndexedDB persistence across reload, the visible course Study entry,
+  Space-to-reveal and Y-to-grade.
+- Added keyboard coverage for Quick search focus and Escape focus restoration, plus explicit
+  reduced-motion route-navigation coverage. Ordinary Playwright browser tests now exercise the
+  normal motion preference; only the reduced-motion regression opts into reduction.
+
+**Checks:** focused Markdown editor unit regression; focused Chromium school-use and accessibility
+flows; full web Playwright suite; root typecheck, lint and asset build.
+
 ## Video embed content-security policy
 
 - Added the two existing note-video providers to the web and packaged-Electron `frame-src`
