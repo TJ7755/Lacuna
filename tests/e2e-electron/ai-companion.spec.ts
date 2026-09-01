@@ -44,13 +44,24 @@ async function startCompanion(
   profile: string,
   name: string,
 ): Promise<Client> {
+  let stderr = '';
   const transport = new StdioClientTransport({
     command: executablePath,
     args: [root, '--ai-companion', `--user-data-dir=${profile}`],
     stderr: 'pipe',
   });
+  transport.stderr?.setEncoding('utf8');
+  transport.stderr?.on('data', (chunk: string) => {
+    stderr += chunk;
+    process.stderr.write(`[Lacuna AI companion] ${chunk}`);
+  });
   const client = new Client({ name, version: '1.0.0' });
-  await client.connect(transport);
+  try {
+    await client.connect(transport);
+  } catch (error) {
+    const detail = stderr.trim() || 'The companion wrote no diagnostic output.';
+    throw new Error(`The Lacuna AI companion failed to start: ${detail}`, { cause: error });
+  }
   return client;
 }
 
