@@ -2937,7 +2937,9 @@ uploaded to that same draft before publication.
 ### Build output
 
 Packaged files land in `release/` (gitignored). The electron-builder
-configuration is at `electron/electron-builder.yml`.
+configuration is at `electron/electron-builder.yml`. Packaging stays on the maintained Electron
+Builder 26 line; a future v27 move is a separate migration because it changes the builder's Node
+and module-system requirements rather than being a routine lockfile refresh.
 
 ---
 
