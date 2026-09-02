@@ -4,6 +4,18 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## Shared motion contract (2 September 2026)
+
+The semantic motion foundation was measured in isolation on top of the
+course-section prefetch stack. Unused tiers and helpers remain tree-shaken; the
+existing disclosure helper consumes the shared standard easing.
+
+| Production-build change | Before | After | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 867,329 bytes | 867,361 bytes | +32 bytes / +0.004% |
+| Initial JavaScript gzip | 266,391 bytes | 266,392 bytes | +1 byte / +0.0004% |
+| Initial CSS | 121,519 bytes | 121,519 bytes | No change |
+
 ## First-interaction baseline (2 September 2026)
 
 `bun run perf:audit:web-interactions` measures a real pointer interaction in the
