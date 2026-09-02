@@ -1,9 +1,10 @@
-import { app, BrowserWindow, session, protocol, ipcMain, screen, shell } from 'electron';
+import { app, BrowserWindow, Menu, session, protocol, ipcMain, screen, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
+import { createApplicationMenuTemplate } from './applicationMenu.js';
 import type { DesktopUpdater, UpdateState } from './updaterService.js';
 import {
   createApplicationShutdownHandler,
@@ -416,6 +417,15 @@ if (isCompanionProcess) {
   });
 
   void app.whenReady().then(async () => {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate(
+        createApplicationMenuTemplate(process.platform, isDev, () => {
+          if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send('navigation:open-help');
+          }
+        }),
+      ),
+    );
     installSecurityHeaders();
     installPermissionHandlers();
 

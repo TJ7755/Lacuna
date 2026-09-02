@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiSession } from '../../ai/session/types';
 import { createInMemoryAiSession } from '../../ai/session/inMemory';
 import { AppShell } from './AppShell';
@@ -105,6 +105,7 @@ function shellElement() {
         <Route path="/" element={<AppShell />}>
           <Route index element={<RouteContent />} />
           <Route path="settings" element={<h1>Settings</h1>} />
+          <Route path="help" element={<h1>Help</h1>} />
         </Route>
       </Routes>
     </MemoryRouter>
@@ -132,6 +133,34 @@ beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
     configurable: true,
     value: vi.fn(),
+  });
+});
+
+afterEach(() => {
+  Reflect.deleteProperty(window, 'electronAPI');
+});
+
+describe('AppShell native commands', () => {
+  it('opens Lacuna Help when the Electron menu requests it', async () => {
+    let openHelp: () => void = () => {
+      throw new Error('Help listener was not installed');
+    };
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        isElectron: true,
+        platform: 'darwin',
+        onOpenHelp: (callback: () => void) => {
+          openHelp = callback;
+          return vi.fn();
+        },
+      },
+    });
+    renderShell();
+
+    act(() => openHelp());
+
+    expect(await screen.findByRole('heading', { name: 'Help' })).toBeInTheDocument();
   });
 });
 

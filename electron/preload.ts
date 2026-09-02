@@ -144,6 +144,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('window:maximizedChange', handler);
     };
   },
+  onOpenHelp: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('navigation:open-help', handler);
+    return () => ipcRenderer.removeListener('navigation:open-help', handler);
+  },
   updater: {
     getState: async (): Promise<UpdateState> => {
       const state = safeUpdateState(await ipcRenderer.invoke('updater:get-state'));

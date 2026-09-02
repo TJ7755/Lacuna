@@ -14,6 +14,7 @@ const electron = vi.hoisted(() => {
       exposed = value;
     }),
     api: () => exposed as {
+      onOpenHelp(callback: () => void): () => void;
       ai: {
         requestRestart(): Promise<void>;
         onRestartRequested(callback: () => void): () => void;
@@ -91,5 +92,16 @@ describe('Electron preload AI request lifecycle', () => {
 
     expect(electron.invoke).toHaveBeenCalledWith('ai:restart-renderer');
     expect(onRestart).toHaveBeenCalledOnce();
+  });
+
+  it('forwards native Help commands and removes its listener', () => {
+    const onOpenHelp = vi.fn();
+    const stopListening = electron.api().onOpenHelp(onOpenHelp);
+
+    electron.emit('navigation:open-help', undefined);
+    stopListening();
+    electron.emit('navigation:open-help', undefined);
+
+    expect(onOpenHelp).toHaveBeenCalledOnce();
   });
 });

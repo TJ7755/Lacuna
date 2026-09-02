@@ -1,5 +1,20 @@
 # Lacuna — next beta
 
+## Native desktop menus and commands
+
+- Added the standard application menu on macOS and the standard File, Edit and Window menus on
+  every desktop platform, restoring native About, Services, hide, quit, clipboard, selection and
+  window commands with their platform accelerators.
+- Added zoom and full-screen commands on every platform. Reload and developer tools remain
+  available in development builds but are deliberately absent from packaged releases.
+- Added a native Help command that opens Lacuna's existing in-app guidance, including the native
+  macOS shortcut and F1 on Windows and Linux.
+- Kept the menu template in a small pure module instead of adding another responsibility to the
+  Electron main-process entry point.
+
+**Checks:** red-to-green native-menu template regression; Electron and web typechecks; lint; unit
+tests.
+
 ## Complete exact-release workspace verification
 
 - Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone
