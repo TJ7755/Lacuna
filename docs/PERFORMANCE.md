@@ -318,3 +318,36 @@ Ordered by impact per effort.
 - **10k cards:** a single objective session selection/completion measured 13.31/12.48 ms, and one `recordReview` measured 16.48 ms. Multi-unit scoring and canonical event volume remain the material costs.
 - **100k cards:** the former inline-history multiplier is gone, but whole-table content merge and
   all-history analytics/calibration paths remain a ceiling. This work does not claim 100k-card support.
+# Electron MCP contract boundary
+
+The packaged MCP server and data companion register handler-free tool contracts. Executable
+handlers remain in the renderer, the only process that owns IndexedDB. An esbuild-metafile gate
+rejects any server or companion bundle containing `src/db`, `src/fsrs`, `src/items`,
+`src/questions` or `src/state`, or external imports of Dexie, React or `ts-fsrs`.
+
+| MCP JavaScript bundle | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| Main server | 467,780 B | 96,043 B | -79.5% |
+| Data companion | 429,992 B | 58,270 B | -86.4% |
+| Combined | 897,772 B | 154,313 B | -82.8% |
+
+Those bundle figures come from `electron/mcp/build.mjs` run from the branch worktree at
+`5cbdbb6`; the generated JavaScript includes its source-map reference. The same commit was
+then packaged as unsigned Windows x64 and macOS arm64 unpacked applications. Its `app.asar`
+SHA-256 is `03bedfcd8d190e23e0384a92df01159bd13bd80ba16eb0f903d7039093d2d85d` on both
+platforms. The comparison artefact is the package-diet build at `d0a6b7c` documented above.
+
+| Package measurement | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| `app.asar` archive | 20,575,956 B | 18,294,523 B | -2,281,433 B (-11.1%) |
+| ASAR payload | 20,256,652 B | 17,987,555 B | -2,269,097 B (-11.2%) |
+| ASAR files | 1,240 | 1,194 | -46 (-3.7%) |
+| Windows unpacked application | 338,132 KiB | 336,220 KiB | -1,912 KiB (-0.6%) |
+| macOS unpacked application | 254,104 KiB | 251,876 KiB | -2,228 KiB (-0.9%) |
+
+The renderer output remained 7,416 KiB before and after. These measurements claim package
+and Electron main-process bundle reduction only; they do not claim a renderer-speed or memory
+improvement.
+
+The AI companion surface is deliberately unchanged. Its five-tool bundle remains separate from
+the broader data contract registry.

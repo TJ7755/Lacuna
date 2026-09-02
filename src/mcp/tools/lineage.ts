@@ -20,7 +20,7 @@
 //   resolution functions when the caller supplies `decisions` — the same functions the
 //   in-app `MergeReviewPanel` calls, so an agent's outcome matches the UI path exactly.
 
-import { z } from 'zod';
+import type { z } from 'zod';
 import { db } from '../../db/schema';
 import * as read from '../../db/read';
 import { decodeShare } from '../../db/share';
@@ -45,6 +45,7 @@ import {
   type ShareNoteInput,
 } from '../../db/lineageDiff';
 import type { Card, Lesson, LineageIdMapping, Note } from '../../db/types';
+import { applyLineageUpdateContract, diffLineageUpdateContract } from '../contracts/lineage';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 function ok<T>(data: T): ToolResult<T> {
@@ -125,11 +126,6 @@ function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
 // lacuna.diff_lineage_update
 // ---------------------------------------------------------------------------
 
-const diffLineageUpdateSchema = z.object({
-  courseId: z.string().describe('The id of the locally-tracked course to diff against.'),
-  shareCode: z.string().describe('The teacher\'s re-published share code to preview against this course.'),
-});
-
 interface LineageDiffSummary {
   counts: {
     createLessons: number;
@@ -164,14 +160,8 @@ function summariseDiff(diff: LineageDiffResult): LineageDiffSummary {
   };
 }
 
-const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateSchema>, LineageDiffSummary> = {
-  name: 'lacuna.diff_lineage_update',
-  description:
-    'Preview how a teacher\'s re-published share code compares to a course already tracking that ' +
-    'lineage, without writing anything: creates/updates/removals and student-edit conflicts, exactly ' +
-    'the classification the in-app review panel would show.',
-  inputSchema: diffLineageUpdateSchema,
-  requiredScope: 'read',
+const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateContract.inputSchema>, LineageDiffSummary> = {
+  ...diffLineageUpdateContract,
   async handler({ courseId, shareCode }) {
     const course = await read.getCourse(courseId);
     if (!course) notFound('Course', courseId);
@@ -225,38 +215,14 @@ const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateSchema>,
 // lacuna.apply_lineage_update
 // ---------------------------------------------------------------------------
 
-const mergeReviewRefSchema = z.object({
-  kind: z.enum(['lesson', 'note', 'card']),
-  entityId: z.string(),
-});
-
-const applyLineageUpdateSchema = z.object({
-  courseId: z.string().describe('The id of the locally-tracked course to update.'),
-  shareCode: z.string().describe('The teacher\'s re-published share code to merge in.'),
-  decisions: z
-    .object({
-      accept: z.array(mergeReviewRefSchema).optional().describe('Queued updates/removals/conflicts to accept ("take theirs").'),
-      reject: z.array(mergeReviewRefSchema).optional().describe('Queued updates/removals/conflicts to reject ("keep mine").'),
-    })
-    .optional()
-    .describe('Pre-resolve specific queued items, mirroring the review panel. Anything left unresolved stays queued.'),
-});
-
 interface ApplyLineageUpdateResult {
   merge: MergeLineageResult;
   queuedForReview: boolean;
   reviewId: string | null;
 }
 
-const applyLineageUpdate: ToolDefinition<z.infer<typeof applyLineageUpdateSchema>, ApplyLineageUpdateResult> = {
-  name: 'lacuna.apply_lineage_update',
-  description:
-    'Apply a teacher\'s re-published share code to a course already tracking that lineage, exactly ' +
-    'as the in-app review flow would: creates apply immediately, updates/removals apply or queue per ' +
-    'the course\'s auto-accept setting, and student-edit conflicts always queue. Optionally pass ' +
-    '`decisions` to pre-resolve specific queued items in the same call.',
-  inputSchema: applyLineageUpdateSchema,
-  requiredScope: 'write',
+const applyLineageUpdate: ToolDefinition<z.infer<typeof applyLineageUpdateContract.inputSchema>, ApplyLineageUpdateResult> = {
+  ...applyLineageUpdateContract,
   async handler({ courseId, shareCode, decisions }) {
     const course = await read.getCourse(courseId);
     if (!course) notFound('Course', courseId);
