@@ -3148,3 +3148,33 @@ in "Unreleased — UI/UX audit implementation" above.
 - Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
   without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
   packages reduced `app.asar` by a further 11.1%, with no renderer-output change.
+
+# 2026-09-02 — Electron MCP server split into deep internal modules
+
+- Kept `startMcpServer`, `getMcpStatus`, `stopMcpServer` and `McpStatus` as the unchanged lifecycle
+  interface while reducing `electron/mcp/server.ts` to the composition façade.
+- Moved renderer IPC, scope and consent decisions, process grants, tool execution and exact SDK
+  registration order behind `DataBridge`.
+- Moved authenticated local sockets, purpose routing, connection grants and status, and AI renderer
+  channels behind `CompanionBroker` without changing the data or AI wire envelopes.
+- Added interface tests for fail-closed renderer decisions, sender rejection, listener removal,
+  purpose and identity invariants, sequential socket messages, live status, file permissions and
+  socket/metadata cleanup. The packaged dependency gate now checks both internal modules directly.
+
+# 2026-09-02 — Failed MCP starts now clean up partial runtime state
+
+- A companion-broker or legacy-stdio startup failure now tears down installed renderer listeners,
+  local sockets, connection metadata and in-memory grants before returning the original error.
+- Added a lifecycle regression test covering both failure points; previously `stopMcpServer` saw
+  `running: false` and returned without touching the partially-created runtime.
+
+# 2026-09-02 — MCP lifecycle acquisition and shutdown are fenced
+
+- Concurrent starts now share one in-flight acquisition, including data-bridge IPC registration,
+  so a second caller cannot overwrite partially-acquired runtime state.
+- Data-bridge shutdown closes its invocation dispatcher and fences scope, consent and renderer
+  continuations before removing listeners or grants; pending calls settle immediately with the
+  stopped error instead of surviving until a ten-second timeout.
+- Runtime teardown now attempts the bridge, broker and stdio cleanup independently and clears
+  lifecycle state even when one step rejects. Normal stop reports all cleanup failures together;
+  failed start preserves its original error and reports attached cleanup failures separately.

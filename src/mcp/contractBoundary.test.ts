@@ -18,6 +18,8 @@ const FORBIDDEN_SOURCE_ROOTS = [
 const RENDERER_ONLY_PACKAGES = ['dexie', 'react', 'ts-fsrs'];
 const PACKAGED_MCP_ENTRY_POINTS = [
   'electron/mcp/server.ts',
+  'electron/mcp/dataBridge.ts',
+  'electron/mcp/companionBroker.ts',
   'electron/mcp/companion.ts',
   'electron/mcp/aiCompanion.ts',
   'electron/mcp/aiCompanionEntry.ts',

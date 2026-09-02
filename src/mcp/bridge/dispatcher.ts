@@ -9,7 +9,7 @@
 // server lifetime, wiring `send` to `webContents.send('mcp:invoke', req)` and feeding
 // `resolvePending` from the `mcp:invoke:reply` ipcMain listener.
 
-import type { McpInvokeRequest, McpInvokeResponse } from './protocol';
+import type { McpInvokeRequest, McpInvokeResponse, McpToolError } from './protocol';
 
 export const RENDERER_NOT_READY_MESSAGE = 'Lacuna window is not open or still loading.';
 
@@ -17,6 +17,7 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 
 export class InvokeDispatcher {
   private readonly pending = new Map<string, (response: McpInvokeResponse) => void>();
+  private closedError: McpToolError | null = null;
 
   constructor(
     private readonly send: (request: McpInvokeRequest) => void,
@@ -29,6 +30,9 @@ export class InvokeDispatcher {
    * MCP client forever — the renderer window may not be open yet, or may have been closed.
    */
   dispatch(request: McpInvokeRequest): Promise<McpInvokeResponse> {
+    if (this.closedError) {
+      return Promise.resolve({ id: request.id, ok: false, error: this.closedError });
+    }
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(request.id);
@@ -59,6 +63,14 @@ export class InvokeDispatcher {
     this.pending.delete(response.id);
     resolve(response);
     return true;
+  }
+
+  /** Fences new work and settles every pending dispatch immediately. */
+  close(error: McpToolError): void {
+    this.closedError = error;
+    for (const id of [...this.pending.keys()]) {
+      this.resolvePending({ id, ok: false, error });
+    }
   }
 
   /** Number of in-flight dispatches. Exposed for tests and status reporting. */
