@@ -135,16 +135,42 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
                 className="flex flex-col gap-[3px] origin-top"
               >
                 {col.map((cell) => (
-                  <span
-                    key={cell.day}
-                    className="h-[12px] w-[12px] rounded-[2px] shrink-0"
-                    style={cellStyle(cell)}
-                    title={
-                      cell.future
-                        ? undefined
-                        : `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`
-                    }
-                  />
+                  cell.future ? (
+                    <span
+                      key={cell.day}
+                      aria-hidden="true"
+                      className="h-[12px] w-[12px] rounded-[2px] shrink-0"
+                      style={cellStyle(cell)}
+                    />
+                  ) : (
+                    (() => {
+                      const label = `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`;
+                      const tooltipId = `review-heatmap-tooltip-${cell.day}`;
+                      return (
+                        <span key={cell.day} className="group relative block h-[12px] w-[12px] shrink-0">
+                          <motion.button
+                            type="button"
+                            aria-label={label}
+                            aria-describedby={tooltipId}
+                            data-review-heatmap-cell=""
+                            whileHover={m > 0 ? { scale: 1.18 } : undefined}
+                            whileTap={m > 0 ? { scale: 0.9 } : undefined}
+                            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                            className="block h-[12px] w-[12px] rounded-[2px] border-0 p-0 outline-none transition-[box-shadow,transform] focus-visible:ring-2 focus-visible:ring-accent/70 motion-reduce:transition-none"
+                            style={cellStyle(cell)}
+                          />
+                          <span
+                            id={tooltipId}
+                            role="tooltip"
+                            aria-hidden="true"
+                            className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] text-paper opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+                          >
+                            {label}
+                          </span>
+                        </span>
+                      );
+                    })()
+                  )
                 ))}
               </motion.div>
             ))}

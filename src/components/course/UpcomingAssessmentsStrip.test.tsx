@@ -62,6 +62,15 @@ describe('UpcomingAssessmentsStrip', () => {
     expect(onSelect).toHaveBeenCalledWith('upcoming');
   });
 
+  it('provides the shared feedback tier for hover and press states', () => {
+    const upcoming = makeAssessment({ id: 'upcoming', name: 'Next checkpoint', examDate: now + 1 });
+    render(<UpcomingAssessmentsStrip assessments={[upcoming]} now={now} onSelect={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Next checkpoint/ })).toHaveClass(
+      'transition-[border-color,background-color,color,transform]',
+      'motion-reduce:transition-none',
+    );
+  });
+
   it('renders nothing when there are no upcoming assessments', () => {
     const past = makeAssessment({ id: 'past', name: 'Old checkpoint', examDate: now - 1 });
     const { container } = render(

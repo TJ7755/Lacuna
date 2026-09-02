@@ -1,5 +1,22 @@
 # Lacuna performance audit
 
+## Small interaction feedback (2 September 2026)
+
+The heatmap and upcoming-assessment feedback uses existing Motion runtime primitives and CSS
+utilities. The baseline is the editor-continuity branch immediately before this change; the
+production renderer remains functionally unchanged apart from the intentional feedback styles.
+
+| Production-build change | Before | After | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 867,917 bytes | 868,855 bytes | +938 bytes / +0.11% |
+| Initial JavaScript gzip | 266,665 bytes | 266,937 bytes | +272 bytes / +0.10% |
+| Initial CSS | 121,805 bytes | 122,751 bytes | +946 bytes / +0.78% |
+| App chunk | 468,150 bytes | 468,150 bytes | No change |
+
+The CSS increase is the tooltip and state-class vocabulary required for the new focus/hover
+surface. The Motion import was already part of the app closure for the heatmap; assessment
+feedback adds the small incremental initial JavaScript shown above, without a new dependency.
+
 Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
