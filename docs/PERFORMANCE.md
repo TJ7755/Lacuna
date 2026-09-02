@@ -315,5 +315,23 @@ rejects any server or companion bundle containing `src/db`, `src/fsrs`, `src/ite
 | Data companion | 429,992 B | 58,270 B | -86.4% |
 | Combined | 897,772 B | 154,313 B | -82.8% |
 
+Those bundle figures come from `electron/mcp/build.mjs` run from the branch worktree at
+`5cbdbb6`; the generated JavaScript includes its source-map reference. The same commit was
+then packaged as unsigned Windows x64 and macOS arm64 unpacked applications. Its `app.asar`
+SHA-256 is `03bedfcd8d190e23e0384a92df01159bd13bd80ba16eb0f903d7039093d2d85d` on both
+platforms. The comparison artefact is the package-diet build at `d0a6b7c` documented above.
+
+| Package measurement | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| `app.asar` archive | 20,575,956 B | 18,294,523 B | -2,281,433 B (-11.1%) |
+| ASAR payload | 20,256,652 B | 17,987,555 B | -2,269,097 B (-11.2%) |
+| ASAR files | 1,240 | 1,194 | -46 (-3.7%) |
+| Windows unpacked application | 338,132 KiB | 336,220 KiB | -1,912 KiB (-0.6%) |
+| macOS unpacked application | 254,104 KiB | 251,876 KiB | -2,228 KiB (-0.9%) |
+
+The renderer output remained 7,416 KiB before and after. These measurements claim package
+and Electron main-process bundle reduction only; they do not claim a renderer-speed or memory
+improvement.
+
 The AI companion surface is deliberately unchanged. Its five-tool bundle remains separate from
 the broader data contract registry.

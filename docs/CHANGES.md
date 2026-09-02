@@ -3129,4 +3129,5 @@ in "Unreleased — UI/UX audit implementation" above.
 - Added metafile and contract-parity gates, and moved Dexie, React and `ts-fsrs` out of packaged
   runtime dependencies now that no Electron main-process entry imports them.
 - Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
-  without changing the five-tool AI companion surface.
+  without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
+  packages reduced `app.asar` by a further 11.1%, with no renderer-output change.
