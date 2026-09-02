@@ -9,6 +9,7 @@
 import { LayoutGroup, m as motion } from 'motion/react';
 import { Link, useLocation } from 'react-router-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { prefetchRoute } from '../../routes/prefetch';
 import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
 import { COURSE_SECTIONS } from './courseSections';
@@ -45,6 +46,9 @@ export function CourseTabs({ courseId }: { courseId: string }) {
               // The accessible name stays the full label at every width, so the shortened
               // mobile text is a visual abbreviation rather than a different control.
               aria-label={label}
+              onPointerEnter={() => prefetchRoute(to)}
+              onPointerDown={() => prefetchRoute(to)}
+              onFocus={() => prefetchRoute(to)}
               className={cn(
                 'relative flex h-full items-center whitespace-nowrap rounded-full px-3 font-medium transition-colors',
                 active ? 'text-ink' : 'text-ink-faint hover:text-ink',

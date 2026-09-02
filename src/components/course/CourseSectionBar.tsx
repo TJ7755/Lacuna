@@ -11,6 +11,7 @@
 // and pins its own grading controls to the bottom of the screen.
 
 import { NavLink, useLocation } from 'react-router-dom';
+import { prefetchRoute } from '../../routes/prefetch';
 import { CardsIcon, ChartIcon, FileTextIcon, PathIcon, SettingsIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { COURSE_SECTIONS, courseIdFromPath } from './courseSections';
@@ -33,14 +34,18 @@ export function CourseSectionBar() {
       <ul className="flex items-stretch">
         {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {
           const Icon = SECTION_ICONS[index];
+          const to = `/course/${courseId}${suffix}`;
           return (
             <li key={label} className="flex flex-1">
               <NavLink
-                to={`/course/${courseId}${suffix}`}
+                to={to}
                 // Exact matching for Path keeps the course root and its nested lesson
                 // and editor routes from marking every sibling section current.
                 end={suffix === ''}
                 aria-label={label}
+                onPointerEnter={() => prefetchRoute(to)}
+                onPointerDown={() => prefetchRoute(to)}
+                onFocus={() => prefetchRoute(to)}
                 // Styling and aria-current both come from NavLink's own route match,
                 // so the two can never disagree about which section is current.
                 className={({ isActive }) =>

@@ -1,5 +1,21 @@
 # Lacuna — next beta
 
+## Course-section first-interaction latency
+
+- Corrected route-intent prefetch so Course Path, lesson, Cards, Questions, Analytics and Settings
+  load their own exact chunks instead of every non-lesson route incorrectly warming Course Path.
+- Added the existing pointer-enter, focus and pointer-down intent behaviour to both desktop and
+  mobile course-section navigation. The transition timing and normal-motion choreography are
+  unchanged.
+- Added a deterministic browser regression with a 400 ms Cards chunk delay. Click-to-usable fell
+  from 447.5 ms to 45.1 ms, a 402.4 ms / 89.9% reduction, because the chunk now finishes before the
+  click rather than afterwards.
+- Repeated the ordinary five-cold/five-warm production-preview measurement: cold usable median fell
+  from 61.9 ms to 43.1 ms (-30.4%), and the cold-to-warm gap fell from 31.0 ms to 12.8 ms (-58.7%).
+
+**Checks:** red-to-green controlled-latency Playwright regression; 12 focused route and navigation
+tests; full typecheck; focused E2E TypeScript check; ESLint; Prettier; diff check.
+
 ## First-interaction performance baseline
 
 - Added a production-preview Playwright probe that measures real pointer-down to first visible
