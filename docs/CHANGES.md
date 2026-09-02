@@ -1,5 +1,18 @@
 # Lacuna — next beta
 
+## Shared motion contract
+
+- Added semantic feedback, local, milestone and finale timing tiers to the existing motion utility,
+  together with shared standard, emphasised, neutral and linear easing curves. Later polish work can
+  now use one vocabulary instead of adding another page-specific number.
+- Kept the current slow, normal and fast multipliers and reduced-motion zero path intact. The
+  existing disclosure helper now consumes the shared standard easing without changing its timing.
+- Measured the production build before and after the foundation: initial JavaScript increased by
+  32 raw bytes and 1 gzip byte; initial CSS did not change.
+
+**Checks:** red-to-green focused motion-contract tests; full typecheck; before/after production
+asset build and performance budget.
+
 ## Course-section first-interaction latency
 
 - Corrected route-intent prefetch so Course Path, lesson, Cards, Questions, Analytics and Settings
