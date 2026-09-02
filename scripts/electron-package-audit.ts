@@ -2,6 +2,12 @@ import { readdir, stat } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { getRawHeader } from '@electron/asar';
 
+import {
+  isWindowsAsarPath,
+  packageAssetKind,
+  selectAsarCandidate,
+} from './electron-package-audit-rules';
+
 type AsarNode = {
   files?: Record<string, AsarNode>;
   size?: number;
@@ -15,16 +21,13 @@ type FileRecord = {
   unpacked: boolean;
 };
 
-const SOURCE_MAP = /\.map$/i;
-const BUILD_ONLY =
-  /(?:^|\/)(?:__tests__|coverage|test-results|storybook)(?:\/|$)|(?:\.test|\.spec)\.[^.]+$|\.(?:d\.ts|tsbuildinfo|ts|tsx|jsx|md|markdown)$/i;
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
   archiveBytes: 140_000_000,
   payloadBytes: 137_000_000,
   payloadFileCount: 13_000,
   sourceMapBytes: 24_000_000,
-  buildOnlyAssetBytes: 13_000_000,
+  buildOnlyAssetBytes: 17_000_000,
   localeBytes: 50_000_000,
   localeFileCount: 55,
 } as const;
@@ -72,10 +75,7 @@ async function findAsar(): Promise<string> {
   }
   await visit(resolve('release'));
   candidates.sort();
-  if (candidates.length === 0) {
-    throw new Error('No release app.asar found. Build Electron first or pass --asar <path>.');
-  }
-  return candidates[0];
+  return selectAsarCandidate(candidates);
 }
 
 function groupFor(filePath: string): string {
@@ -142,17 +142,21 @@ async function localeSummary(asarPath: string) {
 
 async function main(): Promise<void> {
   const { asarPath: requestedPath, check } = parseArgs();
+  if (check && !requestedPath) {
+    throw new Error('--check requires an explicit Windows --asar <path>.');
+  }
   const archivePath = resolve(requestedPath ?? (await findAsar()));
+  if (check && !isWindowsAsarPath(archivePath)) {
+    throw new Error('--check accepts release/win-unpacked/resources/app.asar only.');
+  }
   const [archive, header, locales] = await Promise.all([
     stat(archivePath),
     Promise.resolve(getRawHeader(archivePath) as unknown as { header: AsarNode }),
     localeSummary(archivePath),
   ]);
   const files = collectFiles(header.header);
-  const sourceMaps = files.filter((file) => SOURCE_MAP.test(file.path));
-  const buildOnly = files.filter(
-    (file) => !SOURCE_MAP.test(file.path) && BUILD_ONLY.test(file.path),
-  );
+  const sourceMaps = files.filter((file) => packageAssetKind(file.path) === 'source-map');
+  const buildOnly = files.filter((file) => packageAssetKind(file.path) === 'build-only');
   const payloadBytes = files.reduce((total, file) => total + file.bytes, 0);
   const sourceMapBytes = sourceMaps.reduce((total, file) => total + file.bytes, 0);
   const buildOnlyAssetBytes = buildOnly.reduce((total, file) => total + file.bytes, 0);
@@ -169,6 +173,8 @@ async function main(): Promise<void> {
       ['Electron locale bytes', locales.bytes, WINDOWS_PACKAGE_BUDGET.localeBytes],
       ['Electron locale file count', locales.fileCount, WINDOWS_PACKAGE_BUDGET.localeFileCount],
     );
+  } else if (check) {
+    failures.push('Electron locale files are unavailable; --check accepts a Windows package only');
   }
   for (const [label, actual, maximum] of budgetChecks) {
     if (actual > maximum) failures.push(`${label}: ${actual} > ${maximum}`);

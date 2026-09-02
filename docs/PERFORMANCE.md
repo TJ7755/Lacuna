@@ -6,11 +6,13 @@ regressions are compared with the work that actually ran at the time.
 
 ## Electron package baseline (2 September 2026)
 
-`bun run perf:audit:electron-package -- --asar <path> --check` reads the packaged
-ASAR header without extracting it, groups payload by top-level dependency and
-reports source maps, build/test/documentation assets and external Chromium locale
-packs. The baseline ceilings are deterministic regression gates, not acceptable
-end-state targets; the package-diet work must ratchet them down as waste is removed.
+`bun run perf:audit:electron-package -- --asar <path>` reads the packaged ASAR
+header without extracting it, groups payload by top-level dependency and reports
+source maps, build/test/documentation assets and external Chromium locale packs.
+`bun run perf:check:electron-package` checks the explicit Windows unpacked ASAR;
+the Windows release job runs it before attestation and upload. The baseline
+ceilings are deterministic regression gates, not acceptable end-state targets;
+the package-diet work must ratchet them down as waste is removed.
 
 The checked v0.2.3 Windows package measured:
 
@@ -19,7 +21,7 @@ The checked v0.2.3 Windows package measured:
 | `app.asar` archive | 138,813,549 bytes |
 | ASAR payload | 136,261,561 bytes / 12,819 files |
 | Source maps in ASAR | 23,727,309 bytes / 593 files |
-| Build, test and documentation assets in ASAR | 12,802,628 bytes / 1,465 files |
+| Build, test and documentation assets in ASAR | 16,803,219 bytes / 2,014 files |
 | Chromium locale packs outside ASAR | 49,471,161 bytes / 55 files |
 
 The largest payload groups were `sql.js` at 24,135,471 bytes, the MCP client at

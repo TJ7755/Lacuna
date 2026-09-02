@@ -30,6 +30,7 @@
     "test:e2e:electron-ai": "bun run electron:prepare && playwright test -c playwright.electron-ai.config.ts",
     "perf:audit": "bun scripts/performance-audit.ts",
     "perf:audit:electron-package": "bun scripts/electron-package-audit.ts",
+    "perf:check:electron-package": "bun scripts/electron-package-audit.ts --asar release/win-unpacked/resources/app.asar --check",
     "perf:check": "bun scripts/performance-audit.ts --assets-only",
     "build:assets": "vite build",
     "test:watch": "vitest",

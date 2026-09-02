@@ -111,6 +111,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
       - run: bun run electron:build:win
+      - run: bun run perf:check:electron-package
 
       - name: Verify Windows artefact allowlist
         shell: pwsh
