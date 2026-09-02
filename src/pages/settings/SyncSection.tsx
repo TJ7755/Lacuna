@@ -21,10 +21,11 @@ import { clearUnlockedCredentials, publishUnlockedCredentials } from '../../sync
 import { SyncField } from './SyncField';
 import type { SyncPairingBusy, SyncPairingMode } from './SyncPairingFlow';
 
-const SyncPairingFlow = lazy(() =>
-  import('./SyncPairingFlow').then((module) => ({ default: module.SyncPairingFlow })),
-);
-const QRCode = lazy(() => import('react-qr-code'));
+const loadSyncPairingFlow = () =>
+  import('./SyncPairingFlow').then((module) => ({ default: module.SyncPairingFlow }));
+const loadQrCode = () => import('react-qr-code');
+const SyncPairingFlow = lazy(loadSyncPairingFlow);
+const QRCode = lazy(loadQrCode);
 
 type PairingMode = 'idle' | SyncPairingMode;
 type BusyAction = 'setup' | 'join' | 'sync' | 'unpair' | 'delete' | null;
@@ -164,15 +165,17 @@ export function SyncSection() {
   }
 
   function preparePairingFlow() {
-    void import('./SyncPairingFlow');
+    // Preloading is opportunistic. The page boundary performs the real retry
+    // with a reload if the module loader retains a failed chunk request.
+    void loadSyncPairingFlow().catch(() => undefined);
   }
 
   function preparePairingActions() {
-    void loadSyncPairing();
+    void loadSyncPairing().catch(() => undefined);
   }
 
   function prepareQr() {
-    void Promise.all([loadSyncPairing(), import('react-qr-code')]);
+    void Promise.all([loadSyncPairing(), loadQrCode()]).catch(() => undefined);
   }
 
   function applySession(session: PairingSession) {

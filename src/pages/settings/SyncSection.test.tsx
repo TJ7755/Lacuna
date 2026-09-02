@@ -19,6 +19,7 @@ const {
   forgetRememberedCredentialsMock,
   publishUnlockedCredentialsMock,
   clearUnlockedCredentialsMock,
+  loadSyncPairingMock,
   notify,
 } = vi.hoisted(() => ({
   readSyncStateMock: vi.fn(),
@@ -36,6 +37,7 @@ const {
   forgetRememberedCredentialsMock: vi.fn(),
   publishUnlockedCredentialsMock: vi.fn(),
   clearUnlockedCredentialsMock: vi.fn(),
+  loadSyncPairingMock: vi.fn(),
   notify: vi.fn(),
 }));
 
@@ -75,6 +77,8 @@ vi.mock('../../sync/pairingConfig', () => ({
   DEFAULT_RELAY_URL: 'https://relay.example',
   validateRecoveryPassphrase: validateRecoveryPassphraseMock,
 }));
+
+vi.mock('../../sync/loaders', () => ({ loadSyncPairing: loadSyncPairingMock }));
 
 vi.mock('../../sync/triggers', () => ({
   publishUnlockedCredentials: publishUnlockedCredentialsMock,
@@ -128,6 +132,18 @@ beforeEach(() => {
   forgetRememberedCredentialsMock.mockReset().mockResolvedValue(undefined);
   publishUnlockedCredentialsMock.mockReset();
   clearUnlockedCredentialsMock.mockReset();
+  loadSyncPairingMock.mockReset().mockResolvedValue({
+    decodePairingCode: vi.fn(),
+    deleteChannel: deleteChannelMock,
+    encodePairingCode: encodePairingCodeMock,
+    joinFromPairingCode: joinFromPairingCodeMock,
+    joinWithPassphrase: joinWithPassphraseMock,
+    setupFirstDevice: setupFirstDeviceMock,
+    syncWithCredentials: syncWithCredentialsMock,
+    syncWithPassphrase: syncWithPassphraseMock,
+    unpair: unpairMock,
+    unlockSyncState: unlockSyncStateMock,
+  });
   validateRecoveryPassphraseMock
     .mockReset()
     .mockImplementation((value: string) =>
@@ -138,6 +154,42 @@ beforeEach(() => {
 });
 
 describe('SyncSection', () => {
+  it('keeps failed action preloads retryable without an unhandled rejection', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    loadSyncPairingMock
+      .mockRejectedValueOnce(new Error('pairing chunk unavailable'))
+      .mockResolvedValue({ syncWithCredentials: syncWithCredentialsMock });
+    const unhandledRejection = vi.fn();
+    process.on('unhandledRejection', unhandledRejection);
+    try {
+      render(<SyncSection />);
+
+      const button = await screen.findByRole('button', { name: 'Sync now' });
+      fireEvent.pointerEnter(button);
+      fireEvent.pointerEnter(button);
+
+      await waitFor(() => expect(loadSyncPairingMock).toHaveBeenCalledTimes(2));
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(unhandledRejection).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandledRejection);
+    }
+  });
+
+  it('retries a failed QR preload without leaving a rejected promise behind', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    loadSyncPairingMock
+      .mockRejectedValueOnce(new Error('pairing chunk unavailable'))
+      .mockResolvedValue({ syncWithCredentials: syncWithCredentialsMock });
+    render(<SyncSection />);
+
+    const button = await screen.findByRole('button', { name: 'Show pairing QR' });
+    fireEvent.pointerEnter(button);
+    fireEvent.pointerEnter(button);
+
+    await waitFor(() => expect(loadSyncPairingMock).toHaveBeenCalledTimes(2));
+  });
+
   it('offers setup and joining when no channel is configured', async () => {
     render(<SyncSection />);
 

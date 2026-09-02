@@ -54,6 +54,11 @@ export function inspectSettingsStaticClosure(bundle: OutputBundle): SettingsClos
   const eagerEntry = chunks.find((chunk) => chunk.isEntry);
   if (!eagerEntry) throw new Error('Could not find the application entry in the production build.');
   const eagerFiles = new Set(collectClosure(eagerEntry).keys());
+  if (eagerFiles.has(settingsChunk.fileName)) {
+    throw new Error(
+      'Settings is part of the eager application closure; expected a lazy Settings chunk.',
+    );
+  }
   const closure = collectClosure(settingsChunk);
   for (const eagerFile of eagerFiles) closure.delete(eagerFile);
 

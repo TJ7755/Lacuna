@@ -59,4 +59,25 @@ describe('Settings static closure inspection', () => {
     expect(report.rawBytes).toBe(Buffer.byteLength('settings\npairing'));
     expect(report.forbiddenModules).toEqual(['/repo/src/sync/pairing.ts']);
   });
+
+  it('rejects a build that folds Settings into the eager entry closure', () => {
+    const bundle = {
+      'app.js': chunk({
+        fileName: 'app.js',
+        imports: ['vendor.js'],
+        modules: ['/repo/src/main.tsx', '/repo/src/pages/Settings.tsx'],
+        code: 'app settings',
+        isEntry: true,
+      }),
+      'vendor.js': chunk({
+        fileName: 'vendor.js',
+        modules: ['/repo/node_modules/react/index.js'],
+        code: 'vendor',
+      }),
+    } as OutputBundle;
+
+    expect(() => inspectSettingsStaticClosure(bundle)).toThrow(
+      'Settings is part of the eager application closure; expected a lazy Settings chunk.',
+    );
+  });
 });
