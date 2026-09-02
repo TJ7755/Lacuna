@@ -8,9 +8,10 @@
 // comparison set — matching diffImport's `ExistingCardForDiff` shape via
 // src/db/read.ts's listCardsForCourse/listCardsForLesson.
 
-import { z } from 'zod';
+import type { z } from 'zod';
 import * as read from '../../db/read';
 import { createCourseCard, createLessonCard } from '../../db/repository';
+import { diffImportPreviewContract, importCardsContract } from '../contracts/import';
 import { diffImport, type ExistingCardForDiff, type ProposedImportItem } from '../diffImport';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
@@ -21,18 +22,6 @@ function ok<T>(data: T): ToolResult<T> {
 function notFound(kind: string, id: string): never {
   throw new McpToolException({ kind: 'not_found', message: `${kind} "${id}" was not found.` });
 }
-
-const importItemSchema = z.object({
-  front: z.string().describe('Markdown source for the question/prompt side.'),
-  back: z.string().describe('Markdown source for the answer side.'),
-  lessonId: z.string().optional().describe('If given, the card belongs to this lesson; otherwise the course question bank.'),
-  tags: z.array(z.string()).optional().describe('Free-text tags.'),
-});
-
-const diffImportPreviewSchema = z.object({
-  courseId: z.string().describe('The id of the course to diff against.'),
-  items: z.array(importItemSchema).describe('Proposed cards to compare against existing content.'),
-});
 
 interface DiffSummary {
   toCreate: ProposedImportItem[];
@@ -64,34 +53,21 @@ async function runDiff(courseId: string, items: ProposedImportItem[]): Promise<D
   return diffImport(existing, items);
 }
 
-const diffImportPreview: ToolDefinition<z.infer<typeof diffImportPreviewSchema>, DiffSummary> = {
-  name: 'lacuna.diff_import_preview',
-  description:
-    'Preview how a batch of proposed cards compares to a course\'s existing cards, without writing ' +
-    'anything: which are new (toCreate), which already exist verbatim (toSkip), and which share a ' +
-    'question but have different content (toUpdate, apply manually via lacuna.update_card).',
-  inputSchema: diffImportPreviewSchema,
-  requiredScope: 'read',
+const diffImportPreview: ToolDefinition<z.infer<typeof diffImportPreviewContract.inputSchema>, DiffSummary> = {
+  ...diffImportPreviewContract,
   async handler({ courseId, items }) {
     return ok(await runDiff(courseId, items));
   },
 };
 
-const importCardsSchema = diffImportPreviewSchema;
 interface ImportResult {
   createdIds: string[];
   createdCount: number;
   skippedCount: number;
   toUpdate: DiffSummary['toUpdate'];
 }
-const importCards: ToolDefinition<z.infer<typeof importCardsSchema>, ImportResult> = {
-  name: 'lacuna.import_cards',
-  description:
-    'Import a batch of proposed cards into a course: creates cards that are new, skips ones that ' +
-    'already exist verbatim, and reports (without applying) any that share a question but have ' +
-    'different content. Safe to re-run with the same payload — the second call creates nothing new.',
-  inputSchema: importCardsSchema,
-  requiredScope: 'write',
+const importCards: ToolDefinition<z.infer<typeof importCardsContract.inputSchema>, ImportResult> = {
+  ...importCardsContract,
   async handler({ courseId, items }) {
     const { toCreate, toSkip, toUpdate } = await runDiff(courseId, items);
     const createdIds: string[] = [];

@@ -302,3 +302,18 @@ Ordered by impact per effort.
 - **10k cards:** a single objective session selection/completion measured 13.31/12.48 ms, and one `recordReview` measured 16.48 ms. Multi-unit scoring and canonical event volume remain the material costs.
 - **100k cards:** the former inline-history multiplier is gone, but whole-table content merge and
   all-history analytics/calibration paths remain a ceiling. This work does not claim 100k-card support.
+# Electron MCP contract boundary
+
+The packaged MCP server and data companion register handler-free tool contracts. Executable
+handlers remain in the renderer, the only process that owns IndexedDB. An esbuild-metafile gate
+rejects any server or companion bundle containing `src/db`, `src/fsrs`, `src/items`,
+`src/questions` or `src/state`, or external imports of Dexie, React or `ts-fsrs`.
+
+| MCP JavaScript bundle | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| Main server | 467,780 B | 96,043 B | -79.5% |
+| Data companion | 429,992 B | 58,270 B | -86.4% |
+| Combined | 897,772 B | 154,313 B | -82.8% |
+
+The AI companion surface is deliberately unchanged. Its five-tool bundle remains separate from
+the broader data contract registry.

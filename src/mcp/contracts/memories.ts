@@ -11,7 +11,7 @@ import {
   AGENT_MEMORY_STATUSES,
   AGENT_MEMORY_TAGS,
   AGENT_MEMORY_BASES,
-} from '../../db/agentMemoryRecord';
+} from '../../agentMemoryContract';
 import type { ToolContract } from '../types';
 
 const identifierSchema = z.string().trim().min(1).max(AGENT_MEMORY_IDENTIFIER_LIMIT);
@@ -106,4 +106,3 @@ export const MEMORY_TOOL_CONTRACTS = [
   updateMemoryContract,
   deleteMemoryContract,
 ] as const satisfies readonly ToolContract[];
-

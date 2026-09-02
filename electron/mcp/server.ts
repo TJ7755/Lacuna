@@ -30,14 +30,19 @@ import log from 'electron-log';
 import { z } from 'zod';
 import { McpServer, type CallToolResult, type ServerContext } from '@modelcontextprotocol/server';
 import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
-import { TOOL_REGISTRY, MCP_TOOL_SURFACE_VERSION, getTool, unknownToolMessage } from '../../src/mcp/registry.js';
+import {
+  TOOL_CONTRACT_REGISTRY,
+  MCP_TOOL_SURFACE_VERSION,
+  getToolContract,
+  unknownToolMessage,
+} from '../../src/mcp/contracts/registry.js';
 import type { McpConsentRequest, McpInvokeRequest, McpScopeResolutionRequest, McpScopeResolutionResponse, McpScopeTarget, McpToolError } from '../../src/mcp/bridge/protocol.js';
 import { InvokeDispatcher } from '../../src/mcp/bridge/dispatcher.js';
 import { ConsentCoordinator } from '../../src/mcp/bridge/consentCoordinator.js';
 import { isMcpConsentResponse, isMcpInvokeResponse, isMcpScopeResolutionResponse } from '../../src/mcp/bridge/ipcValidation.js';
 import { GrantStore, courseIdOrGlobal, resolveGrant } from '../../src/mcp/grants.js';
 import { LACUNA_AI_PROTOCOL_VERSION } from '../../src/ai/protocol.js';
-import type { McpGrant, ToolDefinition } from '../../src/mcp/types.js';
+import type { McpGrant, ToolContract } from '../../src/mcp/types.js';
 import type { McpClientConnection, McpClientIdentity } from '../../src/mcp/connections.js';
 import { McpConnectionStore } from '../../src/mcp/connections.js';
 import {
@@ -275,7 +280,7 @@ async function startCompanionBroker(
       }
       companionClients.updateIdentity(value.client);
       companionClients.touch(value.client.connectionId);
-      const tool = getTool(value.tool);
+      const tool = getToolContract(value.tool);
       if (!tool) {
         sendCompanion(socket, { type: 'result', id: value.id, ok: false, error: { kind: 'not_found', message: unknownToolMessage(value.tool) } });
         return;
@@ -343,7 +348,7 @@ function silenceStdoutNoise(): void {
 }
 
 async function resolveScopes(
-  tool: ToolDefinition,
+  tool: ToolContract,
   input: unknown,
   getWindow: () => BrowserWindow | null,
 ): Promise<{ ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError }> {
@@ -370,7 +375,7 @@ async function resolveScopes(
 /** Applies implicit read access or waits for a bounded, fail-closed renderer decision. */
 async function ensureGrant(
   store: GrantStore,
-  tool: ToolDefinition,
+  tool: ToolContract,
   courseId: string,
   getWindow: () => BrowserWindow | null,
   client: McpClientIdentity,
@@ -442,7 +447,7 @@ export function getMcpStatus(): McpStatus {
   const window = activeWindowProvider?.() ?? null;
   return {
     running: started,
-    toolCount: TOOL_REGISTRY.length + 1,
+    toolCount: TOOL_CONTRACT_REGISTRY.length + 1,
     toolSurfaceVersion: MCP_TOOL_SURFACE_VERSION,
     clients: companionClients.list(),
     ...companionLaunchCommands,
@@ -462,7 +467,7 @@ export function getMcpStatus(): McpStatus {
  * throws), so a handler failure surfaces to the agent as a normal tool error.
  */
 async function executeBridgedTool(
-  tool: ToolDefinition,
+  tool: ToolContract,
   rawInput: unknown,
   store: GrantStore,
   invoke: InvokeDispatcher,
@@ -506,7 +511,7 @@ function clientIdentity(server: McpServer, context: ServerContext, connectionId:
   };
 }
 
-function registerBridgedTool(server: McpServer, tool: ToolDefinition, store: GrantStore, invoke: InvokeDispatcher, getWindow: () => BrowserWindow | null, connectionId: string): void {
+function registerBridgedTool(server: McpServer, tool: ToolContract, store: GrantStore, invoke: InvokeDispatcher, getWindow: () => BrowserWindow | null, connectionId: string): void {
   server.registerTool(
     tool.name,
     { description: tool.description, inputSchema: tool.inputSchema },
@@ -664,7 +669,7 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
     const connectionId = randomUUID();
     const server = new McpServer({ name: 'lacuna', version: app.getVersion() });
     registerServerInfoTool(server, grantStore!, getWindow);
-    for (const tool of TOOL_REGISTRY) {
+    for (const tool of TOOL_CONTRACT_REGISTRY) {
       registerBridgedTool(server, tool, grantStore!, dispatcher!, getWindow, connectionId);
     }
     return server;
