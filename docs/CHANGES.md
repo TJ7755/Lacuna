@@ -3138,3 +3138,13 @@ opportunities remain open; the separate sticking-point fixes delivered afterward
 in "Unreleased — UI/UX audit implementation" above.
 
 **Checks:** documentation only; no code changed.
+# 2026-09-02 — Electron MCP contracts no longer package renderer handlers
+
+- Split MCP tool contracts (name, description, schema and scope) from renderer-only handlers.
+- Made the desktop server and data companion consume the contract registry while the renderer
+  executor retains the executable registry and exact existing tool order and surface version.
+- Added metafile and contract-parity gates, and moved Dexie, React and `ts-fsrs` out of packaged
+  runtime dependencies now that no Electron main-process entry imports them.
+- Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
+  without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
+  packages reduced `app.asar` by a further 11.1%, with no renderer-output change.

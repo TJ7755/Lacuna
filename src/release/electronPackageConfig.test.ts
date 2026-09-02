@@ -11,11 +11,8 @@ const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'
 
 const packagedRuntimeDependencies = [
   '@modelcontextprotocol/server',
-  'dexie',
   'electron-log',
   'electron-updater',
-  'react',
-  'ts-fsrs',
   'zod',
 ] as const;
 
@@ -24,12 +21,14 @@ const buildOnlyDependencies = [
   '@napi-rs/wasm-runtime',
   '@open-spaced-repetition/binding',
   '@vercel/analytics',
+  'dexie',
   'dexie-react-hooks',
   'fflate',
   'html5-qrcode',
   'katex',
   'mathjs',
   'motion',
+  'react',
   'react-dom',
   'react-markdown',
   'react-qr-code',
@@ -43,6 +42,7 @@ const buildOnlyDependencies = [
   'remark-gfm',
   'remark-math',
   'sql.js',
+  'ts-fsrs',
 ] as const;
 
 describe('Electron package boundary', () => {

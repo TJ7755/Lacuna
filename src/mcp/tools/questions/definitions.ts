@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 import type { NumericAnswerSpec } from '../../../db/types';
 import { runWorkingFixtures } from '../../../items/fixtureRunner';
 import { compileMarkScheme } from '../../../items/markSchemeCompiler';
@@ -14,45 +14,28 @@ import {
   updateGeneratedQuestion as repoUpdateGeneratedQuestion,
 } from '../../../questions/repository';
 import type { QuestionPayload } from '../../../questions/types';
-import type { ToolDefinition } from '../../types';
-import { auditGenerator, requiredGeneratorConfigSchema } from './generators';
+import type {
+  questionPayloadInputSchema} from '../../contracts/questions';
 import {
-  authoredTextSchema,
-  conceptIdSchema,
-  courseIdSchema,
+  createFixedQuestionContract,
+  createGeneratedQuestionContract,
+  deleteQuestionContract,
+  getQuestionContract,
+  listQuestionsContract,
+  updateFixedQuestionContract,
+  updateGeneratedQuestionContract,
+} from '../../contracts/questions';
+import type { ToolDefinition } from '../../types';
+import { auditGenerator } from './generators';
+import {
   notFound,
   ok,
-  questionIdSchema,
   requireCourse,
   requireLesson,
   requireQuestion,
   requireRelationships,
   validation,
 } from './shared';
-
-const numericAnswerSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('exact'), value: z.string() }).strict(),
-  z.object({ kind: z.literal('within'), value: z.string(), tolerance: z.number() }).strict(),
-  z.object({ kind: z.literal('matches-one-of'), values: z.array(z.string()).min(1) }).strict(),
-]);
-const itemFixtureSchema = z
-  .object({
-    id: z.string().optional(),
-    studentAnswer: z.union([z.string(), z.array(z.string()).min(1)]),
-    expectedMarks: z.number().int().nonnegative(),
-    note: z.string().optional(),
-  })
-  .strict();
-const questionPayloadInputSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('numeric'), answer: numericAnswerSchema }).strict(),
-  z
-    .object({
-      kind: z.literal('working'),
-      scheme: z.string(),
-      fixtures: z.array(itemFixtureSchema).optional(),
-    })
-    .strict(),
-]);
 
 function compileQuestionPayload(
   input: z.infer<typeof questionPayloadInputSchema>,
@@ -94,32 +77,11 @@ function compileQuestionPayload(
   };
 }
 
-const relationshipShape = {
-  courseId: courseIdSchema,
-  primaryLessonId: z.string().trim().min(1).nullable().optional(),
-  additionalLessonIds: z.array(z.string().trim().min(1)).optional(),
-  name: authoredTextSchema,
-  tags: z.array(z.string().trim().min(1)).optional(),
-  suspended: z.boolean().optional(),
-  targetConceptId: conceptIdSchema,
-  prerequisiteConceptIds: z.array(conceptIdSchema).optional(),
-};
-
-const listQuestionsSchema = z
-  .object({
-    courseId: courseIdSchema,
-    lessonId: z.string().trim().min(1).optional(),
-    kind: z.enum(['fixed', 'generated']).optional(),
-  })
-  .strict();
 export const listQuestions: ToolDefinition<
-  z.infer<typeof listQuestionsSchema>,
+  z.infer<typeof listQuestionsContract.inputSchema>,
   Awaited<ReturnType<typeof repoListQuestions>>
 > = {
-  name: 'lacuna.list_questions',
-  description: 'List fixed Questions and generated families separately from Cards.',
-  inputSchema: listQuestionsSchema,
-  requiredScope: 'read',
+  ...listQuestionsContract,
   async handler({ courseId, lessonId, kind }) {
     await requireCourse(courseId);
     if (lessonId !== undefined) {
@@ -138,37 +100,21 @@ export const listQuestions: ToolDefinition<
   },
 };
 
-const getQuestionSchema = z.object({ questionId: questionIdSchema }).strict();
 export const getQuestion: ToolDefinition<
-  z.infer<typeof getQuestionSchema>,
+  z.infer<typeof getQuestionContract.inputSchema>,
   NonNullable<Awaited<ReturnType<typeof repoGetQuestion>>>
 > = {
-  name: 'lacuna.get_question',
-  description: 'Fetch one Question definition and its target/prerequisite Concept set.',
-  inputSchema: getQuestionSchema,
-  requiredScope: 'read',
+  ...getQuestionContract,
   async handler({ questionId }) {
     return ok(await requireQuestion(questionId));
   },
 };
 
-const createFixedQuestionSchema = z
-  .object({
-    ...relationshipShape,
-    prompt: authoredTextSchema,
-    payload: questionPayloadInputSchema,
-    explanation: authoredTextSchema.describe('Worked feedback shown after submission.'),
-  })
-  .strict();
 export const createFixedQuestion: ToolDefinition<
-  z.infer<typeof createFixedQuestionSchema>,
+  z.infer<typeof createFixedQuestionContract.inputSchema>,
   NonNullable<Awaited<ReturnType<typeof repoGetQuestion>>>
 > = {
-  name: 'lacuna.create_fixed_question',
-  description:
-    'Create a fixed application Question with one primary target, optional prerequisites and mandatory worked feedback.',
-  inputSchema: createFixedQuestionSchema,
-  requiredScope: 'write',
+  ...createFixedQuestionContract,
   async handler(input) {
     await requireRelationships(
       input.courseId,
@@ -185,34 +131,11 @@ export const createFixedQuestion: ToolDefinition<
   },
 };
 
-const updateFixedQuestionSchema = z
-  .object({
-    questionId: questionIdSchema,
-    primaryLessonId: z.string().trim().min(1).nullable().optional(),
-    additionalLessonIds: z.array(z.string().trim().min(1)).optional(),
-    name: authoredTextSchema.optional(),
-    tags: z.array(z.string().trim().min(1)).optional(),
-    targetConceptId: conceptIdSchema.optional(),
-    prerequisiteConceptIds: z.array(conceptIdSchema).optional(),
-    prompt: authoredTextSchema.optional(),
-    payload: questionPayloadInputSchema.optional(),
-    explanation: authoredTextSchema.optional(),
-  })
-  .strict()
-  .refine(
-    (input) =>
-      Object.entries(input).some(([key, value]) => key !== 'questionId' && value !== undefined),
-    { message: 'Provide at least one fixed Question change.' },
-  );
 export const updateFixedQuestion: ToolDefinition<
-  z.infer<typeof updateFixedQuestionSchema>,
+  z.infer<typeof updateFixedQuestionContract.inputSchema>,
   NonNullable<Awaited<ReturnType<typeof repoGetQuestion>>>
 > = {
-  name: 'lacuna.update_fixed_question',
-  description:
-    'Update fixed Question authoring. Semantic changes start a new Question scheduling epoch.',
-  inputSchema: updateFixedQuestionSchema,
-  requiredScope: 'write',
+  ...updateFixedQuestionContract,
   async handler({ questionId, payload, ...changes }) {
     const existing = await requireQuestion(questionId);
     if (existing.question.kind !== 'fixed') validation('The Question is not fixed.');
@@ -235,23 +158,11 @@ export const updateFixedQuestion: ToolDefinition<
   },
 };
 
-const createGeneratedQuestionSchema = z
-  .object({
-    ...relationshipShape,
-    generatorKey: z.string().trim().min(1),
-    generatorVersion: z.number().int().positive(),
-    generatorConfig: requiredGeneratorConfigSchema,
-  })
-  .strict();
 export const createGeneratedQuestion: ToolDefinition<
-  z.infer<typeof createGeneratedQuestionSchema>,
+  z.infer<typeof createGeneratedQuestionContract.inputSchema>,
   NonNullable<Awaited<ReturnType<typeof repoGetQuestion>>>
 > = {
-  name: 'lacuna.create_generated_question',
-  description:
-    'Create one scheduled generated Question family from an audited built-in generator configuration.',
-  inputSchema: createGeneratedQuestionSchema,
-  requiredScope: 'write',
+  ...createGeneratedQuestionContract,
   async handler(input) {
     await requireRelationships(
       input.courseId,
@@ -266,34 +177,11 @@ export const createGeneratedQuestion: ToolDefinition<
   },
 };
 
-const updateGeneratedQuestionSchema = z
-  .object({
-    questionId: questionIdSchema,
-    primaryLessonId: z.string().trim().min(1).nullable().optional(),
-    additionalLessonIds: z.array(z.string().trim().min(1)).optional(),
-    name: authoredTextSchema.optional(),
-    tags: z.array(z.string().trim().min(1)).optional(),
-    targetConceptId: conceptIdSchema.optional(),
-    prerequisiteConceptIds: z.array(conceptIdSchema).optional(),
-    generatorKey: z.string().trim().min(1).optional(),
-    generatorVersion: z.number().int().positive().optional(),
-    generatorConfig: z.unknown().optional(),
-  })
-  .strict()
-  .refine(
-    (input) =>
-      Object.entries(input).some(([key, value]) => key !== 'questionId' && value !== undefined),
-    { message: 'Provide at least one generated Question change.' },
-  );
 export const updateGeneratedQuestion: ToolDefinition<
-  z.infer<typeof updateGeneratedQuestionSchema>,
+  z.infer<typeof updateGeneratedQuestionContract.inputSchema>,
   NonNullable<Awaited<ReturnType<typeof repoGetQuestion>>>
 > = {
-  name: 'lacuna.update_generated_question',
-  description:
-    'Update a generated family. Generator, configuration or Concept changes start a new scheduling epoch.',
-  inputSchema: updateGeneratedQuestionSchema,
-  requiredScope: 'write',
+  ...updateGeneratedQuestionContract,
   async handler({ questionId, ...changes }) {
     const existing = await requireQuestion(questionId);
     if (existing.question.kind !== 'generated') validation('The Question is not generated.');
@@ -324,16 +212,11 @@ export const updateGeneratedQuestion: ToolDefinition<
   },
 };
 
-const deleteQuestionSchema = z.object({ questionId: questionIdSchema }).strict();
 export const deleteQuestion: ToolDefinition<
-  z.infer<typeof deleteQuestionSchema>,
+  z.infer<typeof deleteQuestionContract.inputSchema>,
   { id: string }
 > = {
-  name: 'lacuna.delete_question',
-  description:
-    'Delete a Question definition and its Concept links while retaining immutable attempt evidence.',
-  inputSchema: deleteQuestionSchema,
-  requiredScope: 'destructive',
+  ...deleteQuestionContract,
   async handler({ questionId }) {
     const snapshot = await repoSnapshotQuestion(questionId);
     if (!snapshot) notFound('Question', questionId);
