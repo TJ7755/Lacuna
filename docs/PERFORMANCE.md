@@ -4,6 +4,42 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## Packaged Electron memory measurement
+
+`bun run perf:electron-memory -- --app-dir <unpacked-app> --output <report.json>`
+measures the packaged application in one launch and one process tree. It does not
+start a development server, retry a failed launch, trace the renderer, force garbage
+collection or spawn the external AI or MCP companion. The shared launcher refuses a
+second launch and stops further Electron work after a launch or shutdown failure.
+
+Each checkpoint settles finite animations, waits two animation frames and a two-second
+quiet period, then retains nine raw samples taken 250 milliseconds apart. The final idle
+checkpoint waits 15 seconds. The report stores the median, median absolute deviation,
+minimum and maximum for this fixed workload:
+
+1. cold seeded-dashboard idle, course open/return and Study sheet open/close;
+2. AI enabled idle and panel open/close, without an external companion;
+3. recovery import of a deterministic one-course, 100-lesson, 10,000-Card backup with no
+   media or review history, followed by dashboard, course and Study sheet checkpoints;
+4. return to the dashboard and the longer idle settle.
+
+Main-process samples come from Electron's `app.getAppMetrics()`,
+`process.getProcessMemoryInfo()` and `process.memoryUsage()`. Renderer heap and DOM
+counters come from CDP. Native kilobyte values are normalised to bytes once and retained
+by process role. Windows comparisons headline private bytes. macOS and Linux retain the
+diagnostic sum of process working sets because total private memory is not consistently
+available there; this can count shared Chromium mappings in more than one process and is
+not labelled as unique application RAM. Main-process shared pages remain separate.
+
+Compare reports with
+`bun run perf:compare:electron-memory -- --before <report.json> --after <report.json>`.
+The comparator rejects different platforms, architectures, OS releases, machine
+fingerprints, Electron, Chromium or application versions, fixtures, checkpoint schemas, sampling
+policies or GC policies. It reports signed absolute and percentage changes for summed
+working sets, available private bytes and renderer heap. Executable, `app.asar`, fixture
+and harness hashes retain the provenance needed to reproduce a comparison. Runtime
+numbers belong here only after a capped packaged capture succeeds.
+
 ## Packaged Electron interaction validation
 
 `LACUNA_ELECTRON_APP_DIR=<path> bun run test:e2e:electron-package` spawns the

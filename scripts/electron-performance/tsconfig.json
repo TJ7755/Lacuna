@@ -7,11 +7,13 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
   "include": [
     "./*.ts",
     "../../playwright.electron-performance.config.ts",
-    "../../tests/e2e-electron/packaged-interactions.spec.ts"
+    "../../playwright.electron-memory.config.ts",
+    "../../tests/e2e-electron/packaged-interactions.spec.ts",
+    "../../tests/e2e-electron/packaged-memory.spec.ts"
   ]
 }
