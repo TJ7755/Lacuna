@@ -8,6 +8,7 @@ export interface InteractionMarker {
 export interface InteractionSample {
   acknowledgementMs: number;
   meaningfulMs: number;
+  settlementMs?: number;
   longTasks: {
     supported: boolean;
     count: number;
@@ -66,16 +67,18 @@ export async function measurePointerInteraction({
   trigger,
   acknowledgement,
   meaningful,
+  settled,
   timeoutMs = 15_000,
 }: {
   page: Page;
   trigger: Locator;
   acknowledgement: InteractionMarker;
   meaningful: InteractionMarker;
+  settled?: InteractionMarker;
   timeoutMs?: number;
 }): Promise<InteractionSample> {
   await page.evaluate(
-    ({ acknowledgement, meaningful, timeoutMs, measurementKey }) => {
+    ({ acknowledgement, meaningful, settled, timeoutMs, measurementKey }) => {
       type LongTask = Pick<PerformanceEntry, 'duration' | 'startTime'>;
       type State = BrowserMeasurementState & {
         observer?: PerformanceObserver;
@@ -129,12 +132,24 @@ export async function measurePointerInteraction({
         });
       }
 
+      function markerIsSettled(marker: InteractionMarker): boolean {
+        return [...document.querySelectorAll(marker.selector)].some((candidate) => {
+          if (!(candidate instanceof HTMLElement) || !markerIsVisible(marker)) return false;
+          const style = getComputedStyle(candidate);
+          return (
+            style.opacity === '1' &&
+            (style.transform === 'none' || style.transform === 'matrix(1, 0, 0, 1, 0, 0)')
+          );
+        });
+      }
+
       window.addEventListener(
         'pointerdown',
         () => {
           const startedAt = performance.now();
           let acknowledgementAt: number | undefined;
           let meaningfulAt: number | undefined;
+          let settlementAt: number | undefined;
           const deadline = window.setTimeout(() => {
             stopped = true;
             state.observer?.disconnect();
@@ -147,15 +162,22 @@ export async function measurePointerInteraction({
               acknowledgementAt = now;
             }
             if (meaningfulAt === undefined && markerIsVisible(meaningful)) meaningfulAt = now;
+            if (settled !== undefined && settlementAt === undefined && markerIsSettled(settled)) {
+              settlementAt = now;
+            }
 
-            if (acknowledgementAt === undefined || meaningfulAt === undefined) {
+            if (
+              acknowledgementAt === undefined ||
+              meaningfulAt === undefined ||
+              (settled !== undefined && settlementAt === undefined)
+            ) {
               requestAnimationFrame(sampleFrame);
               return;
             }
 
             window.clearTimeout(deadline);
             stopped = true;
-            const measuredUntil = Math.max(acknowledgementAt, meaningfulAt);
+            const measuredUntil = Math.max(acknowledgementAt, meaningfulAt, settlementAt ?? 0);
             // Long-task entries are delivered asynchronously. This extra frame is
             // outside the measured interval and merely lets the observer flush.
             requestAnimationFrame(() => {
@@ -173,6 +195,7 @@ export async function measurePointerInteraction({
                 state.result = {
                   acknowledgementMs: acknowledgementAt - startedAt,
                   meaningfulMs: meaningfulAt - startedAt,
+                  ...(settlementAt === undefined ? {} : { settlementMs: settlementAt - startedAt }),
                   longTasks: {
                     supported: longTasksSupported,
                     count: durations.length,
@@ -263,6 +286,7 @@ function roundSample(sample: InteractionSample): InteractionSample {
   return {
     acknowledgementMs: round(sample.acknowledgementMs),
     meaningfulMs: round(sample.meaningfulMs),
+    ...(sample.settlementMs === undefined ? {} : { settlementMs: round(sample.settlementMs) }),
     longTasks: {
       ...sample.longTasks,
       totalDurationMs: round(sample.longTasks.totalDurationMs),
