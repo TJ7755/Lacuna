@@ -27,9 +27,44 @@ The checked v0.2.3 Windows package measured:
 The largest payload groups were `sql.js` at 24,135,471 bytes, the MCP client at
 12,016,457 bytes, the MCP server at 11,727,063 bytes, `mathjs` at 9,166,244 bytes,
 the already-built renderer at 7,191,144 bytes and MCP core at 6,740,161 bytes.
-Those figures prove the renderer dependency graph is packaged beside its Vite
-output; they do not yet claim which packages can be removed safely. The same
-release's macOS DMG was 153,950,565 bytes and its ZIP was 148,695,307 bytes.
+Those figures proved the renderer dependency graph was packaged beside its Vite
+output. The same release's macOS DMG was 153,950,565 bytes and its ZIP was
+148,695,307 bytes.
+
+The package-diet follow-up rebuilt both Windows x64 and macOS arm64 unpacked
+applications at the fixed baseline commit and after the package-boundary change.
+The Windows `Before` artefact is the unpacked build from
+`c3750b8e076da21bf6d1eda20eef074df27972c5` (`app.asar` SHA-256
+`6e407e04caf7ff69b5c3f68f068022c7cb36dcf000152987219934c1e42517e1`). The
+`After` artefact is the package implementation at
+`d0a6b7cecc452a6197b3b4493a7fb42e9c279079` (`app.asar` SHA-256
+`01e05b244d1ec119e3633aab92ecb71804cb9e7c35db82a0caee8cb3aae69002`).
+Renderer libraries remain available to Vite as development inputs but are no
+longer copied beside the already-built renderer. Electron's runtime dependency
+roots remain explicit, source maps and build-only files are excluded, licence
+files are retained, and Chromium ships only the `en-GB` and `en-US` locale packs.
+
+| Windows package measurement | Before | After | Change |
+|---|---:|---:|---:|
+| `app.asar` archive | 138,813,451 bytes | 20,575,956 bytes | -118,237,495 bytes (-85.2%) |
+| ASAR payload | 136,262,023 bytes | 20,256,652 bytes | -116,005,371 bytes (-85.1%) |
+| ASAR files | 12,817 | 1,240 | -11,577 (-90.3%) |
+| Source maps | 23,726,946 bytes / 592 files | 0 bytes / 0 files | -100% |
+| Build-only assets | 16,803,219 bytes / 2,014 files | 2,631 bytes / 2 licence files | -99.98% |
+| Chromium locale packs | 49,471,161 bytes / 55 files | 1,137,014 bytes / 2 files | -97.7% bytes / -96.4% files |
+
+The rebuilt macOS application showed the same 20,575,956-byte ASAR and fell from
+430,764 KiB to 254,104 KiB on disk, a 41.0% reduction. Its localisation resources
+fell from 49,229,002 bytes to 1,132,892 bytes. These are unpacked application
+measurements, not estimates of compressed installer or download size.
+
+The renderer build was reproduced before and after from the same commit. Asset
+names and hashes were identical: initial JavaScript remained 866,840 bytes raw /
+266,195 bytes gzip and initial CSS remained 121,519 / 17,795 bytes. Package
+slimming therefore changed the desktop payload without trading away renderer
+behaviour, animation or web loading performance. The Windows package ceilings
+were ratcheted only after the rebuilt artefact passed them; the fixed baseline
+artefact fails all seven new ceilings.
 
 ## First-load and network follow-up (30 August 2026)
 

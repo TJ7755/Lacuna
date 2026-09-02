@@ -5,22 +5,49 @@
     "": {
       "name": "lacuna",
       "dependencies": {
-        "@modelcontextprotocol/client": "2.0.0",
-        "@modelcontextprotocol/core": "2.0.0",
         "@modelcontextprotocol/server": "2.0.0",
-        "@napi-rs/wasm-runtime": "1.1.0",
-        "@open-spaced-repetition/binding": "^0.4.0",
-        "@vercel/analytics": "^2.0.1",
         "dexie": "^4.0.10",
-        "dexie-react-hooks": "^1.1.7",
         "electron-log": "^5.4.4",
         "electron-updater": "^6.8.9",
+        "react": "^18.3.1",
+        "ts-fsrs": "^5.2.3",
+        "zod": "4.2.0",
+      },
+      "devDependencies": {
+        "@electron/asar": "3.4.1",
+        "@modelcontextprotocol/client": "2.0.0",
+        "@napi-rs/wasm-runtime": "1.1.0",
+        "@open-spaced-repetition/binding": "^0.4.0",
+        "@playwright/test": "^1.62.1",
+        "@tailwindcss/vite": "4.1.18",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^15.0.7",
+        "@types/react": "^18.3.12",
+        "@types/react-dom": "^18.3.1",
+        "@types/sql.js": "^1.4.11",
+        "@typescript-eslint/eslint-plugin": "^8.0.0",
+        "@typescript-eslint/parser": "^8.0.0",
+        "@vercel/analytics": "^2.0.1",
+        "@vitejs/plugin-react-swc": "^4.3.1",
+        "@vitest/coverage-v8": "3.2.7",
+        "concurrently": "^8.2.2",
+        "dexie-react-hooks": "^1.1.7",
+        "electron": "^42.11.0",
+        "electron-builder": "^26.15.7",
+        "esbuild": "^0.25.0",
+        "eslint": "^8.57.0",
+        "eslint-config-prettier": "^9.0.0",
+        "eslint-plugin-react": "^7.35.0",
+        "eslint-plugin-react-hooks": "^5.0.0",
+        "fake-indexeddb": "^6.2.5",
         "fflate": "^0.8.3",
+        "happy-dom": "^20.10.2",
+        "highlight.js": "^11.10.0",
         "html5-qrcode": "^2.3.8",
         "katex": "^0.16.11",
         "mathjs": "^15.2.0",
         "motion": "^11.15.0",
-        "react": "^18.3.1",
+        "prettier": "^3.3.0",
         "react-dom": "^18.3.1",
         "react-markdown": "^9.0.1",
         "react-qr-code": "^2.2.0",
@@ -33,36 +60,8 @@
         "remark-breaks": "^4.0.0",
         "remark-gfm": "^4.0.0",
         "remark-math": "^6.0.0",
-        "sql.js": "^1.14.1",
-        "ts-fsrs": "^5.2.3",
-        "zod": "4.2.0",
-      },
-      "devDependencies": {
-        "@electron/asar": "3.4.1",
-        "@playwright/test": "^1.62.1",
-        "@tailwindcss/vite": "4.1.18",
-        "@testing-library/jest-dom": "^6.9.1",
-        "@testing-library/react": "^15.0.7",
-        "@types/react": "^18.3.12",
-        "@types/react-dom": "^18.3.1",
-        "@types/sql.js": "^1.4.11",
-        "@typescript-eslint/eslint-plugin": "^8.0.0",
-        "@typescript-eslint/parser": "^8.0.0",
-        "@vitejs/plugin-react-swc": "^4.3.1",
-        "@vitest/coverage-v8": "3.2.7",
-        "concurrently": "^8.2.2",
-        "electron": "^42.11.0",
-        "electron-builder": "^26.15.7",
-        "esbuild": "^0.25.0",
-        "eslint": "^8.57.0",
-        "eslint-config-prettier": "^9.0.0",
-        "eslint-plugin-react": "^7.35.0",
-        "eslint-plugin-react-hooks": "^5.0.0",
-        "fake-indexeddb": "^6.2.5",
-        "happy-dom": "^20.10.2",
-        "highlight.js": "^11.10.0",
-        "prettier": "^3.3.0",
         "sharp": "^0.35.3",
+        "sql.js": "^1.14.1",
         "tailwindcss": "4.1.18",
         "typescript": "^5.6.3",
         "vite": "^6.4.3",
@@ -1349,7 +1348,7 @@
 
     "isbinaryfile": ["isbinaryfile@5.0.7", "", {}, ""],
 
-    "isexe": ["isexe@3.1.5", "", {}, "sha512-6B3tLtFqtQS4ekarvLVMZ+X+VlvQekbe4taUkf/rhVO3d/h0M2rfARm/pXLcPEsjjMsFgrFgSrhQIxcSVrBz8w=="],
+    "isexe": ["isexe@2.0.0", "", {}, ""],
 
     "istanbul-lib-coverage": ["istanbul-lib-coverage@3.2.2", "", {}, "sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg=="],
 
@@ -2069,7 +2068,7 @@
 
     "whatwg-mimetype": ["whatwg-mimetype@3.0.0", "", {}, "sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q=="],
 
-    "which": ["which@5.0.0", "", { "dependencies": { "isexe": "^3.1.1" }, "bin": { "node-which": "bin/which.js" } }, "sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ=="],
+    "which": ["which@2.0.2", "", { "dependencies": { "isexe": "^2.0.0" }, "bin": { "node-which": "bin/node-which" } }, ""],
 
     "which-boxed-primitive": ["which-boxed-primitive@1.1.1", "", { "dependencies": { "is-bigint": "^1.1.0", "is-boolean-object": "^1.2.1", "is-number-object": "^1.1.1", "is-string": "^1.1.1", "is-symbol": "^1.1.1" } }, ""],
 
@@ -2205,13 +2204,13 @@
 
     "app-builder-lib/semver": ["semver@7.7.4", "", { "bin": "bin/semver.js" }, ""],
 
+    "app-builder-lib/which": ["which@5.0.0", "", { "dependencies": { "isexe": "^3.1.1" }, "bin": { "node-which": "bin/which.js" } }, "sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ=="],
+
     "axios/https-proxy-agent": ["https-proxy-agent@5.0.1", "", { "dependencies": { "agent-base": "6", "debug": "4" } }, ""],
 
     "chalk/supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, ""],
 
     "clone-response/mimic-response": ["mimic-response@1.0.1", "", {}, "sha512-j5EctnkH7amfV/q5Hgmoal1g2QHFJRraOtmx0JpIqkxhBhI/lJSl1nMpQ45hVarwNETOoWEimndZ4QK0RHxuxQ=="],
-
-    "cross-spawn/which": ["which@2.0.2", "", { "dependencies": { "isexe": "^2.0.0" }, "bin": { "node-which": "bin/node-which" } }, ""],
 
     "electron/@types/node": ["@types/node@24.13.3", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q=="],
 
@@ -2335,9 +2334,9 @@
 
     "app-builder-lib/minimatch/brace-expansion": ["brace-expansion@5.0.9", "", { "dependencies": { "balanced-match": "^4.0.2" } }, "sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg=="],
 
-    "axios/https-proxy-agent/agent-base": ["agent-base@6.0.2", "", { "dependencies": { "debug": "4" } }, ""],
+    "app-builder-lib/which/isexe": ["isexe@3.1.5", "", {}, "sha512-6B3tLtFqtQS4ekarvLVMZ+X+VlvQekbe4taUkf/rhVO3d/h0M2rfARm/pXLcPEsjjMsFgrFgSrhQIxcSVrBz8w=="],
 
-    "cross-spawn/which/isexe": ["isexe@2.0.0", "", {}, ""],
+    "axios/https-proxy-agent/agent-base": ["agent-base@6.0.2", "", { "dependencies": { "debug": "4" } }, ""],
 
     "electron-winstaller/fs-extra/jsonfile": ["jsonfile@4.0.0", "", { "optionalDependencies": { "graceful-fs": "^4.1.6" } }, "sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg=="],
 
