@@ -2,14 +2,6 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
-## Release publishing must whitelist packaged artefacts
-
-electron-builder writes unpacked application directories beside installers in `release/`. A broad
-`release/**` workflow upload would attach thousands of internal files and collide on basenames.
-Keep the release workflow's per-platform installer, blockmap and update-metadata allowlists. Each
-native build job attests that same allowlist before upload; the publisher waits for Windows, Linux
-and macOS, then attests the checksum manifest it creates after aggregation.
-
 ## The desktop release channel is an unsigned beta
 
 GitHub marks desktop beta releases as pre-releases and the application deliberately follows them.

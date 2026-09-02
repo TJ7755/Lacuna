@@ -16,7 +16,9 @@ The current public release and package version are **v0.2.3**. Lacuna is a local
 Electron learning application. Study data remains on-device; optional device sync and browser AI
 use the hosted relay, while packaged Electron AI uses its separate authenticated local companion.
 Windows, Linux and unsigned macOS desktop packages are beta artefacts with platform-specific update
-behaviour. Signing, provenance and the complete managed-device matrix remain release-readiness work.
+behaviour. The checked-in release workflow can attest a future tag, but the already-published
+v0.2.3 artefacts predate that workflow and have no hosted provenance. Signing and the complete
+managed-device matrix remain release-readiness work.
 
 The application is usable. It is not declared stable or school-wide ready until the data-durability,
 dependency, release and device checks below have evidence on the exact release commit.
@@ -40,34 +42,37 @@ Ideas in old plans, audits or `docs/new_features_list.md` stay parked until a fr
 
 ### 1. Dependency and release security
 
-**Status:** ready.
+**Status:** in progress.
 
-Land safe within-range lockfile updates, then upgrade the supported Electron 42 line, React Router
-6.30.x, Electron Builder and the Vitest toolchain in separate, reviewable changes. Add root and relay
-audit jobs; every critical or high finding needs a fix or a named owner and review date. Rebuild every
-configured desktop target after the builder migration.
+Dependency refreshes, the supported Electron 42/Electron Builder 26 and Vitest 3 toolchain, root and
+relay audit jobs, and a provenance workflow for future releases are delivered. The current v0.2.3
+artefacts cannot be retroactively attested. Remaining work is the explicit signing decision and the
+complete managed-device matrix; every critical or high finding still needs a fix or a named owner
+and review date.
 
 **Exit:** audits and all existing quality gates pass, with remaining advisories explicitly triaged.
 
 ### 2. Data durability and desktop evidence
 
-**Status:** ready; schema frozen at v26 unless a data-integrity defect forces a migration.
+**Status:** in progress; schema frozen at v26 unless a data-integrity defect forces a migration.
 
-Migrate and re-export historical fixtures. Prove media-bearing full-backup round trips, replace and
-merge restore points, concurrent sync convergence, and quota/persistence-denial recovery. Add
-reproducible macOS provenance, native AI evidence, locked-down Windows installed/portable/update
-checks, the clean-account macOS matrix, and an explicit signing/notarisation decision.
+Media-bearing full-backup round trips, replace and merge restore points, and quota/persistence-denial
+recovery are delivered. Historical fixtures migrate, but the required post-migration re-export proof
+remains outstanding. Other remaining work is concurrent sync convergence, native AI evidence,
+locked-down Windows installed/portable/update checks, the clean-account macOS matrix, and an explicit
+signing/notarisation decision.
 
 **Exit:** no known path silently loses data and every advertised desktop artefact has reproducible
 evidence.
 
 ### 3. Enforceable quality signal and governance
 
-**Status:** ready.
+**Status:** in progress.
 
-Remove or explain React, router, socket-test and build-warning noise. Add browser checks for CSP,
-offline reload, keyboard use and backup round trips. Make release publication depend on complete CI
-for the exact commit. Establish required review, ownership, dependency alerts and CodeQL controls.
+Warning cleanup, CSP and browser checks, offline reload, keyboard use, backup round trips, the future
+release-provenance workflow and repository policy files are delivered. GitHub branch protection,
+required checks, CODEOWNERS enforcement and release-review settings remain external controls to
+configure and verify.
 
 **Exit:** a red check means broken, not merely noisy.
 

@@ -14,11 +14,12 @@ build.
 - Importing an `.apkg` without choosing an existing destination now creates a Course named after
   the Anki deck. Its cards are placed in that Course's default Card scheduling unit. It no longer
   creates a Lacuna Deck.
-- Backups from before schema v22 and `LAC0`, `LAC1`, `LAC2` and `LAC3` share codes still import.
-  Their Deck data is converted to Courses and scheduling units during import.
-- A pre-Course backup's folder hierarchy is not recreated. Lacuna reports the discarded folder
-  names in the import result so the loss of organisation is explicit. Cards, review events and
-  performance data are retained.
+- A backup carrying non-empty pre-v22 `decks` or `folders` rows is rejected with an explicit
+  message. It is not converted, and no partial import occurs. Current-shaped backups may retain
+  empty legacy arrays for wire compatibility.
+- `LAC0`–`LAC3` are encoding prefixes, not support-version promises. Current course share payloads
+  import through those encodings; the old v1 flat Deck payload is recognised and rejected with an
+  explicit message. No Deck-to-Course conversion occurs at this boundary.
 
 ## Rollback and downgrade
 

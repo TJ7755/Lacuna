@@ -1,5 +1,6 @@
-# The repository currently has one enforceable maintainer. Do not list a person as an owner without
-# confirmed GitHub write access; review coverage is handled by branch protection and human approval.
+# CODEOWNERS records requested reviewers. GitHub branch-protection settings must enforce those
+# requests; this file alone cannot make review mandatory. Do not list a person without confirmed
+# GitHub write access; review coverage is handled by branch protection and human approval.
 * @TJ7755
 
 # High-consequence boundaries (kept explicit so future ownership can be split safely).
