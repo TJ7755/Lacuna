@@ -7,13 +7,14 @@ import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import { CourseCard } from './CourseCard';
 
 let metric: CourseCardMetric = 'curriculum';
+let detailSettings = { nextDue: false, breakdown: false, activity: false };
 
 vi.mock('../../state/courseCardMetric', () => ({
   useCourseCardMetric: () => [metric, vi.fn()],
 }));
 
 vi.mock('../../state/courseCardDetail', () => ({
-  useCourseCardDetail: () => [{ nextDue: false, breakdown: false, activity: false }, vi.fn()],
+  useCourseCardDetail: () => [detailSettings, vi.fn()],
 }));
 
 vi.mock('../../state/motionSpeed', () => ({
@@ -53,6 +54,7 @@ const summary: CourseSummary = {
 describe('CourseCard metrics', () => {
   beforeEach(() => {
     metric = 'curriculum';
+    detailSettings = { nextDue: false, breakdown: false, activity: false };
   });
 
   function cardButton() {
@@ -91,6 +93,30 @@ describe('CourseCard metrics', () => {
       'aria-valuenow',
       '60',
     );
+  });
+
+  it('renders compact next-due and activity details when the card expands', () => {
+    detailSettings = { nextDue: true, breakdown: false, activity: true };
+    render(
+      <CourseCard
+        course={course}
+        summary={summary}
+        detail={{
+          nextDue: Date.now() + 2 * 60 * 60 * 1_000,
+          activityCounts: [0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0],
+          activityTotal: 3,
+        }}
+        onClick={vi.fn()}
+      />,
+    );
+    const button = screen.getByRole('button', { name: /Biology/ });
+
+    fireEvent.focus(button);
+
+    expect(within(button).getByText('Next review')).toBeInTheDocument();
+    expect(within(button).getByText('in 2 h')).toBeInTheDocument();
+    expect(within(button).getByText('3 reviews · 2 weeks')).toBeInTheDocument();
+    expect(within(button).getByText('Next review').closest('[aria-hidden="false"]')).not.toBeNull();
   });
 
   it('opens its action menu at the pointer without activating the card', () => {
