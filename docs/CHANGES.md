@@ -1,5 +1,12 @@
 # Lacuna — next beta
 
+## Electron renderer reloads
+
+- Preserve hash routes and query-bearing assets when the packaged `app://` protocol serves a
+  renderer reload, while retaining authority and traversal checks.
+
+**Checks:** focused app-protocol path tests; Electron typecheck, lint, formatting and preparation.
+
 ## Electron package diet
 
 - Stopped copying the renderer's complete dependency graph into Electron after Vite had already
