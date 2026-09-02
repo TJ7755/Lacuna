@@ -13,6 +13,9 @@
   deleting the final restore point completes the outgoing list transition before the empty state.
 - Every added transition follows the global slow, normal, fast and reduced-motion settings. The
   production build added 228 raw / 101 gzip bytes to initial JavaScript; initial CSS did not change.
+- Outgoing same-surface steps become pointer-inert through presence state rather than asking Motion
+  to interpolate the discrete `pointer-events` property. The presence wrapper forwards its DOM ref
+  so `popLayout` can still measure and remove the outgoing surface without warnings.
 
 **Checks:** 34 focused red-to-green editor, header, assessment and backup tests; 76 tests including
 their Course Settings and Lesson View consumers; full typecheck; focused ESLint; production build

@@ -131,6 +131,7 @@ describe('ExamDatesSection', () => {
   });
 
   it('focuses the current assessment editor rather than an outgoing StepSwap editor', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockExamDates = [
       mockExamDate,
       { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
@@ -147,6 +148,8 @@ describe('ExamDatesSection', () => {
 
     expect(screen.getByDisplayValue('Second mock')).toHaveFocus();
     await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
+    expect(warning).not.toHaveBeenCalledWith(expect.stringContaining('pointerEvents'));
+    warning.mockRestore();
   });
 
   it('returns focus to Add checkpoint after deleting the assessment being edited', async () => {
