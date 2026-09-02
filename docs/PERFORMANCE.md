@@ -53,6 +53,33 @@ proves that slow chunk delivery no longer lands on the click path; the ordinary
 production-preview comparison shows the smaller but still material improvement on
 the local fast path.
 
+## Electron package baseline (2 September 2026)
+
+`bun run perf:audit:electron-package -- --asar <path>` reads the packaged ASAR
+header without extracting it, groups payload by top-level dependency and reports
+source maps, build/test/documentation assets and external Chromium locale packs.
+`bun run perf:check:electron-package` checks the explicit Windows unpacked ASAR;
+the Windows release job runs it before attestation and upload. The baseline
+ceilings are deterministic regression gates, not acceptable end-state targets;
+the package-diet work must ratchet them down as waste is removed.
+
+The checked v0.2.3 Windows package measured:
+
+| Package measurement | Baseline |
+|---|---:|
+| `app.asar` archive | 138,813,549 bytes |
+| ASAR payload | 136,261,561 bytes / 12,819 files |
+| Source maps in ASAR | 23,727,309 bytes / 593 files |
+| Build, test and documentation assets in ASAR | 16,803,219 bytes / 2,014 files |
+| Chromium locale packs outside ASAR | 49,471,161 bytes / 55 files |
+
+The largest payload groups were `sql.js` at 24,135,471 bytes, the MCP client at
+12,016,457 bytes, the MCP server at 11,727,063 bytes, `mathjs` at 9,166,244 bytes,
+the already-built renderer at 7,191,144 bytes and MCP core at 6,740,161 bytes.
+Those figures prove the renderer dependency graph is packaged beside its Vite
+output; they do not yet claim which packages can be removed safely. The same
+release's macOS DMG was 153,950,565 bytes and its ZIP was 148,695,307 bytes.
+
 ## First-load and network follow-up (30 August 2026)
 
 Fresh `master` had regressed to four initial JavaScript assets: the 967,691-byte

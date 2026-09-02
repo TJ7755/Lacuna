@@ -27,6 +27,25 @@ tests; full typecheck; focused E2E TypeScript check; ESLint; Prettier; diff chec
 **Checks:** focused production-preview Playwright regression with a deterministic delayed chunk;
 direct TypeScript and Prettier checks; diff check.
 
+## Electron package measurement gate
+
+- Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,
+  build/test/documentation assets and external Chromium locale packs without extracting the app.
+- Added deterministic ceilings at the measured v0.2.3 Windows baseline. These prevent fresh bloat
+  now and will be tightened by the package-diet PRs; they are not an excuse to preserve the current
+  138.8 MB ASAR or its 49.5 MB of locale packs.
+- The Windows release job now enforces those ceilings against its freshly built explicit ASAR
+  before attestation or upload. Check mode rejects missing locale packs, and report mode rejects
+  ambiguous automatic ASAR discovery instead of quietly auditing whichever path sorts first.
+- Corrected build-only classification to include modern `.d.cts` and `.d.mts` declarations; the
+  measured baseline is 16,803,219 bytes across 2,014 files rather than the undercounted 12,802,628
+  bytes across 1,465 files.
+- Recorded the exact package and dominant dependency measurements in `docs/PERFORMANCE.md`.
+
+**Checks:** red-to-green classification and ASAR-selection tests; direct TypeScript check; audit and
+ceiling check against the existing v0.2.3 Windows ASAR; release-workflow gate inspection; production
+asset build and existing web asset budget.
+
 ## Resumable AI write approvals
 
 - Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and

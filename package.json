@@ -30,6 +30,8 @@
     "test:e2e:electron-ai": "bun run electron:prepare && playwright test -c playwright.electron-ai.config.ts",
     "perf:audit": "bun scripts/performance-audit.ts",
     "perf:audit:web-interactions": "playwright test -c playwright.web.config.ts tests/e2e/first-interaction-latency.spec.ts --project=chromium --workers=1",
+    "perf:audit:electron-package": "bun scripts/electron-package-audit.ts",
+    "perf:check:electron-package": "bun scripts/electron-package-audit.ts --asar release/win-unpacked/resources/app.asar --check",
     "perf:check": "bun scripts/performance-audit.ts --assets-only",
     "build:assets": "vite build",
     "test:watch": "vitest",
@@ -90,6 +92,7 @@
     "@napi-rs/wasm-runtime": "1.1.0"
   },
   "devDependencies": {
+    "@electron/asar": "3.4.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "4.1.18",
     "@testing-library/jest-dom": "^6.9.1",

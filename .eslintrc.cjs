@@ -15,6 +15,7 @@ module.exports = {
     ecmaFeatures: { jsx: true },
     project: [
       './tsconfig.app.json',
+      './tsconfig.node.json',
       './electron/tsconfig.json',
       './electron/tsconfig.preload.json',
       './electron/tsconfig.mcp.json',
