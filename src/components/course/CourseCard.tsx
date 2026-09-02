@@ -8,20 +8,20 @@ import {
 } from 'react';
 import { m as motion } from 'motion/react';
 import { ProgressBar } from '../ui/ProgressBar';
-import { relativeExam, startOfDay } from '../../utils/datetime';
+import { relativeExam } from '../../utils/datetime';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric } from '../../state/courseCardMetric';
 import { PlayIcon } from '../ui/icons';
-import type { Card, Course } from '../../db/types';
-import type { CourseSummary } from '../../state/useCourseData';
+import type { Course } from '../../db/types';
+import type { CourseDashboardDetail, CourseSummary } from '../../state/useCourseData';
 
 export interface CourseCardProps {
   course: Course;
   summary?: CourseSummary;
-  /** The course's cards, used by the hover detail modules. */
-  cards?: Card[];
+  /** Compact card-derived values used by the hover detail modules. */
+  detail?: CourseDashboardDetail;
   /** A merge re-import has queued updates for this course (Arc 7 §7.5). */
   hasPendingUpdate?: boolean;
   onClick: () => void;
@@ -30,9 +30,6 @@ export interface CourseCardProps {
   onStudy?: () => void;
   onArchiveMenu?: (position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
 }
-
-const DAY_MS = 86_400_000;
-const ACTIVITY_DAYS = 14;
 
 /** House ease used across the app's reveals. */
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -66,7 +63,7 @@ function relativeDue(dueMs: number, nowMs: number): string {
 export function CourseCard({
   course,
   summary,
-  cards,
+  detail,
   hasPendingUpdate = false,
   onClick,
   onStudy,
@@ -115,33 +112,21 @@ export function CourseCard({
 
   // Earliest scheduled review across the course's active cards.
   const nextDueLabel = useMemo(() => {
-    if (!detailSettings.nextDue || !cards) return null;
-    const now = Date.now();
-    let earliest: number | null = null;
-    for (const card of cards) {
-      if (card.due === null || card.suspended) continue;
-      if (earliest === null || card.due < earliest) earliest = card.due;
+    if (!detailSettings.nextDue || detail?.nextDue === null || detail?.nextDue === undefined) {
+      return null;
     }
-    return earliest === null ? null : relativeDue(earliest, now);
-  }, [detailSettings.nextDue, cards]);
+    return relativeDue(detail.nextDue, Date.now());
+  }, [detailSettings.nextDue, detail]);
 
   // Reviews per day over the last two weeks, oldest first.
   const activity = useMemo(() => {
-    if (!detailSettings.activity || !cards) return null;
-    const today = startOfDay(Date.now());
-    const counts = new Array<number>(ACTIVITY_DAYS).fill(0);
-    let total = 0;
-    for (const card of cards) {
-      for (const log of card.history) {
-        const age = Math.round((today - startOfDay(log.timestamp)) / DAY_MS);
-        if (age >= 0 && age < ACTIVITY_DAYS) {
-          counts[ACTIVITY_DAYS - 1 - age] += 1;
-          total += 1;
-        }
-      }
-    }
-    return { counts, total, max: Math.max(...counts, 1) };
-  }, [detailSettings.activity, cards]);
+    if (!detailSettings.activity || !detail) return null;
+    return {
+      counts: detail.activityCounts,
+      total: detail.activityTotal,
+      max: Math.max(...detail.activityCounts, 1),
+    };
+  }, [detailSettings.activity, detail]);
 
   const modules: ReactNode[] = [];
   if (nextDueLabel !== null) {

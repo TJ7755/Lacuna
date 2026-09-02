@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { m as motion } from 'motion/react';
-import { bucketReviewsByDay, reviewTimestamps, addDays } from '../../fsrs/heatmap';
+import {
+  REVIEW_HEATMAP_WEEKS,
+  addDays,
+  reviewHeatmapRange,
+  type ReviewHeatmapProjection,
+} from '../../fsrs/heatmap';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { formatDate, startOfDay } from '../../utils/datetime';
-import type { Card } from '../../db/types';
+import { formatDate } from '../../utils/datetime';
 
-/** How many weeks of history the calendar shows. */
-const WEEKS = 26;
 const CELL_PX = 12;
 const GAP_PX = 3;
 const WEEK_STRIDE = CELL_PX + GAP_PX;
@@ -22,30 +24,17 @@ interface Cell {
  * A contribution-style review calendar (reviews per local day), theme-aware via the
  * accent colour. Built entirely from existing review logs; nothing is persisted.
  */
-export function ReviewHeatmap({ cards }: { cards: Card[] }) {
+export function ReviewHeatmap({ data }: { data: ReviewHeatmapProjection }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const { columns, total, max, monthLabels } = useMemo(() => {
-    const buckets = bucketReviewsByDay(reviewTimestamps(cards));
-    const today = startOfDay(Date.now());
-    // Monday-indexed weekday so weeks read left-to-right, Monday at the top.
-    const weekday = (new Date(today).getDay() + 6) % 7;
-    // DST-safe: use date arithmetic instead of raw ms subtraction.
-    const gridEnd = (() => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + (6 - weekday));
-      return startOfDay(d.getTime());
-    })();
-    const gridStart = (() => {
-      const d = new Date(gridEnd);
-      d.setDate(d.getDate() - (WEEKS * 7 - 1));
-      return startOfDay(d.getTime());
-    })();
+    const { buckets, today } = data;
+    const { gridStart } = reviewHeatmapRange(today);
 
     const cols: Cell[][] = [];
     let maxCount = 0;
     let sum = 0;
-    for (let w = 0; w < WEEKS; w += 1) {
+    for (let w = 0; w < REVIEW_HEATMAP_WEEKS; w += 1) {
       const col: Cell[] = [];
       for (let d = 0; d < 7; d += 1) {
         const day = addDays(gridStart, w * 7 + d);
@@ -74,7 +63,7 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
     }
 
     return { columns: cols, total: sum, max: maxCount, monthLabels: labels };
-  }, [cards]);
+  }, [data]);
 
   // Five intensity bands, GitHub-style, expressed as accent opacity so they track
   // the chosen accent colour and the light/dark theme automatically.
@@ -96,7 +85,7 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="font-display text-lg">Review activity</h2>
         <span className="text-sm text-ink-faint">
-          {total} review{total === 1 ? '' : 's'} in the last {WEEKS} weeks
+          {total} review{total === 1 ? '' : 's'} in the last {REVIEW_HEATMAP_WEEKS} weeks
         </span>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">

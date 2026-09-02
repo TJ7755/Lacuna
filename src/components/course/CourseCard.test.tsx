@@ -56,7 +56,7 @@ describe('CourseCard metrics', () => {
   });
 
   function cardButton() {
-    render(<CourseCard course={course} summary={summary} cards={[]} onClick={vi.fn()} />);
+    render(<CourseCard course={course} summary={summary} onClick={vi.fn()} />);
     return within(screen.getByRole('button', { name: /Biology/ }));
   }
 
@@ -100,7 +100,6 @@ describe('CourseCard metrics', () => {
       <CourseCard
         course={course}
         summary={summary}
-        cards={[]}
         onClick={onClick}
         onArchiveMenu={onArchiveMenu}
       />,
@@ -119,7 +118,6 @@ describe('CourseCard metrics', () => {
       <CourseCard
         course={course}
         summary={summary}
-        cards={[]}
         onClick={vi.fn()}
         onArchiveMenu={onArchiveMenu}
       />,

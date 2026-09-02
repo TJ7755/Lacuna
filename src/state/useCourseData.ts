@@ -11,6 +11,7 @@ import type {
   Card,
   Course,
   CourseAssessment,
+  CoursePerformance,
   CourseRecord,
   Lesson,
   LessonCardExposure,
@@ -33,6 +34,11 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
+import {
+  iterateReviewTimestamps,
+  projectReviewHeatmap,
+  type ReviewHeatmapProjection,
+} from '../fsrs/heatmap';
 import {
   findBackingDeck,
   findBackingDecks,
@@ -494,23 +500,99 @@ export function useCourseSummary(courseId: string | undefined): CourseSummary | 
   }, [courseId]);
 }
 
+export interface CourseDashboardDetail {
+  /** Earliest due timestamp among non-suspended cards, or null when none is scheduled. */
+  nextDue: number | null;
+  /** Local-day review counts for the last 14 days, oldest first. */
+  activityCounts: number[];
+  activityTotal: number;
+}
+
+export interface CourseDashboardData {
+  courses: Course[];
+  summaries: Record<string, CourseSummary>;
+  stats: StudyStats;
+  courseDetails: Record<string, CourseDashboardDetail>;
+  reviewHeatmap: ReviewHeatmapProjection;
+}
+
+interface CourseDashboardProjectionInput {
+  courses: Course[];
+  lessons: Lesson[];
+  cards: Card[];
+  assessments: CourseAssessment[];
+  links: LessonCardLink[];
+  exposures: LessonCardExposure[];
+  completions: LessonCompletion[];
+  performance: CoursePerformance[];
+}
+
+const DASHBOARD_ACTIVITY_DAYS = 14;
+const DAY_MS = 86_400_000;
+
+/** Reduce hydrated card records to the exact information rendered by Dashboard. */
+export function projectCourseDashboardData(
+  input: CourseDashboardProjectionInput,
+  now: number,
+): CourseDashboardData {
+  const { courses, lessons, cards, assessments, links, exposures, completions, performance } = input;
+  const summaries = computeCourseSummaries(courses, lessons, cards, assessments, now, {
+    links,
+    exposures,
+    completions,
+  });
+  const courseSeconds = new Map<string, number>();
+  for (const row of performance) {
+    if (row.totalCorrectReviews > 0 && row.runningMeanResponseTime > 0) {
+      courseSeconds.set(row.courseId, row.runningMeanResponseTime);
+    }
+  }
+  const stats = computeStudyStats(
+    cards,
+    courseSeconds,
+    now,
+    new Set(courses.filter((course) => !course.archived).map((course) => course.id)),
+  );
+  const today = startOfDay(now);
+  const courseDetails: Record<string, CourseDashboardDetail> = {};
+  for (const card of cards) {
+    if (!card.courseId) continue;
+    const detail = (courseDetails[card.courseId] ??= {
+      nextDue: null,
+      activityCounts: new Array<number>(DASHBOARD_ACTIVITY_DAYS).fill(0),
+      activityTotal: 0,
+    });
+    if (
+      card.due !== null &&
+      !card.suspended &&
+      (detail.nextDue === null || card.due < detail.nextDue)
+    ) {
+      detail.nextDue = card.due;
+    }
+    for (const review of card.history) {
+      const age = Math.round((today - startOfDay(review.timestamp)) / DAY_MS);
+      if (age < 0 || age >= DASHBOARD_ACTIVITY_DAYS) continue;
+      detail.activityCounts[DASHBOARD_ACTIVITY_DAYS - 1 - age] += 1;
+      detail.activityTotal += 1;
+    }
+  }
+  return {
+    courses,
+    summaries,
+    stats,
+    courseDetails,
+    reviewHeatmap: projectReviewHeatmap(iterateReviewTimestamps(cards), now),
+  };
+}
+
 /**
- * Single aggregated live query for the course dashboard. Returns courses, lessons,
- * all cards, per-course summaries and global study stats in one reactive read so a
- * shared transaction triggers only one re-render instead of five.
+ * Single aggregated live query for the course dashboard. Card records exist only
+ * while computing the projection; the resolved live-query value is compact.
  *
  * Study stats use Course calibration keyed by courseId. Scheduling-unit pacing
  * remains separate and feeds workload planning, not response-time calibration.
  */
-export function useCourseDashboardData():
-  | {
-      courses: Course[];
-      lessons: Lesson[];
-      allCards: Card[];
-      summaries: Record<string, CourseSummary>;
-      stats: StudyStats;
-    }
-  | undefined {
+export function useCourseDashboardData(): CourseDashboardData | undefined {
   return useLiveQuery(async () => {
     const [records, lessons, cards, assessments, links, exposures, completions, performance] =
       await Promise.all([
@@ -524,31 +606,18 @@ export function useCourseDashboardData():
         db.coursePerformance.toArray(),
       ]);
     const courses = hydrateCourses(records, assessments);
-    const hydratedCards = await hydrateCardsWithHistory(cards);
-    const summaries = computeCourseSummaries(
-      courses,
-      lessons,
-      hydratedCards,
-      assessments,
-      Date.now(),
+    return projectCourseDashboardData(
       {
+        courses,
+        lessons,
+        cards: await hydrateCardsWithHistory(cards),
+        assessments,
         links,
         exposures,
         completions,
+        performance,
       },
-    );
-    const courseSeconds = new Map<string, number>();
-    for (const row of performance) {
-      if (row.totalCorrectReviews > 0 && row.runningMeanResponseTime > 0) {
-        courseSeconds.set(row.courseId, row.runningMeanResponseTime);
-      }
-    }
-    const stats = computeStudyStats(
-      hydratedCards,
-      courseSeconds,
       Date.now(),
-      new Set(courses.filter((course) => !course.archived).map((course) => course.id)),
     );
-    return { courses, lessons, allCards: hydratedCards, summaries, stats };
   }, []);
 }

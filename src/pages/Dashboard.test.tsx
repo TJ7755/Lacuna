@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
-import type { Course, Card } from '../db/types';
+import type { Course } from '../db/types';
 
 const mockNavigate = vi.fn();
 const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
@@ -131,31 +131,6 @@ const mockCourse: Course = {
   practiceMaxGap: 5,
 };
 
-const mockCard: Card = {
-  id: 'card-1',
-  conceptId: 'concept-card-1',
-  deckId: 'deck-1',
-  schedulingUnitId: 'deck-1',
-  type: 'front_back',
-  front: 'Front',
-  back: 'Back',
-  stability: null,
-  difficulty: null,
-  lastReviewed: null,
-  reps: 0,
-  lapses: 0,
-  state: 0,
-  due: null,
-  scheduledDays: 0,
-  learningSteps: 0,
-  history: [],
-  createdAt: Date.now(),
-  updatedAt: 1,
-  tags: [],
-  suspended: false,
-  buriedUntil: null,
-};
-
 beforeEach(() => {
   mockNavigate.mockClear();
   mockUpdateCourse.mockReset();
@@ -168,8 +143,8 @@ beforeEach(() => {
 function setCourseData(courses: Course[] = [mockCourse]) {
   mockCourseDashboardData = {
     courses,
-    lessons: [],
-    allCards: [],
+    courseDetails: {},
+    reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
     summaries: {},
     stats: { reviewedToday: 0, streak: 0, forecast: [] },
   };
@@ -193,8 +168,8 @@ describe('Dashboard', () => {
   it('renders empty state when no courses exist', () => {
     mockCourseDashboardData = {
       courses: [],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
@@ -207,8 +182,10 @@ describe('Dashboard', () => {
   it('renders course cards when courses exist', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
-      lessons: [],
-      allCards: [mockCard],
+      courseDetails: {
+        'course-1': { nextDue: null, activityCounts: new Array(14).fill(0), activityTotal: 0 },
+      },
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {
         'course-1': { lessonCount: 3, cardCount: 42, mastery: 0.5, unreviewed: 10, eligible: 0 },
       },
@@ -231,8 +208,8 @@ describe('Dashboard', () => {
   it('navigates to course page when a course card is clicked', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
@@ -254,8 +231,8 @@ describe('Dashboard', () => {
   it('navigates to the course study flow when the Study action is used', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
@@ -267,8 +244,8 @@ describe('Dashboard', () => {
   it('keeps study access in the course card without a dashboard study banner', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
@@ -281,8 +258,8 @@ describe('Dashboard', () => {
   it('offers no study control until there is a course to study', () => {
     mockCourseDashboardData = {
       courses: [],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
@@ -293,8 +270,8 @@ describe('Dashboard', () => {
   it('shows page heading', () => {
     mockCourseDashboardData = {
       courses: [],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
@@ -308,8 +285,8 @@ describe('Dashboard', () => {
   it('does not show a cross-course review bar even when eligible cards exist', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
-      lessons: [],
-      allCards: [],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: false },
       summaries: {
         'course-1': { lessonCount: 2, cardCount: 10, mastery: 0.3, unreviewed: 5, eligible: 7 },
       },
@@ -320,26 +297,10 @@ describe('Dashboard', () => {
   });
 
   it('shows review heatmap when any card has history', () => {
-    const cardWithHistory: Card = {
-      ...mockCard,
-      history: [
-        {
-          timestamp: Date.now(),
-          grade: 3,
-          responseTimeSec: 5,
-          distracted: false,
-          stabilityBefore: null,
-          stabilityAfter: 1,
-          difficultyBefore: null,
-          difficultyAfter: 5,
-          retrievabilityAtReview: null,
-        },
-      ],
-    };
     mockCourseDashboardData = {
       courses: [mockCourse],
-      lessons: [],
-      allCards: [cardWithHistory],
+      courseDetails: {},
+      reviewHeatmap: { today: Date.now(), buckets: new Map(), hasReviewHistory: true },
       summaries: {},
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };

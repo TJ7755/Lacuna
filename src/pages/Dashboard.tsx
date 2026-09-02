@@ -34,7 +34,8 @@ export function Dashboard() {
   const courses = data?.courses;
   const summaries = data?.summaries;
   const stats = data?.stats;
-  const allCards = data?.allCards;
+  const courseDetails = data?.courseDetails;
+  const reviewHeatmap = data?.reviewHeatmap;
   const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
   const [creatingCourse, setCreatingCourse] = useState(false);
@@ -81,15 +82,6 @@ export function Dashboard() {
     }
     return sorted;
   }, [courses, summaries, dashboardSort]);
-
-  // Cards grouped by course, for the card hover detail modules.
-  const cardsByCourse = useMemo(() => {
-    const grouped: Record<string, typeof allCards> = {};
-    for (const card of allCards ?? []) {
-      if (card.courseId) (grouped[card.courseId] ??= []).push(card);
-    }
-    return grouped;
-  }, [allCards]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
@@ -144,7 +136,7 @@ export function Dashboard() {
               <CourseCard
                 course={course}
                 summary={summaries?.[course.id]}
-                cards={cardsByCourse[course.id]}
+                detail={courseDetails?.[course.id]}
                 hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
                 onClick={() =>
                   navigate(
@@ -165,9 +157,9 @@ export function Dashboard() {
       )}
 
       {/* Review activity heatmap */}
-      {allCards && allCards.some((c) => c.history.length > 0) && (
+      {reviewHeatmap?.hasReviewHistory && (
         <div className="mt-10">
-          <ReviewHeatmap cards={allCards} />
+          <ReviewHeatmap data={reviewHeatmap} />
         </div>
       )}
 
