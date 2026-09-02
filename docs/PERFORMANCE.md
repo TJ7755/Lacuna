@@ -4,6 +4,55 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## First-interaction baseline (2 September 2026)
+
+The original production-preview probe measured pointer-down to the first visible
+navigation acknowledgement separately from pointer-down to usable route content,
+plus Long Tasks. It compared five fresh-context cold samples with five same-context
+warm returns. That repeated baseline harness was retired after it identified the
+route-chunk delay; retaining a general reporting layer for one resolved interaction
+would add maintenance without protecting behaviour.
+
+`bun run perf:audit:web-interactions` now runs the focused regression with normal
+motion enabled. It injects a deterministic slow Cards chunk, proves that intent
+prefetch finishes before pointer-down, records acknowledgement and usable-content
+timings as attached JSON, and rejects a click path that absorbs the injected delay.
+
+The initial Path-to-Cards sample measured:
+
+| Interaction measurement   |  Median |     p95 |
+| ------------------------- | ------: | ------: |
+| Cold acknowledgement      | 28.3 ms | 28.8 ms |
+| Cold usable Cards content | 61.9 ms | 62.5 ms |
+| Warm acknowledgement      | 30.9 ms | 31.3 ms |
+| Warm usable Cards content | 30.9 ms | 31.3 ms |
+
+No Long Tasks occurred in the ten samples. This fast local route still showed
+roughly a twofold first-use ready penalty.
+
+The next stack layer then delayed the Cards route chunk by a deterministic 400 ms.
+Before the fix, the request finished 427.5 ms after pointer-down and usable Cards
+content appeared after 447.5 ms. Exact desktop and mobile intent prefetch moved the
+same request completion to 303.4 ms before pointer-down; usable content appeared
+after 45.1 ms, a 402.4 ms / 89.9% reduction. Acknowledgement remained 28.5 ms and
+the normal route animation was not shortened or removed. The controlled red and
+green runs both recorded zero Long Tasks.
+
+The original five-cold/five-warm production-preview measurement was then repeated
+without injected delay:
+
+| Production-preview change   |  Before |   After |            Change |
+| --------------------------- | ------: | ------: | ----------------: |
+| Cold usable median          | 61.9 ms | 43.1 ms | -18.8 ms / -30.4% |
+| Cold usable p95             | 62.5 ms | 43.5 ms | -19.0 ms / -30.4% |
+| Cold-to-warm median gap     | 31.0 ms | 12.8 ms | -18.2 ms / -58.7% |
+| Cold acknowledgement median | 28.3 ms | 26.6 ms |   -1.7 ms / -6.0% |
+
+All ten post-change samples again recorded zero Long Tasks. The controlled case
+proves that slow chunk delivery no longer lands on the click path; the ordinary
+production-preview comparison shows the smaller but still material improvement on
+the local fast path.
+
 ## First-load and network follow-up (30 August 2026)
 
 Fresh `master` had regressed to four initial JavaScript assets: the 967,691-byte

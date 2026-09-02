@@ -29,6 +29,7 @@
     "test:e2e:web": "playwright test -c playwright.web.config.ts",
     "test:e2e:electron-ai": "bun run electron:prepare && playwright test -c playwright.electron-ai.config.ts",
     "perf:audit": "bun scripts/performance-audit.ts",
+    "perf:audit:web-interactions": "playwright test -c playwright.web.config.ts tests/e2e/first-interaction-latency.spec.ts --project=chromium --workers=1",
     "perf:check": "bun scripts/performance-audit.ts --assets-only",
     "build:assets": "vite build",
     "test:watch": "vitest",
