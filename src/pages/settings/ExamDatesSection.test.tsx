@@ -118,6 +118,31 @@ describe('ExamDatesSection', () => {
     );
   });
 
+  it('moves focus into the editor while the add control crosses over', () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    const add = screen.getByRole('button', { name: 'Add checkpoint' });
+    add.focus();
+    fireEvent.click(add);
+
+    expect(screen.getByPlaceholderText('e.g. Mock exam')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus();
+  });
+
+  it('brings a newly created assessment row in through the list transition', () => {
+    const view = render(<ExamDatesSection courseId="course-1" />);
+    mockExamDates = [
+      mockExamDate,
+      { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
+    ];
+
+    view.rerender(<ExamDatesSection courseId="course-1" />);
+
+    expect(screen.getByText('Second mock').closest('[style*="opacity"]')).toHaveStyle({
+      opacity: '0',
+    });
+  });
+
   it('edits the sole final with the same assessment editor and offers no delete action', () => {
     mockExamDates = [{ ...mockExamDate, id: 'final-1', kind: 'final', name: 'Final assessment' }];
     render(<ExamDatesSection courseId="course-1" />);

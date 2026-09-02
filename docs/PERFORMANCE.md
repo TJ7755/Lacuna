@@ -4,6 +4,21 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## Editor and settings continuity (2 September 2026)
+
+The Question editor, Course header, assessment editor and restore-point list now consume the
+existing motion runtime and shared timing contract. Measurements compare clean production builds
+on the same stacked branch; no new dependency or stylesheet was added.
+
+| Production-build change | Before | After | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 867,689 bytes | 867,917 bytes | +228 bytes / +0.026% |
+| Initial JavaScript gzip | 266,564 bytes | 266,662 bytes | +98 bytes / +0.037% |
+| Initial CSS | 121,805 bytes | 121,805 bytes | No change |
+| Lazy Question editor chunk | 14,458 bytes | 14,906 bytes | +448 bytes / +3.10% |
+| Lazy Course Settings chunk | 44,921 bytes | 45,700 bytes | +779 bytes / +1.73% |
+| Lazy Settings chunk | 81,201 bytes | 81,656 bytes | +455 bytes / +0.56% |
+
 ## Shared motion contract (2 September 2026)
 
 The semantic motion foundation was measured in isolation on top of the

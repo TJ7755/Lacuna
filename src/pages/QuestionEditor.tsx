@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
 import {
@@ -12,7 +13,9 @@ import { Button } from '../components/ui/Button';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { NavigationGuard } from '../components/ui/NavigationGuard';
 import { TagInput } from '../components/ui/TagInput';
+import { StepSwap } from '../components/ui/StepSwap';
 import { useToast } from '../components/ui/Toast';
+import { motionTransition } from '../components/ui/motion';
 import { ChevronLeftIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
 import type { ItemFixture, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from '../items/markSchemeCompiler';
@@ -27,6 +30,7 @@ import {
 } from '../questions/repository';
 import type { QuestionPayload } from '../questions/types';
 import { useCourse, useLessons } from '../state/useCourseData';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import {
   newQuestionState,
   questionDraftKey,
@@ -67,6 +71,8 @@ export function QuestionEditor() {
     generatorConfig,
   } = draft.state;
   const [saving, setSaving] = useState(false);
+  const [motionSpeed] = useMotionSpeed();
+  const motionMultiplier = speedMultiplier(motionSpeed);
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const generator = questionGeneratorRegistry.list()[0];
 
@@ -190,6 +196,7 @@ export function QuestionEditor() {
   }
 
   const tagSuggestions = [...new Set(data.questions.flatMap((question) => question.tags))].sort();
+  const saveLabel = saving ? 'Saving…' : editing ? 'Save Question' : 'Create Question';
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 pb-28 md:px-10">
@@ -372,67 +379,71 @@ export function QuestionEditor() {
           )}
         </section>
 
-        {kind === 'fixed' ? (
-          <>
-            <MarkdownEditor
-              label="Prompt"
-              value={prompt}
-              onChange={(value) => draft.update({ prompt: value })}
-              minRows={7}
-              placeholder="Apply the idea in a concrete problem."
-              onError={(message) => notify(message, 'negative')}
-            />
-            <div>
-              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
-                Answer type
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(['numeric', 'working'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={answerKind === option}
-                    onClick={() => draft.update({ answerKind: option })}
-                    className={`min-h-11 rounded-lg border px-4 text-sm transition ${
-                      answerKind === option
-                        ? 'border-accent bg-accent-soft text-accent'
-                        : 'border-line-strong text-ink-soft'
-                    }`}
-                  >
-                    {option === 'numeric' ? 'Numeric answer' : 'Show working'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {answerKind === 'numeric' ? (
-              <NumericAnswerEditor
-                value={numericAnswer}
-                onChange={(value) => draft.update({ numericAnswer: value })}
+        <StepSwap stepKey={kind} direction={kind === 'generated' ? 1 : -1} className="space-y-8">
+          {kind === 'fixed' ? (
+            <>
+              <MarkdownEditor
+                label="Prompt"
+                value={prompt}
+                onChange={(value) => draft.update({ prompt: value })}
+                minRows={7}
+                placeholder="Apply the idea in a concrete problem."
+                onError={(message) => notify(message, 'negative')}
               />
-            ) : (
-              <MarkSchemeEditor
-                value={workingSource}
-                onChange={(value) => draft.update({ workingSource: value })}
-                fixtures={workingFixtures}
-                onFixturesChange={(value) => draft.update({ workingFixtures: value })}
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+                  Answer type
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['numeric', 'working'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={answerKind === option}
+                      onClick={() => draft.update({ answerKind: option })}
+                      className={`min-h-11 rounded-lg border px-4 text-sm transition ${
+                        answerKind === option
+                          ? 'border-accent bg-accent-soft text-accent'
+                          : 'border-line-strong text-ink-soft'
+                      }`}
+                    >
+                      {option === 'numeric' ? 'Numeric answer' : 'Show working'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
+                {answerKind === 'numeric' ? (
+                  <NumericAnswerEditor
+                    value={numericAnswer}
+                    onChange={(value) => draft.update({ numericAnswer: value })}
+                  />
+                ) : (
+                  <MarkSchemeEditor
+                    value={workingSource}
+                    onChange={(value) => draft.update({ workingSource: value })}
+                    fixtures={workingFixtures}
+                    onFixturesChange={(value) => draft.update({ workingFixtures: value })}
+                  />
+                )}
+              </StepSwap>
+              <MarkdownEditor
+                label="Worked explanation"
+                value={explanation}
+                onChange={(value) => draft.update({ explanation: value })}
+                minRows={7}
+                placeholder="Show why the answer follows, not merely what it is."
+                onError={(message) => notify(message, 'negative')}
               />
-            )}
-            <MarkdownEditor
-              label="Worked explanation"
-              value={explanation}
-              onChange={(value) => draft.update({ explanation: value })}
-              minRows={7}
-              placeholder="Show why the answer follows, not merely what it is."
-              onError={(message) => notify(message, 'negative')}
+            </>
+          ) : generator ? (
+            <GeneratedQuestionConfiguration
+              generator={generator}
+              configuration={generatorConfig}
+              onChange={(value) => draft.update({ generatorConfig: value })}
             />
-          </>
-        ) : generator ? (
-          <GeneratedQuestionConfiguration
-            generator={generator}
-            configuration={generatorConfig}
-            onChange={(value) => draft.update({ generatorConfig: value })}
-          />
-        ) : null}
+          ) : null}
+        </StepSwap>
 
         <section>
           <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
@@ -466,8 +477,25 @@ export function QuestionEditor() {
           ) : (
             <span />
           )}
-          <Button type="button" variant="primary" onClick={() => void save()} disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save Question' : 'Create Question'}
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => void save()}
+            disabled={saving}
+            aria-label={saveLabel}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.span
+                key={saveLabel}
+                aria-hidden="true"
+                initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                exit={motionMultiplier > 0 ? { opacity: 0, y: -3 } : undefined}
+                transition={motionTransition('feedback', motionMultiplier)}
+              >
+                {saveLabel}
+              </motion.span>
+            </AnimatePresence>
           </Button>
         </div>
       </div>

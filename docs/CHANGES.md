@@ -1,5 +1,21 @@
 # Lacuna — next beta
 
+## Editor and settings transition continuity
+
+- Question form and answer-type changes now use the shared same-surface transition instead of
+  replacing large authoring regions in one frame. The primary save label uses the feedback tier,
+  keeps one current accessible name and disables cleanly while the write is pending.
+- Course and Lesson titles now crossfade between display and rename states while preserving the
+  existing inline editing, keyboard and failure behaviour.
+- Assessment editors crossfade with their Add control, move focus into the new form and return it
+  to the triggering control. Assessment and restore-point rows now use restrained entry, exit and
+  positional continuity so saves and deletions remain legible before their toast appears.
+- Every added transition follows the global slow, normal, fast and reduced-motion settings. The
+  production build added 228 raw / 98 gzip bytes to initial JavaScript; initial CSS did not change.
+
+**Checks:** 32 focused red-to-green editor, header, assessment and backup tests; full typecheck;
+focused ESLint; production build and asset budget.
+
 ## Settings action loading
 
 - Removed QR rendering, sync pairing, database export/import, manual merge, restore-point actions,

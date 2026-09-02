@@ -67,7 +67,7 @@ vi.mock('../components/items/NumericAnswerEditor', () => ({
 }));
 
 vi.mock('../components/items/MarkSchemeEditor', () => ({
-  MarkSchemeEditor: () => null,
+  MarkSchemeEditor: () => <div>Working answer editor</div>,
 }));
 
 vi.mock('../components/ui/TagInput', () => ({
@@ -259,6 +259,50 @@ describe('QuestionEditor', () => {
 
     expect(await screen.findByText('Other page')).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Leave this Question?' })).not.toBeInTheDocument();
+  });
+
+  it('brings the replacement answer editor in through the continuity transition', async () => {
+    renderEditor();
+
+    expect(await screen.findByLabelText('Expected answer')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show working' }));
+
+    expect(screen.getByText('Working answer editor').parentElement).toHaveStyle({ opacity: '0' });
+  });
+
+  it('brings the generated-family mode in through the same surface transition', async () => {
+    renderEditor();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Generated family' }));
+
+    const family = screen.getByText('Built-in family').parentElement;
+    expect(family?.parentElement).toHaveStyle({ opacity: '0' });
+  });
+
+  it('crossfades the primary save label while preserving its current accessible name', async () => {
+    let finishSave!: () => void;
+    mocks.createFixed.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    renderEditor();
+    fireEvent.change(await screen.findByPlaceholderText('Completing the square'), {
+      target: { value: 'Pending definition' },
+    });
+    fireEvent.change(screen.getByLabelText('Prompt'), { target: { value: 'Prompt' } });
+    fireEvent.change(screen.getByLabelText('Expected answer'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Worked explanation'), {
+      target: { value: 'Explanation' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+    expect(screen.getByText('Saving…')).toHaveStyle({ opacity: '0' });
+
+    finishSave();
+    expect(await screen.findByText('Questions list')).toBeInTheDocument();
   });
 
   it('retains authoring state when saving fails', async () => {
