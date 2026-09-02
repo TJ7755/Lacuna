@@ -13,7 +13,7 @@ test('course section navigation keeps one stable horizontal position', async ({ 
   const positions: Array<{ label: string; centreX: number }> = [];
 
   for (const section of COURSE_SECTIONS) {
-    const navigation = page.getByRole('navigation', { name: 'Course sections' });
+    const navigation = page.locator('nav[aria-label="Course sections"]:visible');
     if (section.label !== 'Path') {
       await navigation.getByRole('link', { name: section.label, exact: true }).click();
       await expect(
@@ -21,7 +21,8 @@ test('course section navigation keeps one stable horizontal position', async ({ 
       ).toBeVisible();
     }
 
-    const bounds = await page.getByRole('navigation', { name: 'Course sections' }).boundingBox();
+    await expect(navigation).toHaveCount(1);
+    const bounds = await navigation.boundingBox();
     expect(bounds, `${section.label} navigation must be visible`).not.toBeNull();
     positions.push({
       label: section.label,
