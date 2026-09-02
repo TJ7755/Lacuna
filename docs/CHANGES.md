@@ -37,9 +37,12 @@ the ratcheted package audit. No Electron application was launched.
 - Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
   settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
   dressing a single observation up with distribution statistics proved nothing.
+- Kept the packaged-only interaction spec outside the ordinary Electron AI suite. Hosted AI CI
+  prepares unpackaged Electron code and must not pretend it has built a release executable.
 
-**Checks:** harness and root TypeScript, focused ESLint and formatting checks, and Playwright test
-discovery. Packaged execution remains the explicit `test:e2e:electron-package` check.
+**Checks:** red-to-green Playwright suite-boundary regression; harness and root TypeScript; focused
+ESLint and formatting checks; separate AI and packaged Playwright test discovery. Packaged execution
+remains the explicit `test:e2e:electron-package` check.
 
 ## Resumable AI write approvals
 
