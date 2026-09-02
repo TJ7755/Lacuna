@@ -154,6 +154,7 @@ describe('Lacuna AI MCP server', () => {
       'lacuna.list_courses',
       {},
       undefined,
+      expect.any(AbortSignal),
     );
 
     await expect(
