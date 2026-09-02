@@ -11,7 +11,8 @@ resolved packaged executable once through Playwright's native Electron support.
 The single process exercises Quick search, Settings and seeded-course navigation
 in that fixed order with normal motion and the native viewport, then verifies a
 clean exit from the exact child handle. Retries, tracing and parallel workers are
-disabled.
+disabled. Native attachment may take up to 30 seconds for a freshly packaged
+macOS artefact; that allowance is not an interaction-performance threshold.
 
 Each interaction retains raw input-to-feedback, input-to-usable and
 input-to-settled timings, finite-animation settlement, Long Tasks and renderer

@@ -21,6 +21,13 @@ Electron 42 removed the npm postinstall download and resolves the platform runti
 package entry point on first use. Native tooling must resolve `require('electron')` rather than
 constructing a path under `node_modules/electron/dist`, which is absent after a clean install.
 
+## Fresh macOS packages need a separate native-attachment allowance
+
+A newly built unsigned macOS package can take more than 15 seconds to attach through Playwright
+even after both debugger sockets connect. Keep native attachment timeouts separate from measured
+in-renderer interaction boundaries; otherwise OS cold-start work looks like an application latency
+regression.
+
 ## Windows portable startup begins before Electron exists
 
 electron-builder's portable target runs a silent NSIS extraction before launching Lacuna's

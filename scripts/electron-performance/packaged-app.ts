@@ -3,7 +3,7 @@ import { realpath } from 'node:fs/promises';
 import { _electron as electron, type ElectronApplication } from '@playwright/test';
 import type { PackagedProcessExit, RunningPackagedApp } from './types';
 
-const STARTUP_TIMEOUT_MS = 15_000;
+const STARTUP_TIMEOUT_MS = 30_000;
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 const MAX_PACKAGED_LAUNCHES = 1;
 

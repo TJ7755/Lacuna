@@ -7,7 +7,8 @@
   seeded-course navigation sequentially in the native renderer.
 - Kept the complete validation inside one application process. The harness has a one-launch hard
   cap, never emulates a viewport, disables retries and tracing, and verifies normal shutdown from
-  the exact child handle.
+  the exact child handle. Native attachment may take up to 30 seconds for a freshly packaged macOS
+  artefact; measured interaction timings begin only after the seeded Dashboard is ready.
 - Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
   settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
   dressing a single observation up with distribution statistics proved nothing.
