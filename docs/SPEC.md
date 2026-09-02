@@ -2540,8 +2540,13 @@ its navigation cannot drift from the rendered groups.
   pressure. The result (persisted, denied, or unsupported) is surfaced honestly
   in the backup area of Settings, with a clear warning when persistence is
   denied and a pointer to regular exports or folder mirroring as the safeguard.
-  A `useStorageQuotaWarning` hook (§16) also surfaces a non-blocking toast when
-  the browser reports the database is approaching its quota.
+  The denied warning offers an **Export backup** action to the full-backup anchor. A
+  `useStorageQuotaWarning` hook (§16) also surfaces a non-blocking toast when the browser reports
+  the database is approaching its quota; that toast is shown once per session and offers
+  **Open backups**. If the database cannot open because the quota is full, startup explicitly
+  warns users not to clear Lacuna site data, to free browser or operating-system space or leave
+  private browsing, and then reload. It does not claim that export is available while the database
+  is closed.
 - **Automatic backups:** "Back up now"; folder-mirror controls (where
   supported); a list of restore points (timestamp + lesson/card counts) each with
   two-step Delete and Restore confirmation. Deleting removes the IndexedDB restore point from

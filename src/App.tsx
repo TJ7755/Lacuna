@@ -8,7 +8,7 @@ import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
-import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
+import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
 import { stampMissingLessonViewModes } from './db/repository';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
@@ -106,7 +106,7 @@ function isPublicEntry(hash: string): boolean {
 
 export function App() {
   const [ready, setReady] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
+  const [initError, setInitError] = useState<Exclude<DbOpenResult, { ok: true }> | null>(null);
   const initStarted = useRef(false);
 
   useEffect(() => replacementLifecycle.register(relayAiDeviceStateParticipant), []);
@@ -126,7 +126,7 @@ export function App() {
         // rather than deep inside a component render.
         const dbOpen = await openDatabase();
         if (!dbOpen.ok) {
-          setInitError(dbOpen.message);
+          setInitError(dbOpen);
           return;
         }
 
@@ -165,11 +165,14 @@ export function App() {
           // eslint-disable-next-line no-console
           console.error('Failed to initialise Lacuna:', error);
         }
-        setInitError(
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred while starting Lacuna.',
-        );
+        setInitError({
+          ok: false,
+          reason: 'unknown',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'An unexpected error occurred while starting Lacuna.',
+        });
         return;
       }
 
@@ -216,7 +219,13 @@ export function App() {
       <div className="grid h-screen place-items-center bg-surface p-8 text-ink">
         <div className="max-w-md space-y-4 text-center">
           <h1 className="font-display text-2xl tracking-tight">Lacuna could not start</h1>
-          <p className="text-ink/70">{initError}</p>
+          <p className="text-ink/70">{initError.message}</p>
+          {initError.reason === 'quota' && (
+            <p role="alert" className="text-ink/70">
+              Do not clear Lacuna site data — that would delete your cards and progress. Free space
+              in your browser or operating system, or leave private browsing, then reload Lacuna.
+            </p>
+          )}
           <button
             type="button"
             onClick={() => window.location.reload()}

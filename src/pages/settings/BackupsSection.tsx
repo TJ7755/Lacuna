@@ -95,7 +95,13 @@ export function BackupsSection() {
     if (state.persisted) notify('Storage is now persisted.', 'positive');
     else if (!state.supported)
       notify('This browser does not support persistent storage.', 'neutral');
-    else notify('Persistent storage was denied.', 'negative');
+    else
+      notify('Persistent storage was denied.', 'negative', {
+        actionLabel: 'Export backup',
+        onAction: () => {
+          window.location.hash = '#/settings#settings-export';
+        },
+      });
   }
 
   return (

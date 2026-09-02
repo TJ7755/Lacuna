@@ -1,5 +1,23 @@
 # Lacuna — next beta
 
+## Data-recovery guidance
+
+- Retained the database-open failure reason so quota failures show recovery guidance that tells
+  users not to clear Lacuna site data, to free browser or operating-system space, and to leave
+  private browsing before reloading. The failure screen does not offer an export because the
+  database was never opened.
+- Added direct **Open backups** and **Export backup** actions to the storage-quota and denied
+  persistent-storage warnings respectively, using the existing Settings anchors.
+- Added a clean Chromium-context recovery journey that authors an image-bearing Card, exports a
+  full backup, replaces a second context containing target-only data, and verifies the Card and
+  image return while the target-only Card disappears.
+- Made that recovery journey wait for card creation to finish navigating before it leaves for
+  Settings. Without that boundary, the editor's late return navigation could detach the backup
+  button and leave the test waiting for a download that had never been requested.
+
+**Checks:** focused initialisation, quota-hook and persistence unit tests; clean-context Chromium
+backup round-trip; root typecheck, lint and web build.
+
 ## School-use browser spine and editor accessibility
 
 - Gave every Markdown editor textarea an accessible name. The visible field label is now the
