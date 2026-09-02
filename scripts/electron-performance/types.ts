@@ -1,11 +1,10 @@
 import type { ChildProcess } from 'node:child_process';
-import type { Browser, Page } from '@playwright/test';
+import type { ElectronApplication, Page } from '@playwright/test';
 
 export type InteractionScenario = 'search' | 'settings' | 'course';
 
 export interface PackagedInteractionSample {
   scenario: InteractionScenario;
-  idleDelayMs: number;
   executablePath: string;
   appVersion: string;
   packaged: boolean;
@@ -45,13 +44,8 @@ export interface PackagedInteractionSuiteResult {
   samples: PackagedInteractionSample[];
 }
 
-export interface PackagedInteractionMeasurement {
-  scenario: InteractionScenario;
-  idleDelayMs: number;
-}
-
 export interface RunningPackagedApp {
-  browser: Browser;
+  application: ElectronApplication;
   child: ChildProcess;
   page: Page;
   errors: string[];

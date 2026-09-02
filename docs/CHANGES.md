@@ -1,22 +1,19 @@
 # Lacuna — next beta
 
-## Native packaged interaction measurement
+## Native packaged interaction validation
 
-- Added a packaged Electron interaction harness that spawns the resolved application executable
-  directly, attaches through loopback CDP and exercises Quick search, Settings and seeded-course
-  navigation sequentially in the native renderer.
-- Kept the whole assertion and measurement run inside one application process. The harness has a
-  one-launch hard cap, never emulates a viewport, disables retries and tracing, and verifies normal
-  shutdown from the exact spawned child handle.
-- Recorded input-to-feedback, input-to-usable and input-to-settled boundaries alongside active
-  finite animations, Long Tasks and renderer errors for immediate and post-idle controls. These are
-  diagnostic measurements, not invented pass thresholds.
+- Added a packaged Electron interaction harness that launches the resolved application executable
+  through Playwright's native Electron support and exercises Quick search, Settings and
+  seeded-course navigation sequentially in the native renderer.
+- Kept the complete validation inside one application process. The harness has a one-launch hard
+  cap, never emulates a viewport, disables retries and tracing, and verifies normal shutdown from
+  the exact child handle.
+- Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
+  settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
+  dressing a single observation up with distribution statistics proved nothing.
 
-**Checks:** harness and root TypeScript, ESLint and formatting checks; Playwright test discovery;
-CodeRabbit review with all six findings fixed; one corrected capped packaged run. The run used one
-process and one launch, recorded zero Long Tasks and renderer errors, and exited cleanly. Mean
-input-to-usable time across Quick search, Settings and Course was 62.0 ms immediately versus 43.5
-ms on the repeat after eight seconds, a 29.9% warm-up gap from one diagnostic sample per control.
+**Checks:** harness and root TypeScript, focused ESLint and formatting checks, and Playwright test
+discovery. Packaged execution remains the explicit `test:e2e:electron-package` check.
 
 ## Electron package measurement gate
 

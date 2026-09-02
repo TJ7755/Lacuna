@@ -4,29 +4,17 @@ import path from 'node:path';
 import { closePackagedApp, launchPackagedApp } from './packaged-app';
 import { runPackagedInteractionSample, waitForSeededDashboard } from './renderer-interactions';
 import type {
-  PackagedInteractionMeasurement,
   PackagedInteractionSample,
   PackagedInteractionSuiteResult,
   PackagedLaunchProof,
   RunningPackagedApp,
 } from './types';
 
-export type {
-  InteractionScenario,
-  PackagedInteractionMeasurement,
-  PackagedInteractionSample,
-  PackagedInteractionSuiteResult,
-  PackagedLaunchProof,
-  PackagedProcessExit,
-} from './types';
+const INTERACTION_SCENARIOS = ['search', 'settings', 'course'] as const;
 
 export async function runPackagedInteractionSuite(options: {
   executablePath: string;
-  measurements: readonly PackagedInteractionMeasurement[];
 }): Promise<PackagedInteractionSuiteResult> {
-  if (options.measurements.length === 0) {
-    throw new Error('The packaged interaction suite requires at least one measurement.');
-  }
   const rootDirectory = await realpath(
     await mkdtemp(path.join(tmpdir(), 'lacuna-packaged-performance-')),
   );
@@ -49,11 +37,11 @@ export async function runPackagedInteractionSuite(options: {
       viteResourceCount: running.viteResourceCount,
     };
     const samples: PackagedInteractionSample[] = [];
-    for (const measurement of options.measurements) {
+    for (const scenario of INTERACTION_SCENARIOS) {
       const sample = await runPackagedInteractionSample({
         running,
         executablePath: options.executablePath,
-        ...measurement,
+        scenario,
       });
       assertPackagedInteractionSample(sample);
       samples.push(sample);

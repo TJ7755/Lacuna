@@ -11,13 +11,7 @@ test('packaged interactions use the real application with normal motion', async 
   });
   expect(executablePath).toBe(await realpath(executablePath));
 
-  const suite = await runPackagedInteractionSuite({
-    executablePath,
-    measurements: (['search', 'settings', 'course'] as const).map((scenario) => ({
-      scenario,
-      idleDelayMs: 0,
-    })),
-  });
+  const suite = await runPackagedInteractionSuite({ executablePath });
   expect(suite.launch.executablePath).toBe(executablePath);
   expect(suite.launch.packaged).toBe(true);
   expect(suite.launch.rendererProtocol).toBe('app:');
@@ -25,6 +19,7 @@ test('packaged interactions use the real application with normal motion', async 
   expect(suite.launch.appVersion.length).toBeGreaterThan(0);
   expect(suite.processExit.exitCode).toBe(0);
   expect(suite.processExit.signalCode).toBeNull();
+  expect(suite.samples.map((sample) => sample.scenario)).toEqual(['search', 'settings', 'course']);
 
   for (const sample of suite.samples) {
     await testInfo.attach(`${sample.scenario}-interaction.json`, {

@@ -249,12 +249,10 @@ export async function runPackagedInteractionSample(options: {
   running: RunningPackagedApp;
   executablePath: string;
   scenario: InteractionScenario;
-  idleDelayMs: number;
 }): Promise<PackagedInteractionSample> {
   const { running } = options;
   const firstErrorIndex = running.errors.length;
   await resetToSeededDashboard(running.page);
-  if (options.idleDelayMs > 0) await running.page.waitForTimeout(options.idleDelayMs);
   await installBrowserProbe(running.page, options.scenario);
   await performInteraction(running.page, options.scenario);
   const probe = await finishBrowserProbe(running.page, options.scenario);
@@ -265,7 +263,6 @@ export async function runPackagedInteractionSample(options: {
 
   return {
     scenario: options.scenario,
-    idleDelayMs: options.idleDelayMs,
     executablePath: options.executablePath,
     appVersion: running.appVersion,
     packaged: running.packaged,

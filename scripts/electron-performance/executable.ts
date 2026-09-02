@@ -87,11 +87,3 @@ export async function resolvePackagedExecutable(
       (attempted.length > 0 ? ` Tried:\n- ${attempted.join('\n- ')}` : ''),
   );
 }
-
-export function argumentValue(args: readonly string[], name: string): string | undefined {
-  const prefix = `${name}=`;
-  const inline = args.find((argument) => argument.startsWith(prefix));
-  if (inline) return inline.slice(prefix.length);
-  const index = args.indexOf(name);
-  return index >= 0 ? args[index + 1] : undefined;
-}
