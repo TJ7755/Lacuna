@@ -17,6 +17,17 @@ export interface InteractionSample {
   };
 }
 
+export interface HoverInteractionSample {
+  pointerEnterToStyleChangeMs: number;
+  pointerEnterToPostPaintMs: number;
+  changedProperties: string[];
+}
+
+interface HoverInteractionResult {
+  sample: HoverInteractionSample;
+  pointerOverEpochMs: number;
+}
+
 export interface InteractionSummary {
   sampleCount: number;
   acknowledgementMs: Percentiles;
@@ -54,7 +65,14 @@ interface BrowserMeasurementState {
   error?: string;
 }
 
+interface BrowserHoverMeasurementState {
+  result?: HoverInteractionResult;
+  error?: string;
+}
+
 const MEASUREMENT_KEY = '__lacunaInteractionMeasurement';
+const HOVER_MEASUREMENT_KEY = '__lacunaHoverMeasurement';
+const DEFAULT_HOVER_STYLE_PROPERTIES = ['background-color', 'color', 'transform'] as const;
 
 /**
  * Measures the browser-visible part of one pointer interaction. The first marker is
@@ -177,7 +195,14 @@ export async function measurePointerInteraction({
 
             window.clearTimeout(deadline);
             stopped = true;
-            const measuredUntil = Math.max(acknowledgementAt, meaningfulAt, settlementAt ?? 0);
+            const completedAcknowledgementAt = acknowledgementAt;
+            const completedMeaningfulAt = meaningfulAt;
+            const completedSettlementAt = settlementAt;
+            const measuredUntil = Math.max(
+              completedAcknowledgementAt,
+              completedMeaningfulAt,
+              completedSettlementAt ?? 0,
+            );
             // Long-task entries are delivered asynchronously. This extra frame is
             // outside the measured interval and merely lets the observer flush.
             requestAnimationFrame(() => {
@@ -193,9 +218,11 @@ export async function measurePointerInteraction({
                 );
                 const durations = relevantLongTasks.map((entry) => entry.duration);
                 state.result = {
-                  acknowledgementMs: acknowledgementAt - startedAt,
-                  meaningfulMs: meaningfulAt - startedAt,
-                  ...(settlementAt === undefined ? {} : { settlementMs: settlementAt - startedAt }),
+                  acknowledgementMs: completedAcknowledgementAt - startedAt,
+                  meaningfulMs: completedMeaningfulAt - startedAt,
+                  ...(completedSettlementAt === undefined
+                    ? {}
+                    : { settlementMs: completedSettlementAt - startedAt }),
                   longTasks: {
                     supported: longTasksSupported,
                     count: durations.length,
@@ -212,7 +239,7 @@ export async function measurePointerInteraction({
         { capture: true, once: true },
       );
     },
-    { acknowledgement, meaningful, timeoutMs, measurementKey: MEASUREMENT_KEY },
+    { acknowledgement, meaningful, settled, timeoutMs, measurementKey: MEASUREMENT_KEY },
   );
 
   await trigger.click();
@@ -235,6 +262,127 @@ export async function measurePointerInteraction({
   if (!state?.result)
     throw new Error(state?.error ?? 'The interaction measurement produced no result.');
   return roundSample(state.result);
+}
+
+/**
+ * Measures visual hover feedback from the target's native pointerenter event. The
+ * first value is the animation frame where a watched computed style first differs
+ * from its pointer-away baseline. The second is the following animation-frame
+ * boundary, after the browser had an opportunity to paint that changed style.
+ *
+ * Only paint/compositor style properties are sampled. This deliberately avoids
+ * geometry reads such as getBoundingClientRect, which would force layout on every
+ * frame and contaminate the measurement it is meant to observe.
+ */
+export async function measureHoverInteraction({
+  page,
+  trigger,
+  properties = DEFAULT_HOVER_STYLE_PROPERTIES,
+  timeoutMs = 2_000,
+}: {
+  page: Page;
+  trigger: Locator;
+  properties?: readonly string[];
+  timeoutMs?: number;
+}): Promise<HoverInteractionResult> {
+  await trigger.evaluate(
+    (candidate, { measurementKey, properties, timeoutMs }) => {
+      type State = BrowserHoverMeasurementState & {
+        pointerOverEpochMs?: number;
+      };
+
+      if (!(candidate instanceof HTMLElement)) {
+        throw new Error('The hover measurement target is not an HTML element.');
+      }
+
+      const target = globalThis as typeof globalThis & Record<string, State>;
+      const state: State = {};
+      target[measurementKey] = state;
+
+      if (candidate.matches(':hover')) {
+        state.error = 'The hover measurement target was already hovered.';
+        return;
+      }
+
+      const baselineStyle = getComputedStyle(candidate);
+      const baseline = new Map(
+        properties.map((property) => [property, baselineStyle.getPropertyValue(property)]),
+      );
+
+      candidate.addEventListener(
+        'pointerover',
+        (event) => {
+          state.pointerOverEpochMs = performance.timeOrigin + event.timeStamp;
+        },
+        { capture: true, once: true },
+      );
+      candidate.addEventListener(
+        'pointerenter',
+        (event) => {
+          const pointerEnterAt = event.timeStamp;
+          const deadline = window.setTimeout(() => {
+            state.error = `Hover styles did not change within ${timeoutMs} ms.`;
+          }, timeoutMs);
+
+          function sampleFrame(now: number) {
+            if (state.error !== undefined) return;
+            const style = getComputedStyle(candidate);
+            const changedProperties = properties.filter(
+              (property) => style.getPropertyValue(property) !== baseline.get(property),
+            );
+            if (changedProperties.length === 0) {
+              requestAnimationFrame(sampleFrame);
+              return;
+            }
+
+            const styleChangeAt = now;
+            requestAnimationFrame((postPaintAt) => {
+              window.clearTimeout(deadline);
+              if (state.pointerOverEpochMs === undefined) {
+                state.error = 'The hover measurement observed pointerenter without pointerover.';
+                return;
+              }
+              state.result = {
+                sample: {
+                  pointerEnterToStyleChangeMs: styleChangeAt - pointerEnterAt,
+                  pointerEnterToPostPaintMs: postPaintAt - pointerEnterAt,
+                  changedProperties,
+                },
+                pointerOverEpochMs: state.pointerOverEpochMs,
+              };
+            });
+          }
+
+          requestAnimationFrame(sampleFrame);
+        },
+        { once: true },
+      );
+    },
+    { measurementKey: HOVER_MEASUREMENT_KEY, properties: [...properties], timeoutMs },
+  );
+
+  await trigger.hover();
+  await page.waitForFunction(
+    (measurementKey) => {
+      const target = globalThis as typeof globalThis &
+        Record<string, BrowserHoverMeasurementState | undefined>;
+      const state = target[measurementKey];
+      return state?.result !== undefined || state?.error !== undefined;
+    },
+    HOVER_MEASUREMENT_KEY,
+    { timeout: timeoutMs + 2_000 },
+  );
+
+  const state = await page.evaluate((measurementKey) => {
+    const target = globalThis as typeof globalThis &
+      Record<string, BrowserHoverMeasurementState | undefined>;
+    return target[measurementKey];
+  }, HOVER_MEASUREMENT_KEY);
+  if (!state?.result) throw new Error(state?.error ?? 'The hover measurement produced no result.');
+  return {
+    sample: roundHoverSample(state.result.sample),
+    pointerOverEpochMs: state.result.pointerOverEpochMs,
+  };
 }
 
 export function summariseInteractionSamples(
@@ -292,6 +440,14 @@ function roundSample(sample: InteractionSample): InteractionSample {
       totalDurationMs: round(sample.longTasks.totalDurationMs),
       maxDurationMs: round(sample.longTasks.maxDurationMs),
     },
+  };
+}
+
+function roundHoverSample(sample: HoverInteractionSample): HoverInteractionSample {
+  return {
+    ...sample,
+    pointerEnterToStyleChangeMs: round(sample.pointerEnterToStyleChangeMs),
+    pointerEnterToPostPaintMs: round(sample.pointerEnterToPostPaintMs),
   };
 }
 
