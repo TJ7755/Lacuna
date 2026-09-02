@@ -148,7 +148,10 @@ async function installBrowserProbe(page: Page, scenario: InteractionScenario): P
 
 async function performInteraction(page: Page, scenario: InteractionScenario): Promise<void> {
   if (scenario === 'search') {
-    await page.getByRole('button', { name: /Quick search/ }).click();
+    await page
+      .getByRole('button', { name: /Quick search/ })
+      .first()
+      .click();
     return;
   }
   if (scenario === 'settings') {
@@ -172,7 +175,8 @@ async function finishBrowserProbe(
       { inputAt: number | null; feedbackAt: number | null; usableAt: number | null } | undefined
     >;
     const state = targetWindow[key];
-    return state?.inputAt !== null && state?.feedbackAt !== null && state?.usableAt !== null;
+    if (!state) return false;
+    return state.inputAt !== null && state.feedbackAt !== null && state.usableAt !== null;
   }, PROBE_KEY);
 
   return page.evaluate(
@@ -212,7 +216,7 @@ async function finishBrowserProbe(
         );
       });
       const finiteAnimationDurationsMs = animations
-        .map((animation) => Number(animation.effect?.getComputedTiming().endTime ?? 0))
+        .map((animation) => Number(animation.effect?.getComputedTiming().activeDuration ?? 0))
         .filter((duration) => duration > 0 && Number.isFinite(duration))
         .sort((left, right) => left - right);
       await Promise.allSettled(animations.map((animation) => animation.finished));

@@ -272,7 +272,12 @@ export async function launchPackagedApp(
     });
     await page.emulateMedia({ reducedMotion: 'no-preference', colorScheme: 'light' });
     await page.waitForLoadState('domcontentloaded');
-    await page.evaluate(() => localStorage.setItem('lacuna.motionSpeed', 'normal'));
+    const motionSpeed = await page.evaluate(
+      () => localStorage.getItem('lacuna.motionSpeed') ?? 'normal',
+    );
+    if (motionSpeed !== 'normal') {
+      throw new Error(`The packaged renderer started with motion speed ${motionSpeed}.`);
+    }
 
     const desktop = await page.evaluate(async () => {
       const desktopWindow = window as unknown as {

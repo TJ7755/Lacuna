@@ -30,6 +30,9 @@ function selectedScenarios(): InteractionScenario[] {
   if (values.length === 0 || values.some((value) => !allowed.has(value as InteractionScenario))) {
     throw new Error('--scenarios must contain search, settings or course.');
   }
+  if (new Set(values).size !== values.length) {
+    throw new Error('--scenarios must not contain duplicate scenarios.');
+  }
   return values as InteractionScenario[];
 }
 
@@ -45,6 +48,9 @@ function summariseSamples(samples: readonly PackagedInteractionSample[]) {
 }
 
 const idleDelayMs = nonNegativeInteger('--idle-ms', 8_000);
+if (idleDelayMs === 0) {
+  throw new Error('--idle-ms must be greater than zero.');
+}
 const scenarios = selectedScenarios();
 const executablePath = await resolvePackagedExecutable({
   appDir: argumentValue(args, '--app-dir'),
