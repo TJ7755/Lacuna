@@ -24,6 +24,23 @@ TypeScript; lint; fixed-baseline and changed renderer production builds plus ass
 arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
 the ratcheted package audit. No Electron application was launched.
 
+## Resumable AI write approvals
+
+- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
+  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
+  retry delay and one bounded overall timeout.
+- Returned the committed tool result and its activity receipt through the original MCP invocation
+  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
+  changing its identity or guessing whether another write should be attempted.
+- Applied one deadline and cancellation signal to the complete relay invocation, including mailbox
+  reads, acknowledgements, approval waits and retry writes. An interrupted write now requires a
+  reconnect because its outcome is unknowable; cancellation while waiting for approval publishes
+  no retry. Native Stop responses acknowledge and retire the exact active run before renewal ends.
+
+**Checks:** red-to-green native-socket and relay-mailbox approval-resumption, cancellation, blocked
+I/O, stale-mailbox and Stop-lifecycle tests; focused native and standalone AI MCP suites; root and
+standalone AI MCP typechecks and lint.
+
 ## Electron package measurement gate
 
 - Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,
