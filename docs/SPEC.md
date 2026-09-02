@@ -1,15 +1,16 @@
-# Lacuna — Specification (v0.1.0)
+# Lacuna — Specification (v0.2.3 beta)
 
-Lacuna is a local-only, exam-driven spaced-revision application built on FSRS-6. Material is
+Lacuna is a local-first, exam-driven spaced-revision application built on FSRS-6. Material is
 organised into **courses**, each made of an ordered path of **lessons** holding **notes** and
 direct-recall **Cards**. Every Card is scheduled to peak in recall on its course's exam day. A single
 "objective" setting binds the scheduler and the progress bar to the same goal, so they can
-never disagree. All data lives on-device (IndexedDB); there is no server or account requirement.
-Core study works without a network connection after the application assets are available,
-although the web build may request the linked fonts and optional Vercel analytics. The application
-runs as a web SPA and packages as an Electron desktop app. Separate post-instruction **Questions**
+never disagree. Core study data lives on-device (IndexedDB), and no account is required. Optional
+device sync and browser AI use a hosted relay; core study works without a network connection after
+the application assets are available, although the web build may request the linked fonts and
+optional Vercel analytics. The application runs as a web SPA and packages as an Electron desktop
+app. Separate post-instruction **Questions**
 provide application practice with their own evidence and scheduling; they are deliberately absent
-from the Course path in v1.
+from the Course path in the current beta.
 
 **Course architecture.** The product was originally built around a flatter `Folder -> Deck ->
 Card` model. A staged migration (tracked in `docs/archive/roadmap-2026-08-11.md`, Arc 0) introduced `Course ->
@@ -21,10 +22,11 @@ modules keep working unchanged — but no route, page or sidebar entry exposes a
 directly any more. Where this document says "deck" it means that internal backing structure,
 not a user-facing concept.
 
-**Version 0.1.0** completes the Course Architecture Plan (Arc 0): the product is organised
-around **courses, lessons, notes and cards** end to end, with no user-facing deck or folder
-surfaces. v0.0.3 added Simple learn mode, formal card types and touch-first polish (see §20);
-that work ships inside 0.1.0 on this branch.
+**Current release: v0.2.3 beta.** The product is organised around **courses, lessons, notes and
+cards** end to end, with no user-facing deck or folder surfaces. The earlier v0.1.0 Course
+Architecture milestone and v0.0.3 Simple learn mode, formal card types and touch-first polish are
+included in this current release. This specification describes the shipped beta; unreleased work
+and maintenance sequencing belong in `docs/next_plan.md` and `docs/CHANGES.md`.
 
 British English throughout. No emojis anywhere in the product or its copy.
 

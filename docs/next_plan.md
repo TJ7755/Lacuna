@@ -1,123 +1,112 @@
 # Lacuna roadmap
 
-Reviewed 31 August 2026.
+Reviewed 1 September 2026.
 
-This file is the current decision surface: what is active, what follows it, and what is
-deliberately parked. Detailed specifications, implementation diaries and completed arcs do
-not belong here.
+This is the current decision surface: what Lacuna is now, what maintenance follows, and what is
+deliberately frozen. Detailed specifications, implementation diaries and completed arcs belong in
+`docs/SPEC.md`, `docs/CHANGES.md` or the archive. Historical plans are not an implementation queue.
 
-The former 14-arc roadmap is preserved in
-[the historical roadmap](archive/roadmap-2026-08-11.md). References in older code and
-documentation to an Arc or numbered section of the former `next_plan.md` refer to that
-archive.
+## Current state
 
-## Now
+### v0.2.3 beta
 
-### v0.2.0 beta release
+**Status:** delivered.
+
+The current public release and package version are **v0.2.3**. Lacuna is a local-first web/PWA and
+Electron learning application. Study data remains on-device; optional device sync and browser AI
+use the hosted relay, while packaged Electron AI uses its separate authenticated local companion.
+Windows, Linux and unsigned macOS desktop packages are beta artefacts with platform-specific update
+behaviour. Signing, provenance and the complete managed-device matrix remain release-readiness work.
+
+The application is usable. It is not declared stable or school-wide ready until the data-durability,
+dependency, release and device checks below have evidence on the exact release commit.
+
+## Feature freeze
 
 **Status:** in progress.
 
-The next outcome is a real public beta, not another indefinite polish loop. Before the tag, the two
-remaining trust-breaking boundaries are closed: live Card and Question exits require confirmation
-and Simple sessions resume after interruption; Question authoring has complete recoverable drafts.
-The release pipeline then builds Windows x64 and Linux x64 in GitHub Actions, adds a local macOS
-arm64 build to the same draft, and publishes `v0.2.0` explicitly as a beta after the packaged
-artefacts pass their platform checks.
+No net-new learning modes, integrations, hosted services or visual redesigns are accepted while the
+maintenance programme is in progress. Permitted work is limited to:
 
-### After the beta: maintainability consolidation
+- data-safety, migration, backup, restore and sync fixes;
+- security and dependency updates;
+- crashes, regressions and installation/device compatibility;
+- CI, release provenance and governance controls;
+- already-evidenced usability work on core study, authoring and backup workflows.
+
+Ideas in old plans, audits or `docs/new_features_list.md` stay parked until a fresh product decision.
+
+## Ordered maintenance programme
+
+### 1. Dependency and release security
 
 **Status:** ready.
 
-The next maintenance slices, in order, are:
+Land safe within-range lockfile updates, then upgrade the supported Electron 42 line, React Router
+6.30.x, Electron Builder and the Vitest toolchain in separate, reviewable changes. Add root and relay
+audit jobs; every critical or high finding needs a fix or a named owner and review date. Rebuild every
+configured desktop target after the builder migration.
 
-1. Make the full unit-test run quiet. Its assertions pass, but known React `act`, forwarded-ref,
-   router-future and expected-boundary messages still bury new stderr failures.
-2. Continue replacing `src/db/repository.ts` ownership clusters with directly imported persistence
-   modules. Assessment persistence is the next candidate; transaction scope and rollback behaviour
-   decide the seam, not a line-count quota.
-3. Reassess `useLearnSession.ts` only after persistence ownership is clearer. Extract pure
-   derivations or command adapters; do not split mutable session state across competing hooks.
+**Exit:** audits and all existing quality gates pass, with remaining advisories explicitly triaged.
 
-Every slice must preserve behaviour, keep or improve the quality gates, and remove more code than it
-adds where that does not damage clarity.
+### 2. Data durability and desktop evidence
 
-### Recently delivered
+**Status:** ready; schema frozen at v26 unless a data-integrity defect forces a migration.
 
-Optional exam dates and steady retention shipped in PR #115. Grading transparency, including the
-hint-cost disclosure, shipped in PR #116. The [UX sticking-point audit](UX-STICKING-POINTS-2026-08-30.md)
-remains the source for unselected product work; it is not an active implementation queue.
+Migrate and re-export historical fixtures. Prove media-bearing full-backup round trips, replace and
+merge restore points, concurrent sync convergence, and quota/persistence-denial recovery. Add
+reproducible macOS provenance, native AI evidence, locked-down Windows installed/portable/update
+checks, the clean-account macOS matrix, and an explicit signing/notarisation decision.
 
-## Close-out queue
+**Exit:** no known path silently loses data and every advertised desktop artefact has reproducible
+evidence.
 
-No manual verification debt remains. The prompter completed the real two- then three-device P9 pass
-against the live sync relay on 28 August 2026 and confirmed it works. Multi-device sync P1–P9, Arc
-14, the learn screen redesign and Arc 11 are delivered. Their detailed records remain in their
-plans, `docs/SPEC.md`, `docs/CHANGES.md` and the historical roadmap.
+### 3. Enforceable quality signal and governance
 
-## Deployment status
+**Status:** ready.
 
-Recorded 12 August 2026. Lacuna is not yet in real use: the prompter revises with other tools, and
-this summer's work is to polish Lacuna for genuine use from the start of the 2026–27 academic year.
-There is currently no irreplaceable study data in the database.
+Remove or explain React, router, socket-test and build-warning noise. Add browser checks for CSP,
+offline reload, keyboard use and backup round trips. Make release publication depend on complete CI
+for the exact commit. Establish required review, ownership, dependency alerts and CodeQL controls.
 
-This sequences the work below, and both consequences are easy to get backwards.
+**Exit:** a red check means broken, not merely noisy.
 
-Work touching data integrity — destructive schema migrations, storage cutovers, and backup, restore
-and merge behaviour — is safest now, and that window closes permanently once a term of real revision
-history exists. Prefer it to work that can be done at any time.
+### 4. Persistence consolidation
 
-Work whose payoff is measured in observed usage cannot report before September 2026. Do not schedule
-a usage experiment as though it can return an answer this summer, and do not treat an empty review
-corpus as a problem to be engineered around.
+**Status:** proposed.
 
-## Later candidates
+Characterise transaction and rollback behaviour, then extract assessment, review, Card, Course and
+Lesson ownership from `src/db/repository.ts` in small behaviour-preserving changes. Add purpose-specific
+query modules and move callers away from the compatibility barrel. Do not split by line-count quota or
+introduce interfaces solely to mock Dexie.
 
-These require a fresh product decision after the maintenance queue:
+**Exit:** the owner and transaction scope of a persistence change are obvious.
 
-| Candidate                               | Current position                                | Decision gate                                                                   |
-| --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| Mobile reminders and PWA installation   | Scoped only                                     | Verify platform behaviour; return rate is not measurable before September 2026  |
-| Progress receipts and encrypted relay   | Detailed outline only                           | Identify a real tutor/parent reporting workflow before infrastructure work      |
-| Further MCP product expansion           | Delivered AI scope is deliberately bounded       | Prioritise concrete agent workflows instead of exposing every repository method |
-| Item-family and generated-practice work | Research direction                              | Prove authored mark-scheme demand and define stable skill identity first        |
-| Prediction calibration harness          | Considered 12 August 2026 and deferred; no data | A real corpus cannot exist before September 2026; see below                     |
+### 5. Study-session consolidation
 
-### Calibration harness — deferred, not rejected
+**Status:** proposed.
 
-`docs/scientific-assessment.md` §5 names calibration measurement as the highest-value scientific
-step. It was considered on 12 August 2026 and deferred, because there is no real review corpus to
-measure: a harness built now would produce its first genuine answer no earlier than the 2026–27
-academic year, which fails roadmap rule 6. See Deployment status above.
+Add characterisation tests for ordering, grading, undo, cooldown, unlock, Simple-session resume and
+revision plans. Extract only pure scope/load/transition seams from `useLearnSession.ts`; retain one
+lifecycle coordinator and stop if an extraction duplicates mutable state.
 
-Deferring costs nothing. `ReviewLog.retrievabilityAtReview` is already an honest ex-ante prediction
-and is included in full backups, so reviews recorded today remain fully analysable later. The gate is
-a real corpus — roughly a thousand reviews, enough to populate short-interval horizon bins — not any
-engineering prerequisite.
+**Exit:** fewer responsibilities, not merely fewer lines.
 
-Two findings worth carrying forward are recorded in `MEMORIES.md`: review logs now carry a short
-fingerprint of the FSRS `w` array that produced the prediction, and `tooling/short-term-memory/`
-is not a precedent for a Lacuna-data harness. Two methodological questions remain unanswered and should be settled before building
-anything: whether a scheduler can be validly evaluated on review data whose timing it chose, and
-whether long-horizon exam-day projection is measurable at all from observed intervals.
+## Controlled rollout
 
-## Parked
+| Ring | Audience | Gate |
+|---|---|---|
+| 0 | TJ7755 and nc-3388 | Clean and restored historical profiles on Windows and macOS. |
+| 1 | 5–10 consenting beta pupils | Confirmed backup routine, diagnostics and named support channel. |
+| 2 | Wider school cohort | Two weeks without unresolved data-loss, startup or installation P0s; signing position documented. |
 
-Arc 11 is formally delivered. Its deferred ideas are new proposals, not unfinished Arc 11 work.
-
-- Accounts, a Lacuna-hosted cloud service and live collaboration.
-- Streamable HTTP MCP transport and a standalone `npx lacuna-mcp` package.
-- OCR for image occlusion and waveform trimming for audio.
-- Scaffold items, tuple answers, cursor-aware fraction entry, structure-aware equation editing,
-  optimal scheme-line matching and LLM grading.
-- Experimental prototypes listed in the historical roadmap appendix unless separately approved.
+For every pilot user, make backup status visible and explain how to export a full backup.
 
 ## Roadmap rules
 
-1. `docs/next_plan.md` stays below roughly 200 lines.
-2. Completed behaviour moves to `docs/SPEC.md`; user-visible changes move to
-   `docs/CHANGES.md`; historical rationale stays in the archive or Git history.
-3. One product implementation plan is active at a time.
-4. Status is one of **proposed**, **ready**, **in progress**, **blocked** or **delivered**.
-5. A delivered plan records only remaining manual verification here. It does not retain its
-   task-by-task implementation diary in the current roadmap.
-6. New infrastructure requires a named user workflow and an explicit maintenance decision.
+1. Keep this file below 200 lines.
+2. Completed behaviour belongs in `docs/SPEC.md`; released user-visible changes belong in
+   `docs/CHANGES.md`; historical rationale belongs in the archive or Git history.
+3. Keep one active maintenance programme; do not revive archived feature plans by implication.
+4. Use only **proposed**, **ready**, **in progress**, **blocked** or **delivered** for status.
+5. New infrastructure needs a named user workflow and an explicit maintenance decision.
