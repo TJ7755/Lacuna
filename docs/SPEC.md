@@ -2934,10 +2934,24 @@ user-action surface — including the separate safety boundary for study-history
 - `bun run electron:build:linux` — builds Linux x64 AppImage and DEB artefacts.
 - `bun run electron:build:mac` — builds macOS arm64 DMG and ZIP artefacts.
 
-The tag-triggered release workflow requires `v<package version>`, runs the complete release gate,
-builds Windows and Linux separately and lets one publisher create a GitHub pre-release draft. It
-uploads only distributable files, update metadata and SHA-256 checksums. The local Mac artefacts are
-uploaded to that same draft before publication.
+The tag-triggered release workflow requires `v<package version>` and rejects a tag whose exact
+commit does not equal `GITHUB_SHA`. It also requires successful ordinary `CI` and `Security` push
+workflows for that exact commit on `master` or `main`; repeating selected checks in the tag workflow
+does not substitute for a failed commit workflow. It then runs the complete release gate and builds
+Windows x64, Linux x64 and macOS arm64 in separate native GitHub jobs. Windows and macOS both run the
+native AI end-to-end gate before packaging; the macOS job uses an official Apple Silicon runner and
+explicitly disables signing-certificate discovery. The resulting DMG and ZIP remain unsigned,
+unnotarised and manual-update packages.
+
+Each platform job first requires every file class in its explicit distributable and update-metadata
+allowlist, then uploads and creates GitHub build-provenance attestations for those exact files with
+`actions/attest@v4`. One publisher, gated on all three native builds, combines the named workflow
+artefacts, writes and separately attests `SHA256SUMS.txt`, then creates or refreshes a GitHub
+pre-release draft. Only that publisher can write release contents; build jobs receive only
+repository-read, OIDC-token, attestation and artifact-metadata permissions. Attestations identify
+the workflow and commit behind a digest; they are not application code signing, notarisation or
+physical-device evidence. The maintainer procedure and verification command are recorded in
+`docs/maintenance/release.md`.
 
 ### Build output
 

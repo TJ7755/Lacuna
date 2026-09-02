@@ -6,7 +6,8 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  actions: read
+  contents: read
 
 jobs:
   verify:
@@ -14,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
@@ -32,6 +34,36 @@ jobs:
             echo "Release tag $GITHUB_REF_NAME does not match package version $expected_tag"
             exit 1
           fi
+          tag_commit="$(git rev-parse --verify "${GITHUB_REF}^{commit}")"
+          if [[ "$tag_commit" != "$GITHUB_SHA" ]]; then
+            echo "Release tag $GITHUB_REF_NAME resolves to $tag_commit, not workflow commit $GITHUB_SHA"
+            exit 1
+          fi
+
+      - name: Require successful CI for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          workflow_runs="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&status=completed&per_page=100"
+          )"
+          required_workflows=(CI Security)
+          for workflow in "${required_workflows[@]}"; do
+            if ! jq -e --arg workflow "$workflow" '
+              .workflow_runs
+              | any(
+                  .name == $workflow
+                  and .event == "push"
+                  and (.head_branch == "master" or .head_branch == "main")
+                  and .conclusion == "success"
+                )
+            ' <<<"$workflow_runs" > /dev/null; then
+              echo "$workflow has not succeeded for $GITHUB_SHA on master or main."
+              exit 1
+            fi
+          done
 
       - run: bun run typecheck
       - run: bun run lint
@@ -46,6 +78,11 @@ jobs:
   build-win:
     needs: verify
     runs-on: windows-latest
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,19 +96,50 @@ jobs:
       - run: bun run test:e2e:electron-ai
       - run: bun run electron:build:win
 
+      - name: Verify Windows artefact allowlist
+        shell: pwsh
+        run: |
+          $requiredPatterns = @(
+            'release/Lacuna-Setup-*.exe',
+            'release/Lacuna-Setup-*.exe.blockmap',
+            'release/Lacuna-Portable-*.exe',
+            'release/latest.yml'
+          )
+          foreach ($pattern in $requiredPatterns) {
+            $matches = @(Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue)
+            if ($matches.Count -eq 0) {
+              throw "Missing required release artefact: $pattern"
+            }
+          }
+
+      - name: Attest Windows artefacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            release/Lacuna-Setup-*.exe
+            release/Lacuna-Setup-*.exe.blockmap
+            release/Lacuna-Portable-*.exe
+            release/latest.yml
+
       - name: Upload Windows artefacts
         uses: actions/upload-artifact@v7
         with:
           name: lacuna-win-x64
           path: |
-            release/*.exe
-            release/*.exe.blockmap
+            release/Lacuna-Setup-*.exe
+            release/Lacuna-Setup-*.exe.blockmap
+            release/Lacuna-Portable-*.exe
             release/latest.yml
           if-no-files-found: error
 
   build-linux:
     needs: verify
     runs-on: ubuntu-latest
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -84,6 +152,31 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run electron:build:linux
 
+      - name: Verify Linux artefact allowlist
+        shell: bash
+        run: |
+          required_patterns=(
+            'release/*.AppImage'
+            'release/*.AppImage.blockmap'
+            'release/*.deb'
+            'release/latest-linux.yml'
+          )
+          for pattern in "${required_patterns[@]}"; do
+            if ! compgen -G "$pattern" > /dev/null; then
+              echo "Missing required release artefact: $pattern"
+              exit 1
+            fi
+          done
+
+      - name: Attest Linux artefacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            release/*.AppImage
+            release/*.AppImage.blockmap
+            release/*.deb
+            release/latest-linux.yml
+
       - name: Upload Linux artefacts
         uses: actions/upload-artifact@v7
         with:
@@ -95,15 +188,94 @@ jobs:
             release/latest-linux.yml
           if-no-files-found: error
 
-  publish-draft:
-    needs: [build-win, build-linux]
-    runs-on: ubuntu-latest
+  build-mac:
+    needs: verify
+    runs-on: macos-15
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v7
         with:
-          pattern: lacuna-*-x64
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - run: bun install --frozen-lockfile
+      - run: bun run test:e2e:electron-ai
+      - run: bun run electron:build:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Verify macOS artefact allowlist
+        shell: bash
+        run: |
+          required_patterns=(
+            'release/*.dmg'
+            'release/*.dmg.blockmap'
+            'release/*.zip'
+            'release/*.zip.blockmap'
+            'release/latest-mac.yml'
+          )
+          for pattern in "${required_patterns[@]}"; do
+            if ! compgen -G "$pattern" > /dev/null; then
+              echo "Missing required release artefact: $pattern"
+              exit 1
+            fi
+          done
+
+      - name: Attest macOS artefacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            release/*.dmg
+            release/*.dmg.blockmap
+            release/*.zip
+            release/*.zip.blockmap
+            release/latest-mac.yml
+
+      - name: Upload macOS artefacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: lacuna-macos-arm64
+          path: |
+            release/*.dmg
+            release/*.dmg.blockmap
+            release/*.zip
+            release/*.zip.blockmap
+            release/latest-mac.yml
+          if-no-files-found: error
+
+  publish-draft:
+    needs: [build-win, build-linux, build-mac]
+    runs-on: ubuntu-latest
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - name: Download lacuna-win-x64
+        uses: actions/download-artifact@v8
+        with:
+          name: lacuna-win-x64
           path: release-assets
-          merge-multiple: true
+
+      - name: Download lacuna-linux-x64
+        uses: actions/download-artifact@v8
+        with:
+          name: lacuna-linux-x64
+          path: release-assets
+
+      - name: Download lacuna-macos-arm64
+        uses: actions/download-artifact@v8
+        with:
+          name: lacuna-macos-arm64
+          path: release-assets
 
       - name: Create or preserve draft release
         env:
@@ -128,6 +300,11 @@ jobs:
       - name: Create checksums
         working-directory: release-assets
         run: find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+      - name: Attest checksum manifest
+        uses: actions/attest@v4
+        with:
+          subject-path: release-assets/SHA256SUMS.txt
 
       - name: Upload artefacts to draft release
         env:
