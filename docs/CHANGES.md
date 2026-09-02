@@ -12,9 +12,11 @@
   finite animations, Long Tasks and renderer errors for immediate and post-idle controls. These are
   diagnostic measurements, not invented pass thresholds.
 
-**Checks:** harness TypeScript, ESLint and formatting checks; Playwright test discovery; one capped
-packaged run proved direct attach and clean shutdown, then exposed an invalid width-dependent test
-target before measurement. The corrected single-session measurement remains pending.
+**Checks:** harness and root TypeScript, ESLint and formatting checks; Playwright test discovery;
+CodeRabbit review with all six findings fixed; one corrected capped packaged run. The run used one
+process and one launch, recorded zero Long Tasks and renderer errors, and exited cleanly. Mean
+input-to-usable time across Quick search, Settings and Course was 62.0 ms immediately versus 43.5
+ms on the repeat after eight seconds, a 29.9% warm-up gap from one diagnostic sample per control.
 
 ## Electron package measurement gate
 

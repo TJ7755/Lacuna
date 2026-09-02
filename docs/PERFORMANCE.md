@@ -4,6 +4,33 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## Packaged Electron interaction baseline (2 September 2026)
+
+The v0.2.3 macOS arm64 application was measured through the packaged renderer with
+normal motion enabled. One application process and one launch exercised Quick
+search, Settings and seeded-course navigation immediately and once more after an
+eight-second idle period. The harness used the native window size, disabled
+retries and tracing, reported no renderer errors or Long Tasks, and verified a
+clean process exit. Each control has one sample, so these figures are diagnostic
+baseline evidence rather than a statistical claim.
+
+| Scenario and boundary | Immediate | Repeat after 8 s |             Change |
+| --------------------- | --------: | ---------------: | -----------------: |
+| Quick search feedback |    9.5 ms |           6.5 ms |   -2.9 ms / -31.0% |
+| Quick search usable   |   27.9 ms |          26.0 ms |    -1.8 ms / -6.5% |
+| Quick search settled  |  732.9 ms |         192.6 ms | -540.4 ms / -73.7% |
+| Settings feedback     |   14.4 ms |          42.6 ms | +28.2 ms / +195.1% |
+| Settings usable       |   85.0 ms |          59.9 ms |  -25.1 ms / -29.6% |
+| Settings settled      |  424.6 ms |         375.8 ms |  -48.8 ms / -11.5% |
+| Course feedback       |    9.2 ms |          11.1 ms |   +1.9 ms / +20.5% |
+| Course usable         |   73.2 ms |          44.5 ms |  -28.7 ms / -39.3% |
+| Course settled        |  237.0 ms |         242.7 ms |    +5.7 ms / +2.4% |
+
+Mean input-to-usable latency across the three scenarios fell from 62.0 ms on
+immediate use to 43.5 ms on the repeat, a difference of 18.6 ms or 29.9%. That
+does not prove a common cause: the next changes must compare the same controls
+before and after each optimisation rather than marketing the warm-up gap itself.
+
 ## Electron package baseline (2 September 2026)
 
 `bun run perf:audit:electron-package -- --asar <path>` reads the packaged ASAR
