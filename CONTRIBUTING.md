@@ -39,6 +39,7 @@ bun run typecheck
 bun run lint
 bun run test:ci:unit
 bun run test:coverage
+bun run test:coverage:recovery
 bun run build:assets
 bun run release:scenario
 bun run perf:check

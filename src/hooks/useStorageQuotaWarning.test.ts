@@ -73,4 +73,49 @@ describe('useStorageQuotaWarning', () => {
       configurable: true,
     });
   });
+
+  it('ignores a failed quota estimate and does not notify', async () => {
+    const originalStorage = navigator.storage;
+    const estimate = vi.fn().mockRejectedValue(new Error('quota unavailable'));
+    Object.defineProperty(navigator, 'storage', {
+      value: { estimate },
+      configurable: true,
+    });
+
+    const { unmount } = renderHook(() => useStorageQuotaWarning());
+    await waitFor(() => expect(estimate).toHaveBeenCalledOnce());
+    expect(notify).not.toHaveBeenCalled();
+
+    unmount();
+    Object.defineProperty(navigator, 'storage', {
+      value: originalStorage,
+      configurable: true,
+    });
+  });
+
+  it('checks again after the interval but keeps the warning to once per session', async () => {
+    vi.useFakeTimers();
+    const originalStorage = navigator.storage;
+    const estimate = vi.fn().mockResolvedValue({ usage: 90, quota: 100 });
+    Object.defineProperty(navigator, 'storage', {
+      value: { estimate },
+      configurable: true,
+    });
+
+    const { unmount } = renderHook(() => useStorageQuotaWarning());
+    await Promise.resolve();
+    expect(notify).toHaveBeenCalledOnce();
+
+    vi.advanceTimersByTime(60_000);
+    await Promise.resolve();
+    expect(estimate).toHaveBeenCalledTimes(2);
+    expect(notify).toHaveBeenCalledOnce();
+
+    unmount();
+    Object.defineProperty(navigator, 'storage', {
+      value: originalStorage,
+      configurable: true,
+    });
+    vi.useRealTimers();
+  });
 });

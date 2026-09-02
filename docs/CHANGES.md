@@ -1,5 +1,22 @@
 # Lacuna — next beta
 
+## Recovery-risk coverage gate
+
+- Added a separate `test:coverage:recovery` gate for persistence, manual merge, storage-quota
+  warnings, automatic backups, portability and media assets. It uses per-file thresholds so the
+  recovery modules cannot hide behind a healthy global average. Pull-request CI and exact-release
+  verification both require it.
+- Added regressions for unsupported persistence, merge conflicts, failed quota estimates, stale
+  backup scheduling, best-effort folder mirroring, invalid asset data and orphan collection.
+- Added the recovery coverage command to the contributor check matrix; the documented release-risk
+  procedure now matches the gates enforced by CI and exact-release verification.
+
+**Checks:** 98 focused tests; recovery coverage at 100/100/100/100 for persistence,
+100/92.68/100/100 for manual merge, 96.22/83.33/100/96.22 for quota warnings,
+79.27/86.84/69.23/79.27 for backups, 87.38/78.43/90/87.38 for portability and
+71.70/71.64/86.36/71.70 for assets (statements/branches/functions/lines); existing coverage gate
+unchanged.
+
 ## Controlled offline browser reload
 
 - Added a production-build Chromium journey that installs and waits for control by the service

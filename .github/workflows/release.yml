@@ -69,6 +69,7 @@ jobs:
       - run: bun run lint
       - run: bun run test:ci:unit
       - run: bun run test:coverage
+      - run: bun run test:coverage:recovery
       - run: bun run build:assets
       - run: bun run release:scenario
       - run: bun run perf:check

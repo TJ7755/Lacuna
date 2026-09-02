@@ -152,6 +152,36 @@ describe('backups', () => {
     expect(await db.backups.count()).toBe(countBefore);
   });
 
+  it('takes a backup and schedules asset cleanup when no restore point is fresh', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(24 * 60 * 60 * 1000 + 1);
+
+    await autoBackupIfStale();
+
+    expect(await db.backups.count()).toBe(1);
+  });
+
+  it('keeps the backup when mirroring fails and warns in development', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const handle = {
+      name: 'Backups',
+      queryPermission: vi.fn(async () => 'granted' as PermissionState),
+      getFileHandle: vi.fn(async () => ({
+        createWritable: async () => ({
+          write: vi.fn(async () => {
+            throw new Error('disk full');
+          }),
+          close: vi.fn(async () => undefined),
+        }),
+      })),
+    };
+    vi.spyOn(db.appState, 'get').mockResolvedValue({ key: 'backupFolderHandle', value: handle });
+
+    await takeAutoBackup(true);
+
+    expect(await db.backups.count()).toBe(1);
+    expect(warn).toHaveBeenCalledWith('Folder mirror failed:', expect.any(Error));
+  });
+
   it('keeps ten ordinary restore points without pruning a pre-migration snapshot', async () => {
     let now = 1;
     vi.spyOn(Date, 'now').mockImplementation(() => now);
