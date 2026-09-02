@@ -130,11 +130,12 @@ export function App() {
           return;
         }
 
-        // Ask the browser to reduce IndexedDB eviction risk. Fire-and-forget so
-        // a slow, rejected or denied request never blocks startup. Repeating the
-        // request on later launches is deliberate because a previous denial does
-        // not mean the browser will never grant persistence.
-        void requestPersistentStorage().catch(() => {});
+        if (!window.electronAPI?.isElectron) {
+          // Ask the browser to reduce IndexedDB eviction risk. Electron keeps its
+          // profile under app userData, outside the browser-origin eviction model.
+          // Fire-and-forget so a slow, rejected or denied request never blocks startup.
+          void requestPersistentStorage().catch(() => {});
+        }
 
         // One-shot migration: the site-wide "open lessons in edit mode" default
         // (formerly in Settings) has been removed in favour of a per-course

@@ -49,6 +49,8 @@ import { replacementLifecycle } from './db/replacementLifecycle';
 
 describe('App initialisation', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    Reflect.deleteProperty(window, 'electronAPI');
     localStorage.removeItem('lacuna.aiSettings');
     localStorage.removeItem('lacuna-ai-relay-session-v1');
     localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
@@ -83,6 +85,18 @@ describe('App initialisation', () => {
     await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
 
     persistence.reject(new Error('denied'));
+  });
+
+  it('does not request browser persistence in Electron', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true },
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
   });
 
   it('explains how to recover from a full database without suggesting site-data deletion', async () => {

@@ -12,9 +12,10 @@
 - Added a production-build closure gate based on Rollup module identities, so hashed filenames
   cannot hide a regression. Incremental Settings JavaScript fell from 789,082 to 105,557 raw bytes
   (-86.6%) and from 220,892 to 28,701 gzip bytes (-87.0%); its static chunk count fell from 24 to 16.
-- Removed browser persistence-status checks and controls from packaged Electron Settings. Electron
-  keeps IndexedDB under its application data directory, so a browser storage-pressure prompt was
-  both redundant and misleading there; restore points and folder mirroring remain available.
+- Removed browser persistence-status checks and controls from packaged Electron Settings, and skip
+  the corresponding browser persistence request during Electron start-up. Electron keeps IndexedDB
+  under its application data directory, so a browser storage-pressure prompt was both redundant
+  and misleading there; restore points and folder mirroring remain available.
 
 **Checks:** red-to-green production closure build; focused closure, Settings, sync, portability,
 backup and optimiser tests; full typecheck, focused lint and production build.
@@ -30,7 +31,7 @@ backup and optimiser tests; full typecheck, focused lint and production build.
   centre across all five course surfaces.
 
 **Checks:** nine focused component tests; full web typecheck; Playwright discovery; production
-browser position check pending completion of the concurrent Settings static-closure refactor.
+browser position check across all five course surfaces.
 
 ## Shared motion contract
 
