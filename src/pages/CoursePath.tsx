@@ -39,16 +39,13 @@ import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmen
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { PathNodeWithLine, lockHintFor } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { CourseTabs } from '../components/course/CourseTabs';
+import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
-import {
-  ArchivedCourseBadge,
-  ArchivedCourseRestoreNotice,
-} from '../components/course/ArchivedCourseState';
+import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
-import { ChevronLeftIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
+import { PlayIcon, PlusIcon } from '../components/ui/icons';
 
 import { updateCourse } from '../db/repository';
 import {
@@ -431,23 +428,14 @@ export function CoursePath() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      {/* One row of chrome, not three. The back link, the section tabs and the lesson
-          view mode toggle all sit together, so the course card starts near the top of
-          the screen rather than below a stack of single-control rows. */}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <Link
-          to={archived ? '/archived' : '/'}
-          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          {archived ? 'Archived courses' : 'All courses'}
-        </Link>
-        <div className="flex min-w-0 items-center gap-3">
-          {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId ?? ''} />}
-          {/* Workspace mode governs the path and lessons, so it stays beside the
-              content navigation rather than moving into CourseTabs, which is shared
-              across course surfaces that do not have an authoring state. */}
-          {archived ? null : !canEditLessons(course) ? (
+      <CoursePageNavigation
+        courseId={courseId ?? ''}
+        backTo={archived ? '/archived' : '/'}
+        backLabel={archived ? 'Archived courses' : 'All courses'}
+        archived={archived}
+        className="mb-4"
+        trailing={
+          archived ? undefined : !canEditLessons(course) ? (
             <span className="hidden text-xs text-ink-faint sm:inline">
               Authoring is locked for shared courses
             </span>
@@ -456,9 +444,9 @@ export function CoursePath() {
               mode={lessonViewMode}
               onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
             />
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {/* A single upcoming assessment is already named by the card's eyebrow and counted
           by its days-to-go pill, so the strip would be a third copy of one date. It earns

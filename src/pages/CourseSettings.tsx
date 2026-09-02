@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { CourseTabs } from '../components/course/CourseTabs';
+import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
@@ -14,7 +14,6 @@ import {
   defaultFsrsParameters,
   DEFAULT_REQUEST_RETENTION,
 } from '../fsrs/params';
-import { ChevronLeftIcon } from '../components/ui/icons';
 import type { CourseRecord, ExamObjective, FsrsParameters, UnlockMode } from '../db/types';
 import { parseSteps } from './settings/parseSteps';
 import { SchedulingFieldsSection } from './settings/SchedulingFieldsSection';
@@ -273,20 +272,15 @@ export function CourseSettings() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-8 px-6 py-8 md:px-10">
-      <div className="min-w-0 max-w-2xl flex-1">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <Link
-            to="/"
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            <ChevronLeftIcon width={16} height={16} />
-            All courses
-          </Link>
-          <CourseTabs courseId={course.id} />
-        </div>
-
-        <div>
+    <div className="mx-auto max-w-6xl px-6 py-8 md:px-10">
+      <CoursePageNavigation
+        courseId={course.id}
+        backTo="/"
+        backLabel="All courses"
+        className="mb-6"
+      />
+      <div className="flex gap-8">
+        <div className="min-w-0 max-w-2xl flex-1">
           <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
             <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
             <div className="relative">
@@ -544,14 +538,14 @@ export function CourseSettings() {
             </div>
           </div>
         </div>
-      </div>
 
-      <SectionRail
-        sections={COURSE_SETTINGS_SECTIONS}
-        activeSection={activeSection}
-        onNavigate={goToSection}
-        motionMultiplier={m}
-      />
+        <SectionRail
+          sections={COURSE_SETTINGS_SECTIONS}
+          activeSection={activeSection}
+          onNavigate={goToSection}
+          motionMultiplier={m}
+        />
+      </div>
     </div>
   );
 }
