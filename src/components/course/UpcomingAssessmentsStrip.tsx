@@ -8,6 +8,7 @@
 import type { CourseAssessment } from '../../db/types';
 import { formatDate } from '../../utils/datetime';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { motionTransition } from '../ui/motion';
 import { m as motion } from 'motion/react';
 import { FlagIcon } from '../ui/icons';
 
@@ -61,7 +62,8 @@ export function UpcomingAssessmentsStrip({
           onClick={() => onSelect(assessment.id)}
           whileHover={m > 0 ? { y: -1 } : undefined}
           whileTap={m > 0 ? { scale: 0.97 } : undefined}
-          transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+          data-motion-transition-tier="feedback"
+          transition={motionTransition('feedback', m)}
           className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-line-strong px-3 py-1.5 text-sm text-ink-soft transition-[border-color,background-color,color,transform] hover:border-accent hover:bg-accent/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:transition-none"
         >
           <FlagIcon width={14} height={14} className="shrink-0 text-ink-faint" />

@@ -8,10 +8,10 @@ production renderer remains functionally unchanged apart from the intentional fe
 
 | Production-build change | Before | After | Change |
 |---|---:|---:|---:|
-| Initial JavaScript | 867,917 bytes | 868,855 bytes | +938 bytes / +0.11% |
-| Initial JavaScript gzip | 266,665 bytes | 266,937 bytes | +272 bytes / +0.10% |
-| Initial CSS | 121,805 bytes | 122,751 bytes | +946 bytes / +0.78% |
-| App chunk | 468,150 bytes | 468,150 bytes | No change |
+| Initial JavaScript | 867,917 bytes | 869,942 bytes | +2,025 bytes / +0.23% |
+| Initial JavaScript gzip | 266,665 bytes | 267,400 bytes | +735 bytes / +0.28% |
+| Initial CSS | 121,805 bytes | 122,613 bytes | +808 bytes / +0.66% |
+| App chunk | 468,150 bytes | 469,237 bytes | +1,087 bytes / +0.23% |
 
 The CSS increase is the tooltip and state-class vocabulary required for the new focus/hover
 surface. The Motion import was already part of the app closure for the heatmap; assessment

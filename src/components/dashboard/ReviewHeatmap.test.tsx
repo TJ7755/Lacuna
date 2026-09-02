@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Card } from '../../db/types';
 import { ReviewHeatmap } from './ReviewHeatmap';
@@ -38,14 +38,40 @@ function makeCard(): Card {
 }
 
 describe('ReviewHeatmap', () => {
-  it('exposes review cells as keyboard-focusable controls with descriptive tooltip content', () => {
+  it('uses one roving tab stop and moves the focused detail with arrow keys', () => {
     render(<ReviewHeatmap cards={[makeCard()]} />);
 
-    const cell = screen.getByRole('button', { name: /1 review on/ });
+    const cells = screen.getAllByRole('gridcell');
+    expect(cells.filter((cell) => cell.tabIndex === 0)).toHaveLength(1);
+    const cell = cells.find((candidate) => candidate.getAttribute('aria-label')?.startsWith('1 review'));
+    expect(cell).toBeDefined();
+    if (!cell) return;
     expect(cell).toHaveAttribute('data-review-heatmap-cell');
-    expect(cell).toHaveAttribute('aria-describedby');
-    expect(document.getElementById(cell.getAttribute('aria-describedby') ?? '')).toHaveTextContent(
-      /1 review on/,
+    expect(cell).toHaveAttribute('aria-label', expect.stringMatching(/1 review on/));
+    expect(cell).not.toHaveAttribute('aria-describedby');
+
+    const initialActive = cells.findIndex((candidate) => candidate.tabIndex === 0);
+    fireEvent.focus(cells[initialActive]);
+    expect(document.body.querySelector('[role="tooltip"]')).toHaveTextContent(
+      cells[initialActive].getAttribute('aria-label') ?? '',
     );
+    fireEvent.keyDown(cells[initialActive], { key: 'ArrowRight' });
+    const nextActive = screen.getAllByRole('gridcell').find((candidate) => candidate.tabIndex === 0);
+    expect(nextActive).not.toBe(cells[initialActive]);
+    expect(document.body.querySelector('[role="tooltip"]')).toHaveTextContent(
+      nextActive?.getAttribute('aria-label') ?? '',
+    );
+  });
+
+  it('renders the presentational tooltip outside the horizontally scrolling grid', () => {
+    const { container } = render(<ReviewHeatmap cards={[makeCard()]} />);
+    fireEvent.focus(screen.getAllByRole('gridcell')[0]);
+    const scrollport = container.querySelector('.overflow-x-auto');
+    const tooltip = document.body.querySelector('[role="tooltip"]');
+    expect(scrollport).toBeInTheDocument();
+    expect(tooltip).toBeInTheDocument();
+    expect(scrollport).not.toContainElement(tooltip as HTMLElement | null);
+    expect(tooltip).toHaveAttribute('aria-hidden', 'true');
+    expect(tooltip).toHaveStyle({ position: 'fixed' });
   });
 });

@@ -69,6 +69,10 @@ describe('UpcomingAssessmentsStrip', () => {
       'transition-[border-color,background-color,color,transform]',
       'motion-reduce:transition-none',
     );
+    expect(screen.getByRole('button', { name: /Next checkpoint/ })).toHaveAttribute(
+      'data-motion-transition-tier',
+      'feedback',
+    );
   });
 
   it('renders nothing when there are no upcoming assessments', () => {
