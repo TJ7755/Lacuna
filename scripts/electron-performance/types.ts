@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
-import type { ElectronApplication, Page } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
 
 export type InteractionScenario = 'search' | 'settings' | 'course';
 
@@ -45,7 +45,7 @@ export interface PackagedInteractionSuiteResult {
 }
 
 export interface RunningPackagedApp {
-  application: ElectronApplication;
+  browser: Browser;
   child: ChildProcess;
   page: Page;
   errors: string[];

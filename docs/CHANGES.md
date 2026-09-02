@@ -2,13 +2,14 @@
 
 ## Native packaged interaction validation
 
-- Added a packaged Electron interaction harness that launches the resolved application executable
-  through Playwright's native Electron support and exercises Quick search, Settings and
-  seeded-course navigation sequentially in the native renderer.
-- Kept the complete validation inside one application process. The harness has a one-launch hard
-  cap, never emulates a viewport, disables retries and tracing, and verifies normal shutdown from
-  the exact child handle. Native attachment may take up to 30 seconds for a freshly packaged macOS
-  artefact; measured interaction timings begin only after the seeded Dashboard is ready.
+- Added a packaged Electron interaction harness that spawns the resolved executable itself,
+  attaches over loopback CDP and exercises Quick search, Settings and seeded-course navigation
+  sequentially in the native renderer. Explicit process ownership avoids Playwright's intermittent
+  native Electron attachment race after its debugger sockets are already connected.
+- Kept the complete validation inside one launch and one Electron process tree. The harness has a
+  one-launch hard cap, never emulates a viewport, disables retries and tracing, and verifies normal
+  shutdown from the exact spawned child handle. Interaction timings begin only after the seeded
+  Dashboard is ready.
 - Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
   settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
   dressing a single observation up with distribution statistics proved nothing.

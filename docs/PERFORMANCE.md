@@ -6,13 +6,13 @@ regressions are compared with the work that actually ran at the time.
 
 ## Packaged Electron interaction validation
 
-`LACUNA_ELECTRON_APP_DIR=<path> bun run test:e2e:electron-package` launches the
-resolved packaged executable once through Playwright's native Electron support.
-The single process exercises Quick search, Settings and seeded-course navigation
-in that fixed order with normal motion and the native viewport, then verifies a
-clean exit from the exact child handle. Retries, tracing and parallel workers are
-disabled. Native attachment may take up to 30 seconds for a freshly packaged
-macOS artefact; that allowance is not an interaction-performance threshold.
+`LACUNA_ELECTRON_APP_DIR=<path> bun run test:e2e:electron-package` spawns the
+resolved packaged executable once, then attaches Playwright over loopback CDP.
+The single application launch exercises Quick search, Settings and seeded-course
+navigation in that fixed order with normal motion and the native viewport, then
+verifies a clean exit from the exact spawned child handle. Retries, tracing and
+parallel workers are disabled. The explicit lifecycle avoids Playwright's
+intermittent native Electron attachment race after its debugger sockets connect.
 
 Each interaction retains raw input-to-feedback, input-to-usable and
 input-to-settled timings, finite-animation settlement, Long Tasks and renderer
