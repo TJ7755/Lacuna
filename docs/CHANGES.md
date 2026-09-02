@@ -1,5 +1,12 @@
 # Lacuna — next beta
 
+## Electron renderer reloads
+
+- Preserve hash routes and query-bearing assets when the packaged `app://` protocol serves a
+  renderer reload, while retaining authority and traversal checks.
+
+**Checks:** focused app-protocol path tests; Electron typecheck, lint, formatting and preparation.
+
 ## Native packaged interaction validation
 
 - Added a packaged Electron interaction harness that spawns the resolved executable itself,
