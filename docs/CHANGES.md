@@ -13,6 +13,25 @@
 2,908 unit tests passing in the native environment; relay typecheck, lint and tests; handwriting
 typecheck, build and tests; package audits.
 
+## Electron Builder 26 security migration
+
+- Moved desktop packaging from Electron Builder 24.13.3 to the maintained 26.15.7 release on the
+  official `v26` registry channel. The lock now resolves `app-builder-lib` 26.15.7,
+  `builder-util-runtime` 9.7.0 and `tar` 7.5.22, and no longer carries the obsolete
+  `app-builder-bin` or the stale Builder 24 Squirrel peer tree.
+- Preserved the existing package matrix and configuration: Windows x64 NSIS and portable, Linux
+  x64 AppImage and DEB, and macOS arm64 DMG and ZIP. The explicit Windows artefact names remain
+  unchanged, as do the macOS updater filenames generated from the existing configuration.
+- Reduced the root audit from 21 findings to 7. No Electron Builder or `tar` advisory remains; the
+  outstanding findings belong to the separately stacked Vitest, Vite and React Router work.
+
+**Checks:** red-to-green release dependency and security-floor regression; frozen Bun install;
+root typecheck and lint; Electron preparation; native Electron AI end-to-end test; host-native
+arm64 DMG and ZIP build, DMG checksum and ZIP integrity. Windows cross-packaging produced the x64
+unpacked application but this Apple Silicon host cannot execute Electron Builder's x86_64 NSIS
+compiler without Rosetta; Windows NSIS/portable and Linux AppImage/DEB remain authoritative on their
+native CI runners.
+
 ## Repository governance
 
 - Added contributor and security policies, enforceable CODEOWNERS, pull-request and issue templates,
