@@ -310,7 +310,9 @@ describe('AppShell AI workspace', () => {
     aiSessionState.current = null;
     view.rerender(shellElement());
 
-    expect(screen.queryByRole('complementary', { name: 'AI conversation' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('complementary', { name: 'AI conversation' }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows the activity capsule only while the full conversation is closed', async () => {

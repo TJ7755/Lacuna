@@ -39,10 +39,9 @@ interface McpCompanionModule {
 }
 
 interface AiCompanionModule {
-  startAiCompanion: (options: {
-    appVersion: string;
-    hostUserDataPath: string;
-  }) => { close: () => Promise<void> };
+  startAiCompanion: (options: { appVersion: string; hostUserDataPath: string }) => {
+    close: () => Promise<void>;
+  };
 }
 
 const isDev = !app.isPackaged;
@@ -123,7 +122,10 @@ function ensureWindowVisible(state: WindowState): WindowState {
 // Register app:// as a standard secure scheme before the app is ready so that
 // the renderer gets a proper origin and CORS / COOP / COEP work correctly.
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+  {
+    scheme: 'app',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+  },
 ]);
 
 /** Allow only the permissions Lacuna needs in its trusted main renderer. */
@@ -385,27 +387,34 @@ function publishUpdateState(state: UpdateState): void {
 const gotTheLock = isCompanionProcess ? false : app.requestSingleInstanceLock();
 
 if (isCompanionProcess) {
-  void app.whenReady().then(async () => {
-    const companionModulePath = isAiCompanionProcess
-      ? './mcp/aiCompanion.js'
-      : './mcp/companion.js';
-    const companion = await import(companionModulePath) as McpCompanionModule | AiCompanionModule;
-    const handle = 'startAiCompanion' in companion
-      ? companion.startAiCompanion({
-          appVersion: app.getVersion(),
-          hostUserDataPath: companionHostUserDataPath(),
-        })
-      : companion.startMcpCompanion();
-    registerCompanionProcessShutdown({
-      handle,
-      stdin: process.stdin,
-      signals: process,
-      quit: () => app.quit(),
+  void app
+    .whenReady()
+    .then(async () => {
+      const companionModulePath = isAiCompanionProcess
+        ? './mcp/aiCompanion.js'
+        : './mcp/companion.js';
+      const companion = (await import(companionModulePath)) as
+        McpCompanionModule | AiCompanionModule;
+      const handle =
+        'startAiCompanion' in companion
+          ? companion.startAiCompanion({
+              appVersion: app.getVersion(),
+              hostUserDataPath: companionHostUserDataPath(),
+            })
+          : companion.startMcpCompanion();
+      registerCompanionProcessShutdown({
+        handle,
+        stdin: process.stdin,
+        signals: process,
+        quit: () => app.quit(),
+      });
+    })
+    .catch((error) => {
+      process.stderr.write(
+        `Could not start the Lacuna ${isAiCompanionProcess ? 'AI ' : ''}MCP companion: ${String(error)}\n`,
+      );
+      app.exit(1);
     });
-  }).catch((error) => {
-    process.stderr.write(`Could not start the Lacuna ${isAiCompanionProcess ? 'AI ' : ''}MCP companion: ${String(error)}\n`);
-    app.exit(1);
-  });
 } else if (!gotTheLock) {
   app.quit();
 } else {
@@ -491,8 +500,13 @@ if (isCompanionProcess) {
     await mcp.startMcpServer(() => mainWindow);
 
     ipcMain.handle('mcp:status', (event) => {
-      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed() ||
-        event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      if (
+        !mainWindow ||
+        mainWindow.isDestroyed() ||
+        mainWindow.webContents.isDestroyed() ||
+        event.sender !== mainWindow.webContents ||
+        event.senderFrame !== mainWindow.webContents.mainFrame
+      ) {
         throw new Error('Untrusted MCP status request.');
       }
       return mcpModule?.getMcpStatus() ?? { running: false, toolCount: 0, toolSurfaceVersion: 0 };
@@ -505,8 +519,11 @@ if (!isCompanionProcess) {
     app.quit();
   });
 
-  app.on('before-quit', createApplicationShutdownHandler({
-    stop: () => mcpModule?.stopMcpServer() ?? Promise.resolve(),
-    quit: () => app.quit(),
-  }));
+  app.on(
+    'before-quit',
+    createApplicationShutdownHandler({
+      stop: () => mcpModule?.stopMcpServer() ?? Promise.resolve(),
+      quit: () => app.quit(),
+    }),
+  );
 }

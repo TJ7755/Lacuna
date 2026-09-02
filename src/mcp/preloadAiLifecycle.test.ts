@@ -13,17 +13,18 @@ const electron = vi.hoisted(() => {
     exposeInMainWorld: vi.fn((_name: string, value: unknown) => {
       exposed = value;
     }),
-    api: () => exposed as {
-      onOpenHelp(callback: () => void): () => void;
-      ai: {
-        requestRestart(): Promise<void>;
-        onRestartRequested(callback: () => void): () => void;
-        listen(
-          onRequest: (channelId: string, request: { type: string }) => Promise<unknown>,
-          onDisconnected: (channelId: string) => void,
-        ): () => void;
-      };
-    },
+    api: () =>
+      exposed as {
+        onOpenHelp(callback: () => void): () => void;
+        ai: {
+          requestRestart(): Promise<void>;
+          onRestartRequested(callback: () => void): () => void;
+          listen(
+            onRequest: (channelId: string, request: { type: string }) => Promise<unknown>,
+            onDisconnected: (channelId: string) => void,
+          ): () => void;
+        };
+      },
     emit(channel: string, value: unknown) {
       for (const listener of listeners.get(channel) ?? []) listener({}, value);
     },
