@@ -66,6 +66,16 @@ vi.mock('../../sync/pairing', () => ({
   validateRecoveryPassphrase: validateRecoveryPassphraseMock,
 }));
 
+vi.mock('../../sync/credentials', () => ({
+  forgetRememberedCredentials: forgetRememberedCredentialsMock,
+  readRememberedCredentials: readRememberedCredentialsMock,
+}));
+
+vi.mock('../../sync/pairingConfig', () => ({
+  DEFAULT_RELAY_URL: 'https://relay.example',
+  validateRecoveryPassphrase: validateRecoveryPassphraseMock,
+}));
+
 vi.mock('../../sync/triggers', () => ({
   publishUnlockedCredentials: publishUnlockedCredentialsMock,
   clearUnlockedCredentials: clearUnlockedCredentialsMock,
@@ -141,7 +151,7 @@ describe('SyncSection', () => {
     render(<SyncSection />);
     fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced: use a private relay' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Advanced: use a private relay' }));
     fireEvent.change(screen.getByLabelText('Relay mint secret (private relays only)'), {
       target: { value: 'mint-secret' },
     });

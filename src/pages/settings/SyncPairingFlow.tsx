@@ -6,12 +6,9 @@ import { CameraIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { SyncField } from './SyncField';
 import { SettingsSubsectionHeading } from './SettingsSectionHeading';
-import {
-  DEFAULT_RELAY_URL,
-  decodePairingCode,
-  validateRecoveryPassphrase,
-  type PairingPayload,
-} from '../../sync/pairing';
+import { DEFAULT_RELAY_URL, validateRecoveryPassphrase } from '../../sync/pairingConfig';
+import type { PairingPayload } from '../../sync/pairing';
+import { loadSyncPairing } from '../../sync/loaders';
 
 export type SyncPairingMode = 'setup' | 'join';
 export type SyncPairingBusy = 'setup' | 'join' | null;
@@ -81,6 +78,7 @@ export function SyncPairingFlow({
             await stop(current);
             setScanning(false);
             try {
+              const { decodePairingCode } = await loadSyncPairing();
               setPairingPayload(decodePairingCode(decodedText));
               setScanError(null);
             } catch (error) {
@@ -184,7 +182,9 @@ export function SyncPairingFlow({
             onChange={setMintSecret}
             type="password"
             autoComplete="off"
-            placeholder={isDefaultRelay ? 'Leave empty for the default relay' : 'Required for this relay'}
+            placeholder={
+              isDefaultRelay ? 'Leave empty for the default relay' : 'Required for this relay'
+            }
           />
         ) : null}
         {!isDefaultRelay ? null : (

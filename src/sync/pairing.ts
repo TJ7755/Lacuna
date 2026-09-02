@@ -18,9 +18,20 @@ import {
   pullRelaySlot,
   type RelayProvider,
 } from './relay';
+import {
+  DEFAULT_RELAY_URL,
+  MIN_RECOVERY_PASSPHRASE_LENGTH,
+  validateRecoveryPassphrase,
+} from './pairingConfig';
+import {
+  forgetRememberedCredentials,
+  readRememberedCredentials,
+  type SyncCredentials,
+} from './credentials';
 
-export const DEFAULT_RELAY_URL = 'https://lacuna-relay.vercel.app';
-export const MIN_RECOVERY_PASSPHRASE_LENGTH = 16;
+export { DEFAULT_RELAY_URL, MIN_RECOVERY_PASSPHRASE_LENGTH, validateRecoveryPassphrase };
+export { forgetRememberedCredentials, readRememberedCredentials };
+export type { SyncCredentials };
 export const PAIRING_CODE_PREFIX = 'LACUNA-SYNC-1:';
 
 const CHANNEL_ID_RE = /^[0-9a-f]{32}$/;
@@ -32,13 +43,6 @@ export class SyncPairingError extends Error {
     super(message);
     this.name = 'SyncPairingError';
   }
-}
-
-export interface SyncCredentials {
-  relayUrl: string;
-  channelId: string;
-  channelKey: Uint8Array;
-  writeToken: string;
 }
 
 export interface PairingPayload {
@@ -64,15 +68,6 @@ export interface PairingOperationOptions {
 interface MintedChannel {
   channelId: string;
   writeToken: string;
-}
-
-/** Return a user-facing validation message, or null when the passphrase is acceptable. */
-export function validateRecoveryPassphrase(passphrase: string): string | null {
-  if (passphrase.trim().length === 0) return 'Enter a recovery passphrase.';
-  if (Array.from(passphrase).length < MIN_RECOVERY_PASSPHRASE_LENGTH) {
-    return `Use at least ${MIN_RECOVERY_PASSPHRASE_LENGTH} characters for the recovery passphrase.`;
-  }
-  return null;
 }
 
 /** Encode the complete pairing capability for an explicit QR reveal. */
@@ -232,36 +227,6 @@ export async function unlockSyncState(
     }
     throw error;
   }
-}
-
-/**
- * Build credentials from this device's remembered copy without the passphrase,
- * or null when nothing usable is remembered.
- */
-export function readRememberedCredentials(state: SyncState | undefined): SyncCredentials | null {
-  if (!state?.remembered || !state.channelId) return null;
-  if (!CHANNEL_KEY_HEX_RE.test(state.remembered.channelKeyHex)) return null;
-  if (!WRITE_TOKEN_RE.test(state.remembered.writeToken)) return null;
-  if (!state.relayUrl) return null;
-  try {
-    return {
-      relayUrl: normaliseRelayUrl(state.relayUrl),
-      channelId: state.channelId,
-      channelKey: hexToBytes(state.remembered.channelKeyHex),
-      writeToken: state.remembered.writeToken,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** Clear this device's remembered copy, keeping the wrapped recovery keybag. */
-export async function forgetRememberedCredentials(): Promise<void> {
-  await updateSyncState((current) => {
-    if (!current?.remembered) return undefined;
-    const { remembered: _omitted, ...rest } = current;
-    return rest;
-  });
 }
 
 async function rememberCredentials(credentials: SyncCredentials): Promise<void> {

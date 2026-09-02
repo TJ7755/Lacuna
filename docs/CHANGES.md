@@ -1,5 +1,24 @@
 # Lacuna — next beta
 
+## Settings action loading
+
+- Removed QR rendering, sync pairing, database export/import, manual merge, restore-point actions,
+  charts and the FSRS optimiser from the Settings route's static dependency closure. Those modules
+  now load only when the corresponding control is used; the visible Settings layout, motion and
+  accessibility contract are unchanged.
+- Split lightweight pairing configuration, remembered credentials, backup-folder metadata and the
+  optimiser threshold from their heavy execution modules. This lets Settings report current state
+  without quietly downloading the machinery for an action the user has not requested.
+- Added a production-build closure gate based on Rollup module identities, so hashed filenames
+  cannot hide a regression. Incremental Settings JavaScript fell from 789,082 to 105,557 raw bytes
+  (-86.6%) and from 220,892 to 28,701 gzip bytes (-87.0%); its static chunk count fell from 24 to 16.
+- Removed browser persistence-status checks and controls from packaged Electron Settings. Electron
+  keeps IndexedDB under its application data directory, so a browser storage-pressure prompt was
+  both redundant and misleading there; restore points and folder mirroring remain available.
+
+**Checks:** red-to-green production closure build; focused closure, Settings, sync, portability,
+backup and optimiser tests; full typecheck, focused lint and production build.
+
 ## Stable course navigation
 
 - Replaced six page-specific course-navigation rows with one shared course-chrome module. Equal

@@ -9,11 +9,8 @@ import {
   backupFolderName,
   chooseBackupFolder,
   clearBackupFolder,
-  deleteBackup,
   folderMirrorSupported,
-  restoreBackup,
-  takeAutoBackup,
-} from '../../db/backups';
+} from '../../db/backupFolder';
 import {
   checkPersistentStorage,
   requestPersistentStorage,
@@ -33,11 +30,12 @@ export function BackupsSection() {
   const deleteButtons = useRef(new Map<number, HTMLButtonElement>());
   const deleteFocusReturn = useRef<number | null>(null);
   const mirrorSupported = folderMirrorSupported();
+  const supportsPersistenceRequest = !window.electronAPI?.isElectron;
 
   useEffect(() => {
     void backupFolderName().then(setFolder);
-    void checkPersistentStorage().then(setPersistence);
-  }, []);
+    if (supportsPersistenceRequest) void checkPersistentStorage().then(setPersistence);
+  }, [supportsPersistenceRequest]);
 
   useEffect(() => {
     if (confirmDelete !== null || deleteFocusReturn.current === null) return;
@@ -48,6 +46,7 @@ export function BackupsSection() {
 
   async function handleBackupNow() {
     try {
+      const { takeAutoBackup } = await import('../../db/backups');
       await takeAutoBackup();
       notify('Restore point saved.', 'positive');
     } catch {
@@ -57,6 +56,7 @@ export function BackupsSection() {
 
   async function handleRestore(id: number) {
     try {
+      const { restoreBackup } = await import('../../db/backups');
       await restoreBackup(id);
       setConfirmRestore(null);
       notify('Data restored from the selected point.', 'positive');
@@ -67,6 +67,7 @@ export function BackupsSection() {
 
   async function handleDelete(id: number) {
     try {
+      const { deleteBackup } = await import('../../db/backups');
       await deleteBackup(id);
       setConfirmDelete(null);
       backupNowButton.current?.focus();
@@ -125,7 +126,7 @@ export function BackupsSection() {
         succeeds.
       </p>
 
-      {persistence && (
+      {supportsPersistenceRequest && persistence && (
         <div
           className={cn(
             'mb-5 rounded-xl border p-4',
