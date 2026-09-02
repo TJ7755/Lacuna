@@ -155,4 +155,24 @@ describe('Electron MCP server lifecycle façade', () => {
     expect(mocks.closeStdio).toHaveBeenCalledOnce();
     expect(server.getMcpStatus().running).toBe(false);
   });
+
+  it.each(['broker', 'stdio'] as const)(
+    'cleans up a partial start when the %s transport fails',
+    async (failure) => {
+      const server = await import('../../electron/mcp/server');
+      if (failure === 'broker') {
+        mocks.brokerStart.mockRejectedValueOnce(new Error('broker failed'));
+      } else {
+        mocks.serveStdio.mockImplementationOnce(() => {
+          throw new Error('stdio failed');
+        });
+      }
+
+      await expect(server.startMcpServer(() => null)).rejects.toThrow(`${failure} failed`);
+
+      expect(mocks.bridgeStop).toHaveBeenCalledOnce();
+      expect(mocks.brokerStop).toHaveBeenCalledOnce();
+      expect(server.getMcpStatus().running).toBe(false);
+    },
+  );
 });

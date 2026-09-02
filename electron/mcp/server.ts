@@ -102,22 +102,30 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
     getWindow,
     (tool, input, grants, client) => dataBridge!.execute(tool, input, grants, client),
   );
-  await companionBroker.start();
-
-  stdioHandle = serveStdio(() => {
-    const server = new McpServer({ name: 'lacuna', version: app.getVersion() });
-    dataBridge!.registerTools(server);
-    return server;
-  }, {
-    legacy: 'serve',
-    onerror: (error) => log.error('MCP stdio transport failed', error),
-  });
-  started = true;
+  try {
+    await companionBroker.start();
+    stdioHandle = serveStdio(() => {
+      const server = new McpServer({ name: 'lacuna', version: app.getVersion() });
+      dataBridge!.registerTools(server);
+      return server;
+    }, {
+      legacy: 'serve',
+      onerror: (error) => log.error('MCP stdio transport failed', error),
+    });
+    started = true;
+  } catch (error) {
+    await disposeRuntime();
+    throw error;
+  }
 }
 
 /** Stops the MCP runtime and drops all sockets, grants and pending renderer decisions. */
 export async function stopMcpServer(): Promise<void> {
   if (!started) return;
+  await disposeRuntime();
+}
+
+async function disposeRuntime(): Promise<void> {
   dataBridge?.stop();
   await companionBroker?.stop();
   await stdioHandle?.close();

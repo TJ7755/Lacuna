@@ -3143,3 +3143,10 @@ in "Unreleased — UI/UX audit implementation" above.
 - Added interface tests for fail-closed renderer decisions, sender rejection, listener removal,
   purpose and identity invariants, sequential socket messages, live status, file permissions and
   socket/metadata cleanup. The packaged dependency gate now checks both internal modules directly.
+
+# 2026-09-02 — Failed MCP starts now clean up partial runtime state
+
+- A companion-broker or legacy-stdio startup failure now tears down installed renderer listeners,
+  local sockets, connection metadata and in-memory grants before returning the original error.
+- Added a lifecycle regression test covering both failure points; previously `stopMcpServer` saw
+  `running: false` and returned without touching the partially-created runtime.
