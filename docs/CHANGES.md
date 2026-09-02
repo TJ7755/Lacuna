@@ -1,5 +1,21 @@
 # Lacuna — next beta
 
+## Native packaged interaction measurement
+
+- Added a packaged Electron interaction harness that spawns the resolved application executable
+  directly, attaches through loopback CDP and exercises Quick search, Settings and seeded-course
+  navigation sequentially in the native renderer.
+- Kept the whole assertion and measurement run inside one application process. The harness has a
+  one-launch hard cap, never emulates a viewport, disables retries and tracing, and verifies normal
+  shutdown from the exact spawned child handle.
+- Recorded input-to-feedback, input-to-usable and input-to-settled boundaries alongside active
+  finite animations, Long Tasks and renderer errors for immediate and post-idle controls. These are
+  diagnostic measurements, not invented pass thresholds.
+
+**Checks:** harness TypeScript, ESLint and formatting checks; Playwright test discovery; one capped
+packaged run proved direct attach and clean shutdown, then exposed an invalid width-dependent test
+target before measurement. The corrected single-session measurement remains pending.
+
 ## Electron package measurement gate
 
 - Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,
