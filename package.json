@@ -29,6 +29,7 @@
     "test:e2e:web": "playwright test -c playwright.web.config.ts",
     "test:e2e:electron-ai": "bun run electron:prepare && playwright test -c playwright.electron-ai.config.ts",
     "perf:audit": "bun scripts/performance-audit.ts",
+    "perf:audit:electron-package": "bun scripts/electron-package-audit.ts",
     "perf:check": "bun scripts/performance-audit.ts --assets-only",
     "build:assets": "vite build",
     "test:watch": "vitest",
@@ -89,6 +90,7 @@
     "@napi-rs/wasm-runtime": "1.1.0"
   },
   "devDependencies": {
+    "@electron/asar": "3.4.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "4.1.18",
     "@testing-library/jest-dom": "^6.9.1",

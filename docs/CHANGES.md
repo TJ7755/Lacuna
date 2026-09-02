@@ -1,5 +1,17 @@
 # Lacuna — next beta
 
+## Electron package measurement gate
+
+- Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,
+  build/test/documentation assets and external Chromium locale packs without extracting the app.
+- Added deterministic ceilings at the measured v0.2.3 Windows baseline. These prevent fresh bloat
+  now and will be tightened by the package-diet PRs; they are not an excuse to preserve the current
+  138.8 MB ASAR or its 49.5 MB of locale packs.
+- Recorded the exact package and dominant dependency measurements in `docs/PERFORMANCE.md`.
+
+**Checks:** direct TypeScript check; audit and ceiling check against the existing v0.2.3 Windows
+ASAR; production asset build and existing web asset budget.
+
 ## Complete exact-release workspace verification
 
 - Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone
