@@ -186,18 +186,44 @@ async function measurePrefetchedHover(
   trigger: Locator,
   prefetchPattern: RegExp,
 ): Promise<{ hover: HoverInteractionSample; prefetch: PrefetchSample }> {
-  const prefetchRequest = page
-    .waitForRequest(prefetchPattern, { timeout: PREFETCH_TIMEOUT_MS })
-    .catch(() => undefined);
+  const pattern = {
+    source: prefetchPattern.source,
+    flags: prefetchPattern.flags,
+  };
+  const resourceCountBefore = await page.evaluate(({ source, flags }) => {
+    const matcher = new RegExp(source, flags);
+    return performance.getEntriesByType('resource').filter((entry) => matcher.test(entry.name))
+      .length;
+  }, pattern);
   const hover = await measureHoverInteraction({ page, trigger });
-  const request = await prefetchRequest;
-  const requestStartMs = request?.timing().startTime;
+  const resourceStartMs = await page
+    .waitForFunction(
+      ({ patternSource, patternFlags, resourceCountBefore }) => {
+        const matcher = new RegExp(patternSource, patternFlags);
+        const resources = performance
+          .getEntriesByType('resource')
+          .filter((entry) => matcher.test(entry.name));
+        return resources.length > resourceCountBefore
+          ? resources[resourceCountBefore]?.startTime
+          : undefined;
+      },
+      {
+        patternSource: prefetchPattern.source,
+        patternFlags: prefetchPattern.flags,
+        resourceCountBefore,
+      },
+      { timeout: PREFETCH_TIMEOUT_MS },
+    )
+    .then((handle) => handle.jsonValue() as Promise<number>)
+    .catch(() => undefined);
   return {
     hover: hover.sample,
     prefetch: {
-      observed: request !== undefined,
+      observed: resourceStartMs !== undefined,
       pointerOverToRequestStartMs:
-        requestStartMs === undefined ? null : round(requestStartMs - hover.pointerOverEpochMs),
+        resourceStartMs === undefined
+          ? null
+          : round(Math.max(0, resourceStartMs - hover.pointerOverAtMs)),
     },
   };
 }

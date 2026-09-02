@@ -25,7 +25,7 @@ export interface HoverInteractionSample {
 
 interface HoverInteractionResult {
   sample: HoverInteractionSample;
-  pointerOverEpochMs: number;
+  pointerOverAtMs: number;
 }
 
 export interface InteractionSummary {
@@ -288,7 +288,7 @@ export async function measureHoverInteraction({
   await trigger.evaluate(
     (candidate, { measurementKey, properties, timeoutMs }) => {
       type State = BrowserHoverMeasurementState & {
-        pointerOverEpochMs?: number;
+        pointerOverAtMs?: number;
       };
 
       if (!(candidate instanceof HTMLElement)) {
@@ -311,8 +311,8 @@ export async function measureHoverInteraction({
 
       candidate.addEventListener(
         'pointerover',
-        (event) => {
-          state.pointerOverEpochMs = performance.timeOrigin + event.timeStamp;
+        () => {
+          state.pointerOverAtMs = performance.now();
         },
         { capture: true, once: true },
       );
@@ -338,7 +338,7 @@ export async function measureHoverInteraction({
             const styleChangeAt = now;
             requestAnimationFrame((postPaintAt) => {
               window.clearTimeout(deadline);
-              if (state.pointerOverEpochMs === undefined) {
+              if (state.pointerOverAtMs === undefined) {
                 state.error = 'The hover measurement observed pointerenter without pointerover.';
                 return;
               }
@@ -348,7 +348,7 @@ export async function measureHoverInteraction({
                   pointerEnterToPostPaintMs: postPaintAt - pointerEnterAt,
                   changedProperties,
                 },
-                pointerOverEpochMs: state.pointerOverEpochMs,
+                pointerOverAtMs: state.pointerOverAtMs,
               };
             });
           }
@@ -381,7 +381,7 @@ export async function measureHoverInteraction({
   if (!state?.result) throw new Error(state?.error ?? 'The hover measurement produced no result.');
   return {
     sample: roundHoverSample(state.result.sample),
-    pointerOverEpochMs: state.result.pointerOverEpochMs,
+    pointerOverAtMs: state.result.pointerOverAtMs,
   };
 }
 
