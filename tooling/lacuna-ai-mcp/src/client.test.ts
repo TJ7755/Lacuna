@@ -30,13 +30,22 @@ class FakeTransport implements TerminalRelayTransport {
   fallbackRead: { generation: string; mailbox: RelayBrowserMailbox } | null = null;
   readonly writes: RelayTerminalMailbox[] = [];
   beforeWrite?: (mailbox: RelayTerminalMailbox) => void;
+  blockReads = false;
   blockWrites = false;
   writeError?: Error;
+  private readonly blockedReadReleases: Array<() => void> = [];
+  private readonly blockedWriteReleases: Array<() => void> = [];
 
-  async readBrowserMailbox(): Promise<{
+  async readBrowserMailbox(_connection?: ConnectedTerminalRelay, signal?: AbortSignal): Promise<{
     generation: string;
     mailbox: RelayBrowserMailbox;
   } | null> {
+    if (this.blockReads) {
+      await new Promise<void>((resolve, reject) => {
+        this.blockedReadReleases.push(resolve);
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+    }
     return this.reads.shift() ?? this.fallbackRead;
   }
 
@@ -48,7 +57,8 @@ class FakeTransport implements TerminalRelayTransport {
   ): Promise<string> {
     this.beforeWrite?.(mailbox);
     if (this.blockWrites) {
-      await new Promise<never>((_resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
+        this.blockedWriteReleases.push(resolve);
         signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
       });
     }
@@ -59,6 +69,14 @@ class FakeTransport implements TerminalRelayTransport {
     }
     this.writes.push(mailbox);
     return `"terminal-${mailbox.revision}"`;
+  }
+
+  releaseBlockedReads(): void {
+    for (const release of this.blockedReadReleases.splice(0)) release();
+  }
+
+  releaseBlockedWrites(): void {
+    for (const release of this.blockedWriteReleases.splice(0)) release();
   }
 }
 
@@ -547,6 +565,7 @@ describe('TerminalAiClient', () => {
     transport.reads.push(
       { generation: '"browser-2"', mailbox: claimedMailbox },
       { generation: '"browser-3"', mailbox: approvalMailbox },
+      { generation: '"browser-3"', mailbox: approvalMailbox },
       { generation: '"browser-4"', mailbox: approvedMailbox },
     );
 
@@ -578,6 +597,181 @@ describe('TerminalAiClient', () => {
         input: { name: 'Biology' },
       },
     ]);
+  });
+
+  it('publishes no approval retry after the MCP request is cancelled', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    let sequence = 0;
+    let releaseSleep: (() => void) | undefined;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      sleep: () => new Promise<void>((resolve) => { releaseSleep = resolve; }),
+      createId: (prefix) => `${prefix}-${++sequence}`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+    const claimedMailbox: RelayBrowserMailbox = {
+      ...queuedMailbox(),
+      revision: 2,
+      terminalRevisionSeen: 1,
+      messages: [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId: claimed.runId }],
+    };
+    const approvalMailbox: RelayBrowserMailbox = {
+      ...claimedMailbox,
+      revision: 3,
+      terminalRevisionSeen: 2,
+      toolResponses: [{
+        runId: claimed.runId,
+        callId: 'call-cancelled',
+        respondedAt: 1_100,
+        ok: false,
+        error: {
+          kind: 'approval_required',
+          approvalId: 'approval-1',
+          approvalKind: 'write_call',
+          message: 'Approve this Course creation.',
+        },
+      }],
+    };
+    transport.reads.push(
+      { generation: '"browser-2"', mailbox: claimedMailbox },
+      { generation: '"browser-3"', mailbox: approvalMailbox },
+    );
+    transport.fallbackRead = { generation: '"browser-3"', mailbox: approvalMailbox };
+    const abort = new AbortController();
+    const invocation = client.invokeTool(
+      claimed.runId,
+      'call-cancelled',
+      'lacuna.create_course',
+      { name: 'Biology' },
+      1_000,
+      abort.signal,
+    );
+    await vi.waitFor(() => expect(releaseSleep).toBeTypeOf('function'));
+    abort.abort();
+    const outcome = await Promise.race([
+      invocation.catch((error: unknown) => error),
+      new Promise<'overrun'>((resolve) => setTimeout(() => resolve('overrun'), 20)),
+    ]);
+    releaseSleep?.();
+    await invocation.catch(() => undefined);
+
+    expect(outcome).toMatchObject({ message: expect.stringContaining('cancelled') });
+    const calls = transport.writes
+      .flatMap((mailbox) => mailbox.events)
+      .filter((event) => event.type === 'tool_call');
+    expect(new Set(calls.map((event) => event.eventId))).toHaveLength(1);
+  });
+
+  it('bounds a blocked browser-mailbox read by the original invocation deadline', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    try {
+      const transport = new FakeTransport();
+      transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+      const client = new TerminalAiClient({ transport });
+      await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+      const claimed = await client.waitForMessage(25_000);
+      if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+      transport.blockReads = true;
+      const invocation = client.invokeTool(
+        claimed.runId,
+        'call-blocked-read',
+        'lacuna.list_courses',
+        {},
+        250,
+      );
+      const outcome = Promise.race([
+        invocation.catch((error: unknown) => error),
+        new Promise<'overrun'>((resolve) => setTimeout(() => resolve('overrun'), 251)),
+      ]);
+      await vi.advanceTimersByTimeAsync(251);
+      const result = await outcome;
+      transport.releaseBlockedReads();
+      await invocation.catch(() => undefined);
+
+      expect(result).toMatchObject({ message: expect.stringContaining('Timed out') });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fails closed when the approval retry mailbox write exceeds the original deadline', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    try {
+      const transport = new FakeTransport();
+      transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+      let sequence = 0;
+      const client = new TerminalAiClient({
+        transport,
+        createId: (prefix) => `${prefix}-${++sequence}`,
+      });
+      await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+      const claimed = await client.waitForMessage(25_000);
+      if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+      const claimedMailbox: RelayBrowserMailbox = {
+        ...queuedMailbox(),
+        revision: 2,
+        terminalRevisionSeen: 1,
+        messages: [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId: claimed.runId }],
+      };
+      const approvalMailbox: RelayBrowserMailbox = {
+        ...claimedMailbox,
+        revision: 3,
+        terminalRevisionSeen: 2,
+        toolResponses: [{
+          runId: claimed.runId,
+          callId: 'call-blocked-write',
+          respondedAt: 1_100,
+          ok: false,
+          error: {
+            kind: 'approval_required',
+            approvalId: 'approval-1',
+            approvalKind: 'write_call',
+            message: 'Approve this Course creation.',
+          },
+        }],
+      };
+      transport.reads.push(
+        { generation: '"browser-2"', mailbox: claimedMailbox },
+        { generation: '"browser-3"', mailbox: approvalMailbox },
+      );
+      transport.fallbackRead = { generation: '"browser-3"', mailbox: approvalMailbox };
+      const observedToolEventIds = new Set<string>();
+      transport.beforeWrite = (mailbox) => {
+        for (const event of mailbox.events) {
+          if (event.type === 'tool_call') observedToolEventIds.add(event.eventId);
+        }
+        if (observedToolEventIds.size >= 2) transport.blockWrites = true;
+      };
+      const invocation = client.invokeTool(
+        claimed.runId,
+        'call-blocked-write',
+        'lacuna.create_course',
+        { name: 'Biology' },
+        750,
+      );
+      const outcome = Promise.race([
+        invocation.catch((error: unknown) => error),
+        new Promise<'overrun'>((resolve) => setTimeout(() => resolve('overrun'), 751)),
+      ]);
+      await vi.advanceTimersByTimeAsync(751);
+      const result = await outcome;
+      transport.releaseBlockedWrites();
+      await invocation.catch(() => undefined);
+
+      expect(result).toMatchObject({
+        name: 'TerminalRelayReconnectRequiredError',
+        reason: 'write_outcome_unknown',
+      });
+      await expect(client.waitForMessage(250)).rejects.toThrow('not connected');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('serialises concurrent tool invocations through one terminal mailbox writer', async () => {

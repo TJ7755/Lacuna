@@ -142,7 +142,8 @@ describe('HttpTerminalRelayTransport', () => {
       { name: 'Test client' },
     );
 
-    await expect(transport.readBrowserMailbox(connection)).resolves.toEqual({
+    const readAbort = new AbortController();
+    await expect(transport.readBrowserMailbox(connection, readAbort.signal)).resolves.toEqual({
       generation: '"browser-1"',
       mailbox: browserMailbox,
     });
@@ -159,6 +160,7 @@ describe('HttpTerminalRelayTransport', () => {
     expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
       Authorization: `Bearer ${TOKEN}`,
     });
+    expect(fetchImpl.mock.calls[1]?.[1]?.signal).toBe(readAbort.signal);
     expect(fetchImpl.mock.calls[2]?.[1]?.headers).toMatchObject({
       Authorization: `Bearer ${TOKEN}`,
       'If-Match': '"0"',

@@ -210,6 +210,161 @@ describe('local AI companion request lifecycle', () => {
     })));
   });
 
+  it('acknowledges the exact stopped native run after an approval retry and stops renewal', async () => {
+    const connection = await writeCompanionConnectionFile(userDataPath, '0.2.3');
+    let toolCount = 0;
+    let getRunCount = 0;
+    let acknowledgeCount = 0;
+    let renewalCount = 0;
+    const server = createServer((socket) => {
+      sockets.push(socket);
+      const decoder = new CompanionLineDecoder();
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk: string) => {
+        for (const value of decoder.push(chunk)) {
+          const message = value as { type: string; id?: string; request?: AiBridgeRequest };
+          if (message.type === 'ai_hello') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_ready',
+              protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+              appVersion: connection.appVersion,
+              capabilities: { leaseRenewal: true },
+            }));
+            continue;
+          }
+          if (!message.id || !message.request) continue;
+          const request = message.request;
+          let result;
+          if (request.type === 'connect') {
+            result = {
+              ok: true as const,
+              data: {
+                type: 'connection' as const,
+                connectionId: 'connection-1',
+                client: request.client,
+                connectedAt: 1,
+              },
+            };
+          } else if (request.type === 'claim_message') {
+            result = {
+              ok: true as const,
+              data: {
+                type: 'message_claim' as const,
+                message: toolCount === 0 && getRunCount === 0
+                  ? {
+                      messageId: 'message-1',
+                      conversationId: 'conversation-1',
+                      runId: 'run-1',
+                      content: 'Create the course.',
+                      createdAt: 1,
+                      claimedAt: 2,
+                      leaseExpiresAt: 300_002,
+                    }
+                  : null,
+              },
+            };
+          } else if (request.type === 'get_instructions') {
+            result = {
+              ok: true as const,
+              data: {
+                type: 'instructions' as const,
+                protocolVersion: LACUNA_AI_PROTOCOL_VERSION,
+                instructionVersion: 'teaching-v1',
+                content: 'Follow Lacuna instructions.',
+                misconceptionFirstEnabled: false,
+              },
+            };
+          } else if (request.type === 'renew_lease') {
+            renewalCount += 1;
+            result = {
+              ok: true as const,
+              data: {
+                type: 'lease_renewed' as const,
+                runId: request.runId,
+                leaseExpiresAt: 600_002,
+              },
+            };
+          } else if (request.type === 'invoke_tool') {
+            toolCount += 1;
+            result = toolCount === 1
+              ? {
+                  ok: false as const,
+                  error: {
+                    kind: 'approval_required' as const,
+                    approvalId: 'approval-1',
+                    approvalKind: 'write_call' as const,
+                    message: 'Approve lacuna.create_course on New course: Biology.',
+                  },
+                }
+              : {
+                  ok: false as const,
+                  error: {
+                    kind: 'stopped' as const,
+                    runId: 'run-1',
+                    message: 'This AI run has stopped.',
+                  },
+                };
+          } else if (request.type === 'get_run') {
+            getRunCount += 1;
+            result = {
+              ok: true as const,
+              data: {
+                type: 'run_state' as const,
+                run: {
+                  runId: 'run-1',
+                  conversationId: 'conversation-1',
+                  messageId: 'message-1',
+                  claimedAt: 2,
+                  leaseExpiresAt: 300_002,
+                  status: 'stop_requested' as const,
+                  stopRequestedAt: 3,
+                },
+              },
+            };
+          } else if (request.type === 'acknowledge_stop') {
+            acknowledgeCount += 1;
+            result = {
+              ok: true as const,
+              data: { type: 'stop_acknowledged' as const, runId: request.runId },
+            };
+          } else {
+            continue;
+          }
+          socket.write(encodeCompanionMessage({ type: 'ai_result', id: message.id, result }));
+        }
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(connection.endpoint, resolve);
+    });
+
+    const client = new LocalAiAppClient(100, userDataPath, 20);
+    await client.connect({ name: 'Codex' }, new AbortController().signal);
+    await client.waitForMessage(250, new AbortController().signal);
+    await expect(client.invokeTool(
+      'run-1',
+      'call-1',
+      'lacuna.create_course',
+      { name: 'Biology' },
+      5_000,
+      new AbortController().signal,
+    )).rejects.toMatchObject({ details: { kind: 'stopped' } });
+
+    expect(toolCount).toBe(2);
+    expect(getRunCount).toBe(1);
+    expect(acknowledgeCount).toBe(1);
+    const renewalsAfterStop = renewalCount;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(renewalCount).toBe(renewalsAfterStop);
+    await expect(client.waitForMessage(50, new AbortController().signal)).resolves.toEqual({
+      type: 'empty',
+    });
+    expect(getRunCount).toBe(1);
+    client.close();
+  });
+
   it.each(['reply', 'tool write'] as const)(
     'reports an ambiguous %s outcome as safely retryable when the socket closes',
     async (operation) => {

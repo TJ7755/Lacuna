@@ -190,6 +190,9 @@ export class LocalAiAppClient {
       if (!result.ok) {
         if (result.error.kind === 'unavailable') this.close();
         if (result.error.kind === 'tool') return { ok: false, error: result.error.error };
+        if (result.error.kind === 'stopped' && this.activeRun?.runId === result.error.runId) {
+          await this.requestedStop(request.connectionId, signal);
+        }
         if (result.error.kind === 'approval_required' || result.error.kind === 'approval_pending') {
           const retryAfterMs = result.error.kind === 'approval_pending'
             ? result.error.retryAfterMs

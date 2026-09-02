@@ -32,6 +32,7 @@ export interface TerminalAiToolClient {
     toolName: string,
     input: JsonValue,
     timeoutMs?: number,
+    signal?: AbortSignal,
   ): Promise<TerminalToolResponse>;
   disconnect(): Promise<void>;
 }
@@ -125,7 +126,7 @@ export function createLacunaAiMcpServer(client: TerminalAiToolClient): McpServer
         })
         .strict(),
     },
-    async (input) =>
+    async (input, context) =>
       callTool(async () => {
         const parsedInput = boundedJsonValueSchema.safeParse(input.input);
         if (!parsedInput.success) throw new Error('The Lacuna AI tool input is invalid.');
@@ -138,6 +139,7 @@ export function createLacunaAiMcpServer(client: TerminalAiToolClient): McpServer
             input.toolName,
             parsedInput.data,
             input.timeoutMs,
+            context.mcpReq.signal,
           )),
         };
       }),
