@@ -24,6 +24,26 @@ TypeScript; lint; fixed-baseline and changed renderer production builds plus ass
 arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
 the ratcheted package audit. No Electron application was launched.
 
+## Native packaged interaction validation
+
+- Added a packaged Electron interaction harness that spawns the resolved executable itself,
+  attaches over loopback CDP and exercises Quick search, Settings and seeded-course navigation
+  sequentially in the native renderer. Explicit process ownership avoids Playwright's intermittent
+  native Electron attachment race after its debugger sockets are already connected.
+- Kept the complete validation inside one launch and one Electron process tree. The harness has a
+  one-launch hard cap, never emulates a viewport, disables retries and tracing, and verifies normal
+  shutdown from the exact spawned child handle. Interaction timings begin only after the seeded
+  Dashboard is ready.
+- Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
+  settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
+  dressing a single observation up with distribution statistics proved nothing.
+- Kept the packaged-only interaction spec outside the ordinary Electron AI suite. Hosted AI CI
+  prepares unpackaged Electron code and must not pretend it has built a release executable.
+
+**Checks:** red-to-green Playwright suite-boundary regression; harness and root TypeScript; focused
+ESLint and formatting checks; separate AI and packaged Playwright test discovery. Packaged execution
+remains the explicit `test:e2e:electron-package` check.
+
 ## Resumable AI write approvals
 
 - Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
