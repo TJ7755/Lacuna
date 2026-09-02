@@ -135,6 +135,15 @@ Lacuna bridge. A CSP error naming it means the original relay request was interc
 localhost to `connect-src`, because doing so would weaken the boundary without making the relay
 reachable.
 
+## Video frames cross both CSP and cross-origin isolation boundaries
+
+Allowing a provider in `frame-src` is necessary but does not bypass the renderer's COEP. Hermetic
+cross-origin iframe fixtures served beneath Vite's `require-corp` policy need a compatible COEP and
+`Cross-Origin-Resource-Policy: cross-origin`; otherwise Chromium creates the iframe shell but blocks
+its document with `ERR_BLOCKED_BY_RESPONSE`. Electron's response-header hook must remain scoped to
+the trusted renderer URL so it does not replace the provider document's own CSP or isolation
+headers.
+
 ## Sync credentials are remembered on device by design
 
 `SyncState.remembered` stores the unwrapped channel key and write token, restored at trigger

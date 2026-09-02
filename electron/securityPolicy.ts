@@ -5,6 +5,8 @@ export const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
 const DEFAULT_SYNC_RELAY_ORIGIN = 'https://lacuna-relay.vercel.app';
 const ALLOWED_MEDIA_TYPES = new Set(['audio', 'video']);
+const PRODUCTION_RENDERER_CSP =
+  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;";
 
 export type ElectronResponseHeaders = Record<string, string[]>;
 
@@ -19,18 +21,21 @@ function setResponseHeader(
   headers[name] = values;
 }
 
-/** Add the renderer isolation headers and repair CORS only for Lacuna's exact relay. */
+/** Add trusted-renderer security headers and repair CORS only for Lacuna's exact relay. */
 export function addElectronSecurityHeaders(
   responseUrl: string,
   responseHeaders: ElectronResponseHeaders,
   environment: RendererEnvironment,
 ): ElectronResponseHeaders {
   const headers = { ...responseHeaders };
-  setResponseHeader(headers, 'Cross-Origin-Opener-Policy', ['same-origin']);
-  setResponseHeader(headers, 'Cross-Origin-Embedder-Policy', ['credentialless']);
+  if (isTrustedRendererUrl(responseUrl, environment)) {
+    setResponseHeader(headers, 'Cross-Origin-Opener-Policy', ['same-origin']);
+    setResponseHeader(headers, 'Cross-Origin-Embedder-Policy', ['credentialless']);
 
-  if (responseUrl.startsWith('app://')) {
-    setResponseHeader(headers, 'Access-Control-Allow-Origin', ['*']);
+    if (environment === 'production') {
+      setResponseHeader(headers, 'Access-Control-Allow-Origin', ['*']);
+      setResponseHeader(headers, 'Content-Security-Policy', [PRODUCTION_RENDERER_CSP]);
+    }
   }
 
   if (environment === 'production') {
@@ -51,7 +56,7 @@ export function addElectronSecurityHeaders(
         setResponseHeader(headers, 'Vary', ['Origin']);
       }
     } catch {
-      // Electron may report non-URL internal resources; isolation headers still apply.
+      // Electron may report non-URL internal resources; no remote exception applies.
     }
   }
 

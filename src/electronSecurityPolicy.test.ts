@@ -9,6 +9,57 @@ import {
 
 describe('Electron renderer security policy', () => {
   describe('response headers', () => {
+    it('sets the exact production renderer CSP and isolation headers', () => {
+      expect(
+        addElectronSecurityHeaders('app://./index.html', { Server: ['fixture'] }, 'production'),
+      ).toEqual({
+        Server: ['fixture'],
+        'Cross-Origin-Opener-Policy': ['same-origin'],
+        'Cross-Origin-Embedder-Policy': ['credentialless'],
+        'Access-Control-Allow-Origin': ['*'],
+        'Content-Security-Policy': [
+          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;",
+        ],
+      });
+    });
+
+    it('preserves renderer isolation in development without installing the production CSP', () => {
+      expect(
+        addElectronSecurityHeaders(
+          'http://localhost:5173/src/main.tsx',
+          { Server: ['fixture'] },
+          'development',
+        ),
+      ).toEqual({
+        Server: ['fixture'],
+        'Cross-Origin-Opener-Policy': ['same-origin'],
+        'Cross-Origin-Embedder-Policy': ['credentialless'],
+      });
+    });
+
+    it('leaves unrelated remote subframe headers unchanged', () => {
+      const providerHeaders = {
+        'Content-Security-Policy': ["default-src 'none';"],
+        'Cross-Origin-Opener-Policy': ['unsafe-none'],
+        'Cross-Origin-Embedder-Policy': ['require-corp'],
+      };
+
+      expect(
+        addElectronSecurityHeaders(
+          'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+          providerHeaders,
+          'production',
+        ),
+      ).toEqual(providerHeaders);
+      expect(
+        addElectronSecurityHeaders(
+          'https://player.vimeo.com/video/123456789',
+          providerHeaders,
+          'production',
+        ),
+      ).toEqual(providerHeaders);
+    });
+
     it('repairs CORS for the exact production sync relay and no other remote origin', () => {
       expect(
         addElectronSecurityHeaders(
