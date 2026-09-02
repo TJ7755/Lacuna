@@ -3131,3 +3131,15 @@ in "Unreleased — UI/UX audit implementation" above.
 - Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
   without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
   packages reduced `app.asar` by a further 11.1%, with no renderer-output change.
+
+# 2026-09-02 — Electron MCP server split into deep internal modules
+
+- Kept `startMcpServer`, `getMcpStatus`, `stopMcpServer` and `McpStatus` as the unchanged lifecycle
+  interface while reducing `electron/mcp/server.ts` to the composition façade.
+- Moved renderer IPC, scope and consent decisions, process grants, tool execution and exact SDK
+  registration order behind `DataBridge`.
+- Moved authenticated local sockets, purpose routing, connection grants and status, and AI renderer
+  channels behind `CompanionBroker` without changing the data or AI wire envelopes.
+- Added interface tests for fail-closed renderer decisions, sender rejection, listener removal,
+  purpose and identity invariants, sequential socket messages, live status, file permissions and
+  socket/metadata cleanup. The packaged dependency gate now checks both internal modules directly.
