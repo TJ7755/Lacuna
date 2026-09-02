@@ -11,8 +11,23 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
   scripts?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
+const relayPackageJson = JSON.parse(readFileSync(resolve(root, 'relay/package.json'), 'utf8')) as {
+  devDependencies?: Record<string, string>;
+  overrides?: Record<string, string>;
+};
+const handwritingPackageJson = JSON.parse(
+  readFileSync(resolve(root, 'tooling/handwriting-maths/package.json'), 'utf8'),
+) as { devDependencies?: Record<string, string> };
+const aiMcpPackageJson = JSON.parse(
+  readFileSync(resolve(root, 'tooling/lacuna-ai-mcp/package.json'), 'utf8'),
+) as { devDependencies?: Record<string, string> };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 const bunLock = readFileSync(resolve(root, 'bun.lock'), 'utf8');
+const relayBunLock = readFileSync(resolve(root, 'relay/bun.lock'), 'utf8');
+const handwritingBunLock = readFileSync(
+  resolve(root, 'tooling/handwriting-maths/bun.lock'),
+  'utf8',
+);
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
 const updaterServiceSource = readFileSync(resolve(root, 'electron/updaterService.ts'), 'utf8');
 const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
@@ -26,12 +41,16 @@ const electronAiE2e = readFileSync(
   'utf8',
 );
 
-function resolvedVersions(packageName: string): string[] {
+function resolvedVersionsFrom(lockfile: string, packageName: string): string[] {
   const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return Array.from(
-    bunLock.matchAll(new RegExp(`\\["${escapedName}@([^"]+)"`, 'g')),
+    lockfile.matchAll(new RegExp(`\\["${escapedName}@([^"]+)"`, 'g')),
     ([, version]) => version,
   );
+}
+
+function resolvedVersions(packageName: string): string[] {
+  return resolvedVersionsFrom(bunLock, packageName);
 }
 
 function isAtLeast(version: string, minimum: readonly [number, number, number]): boolean {
@@ -83,6 +102,25 @@ describe('v0.2.3 release configuration', () => {
     expectResolvedAtLeast('builder-util-runtime', [9, 7, 0]);
     expectResolvedAtLeast('tar', [7, 5, 21]);
     expect(bunLock).not.toContain('["app-builder-bin@');
+  });
+
+  it('keeps every test workspace on the patched Vitest 3 toolchain', () => {
+    expect(packageJson.devDependencies?.vitest).toBe('3.2.7');
+    expect(packageJson.devDependencies?.['@vitest/coverage-v8']).toBe('3.2.7');
+    expect(relayPackageJson.devDependencies?.vitest).toBe('3.2.7');
+    expect(relayPackageJson.devDependencies?.vite).toBe('^6.4.3');
+    expect(relayPackageJson.overrides?.vite).toBe('6.4.3');
+    expect(handwritingPackageJson.devDependencies?.vitest).toBe('3.2.7');
+    expect(aiMcpPackageJson.devDependencies?.vitest).toBe('3.2.7');
+
+    expect(resolvedVersions('vitest')).toEqual(['3.2.7']);
+    expect(resolvedVersions('@vitest/coverage-v8')).toEqual(['3.2.7']);
+    expect(resolvedVersions('vite')).toEqual(['6.4.3']);
+    expect(resolvedVersionsFrom(relayBunLock, 'vitest')).toEqual(['3.2.7']);
+    expect(resolvedVersionsFrom(relayBunLock, 'vite')).toEqual(['6.4.3']);
+    expect(resolvedVersionsFrom(handwritingBunLock, 'vitest')).toEqual(['3.2.7']);
+    expect(resolvedVersionsFrom(handwritingBunLock, 'vite')).toEqual(['6.4.3']);
+    expect(existsSync(resolve(root, 'tooling/lacuna-ai-mcp/bun.lock'))).toBe(false);
   });
 
   it('runs Electron build tools without platform shell shims', () => {

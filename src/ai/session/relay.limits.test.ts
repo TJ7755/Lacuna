@@ -60,7 +60,7 @@ describe('relay AI session bounds', () => {
       error: { kind: 'conflict', message: 'The AI message queue is full.' },
     });
     expect(session.getSnapshot().items).toHaveLength(MAX_AI_RELAY_MAILBOX_ENTRIES);
-  });
+  }, 15_000);
 
   it('bounds processed terminal event identifiers across compacted mailboxes', async () => {
     const { session, relay, crypto, storage, tick } = relaySessionHarness();

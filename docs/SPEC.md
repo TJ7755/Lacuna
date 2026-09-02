@@ -81,7 +81,7 @@ British English throughout. No emojis anywhere in the product or its copy.
 - **Charts:** Recharts.
 - **Fonts (loaded via `<link>` in `index.html`):** Fraunces (display), Geist (body),
   JetBrains Mono (code and the timer/tabular figures).
-- **Testing:** Vitest with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
+- **Testing:** Vitest 3 with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
   and `happy-dom` for UI component and hook tests.
 
 Scripts: `dev`/`start` (Vite), `build` (`bun run typecheck && vite build`), `preview`, `typecheck`,
