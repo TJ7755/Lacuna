@@ -1,5 +1,18 @@
 # Lacuna — next beta
 
+## Quiet root unit tests
+
+- Removed avoidable test-suite noise from mocked button refs, React Router future-flag opt-ins,
+  successful automatic sync, expected AI chunk failures and delayed session-report updates.
+  Automatic sync failures still emit their production warning, with a regression test preserving
+  that distinction.
+- Made the browser Stop proof acknowledge the request through the terminal's polling operation
+  before asserting that a later domain call is rejected. The old test used the domain call itself to
+  discover Stop, racing acknowledgement and sometimes observing a valid in-flight result discarded.
+
+**Checks:** focused red-to-green warning regressions; full root unit suite output inspection;
+root lint and typecheck.
+
 ## Hosted macOS releases and build provenance
 
 - Added a native Apple Silicon release job on GitHub's official `macos-15` runner. It runs the

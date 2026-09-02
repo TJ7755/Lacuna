@@ -414,7 +414,7 @@ test('restores and claims an unclaimed message once after a browser reload', asy
   await terminal.disconnect();
 });
 
-test('acknowledges Stop and blocks a second domain tool call', async ({ page }) => {
+test('acknowledges Stop and rejects a later domain tool call', async ({ page }) => {
   const { composer, terminal } = await pairBrowserAndTerminal(page);
 
   await composer.fill('Stop this terminal run.');
@@ -426,15 +426,20 @@ test('acknowledges Stop and blocks a second domain tool call', async ({ page }) 
   ).toMatchObject({ ok: true });
 
   await page.getByRole('button', { name: 'Stop' }).click();
-  await expect(
-    terminal.invokeTool(claimed.runId, 'read-after-stop', 'lacuna.list_courses', {}),
-  ).rejects.toThrow('Stop was requested for this run; the tool call was not sent.');
+  await expect(terminal.waitForMessage(2_000)).resolves.toEqual({
+    type: 'stop_requested',
+    messageId: claimed.messageId,
+    runId: claimed.runId,
+  });
   await expect(page.getByText('Stopped', { exact: true })).toBeVisible();
   await expect(
     page.getByText('Further AI bridge actions are blocked. Completed changes remain.', {
       exact: true,
     }),
   ).toBeVisible();
+  await expect(
+    terminal.invokeTool(claimed.runId, 'read-after-stop', 'lacuna.list_courses', {}),
+  ).rejects.toThrow('The supplied run is not active in this terminal session.');
   const lateReply = 'This late reply must not appear.';
   await expect(terminal.reply(claimed.runId, claimed.messageId, lateReply)).rejects.toThrow(
     'The supplied run and message are not active in this terminal session.',

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { forwardRef } from 'react';
 import { CardList } from './CardList';
 import type { Card, LegacyDeckRecord, Occlusion, Sequence } from '../../db/types';
 import type { ApkgImportResult } from '../../db/apkgImport';
@@ -61,15 +62,21 @@ vi.mock('../markdown/MarkdownView', () => ({
 vi.mock('../ui/Button', () => ({
   // Forwards the accessibility props too: an icon-only trigger has no text to query by,
   // so dropping aria-label here would make it unreachable from a test.
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    ...rest
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid="button" {...rest}>
-      {children}
-    </button>
+  Button: forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+    function MockButton({ children, onClick, disabled, ...rest }, ref) {
+      return (
+        <button
+          ref={ref}
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          data-testid="button"
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    },
   ),
 }));
 
@@ -185,11 +192,19 @@ describe('CardList', () => {
   it('renders empty state when no cards', () => {
     const onNewCard = vi.fn();
     const onEditCard = vi.fn();
-    render(
-      <CardList cards={[]} context={mockContext} onNewCard={onNewCard} onEditCard={onEditCard} />,
-    );
-    expect(screen.getByText('No cards yet.')).toBeInTheDocument();
-    expect(screen.getAllByText('New card')).not.toHaveLength(0);
+    const consoleError = vi.spyOn(console, 'error');
+    try {
+      render(
+        <CardList cards={[]} context={mockContext} onNewCard={onNewCard} onEditCard={onEditCard} />,
+      );
+      expect(screen.getByText('No cards yet.')).toBeInTheDocument();
+      expect(screen.getAllByText('New card')).not.toHaveLength(0);
+      expect(consoleError).not.toHaveBeenCalledWith(
+        expect.stringContaining('Function components cannot be given refs'),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('opens analytics with a Course card-list context', async () => {

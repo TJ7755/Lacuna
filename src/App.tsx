@@ -35,7 +35,7 @@ const relayAiDeviceStateParticipant = {
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
-  return <RouterProvider router={router} />;
+  return <RouterProvider router={router} future={{ v7_startTransition: true }} />;
 }
 
 const EnabledAiRuntime = lazy(() =>

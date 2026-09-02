@@ -60,10 +60,6 @@ async function triggerSync(reason: string): Promise<void> {
     const { syncWithCredentials } = await loadSyncPairing();
     if (credentialGeneration !== generation) return;
     await syncWithCredentials(credentials);
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.log(`[sync] auto ${reason} complete`);
-    }
   } catch (error) {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console

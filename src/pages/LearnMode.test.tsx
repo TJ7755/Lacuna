@@ -951,6 +951,9 @@ describe('LearnMode course/lesson scope', () => {
         name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
       }),
     ).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
     expect(await db.reviewHistory.count()).toBe(1);
   });

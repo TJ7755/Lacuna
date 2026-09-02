@@ -92,7 +92,7 @@ describe('Welcome import entry points', () => {
       { path: '/share', element: <SharePage /> },
     ]);
 
-    render(<RouterProvider router={router} />);
+    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
     fireEvent.click(screen.getAllByRole('link', { name: 'Import a shared course' })[0]);
 
     await waitFor(() => {
