@@ -11,14 +11,12 @@ import {
 type AsarNode = {
   files?: Record<string, AsarNode>;
   size?: number;
-  unpacked?: boolean;
 };
 
 type FileRecord = {
   path: string;
   bytes: number;
   group: string;
-  unpacked: boolean;
 };
 
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
@@ -99,7 +97,6 @@ function collectFiles(node: AsarNode, prefix = ''): FileRecord[] {
         path: filePath,
         bytes: child.size ?? 0,
         group: groupFor(filePath),
-        unpacked: child.unpacked === true,
       });
     }
   }
