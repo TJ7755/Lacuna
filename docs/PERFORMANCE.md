@@ -4,6 +4,18 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## Dashboard retention candidate (2 September 2026)
+
+The Dashboard live query now projects hydrated Cards directly into the retained Course summaries,
+per-Course due/activity details and fixed review-heatmap buckets. Course cards and the heatmap
+consume those compact values, avoiding a second retained Card-derived object graph. Projection
+parity and live-update behaviour are covered at the query interface.
+
+An earlier mixed candidate also changed the Study flow. Its large Study checkpoints showed no
+reliable benefit, so that change is not part of this tree and Study retains its existing interface.
+The mixed candidate's figures do not measure this rebased tree. A fresh repeated comparison against
+the same packaged baseline is required before claiming a renderer-heap or process-memory reduction.
+
 ## First-load and network follow-up (30 August 2026)
 
 Fresh `master` had regressed to four initial JavaScript assets: the 967,691-byte

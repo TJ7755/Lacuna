@@ -1,5 +1,18 @@
 # Lacuna — next beta
 
+## Compact Dashboard and Course memory projections
+
+- Changed the Dashboard live query to retain only Course summaries, study statistics, per-Course
+  due/activity details and the displayed review-heatmap buckets. Hydrated Cards now remain local to
+  query execution instead of being retained alongside a second derived object graph.
+- Changed Course cards and the review heatmap to consume those compact projections without changing
+  their labels, counts, ordering or empty states. The Study flow remains unchanged because its
+  separate projection showed no reliable benefit in the earlier mixed candidate.
+
+**Checks:** 60 focused Dashboard, Course-card, heatmap and unchanged-Study tests; root typecheck and
+lint; production build and asset budget. This rebased tree has not been remeasured in packaged
+Electron, so it makes no fresh memory-reduction claim.
+
 ## Complete exact-release workspace verification
 
 - Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone
