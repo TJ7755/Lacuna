@@ -1,5 +1,29 @@
 # Lacuna — next beta
 
+## Electron package diet
+
+- Stopped copying the renderer's complete dependency graph into Electron after Vite had already
+  bundled it. Production dependencies now describe the Electron runtime only; renderer and build
+  inputs remain installed for development, and the redundant direct MCP core root was removed.
+- Narrowed the packaged file boundary to compiled output, the Electron font stylesheet and font
+  files. Source maps, TypeScript/declarations, tests and named project documentation are excluded,
+  while dependency licence files remain present.
+- Limited Chromium resources to British and US English. The rebuilt Windows package now contains
+  two locale packs rather than 55.
+- Ratcheted the Windows package gate from baseline-sized allowances to the measured slim package.
+  The old artefact fails all seven ceilings; the new artefact passes them.
+- Measured the Windows ASAR falling from 138,813,451 to 20,575,956 bytes (-85.2%), its file count
+  from 12,817 to 1,240 (-90.3%), and locale bytes from 49,471,161 to 1,137,014 (-97.7%). The macOS
+  application fell from 430,764 KiB to 254,104 KiB on disk (-41.0%).
+- Rebuilt the renderer at the fixed baseline and after the change. Initial JavaScript remained
+  exactly 866,840 bytes raw / 266,195 bytes gzip and initial CSS remained 121,519 / 17,795 bytes;
+  the package work did not alter its asset hashes or loading boundary.
+
+**Checks:** red-to-green Electron package-boundary tests; frozen lockfile install; web and Electron
+TypeScript; lint; fixed-baseline and changed renderer production builds plus asset audits; macOS
+arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
+the ratcheted package audit. No Electron application was launched.
+
 ## Native packaged interaction validation
 
 - Added a packaged Electron interaction harness that spawns the resolved executable itself,
@@ -16,6 +40,23 @@
 
 **Checks:** harness and root TypeScript, focused ESLint and formatting checks, and Playwright test
 discovery. Packaged execution remains the explicit `test:e2e:electron-package` check.
+
+## Resumable AI write approvals
+
+- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
+  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
+  retry delay and one bounded overall timeout.
+- Returned the committed tool result and its activity receipt through the original MCP invocation
+  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
+  changing its identity or guessing whether another write should be attempted.
+- Applied one deadline and cancellation signal to the complete relay invocation, including mailbox
+  reads, acknowledgements, approval waits and retry writes. An interrupted write now requires a
+  reconnect because its outcome is unknowable; cancellation while waiting for approval publishes
+  no retry. Native Stop responses acknowledge and retire the exact active run before renewal ends.
+
+**Checks:** red-to-green native-socket and relay-mailbox approval-resumption, cancellation, blocked
+I/O, stale-mailbox and Stop-lifecycle tests; focused native and standalone AI MCP suites; root and
+standalone AI MCP typechecks and lint.
 
 ## Electron package measurement gate
 
@@ -35,23 +76,6 @@ discovery. Packaged execution remains the explicit `test:e2e:electron-package` c
 **Checks:** red-to-green classification and ASAR-selection tests; direct TypeScript check; audit and
 ceiling check against the existing v0.2.3 Windows ASAR; release-workflow gate inspection; production
 asset build and existing web asset budget.
-
-## Resumable AI write approvals
-
-- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
-  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
-  retry delay and one bounded overall timeout.
-- Returned the committed tool result and its activity receipt through the original MCP invocation
-  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
-  changing its identity or guessing whether another write should be attempted.
-- Applied one deadline and cancellation signal to the complete relay invocation, including mailbox
-  reads, acknowledgements, approval waits and retry writes. An interrupted write now requires a
-  reconnect because its outcome is unknowable; cancellation while waiting for approval publishes
-  no retry. Native Stop responses acknowledge and retire the exact active run before renewal ends.
-
-**Checks:** red-to-green native-socket and relay-mailbox approval-resumption, cancellation, blocked
-I/O, stale-mailbox and Stop-lifecycle tests; focused native and standalone AI MCP suites; root and
-standalone AI MCP typechecks and lint.
 
 ## Complete exact-release workspace verification
 
