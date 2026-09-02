@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Card } from '../../db/types';
-import { ReviewHeatmap } from './ReviewHeatmap';
+import { clampTooltipLeft, ReviewHeatmap } from './ReviewHeatmap';
 
 const today = new Date();
 today.setHours(12, 0, 0, 0);
@@ -38,6 +38,11 @@ function makeCard(): Card {
 }
 
 describe('ReviewHeatmap', () => {
+  it('clamps tooltip edges using its measured width', () => {
+    expect(clampTooltipLeft({ left: 0, width: 12 }, 120, 800)).toBe(8);
+    expect(clampTooltipLeft({ left: 794, width: 12 }, 120, 800)).toBe(672);
+  });
+
   it('uses one roving tab stop and moves the focused detail with arrow keys', () => {
     render(<ReviewHeatmap cards={[makeCard()]} />);
 

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { bucketReviewsByDay, reviewTimestamps, addDays } from '../../fsrs/heatmap';
@@ -18,6 +18,11 @@ interface Cell {
   day: number;
   count: number;
   future: boolean;
+}
+
+export function clampTooltipLeft(cellRect: Pick<DOMRect, 'left' | 'width'>, tooltipWidth: number, viewportWidth: number) {
+  const preferred = cellRect.left + cellRect.width / 2 - tooltipWidth / 2;
+  return Math.min(Math.max(preferred, 8), Math.max(8, viewportWidth - tooltipWidth - 8));
 }
 
 /**
@@ -89,7 +94,23 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
   );
   const [activeDay, setActiveDay] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{ label: string; rect: DOMRect } | null>(null);
+  const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    if (!tooltip || !tooltipRef.current) {
+      setTooltipLeft(null);
+      return;
+    }
+    setTooltipLeft(
+      clampTooltipLeft(
+        tooltip.rect,
+        tooltipRef.current.getBoundingClientRect().width,
+        typeof window === 'undefined' ? 0 : window.innerWidth,
+      ),
+    );
+  }, [tooltip]);
 
   // Five intensity bands, GitHub-style, expressed as accent opacity so they track
   // the chosen accent colour and the light/dark theme automatically.
@@ -229,16 +250,15 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
       {tooltip && typeof document !== 'undefined'
         ? createPortal(
             <span
+              ref={tooltipRef}
               role="tooltip"
               aria-hidden="true"
-              className="pointer-events-none fixed z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] text-paper shadow-lg"
+              className="pointer-events-none fixed z-50 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] text-paper shadow-lg"
               style={{
                 position: 'fixed',
                 top: tooltip.rect.bottom + 8,
-                left: Math.min(
-                  Math.max(tooltip.rect.left + tooltip.rect.width / 2, 8),
-                  (typeof window !== 'undefined' ? window.innerWidth : 16) - 8,
-                ),
+                left: tooltipLeft ?? 0,
+                visibility: tooltipLeft === null ? 'hidden' : 'visible',
               }}
             >
               {tooltip.label}
