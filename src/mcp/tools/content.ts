@@ -10,7 +10,7 @@
 // `assertNoGeneratedCards` convention: such cards may only be added, edited or removed via
 // their owning sequence or occlusion.
 
-import { z } from 'zod';
+import type { z } from 'zod';
 import { db } from '../../db/schema';
 import type { CourseAssessment } from '../../db/types';
 import * as read from '../../db/read';
@@ -34,10 +34,26 @@ import {
   createOcclusion as repoCreateOcclusion,
   updateOcclusion as repoUpdateOcclusion,
 } from '../../db/occlusionRepository';
+import type {
+  occlusionRegionSchema} from '../contracts/content';
+import {
+  createCardContract,
+  createCourseAssessmentContract,
+  createCourseContract,
+  createLessonContract,
+  createNoteContract,
+  createOcclusionContract,
+  createSequenceContract,
+  linkCardToLessonContract,
+  updateCardContract,
+  updateCourseAssessmentContract,
+  updateCourseContract,
+  updateLessonContract,
+  updateNoteContract,
+  updateOcclusionContract,
+  updateSequenceContract,
+} from '../contracts/content';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
-
-const courseIdSchema = z.string().describe('The id of the course.');
-const lessonIdSchema = z.string().describe('The id of the lesson.');
 
 function ok<T>(data: T): ToolResult<T> {
   return { data };
@@ -60,19 +76,11 @@ function refuseGeneratedCard(cardId: string, source: 'sequence' | 'occlusion'): 
 // Courses
 // ---------------------------------------------------------------------------
 
-const createCourseSchema = z.object({
-  name: z.string().describe('The course name.'),
-  description: z.string().optional().describe('Optional free-text description.'),
-});
 const createCourse: ToolDefinition<
-  z.infer<typeof createCourseSchema>,
+  z.infer<typeof createCourseContract.inputSchema>,
   Awaited<ReturnType<typeof repoCreateCourse>>
 > = {
-  name: 'lacuna.create_course',
-  description:
-    'Create a new course with sensible scheduling defaults (exam date, FSRS parameters, unlock mode).',
-  inputSchema: createCourseSchema,
-  requiredScope: 'write',
+  ...createCourseContract,
   async handler({ name, description }) {
     return ok(
       await repoCreateCourse(name, description !== undefined ? { description } : undefined),
@@ -80,20 +88,8 @@ const createCourse: ToolDefinition<
   },
 };
 
-const updateCourseSchema = z.object({
-  courseId: courseIdSchema,
-  name: z.string().optional().describe('New course name.'),
-  description: z.string().optional().describe('New free-text description.'),
-  examDate: z
-    .number()
-    .optional()
-    .describe('New primary exam date/time, as an epoch millisecond value in UTC.'),
-});
-const updateCourse: ToolDefinition<z.infer<typeof updateCourseSchema>, { id: string }> = {
-  name: 'lacuna.update_course',
-  description: "Update a course's name, description, and/or primary exam date.",
-  inputSchema: updateCourseSchema,
-  requiredScope: 'write',
+const updateCourse: ToolDefinition<z.infer<typeof updateCourseContract.inputSchema>, { id: string }> = {
+  ...updateCourseContract,
   async handler({ courseId, ...changes }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     const { examDate, ...courseChanges } = changes;
@@ -117,19 +113,11 @@ const updateCourse: ToolDefinition<z.infer<typeof updateCourseSchema>, { id: str
 // Lessons
 // ---------------------------------------------------------------------------
 
-const createLessonSchema = z.object({
-  courseId: courseIdSchema,
-  name: z.string().describe('The lesson name.'),
-  description: z.string().optional().describe('Optional free-text description.'),
-});
 const createLesson: ToolDefinition<
-  z.infer<typeof createLessonSchema>,
+  z.infer<typeof createLessonContract.inputSchema>,
   Awaited<ReturnType<typeof repoCreateLesson>>
 > = {
-  name: 'lacuna.create_lesson',
-  description: "Create a new lesson at the end of a course's path.",
-  inputSchema: createLessonSchema,
-  requiredScope: 'write',
+  ...createLessonContract,
   async handler({ courseId, name, description }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     return ok(
@@ -142,16 +130,8 @@ const createLesson: ToolDefinition<
   },
 };
 
-const updateLessonSchema = z.object({
-  lessonId: lessonIdSchema,
-  name: z.string().optional().describe('New lesson name.'),
-  description: z.string().optional().describe('New free-text description.'),
-});
-const updateLesson: ToolDefinition<z.infer<typeof updateLessonSchema>, { id: string }> = {
-  name: 'lacuna.update_lesson',
-  description: "Update a lesson's name and/or description.",
-  inputSchema: updateLessonSchema,
-  requiredScope: 'write',
+const updateLesson: ToolDefinition<z.infer<typeof updateLessonContract.inputSchema>, { id: string }> = {
+  ...updateLessonContract,
   async handler({ lessonId, ...changes }) {
     if (!(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
     await repoUpdateLesson(lessonId, changes);
@@ -163,35 +143,19 @@ const updateLesson: ToolDefinition<z.infer<typeof updateLessonSchema>, { id: str
 // Notes
 // ---------------------------------------------------------------------------
 
-const createNoteSchema = z.object({
-  lessonId: lessonIdSchema,
-  name: z.string().describe('The note name.'),
-  content: z.string().optional().describe('Rich Markdown source. Defaults to empty.'),
-});
 const createNote: ToolDefinition<
-  z.infer<typeof createNoteSchema>,
+  z.infer<typeof createNoteContract.inputSchema>,
   Awaited<ReturnType<typeof repoCreateNote>>
 > = {
-  name: 'lacuna.create_note',
-  description: "Create a new Markdown note at the end of a lesson's notes.",
-  inputSchema: createNoteSchema,
-  requiredScope: 'write',
+  ...createNoteContract,
   async handler({ lessonId, name, content }) {
     if (!(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
     return ok(await repoCreateNote(lessonId, name, content));
   },
 };
 
-const updateNoteSchema = z.object({
-  noteId: z.string().describe('The id of the note to update.'),
-  name: z.string().optional().describe('New note name.'),
-  content: z.string().optional().describe('New Markdown source.'),
-});
-const updateNote: ToolDefinition<z.infer<typeof updateNoteSchema>, { id: string }> = {
-  name: 'lacuna.update_note',
-  description: "Update a note's name and/or Markdown content.",
-  inputSchema: updateNoteSchema,
-  requiredScope: 'write',
+const updateNote: ToolDefinition<z.infer<typeof updateNoteContract.inputSchema>, { id: string }> = {
+  ...updateNoteContract,
   async handler({ noteId, ...changes }) {
     if (!(await db.notes.get(noteId))) notFound('Note', noteId);
     await repoUpdateNote(noteId, changes);
@@ -203,35 +167,11 @@ const updateNote: ToolDefinition<z.infer<typeof updateNoteSchema>, { id: string 
 // Cards
 // ---------------------------------------------------------------------------
 
-const cardTypeSchema = z.enum(['front_back', 'cloze', 'basic_reversed']).describe('The card type.');
-
-const createCardSchema = z
-  .object({
-    courseId: courseIdSchema,
-    lessonId: z
-      .string()
-      .optional()
-      .describe(
-        'If given, create the card in this lesson. Otherwise create it unassigned, in the course question bank.',
-      ),
-    type: cardTypeSchema,
-    front: z.string().describe('Markdown source for the question/prompt side.'),
-    back: z
-      .string()
-      .describe('Markdown source for the answer side. Unused (empty) for cloze cards.'),
-    tags: z.array(z.string()).optional().describe('Free-text tags. Defaults to none.'),
-  })
-  .strict();
 const createCard: ToolDefinition<
-  z.infer<typeof createCardSchema>,
+  z.infer<typeof createCardContract.inputSchema>,
   Awaited<ReturnType<typeof createCourseCard>>
 > = {
-  name: 'lacuna.create_card',
-  description:
-    "Create a new card, either unassigned in a course's question bank or assigned to a lesson " +
-    'when lessonId is given.',
-  inputSchema: createCardSchema,
-  requiredScope: 'write',
+  ...createCardContract,
   async handler({ courseId, lessonId, type, front, back, tags }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     if (lessonId !== undefined) {
@@ -242,24 +182,8 @@ const createCard: ToolDefinition<
   },
 };
 
-const updateCardSchema = z
-  .object({
-    cardId: z.string().describe('The id of the card to update.'),
-    front: z.string().optional().describe('New Markdown source for the question/prompt side.'),
-    back: z.string().optional().describe('New Markdown source for the answer side.'),
-    tags: z.array(z.string()).optional().describe('Replacement set of free-text tags.'),
-    flagged: z.boolean().optional().describe('New flagged state, for quick filtering/follow-up.'),
-  })
-  .strict();
-const updateCard: ToolDefinition<z.infer<typeof updateCardSchema>, { id: string }> = {
-  name: 'lacuna.update_card',
-  description:
-    "Update a card's content: front, back, tags, and/or flagged state. Never touches FSRS " +
-    "scheduling fields (state, stability, difficulty, due) — those are the study engine's " +
-    'exclusive write path. Refuses cards generated by a sequence or an occlusion; edit ' +
-    'those via their owning sequence (lacuna.update_sequence) or occlusion.',
-  inputSchema: updateCardSchema,
-  requiredScope: 'write',
+const updateCard: ToolDefinition<z.infer<typeof updateCardContract.inputSchema>, { id: string }> = {
+  ...updateCardContract,
   async handler({ cardId, ...changes }) {
     const card = await read.getCard(cardId);
     if (!card) notFound('Card', cardId);
@@ -270,20 +194,11 @@ const updateCard: ToolDefinition<z.infer<typeof updateCardSchema>, { id: string 
   },
 };
 
-const linkCardToLessonSchema = z.object({
-  lessonId: lessonIdSchema,
-  cardId: z.string().describe('The id of the card to link.'),
-});
 const linkCardToLesson: ToolDefinition<
-  z.infer<typeof linkCardToLessonSchema>,
+  z.infer<typeof linkCardToLessonContract.inputSchema>,
   Awaited<ReturnType<typeof repoLinkCardToLesson>>
 > = {
-  name: 'lacuna.link_card_to_lesson',
-  description:
-    'Display-link an existing card into an additional lesson, alongside its primary lesson. ' +
-    'Idempotent: linking an already-linked card is a no-op that returns the existing link.',
-  inputSchema: linkCardToLessonSchema,
-  requiredScope: 'write',
+  ...linkCardToLessonContract,
   async handler({ lessonId, cardId }) {
     if (!(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
     if (!(await read.getCard(cardId))) notFound('Card', cardId);
@@ -295,57 +210,11 @@ const linkCardToLesson: ToolDefinition<
 // Sequences
 // ---------------------------------------------------------------------------
 
-const sequenceItemSchema = z.object({
-  id: z
-    .string()
-    .describe('Stable id for this item — anchors the card(s) generated from it across edits.'),
-  value: z.string().describe('Markdown source for the recallable unit.'),
-  label: z.string().optional().describe('Optional display key (e.g. "11" for Sodium).'),
-  chunkIndex: z
-    .number()
-    .int()
-    .optional()
-    .describe('Membership of a named chunk (see chunkLabels).'),
-  speaker: z.string().optional().describe('`lines` mode only: who speaks this line.'),
-});
-
-const createSequenceSchema = z.object({
-  courseId: courseIdSchema,
-  lessonId: z
-    .string()
-    .optional()
-    .describe(
-      'If given, scope the sequence (and its generated cards) to this lesson. Otherwise the course question bank.',
-    ),
-  name: z.string().describe('The sequence name.'),
-  items: z
-    .array(sequenceItemSchema)
-    .describe('Ordered recallable units the sequence generates cards from.'),
-  cueWindow: z
-    .number()
-    .int()
-    .optional()
-    .describe('How many preceding items are shown as cue. Defaults to 2.'),
-  mode: z
-    .enum(['list', 'lines'])
-    .optional()
-    .describe(
-      '`list` (default): every item generates a positional recall card. `lines`: script mode, see mySpeaker.',
-    ),
-  mySpeaker: z
-    .string()
-    .optional()
-    .describe('`lines` mode only: the speaker whose lines are the recall target.'),
-});
 const createSequence: ToolDefinition<
-  z.infer<typeof createSequenceSchema>,
+  z.infer<typeof createSequenceContract.inputSchema>,
   Awaited<ReturnType<typeof repoCreateSequence>>
 > = {
-  name: 'lacuna.create_sequence',
-  description:
-    'Create a new overlapping-cloze sequence and, in the same transaction, every card it generates.',
-  inputSchema: createSequenceSchema,
-  requiredScope: 'write',
+  ...createSequenceContract,
   async handler({ courseId, lessonId, name, items, cueWindow, mode, mySpeaker }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     if (lessonId !== undefined && !(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
@@ -357,23 +226,8 @@ const createSequence: ToolDefinition<
   },
 };
 
-const updateSequenceSchema = z.object({
-  sequenceId: z.string().describe('The id of the sequence to update.'),
-  name: z.string().optional().describe('New sequence name.'),
-  items: z
-    .array(sequenceItemSchema)
-    .optional()
-    .describe('Replacement ordered list of recallable units.'),
-  cueWindow: z.number().int().optional().describe('New cue window.'),
-});
-const updateSequence: ToolDefinition<z.infer<typeof updateSequenceSchema>, { id: string }> = {
-  name: 'lacuna.update_sequence',
-  description:
-    "Update a sequence's name, items, and/or cue window, regenerating its cards to match. Card " +
-    'content is diffed and updated in place where possible, so existing FSRS memory state ' +
-    'survives content-only regeneration.',
-  inputSchema: updateSequenceSchema,
-  requiredScope: 'write',
+const updateSequence: ToolDefinition<z.infer<typeof updateSequenceContract.inputSchema>, { id: string }> = {
+  ...updateSequenceContract,
   async handler({ sequenceId, name, items, cueWindow }) {
     const existing = await read.getSequence(sequenceId);
     if (!existing) notFound('Sequence', sequenceId);
@@ -395,31 +249,6 @@ const updateSequence: ToolDefinition<z.infer<typeof updateSequenceSchema>, { id:
 // asset-upload tool, deliberately, since binary transport is not a natural MCP shape.
 // An agent authoring an SVG diagram plus fractional coordinates is the intended path once
 // the user has uploaded (or the agent has otherwise produced) the image (Arc 6 §6.7).
-const occlusionRegionSchema = z.object({
-  id: z
-    .string()
-    .describe('Stable id for this region — anchors the card generated from it across edits.'),
-  role: z
-    .enum(['label', 'feature'])
-    .describe(
-      '`label`: masks text printed on the diagram, revealed by uncovering it. `feature`: points at part of the drawing and is answered by its paired label region.',
-    ),
-  shape: z.literal('rectangle').describe('Rectangles only in this version.'),
-  x: z.number().describe('Left edge as a fraction of image width, 0..1.'),
-  y: z.number().describe('Top edge as a fraction of image height, 0..1.'),
-  w: z.number().describe('Width as a fraction of image width, 0..1.'),
-  h: z.number().describe('Height as a fraction of image height, 0..1.'),
-  answerText: z
-    .string()
-    .optional()
-    .describe('Required for typed mode and for an unpaired feature region.'),
-  pairedRegionId: z
-    .string()
-    .optional()
-    .describe('`feature` regions only: the label region that answers this one.'),
-  backNote: z.string().optional().describe('Optional extra shown below the image on the back.'),
-});
-
 /** Reject region references the occlusion itself cannot satisfy, before they reach the
  *  generator: a pairing must name a label region present in the same occlusion. */
 function assertOcclusionRegionsResolve(regions: z.infer<typeof occlusionRegionSchema>[]): void {
@@ -446,33 +275,11 @@ async function assertAssetExists(assetHash: string): Promise<void> {
   if (!(await db.assets.get(assetHash))) notFound('Asset', assetHash);
 }
 
-const createOcclusionSchema = z.object({
-  courseId: courseIdSchema,
-  lessonId: z
-    .string()
-    .optional()
-    .describe(
-      'If given, scope the occlusion (and its generated cards) to this lesson. Otherwise the course question bank.',
-    ),
-  name: z.string().describe("The occlusion name, used in each generated card's text fallback."),
-  assetHash: z
-    .string()
-    .describe('Hash of a diagram already stored in this install (see lacuna.get_occlusion).'),
-  regions: z
-    .array(occlusionRegionSchema)
-    .describe(
-      'The regions to generate one card each from. Every label region is masked on every front.',
-    ),
-});
 const createOcclusion: ToolDefinition<
-  z.infer<typeof createOcclusionSchema>,
+  z.infer<typeof createOcclusionContract.inputSchema>,
   Awaited<ReturnType<typeof repoCreateOcclusion>>
 > = {
-  name: 'lacuna.create_occlusion',
-  description:
-    'Create an image occlusion over an existing diagram and, in the same transaction, one card per region.',
-  inputSchema: createOcclusionSchema,
-  requiredScope: 'write',
+  ...createOcclusionContract,
   async handler({ courseId, lessonId, name, assetHash, regions }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     if (lessonId !== undefined && !(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
@@ -482,23 +289,8 @@ const createOcclusion: ToolDefinition<
   },
 };
 
-const updateOcclusionSchema = z.object({
-  occlusionId: z.string().describe('The id of the occlusion to update.'),
-  name: z.string().optional().describe('New occlusion name.'),
-  assetHash: z
-    .string()
-    .optional()
-    .describe('Replacement diagram. Regenerates every card in the occlusion.'),
-  regions: z.array(occlusionRegionSchema).optional().describe('Replacement region list.'),
-});
-const updateOcclusion: ToolDefinition<z.infer<typeof updateOcclusionSchema>, { id: string }> = {
-  name: 'lacuna.update_occlusion',
-  description:
-    "Update an occlusion's name, diagram and/or regions, regenerating its cards to match. Card " +
-    'content is diffed and updated in place where possible, so existing FSRS memory state ' +
-    'survives content-only regeneration (moving or resizing a region, re-pairing, role changes).',
-  inputSchema: updateOcclusionSchema,
-  requiredScope: 'write',
+const updateOcclusion: ToolDefinition<z.infer<typeof updateOcclusionContract.inputSchema>, { id: string }> = {
+  ...updateOcclusionContract,
   async handler({ occlusionId, name, assetHash, regions }) {
     const existing = await read.getOcclusion(occlusionId);
     if (!existing) notFound('Occlusion', occlusionId);
@@ -518,29 +310,11 @@ const updateOcclusion: ToolDefinition<z.infer<typeof updateOcclusionSchema>, { i
 // Assessments
 // ---------------------------------------------------------------------------
 
-const assessmentCoverageSchema = z.discriminatedUnion('coverageMode', [
-  z.object({ coverageMode: z.literal('prefix') }),
-  z.object({ coverageMode: z.literal('custom'), lessonIds: z.array(z.string()).min(1) }),
-]);
-const createCourseAssessmentSchema = z
-  .object({
-    courseId: courseIdSchema,
-    name: z.string().describe('The checkpoint name.'),
-    examDate: z.number().describe('The date/time as an epoch millisecond value, in UTC.'),
-    timeZone: z.string().optional().describe('IANA time zone used to display the date.'),
-    afterLessonId: z.string().nullable().describe('Path anchor; null places it before lesson one.'),
-    excludedCardIds: z.array(z.string()).optional().describe('Covered cards to exclude.'),
-  })
-  .and(assessmentCoverageSchema);
 const createCourseAssessment: ToolDefinition<
-  z.infer<typeof createCourseAssessmentSchema>,
+  z.infer<typeof createCourseAssessmentContract.inputSchema>,
   Awaited<ReturnType<typeof repoCreateCourseAssessment>>
 > = {
-  name: 'lacuna.create_course_assessment',
-  description:
-    'Create a checkpoint assessment with explicit path placement, coverage and card exclusions.',
-  inputSchema: createCourseAssessmentSchema,
-  requiredScope: 'write',
+  ...createCourseAssessmentContract,
   async handler(input) {
     const { courseId, name, examDate, ...options } = input;
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
@@ -548,48 +322,11 @@ const createCourseAssessment: ToolDefinition<
   },
 };
 
-const updateCourseAssessmentSchema = z
-  .object({
-    assessmentId: z.string().describe('The id of the assessment to update.'),
-    name: z.string().optional().describe('New name.'),
-    examDate: z
-      .number()
-      .optional()
-      .describe('New date/time as an epoch millisecond value, in UTC.'),
-    timeZone: z.string().optional().describe('New IANA display time zone.'),
-    afterLessonId: z.string().nullable().optional().describe('New path anchor.'),
-    coverageMode: z.enum(['prefix', 'custom']).optional().describe('New coverage mode.'),
-    lessonIds: z.array(z.string()).min(1).optional().describe('Explicit custom lesson ids.'),
-    excludedCardIds: z.array(z.string()).optional().describe('Replacement excluded card ids.'),
-    needsAuthorConfirmation: z
-      .boolean()
-      .optional()
-      .describe('Whether an author must review references.'),
-  })
-  .superRefine((value, context) => {
-    if (value.lessonIds !== undefined && value.coverageMode !== 'custom') {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['coverageMode'],
-        message: 'lessonIds requires coverageMode "custom".',
-      });
-    }
-    if (value.coverageMode === 'custom' && value.lessonIds === undefined) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['lessonIds'],
-        message: 'Custom coverage requires lessonIds.',
-      });
-    }
-  });
 const updateCourseAssessment: ToolDefinition<
-  z.infer<typeof updateCourseAssessmentSchema>,
+  z.infer<typeof updateCourseAssessmentContract.inputSchema>,
   { id: string }
 > = {
-  name: 'lacuna.update_course_assessment',
-  description: 'Update an assessment without changing its stable identity or course.',
-  inputSchema: updateCourseAssessmentSchema,
-  requiredScope: 'write',
+  ...updateCourseAssessmentContract,
   async handler({ assessmentId, ...changes }) {
     if (!(await db.courseAssessments.get(assessmentId)))
       notFound('Course assessment', assessmentId);

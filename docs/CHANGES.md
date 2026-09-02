@@ -27,6 +27,47 @@ tests; full typecheck; focused E2E TypeScript check; ESLint; Prettier; diff chec
 **Checks:** focused production-preview Playwright regression with a deterministic delayed chunk;
 direct TypeScript and Prettier checks; diff check.
 
+## Electron package diet
+
+- Stopped copying the renderer's complete dependency graph into Electron after Vite had already
+  bundled it. Production dependencies now describe the Electron runtime only; renderer and build
+  inputs remain installed for development, and the redundant direct MCP core root was removed.
+- Narrowed the packaged file boundary to compiled output, the Electron font stylesheet and font
+  files. Source maps, TypeScript/declarations, tests and named project documentation are excluded,
+  while dependency licence files remain present.
+- Limited Chromium resources to British and US English. The rebuilt Windows package now contains
+  two locale packs rather than 55.
+- Ratcheted the Windows package gate from baseline-sized allowances to the measured slim package.
+  The old artefact fails all seven ceilings; the new artefact passes them.
+- Measured the Windows ASAR falling from 138,813,451 to 20,575,956 bytes (-85.2%), its file count
+  from 12,817 to 1,240 (-90.3%), and locale bytes from 49,471,161 to 1,137,014 (-97.7%). The macOS
+  application fell from 430,764 KiB to 254,104 KiB on disk (-41.0%).
+- Rebuilt the renderer at the fixed baseline and after the change. Initial JavaScript remained
+  exactly 866,840 bytes raw / 266,195 bytes gzip and initial CSS remained 121,519 / 17,795 bytes;
+  the package work did not alter its asset hashes or loading boundary.
+
+**Checks:** red-to-green Electron package-boundary tests; frozen lockfile install; web and Electron
+TypeScript; lint; fixed-baseline and changed renderer production builds plus asset audits; macOS
+arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
+the ratcheted package audit. No Electron application was launched.
+
+## Resumable AI write approvals
+
+- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
+  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
+  retry delay and one bounded overall timeout.
+- Returned the committed tool result and its activity receipt through the original MCP invocation
+  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
+  changing its identity or guessing whether another write should be attempted.
+- Applied one deadline and cancellation signal to the complete relay invocation, including mailbox
+  reads, acknowledgements, approval waits and retry writes. An interrupted write now requires a
+  reconnect because its outcome is unknowable; cancellation while waiting for approval publishes
+  no retry. Native Stop responses acknowledge and retire the exact active run before renewal ends.
+
+**Checks:** red-to-green native-socket and relay-mailbox approval-resumption, cancellation, blocked
+I/O, stale-mailbox and Stop-lifecycle tests; focused native and standalone AI MCP suites; root and
+standalone AI MCP typechecks and lint.
+
 ## Electron package measurement gate
 
 - Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,
@@ -45,23 +86,6 @@ direct TypeScript and Prettier checks; diff check.
 **Checks:** red-to-green classification and ASAR-selection tests; direct TypeScript check; audit and
 ceiling check against the existing v0.2.3 Windows ASAR; release-workflow gate inspection; production
 asset build and existing web asset budget.
-
-## Resumable AI write approvals
-
-- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
-  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
-  retry delay and one bounded overall timeout.
-- Returned the committed tool result and its activity receipt through the original MCP invocation
-  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
-  changing its identity or guessing whether another write should be attempted.
-- Applied one deadline and cancellation signal to the complete relay invocation, including mailbox
-  reads, acknowledgements, approval waits and retry writes. An interrupted write now requires a
-  reconnect because its outcome is unknowable; cancellation while waiting for approval publishes
-  no retry. Native Stop responses acknowledge and retire the exact active run before renewal ends.
-
-**Checks:** red-to-green native-socket and relay-mailbox approval-resumption, cancellation, blocked
-I/O, stale-mailbox and Stop-lifecycle tests; focused native and standalone AI MCP suites; root and
-standalone AI MCP typechecks and lint.
 
 ## Complete exact-release workspace verification
 
@@ -3141,3 +3165,43 @@ opportunities remain open; the separate sticking-point fixes delivered afterward
 in "Unreleased — UI/UX audit implementation" above.
 
 **Checks:** documentation only; no code changed.
+# 2026-09-02 — Electron MCP contracts no longer package renderer handlers
+
+- Split MCP tool contracts (name, description, schema and scope) from renderer-only handlers.
+- Made the desktop server and data companion consume the contract registry while the renderer
+  executor retains the executable registry and exact existing tool order and surface version.
+- Added metafile and contract-parity gates, and moved Dexie, React and `ts-fsrs` out of packaged
+  runtime dependencies now that no Electron main-process entry imports them.
+- Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
+  without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
+  packages reduced `app.asar` by a further 11.1%, with no renderer-output change.
+
+# 2026-09-02 — Electron MCP server split into deep internal modules
+
+- Kept `startMcpServer`, `getMcpStatus`, `stopMcpServer` and `McpStatus` as the unchanged lifecycle
+  interface while reducing `electron/mcp/server.ts` to the composition façade.
+- Moved renderer IPC, scope and consent decisions, process grants, tool execution and exact SDK
+  registration order behind `DataBridge`.
+- Moved authenticated local sockets, purpose routing, connection grants and status, and AI renderer
+  channels behind `CompanionBroker` without changing the data or AI wire envelopes.
+- Added interface tests for fail-closed renderer decisions, sender rejection, listener removal,
+  purpose and identity invariants, sequential socket messages, live status, file permissions and
+  socket/metadata cleanup. The packaged dependency gate now checks both internal modules directly.
+
+# 2026-09-02 — Failed MCP starts now clean up partial runtime state
+
+- A companion-broker or legacy-stdio startup failure now tears down installed renderer listeners,
+  local sockets, connection metadata and in-memory grants before returning the original error.
+- Added a lifecycle regression test covering both failure points; previously `stopMcpServer` saw
+  `running: false` and returned without touching the partially-created runtime.
+
+# 2026-09-02 — MCP lifecycle acquisition and shutdown are fenced
+
+- Concurrent starts now share one in-flight acquisition, including data-bridge IPC registration,
+  so a second caller cannot overwrite partially-acquired runtime state.
+- Data-bridge shutdown closes its invocation dispatcher and fences scope, consent and renderer
+  continuations before removing listeners or grants; pending calls settle immediately with the
+  stopped error instead of surviving until a ten-second timeout.
+- Runtime teardown now attempts the bridge, broker and stdio cleanup independently and clears
+  lifecycle state even when one step rejects. Normal stop reports all cleanup failures together;
+  failed start preserves its original error and reports attached cleanup failures separately.

@@ -42,6 +42,28 @@ describe('InvokeDispatcher', () => {
     await expect(second).resolves.toEqual({ id: 'b', ok: true, result: 'second' });
   });
 
+  it('closes pending and future dispatches without sending or waiting for timeout', async () => {
+    const send = vi.fn();
+    const dispatcher = new InvokeDispatcher(send, 10_000);
+    const pending = dispatcher.dispatch(makeRequest('pending'));
+
+    dispatcher.close({ kind: 'internal', message: 'MCP server stopped.' });
+    const afterClose = dispatcher.dispatch(makeRequest('after-close'));
+
+    await expect(pending).resolves.toEqual({
+      id: 'pending',
+      ok: false,
+      error: { kind: 'internal', message: 'MCP server stopped.' },
+    });
+    await expect(afterClose).resolves.toEqual({
+      id: 'after-close',
+      ok: false,
+      error: { kind: 'internal', message: 'MCP server stopped.' },
+    });
+    expect(send).toHaveBeenCalledOnce();
+    expect(dispatcher.pendingCount).toBe(0);
+  });
+
   describe('timeout', () => {
     beforeEach(() => {
       vi.useFakeTimers();

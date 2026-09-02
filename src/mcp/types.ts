@@ -70,11 +70,14 @@ export interface ToolUndoPayload {
  * assembles these into the ordered tool list; electron/mcp/server.ts (a later task)
  * registers each with the MCP SDK's `server.registerTool`.
  */
-export interface ToolDefinition<Input = unknown, Output = unknown> {
+export interface ToolContract<Input = unknown> {
   name: string;
   description: string;
   inputSchema: z.ZodType<Input>;
   requiredScope: 'read' | 'write' | 'destructive';
+}
+
+export interface ToolDefinition<Input = unknown, Output = unknown> extends ToolContract<Input> {
   handler: (input: Input, ctx: ToolContext) => Promise<ToolResult<Output>>;
 }
 
