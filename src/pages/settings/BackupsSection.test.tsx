@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackupsSection } from './BackupsSection';
 
@@ -167,14 +168,24 @@ describe('BackupsSection', () => {
     expect(screen.queryByRole('button', { name: 'Request persistence' })).not.toBeInTheDocument();
   });
 
-  it('crossfades from the restore-point list into its empty state', async () => {
-    const view = render(<BackupsSection />);
+  it('keeps the final restore-point list mounted for its outgoing transition', async () => {
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <BackupsSection />
+      </LazyMotion>,
+    );
     expect(await screen.findByRole('button', { name: 'Delete' })).toBeInTheDocument();
 
     mockBackups = [];
-    view.rerender(<BackupsSection />);
+    view.rerender(
+      <LazyMotion features={domAnimation}>
+        <BackupsSection />
+      </LazyMotion>,
+    );
 
     expect(screen.getByText('No restore points yet.')).toHaveStyle({ opacity: '0' });
+    expect(screen.getByRole('list')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('list')).not.toBeInTheDocument());
   });
 
   it('brings a new restore point in through the list transition', async () => {

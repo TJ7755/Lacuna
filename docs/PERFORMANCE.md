@@ -13,11 +13,11 @@ on the same stacked branch; no new dependency or stylesheet was added.
 | Production-build change | Before | After | Change |
 |---|---:|---:|---:|
 | Initial JavaScript | 867,689 bytes | 867,917 bytes | +228 bytes / +0.026% |
-| Initial JavaScript gzip | 266,564 bytes | 266,662 bytes | +98 bytes / +0.037% |
+| Initial JavaScript gzip | 266,564 bytes | 266,665 bytes | +101 bytes / +0.038% |
 | Initial CSS | 121,805 bytes | 121,805 bytes | No change |
 | Lazy Question editor chunk | 14,458 bytes | 14,906 bytes | +448 bytes / +3.10% |
-| Lazy Course Settings chunk | 44,921 bytes | 45,700 bytes | +779 bytes / +1.73% |
-| Lazy Settings chunk | 81,201 bytes | 81,656 bytes | +455 bytes / +0.56% |
+| Lazy Course Settings chunk | 44,921 bytes | 45,784 bytes | +863 bytes / +1.92% |
+| Lazy Settings chunk | 81,201 bytes | 81,726 bytes | +525 bytes / +0.65% |
 
 ## Shared motion contract (2 September 2026)
 

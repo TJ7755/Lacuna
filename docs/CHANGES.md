@@ -7,14 +7,16 @@
   keeps one current accessible name and disables cleanly while the write is pending.
 - Course and Lesson titles now crossfade between display and rename states while preserving the
   existing inline editing, keyboard and failure behaviour.
-- Assessment editors crossfade with their Add control, move focus into the new form and return it
-  to the triggering control. Assessment and restore-point rows now use restrained entry, exit and
-  positional continuity so saves and deletions remain legible before their toast appears.
+- Assessment editors crossfade with their Add control, move focus into the current form and return
+  it to the triggering control, or to Add checkpoint when the edited assessment is deleted.
+  Assessment and restore-point rows now use restrained entry, exit and positional continuity;
+  deleting the final restore point completes the outgoing list transition before the empty state.
 - Every added transition follows the global slow, normal, fast and reduced-motion settings. The
-  production build added 228 raw / 98 gzip bytes to initial JavaScript; initial CSS did not change.
+  production build added 228 raw / 101 gzip bytes to initial JavaScript; initial CSS did not change.
 
-**Checks:** 32 focused red-to-green editor, header, assessment and backup tests; full typecheck;
-focused ESLint; production build and asset budget.
+**Checks:** 34 focused red-to-green editor, header, assessment and backup tests; 76 tests including
+their Course Settings and Lesson View consumers; full typecheck; focused ESLint; production build
+and asset budget.
 
 ## Settings action loading
 

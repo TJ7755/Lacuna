@@ -33,6 +33,16 @@ export interface ExamDatesSectionProps {
   editFinalOnMount?: boolean;
 }
 
+function focusCurrentAssessmentEditor(
+  panels: ReadonlyMap<string, HTMLElement>,
+  editingId: string,
+): void {
+  panels
+    .get(editingId)
+    ?.querySelector<HTMLElement>('[data-assessment-name]')
+    ?.focus();
+}
+
 export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamDatesSectionProps) {
   const assessments = useCourseAssessments(courseId);
   const lessons = useLessons(courseId);
@@ -50,7 +60,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const loaded = assessments && lessons && cards && links;
   const openedRequestedFinal = useRef(false);
-  const editorRegion = useRef<HTMLDivElement>(null);
+  const editorPanels = useRef(new Map<string, HTMLDivElement>());
   const addButton = useRef<HTMLButtonElement>(null);
   const editButtons = useRef(new Map<string, HTMLButtonElement>());
   const focusReturn = useRef<string | 'add' | null>(null);
@@ -73,7 +83,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
 
   useLayoutEffect(() => {
     if (editingId) {
-      editorRegion.current?.querySelector<HTMLElement>('[data-assessment-name]')?.focus();
+      focusCurrentAssessmentEditor(editorPanels.current, editingId);
       return;
     }
     const target = focusReturn.current;
@@ -116,7 +126,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
     try {
       await deleteCourseAssessment(id);
       if (editingId === id) {
-        focusReturn.current = null;
+        focusReturn.current = 'add';
         cancel();
       }
       setConfirmDeleteId(null);
@@ -212,10 +222,16 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
           })}
       </AnimatePresence>
 
-      <div ref={editorRegion}>
+      <div>
         <StepSwap stepKey={editingId ? `editor-${editingId}` : 'add'}>
           {editingId && draft && loaded ? (
-            <div className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface px-4 py-4">
+            <div
+              ref={(panel) => {
+                if (panel) editorPanels.current.set(editingId, panel);
+                else editorPanels.current.delete(editingId);
+              }}
+              className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface px-4 py-4"
+            >
               <AssessmentEditor
                 courseId={courseId}
                 kind={
