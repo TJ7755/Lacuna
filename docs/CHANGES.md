@@ -1,5 +1,17 @@
 # Lacuna — next beta
 
+## First-interaction performance baseline
+
+- Added a production-preview Playwright probe that measures real pointer-down to first visible
+  acknowledgement and to usable route content separately, retaining normal motion rather than
+  disguising deleted animation as a performance win.
+- Added cold-versus-warm median and p95 reporting with overlapping Long Task counts. Reports are
+  attached as stable JSON; timing remains comparative evidence instead of a flaky hosted-CI gate.
+- Recorded the first Path-to-Cards baseline in `docs/PERFORMANCE.md`.
+
+**Checks:** focused production-preview Playwright run with five cold and five warm samples; direct
+TypeScript and Prettier checks; diff check.
+
 ## Complete exact-release workspace verification
 
 - Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone

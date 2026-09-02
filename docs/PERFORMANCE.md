@@ -4,6 +4,30 @@ Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
 
+## First-interaction baseline (2 September 2026)
+
+`bun run perf:audit:web-interactions` measures a real pointer interaction in the
+production preview with normal motion enabled. It records pointer-down to the
+first visible navigation acknowledgement separately from pointer-down to usable
+route content, plus Long Tasks. Five fresh-context cold samples are compared with
+five same-context warm returns; the JSON report is attached to the Playwright run.
+Timing remains evidence rather than a brittle CI ceiling, while marker visibility,
+sample count, motion mode and completion have hard assertions.
+
+The initial Path-to-Cards sample measured:
+
+| Interaction measurement | Median | p95 |
+|---|---:|---:|
+| Cold acknowledgement | 28.3 ms | 28.8 ms |
+| Cold usable Cards content | 61.9 ms | 62.5 ms |
+| Warm acknowledgement | 30.9 ms | 31.3 ms |
+| Warm usable Cards content | 30.9 ms | 31.3 ms |
+
+No Long Tasks occurred in the ten samples. This fast local route still shows
+roughly a twofold first-use ready penalty; the next stack layer injects a
+deterministic slow chunk to prove whether route-intent prefetch removes that
+penalty without shortening or deleting the transition.
+
 ## First-load and network follow-up (30 August 2026)
 
 Fresh `master` had regressed to four initial JavaScript assets: the 967,691-byte
