@@ -13,6 +13,7 @@ import {
 export const DEFAULT_AI_RELAY_URL = 'https://lacuna-relay.vercel.app';
 const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
+const APPROVAL_RETRY_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
 export const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
@@ -36,6 +37,13 @@ export class TerminalRelayReconnectRequiredError extends Error {
   }
 }
 
+class TerminalInvocationBoundaryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TerminalInvocationBoundaryError';
+  }
+}
+
 export interface ConnectedTerminalRelay {
   relayUrl: string;
   sessionId: string;
@@ -48,7 +56,7 @@ export interface TerminalRelayTransport {
     relayUrl: string,
     client: AiClientIdentity,
   ): Promise<ConnectedTerminalRelay>;
-  readBrowserMailbox(connection: ConnectedTerminalRelay): Promise<{
+  readBrowserMailbox(connection: ConnectedTerminalRelay, signal?: AbortSignal): Promise<{
     generation: string;
     mailbox: RelayBrowserMailbox;
   } | null>;
@@ -144,9 +152,10 @@ export class TerminalAiClient {
     toolName: string,
     input: JsonValue,
     timeoutMs = TOOL_CALL_TIMEOUT_MS,
+    signal?: AbortSignal,
   ): Promise<TerminalToolResponse> {
     return this.runExclusive(() =>
-      this.invokeToolExclusive(runId, callId, toolName, input, timeoutMs),
+      this.invokeToolExclusive(runId, callId, toolName, input, timeoutMs, signal),
     );
   }
 
@@ -251,7 +260,10 @@ export class TerminalAiClient {
     toolName: string,
     input: JsonValue,
     timeoutMs: number,
+    signal?: AbortSignal,
   ): Promise<TerminalToolResponse> {
+    const deadline = this.now() + timeoutMs;
+    this.throwIfCancelled(signal);
     const connection = this.requireConnection();
     const active = this.activeRuns.get(runId);
     if (!active || active.replyRevision !== undefined) {
@@ -269,27 +281,30 @@ export class TerminalAiClient {
     const parsedCall = relayTerminalEventSchema.safeParse(call);
     if (!parsedCall.success) throw new Error('The Lacuna AI tool call is invalid.');
 
-    const latest = await this.transport.readBrowserMailbox(connection);
+    const latest = await this.readBrowserMailboxUntil(connection, deadline, signal);
     if (!latest) throw new Error('The Lacuna AI session is disconnected.');
     if (latest.generation !== this.browserGeneration) {
       this.noteBrowserMailbox(latest.mailbox);
-      const stopped = await this.acknowledgeRequestedStop(latest.mailbox);
+      const stopped = await this.acknowledgeRequestedStop(latest.mailbox, deadline, signal);
       this.browserGeneration = latest.generation;
       if (stopped?.runId === runId) {
         throw new Error('Stop was requested for this run; the tool call was not sent.');
       }
     }
 
-    await this.appendEvent({ ...parsedCall.data, eventId: this.createId('event') });
-    const callRevision = this.terminalMailbox.revision;
+    await this.appendEvent(
+      { ...parsedCall.data, eventId: this.createId('event') },
+      deadline,
+      signal,
+    );
+    let callRevision = this.terminalMailbox.revision;
 
-    const deadline = this.now() + timeoutMs;
     for (;;) {
-      const read = await this.transport.readBrowserMailbox(connection);
+      const read = await this.readBrowserMailboxUntil(connection, deadline, signal);
       if (!read) throw new Error('The Lacuna AI session is disconnected.');
       if (read.generation !== this.browserGeneration) {
         this.noteBrowserMailbox(read.mailbox);
-        const stopped = await this.acknowledgeRequestedStop(read.mailbox);
+        const stopped = await this.acknowledgeRequestedStop(read.mailbox, deadline, signal);
         this.browserGeneration = read.generation;
         if (stopped?.runId === runId) {
           throw new Error('Stop was requested for this run; the tool result was discarded.');
@@ -302,7 +317,23 @@ export class TerminalAiClient {
             )
           : undefined;
       if (response) {
-        await this.acknowledgeBrowserRevision();
+        await this.acknowledgeBrowserRevision(deadline, signal);
+        if (
+          !response.ok &&
+          (response.error.kind === 'approval_required' || response.error.kind === 'approval_pending')
+        ) {
+          const retryAfterMs = response.error.kind === 'approval_pending'
+            ? response.error.retryAfterMs
+            : APPROVAL_RETRY_INTERVAL_MS;
+          await this.sleepUntil(retryAfterMs, deadline, signal);
+          await this.appendEvent(
+            { ...parsedCall.data, eventId: this.createId('event') },
+            deadline,
+            signal,
+          );
+          callRevision = this.terminalMailbox.revision;
+          continue;
+        }
         return response.ok
           ? {
               ok: true,
@@ -311,9 +342,7 @@ export class TerminalAiClient {
             }
           : { ok: false, error: response.error };
       }
-      const remaining = deadline - this.now();
-      if (remaining <= 0) throw new Error('Timed out waiting for the Lacuna AI tool result.');
-      await this.sleep(Math.min(POLL_INTERVAL_MS, remaining));
+      await this.sleepUntil(POLL_INTERVAL_MS, deadline, signal);
     }
   }
 
@@ -332,6 +361,8 @@ export class TerminalAiClient {
 
   private async acknowledgeRequestedStop(
     mailbox: RelayBrowserMailbox,
+    deadline?: number,
+    signal?: AbortSignal,
   ): Promise<Extract<WaitForMessageResult, { type: 'stop_requested' }> | null> {
     const stopped = mailbox.messages.find(
       (message) =>
@@ -340,25 +371,33 @@ export class TerminalAiClient {
         !this.acknowledgedStops.has(message.runId),
     );
     if (!stopped || stopped.delivery !== 'stop_requested') return null;
-    await this.appendEvent({
-      type: 'stop_acknowledged',
-      eventId: this.createId('event'),
-      runId: stopped.runId,
-      stoppedAt: this.now(),
-    });
+    await this.appendEvent(
+      {
+        type: 'stop_acknowledged',
+        eventId: this.createId('event'),
+        runId: stopped.runId,
+        stoppedAt: this.now(),
+      },
+      deadline,
+      signal,
+    );
     this.acknowledgedStops.add(stopped.runId);
     this.activeRuns.delete(stopped.runId);
     return { type: 'stop_requested', messageId: stopped.messageId, runId: stopped.runId };
   }
 
-  private async appendEvent(event: RelayTerminalEvent): Promise<void> {
+  private async appendEvent(
+    event: RelayTerminalEvent,
+    deadline?: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const next: RelayTerminalMailbox = {
       version: AI_RELAY_PROTOCOL_VERSION,
       revision: this.terminalMailbox.revision + 1,
       events: [...this.terminalMailbox.events, event],
       browserRevisionSeen: this.terminalMailbox.browserRevisionSeen,
     };
-    await this.writeTerminalMailbox(next);
+    await this.writeTerminalMailbox(next, deadline, signal);
   }
 
   private async publishHeartbeatIfDue(timeoutMs: number): Promise<void> {
@@ -374,36 +413,48 @@ export class TerminalAiClient {
         ...this.terminalMailbox,
         revision: this.terminalMailbox.revision + 1,
       },
-      timeoutMs,
+      this.now() + Math.max(1, timeoutMs),
     );
   }
 
   private async writeTerminalMailbox(
     next: RelayTerminalMailbox,
-    timeoutMs?: number,
+    deadline?: number,
+    signal?: AbortSignal,
   ): Promise<void> {
     const connection = this.requireConnection();
-    const controller = timeoutMs === undefined ? null : new AbortController();
-    const timeout = controller && timeoutMs !== undefined
-      ? setTimeout(() => controller.abort(), Math.max(0, timeoutMs))
-      : null;
+    this.throwIfCancelled(signal);
+    if (deadline !== undefined) this.requireRemaining(deadline);
     let generation: string;
     try {
-      generation = await this.transport.writeTerminalMailbox(
-        connection,
-        this.terminalGeneration,
-        next,
-        controller?.signal,
-      );
+      generation = deadline === undefined
+        ? await this.transport.writeTerminalMailbox(
+            connection,
+            this.terminalGeneration,
+            next,
+            signal,
+          )
+        : await this.awaitUntil(
+            (boundedSignal) => this.transport.writeTerminalMailbox(
+              connection,
+              this.terminalGeneration,
+              next,
+              boundedSignal,
+            ),
+            deadline,
+            signal,
+          );
     } catch (error) {
-      if (controller?.signal.aborted && !(error instanceof TerminalRelayReconnectRequiredError)) {
+      if (
+        deadline !== undefined &&
+        !(error instanceof TerminalRelayReconnectRequiredError) &&
+        (signal?.aborted || this.now() >= deadline || this.isBoundedOperationError(error))
+      ) {
         this.clearConnection();
         throw new TerminalRelayReconnectRequiredError();
       }
       if (error instanceof TerminalRelayReconnectRequiredError) this.clearConnection();
       throw error;
-    } finally {
-      if (timeout !== null) clearTimeout(timeout);
     }
     this.terminalMailbox = next;
     this.terminalGeneration = generation;
@@ -438,19 +489,87 @@ export class TerminalAiClient {
     };
   }
 
-  private async acknowledgeBrowserRevision(): Promise<void> {
-    const connection = this.requireConnection();
+  private acknowledgeBrowserRevision(deadline: number, signal?: AbortSignal): Promise<void> {
+    return this.writeTerminalMailbox(this.terminalMailbox, deadline, signal);
+  }
+
+  private readBrowserMailboxUntil(
+    connection: ConnectedTerminalRelay,
+    deadline: number,
+    signal?: AbortSignal,
+  ): Promise<{ generation: string; mailbox: RelayBrowserMailbox } | null> {
+    return this.awaitUntil(
+      (boundedSignal) => this.transport.readBrowserMailbox(connection, boundedSignal),
+      deadline,
+      signal,
+    );
+  }
+
+  private async sleepUntil(
+    delayMs: number,
+    deadline: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const remaining = this.requireRemaining(deadline);
+    await this.awaitUntil(
+      () => this.sleep(Math.min(delayMs, remaining)),
+      deadline,
+      signal,
+    );
+    this.requireRemaining(deadline);
+  }
+
+  private async awaitUntil<T>(
+    operation: (signal: AbortSignal) => Promise<T>,
+    deadline: number,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    this.throwIfCancelled(signal);
+    const remaining = this.requireRemaining(deadline);
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
+    const timeout = setTimeout(() => controller.abort(), remaining);
+    const interrupted = new Promise<never>((_resolve, reject) => {
+      controller.signal.addEventListener('abort', () => {
+        reject(signal?.aborted ? this.cancelledError() : this.timedOutError());
+      }, { once: true });
+    });
     try {
-      const generation = await this.transport.writeTerminalMailbox(
-        connection,
-        this.terminalGeneration,
-        this.terminalMailbox,
-      );
-      this.terminalGeneration = generation;
+      return await Promise.race([operation(controller.signal), interrupted]);
     } catch (error) {
-      if (error instanceof TerminalRelayReconnectRequiredError) this.clearConnection();
+      if (controller.signal.aborted) {
+        throw signal?.aborted ? this.cancelledError() : this.timedOutError();
+      }
       throw error;
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', cancel);
     }
+  }
+
+  private throwIfCancelled(signal?: AbortSignal): void {
+    if (signal?.aborted) throw this.cancelledError();
+  }
+
+  private requireRemaining(deadline: number): number {
+    const remaining = deadline - this.now();
+    if (remaining <= 0) throw this.timedOutError();
+    return remaining;
+  }
+
+  private cancelledError(): TerminalInvocationBoundaryError {
+    return new TerminalInvocationBoundaryError('The Lacuna AI request was cancelled.');
+  }
+
+  private timedOutError(): TerminalInvocationBoundaryError {
+    return new TerminalInvocationBoundaryError(
+      'Timed out waiting for the Lacuna AI tool result.',
+    );
+  }
+
+  private isBoundedOperationError(error: unknown): boolean {
+    return error instanceof TerminalInvocationBoundaryError;
   }
 
   private requireConnection(): ConnectedTerminalRelay {
