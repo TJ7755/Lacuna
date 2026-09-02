@@ -101,6 +101,115 @@ describe('local AI companion request lifecycle', () => {
     });
   });
 
+  it('keeps one MCP invocation open and resumes the exact native call after approval', async () => {
+    const connection = await writeCompanionConnectionFile(userDataPath, '0.2.3');
+    const receivedCalls: Array<Extract<AiBridgeRequest, { type: 'invoke_tool' }>> = [];
+    const receipt = {
+      receiptId: 'receipt-1',
+      callId: 'call-1',
+      toolName: 'lacuna.create_course' as const,
+      summary: 'Created Course: Biology',
+      createdAt: 100,
+      targets: [{ kind: 'course' as const, id: 'course-1', label: 'Biology' }],
+    };
+    const server = createServer((socket) => {
+      sockets.push(socket);
+      const decoder = new CompanionLineDecoder();
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk: string) => {
+        for (const value of decoder.push(chunk)) {
+          const message = value as { type: string; id?: string; request?: AiBridgeRequest };
+          if (message.type === 'ai_hello') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_ready',
+              protocolVersion: AI_COMPANION_PROTOCOL_VERSION,
+              appVersion: connection.appVersion,
+              capabilities: { leaseRenewal: true },
+            }));
+            continue;
+          }
+          if (!message.id || !message.request) continue;
+          if (message.request.type === 'connect') {
+            socket.write(encodeCompanionMessage({
+              type: 'ai_result',
+              id: message.id,
+              result: {
+                ok: true,
+                data: {
+                  type: 'connection',
+                  connectionId: 'connection-1',
+                  client: message.request.client,
+                  connectedAt: 1,
+                },
+              },
+            }));
+            continue;
+          }
+          if (message.request.type !== 'invoke_tool') continue;
+          receivedCalls.push(message.request);
+          const attempt = receivedCalls.length;
+          socket.write(encodeCompanionMessage({
+            type: 'ai_result',
+            id: message.id,
+            result: attempt === 1
+              ? {
+                  ok: false,
+                  error: {
+                    kind: 'approval_required',
+                    approvalId: 'approval-1',
+                    approvalKind: 'write_call',
+                    message: 'Approve lacuna.create_course on New course: Biology.',
+                  },
+                }
+              : attempt === 2
+                ? {
+                    ok: false,
+                    error: {
+                      kind: 'approval_pending',
+                      approvalId: 'approval-1',
+                      approvalKind: 'write_call',
+                      message: 'Approve lacuna.create_course on New course: Biology.',
+                      retryAfterMs: 250,
+                    },
+                  }
+                : {
+                    ok: true,
+                    data: {
+                      type: 'tool_result',
+                      callId: 'call-1',
+                      result: { id: 'course-1' },
+                      receipt,
+                    },
+                  },
+          }));
+        }
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(connection.endpoint, resolve);
+    });
+    const client = new LocalAiAppClient(100, userDataPath);
+    await client.connect({ name: 'Codex' }, new AbortController().signal);
+
+    await expect(client.invokeTool(
+      'run-1',
+      'call-1',
+      'lacuna.create_course',
+      { name: 'Biology' },
+      5_000,
+      new AbortController().signal,
+    )).resolves.toEqual({ ok: true, result: { id: 'course-1' }, receipt });
+    expect(receivedCalls).toEqual(Array.from({ length: 3 }, () => ({
+      type: 'invoke_tool',
+      connectionId: 'connection-1',
+      runId: 'run-1',
+      callId: 'call-1',
+      call: { name: 'lacuna.create_course', input: { name: 'Biology' } },
+    })));
+  });
+
   it.each(['reply', 'tool write'] as const)(
     'reports an ambiguous %s outcome as safely retryable when the socket closes',
     async (operation) => {

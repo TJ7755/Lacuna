@@ -483,22 +483,29 @@ describe('TerminalAiClient', () => {
     expect(new Set(calls.map((event) => event.eventId))).toHaveLength(1);
   });
 
-  it('ignores a stale response when an approved call resumes with the same callId', async () => {
+  it('keeps an approval-gated call open and resumes the exact call after approval', async () => {
     const transport = new FakeTransport();
     transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    let sequence = 0;
     const client = new TerminalAiClient({
       transport,
       now: () => 1_000,
-      createId: (prefix) => prefix + '-1',
+      sleep: async () => undefined,
+      createId: (prefix) => `${prefix}-${++sequence}`,
     });
     await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
     const claimed = await client.waitForMessage(25_000);
     if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
-    const staleMailbox: RelayBrowserMailbox = {
+    const claimedMailbox: RelayBrowserMailbox = {
       ...queuedMailbox(),
       revision: 2,
       terminalRevisionSeen: 1,
       messages: [{ ...queuedMailbox().messages[0], delivery: 'claimed', runId: claimed.runId }],
+    };
+    const approvalMailbox: RelayBrowserMailbox = {
+      ...claimedMailbox,
+      revision: 3,
+      terminalRevisionSeen: 2,
       toolResponses: [
         {
           runId: claimed.runId,
@@ -514,10 +521,18 @@ describe('TerminalAiClient', () => {
         },
       ],
     };
+    const receipt = {
+      receiptId: 'receipt-1',
+      callId: 'call-1',
+      toolName: 'lacuna.create_course',
+      summary: 'Created Course: Biology',
+      createdAt: 1_100,
+      targets: [{ kind: 'course' as const, id: 'course-1', label: 'Biology' }],
+    };
     const approvedMailbox: RelayBrowserMailbox = {
-      ...staleMailbox,
-      revision: 3,
-      terminalRevisionSeen: 2,
+      ...approvalMailbox,
+      revision: 4,
+      terminalRevisionSeen: 3,
       toolResponses: [
         {
           runId: claimed.runId,
@@ -525,18 +540,44 @@ describe('TerminalAiClient', () => {
           respondedAt: 1_100,
           ok: true,
           result: { id: 'course-1' },
+          receipt,
         },
       ],
     };
     transport.reads.push(
-      { generation: '"browser-2"', mailbox: staleMailbox },
-      { generation: '"browser-2"', mailbox: staleMailbox },
-      { generation: '"browser-3"', mailbox: approvedMailbox },
+      { generation: '"browser-2"', mailbox: claimedMailbox },
+      { generation: '"browser-3"', mailbox: approvalMailbox },
+      { generation: '"browser-4"', mailbox: approvedMailbox },
     );
 
     await expect(
       client.invokeTool(claimed.runId, 'call-1', 'lacuna.create_course', { name: 'Biology' }),
-    ).resolves.toEqual({ ok: true, result: { id: 'course-1' } });
+    ).resolves.toEqual({
+      ok: true,
+      result: { id: 'course-1' },
+      receipt,
+    });
+    const calls = transport.writes
+      .flatMap((mailbox) => mailbox.events)
+      .filter((event) => event.type === 'tool_call');
+    const exactCalls = [...new Map(calls.map((call) => [call.eventId, call])).values()];
+    expect(exactCalls).toHaveLength(2);
+    expect(exactCalls.map(({ eventId: _eventId, createdAt: _createdAt, ...call }) => call)).toEqual([
+      {
+        type: 'tool_call',
+        runId: claimed.runId,
+        callId: 'call-1',
+        toolName: 'lacuna.create_course',
+        input: { name: 'Biology' },
+      },
+      {
+        type: 'tool_call',
+        runId: claimed.runId,
+        callId: 'call-1',
+        toolName: 'lacuna.create_course',
+        input: { name: 'Biology' },
+      },
+    ]);
   });
 
   it('serialises concurrent tool invocations through one terminal mailbox writer', async () => {

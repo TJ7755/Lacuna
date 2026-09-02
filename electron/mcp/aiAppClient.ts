@@ -35,6 +35,7 @@ const REQUEST_GRACE_MS = 5_000;
 const DEFAULT_WAIT_MS = MAX_AI_WAIT_MS;
 const CLAIM_LEASE_MS = 5 * 60_000;
 const LEASE_RENEW_INTERVAL_MS = 60_000;
+const APPROVAL_RETRY_INTERVAL_MS = 500;
 const WRITE_DRAIN_TIMEOUT_MS = MAX_AI_WAIT_MS + (REQUEST_GRACE_MS * 2);
 
 interface ActiveRun {
@@ -46,6 +47,17 @@ function cancelledOperation(commitState: 'not_started' | 'unknown'): AiCompanion
   return new AiCompanionOperationError({
     kind: 'cancelled',
     message: 'The Lacuna AI request was cancelled.',
+    retryable: true,
+    suggestedAction: 'retry_same_request',
+    userActionRequired: false,
+    commitState,
+  });
+}
+
+function timedOutOperation(commitState: 'not_started' | 'unknown'): AiCompanionOperationError {
+  return new AiCompanionOperationError({
+    kind: 'timeout',
+    message: 'Lacuna did not answer the local AI companion in time.',
     retryable: true,
     suggestedAction: 'retry_same_request',
     userActionRequired: false,
@@ -162,25 +174,38 @@ export class LocalAiAppClient {
     timeoutMs: number,
     signal: AbortSignal,
   ): Promise<object> {
-    this.throwLeaseRenewalFailure();
-    const result = await this.request({
+    const request: AiBridgeRequest = {
       type: 'invoke_tool',
       connectionId: this.requireConnection(),
       runId,
       callId,
       call: { name: toolName, input },
-    }, timeoutMs + REQUEST_GRACE_MS, signal);
-    if (!result.ok) {
-      if (result.error.kind === 'unavailable') this.close();
-      if (result.error.kind === 'tool') return { ok: false, error: result.error.error };
-      throw bridgeOperationError(result.error);
-    }
-    if (result.data.type !== 'tool_result') throw new Error('Lacuna returned the wrong AI response.');
-    return {
-      ok: true,
-      result: result.data.result,
-      ...(result.data.receipt ? { receipt: result.data.receipt } : {}),
     };
+    const deadline = Date.now() + timeoutMs + REQUEST_GRACE_MS;
+    for (;;) {
+      this.throwLeaseRenewalFailure();
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw timedOutOperation('not_started');
+      const result = await this.request(request, remaining, signal);
+      if (!result.ok) {
+        if (result.error.kind === 'unavailable') this.close();
+        if (result.error.kind === 'tool') return { ok: false, error: result.error.error };
+        if (result.error.kind === 'approval_required' || result.error.kind === 'approval_pending') {
+          const retryAfterMs = result.error.kind === 'approval_pending'
+            ? result.error.retryAfterMs
+            : APPROVAL_RETRY_INTERVAL_MS;
+          await this.waitForApprovalRetry(retryAfterMs, deadline, signal);
+          continue;
+        }
+        throw bridgeOperationError(result.error);
+      }
+      if (result.data.type !== 'tool_result') throw new Error('Lacuna returned the wrong AI response.');
+      return {
+        ok: true,
+        result: result.data.result,
+        ...(result.data.receipt ? { receipt: result.data.receipt } : {}),
+      };
+    }
   }
 
   async reply(
@@ -310,6 +335,30 @@ export class LocalAiAppClient {
     if (this.leaseRenewalFailure) throw this.leaseRenewalFailure;
   }
 
+  private async waitForApprovalRetry(
+    retryAfterMs: number,
+    deadline: number,
+    signal: AbortSignal,
+  ): Promise<void> {
+    if (signal.aborted) throw cancelledOperation('not_started');
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw timedOutOperation('not_started');
+    const delay = Math.min(retryAfterMs, remaining);
+    if (delay <= 0) return;
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => {
+        clearTimeout(timer);
+        reject(cancelledOperation('not_started'));
+      };
+      const timer = setTimeout(() => {
+        signal.removeEventListener('abort', abort);
+        resolve();
+      }, delay);
+      signal.addEventListener('abort', abort, { once: true });
+    });
+    if (deadline - Date.now() <= 0) throw timedOutOperation('not_started');
+  }
+
   private stopLeaseRenewal(): void {
     if (!this.leaseRenewTimer) return;
     clearTimeout(this.leaseRenewTimer);
@@ -372,14 +421,7 @@ export class LocalAiAppClient {
         } else {
           this.armWriteDrainTimeout(id);
         }
-        reject(new AiCompanionOperationError({
-          kind: 'timeout',
-          message: 'Lacuna did not answer the local AI companion in time.',
-          retryable: true,
-          suggestedAction: 'retry_same_request',
-          userActionRequired: false,
-          commitState: drainAfterCancellation ? 'unknown' : 'not_started',
-        }));
+        reject(timedOutOperation(drainAfterCancellation ? 'unknown' : 'not_started'));
       }, timeoutMs);
       this.pending.set(id, {
         request,

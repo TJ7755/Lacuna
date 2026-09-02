@@ -13,6 +13,7 @@ import {
 export const DEFAULT_AI_RELAY_URL = 'https://lacuna-relay.vercel.app';
 const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
+const APPROVAL_RETRY_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
 export const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
@@ -281,7 +282,7 @@ export class TerminalAiClient {
     }
 
     await this.appendEvent({ ...parsedCall.data, eventId: this.createId('event') });
-    const callRevision = this.terminalMailbox.revision;
+    let callRevision = this.terminalMailbox.revision;
 
     const deadline = this.now() + timeoutMs;
     for (;;) {
@@ -303,6 +304,26 @@ export class TerminalAiClient {
           : undefined;
       if (response) {
         await this.acknowledgeBrowserRevision();
+        if (
+          !response.ok &&
+          (response.error.kind === 'approval_required' || response.error.kind === 'approval_pending')
+        ) {
+          const remaining = deadline - this.now();
+          if (remaining <= 0) throw new Error('Timed out waiting for the Lacuna AI tool result.');
+          const retryAfterMs = response.error.kind === 'approval_pending'
+            ? response.error.retryAfterMs
+            : APPROVAL_RETRY_INTERVAL_MS;
+          await this.sleep(Math.min(retryAfterMs, remaining));
+          if (deadline - this.now() <= 0) {
+            throw new Error('Timed out waiting for the Lacuna AI tool result.');
+          }
+          await this.appendEvent({
+            ...parsedCall.data,
+            eventId: this.createId('event'),
+          });
+          callRevision = this.terminalMailbox.revision;
+          continue;
+        }
         return response.ok
           ? {
               ok: true,

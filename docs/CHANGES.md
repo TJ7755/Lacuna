@@ -1,5 +1,17 @@
 # Lacuna — next beta
 
+## Resumable AI write approvals
+
+- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
+  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
+  retry delay and one bounded overall timeout.
+- Returned the committed tool result and its activity receipt through the original MCP invocation
+  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
+  changing its identity or guessing whether another write should be attempted.
+
+**Checks:** red-to-green native-socket and relay-mailbox approval-resumption tests; focused native
+and standalone AI MCP suites; root and standalone AI MCP typechecks and lint.
+
 ## Complete exact-release workspace verification
 
 - Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone
