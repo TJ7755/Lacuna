@@ -16,10 +16,12 @@ describe('service-worker asset caching', () => {
       (rule) => typeof rule.urlPattern === 'function' && rule.options?.cacheName === 'script-cache',
     );
 
-    expect(scriptRule).toMatchObject({ handler: 'CacheFirst' });
+    expect(scriptRule).toMatchObject({
+      handler: 'CacheFirst',
+      options: { expiration: { maxEntries: 60 } },
+    });
     const matches = scriptRule?.urlPattern as
-      | ((context: { request: Request; url: URL }) => boolean)
-      | undefined;
+      ((context: { request: Request; url: URL }) => boolean) | undefined;
     expect(
       matches?.({
         request: { destination: 'script' } as Request,
@@ -30,6 +32,39 @@ describe('service-worker asset caching', () => {
       matches?.({
         request: { destination: 'script' } as Request,
         url: new URL('https://lacuna.example/registerSW.js'),
+      }),
+    ).toBe(false);
+  });
+
+  it('precaches only the shared modules required by the controlled offline Cards spine', () => {
+    expect(workbox.globPatterns).toContain(
+      'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan}-*.js',
+    );
+    expect(workbox.globPatterns).not.toContain('assets/*Page-*.js');
+    expect(workbox.globPatterns).not.toContain('assets/*.js');
+  });
+
+  it('caches visited content-hashed lazy styles without adding them to the install shell', () => {
+    const styleRule = workbox.runtimeCaching?.find(
+      (rule) => typeof rule.urlPattern === 'function' && rule.options?.cacheName === 'style-cache',
+    );
+
+    expect(styleRule).toMatchObject({
+      handler: 'CacheFirst',
+      options: { expiration: { maxEntries: 10 } },
+    });
+    const matches = styleRule?.urlPattern as
+      ((context: { request: Request; url: URL }) => boolean) | undefined;
+    expect(
+      matches?.({
+        request: { destination: 'style' } as Request,
+        url: new URL('https://lacuna.example/assets/markdown-CONTENT1.css'),
+      }),
+    ).toBe(true);
+    expect(
+      matches?.({
+        request: { destination: 'style' } as Request,
+        url: new URL('https://lacuna.example/styles.css'),
       }),
     ).toBe(false);
   });

@@ -3109,7 +3109,15 @@ cross-environment consistency.
 - **Install-prompt panel** in Settings (PWA / Windows installer links where
   supported).
 - **PWA service worker** for offline use, registered at the application root on production HTTP(S)
-  pages. The packaged Electron app uses `app://` and does not attempt browser worker registration.
+  pages. The install shell precaches the eager application assets and the small, named shared-module
+  closure required by the Cards spine before a first worker can control the page. Unrelated lazy
+  routes remain outside the install shell. Visited content-hashed scripts, workers and styles use
+  bounded Cache First stores, so an online visit to the Cards library retains its route JavaScript
+  and Markdown stylesheet for an offline reload while IndexedDB retains authored Cards and search
+  remains local. Stale-chunk recovery may unregister the worker, clear caches and reload only after
+  a no-store origin probe confirms network access; an offline preload failure never triggers that
+  destructive recovery. The packaged Electron app uses `app://` and does not attempt browser worker
+  registration. Automated coverage uses desktop Chromium and is not physical-device evidence.
 
 ### Storage layer
 

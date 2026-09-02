@@ -17,6 +17,10 @@ export const workbox = {
     '**/*.{html,ico,png,svg}',
     'assets/index-*.css',
     'assets/{app,vendor}-*.js',
+    // These shared modules load during the first launch before the newly
+    // installed worker controls the page, but the Cards route imports them too.
+    // Precache that core closure; unrelated lazy pages remain runtime-only.
+    'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan}-*.js',
   ],
   runtimeCaching: [
     {
@@ -29,6 +33,19 @@ export const workbox = {
       options: {
         cacheName: 'script-cache',
         expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+    {
+      urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+        request.destination === 'style' &&
+        /^\/assets\/.+-[A-Za-z0-9_-]{8}\.css$/.test(url.pathname),
+      // Markdown and maths styles stay out of the install shell, but a route
+      // visited online must retain its content-addressed stylesheet for reloads.
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'style-cache',
+        expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 },
         cacheableResponse: { statuses: [0, 200] },
       },
     },

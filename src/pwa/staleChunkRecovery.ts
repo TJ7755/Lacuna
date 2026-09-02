@@ -7,20 +7,39 @@ export interface StaleChunkRecoveryEnvironment {
   clearPwaState(): Promise<void>;
   reload(): void;
   now(): number;
+  online(): boolean;
+  confirmOnline(): Promise<boolean>;
 }
 
 /**
  * Vite reports a missing deployment chunk before React sees the rejected import.
- * Recover once by dropping the stale service worker/cache state; a second failure
- * within the cooldown is allowed through to the normal diagnostic boundary.
+ * Recover at most once by dropping the stale service worker/cache state. Import
+ * errors continue to their callers because proving network access is asynchronous.
  */
 export function installStaleChunkRecovery(
   environment: StaleChunkRecoveryEnvironment = browserEnvironment(),
 ): () => void {
-  const onPreloadError = (event: Event) => {
-    if (!claimRecoveryAttempt(environment.storage, environment.now())) return;
-    event.preventDefault();
-    void environment.clearPwaState().finally(() => environment.reload());
+  let recoveryPending = false;
+  const onPreloadError = () => {
+    // An uncached optional chunk can fail during a legitimate offline start.
+    // Clearing the worker and its caches there would destroy the shell that is
+    // keeping the application usable, then reload into the same absent network.
+    if (!environment.online() || recoveryPending) return;
+    recoveryPending = true;
+    // Confirming connectivity is asynchronous, so the import error must continue
+    // to its caller. Preventing it here would make Vite resolve the module as
+    // undefined when Chromium briefly reports an offline document as online.
+    void environment
+      .confirmOnline()
+      .then(async (confirmed) => {
+        if (!confirmed) return;
+        if (!claimRecoveryAttempt(environment.storage, environment.now())) return;
+        await environment.clearPwaState().finally(() => environment.reload());
+      })
+      .catch(() => {})
+      .finally(() => {
+        recoveryPending = false;
+      });
   };
 
   environment.events.addEventListener('vite:preloadError', onPreloadError);
@@ -48,6 +67,16 @@ function browserEnvironment(): StaleChunkRecoveryEnvironment {
     clearPwaState,
     reload: () => window.location.reload(),
     now: Date.now,
+    online: () => navigator.onLine,
+    confirmOnline: async () => {
+      try {
+        const probe = new URL('/sw.js', window.location.origin);
+        probe.searchParams.set('online-probe', String(Date.now()));
+        return (await fetch(probe, { cache: 'no-store' })).ok;
+      } catch {
+        return false;
+      }
+    },
   };
 }
 
