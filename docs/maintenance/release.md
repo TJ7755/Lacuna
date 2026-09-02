@@ -18,8 +18,16 @@ neither proves that the exact release tag names the workflow commit.
 
 ## Verification and native builds
 
-The verifier runs typechecking, linting, unit and coverage suites, the asset build, canonical
-release scenario, performance gate and browser end-to-end suite before any package job starts.
+The verifier runs the root typechecking, linting, unit and coverage suites, asset build, canonical
+release scenario, performance gate and browser end-to-end suite before any package job starts. It
+also runs the relay's typecheck, lint and tests, then the standalone AI MCP tool's typecheck, lint,
+tests and build.
+
+The root and relay dependency installations are both required. The relay owns a separate lockfile.
+The standalone AI MCP tool intentionally uses the root installation, but its normal test suite
+imports the real in-process relay handler and store, so the relay dependency tree must also be
+installed. Do not add an unlocked installation inside `tooling/lacuna-ai-mcp`.
+
 The package matrix is:
 
 | Job | Official runner | Packages | Native AI gate |
