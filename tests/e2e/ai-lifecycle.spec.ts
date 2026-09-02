@@ -20,23 +20,15 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   if (createRun.type !== 'message') throw new Error('Expected the course creation request.');
 
   const input = { name: 'Peer-deleted AI course' };
-  const pending = await terminal.invokeTool(
+  const createdPromise = terminal.invokeTool(
     createRun.runId,
     'create-peer-course',
     'lacuna.create_course',
     input,
   );
-  expect(pending).toMatchObject({
-    ok: false,
-    error: { kind: 'approval_required', approvalKind: 'write_call' },
-  });
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
-  const created = await terminal.invokeTool(
-    createRun.runId,
-    'create-peer-course',
-    'lacuna.create_course',
-    input,
-  );
+  const created = await createdPromise;
   const courseId = successfulId(created);
   const memoryInput = {
     scope: { kind: 'global' as const },
@@ -44,25 +36,15 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
     content: 'Prefer lifecycle examples with explicit evidence.',
     basis: 'learner-stated' as const,
   };
-  const pendingMemory = await terminal.invokeTool(
+  const createdMemoryPromise = terminal.invokeTool(
     createRun.runId,
     'create-lifecycle-memory',
     'lacuna.create_memory',
     memoryInput,
   );
-  expect(pendingMemory).toMatchObject({
-    ok: false,
-    error: { kind: 'approval_required', approvalKind: 'write_grant' },
-  });
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
-  expect(
-    await terminal.invokeTool(
-      createRun.runId,
-      'create-lifecycle-memory',
-      'lacuna.create_memory',
-      memoryInput,
-    ),
-  ).toMatchObject({ ok: true });
+  expect(await createdMemoryPromise).toMatchObject({ ok: true });
   const createdReply = 'The temporary course is ready.';
   await terminal.reply(createRun.runId, createRun.messageId, createdReply);
   await expect(page.getByText(createdReply, { exact: true })).toBeVisible();
@@ -108,17 +90,6 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
       back: `Evidence ${index}`,
     })),
   };
-  const pendingImport = await terminal.invokeTool(
-    importRun.runId,
-    'import-during-sync',
-    'lacuna.import_cards',
-    importInput,
-  );
-  expect(pendingImport).toMatchObject({
-    ok: false,
-    error: { kind: 'approval_required', approvalKind: 'write_grant' },
-  });
-  await page.getByRole('button', { name: 'Approve' }).click();
   const stateWritesBeforeImport = countStateRequests(syncRelay.requests, 'PUT');
   const stateReadsBeforeImport = countStateRequests(syncRelay.requests, 'GET');
   const cardsBeforeImport = await cardCount(page);
@@ -129,6 +100,8 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
     importInput,
     120_000,
   );
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
+  await page.getByRole('button', { name: 'Approve' }).click();
   await expect
     .poll(() => cardCount(page), { timeout: 30_000, intervals: [50] })
     .toBeGreaterThan(cardsBeforeImport);
