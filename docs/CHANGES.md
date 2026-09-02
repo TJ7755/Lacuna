@@ -1,16 +1,17 @@
 # Lacuna — next beta
 
-## Packaged Electron memory measurement
+## Packaged Electron renderer-retention measurement
 
-- Added a fixed packaged workflow that records nine raw process, renderer-heap and DOM samples at
-  each lifecycle checkpoint, then reports medians, median absolute deviations and ranges without
-  forcing garbage collection.
+- Added a fixed packaged workflow that records nine raw renderer heap, backing-storage and DOM
+  samples at each lifecycle checkpoint, then reports medians, median absolute deviations and ranges
+  without forcing garbage collection.
 - Added a deterministic 10,000-Card import workload, executable and fixture fingerprints, and a
   comparator that rejects different machines, runtimes, fixtures, policies or checkpoint schemas.
 - Reused the one-launch packaged lifecycle and retained bounded shutdown after success or failure.
   Reload failures include the renderer URL, visible text and recorded console errors.
-- Normalised native process measurements to bytes once and derived summaries from the retained raw
-  samples instead of copying kilobyte fields or summary input arrays into the report.
+- Kept the harness on the shared manual CDP launcher. The report deliberately excludes native,
+  main-process and process-tree memory because that launcher does not expose Electron main-process
+  evaluation, and adding a second attachment mechanism would weaken the tested lifecycle.
 
 **Checks:** focused memory unit tests, harness TypeScript, focused ESLint and formatting, and
 Playwright test discovery. Packaged capture remains the explicit `test:e2e:electron-memory` check.

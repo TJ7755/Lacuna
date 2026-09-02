@@ -4,7 +4,7 @@ import { resolvePackagedExecutable } from '../../scripts/electron-performance/ex
 import { runPackagedMemorySuite } from '../../scripts/electron-performance/memory-harness';
 import { MEMORY_CHECKPOINT_ORDER } from '../../scripts/electron-performance/memory-workflow';
 
-test('packaged Electron memory uses one real application launch and retains raw samples', async ({
+test('packaged Electron renderer retention uses one launch and retains raw samples', async ({
   browserName: _browserName,
 }, testInfo) => {
   const executablePath = await resolvePackagedExecutable({
@@ -44,12 +44,20 @@ test('packaged Electron memory uses one real application launch and retains raw 
   expect(report.checkpoints.map((entry) => entry.checkpoint)).toEqual(MEMORY_CHECKPOINT_ORDER);
   for (const checkpoint of report.checkpoints) {
     expect(checkpoint.samples).toHaveLength(9);
-    expect(
-      checkpoint.samples.every((sample) => sample.processes.some((entry) => entry.role === 'main')),
-    ).toBe(true);
+    expect(Object.keys(checkpoint.samples[0]!).sort()).toEqual(['renderer', 'sampledAt']);
+    expect(Object.keys(checkpoint.samples[0]!.renderer).sort()).toEqual([
+      'backingStorageBytes',
+      'documents',
+      'heapTotalBytes',
+      'heapUsedBytes',
+      'jsEventListeners',
+      'nodes',
+    ]);
     expect(
       checkpoint.samples.every((sample) =>
-        sample.processes.some((entry) => entry.role === 'renderer'),
+        Object.values(sample.renderer).every(
+          (value) => Number.isFinite(value) && Number(value) >= 0,
+        ),
       ),
     ).toBe(true);
   }

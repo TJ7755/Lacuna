@@ -15,29 +15,6 @@ export type MemoryCheckpoint =
   | 'large-study-closed'
   | 'returned-idle';
 
-export type ElectronProcessRole =
-  | 'main'
-  | 'renderer'
-  | 'gpu'
-  | 'network-service'
-  | 'utility'
-  | 'crashpad'
-  | 'ai-companion'
-  | 'mcp-companion'
-  | 'other';
-
-export interface NormalisedProcessMemory {
-  pid: number;
-  role: ElectronProcessRole;
-  type: string;
-  name: string;
-  serviceName?: string;
-  creationTime: number;
-  workingSetBytes: number;
-  peakWorkingSetBytes: number;
-  privateBytes?: number;
-}
-
 export interface RendererMemory {
   heapUsedBytes: number;
   heapTotalBytes: number;
@@ -47,22 +24,8 @@ export interface RendererMemory {
   jsEventListeners: number;
 }
 
-export interface MainMemory {
-  privateBytes: number;
-  sharedBytes: number;
-  residentSetBytes: number;
-  heapTotalBytes: number;
-  heapUsedBytes: number;
-  externalBytes: number;
-  arrayBuffersBytes: number;
-}
-
 export interface PackagedMemoryRawSample {
   sampledAt: string;
-  processes: NormalisedProcessMemory[];
-  sumOfWorkingSetsBytes: number;
-  privateBytes?: number;
-  main: MainMemory;
   renderer: RendererMemory;
 }
 
@@ -77,9 +40,12 @@ export interface MemorySeriesSummary {
 export interface PackagedMemoryCheckpointResult {
   checkpoint: MemoryCheckpoint;
   totals: {
-    sumOfWorkingSetsBytes: MemorySeriesSummary;
-    privateBytes?: MemorySeriesSummary;
-    rendererHeapUsedBytes: MemorySeriesSummary;
+    heapUsedBytes: MemorySeriesSummary;
+    heapTotalBytes: MemorySeriesSummary;
+    backingStorageBytes: MemorySeriesSummary;
+    documents: MemorySeriesSummary;
+    nodes: MemorySeriesSummary;
+    jsEventListeners: MemorySeriesSummary;
   };
   samples: PackagedMemoryRawSample[];
 }

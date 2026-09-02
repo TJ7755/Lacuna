@@ -1,12 +1,5 @@
 import type { CDPSession } from '@playwright/test';
 import type { PackagedMemoryRawSample, RendererMemory } from './memory-types';
-import {
-  normaliseElectronProcessMetrics,
-  normaliseMainMemory,
-  summariseProcessMemory,
-  type ElectronAppMetric,
-  type ElectronProcessMemoryInfo,
-} from './process-memory';
 import type { RunningPackagedApp } from './types';
 
 interface RuntimeHeapUsage {
@@ -22,49 +15,36 @@ interface DomCounters {
   jsEventListeners: number;
 }
 
-interface MainProbe {
-  metrics: ElectronAppMetric[];
-  processInfo: ElectronProcessMemoryInfo;
-  usage: NodeJS.MemoryUsage;
-  mainPid: number;
-  rendererPid: number;
+export function parseRuntimeVersionsFromUserAgent(userAgent: string): {
+  electron: string;
+  chromium: string;
+} {
+  const electron = [...userAgent.matchAll(/(?:^|\s)Electron\/(\d+\.\d+\.\d+)(?=\s|$)/g)];
+  const chromium = [...userAgent.matchAll(/(?:^|\s)Chrome\/(\d+\.\d+\.\d+\.\d+)(?=\s|$)/g)];
+  if (electron.length !== 1 || chromium.length !== 1) {
+    throw new Error(
+      'Could not identify one exact Electron and Chromium version from the renderer.',
+    );
+  }
+  return { electron: electron[0]![1]!, chromium: chromium[0]![1]! };
 }
 
 export async function readRuntimeVersions(running: RunningPackagedApp): Promise<{
   electron: string;
   chromium: string;
 }> {
-  return running.application.evaluate(({ app }) => ({
-    electron: process.versions.electron ?? app.getVersion(),
-    chromium: process.versions.chrome ?? 'unknown',
-  }));
+  return parseRuntimeVersionsFromUserAgent(
+    await running.page.evaluate(() => window.navigator.userAgent),
+  );
 }
 
-export async function samplePackagedMemory(
-  running: RunningPackagedApp,
+export async function samplePackagedRendererMemory(
   cdp: CDPSession,
 ): Promise<PackagedMemoryRawSample> {
-  const [mainProbe, heap, dom] = await Promise.all([
-    running.application.evaluate(async ({ app, BrowserWindow }): Promise<MainProbe> => {
-      const window = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
-      if (!window) throw new Error('The packaged memory probe found no live renderer window.');
-      return {
-        metrics: app.getAppMetrics() as ElectronAppMetric[],
-        processInfo: await process.getProcessMemoryInfo(),
-        usage: process.memoryUsage(),
-        mainPid: process.pid,
-        rendererPid: window.webContents.getOSProcessId(),
-      };
-    }),
+  const [heap, dom] = await Promise.all([
     cdp.send('Runtime.getHeapUsage') as Promise<RuntimeHeapUsage>,
     cdp.send('Memory.getDOMCounters') as Promise<DomCounters>,
   ]);
-  const processes = normaliseElectronProcessMetrics(
-    mainProbe.metrics,
-    mainProbe.mainPid,
-    mainProbe.rendererPid,
-  );
-  const processSummary = summariseProcessMemory(processes);
   const renderer: RendererMemory = {
     heapUsedBytes: heap.usedSize + heap.embedderHeapUsedSize,
     heapTotalBytes: heap.totalSize,
@@ -75,12 +55,6 @@ export async function samplePackagedMemory(
   };
   return {
     sampledAt: new Date().toISOString(),
-    processes,
-    sumOfWorkingSetsBytes: processSummary.sumOfWorkingSetsBytes,
-    ...(process.platform === 'win32' && processSummary.privateBytes !== undefined
-      ? { privateBytes: processSummary.privateBytes }
-      : {}),
-    main: normaliseMainMemory(mainProbe.processInfo, mainProbe.usage),
     renderer,
   };
 }

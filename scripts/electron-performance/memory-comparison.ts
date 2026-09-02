@@ -30,11 +30,7 @@ function assertCompatible(before: PackagedMemoryReport, after: PackagedMemoryRep
   }
 }
 
-function delta(
-  before: MemorySeriesSummary | undefined,
-  after: MemorySeriesSummary | undefined,
-): MemoryDelta | undefined {
-  if (!before || !after) return undefined;
+function delta(before: MemorySeriesSummary, after: MemorySeriesSummary): MemoryDelta {
   const absoluteChange = after.median - before.median;
   return {
     before: before.median,
@@ -53,22 +49,24 @@ export function compareMemoryReports(before: PackagedMemoryReport, after: Packag
       const afterCheckpoint = after.checkpoints[index]!;
       return {
         checkpoint: beforeCheckpoint.checkpoint,
-        sumOfWorkingSetsBytes: delta(
-          beforeCheckpoint.totals.sumOfWorkingSetsBytes,
-          afterCheckpoint.totals.sumOfWorkingSetsBytes,
-        )!,
-        ...(beforeCheckpoint.totals.privateBytes && afterCheckpoint.totals.privateBytes
-          ? {
-              privateBytes: delta(
-                beforeCheckpoint.totals.privateBytes,
-                afterCheckpoint.totals.privateBytes,
-              )!,
-            }
-          : {}),
-        rendererHeapUsedBytes: delta(
-          beforeCheckpoint.totals.rendererHeapUsedBytes,
-          afterCheckpoint.totals.rendererHeapUsedBytes,
-        )!,
+        heapUsedBytes: delta(
+          beforeCheckpoint.totals.heapUsedBytes,
+          afterCheckpoint.totals.heapUsedBytes,
+        ),
+        heapTotalBytes: delta(
+          beforeCheckpoint.totals.heapTotalBytes,
+          afterCheckpoint.totals.heapTotalBytes,
+        ),
+        backingStorageBytes: delta(
+          beforeCheckpoint.totals.backingStorageBytes,
+          afterCheckpoint.totals.backingStorageBytes,
+        ),
+        documents: delta(beforeCheckpoint.totals.documents, afterCheckpoint.totals.documents),
+        nodes: delta(beforeCheckpoint.totals.nodes, afterCheckpoint.totals.nodes),
+        jsEventListeners: delta(
+          beforeCheckpoint.totals.jsEventListeners,
+          afterCheckpoint.totals.jsEventListeners,
+        ),
       };
     }),
   };

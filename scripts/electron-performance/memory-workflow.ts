@@ -4,7 +4,7 @@ import {
   MEMORY_SAMPLE_INTERVAL_MS,
   summariseMemorySeries,
 } from './memory-statistics';
-import { samplePackagedMemory } from './memory-probe';
+import { samplePackagedRendererMemory } from './memory-probe';
 import type {
   MemoryCheckpoint,
   PackagedMemoryCheckpointResult,
@@ -58,23 +58,25 @@ async function collectCheckpoint(
 ): Promise<PackagedMemoryCheckpointResult> {
   const samples: PackagedMemoryRawSample[] = [];
   for (let index = 0; index < MEMORY_SAMPLES_PER_CHECKPOINT; index += 1) {
-    samples.push(await samplePackagedMemory(running, cdp));
+    samples.push(await samplePackagedRendererMemory(cdp));
     if (index < MEMORY_SAMPLES_PER_CHECKPOINT - 1) {
       await running.page.waitForTimeout(MEMORY_SAMPLE_INTERVAL_MS);
     }
   }
-  const privateValues = samples.map((sample) => sample.privateBytes);
   return {
     checkpoint,
     totals: {
-      sumOfWorkingSetsBytes: summariseMemorySeries(
-        samples.map((sample) => sample.sumOfWorkingSetsBytes),
+      heapUsedBytes: summariseMemorySeries(samples.map((sample) => sample.renderer.heapUsedBytes)),
+      heapTotalBytes: summariseMemorySeries(
+        samples.map((sample) => sample.renderer.heapTotalBytes),
       ),
-      ...(privateValues.every((value): value is number => typeof value === 'number')
-        ? { privateBytes: summariseMemorySeries(privateValues) }
-        : {}),
-      rendererHeapUsedBytes: summariseMemorySeries(
-        samples.map((sample) => sample.renderer.heapUsedBytes),
+      backingStorageBytes: summariseMemorySeries(
+        samples.map((sample) => sample.renderer.backingStorageBytes),
+      ),
+      documents: summariseMemorySeries(samples.map((sample) => sample.renderer.documents)),
+      nodes: summariseMemorySeries(samples.map((sample) => sample.renderer.nodes)),
+      jsEventListeners: summariseMemorySeries(
+        samples.map((sample) => sample.renderer.jsEventListeners),
       ),
     },
     samples,

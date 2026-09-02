@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { compareMemoryReports } from './memory-comparison';
-import type { PackagedMemoryReport } from './memory-types';
+import type { MemorySeriesSummary, PackagedMemoryReport } from './memory-types';
+
+function summary(median: number): MemorySeriesSummary {
+  return {
+    count: 9,
+    median,
+    medianAbsoluteDeviation: 0,
+    minimum: median,
+    maximum: median,
+  };
+}
 
 function report(overrides: Partial<PackagedMemoryReport> = {}): PackagedMemoryReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     measuredAt: '2026-09-02T00:00:00.000Z',
     host: {
       platform: 'win32',
@@ -26,27 +36,12 @@ function report(overrides: Partial<PackagedMemoryReport> = {}): PackagedMemoryRe
       {
         checkpoint: 'cold-idle',
         totals: {
-          sumOfWorkingSetsBytes: {
-            count: 9,
-            median: 100,
-            medianAbsoluteDeviation: 0,
-            minimum: 100,
-            maximum: 100,
-          },
-          privateBytes: {
-            count: 9,
-            median: 80,
-            medianAbsoluteDeviation: 0,
-            minimum: 80,
-            maximum: 80,
-          },
-          rendererHeapUsedBytes: {
-            count: 9,
-            median: 40,
-            medianAbsoluteDeviation: 0,
-            minimum: 40,
-            maximum: 40,
-          },
+          heapUsedBytes: summary(40),
+          heapTotalBytes: summary(60),
+          backingStorageBytes: summary(20),
+          documents: summary(1),
+          nodes: summary(100),
+          jsEventListeners: summary(10),
         },
         samples: [],
       },
@@ -73,20 +68,22 @@ describe('memory report comparison', () => {
           ...report().checkpoints[0]!,
           totals: {
             ...report().checkpoints[0]!.totals,
-            sumOfWorkingSetsBytes: {
-              count: 9,
-              median: 75,
-              medianAbsoluteDeviation: 0,
-              minimum: 75,
-              maximum: 75,
-            },
+            heapUsedBytes: summary(30),
+            backingStorageBytes: summary(15),
           },
         },
       ],
     });
-    expect(compareMemoryReports(report(), candidate).checkpoints[0]?.sumOfWorkingSetsBytes).toEqual(
-      { before: 100, after: 75, absoluteChange: -25, percentageChange: -25 },
-    );
+    expect(compareMemoryReports(report(), candidate).checkpoints[0]).toMatchObject({
+      checkpoint: 'cold-idle',
+      heapUsedBytes: { before: 40, after: 30, absoluteChange: -10, percentageChange: -25 },
+      backingStorageBytes: {
+        before: 20,
+        after: 15,
+        absoluteChange: -5,
+        percentageChange: -25,
+      },
+    });
   });
 
   it('rejects incompatible hosts, runtimes, schemas, fixtures and sample policy', () => {
@@ -109,7 +106,7 @@ describe('memory report comparison', () => {
         report({ runtime: { electron: '43', chromium: '145', appVersion: '0.2.3' } }),
       ),
     ).toThrow('incompatible');
-    expect(() => compareMemoryReports(report(), report({ schemaVersion: 2 }))).toThrow(
+    expect(() => compareMemoryReports(report(), report({ schemaVersion: 3 }))).toThrow(
       'incompatible',
     );
     expect(() =>
@@ -134,11 +131,10 @@ describe('memory report comparison', () => {
             {
               ...report().checkpoints[0]!,
               totals: {
-                sumOfWorkingSetsBytes: report().checkpoints[0]!.totals.sumOfWorkingSetsBytes,
-                rendererHeapUsedBytes: report().checkpoints[0]!.totals.rendererHeapUsedBytes,
+                heapUsedBytes: report().checkpoints[0]!.totals.heapUsedBytes,
               },
             },
-          ],
+          ] as PackagedMemoryReport['checkpoints'],
         }),
       ),
     ).toThrow('incompatible');

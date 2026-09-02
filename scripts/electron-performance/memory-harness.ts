@@ -84,7 +84,7 @@ export async function runPackagedMemorySuite(options: {
     running = undefined;
     const appAsarPath = await resolveAppAsar(options.executablePath);
     report = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       measuredAt: new Date().toISOString(),
       host: {
         platform: process.platform,
@@ -118,12 +118,7 @@ export async function runPackagedMemorySuite(options: {
         viteResourceCount: proof.viteResourceCount,
       },
       processExit,
-      note:
-        process.platform === 'win32'
-          ? 'Windows private bytes are the headline total. The sum of process working sets is a diagnostic proxy and can count shared Chromium mappings more than once. AI and MCP companion processes are not launched by this suite.'
-          : process.platform === 'darwin'
-            ? 'The sum of process working sets is a diagnostic proxy and can count shared Chromium mappings more than once. Total private memory is unavailable on macOS; main-process private, shared and resident figures remain in raw samples. AI and MCP companions are not launched.'
-            : 'The sum of process working sets is a diagnostic proxy and can count shared Chromium mappings more than once. Main-process private and shared figures remain separate. AI and MCP companion processes are not launched by this suite.',
+      note: 'Renderer-retention measurements only; this report does not represent total application or native memory. AI and MCP companion processes are not launched by this suite.',
     };
   } catch (error) {
     suiteError = error;
