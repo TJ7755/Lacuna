@@ -53,6 +53,22 @@ proves that slow chunk delivery no longer lands on the click path; the ordinary
 production-preview comparison shows the smaller but still material improvement on
 the local fast path.
 
+## Packaged Electron interaction validation
+
+`LACUNA_ELECTRON_APP_DIR=<path> bun run test:e2e:electron-package` spawns the
+resolved packaged executable once, then attaches Playwright over loopback CDP.
+The single application launch exercises Quick search, Settings and seeded-course
+navigation in that fixed order with normal motion and the native viewport, then
+verifies a clean exit from the exact spawned child handle. Retries, tracing and
+parallel workers are disabled. The explicit lifecycle avoids Playwright's
+intermittent native Electron attachment race after its debugger sockets connect.
+
+Each interaction retains raw input-to-feedback, input-to-usable and
+input-to-settled timings, finite-animation settlement, Long Tasks and renderer
+errors as Playwright attachments. There is deliberately no aggregate report or
+absolute timing threshold: one observation per interaction is validation and
+diagnostic evidence, not a statistical baseline.
+
 ## Electron package baseline (2 September 2026)
 
 `bun run perf:audit:electron-package -- --asar <path>` reads the packaged ASAR
