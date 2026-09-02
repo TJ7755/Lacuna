@@ -33,6 +33,12 @@ output. The same release's macOS DMG was 153,950,565 bytes and its ZIP was
 
 The package-diet follow-up rebuilt both Windows x64 and macOS arm64 unpacked
 applications at the fixed baseline commit and after the package-boundary change.
+The Windows `Before` artefact is the unpacked build from
+`c3750b8e076da21bf6d1eda20eef074df27972c5` (`app.asar` SHA-256
+`6e407e04caf7ff69b5c3f68f068022c7cb36dcf000152987219934c1e42517e1`). The
+`After` artefact is the package implementation at
+`d0a6b7cecc452a6197b3b4493a7fb42e9c279079` (`app.asar` SHA-256
+`01e05b244d1ec119e3633aab92ecb71804cb9e7c35db82a0caee8cb3aae69002`).
 Renderer libraries remain available to Vite as development inputs but are no
 longer copied beside the already-built renderer. Electron's runtime dependency
 roots remain explicit, source maps and build-only files are excluded, licence
