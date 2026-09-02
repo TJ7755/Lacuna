@@ -1,5 +1,29 @@
 # Lacuna — next beta
 
+## Electron package diet
+
+- Stopped copying the renderer's complete dependency graph into Electron after Vite had already
+  bundled it. Production dependencies now describe the Electron runtime only; renderer and build
+  inputs remain installed for development, and the redundant direct MCP core root was removed.
+- Narrowed the packaged file boundary to compiled output, the Electron font stylesheet and font
+  files. Source maps, TypeScript/declarations, tests and named project documentation are excluded,
+  while dependency licence files remain present.
+- Limited Chromium resources to British and US English. The rebuilt Windows package now contains
+  two locale packs rather than 55.
+- Ratcheted the Windows package gate from baseline-sized allowances to the measured slim package.
+  The old artefact fails all seven ceilings; the new artefact passes them.
+- Measured the Windows ASAR falling from 138,813,451 to 20,575,956 bytes (-85.2%), its file count
+  from 12,817 to 1,240 (-90.3%), and locale bytes from 49,471,161 to 1,137,014 (-97.7%). The macOS
+  application fell from 430,764 KiB to 254,104 KiB on disk (-41.0%).
+- Rebuilt the renderer at the fixed baseline and after the change. Initial JavaScript remained
+  exactly 866,840 bytes raw / 266,195 bytes gzip and initial CSS remained 121,519 / 17,795 bytes;
+  the package work did not alter its asset hashes or loading boundary.
+
+**Checks:** red-to-green Electron package-boundary tests; frozen lockfile install; web and Electron
+TypeScript; lint; fixed-baseline and changed renderer production builds plus asset audits; macOS
+arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
+the ratcheted package audit. No Electron application was launched.
+
 ## Electron package measurement gate
 
 - Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,

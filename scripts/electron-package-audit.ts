@@ -23,13 +23,13 @@ type FileRecord = {
 
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
-  archiveBytes: 140_000_000,
-  payloadBytes: 137_000_000,
-  payloadFileCount: 13_000,
-  sourceMapBytes: 24_000_000,
-  buildOnlyAssetBytes: 17_000_000,
-  localeBytes: 50_000_000,
-  localeFileCount: 55,
+  archiveBytes: 22_000_000,
+  payloadBytes: 22_000_000,
+  payloadFileCount: 1_400,
+  sourceMapBytes: 0,
+  buildOnlyAssetBytes: 10_000,
+  localeBytes: 1_300_000,
+  localeFileCount: 2,
 } as const;
 
 function usage(): never {
