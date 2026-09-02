@@ -463,7 +463,7 @@ export function MarkdownEditor({
             onDragLeave={() => setDragOver(false)}
             placeholder={placeholder}
             aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
-            aria-label={ariaLabel}
+            aria-label={ariaLabel ?? label}
             aria-invalid={ariaInvalid || undefined}
             aria-describedby={ariaDescribedBy}
             rows={rows}

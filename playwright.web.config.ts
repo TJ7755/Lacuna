@@ -10,7 +10,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:4173',
-    reducedMotion: 'reduce',
+    reducedMotion: 'no-preference',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

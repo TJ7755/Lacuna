@@ -349,7 +349,8 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   native screen-edge back gesture. On desktop the sidebar is always visible.
 - **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles **Quick search**;
   `/` opens **Search content**; `?` toggles the keyboard-hints overlay. Single-key
-  shortcuts are inert while typing in an input/textarea.
+  shortcuts are inert while typing in an input/textarea. Quick search focuses its search field on
+  opening; Escape closes it and restores focus to the control that opened it.
 - **Error boundaries:** one wraps the whole app, one wraps each page, and one wraps the
   Learn session.
 
@@ -1873,7 +1874,9 @@ ordinary `front_back` cards to the scheduler.
     the answer phase, captured response time and grading controls remain intact.
 - One or two **Markdown editors** with a live preview; a formatting toolbar (bold,
   italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
-  a cloze editor can preview the revealed answer.
+  a cloze editor can preview the revealed answer. Each textarea takes its accessible name from the
+  visible field label (for example, Front or Back) unless its caller supplies a more specific
+  `ariaLabel`.
 - **Tags** input with deck-wide suggestions.
 - **Images** are downscaled to <= 1280 px, re-encoded (~0.8 quality), stored as a
   `Uint8Array` in the `assets` table (deduplicated by SHA-256 hash), and referenced
