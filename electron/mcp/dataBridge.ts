@@ -26,6 +26,7 @@ import type { McpGrant, ToolContract } from '../../src/mcp/types.js';
 import type { McpClientIdentity } from '../../src/mcp/connections.js';
 
 const RENDERER_TIMEOUT_MS = 10_000;
+const SERVER_STOPPED_ERROR = { kind: 'internal', message: 'MCP server stopped.' } as const;
 
 type McpWindowProvider = () => BrowserWindow | null;
 
@@ -46,10 +47,12 @@ export class DataBridge {
   private readonly pendingConsent = new Map<string, (approved: boolean) => void>();
   private readonly pendingScopes = new Map<string, (response: McpScopeResolutionResponse) => void>();
   private readonly consentCoordinator = new ConsentCoordinator();
+  private closed = true;
 
   constructor(private readonly getWindow: McpWindowProvider) {}
 
   start(): void {
+    this.closed = false;
     this.grantStore = new GrantStore();
     this.dispatcher = new InvokeDispatcher((request) => {
       const window = this.getWindow();
@@ -64,12 +67,17 @@ export class DataBridge {
       window.webContents.send('mcp:invoke', request);
     }, RENDERER_TIMEOUT_MS);
 
-    ipcMain.on('mcp:invoke:reply', this.onInvokeReply);
-    ipcMain.on('mcp:consent:reply', this.onConsentReply);
-    ipcMain.on('mcp:scope:reply', this.onScopeReply);
-    ipcMain.handle('mcp:grants:list', this.listGrants);
-    ipcMain.handle('mcp:grants:grant', this.grantScope);
-    ipcMain.handle('mcp:grants:revoke', this.revokeGrant);
+    try {
+      ipcMain.on('mcp:invoke:reply', this.onInvokeReply);
+      ipcMain.on('mcp:consent:reply', this.onConsentReply);
+      ipcMain.on('mcp:scope:reply', this.onScopeReply);
+      ipcMain.handle('mcp:grants:list', this.listGrants);
+      ipcMain.handle('mcp:grants:grant', this.grantScope);
+      ipcMain.handle('mcp:grants:revoke', this.revokeGrant);
+    } catch (error) {
+      this.stop();
+      throw error;
+    }
   }
 
   registerTools(server: McpServer): void {
@@ -92,24 +100,28 @@ export class DataBridge {
     store: GrantStore,
     client: McpClientIdentity,
   ): Promise<CallToolResult> {
+    if (this.closed) return Promise.resolve(errorToCallToolResult(SERVER_STOPPED_ERROR));
     const invoke = this.requireDispatcher();
     return this.executeTool(tool, rawInput, store, client, invoke);
   }
 
   stop(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.dispatcher?.close(SERVER_STOPPED_ERROR);
+    for (const resolve of this.pendingConsent.values()) resolve(false);
+    this.pendingConsent.clear();
+    this.consentCoordinator.clear();
+    for (const resolve of this.pendingScopes.values()) {
+      resolve({ id: '', ok: false, error: SERVER_STOPPED_ERROR });
+    }
+    this.pendingScopes.clear();
     ipcMain.removeListener('mcp:invoke:reply', this.onInvokeReply);
     ipcMain.removeListener('mcp:consent:reply', this.onConsentReply);
     ipcMain.removeListener('mcp:scope:reply', this.onScopeReply);
     ipcMain.removeHandler('mcp:grants:list');
     ipcMain.removeHandler('mcp:grants:grant');
     ipcMain.removeHandler('mcp:grants:revoke');
-    for (const resolve of this.pendingConsent.values()) resolve(false);
-    this.pendingConsent.clear();
-    this.consentCoordinator.clear();
-    for (const resolve of this.pendingScopes.values()) {
-      resolve({ id: '', ok: false, error: { kind: 'internal', message: 'MCP server stopped.' } });
-    }
-    this.pendingScopes.clear();
     this.dispatcher = null;
     this.grantStore = null;
   }
@@ -177,6 +189,7 @@ export class DataBridge {
     }
 
     const scopes = await this.resolveScopes(tool, parsed.data);
+    if (this.closed) return errorToCallToolResult(SERVER_STOPPED_ERROR);
     if (!scopes.ok) return errorToCallToolResult(scopes.error);
     if (scopes.targets.length !== 1) {
       return errorToCallToolResult({
@@ -186,6 +199,7 @@ export class DataBridge {
     }
     const target = scopes.targets[0];
     const authorised = await this.ensureGrant(store, tool, target.courseId, client, target.label);
+    if (this.closed) return errorToCallToolResult(SERVER_STOPPED_ERROR);
     if (!authorised.ok) return errorToCallToolResult(authorised.error);
 
     const request: McpInvokeRequest = {
@@ -196,6 +210,7 @@ export class DataBridge {
       grant: authorised.grant,
     };
     const response = await invoke.dispatch(request);
+    if (this.closed) return errorToCallToolResult(SERVER_STOPPED_ERROR);
     return response.ok
       ? { content: [{ type: 'text', text: JSON.stringify(response.result) }] }
       : errorToCallToolResult(response.error);
@@ -205,6 +220,7 @@ export class DataBridge {
     tool: ToolContract,
     input: unknown,
   ): Promise<{ ok: true; targets: McpScopeTarget[] } | { ok: false; error: McpToolError }> {
+    if (this.closed) return { ok: false, error: SERVER_STOPPED_ERROR };
     const window = this.getWindow();
     if (!window || window.webContents.isDestroyed()) {
       return { ok: false, error: { kind: 'internal', message: 'Lacuna window is not open or still loading.' } };
@@ -272,6 +288,7 @@ export class DataBridge {
         window.webContents.send('mcp:consent', request);
       }),
     );
+    if (this.closed) return { ok: false, error: SERVER_STOPPED_ERROR };
     if (!approved) return { ok: false, error: outcome.error };
     return { ok: true, grant: store.grant(courseId, tool.requiredScope, label) };
   }
@@ -285,6 +302,7 @@ export class DataBridge {
         inputSchema: z.object({}),
       },
       async (): Promise<CallToolResult> => {
+        if (this.closed) return errorToCallToolResult(SERVER_STOPPED_ERROR);
         const courseId = courseIdOrGlobal(undefined);
         const existing = store.get(courseId);
         store.ensureImplicitRead(courseId, 'All Lacuna data');

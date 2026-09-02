@@ -12,6 +12,7 @@ const electron = vi.hoisted(() => {
   const listeners = new Map<string, Set<Listener>>();
   const handlers = new Map<string, Handler>();
   return {
+    failHandleChannel: undefined as string | undefined,
     listeners,
     handlers,
     ipcMain: {
@@ -24,6 +25,7 @@ const electron = vi.hoisted(() => {
         listeners.get(channel)?.delete(listener);
       },
       handle(channel: string, handler: Handler) {
+        if (channel === electron.failHandleChannel) throw new Error('IPC registration failed.');
         handlers.set(channel, handler);
       },
       removeHandler(channel: string) {
@@ -65,8 +67,20 @@ function emit(channel: string, event: unknown, value: unknown): void {
 
 describe('Electron MCP data bridge interface', () => {
   beforeEach(() => {
+    electron.failHandleChannel = undefined;
     electron.listeners.clear();
     electron.handlers.clear();
+  });
+
+  it('removes partially-installed IPC when startup fails', () => {
+    const renderer = rendererWindow();
+    const bridge = new DataBridge(() => renderer.window);
+    electron.failHandleChannel = 'mcp:grants:grant';
+
+    expect(() => bridge.start()).toThrow('IPC registration failed.');
+
+    expect([...electron.listeners.values()].every((listeners) => listeners.size === 0)).toBe(true);
+    expect(electron.handlers.size).toBe(0);
   });
 
   it('registers server information before every contract tool in exact order', () => {
@@ -127,9 +141,11 @@ describe('Electron MCP data bridge interface', () => {
       isError: true,
       content: [{ type: 'text', text: '[internal] MCP server stopped.' }],
     });
+    expect(renderer.webContents.send.mock.calls.filter(([channel]) =>
+      channel === 'mcp:consent' || channel === 'mcp:invoke')).toEqual([]);
   });
 
-  it('ignores an untrusted scope reply and denies pending consent on shutdown', async () => {
+  it('ignores an untrusted scope reply and fences pending consent on shutdown', async () => {
     const renderer = rendererWindow();
     const bridge = new DataBridge(() => renderer.window);
     bridge.start();
@@ -160,10 +176,39 @@ describe('Electron MCP data bridge interface', () => {
 
     await expect(result).resolves.toEqual({
       isError: true,
-      content: [{
-        type: 'text',
-        text: '[forbidden] This action needs "write" access to the whole database, which has not been granted yet.',
-      }],
+      content: [{ type: 'text', text: '[internal] MCP server stopped.' }],
+    });
+    expect(renderer.webContents.send.mock.calls.filter(([channel]) => channel === 'mcp:invoke')).toEqual([]);
+  });
+
+  it('settles a pending renderer invocation immediately on shutdown', async () => {
+    const renderer = rendererWindow();
+    const bridge = new DataBridge(() => renderer.window);
+    bridge.start();
+    const result = bridge.execute(
+      listCoursesContract,
+      {},
+      new GrantStore(),
+      { connectionId: 'client-1', name: 'Test client' },
+    );
+    const scopeRequest = renderer.webContents.send.mock.calls[0][1] as { id: string };
+    emit('mcp:scope:reply', renderer.trustedEvent, {
+      id: scopeRequest.id,
+      ok: true,
+      targets: [{ courseId: '__global__', label: 'All Lacuna data' }],
+    });
+    await vi.waitFor(() => {
+      expect(renderer.webContents.send).toHaveBeenCalledWith(
+        'mcp:invoke',
+        expect.objectContaining({ tool: 'lacuna.list_courses' }),
+      );
+    });
+
+    bridge.stop();
+
+    await expect(result).resolves.toEqual({
+      isError: true,
+      content: [{ type: 'text', text: '[internal] MCP server stopped.' }],
     });
   });
 });

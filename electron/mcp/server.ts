@@ -34,6 +34,7 @@ let companionBroker: CompanionBroker | null = null;
 let stdioHandle: StdioServerHandle | null = null;
 let companionLaunchCommands: Pick<McpStatus, 'companion' | 'aiCompanion'> | null = null;
 let started = false;
+let startPromise: Promise<void> | null = null;
 
 /**
  * StdioServerTransport writes protocol frames to stdout. Disable electron-log's console
@@ -91,22 +92,33 @@ export function getMcpStatus(): McpStatus {
  * Starts the data bridge, authenticated companion broker and legacy stdio transport.
  * `getWindow` remains dynamic: every dispatch observes the current Electron window.
  */
-export async function startMcpServer(getWindow: () => BrowserWindow | null): Promise<void> {
-  if (started) return;
+export function startMcpServer(getWindow: () => BrowserWindow | null): Promise<void> {
+  if (started) return Promise.resolve();
+  if (startPromise) return startPromise;
+  const acquisition = acquireRuntime(getWindow);
+  const tracked = acquisition.finally(() => {
+    if (startPromise === tracked) startPromise = null;
+  });
+  startPromise = tracked;
+  return tracked;
+}
+
+async function acquireRuntime(getWindow: () => BrowserWindow | null): Promise<void> {
   silenceStdoutNoise();
   companionLaunchCommands = null;
-
-  dataBridge = new DataBridge(getWindow);
-  dataBridge.start();
-  companionBroker = new CompanionBroker(
-    getWindow,
-    (tool, input, grants, client) => dataBridge!.execute(tool, input, grants, client),
-  );
   try {
-    await companionBroker.start();
+    const bridge = new DataBridge(getWindow);
+    dataBridge = bridge;
+    bridge.start();
+    const broker = new CompanionBroker(
+      getWindow,
+      (tool, input, grants, client) => bridge.execute(tool, input, grants, client),
+    );
+    companionBroker = broker;
+    await broker.start();
     stdioHandle = serveStdio(() => {
       const server = new McpServer({ name: 'lacuna', version: app.getVersion() });
-      dataBridge!.registerTools(server);
+      bridge.registerTools(server);
       return server;
     }, {
       legacy: 'serve',
@@ -114,24 +126,58 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
     });
     started = true;
   } catch (error) {
-    await disposeRuntime();
+    const cleanupErrors = await disposeRuntime();
+    if (cleanupErrors.length > 0) {
+      const cleanupFailure = new AggregateError(cleanupErrors, 'MCP startup cleanup failed.');
+      log.error('MCP startup cleanup failed', cleanupFailure);
+      if (error !== null && (typeof error === 'object' || typeof error === 'function')) {
+        Reflect.defineProperty(error, 'cleanupErrors', { value: cleanupErrors, configurable: true });
+      }
+    }
     throw error;
   }
 }
 
 /** Stops the MCP runtime and drops all sockets, grants and pending renderer decisions. */
 export async function stopMcpServer(): Promise<void> {
-  if (!started) return;
-  await disposeRuntime();
+  if (startPromise) {
+    try {
+      await startPromise;
+    } catch {
+      return;
+    }
+  }
+  if (!started && !dataBridge && !companionBroker && !stdioHandle) return;
+  const cleanupErrors = await disposeRuntime();
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, 'MCP runtime cleanup failed.');
+  }
 }
 
-async function disposeRuntime(): Promise<void> {
-  dataBridge?.stop();
-  await companionBroker?.stop();
-  await stdioHandle?.close();
+async function disposeRuntime(): Promise<unknown[]> {
+  const bridge = dataBridge;
+  const broker = companionBroker;
+  const stdio = stdioHandle;
   stdioHandle = null;
   companionBroker = null;
   dataBridge = null;
   companionLaunchCommands = null;
   started = false;
+  const errors: unknown[] = [];
+  try {
+    bridge?.stop();
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    await broker?.stop();
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    await stdio?.close();
+  } catch (error) {
+    errors.push(error);
+  }
+  return errors;
 }

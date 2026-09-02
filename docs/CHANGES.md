@@ -3150,3 +3150,14 @@ in "Unreleased — UI/UX audit implementation" above.
   local sockets, connection metadata and in-memory grants before returning the original error.
 - Added a lifecycle regression test covering both failure points; previously `stopMcpServer` saw
   `running: false` and returned without touching the partially-created runtime.
+
+# 2026-09-02 — MCP lifecycle acquisition and shutdown are fenced
+
+- Concurrent starts now share one in-flight acquisition, including data-bridge IPC registration,
+  so a second caller cannot overwrite partially-acquired runtime state.
+- Data-bridge shutdown closes its invocation dispatcher and fences scope, consent and renderer
+  continuations before removing listeners or grants; pending calls settle immediately with the
+  stopped error instead of surviving until a ten-second timeout.
+- Runtime teardown now attempts the bridge, broker and stdio cleanup independently and clears
+  lifecycle state even when one step rejects. Normal stop reports all cleanup failures together;
+  failed start preserves its original error and reports attached cleanup failures separately.

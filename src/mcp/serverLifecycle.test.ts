@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   serveStdio: vi.fn(),
   closeStdio: vi.fn().mockResolvedValue(undefined),
   companionProcessUserDataPath: vi.fn(),
+  logError: vi.fn(),
 }));
 
 vi.mock('electron', () => ({
@@ -35,7 +36,7 @@ vi.mock('electron', () => ({
 vi.mock('electron-log', () => ({
   default: {
     transports: { console: { level: 'info' } },
-    error: vi.fn(),
+    error: mocks.logError,
   },
 }));
 
@@ -100,7 +101,7 @@ describe('Electron MCP server lifecycle façade', () => {
 
   afterEach(async () => {
     const server = await import('../../electron/mcp/server');
-    await server.stopMcpServer();
+    await server.stopMcpServer().catch(() => undefined);
     /* eslint-disable no-console -- restore the process-wide stdio mitigation after each test. */
     console.log = originalConsole.log;
     console.info = originalConsole.info;
@@ -175,4 +176,71 @@ describe('Electron MCP server lifecycle façade', () => {
       expect(server.getMcpStatus().running).toBe(false);
     },
   );
+
+  it('shares one in-flight acquisition between concurrent starts', async () => {
+    const server = await import('../../electron/mcp/server');
+    let releaseBroker: (() => void) | undefined;
+    mocks.brokerStart.mockReturnValueOnce(new Promise<void>((resolve) => {
+      releaseBroker = resolve;
+    }));
+
+    const first = server.startMcpServer(() => null);
+    const second = server.startMcpServer(() => null);
+
+    expect(second).toBe(first);
+    expect(mocks.bridgeStart).toHaveBeenCalledOnce();
+    expect(mocks.brokerStart).toHaveBeenCalledOnce();
+    releaseBroker?.();
+    await Promise.all([first, second]);
+    expect(mocks.serveStdio).toHaveBeenCalledOnce();
+  });
+
+  it('cleans up when bridge startup itself fails', async () => {
+    const server = await import('../../electron/mcp/server');
+    const startError = new Error('bridge failed');
+    mocks.bridgeStart.mockImplementationOnce(() => { throw startError; });
+
+    await expect(server.startMcpServer(() => null)).rejects.toBe(startError);
+
+    expect(mocks.bridgeStop).toHaveBeenCalledOnce();
+    expect(mocks.brokerStart).not.toHaveBeenCalled();
+    expect(server.getMcpStatus().running).toBe(false);
+  });
+
+  it('attempts every normal teardown and resets status when cleanup rejects', async () => {
+    const server = await import('../../electron/mcp/server');
+    const brokerError = new Error('broker cleanup failed');
+    const stdioError = new Error('stdio cleanup failed');
+    mocks.brokerStop.mockRejectedValueOnce(brokerError);
+    mocks.closeStdio.mockRejectedValueOnce(stdioError);
+    await server.startMcpServer(() => null);
+
+    const stopped = server.stopMcpServer();
+
+    await expect(stopped).rejects.toMatchObject({ errors: [brokerError, stdioError] });
+    expect(mocks.bridgeStop).toHaveBeenCalledOnce();
+    expect(mocks.brokerStop).toHaveBeenCalledOnce();
+    expect(mocks.closeStdio).toHaveBeenCalledOnce();
+    expect(server.getMcpStatus().running).toBe(false);
+    await expect(server.stopMcpServer()).resolves.toBeUndefined();
+  });
+
+  it('preserves a start error and reports attached cleanup failures', async () => {
+    const server = await import('../../electron/mcp/server');
+    const startError = new Error('broker failed');
+    const cleanupError = new Error('broker cleanup failed');
+    mocks.brokerStart.mockRejectedValueOnce(startError);
+    mocks.brokerStop.mockRejectedValueOnce(cleanupError);
+
+    await expect(server.startMcpServer(() => null)).rejects.toBe(startError);
+
+    expect((startError as Error & { cleanupErrors?: unknown[] }).cleanupErrors).toEqual([
+      cleanupError,
+    ]);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      'MCP startup cleanup failed',
+      expect.any(AggregateError),
+    );
+    expect(server.getMcpStatus().running).toBe(false);
+  });
 });
