@@ -1,5 +1,14 @@
 # Lacuna — next beta
 
+## Repository governance
+
+- Added contributor and security policies, enforceable CODEOWNERS, pull-request and issue templates,
+  and grouped Dependabot updates for the root, relay, handwriting tool and GitHub Actions. The policy
+  records Bun 1.4.0 checks, red-to-green evidence, stacked-PR expectations, risk-bearing review and
+  managed-device/data-integrity reporting without inventing a security email route.
+
+**Checks:** Markdown and YAML structure validation; repository link and ownership review; `git diff --check`.
+
 ## Maintainership baseline truth
 
 - Reconciled the roadmap and specification with the current v0.2.3 beta, recorded the active feature

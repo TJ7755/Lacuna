@@ -1,0 +1,49 @@
+name: Bug report
+description: Report an ordinary reproducible defect
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What happened?
+      description: Describe the incorrect behaviour and the expected behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: List the smallest set of steps that reproduces the defect.
+      placeholder: |-
+        1. First step
+        2. Second step
+        3. Observed result
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Lacuna version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Surface and environment
+      description: Include web/PWA, Windows Electron, Linux Electron, macOS Electron, relay or AI MCP, plus OS and browser/package details.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add a minimal recording, screenshot or redacted log. Remove learner data, credentials and tokens.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Does this prevent study, lose or duplicate data, expose information, or merely look wrong?
+    validations:
+      required: true

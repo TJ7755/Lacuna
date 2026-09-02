@@ -1,0 +1,34 @@
+name: Managed-device failure
+description: Report installation, policy, proxy, antivirus or school-device compatibility failure
+title: "[Managed device]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure
+      description: "Describe what the learner attempted and what failed: install, launch, update, relay access, native AI, backup or another workflow."
+    validations:
+      required: true
+  - type: textarea
+    id: device
+    attributes:
+      label: Device and policy context
+      description: Include Lacuna version, package format and checksum if known; OS and architecture; managed or locked account; SmartScreen, Gatekeeper, antivirus, application-allowlist or proxy messages; and network restrictions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reproduction and evidence
+      description: Include exact steps, timestamps, redacted logs and screenshots. Do not publish tokens, personal data, internal hostnames or school identifiers.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround and impact
+      description: State whether the web app, another package format or an administrator-approved route works, and how many users or devices are affected.
+    validations:
+      required: true

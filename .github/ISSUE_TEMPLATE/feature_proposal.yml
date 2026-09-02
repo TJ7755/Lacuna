@@ -1,0 +1,34 @@
+name: Feature proposal
+description: Propose a focused improvement to an existing learner or maintainer workflow
+title: "[Proposal]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Problem and intended outcome
+      description: Who is blocked, what are they trying to do, and what observable outcome would improve the workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Non-goals and alternatives
+      description: What is deliberately out of scope? Which existing workflow, documentation change or workaround was considered first?
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Product and safety impact
+      description: Explain effects on local ownership, data durability, scheduling evidence, backup/import, sync, permissions, AI authority, accessibility, performance and managed-device support. Call out any new persisted or wire format and its migration.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and smallest slice
+      description: Link feedback, a reproducible workflow or measurements. Include the smallest proposed slice and how it could be tested red-to-green. Net-new feature work is currently frozen unless it addresses data safety, security, installation compatibility, a regression or an evidenced core workflow.
+    validations:
+      required: true
