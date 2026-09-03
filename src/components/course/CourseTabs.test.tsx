@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CourseTabs } from './CourseTabs';
+
+const prefetchRoute = vi.hoisted(() => vi.fn());
+
+vi.mock('../../routes/prefetch', () => ({ prefetchRoute }));
 
 function renderAt(path: string) {
   return render(
@@ -18,6 +22,8 @@ function renderAt(path: string) {
 }
 
 describe('CourseTabs', () => {
+  beforeEach(() => prefetchRoute.mockClear());
+
   it('marks Path active on the course root route', () => {
     const { container } = renderAt('/course/course-1');
     const active = screen.getByRole('link', { name: 'Path' });
@@ -67,5 +73,18 @@ describe('CourseTabs', () => {
       'href',
       '/course/course-1/settings',
     );
+  });
+
+  it('prefetches a section on pointer hover, focus and pointerdown intent', () => {
+    renderAt('/course/course-1');
+    const cards = screen.getByRole('link', { name: 'Cards' });
+
+    fireEvent.pointerEnter(cards);
+    fireEvent.focus(cards);
+    fireEvent.pointerDown(cards);
+
+    expect(prefetchRoute).toHaveBeenNthCalledWith(1, '/course/course-1/cards');
+    expect(prefetchRoute).toHaveBeenNthCalledWith(2, '/course/course-1/cards');
+    expect(prefetchRoute).toHaveBeenNthCalledWith(3, '/course/course-1/cards');
   });
 });
