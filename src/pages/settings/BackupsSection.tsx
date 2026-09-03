@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../components/ui/cn';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { ArchiveIcon } from '../../components/ui/icons';
+import { motionTransition } from '../../components/ui/motion';
 import { useToast } from '../../components/ui/Toast';
 import {
   backupFolderName,
@@ -17,11 +19,14 @@ import {
   type StoragePersistenceState,
 } from '../../db/persistence';
 import { useBackups } from '../../state/useData';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatDateTime } from '../../utils/datetime';
 
 export function BackupsSection() {
   const { notify } = useToast();
   const backups = useBackups();
+  const [motionSpeed] = useMotionSpeed();
+  const motionMultiplier = speedMultiplier(motionSpeed);
   const [persistence, setPersistence] = useState<StoragePersistenceState | null>(null);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -208,84 +213,113 @@ export function BackupsSection() {
         </p>
       )}
 
-      {!backups || backups.length === 0 ? (
-        <p className="text-sm text-ink-faint">No restore points yet.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {backups.map((backup) => (
-            <li
-              key={backup.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="text-sm text-ink">{formatDateTime(backup.createdAt)}</div>
-                <div className="text-xs text-ink-faint">
-                  {backup.deckCount} lesson{backup.deckCount === 1 ? '' : 's'} · {backup.cardCount}{' '}
-                  card{backup.cardCount === 1 ? '' : 's'}
-                </div>
-              </div>
-              {confirmRestore === backup.id ? (
-                <ConfirmInline
-                  message="Replace all local data, disconnect AI and restore this point?"
-                  confirmLabel="Restore"
-                  variant="default"
-                  onCancel={() => setConfirmRestore(null)}
-                  onConfirm={() =>
-                    backup.id !== null && backup.id !== undefined && void handleRestore(backup.id)
-                  }
-                />
-              ) : confirmDelete === backup.id ? (
-                <ConfirmInline
-                  message="Delete this restore point from Lacuna? Mirrored files are not removed."
-                  confirmLabel="Delete restore point"
-                  announce
-                  focusOnMount="confirm"
-                  onCancel={() => {
-                    if (backup.id === null || backup.id === undefined) return;
-                    deleteFocusReturn.current = backup.id;
-                    setConfirmDelete(null);
-                  }}
-                  onConfirm={() =>
-                    backup.id !== null && backup.id !== undefined && void handleDelete(backup.id)
-                  }
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button
-                    ref={(button) => {
-                      if (backup.id === null || backup.id === undefined) return;
-                      if (button) deleteButtons.current.set(backup.id, button);
-                      else deleteButtons.current.delete(backup.id);
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setConfirmRestore(null);
-                      setConfirmDelete(
-                        backup.id !== null && backup.id !== undefined ? backup.id : null,
-                      );
-                    }}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setConfirmDelete(null);
-                      setConfirmRestore(
-                        backup.id !== null && backup.id !== undefined ? backup.id : null,
-                      );
-                    }}
-                  >
-                    Restore
-                  </Button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <AnimatePresence initial={false} mode="popLayout">
+        {!backups || backups.length === 0 ? (
+          <motion.p
+            key="empty"
+            initial={motionMultiplier > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
+            transition={motionTransition('feedback', motionMultiplier)}
+            className="text-sm text-ink-faint"
+          >
+            No restore points yet.
+          </motion.p>
+        ) : (
+          <motion.ul
+            key="restore-points"
+            layout={motionMultiplier > 0 ? 'size' : undefined}
+            animate={{ opacity: 1, y: 0 }}
+            exit={motionMultiplier > 0 ? { opacity: 0, y: -4 } : undefined}
+            transition={motionTransition('feedback', motionMultiplier)}
+            className="flex flex-col gap-2"
+          >
+            <AnimatePresence initial={false} mode="popLayout" propagate>
+              {backups.map((backup) => (
+                <motion.li
+                  key={backup.id}
+                  layout={motionMultiplier > 0 ? 'position' : undefined}
+                  initial={motionMultiplier > 0 ? { opacity: 0, y: -4 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={motionMultiplier > 0 ? { opacity: 0, y: -4 } : undefined}
+                  transition={motionTransition('feedback', motionMultiplier)}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm text-ink">{formatDateTime(backup.createdAt)}</div>
+                    <div className="text-xs text-ink-faint">
+                      {backup.deckCount} lesson{backup.deckCount === 1 ? '' : 's'} ·{' '}
+                      {backup.cardCount} card{backup.cardCount === 1 ? '' : 's'}
+                    </div>
+                  </div>
+                  {confirmRestore === backup.id ? (
+                    <ConfirmInline
+                      message="Replace all local data, disconnect AI and restore this point?"
+                      confirmLabel="Restore"
+                      variant="default"
+                      onCancel={() => setConfirmRestore(null)}
+                      onConfirm={() =>
+                        backup.id !== null &&
+                        backup.id !== undefined &&
+                        void handleRestore(backup.id)
+                      }
+                    />
+                  ) : confirmDelete === backup.id ? (
+                    <ConfirmInline
+                      message="Delete this restore point from Lacuna? Mirrored files are not removed."
+                      confirmLabel="Delete restore point"
+                      announce
+                      focusOnMount="confirm"
+                      onCancel={() => {
+                        if (backup.id === null || backup.id === undefined) return;
+                        deleteFocusReturn.current = backup.id;
+                        setConfirmDelete(null);
+                      }}
+                      onConfirm={() =>
+                        backup.id !== null &&
+                        backup.id !== undefined &&
+                        void handleDelete(backup.id)
+                      }
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        ref={(button) => {
+                          if (backup.id === null || backup.id === undefined) return;
+                          if (button) deleteButtons.current.set(backup.id, button);
+                          else deleteButtons.current.delete(backup.id);
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setConfirmRestore(null);
+                          setConfirmDelete(
+                            backup.id !== null && backup.id !== undefined ? backup.id : null,
+                          );
+                        }}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setConfirmDelete(null);
+                          setConfirmRestore(
+                            backup.id !== null && backup.id !== undefined ? backup.id : null,
+                          );
+                        }}
+                      >
+                        Restore
+                      </Button>
+                    </div>
+                  )}
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

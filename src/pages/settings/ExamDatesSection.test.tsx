@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { ExamDatesSection } from './ExamDatesSection';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
 
@@ -116,6 +117,64 @@ describe('ExamDatesSection', () => {
         }),
       ),
     );
+  });
+
+  it('moves focus into the editor while the add control crosses over', () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    const add = screen.getByRole('button', { name: 'Add checkpoint' });
+    add.focus();
+    fireEvent.click(add);
+
+    expect(screen.getByPlaceholderText('e.g. Mock exam')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus();
+  });
+
+  it('focuses the current assessment editor rather than an outgoing StepSwap editor', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockExamDates = [
+      mockExamDate,
+      { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
+    ];
+    render(
+      <LazyMotion features={domAnimation}>
+        <ExamDatesSection courseId="course-1" />
+      </LazyMotion>,
+    );
+    fireEvent.click(screen.getByLabelText('Edit Mock exam'));
+    expect(screen.getByDisplayValue('Mock exam')).toHaveFocus();
+
+    fireEvent.click(screen.getByLabelText('Edit Second mock'));
+
+    expect(screen.getByDisplayValue('Second mock')).toHaveFocus();
+    await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
+    expect(warning).not.toHaveBeenCalledWith(expect.stringContaining('pointerEvents'));
+    warning.mockRestore();
+  });
+
+  it('returns focus to Add checkpoint after deleting the assessment being edited', async () => {
+    render(<ExamDatesSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Edit Mock exam'));
+    expect(screen.getByDisplayValue('Mock exam')).toHaveFocus();
+    fireEvent.click(screen.getByLabelText('Delete Mock exam'));
+    fireEvent.click(screen.getByText('Yes'));
+
+    await waitFor(() => expect(deleteCourseAssessment).toHaveBeenCalledWith('exam-1'));
+    expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus();
+  });
+
+  it('brings a newly created assessment row in through the list transition', () => {
+    const view = render(<ExamDatesSection courseId="course-1" />);
+    mockExamDates = [
+      mockExamDate,
+      { ...mockExamDate, id: 'exam-2', name: 'Second mock', createdAt: Date.now() + 1 },
+    ];
+
+    view.rerender(<ExamDatesSection courseId="course-1" />);
+
+    expect(screen.getByText('Second mock').closest('[style*="opacity"]')).toHaveStyle({
+      opacity: '0',
+    });
   });
 
   it('edits the sole final with the same assessment editor and offers no delete action', () => {

@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { forwardRef, useLayoutEffect, useRef } from 'react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -9,9 +9,7 @@ const VARIANTS = {
     direction === 0 ? { opacity: 0 } : { opacity: 0, x: 18 * direction },
   center: (direction: number) => (direction === 0 ? { opacity: 1 } : { opacity: 1, x: 0 }),
   exit: (direction: number) =>
-    direction === 0
-      ? { opacity: 0, pointerEvents: 'none' as const }
-      : { opacity: 0, x: -18 * direction, pointerEvents: 'none' as const },
+    direction === 0 ? { opacity: 0 } : { opacity: 0, x: -18 * direction },
 };
 
 export function stepSwapTiming(multiplier: number) {
@@ -20,6 +18,37 @@ export function stepSwapTiming(multiplier: number) {
     ease: EASE,
   };
 }
+
+const StepSwapSurface = forwardRef<
+  HTMLDivElement,
+  {
+    direction: number;
+    motionEnabled: boolean;
+    transition: ReturnType<typeof stepSwapTiming>;
+    className?: string;
+    children: React.ReactNode;
+  }
+>(function StepSwapSurface(
+  { direction, motionEnabled, transition, className, children },
+  ref,
+) {
+  const isPresent = useIsPresent();
+  return (
+    <motion.div
+      ref={ref}
+      custom={direction}
+      variants={VARIANTS}
+      initial={motionEnabled ? 'enter' : false}
+      animate="center"
+      exit={motionEnabled ? 'exit' : undefined}
+      transition={transition}
+      style={{ pointerEvents: isPresent ? 'auto' : 'none' }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+});
 
 /**
  * Crossfades one step of a surface into the next without remounting the chrome.
@@ -65,18 +94,15 @@ export function StepSwap({
   return (
     <div ref={rootRef} className="relative">
       <AnimatePresence initial={false} mode="popLayout" custom={direction}>
-        <motion.div
+        <StepSwapSurface
           key={stepKey}
-          custom={direction}
-          variants={VARIANTS}
-          initial={motionEnabled ? 'enter' : false}
-          animate="center"
-          exit={motionEnabled ? 'exit' : undefined}
+          direction={direction}
+          motionEnabled={motionEnabled}
           transition={stepSwapTiming(multiplier)}
           className={className}
         >
           {children}
-        </motion.div>
+        </StepSwapSurface>
       </AnimatePresence>
     </div>
   );

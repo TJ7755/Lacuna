@@ -22,6 +22,21 @@ describe('CourseHeader', () => {
     await waitFor(() => expect(onRename).toHaveBeenCalledWith('Further mechanics'));
   });
 
+  it('crossfades the display title into the focused rename field', () => {
+    render(
+      <CourseHeader
+        eyebrow="Exam 1 June 2027"
+        title="Mechanics"
+        renameLabel="course"
+        onRename={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
+
+    expect(screen.getByRole('textbox', { name: 'course name' })).toHaveStyle({ opacity: '0' });
+  });
+
   it('supports double-click editing and rejects a blank name', () => {
     const onRename = vi.fn();
     render(

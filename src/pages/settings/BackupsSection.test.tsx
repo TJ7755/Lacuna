@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackupsSection } from './BackupsSection';
 
@@ -6,6 +7,14 @@ const mockDeleteBackup = vi.fn().mockResolvedValue(undefined);
 const mockNotify = vi.fn();
 const mockCheckPersistentStorage = vi.fn().mockResolvedValue(null);
 const mockRequestPersistentStorage = vi.fn();
+let mockBackups = [
+  {
+    id: 7,
+    createdAt: Date.UTC(2026, 7, 28),
+    deckCount: 1,
+    cardCount: 2,
+  },
+];
 
 vi.mock('../../db/backups', () => ({
   deleteBackup: (id: number) => mockDeleteBackup(id),
@@ -26,14 +35,7 @@ vi.mock('../../db/persistence', () => ({
 }));
 
 vi.mock('../../state/useData', () => ({
-  useBackups: () => [
-    {
-      id: 7,
-      createdAt: Date.UTC(2026, 7, 28),
-      deckCount: 1,
-      cardCount: 2,
-    },
-  ],
+  useBackups: () => mockBackups,
 }));
 
 vi.mock('../../components/ui/Toast', () => ({
@@ -52,6 +54,14 @@ describe('BackupsSection', () => {
     mockCheckPersistentStorage.mockReset();
     mockCheckPersistentStorage.mockResolvedValue(null);
     mockRequestPersistentStorage.mockReset();
+    mockBackups = [
+      {
+        id: 7,
+        createdAt: Date.UTC(2026, 7, 28),
+        deckCount: 1,
+        cardCount: 2,
+      },
+    ];
     window.location.hash = '#/';
   });
 
@@ -156,5 +166,43 @@ describe('BackupsSection', () => {
     expect(await screen.findByRole('heading', { name: 'Automatic backups' })).toBeInTheDocument();
     expect(mockCheckPersistentStorage).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Request persistence' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the final restore-point list mounted for its outgoing transition', async () => {
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <BackupsSection />
+      </LazyMotion>,
+    );
+    expect(await screen.findByRole('button', { name: 'Delete' })).toBeInTheDocument();
+
+    mockBackups = [];
+    view.rerender(
+      <LazyMotion features={domAnimation}>
+        <BackupsSection />
+      </LazyMotion>,
+    );
+
+    expect(screen.getByText('No restore points yet.')).toHaveStyle({ opacity: '0' });
+    expect(screen.getByRole('list')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('list')).not.toBeInTheDocument());
+  });
+
+  it('brings a new restore point in through the list transition', async () => {
+    const view = render(<BackupsSection />);
+    await screen.findByRole('button', { name: 'Delete' });
+    mockBackups = [
+      ...mockBackups,
+      {
+        id: 8,
+        createdAt: Date.UTC(2026, 7, 29),
+        deckCount: 2,
+        cardCount: 4,
+      },
+    ];
+
+    view.rerender(<BackupsSection />);
+
+    expect(screen.getAllByRole('listitem')[1]).toHaveStyle({ opacity: '0' });
   });
 });
