@@ -11,6 +11,13 @@
 **Checks:** red-to-green `src/db/seed.test.ts`; root typecheck, focused ESLint, Prettier and
 `git diff --check`; rasterised replacement visually inspected in dark mode.
 
+## Electron renderer reloads
+
+- Preserve hash routes and query-bearing assets when the packaged `app://` protocol serves a
+  renderer reload, while retaining authority and traversal checks.
+
+**Checks:** focused app-protocol path tests; Electron typecheck, lint, formatting and preparation.
+
 ## Electron package diet
 
 - Stopped copying the renderer's complete dependency graph into Electron after Vite had already
@@ -34,6 +41,26 @@
 TypeScript; lint; fixed-baseline and changed renderer production builds plus asset audits; macOS
 arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
 the ratcheted package audit. No Electron application was launched.
+
+## Native packaged interaction validation
+
+- Added a packaged Electron interaction harness that spawns the resolved executable itself,
+  attaches over loopback CDP and exercises Quick search, Settings and seeded-course navigation
+  sequentially in the native renderer. Explicit process ownership avoids Playwright's intermittent
+  native Electron attachment race after its debugger sockets are already connected.
+- Kept the complete validation inside one launch and one Electron process tree. The harness has a
+  one-launch hard cap, never emulates a viewport, disables retries and tracing, and verifies normal
+  shutdown from the exact spawned child handle. Interaction timings begin only after the seeded
+  Dashboard is ready.
+- Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
+  settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
+  dressing a single observation up with distribution statistics proved nothing.
+- Kept the packaged-only interaction spec outside the ordinary Electron AI suite. Hosted AI CI
+  prepares unpackaged Electron code and must not pretend it has built a release executable.
+
+**Checks:** red-to-green Playwright suite-boundary regression; harness and root TypeScript; focused
+ESLint and formatting checks; separate AI and packaged Playwright test discovery. Packaged execution
+remains the explicit `test:e2e:electron-package` check.
 
 ## Resumable AI write approvals
 
@@ -3149,3 +3176,43 @@ opportunities remain open; the separate sticking-point fixes delivered afterward
 in "Unreleased — UI/UX audit implementation" above.
 
 **Checks:** documentation only; no code changed.
+# 2026-09-02 — Electron MCP contracts no longer package renderer handlers
+
+- Split MCP tool contracts (name, description, schema and scope) from renderer-only handlers.
+- Made the desktop server and data companion consume the contract registry while the renderer
+  executor retains the executable registry and exact existing tool order and surface version.
+- Added metafile and contract-parity gates, and moved Dexie, React and `ts-fsrs` out of packaged
+  runtime dependencies now that no Electron main-process entry imports them.
+- Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
+  without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
+  packages reduced `app.asar` by a further 11.1%, with no renderer-output change.
+
+# 2026-09-02 — Electron MCP server split into deep internal modules
+
+- Kept `startMcpServer`, `getMcpStatus`, `stopMcpServer` and `McpStatus` as the unchanged lifecycle
+  interface while reducing `electron/mcp/server.ts` to the composition façade.
+- Moved renderer IPC, scope and consent decisions, process grants, tool execution and exact SDK
+  registration order behind `DataBridge`.
+- Moved authenticated local sockets, purpose routing, connection grants and status, and AI renderer
+  channels behind `CompanionBroker` without changing the data or AI wire envelopes.
+- Added interface tests for fail-closed renderer decisions, sender rejection, listener removal,
+  purpose and identity invariants, sequential socket messages, live status, file permissions and
+  socket/metadata cleanup. The packaged dependency gate now checks both internal modules directly.
+
+# 2026-09-02 — Failed MCP starts now clean up partial runtime state
+
+- A companion-broker or legacy-stdio startup failure now tears down installed renderer listeners,
+  local sockets, connection metadata and in-memory grants before returning the original error.
+- Added a lifecycle regression test covering both failure points; previously `stopMcpServer` saw
+  `running: false` and returned without touching the partially-created runtime.
+
+# 2026-09-02 — MCP lifecycle acquisition and shutdown are fenced
+
+- Concurrent starts now share one in-flight acquisition, including data-bridge IPC registration,
+  so a second caller cannot overwrite partially-acquired runtime state.
+- Data-bridge shutdown closes its invocation dispatcher and fences scope, consent and renderer
+  continuations before removing listeners or grants; pending calls settle immediately with the
+  stopped error instead of surviving until a ten-second timeout.
+- Runtime teardown now attempts the bridge, broker and stdio cleanup independently and clears
+  lifecycle state even when one step rejects. Normal stop reports all cleanup failures together;
+  failed start preserves its original error and reports attached cleanup failures separately.
