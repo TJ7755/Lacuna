@@ -161,6 +161,7 @@ describe('ExamDatesSection', () => {
 
     await waitFor(() => expect(deleteCourseAssessment).toHaveBeenCalledWith('exam-1'));
     expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus();
+    await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
   });
 
   it('brings a newly created assessment row in through the list transition', () => {
