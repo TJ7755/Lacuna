@@ -461,6 +461,14 @@ the working tree half-stashed. To compare behaviour against a merge-base, use
 `git worktree add /tmp/<name> <ref>` with a symlinked `node_modules` instead, then
 `git worktree remove`. Verify `git status` after any stash-like operation before continuing.
 
+## `ExamDatesSection.test.tsx` fails CI shards with a motion-teardown AbortError
+
+`AbortError: The animation was canceled` from motion's `AcceleratedAnimation` surfaces as a
+Vitest unhandled error during `src/pages/settings/ExamDatesSection.test.tsx` and fails the whole
+`test-unit` shard even though every test passes. Observed repeatedly on hosted runners, including
+on unmodified master, so a red `test-unit (1)` with all tests green and this signature is the
+known flake, not a regression. Do not chase it from an unrelated change; rerun the shard.
+
 ## Mobile Safari owns its native history edge gesture
 
 The application shell uses `overscroll-behavior-x: none` and a left-edge pointer gesture to open
