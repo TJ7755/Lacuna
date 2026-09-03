@@ -465,8 +465,8 @@ the working tree half-stashed. To compare behaviour against a merge-base, use
 
 Happy DOM rejects an active Web Animation's completion promise when Testing Library cleanup
 cancels it. On hosted Linux runners, Vitest reports that rejection as an `AbortError` after every
-assertion has passed. Tests that trigger a Motion exit must wait for the outgoing element to leave
-the document; merely waiting for the state-changing repository call leaves teardown racy.
+assertion has passed. Component tests should use reduced motion unless animation is their subject;
+tests that enable motion and advance a transition must finish its relevant lifecycle before teardown.
 
 ## Mobile Safari owns its native history edge gesture
 

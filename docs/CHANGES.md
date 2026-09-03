@@ -3,9 +3,10 @@
 ## Deterministic assessment-editor tests
 
 - The assessment deletion test now waits for the outgoing editor's Motion exit to finish before
-  Testing Library tears down the document. Hosted Linux runners previously cancelled that active
-  Happy DOM animation during cleanup, producing an unhandled `AbortError` after all assertions had
-  passed and failing the unit-test shard.
+  Testing Library tears down the document. Assessment tests now use reduced motion unless they
+  explicitly verify a transition; the test covering a completed exit waits for it to finish.
+  Hosted Linux runners previously cancelled an unrelated active Happy DOM animation during cleanup,
+  producing an unhandled `AbortError` after all assertions had passed and failing the unit-test shard.
 
 **Checks:** focused assessment tests, complete shard 1 and hosted CI.
 

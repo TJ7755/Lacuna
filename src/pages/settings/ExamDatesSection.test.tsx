@@ -4,6 +4,8 @@ import { domAnimation, LazyMotion } from 'motion/react';
 import { ExamDatesSection } from './ExamDatesSection';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
 
+const motion = vi.hoisted(() => ({ multiplier: 0 }));
+
 let mockExamDates: CourseAssessment[] | undefined;
 let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
@@ -15,6 +17,10 @@ vi.mock('../../state/useCourseData', () => ({
   useCourseAssessments: () => mockExamDates,
   useLessons: () => mockLessons,
   useCourseCards: () => mockCards,
+}));
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal', vi.fn()],
+  speedMultiplier: () => motion.multiplier,
 }));
 
 const createCourseAssessment = vi.fn().mockResolvedValue(undefined);
@@ -83,6 +89,7 @@ describe('ExamDatesSection', () => {
     createCourseAssessment.mockClear();
     updateCourseAssessment.mockClear();
     deleteCourseAssessment.mockClear();
+    motion.multiplier = 0;
   });
 
   it('lists existing exam dates', () => {
@@ -131,6 +138,7 @@ describe('ExamDatesSection', () => {
   });
 
   it('focuses the current assessment editor rather than an outgoing StepSwap editor', async () => {
+    motion.multiplier = 1;
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockExamDates = [
       mockExamDate,
@@ -165,6 +173,7 @@ describe('ExamDatesSection', () => {
   });
 
   it('brings a newly created assessment row in through the list transition', () => {
+    motion.multiplier = 1;
     const view = render(<ExamDatesSection courseId="course-1" />);
     mockExamDates = [
       mockExamDate,
