@@ -4,21 +4,31 @@
 // validates nothing itself — src/mcp/registry.ts's `validateAndRun` parses `rawInput`
 // against `inputSchema` before the handler ever runs, so handlers receive typed input.
 
-import { z } from 'zod';
+import type { z } from 'zod';
 import * as read from '../../db/read';
 import { searchCardsInScope } from '../../db/search';
+import {
+  diagnosticsSummaryContract,
+  findCourseContract,
+  getCardContract,
+  getCourseAssessmentContract,
+  getCourseContract,
+  getCourseStatsContract,
+  getOcclusionContract,
+  getSequenceContract,
+  getWeakCardsContract,
+  listCardsContract,
+  listCourseAssessmentsContract,
+  listCoursesContract,
+  listDueCardsContract,
+  listLessonsContract,
+  listNotesContract,
+  listOcclusionsContract,
+  listSequencesContract,
+  searchCardsContract,
+} from '../contracts/read';
 import { courseChoiceMessage, findCourseMatches } from '../courseLookup';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
-
-const courseIdSchema = z.string().describe('The id of the course to query.');
-const limitSchema = z
-  .number()
-  .int()
-  .positive()
-  .optional()
-  .describe('Maximum number of results to return. Omit for no limit.');
-
-const boundedLimitSchema = z.number().int().min(1).max(50);
 
 function ok<T>(data: T): ToolResult<T> {
   return { data };
@@ -29,20 +39,13 @@ function notFound(kind: string, id: string): never {
 }
 
 const listCourses: ToolDefinition<Record<string, never>, Awaited<ReturnType<typeof read.listCourses>>> = {
-  name: 'lacuna.list_courses',
-  description: 'List every course in the local Lacuna database, ordered by creation time.',
-  inputSchema: z.object({}),
-  requiredScope: 'read',
+  ...listCoursesContract,
   async handler() {
     return ok(await read.listCourses());
   },
 };
 
-const findCourseSchema = z.object({
-  query: z.string().trim().min(1).max(500).describe('Course id, exact name or partial name.'),
-  limit: z.number().int().min(1).max(20).optional(),
-}).strict();
-const findCourse: ToolDefinition<z.infer<typeof findCourseSchema>, {
+const findCourse: ToolDefinition<z.infer<typeof findCourseContract.inputSchema>, {
   matches: Array<{
     courseId: string;
     name: string;
@@ -51,11 +54,7 @@ const findCourse: ToolDefinition<z.infer<typeof findCourseSchema>, {
     cardCount: number;
   }>;
 }> = {
-  name: 'lacuna.find_course',
-  description:
-    'Resolve a Course (sometimes called a deck) by id, exact name or partial name. Returns compact choices rather than full scheduling records.',
-  inputSchema: findCourseSchema,
-  requiredScope: 'read',
+  ...findCourseContract,
   async handler({ query, limit = 10 }) {
     const matches = (await findCourseMatches(query)).slice(0, limit);
     return ok({
@@ -75,14 +74,6 @@ const findCourse: ToolDefinition<z.infer<typeof findCourseSchema>, {
     });
   },
 };
-
-const searchCardsSchema = z.object({
-  course: z.string().trim().min(1).max(500).describe('Course id, exact name or unambiguous partial name.'),
-  query: z.string().trim().max(1_000).optional().describe('Optional text matched against Card content, tags and Lesson name.'),
-  limit: boundedLimitSchema.optional(),
-  cursor: z.string().max(100).optional(),
-  includePayload: z.boolean().optional().describe('Include structured numeric or working payloads. Off by default.'),
-}).strict();
 
 interface CompactCardResult {
   course: { courseId: string; name: string; archived: boolean };
@@ -122,12 +113,8 @@ function parseCardCursor(cursor: string | undefined, scope: string): number {
   return offset;
 }
 
-const searchCards: ToolDefinition<z.infer<typeof searchCardsSchema>, CompactCardResult> = {
-  name: 'lacuna.search_cards',
-  description:
-    'Resolve one Course by name or id, then return compact, cursor-paginated Card content without FSRS state or review history.',
-  inputSchema: searchCardsSchema,
-  requiredScope: 'read',
+const searchCards: ToolDefinition<z.infer<typeof searchCardsContract.inputSchema>, CompactCardResult> = {
+  ...searchCardsContract,
   async handler({ course: query, query: cardQuery = '', limit = 20, cursor, includePayload = false }) {
     const matches = await findCourseMatches(query);
     if (matches.length !== 1) {
@@ -174,12 +161,8 @@ const searchCards: ToolDefinition<z.infer<typeof searchCardsSchema>, CompactCard
   },
 };
 
-const getCourseSchema = z.object({ courseId: courseIdSchema });
-const getCourse: ToolDefinition<z.infer<typeof getCourseSchema>, NonNullable<Awaited<ReturnType<typeof read.getCourse>>>> = {
-  name: 'lacuna.get_course',
-  description: 'Fetch a single course by id.',
-  inputSchema: getCourseSchema,
-  requiredScope: 'read',
+const getCourse: ToolDefinition<z.infer<typeof getCourseContract.inputSchema>, NonNullable<Awaited<ReturnType<typeof read.getCourse>>>> = {
+  ...getCourseContract,
   async handler({ courseId }) {
     const course = await read.getCourse(courseId);
     if (!course) notFound('Course', courseId);
@@ -187,42 +170,28 @@ const getCourse: ToolDefinition<z.infer<typeof getCourseSchema>, NonNullable<Awa
   },
 };
 
-const listLessonsSchema = z.object({ courseId: courseIdSchema });
-const listLessons: ToolDefinition<z.infer<typeof listLessonsSchema>, Awaited<ReturnType<typeof read.listLessons>>> = {
-  name: 'lacuna.list_lessons',
-  description: "List a course's lessons, ordered by their position on the course path.",
-  inputSchema: listLessonsSchema,
-  requiredScope: 'read',
+const listLessons: ToolDefinition<z.infer<typeof listLessonsContract.inputSchema>, Awaited<ReturnType<typeof read.listLessons>>> = {
+  ...listLessonsContract,
   async handler({ courseId }) {
     return ok(await read.listLessons(courseId));
   },
 };
 
-const listCourseAssessmentsSchema = z.object({ courseId: courseIdSchema });
 const listCourseAssessments: ToolDefinition<
-  z.infer<typeof listCourseAssessmentsSchema>,
+  z.infer<typeof listCourseAssessmentsContract.inputSchema>,
   Awaited<ReturnType<typeof read.listCourseAssessmentDetails>>
 > = {
-  name: 'lacuna.list_course_assessments',
-  description: "List a course's assessments with full persisted semantics and resolved scope.",
-  inputSchema: listCourseAssessmentsSchema,
-  requiredScope: 'read',
+  ...listCourseAssessmentsContract,
   async handler({ courseId }) {
     return ok(await read.listCourseAssessmentDetails(courseId));
   },
 };
 
-const getCourseAssessmentSchema = z.object({
-  assessmentId: z.string().describe('The id of the assessment to fetch.'),
-});
 const getCourseAssessment: ToolDefinition<
-  z.infer<typeof getCourseAssessmentSchema>,
+  z.infer<typeof getCourseAssessmentContract.inputSchema>,
   NonNullable<Awaited<ReturnType<typeof read.getCourseAssessmentDetails>>>
 > = {
-  name: 'lacuna.get_course_assessment',
-  description: 'Fetch one assessment with its exact resolved lessons, cards and validation state.',
-  inputSchema: getCourseAssessmentSchema,
-  requiredScope: 'read',
+  ...getCourseAssessmentContract,
   async handler({ assessmentId }) {
     const assessment = await read.getCourseAssessmentDetails(assessmentId);
     if (!assessment) notFound('Course assessment', assessmentId);
@@ -230,32 +199,15 @@ const getCourseAssessment: ToolDefinition<
   },
 };
 
-const listCardsSchema = z.object({
-  courseId: courseIdSchema,
-  lessonId: z
-    .string()
-    .optional()
-    .describe(
-      'If given, list only the cards taught in this lesson (primary plus linked cards). ' +
-        'Otherwise list every card belonging to the course.',
-    ),
-});
-const listCards: ToolDefinition<z.infer<typeof listCardsSchema>, Awaited<ReturnType<typeof read.listCardsForCourse>>> = {
-  name: 'lacuna.list_cards',
-  description: 'List cards belonging to a course, or scoped to a single lesson within it.',
-  inputSchema: listCardsSchema,
-  requiredScope: 'read',
+const listCards: ToolDefinition<z.infer<typeof listCardsContract.inputSchema>, Awaited<ReturnType<typeof read.listCardsForCourse>>> = {
+  ...listCardsContract,
   async handler({ courseId, lessonId }) {
     return ok(lessonId ? await read.listCardsForLesson(lessonId) : await read.listCardsForCourse(courseId));
   },
 };
 
-const getCardSchema = z.object({ cardId: z.string().describe('The id of the card to fetch.') });
-const getCard: ToolDefinition<z.infer<typeof getCardSchema>, NonNullable<Awaited<ReturnType<typeof read.getCard>>>> = {
-  name: 'lacuna.get_card',
-  description: 'Fetch a single card by id.',
-  inputSchema: getCardSchema,
-  requiredScope: 'read',
+const getCard: ToolDefinition<z.infer<typeof getCardContract.inputSchema>, NonNullable<Awaited<ReturnType<typeof read.getCard>>>> = {
+  ...getCardContract,
   async handler({ cardId }) {
     const card = await read.getCard(cardId);
     if (!card) notFound('Card', cardId);
@@ -263,40 +215,22 @@ const getCard: ToolDefinition<z.infer<typeof getCardSchema>, NonNullable<Awaited
   },
 };
 
-const listDueCardsSchema = z.object({ courseId: courseIdSchema, limit: limitSchema });
-const listDueCards: ToolDefinition<z.infer<typeof listDueCardsSchema>, Awaited<ReturnType<typeof read.listDueCards>>> = {
-  name: 'lacuna.list_due_cards',
-  description:
-    'List the cards a study session would serve right now for a course: due reviews plus ' +
-    "new cards admitted under the course's daily cap, ranked by the course's objective.",
-  inputSchema: listDueCardsSchema,
-  requiredScope: 'read',
+const listDueCards: ToolDefinition<z.infer<typeof listDueCardsContract.inputSchema>, Awaited<ReturnType<typeof read.listDueCards>>> = {
+  ...listDueCardsContract,
   async handler({ courseId, limit }) {
     return ok(await read.listDueCards(courseId, limit));
   },
 };
 
-const getWeakCardsSchema = z.object({ courseId: courseIdSchema, limit: limitSchema });
-const getWeakCards: ToolDefinition<z.infer<typeof getWeakCardsSchema>, Awaited<ReturnType<typeof read.getWeakCards>>> = {
-  name: 'lacuna.get_weak_cards',
-  description:
-    "A course's weakest available cards: leeches first, then every other card ascending " +
-    'by objective score, so the lowest-scoring, least-secured cards surface first.',
-  inputSchema: getWeakCardsSchema,
-  requiredScope: 'read',
+const getWeakCards: ToolDefinition<z.infer<typeof getWeakCardsContract.inputSchema>, Awaited<ReturnType<typeof read.getWeakCards>>> = {
+  ...getWeakCardsContract,
   async handler({ courseId, limit }) {
     return ok(await read.getWeakCards(courseId, limit));
   },
 };
 
-const getCourseStatsSchema = z.object({ courseId: courseIdSchema });
-const getCourseStats: ToolDefinition<z.infer<typeof getCourseStatsSchema>, NonNullable<Awaited<ReturnType<typeof read.getCourseStats>>>> = {
-  name: 'lacuna.get_course_stats',
-  description:
-    "Bundled stats for a course: nearest-exam/mastery/due-count header stats plus the " +
-    'study time forecast, both scoped to the course.',
-  inputSchema: getCourseStatsSchema,
-  requiredScope: 'read',
+const getCourseStats: ToolDefinition<z.infer<typeof getCourseStatsContract.inputSchema>, NonNullable<Awaited<ReturnType<typeof read.getCourseStats>>>> = {
+  ...getCourseStatsContract,
   async handler({ courseId }) {
     const stats = await read.getCourseStats(courseId);
     if (!stats) notFound('Course', courseId);
@@ -304,23 +238,15 @@ const getCourseStats: ToolDefinition<z.infer<typeof getCourseStatsSchema>, NonNu
   },
 };
 
-const listSequencesSchema = z.object({ courseId: courseIdSchema });
-const listSequences: ToolDefinition<z.infer<typeof listSequencesSchema>, Awaited<ReturnType<typeof read.listSequences>>> = {
-  name: 'lacuna.list_sequences',
-  description: "List a course's sequences, ordered by creation time.",
-  inputSchema: listSequencesSchema,
-  requiredScope: 'read',
+const listSequences: ToolDefinition<z.infer<typeof listSequencesContract.inputSchema>, Awaited<ReturnType<typeof read.listSequences>>> = {
+  ...listSequencesContract,
   async handler({ courseId }) {
     return ok(await read.listSequences(courseId));
   },
 };
 
-const getSequenceSchema = z.object({ sequenceId: z.string().describe('The id of the sequence to fetch.') });
-const getSequence: ToolDefinition<z.infer<typeof getSequenceSchema>, NonNullable<Awaited<ReturnType<typeof read.getSequence>>>> = {
-  name: 'lacuna.get_sequence',
-  description: 'Fetch a single sequence by id.',
-  inputSchema: getSequenceSchema,
-  requiredScope: 'read',
+const getSequence: ToolDefinition<z.infer<typeof getSequenceContract.inputSchema>, NonNullable<Awaited<ReturnType<typeof read.getSequence>>>> = {
+  ...getSequenceContract,
   async handler({ sequenceId }) {
     const sequence = await read.getSequence(sequenceId);
     if (!sequence) notFound('Sequence', sequenceId);
@@ -328,24 +254,15 @@ const getSequence: ToolDefinition<z.infer<typeof getSequenceSchema>, NonNullable
   },
 };
 
-const listOcclusionsSchema = z.object({ courseId: z.string().describe('The id of the course whose occlusions to list.') });
-const listOcclusions: ToolDefinition<z.infer<typeof listOcclusionsSchema>, Awaited<ReturnType<typeof read.listOcclusions>>> = {
-  name: 'lacuna.list_occlusions',
-  description: "List a course's image occlusions, ordered by creation time.",
-  inputSchema: listOcclusionsSchema,
-  requiredScope: 'read',
+const listOcclusions: ToolDefinition<z.infer<typeof listOcclusionsContract.inputSchema>, Awaited<ReturnType<typeof read.listOcclusions>>> = {
+  ...listOcclusionsContract,
   async handler({ courseId }) {
     return ok(await read.listOcclusions(courseId));
   },
 };
 
-const getOcclusionSchema = z.object({ occlusionId: z.string().describe('The id of the occlusion to fetch.') });
-const getOcclusion: ToolDefinition<z.infer<typeof getOcclusionSchema>, NonNullable<Awaited<ReturnType<typeof read.getOcclusion>>>> = {
-  name: 'lacuna.get_occlusion',
-  description:
-    'Fetch a single image occlusion by id, including every region and its fractional coordinates.',
-  inputSchema: getOcclusionSchema,
-  requiredScope: 'read',
+const getOcclusion: ToolDefinition<z.infer<typeof getOcclusionContract.inputSchema>, NonNullable<Awaited<ReturnType<typeof read.getOcclusion>>>> = {
+  ...getOcclusionContract,
   async handler({ occlusionId }) {
     const occlusion = await read.getOcclusion(occlusionId);
     if (!occlusion) notFound('Occlusion', occlusionId);
@@ -353,30 +270,15 @@ const getOcclusion: ToolDefinition<z.infer<typeof getOcclusionSchema>, NonNullab
   },
 };
 
-const listNotesSchema = z.object({ lessonId: z.string().describe('The id of the lesson whose notes to list.') });
-const listNotes: ToolDefinition<z.infer<typeof listNotesSchema>, Awaited<ReturnType<typeof read.listNotes>>> = {
-  name: 'lacuna.list_notes',
-  description: "List a lesson's notes, ordered by their position within the lesson.",
-  inputSchema: listNotesSchema,
-  requiredScope: 'read',
+const listNotes: ToolDefinition<z.infer<typeof listNotesContract.inputSchema>, Awaited<ReturnType<typeof read.listNotes>>> = {
+  ...listNotesContract,
   async handler({ lessonId }) {
     return ok(await read.listNotes(lessonId));
   },
 };
 
-const diagnosticsSummarySchema = z.object({
-  courseId: z
-    .string()
-    .optional()
-    .describe('If given, scope the record counts to this course. Otherwise return whole-database counts.'),
-});
-const diagnosticsSummary: ToolDefinition<z.infer<typeof diagnosticsSummarySchema>, Awaited<ReturnType<typeof read.diagnosticsSummary>>> = {
-  name: 'lacuna.diagnostics_summary',
-  description:
-    'Record counts for a diagnostic summary: whole-database counts, or counts scoped to a ' +
-    'single course when courseId is given.',
-  inputSchema: diagnosticsSummarySchema,
-  requiredScope: 'read',
+const diagnosticsSummary: ToolDefinition<z.infer<typeof diagnosticsSummaryContract.inputSchema>, Awaited<ReturnType<typeof read.diagnosticsSummary>>> = {
+  ...diagnosticsSummaryContract,
   async handler({ courseId }) {
     return ok(await read.diagnosticsSummary(courseId));
   },
