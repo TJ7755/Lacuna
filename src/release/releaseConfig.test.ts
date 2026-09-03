@@ -111,9 +111,9 @@ function blockScalarValues(block: string, key: string): string[] {
   return values;
 }
 
-describe('v0.2.3 release configuration', () => {
+describe('v0.2.4 release configuration', () => {
   it('identifies the public app repository and release version', () => {
-    expect(packageJson.version).toBe('0.2.3');
+    expect(packageJson.version).toBe('0.2.4');
     expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({
@@ -281,7 +281,7 @@ describe('v0.2.3 release configuration', () => {
       /bun install --frozen-lockfile\n\s+working-directory: tooling\/lacuna-ai-mcp/,
     );
 
-    const platforms = [
+    const githubPlatforms = [
       {
         job: 'build-win',
         runner: 'windows-latest',
@@ -308,23 +308,9 @@ describe('v0.2.3 release configuration', () => {
           'release/latest-linux.yml',
         ],
       },
-      {
-        job: 'build-mac',
-        runner: 'macos-15',
-        build: 'bun run electron:build:mac',
-        label: 'macOS',
-        artefact: 'lacuna-macos-arm64',
-        paths: [
-          'release/*.dmg',
-          'release/*.dmg.blockmap',
-          'release/*.zip',
-          'release/*.zip.blockmap',
-          'release/latest-mac.yml',
-        ],
-      },
     ] as const;
 
-    for (const platform of platforms) {
+    for (const platform of githubPlatforms) {
       const job = workflowJob(releaseWorkflow, platform.job);
       const allowlistCheck = workflowStep(job, `Verify ${platform.label} artefact allowlist`);
       const attest = workflowStep(job, `Attest ${platform.label} artefacts`);
@@ -362,31 +348,28 @@ describe('v0.2.3 release configuration', () => {
       expect(job.indexOf(attest)).toBeLessThan(job.indexOf(upload));
     }
 
-    const macJob = workflowJob(releaseWorkflow, 'build-mac');
     const windowsJob = workflowJob(releaseWorkflow, 'build-win');
     expect(windowsJob).toContain('bun run test:e2e:electron-ai');
-    expect(macJob).toContain('bun run test:e2e:electron-ai');
-    expect(macJob.indexOf('bun run test:e2e:electron-ai')).toBeLessThan(
-      macJob.indexOf('bun run electron:build:mac'),
-    );
-    expect(macJob).toContain('CSC_IDENTITY_AUTO_DISCOVERY: "false"');
+    expect(releaseWorkflow).not.toContain('  build-mac:');
+    expect(releaseWorkflow).not.toContain('runs-on: macos-15');
+    expect(releaseWorkflow).not.toContain('lacuna-macos-arm64');
 
     const publisher = workflowJob(releaseWorkflow, 'publish-draft');
-    expect(publisher).toContain('needs: [build-win, build-linux, build-mac]');
+    expect(publisher).toContain('needs: [build-win, build-linux]');
     expect(publisher).toContain(
       'permissions:\n      artifact-metadata: write\n      attestations: write\n' +
         '      contents: write\n      id-token: write',
     );
-    for (const artefact of platforms.map(({ artefact }) => artefact)) {
+    for (const artefact of githubPlatforms.map(({ artefact }) => artefact)) {
       const download = workflowStep(publisher, `Download ${artefact}`);
       expect(download).toContain('uses: actions/download-artifact@v8');
       expect(download).toContain(`name: ${artefact}`);
       expect(download).toContain('path: release-assets');
     }
 
-    const checksumAttestation = workflowStep(publisher, 'Attest checksum manifest');
+    const checksumAttestation = workflowStep(publisher, 'Attest GitHub checksum manifest');
     expect(checksumAttestation).toContain('uses: actions/attest@v4');
-    expect(checksumAttestation).toContain('subject-path: release-assets/SHA256SUMS.txt');
+    expect(checksumAttestation).toContain('subject-path: release-assets/SHA256SUMS-github.txt');
     expect(publisher.indexOf('name: Create checksums')).toBeLessThan(
       publisher.indexOf(checksumAttestation),
     );
@@ -403,11 +386,10 @@ describe('v0.2.3 release configuration', () => {
     expect(publisher).toContain('--draft');
     expect(publisher).toContain('--prerelease');
     expect(publisher).toContain('--title "Lacuna ${GITHUB_REF_NAME#v} Beta"');
-    expect(publisher).toContain('! -name SHA256SUMS.txt');
-    expect(publisher).toContain('gh release delete-asset');
-    expect(publisher).toContain("--jq '.assets[].name'");
+    expect(publisher).toContain('! -name SHA256SUMS-github.txt');
+    expect(publisher).not.toContain('gh release delete-asset');
     expect(releaseWorkflow).not.toContain('--publish always');
-    expect(releaseWorkflow.match(/actions\/attest@v4/g)).toHaveLength(4);
+    expect(releaseWorkflow.match(/actions\/attest@v4/g)).toHaveLength(3);
     expect(releaseWorkflow).not.toMatch(/actions\/attest@v[1-3](?:\D|$)/);
   });
 

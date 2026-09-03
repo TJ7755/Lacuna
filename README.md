@@ -184,7 +184,8 @@ bun run electron:build:linux  # Linux x64 AppImage + DEB
 bun run electron:build:mac    # macOS arm64 DMG + ZIP
 ```
 
-Before creating a release, run the native AI lifecycle gate on both macOS and Windows:
+Before creating a release, run the native AI lifecycle gate on macOS; the release workflow runs the
+same gate on Windows:
 
 ```bash
 bun run test:e2e:electron-ai
@@ -193,6 +194,11 @@ bun run test:e2e:electron-ai
 It uses an isolated temporary profile, enables AI through the real Electron UI, connects through
 the official MCP client, completes a message/reply cycle, reloads the renderer and reconnects. It
 does not touch an installed Lacuna profile.
+
+The release workflow builds and attests Windows and Linux on GitHub Actions. The unsigned macOS
+arm64 DMG and ZIP are built on the maintainer's Apple Silicon device and tested with
+`bun run test:e2e:electron-package` before being added to the draft. Their separate checksum
+manifest proves transfer integrity, not GitHub provenance.
 
 The Electron layer lives in `electron/` and adds a platform-aware titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via

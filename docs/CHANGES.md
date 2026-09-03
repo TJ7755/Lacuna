@@ -1,4 +1,19 @@
-# Lacuna — next beta
+# Lacuna — version 0.2.4
+
+## 0.2.4 beta — desktop resilience and release hardening
+
+### Release preparation
+
+- Set the application and desktop-download version to 0.2.4.
+- Kept Windows x64 and Linux x64 builds, checksums and provenance in GitHub Actions. The unsigned
+  macOS arm64 DMG and ZIP are built and exercised on the maintainer's Apple Silicon device, then
+  uploaded with a separate integrity manifest. They make no GitHub provenance claim.
+- Made workflow reruns preserve locally uploaded macOS draft assets instead of deleting files the
+  workflow did not produce.
+
+**Checks:** red-to-green release-version and workflow contract tests; native Electron AI and video
+embed gate on Apple Silicon; arm64 application and version inspection; ZIP and DMG integrity;
+packaged application interaction suite.
 
 ## Deterministic assessment-editor tests
 

@@ -205,70 +205,8 @@ jobs:
             release/latest-linux.yml
           if-no-files-found: error
 
-  build-mac:
-    needs: verify
-    runs-on: macos-15
-    permissions:
-      artifact-metadata: write
-      attestations: write
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.0
-
-      - run: bun install --frozen-lockfile
-      - run: bun run test:e2e:electron-ai
-      - run: bun run electron:build:mac
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-
-      - name: Verify macOS artefact allowlist
-        shell: bash
-        run: |
-          required_patterns=(
-            'release/*.dmg'
-            'release/*.dmg.blockmap'
-            'release/*.zip'
-            'release/*.zip.blockmap'
-            'release/latest-mac.yml'
-          )
-          for pattern in "${required_patterns[@]}"; do
-            if ! compgen -G "$pattern" > /dev/null; then
-              echo "Missing required release artefact: $pattern"
-              exit 1
-            fi
-          done
-
-      - name: Attest macOS artefacts
-        uses: actions/attest@v4
-        with:
-          subject-path: |
-            release/*.dmg
-            release/*.dmg.blockmap
-            release/*.zip
-            release/*.zip.blockmap
-            release/latest-mac.yml
-
-      - name: Upload macOS artefacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: lacuna-macos-arm64
-          path: |
-            release/*.dmg
-            release/*.dmg.blockmap
-            release/*.zip
-            release/*.zip.blockmap
-            release/latest-mac.yml
-          if-no-files-found: error
-
   publish-draft:
-    needs: [build-win, build-linux, build-mac]
+    needs: [build-win, build-linux]
     runs-on: ubuntu-latest
     permissions:
       artifact-metadata: write
@@ -286,12 +224,6 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: lacuna-linux-x64
-          path: release-assets
-
-      - name: Download lacuna-macos-arm64
-        uses: actions/download-artifact@v8
-        with:
-          name: lacuna-macos-arm64
           path: release-assets
 
       - name: Create or preserve draft release
@@ -316,12 +248,16 @@ jobs:
 
       - name: Create checksums
         working-directory: release-assets
-        run: find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+        run: >-
+          find . -type f ! -name SHA256SUMS-github.txt -print0
+          | sort -z
+          | xargs -0 sha256sum
+          > SHA256SUMS-github.txt
 
-      - name: Attest checksum manifest
+      - name: Attest GitHub checksum manifest
         uses: actions/attest@v4
         with:
-          subject-path: release-assets/SHA256SUMS.txt
+          subject-path: release-assets/SHA256SUMS-github.txt
 
       - name: Upload artefacts to draft release
         env:
@@ -329,16 +265,6 @@ jobs:
         working-directory: release-assets
         shell: bash
         run: |
-          while IFS= read -r asset_name; do
-            gh release delete-asset "$GITHUB_REF_NAME" "$asset_name" \
-              --repo "$GITHUB_REPOSITORY" \
-              --yes
-          done < <(
-            gh release view "$GITHUB_REF_NAME" \
-              --repo "$GITHUB_REPOSITORY" \
-              --json assets \
-              --jq '.assets[].name'
-          )
           mapfile -d '' assets < <(find . -type f -print0)
           gh release upload "$GITHUB_REF_NAME" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \

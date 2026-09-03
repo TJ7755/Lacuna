@@ -2960,19 +2960,21 @@ The tag-triggered release workflow requires `v<package version>` and rejects a t
 commit does not equal `GITHUB_SHA`. It also requires successful ordinary `CI` and `Security` push
 workflows for that exact commit on `master` or `main`; repeating selected checks in the tag workflow
 does not substitute for a failed commit workflow. It then runs the complete release gate and builds
-Windows x64, Linux x64 and macOS arm64 in separate native GitHub jobs. Windows and macOS both run the
-native AI end-to-end gate before packaging; the macOS job uses an official Apple Silicon runner and
-explicitly disables signing-certificate discovery. The resulting DMG and ZIP remain unsigned,
-unnotarised and manual-update packages.
+Windows x64 and Linux x64 in separate native GitHub jobs. Windows runs the native AI end-to-end gate
+before packaging.
 
-Each platform job first requires every file class in its explicit distributable and update-metadata
+Each GitHub platform job first requires every file class in its explicit distributable and update-metadata
 allowlist, then uploads and creates GitHub build-provenance attestations for those exact files with
-`actions/attest@v4`. One publisher, gated on all three native builds, combines the named workflow
-artefacts, writes and separately attests `SHA256SUMS.txt`, then creates or refreshes a GitHub
+`actions/attest@v4`. One publisher, gated on both native builds, combines the named workflow
+artefacts, writes and separately attests `SHA256SUMS-github.txt`, then creates or refreshes a GitHub
 pre-release draft. Only that publisher can write release contents; build jobs receive only
 repository-read, OIDC-token, attestation and artifact-metadata permissions. Attestations identify
-the workflow and commit behind a digest; they are not application code signing, notarisation or
-physical-device evidence. The maintainer procedure and verification command are recorded in
+the workflow and commit behind a digest; they are not application code signing or notarisation.
+
+The unsigned macOS arm64 DMG and ZIP are built from the exact release commit on the maintainer's
+Apple Silicon device after the same native AI gate, then exercised as a packaged application before
+upload. They carry a separate `SHA256SUMS-macos.txt` integrity manifest and no GitHub Actions
+provenance attestation. The maintainer procedure and verification commands are recorded in
 `docs/maintenance/release.md`.
 
 ### Build output
