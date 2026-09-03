@@ -1667,7 +1667,9 @@ Simple mode):
     `> μ + 0.75σ -> Hard(2)`, else `Good(3)`, where μ and σ are the deck's
     running mean/stddev of correct response times.
 - After a recorded FSRS answer, the existing Undo notification states the grade Lacuna stored and
-  the resulting interval in plain language (`Good · again in 4 days`). Settings and Help explain
+  the card's projected exam-day retention in plain language (`Good · 82% recall at exam`), using
+  the same forward projection as the progress bar. Where no genuine future exam date applies to
+  the card, it falls back to the resulting interval (`Good · again in 4 days`). Settings and Help explain
   response-time grading; that generic explanation is deliberately not repeated inside every card's
   grading controls. Simple-mode answers and rejected or replayed writes do not claim a new interval.
 - After a correct review, `UserPerformance` is updated by **Welford's online

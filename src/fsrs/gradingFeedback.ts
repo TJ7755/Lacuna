@@ -1,4 +1,7 @@
 import type { Grade } from '../db/types';
+import type { Card, SchedulerConfig } from '../db/types';
+import { resolveCardExamDate, type ExamDateContext } from './examDate';
+import { predictedRetrievabilityAtHorizon } from './progress';
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -32,4 +35,32 @@ export function reviewFeedbackMessage(grade: Grade, due: number, now = Date.now(
             ? quantity(interval / MONTH_MS, 'month')
             : quantity(interval / YEAR_MS, 'year');
   return `${GRADE_LABELS[grade]} · ${grade === 1 ? 'retry' : 'again'} in ${next}`;
+}
+
+/**
+ * Post-grade feedback as projected exam-day retention for the just-reviewed
+ * card, e.g. "Good · 82% recall at exam". Uses the same forward projection as
+ * the progress bar so the two always agree (see src/fsrs/progress.ts).
+ *
+ * Returns null unless a genuine future exam date applies to the card: without
+ * one the horizon layer falls back to a rolling maintenance window, and
+ * labelling that an "exam" would be dishonest. Callers fall back to
+ * {@link reviewFeedbackMessage} in that case. Mirrors the date rule in
+ * src/fsrs/horizon.ts.
+ */
+export function reviewRetentionMessage(
+  grade: Grade,
+  card: Card,
+  deck: SchedulerConfig,
+  examDateContext: ExamDateContext | undefined,
+  now: number = Date.now(),
+): string | null {
+  const resolved = examDateContext
+    ? resolveCardExamDate(card, examDateContext, now)
+    : deck.examDate;
+  if (resolved === undefined || resolved < now) return null;
+  const percent = Math.round(
+    predictedRetrievabilityAtHorizon(card, deck, now, examDateContext) * 100,
+  );
+  return `${GRADE_LABELS[grade]} · ${percent}% recall at exam`;
 }

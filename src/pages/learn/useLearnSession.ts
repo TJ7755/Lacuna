@@ -70,7 +70,7 @@ import {
   HINT_TIME_PENALTY_SEC,
   updatePerformance,
 } from '../../fsrs/grading';
-import { reviewFeedbackMessage } from '../../fsrs/gradingFeedback';
+import { reviewFeedbackMessage, reviewRetentionMessage } from '../../fsrs/gradingFeedback';
 import { applyCooldown, decrementCooldowns } from '../../fsrs/cooldown';
 import type { CooldownMap } from '../../fsrs/cooldown';
 import { progressHeading } from '../../fsrs/objective';
@@ -1612,10 +1612,22 @@ export function useLearnSession({
             }
           : null;
         setCanUndo(recorded);
+        // Course and lesson sessions hold a single unit; global sessions key
+        // the context by scheduling-unit id (see makeSessionContext).
+        const sessionDeck = isGlobal ? ctx.decks.get(deck.id) : ctx.decks.values().next().value;
+        const retentionMessage =
+          recorded && updated.due !== null
+            ? reviewRetentionMessage(
+                grade,
+                updated,
+                sessionDeck?.deck ?? deck,
+                sessionDeck?.oc.examDateContext,
+              )
+            : null;
         const answerResult: AnswerResult = {
           undoAvailable: recorded,
           ...(recorded && updated.due !== null
-            ? { feedbackMessage: reviewFeedbackMessage(grade, updated.due) }
+            ? { feedbackMessage: retentionMessage ?? reviewFeedbackMessage(grade, updated.due) }
             : {}),
         };
 

@@ -1,5 +1,18 @@
 # Lacuna — next beta
 
+## Grade feedback as exam-day retention
+
+- The post-answer notification now states the just-reviewed card's projected exam-day retention
+  (`Good · 82% recall at exam`) instead of its next interval. It uses the same forward projection
+  as the progress bar, so the two always agree; the interval was the genuine persisted FSRS due
+  date, but in-session re-showing follows cooldowns, so the timestamp read as a promise the
+  session does not keep.
+- Where no genuine future exam date applies to the card, the notification keeps the interval
+  wording as a fallback rather than labelling a maintenance horizon an exam.
+
+**Checks:** red-to-green `src/fsrs/gradingFeedback.test.ts`; updated LearnMode Undo expectation;
+root typecheck and focused ESLint.
+
 ## Seeded diagrams in dark mode
 
 - Gave the owned Welcome-course SVG diagrams explicit charcoal, stone and amber colours. SVGs
@@ -3294,6 +3307,7 @@ opportunities remain open; the separate sticking-point fixes delivered afterward
 in "Unreleased — UI/UX audit implementation" above.
 
 **Checks:** documentation only; no code changed.
+
 # 2026-09-02 — Electron MCP contracts no longer package renderer handlers
 
 - Split MCP tool contracts (name, description, schema and scope) from renderer-only handlers.
