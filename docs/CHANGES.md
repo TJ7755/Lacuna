@@ -1,5 +1,15 @@
 # Lacuna — next beta
 
+## Small interaction feedback
+
+- Review heatmap cells are now keyboard-focusable and expose the same date/count detail on
+  deliberate hover and focus tooltips, while future cells remain non-interactive.
+- Upcoming assessment pills now use the shared compact hover and press response, with reduced
+  motion disabling transforms and transitions. Layout and assessment status semantics are unchanged.
+- No new dependency was added.
+
+**Checks:** focused component tests, web typecheck, focused lint and production asset build.
+
 ## Editor and settings transition continuity
 
 - Question form and answer-type changes now use the shared same-surface transition instead of
