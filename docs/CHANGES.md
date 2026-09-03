@@ -1,5 +1,16 @@
 # Lacuna — next beta
 
+## Seeded diagrams in dark mode
+
+- Gave the owned Welcome-course SVG diagrams explicit charcoal, stone and amber colours. SVGs
+  rendered through `<img>` cannot inherit `currentColor`, so the previous theme-dependent strokes
+  defaulted to black and were illegible on a dark card.
+- Migrated exact legacy seeded-asset references with `repairSeededSvgAssets`, leaving arbitrary
+  user images untouched.
+
+**Checks:** red-to-green `src/db/seed.test.ts`; root typecheck, focused ESLint, Prettier and
+`git diff --check`; rasterised replacement visually inspected in dark mode.
+
 ## Small interaction feedback
 
 - Review heatmap cells are now keyboard-focusable and expose the same date/count detail on
