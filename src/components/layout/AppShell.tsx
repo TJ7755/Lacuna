@@ -143,6 +143,8 @@ export function AppShell() {
     if (mainRef.current) mainRef.current.dataset.routePath = location.pathname;
   }, [location.pathname]);
 
+  useEffect(() => window.electronAPI?.onOpenHelp?.(() => navigate('/help')), [navigate]);
+
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
     setMobileOpen(false);
