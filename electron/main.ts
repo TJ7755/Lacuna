@@ -1,9 +1,10 @@
-import { app, BrowserWindow, session, protocol, ipcMain, screen, shell } from 'electron';
+import { app, BrowserWindow, Menu, session, protocol, ipcMain, screen, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
+import { createApplicationMenuTemplate } from './applicationMenu.js';
 import type { DesktopUpdater, UpdateState } from './updaterService.js';
 import {
   createApplicationShutdownHandler,
@@ -18,6 +19,7 @@ import {
   type RendererEnvironment,
   VITE_RENDERER_ORIGIN,
 } from './securityPolicy.js';
+import { resolveAppAssetPath } from './appProtocolPath.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,10 +40,9 @@ interface McpCompanionModule {
 }
 
 interface AiCompanionModule {
-  startAiCompanion: (options: {
-    appVersion: string;
-    hostUserDataPath: string;
-  }) => { close: () => Promise<void> };
+  startAiCompanion: (options: { appVersion: string; hostUserDataPath: string }) => {
+    close: () => Promise<void>;
+  };
 }
 
 const isDev = !app.isPackaged;
@@ -122,7 +123,10 @@ function ensureWindowVisible(state: WindowState): WindowState {
 // Register app:// as a standard secure scheme before the app is ready so that
 // the renderer gets a proper origin and CORS / COOP / COEP work correctly.
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+  {
+    scheme: 'app',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+  },
 ]);
 
 /** Allow only the permissions Lacuna needs in its trusted main renderer. */
@@ -197,28 +201,17 @@ const CONTENT_TYPE_MAP: Record<string, string> = {
 /** Serve production assets using the app:// custom protocol. */
 function registerAppProtocol(): void {
   protocol.handle('app', async (request) => {
-    // Extract the raw path part after the scheme. We deliberately do NOT use
-    // new URL().pathname because for non-special schemes (like app://) the host
-    // portion would be discarded, allowing traversal via the authority section
-    // (e.g. app://../../../etc/passwd would yield pathname === '/passwd').
-    let rawPath: string;
-    try {
-      rawPath = decodeURIComponent(request.url.slice('app://'.length));
-    } catch {
-      return new Response('Invalid URL', { status: 400 });
-    }
-
-    // Normalise and ensure the resolved path stays inside the dist folder.
     const distPath = path.resolve(path.join(app.getAppPath(), 'dist'));
-    const resolved = path.resolve(path.join(distPath, rawPath));
-    const relative = path.relative(distPath, resolved);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      return new Response('Forbidden', { status: 403 });
+    const assetPath = resolveAppAssetPath(request.url, distPath);
+    if (!assetPath.ok) {
+      return new Response(assetPath.status === 400 ? 'Invalid URL' : 'Forbidden', {
+        status: assetPath.status,
+      });
     }
 
     try {
-      const data = await fs.promises.readFile(resolved);
-      const ext = path.extname(resolved).toLowerCase();
+      const data = await fs.promises.readFile(assetPath.path);
+      const ext = path.extname(assetPath.path).toLowerCase();
       const type = CONTENT_TYPE_MAP[ext] || 'application/octet-stream';
 
       return new Response(data, {
@@ -384,27 +377,34 @@ function publishUpdateState(state: UpdateState): void {
 const gotTheLock = isCompanionProcess ? false : app.requestSingleInstanceLock();
 
 if (isCompanionProcess) {
-  void app.whenReady().then(async () => {
-    const companionModulePath = isAiCompanionProcess
-      ? './mcp/aiCompanion.js'
-      : './mcp/companion.js';
-    const companion = await import(companionModulePath) as McpCompanionModule | AiCompanionModule;
-    const handle = 'startAiCompanion' in companion
-      ? companion.startAiCompanion({
-          appVersion: app.getVersion(),
-          hostUserDataPath: companionHostUserDataPath(),
-        })
-      : companion.startMcpCompanion();
-    registerCompanionProcessShutdown({
-      handle,
-      stdin: process.stdin,
-      signals: process,
-      quit: () => app.quit(),
+  void app
+    .whenReady()
+    .then(async () => {
+      const companionModulePath = isAiCompanionProcess
+        ? './mcp/aiCompanion.js'
+        : './mcp/companion.js';
+      const companion = (await import(companionModulePath)) as
+        McpCompanionModule | AiCompanionModule;
+      const handle =
+        'startAiCompanion' in companion
+          ? companion.startAiCompanion({
+              appVersion: app.getVersion(),
+              hostUserDataPath: companionHostUserDataPath(),
+            })
+          : companion.startMcpCompanion();
+      registerCompanionProcessShutdown({
+        handle,
+        stdin: process.stdin,
+        signals: process,
+        quit: () => app.quit(),
+      });
+    })
+    .catch((error) => {
+      process.stderr.write(
+        `Could not start the Lacuna ${isAiCompanionProcess ? 'AI ' : ''}MCP companion: ${String(error)}\n`,
+      );
+      app.exit(1);
     });
-  }).catch((error) => {
-    process.stderr.write(`Could not start the Lacuna ${isAiCompanionProcess ? 'AI ' : ''}MCP companion: ${String(error)}\n`);
-    app.exit(1);
-  });
 } else if (!gotTheLock) {
   app.quit();
 } else {
@@ -416,6 +416,15 @@ if (isCompanionProcess) {
   });
 
   void app.whenReady().then(async () => {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate(
+        createApplicationMenuTemplate(process.platform, isDev, () => {
+          if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send('navigation:open-help');
+          }
+        }),
+      ),
+    );
     installSecurityHeaders();
     installPermissionHandlers();
 
@@ -481,8 +490,13 @@ if (isCompanionProcess) {
     await mcp.startMcpServer(() => mainWindow);
 
     ipcMain.handle('mcp:status', (event) => {
-      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed() ||
-        event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      if (
+        !mainWindow ||
+        mainWindow.isDestroyed() ||
+        mainWindow.webContents.isDestroyed() ||
+        event.sender !== mainWindow.webContents ||
+        event.senderFrame !== mainWindow.webContents.mainFrame
+      ) {
         throw new Error('Untrusted MCP status request.');
       }
       return mcpModule?.getMcpStatus() ?? { running: false, toolCount: 0, toolSurfaceVersion: 0 };
@@ -495,8 +509,11 @@ if (!isCompanionProcess) {
     app.quit();
   });
 
-  app.on('before-quit', createApplicationShutdownHandler({
-    stop: () => mcpModule?.stopMcpServer() ?? Promise.resolve(),
-    quit: () => app.quit(),
-  }));
+  app.on(
+    'before-quit',
+    createApplicationShutdownHandler({
+      stop: () => mcpModule?.stopMcpServer() ?? Promise.resolve(),
+      quit: () => app.quit(),
+    }),
+  );
 }

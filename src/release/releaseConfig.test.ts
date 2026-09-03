@@ -128,6 +128,9 @@ describe('v0.2.3 release configuration', () => {
     expect(scripts['electron:build:win']).toContain('electron-builder --win --x64');
     expect(scripts['electron:build:linux']).toContain('electron-builder --linux --x64');
     expect(scripts['electron:build:mac']).toContain('electron-builder --mac --arm64');
+    expect(scripts['perf:check:electron-package']).toBe(
+      'bun scripts/electron-package-audit.ts --asar release/win-unpacked/resources/app.asar --check',
+    );
     for (const name of ['electron:build:win', 'electron:build:linux', 'electron:build:mac']) {
       expect(scripts[name]).toContain('electron:prepare');
       expect(scripts[name]).toContain('--publish never');
@@ -339,6 +342,13 @@ describe('v0.2.3 release configuration', () => {
       if (platform.job === 'build-win') {
         expect(allowlistCheck).toContain('shell: pwsh');
         expect(allowlistCheck).toContain('Get-ChildItem -Path $pattern -File');
+        expect(job).toContain('bun run perf:check:electron-package');
+        expect(job.indexOf(platform.build)).toBeLessThan(
+          job.indexOf('bun run perf:check:electron-package'),
+        );
+        expect(job.indexOf('bun run perf:check:electron-package')).toBeLessThan(
+          job.indexOf(allowlistCheck),
+        );
       } else {
         expect(allowlistCheck).toContain('shell: bash');
         expect(allowlistCheck).toContain('compgen -G "$pattern"');
