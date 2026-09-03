@@ -2,13 +2,17 @@
 
 ## Deterministic assessment-editor tests
 
+- Reduced motion now omits Motion's `animate` targets from assessment rows and shared step swaps.
+  A zero-duration target still created Web Animations, which was pointless for users and left Happy
+  DOM holding cancellable animation objects during test teardown.
 - The assessment deletion test now waits for the outgoing editor's Motion exit to finish before
   Testing Library tears down the document. Assessment tests now use reduced motion unless they
   explicitly verify a transition; the test covering a completed exit waits for it to finish.
   Hosted Linux runners previously cancelled an unrelated active Happy DOM animation during cleanup,
   producing an unhandled `AbortError` after all assertions had passed and failing the unit-test shard.
 
-**Checks:** focused assessment tests, complete shard 1 and hosted CI.
+**Checks:** red-to-green reduced-motion assertions; focused assessment and step-swap tests;
+complete shard 1 and hosted CI.
 
 ## Grade feedback as exam-day retention
 

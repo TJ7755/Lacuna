@@ -94,7 +94,12 @@ describe('ExamDatesSection', () => {
 
   it('lists existing exam dates', () => {
     render(<ExamDatesSection courseId="course-1" />);
-    expect(screen.getByText('Mock exam')).toBeInTheDocument();
+    const row = screen.getByText('Mock exam').closest('.rounded-lg');
+    expect(row).toBeInTheDocument();
+    expect(row).not.toHaveStyle({ opacity: '1' });
+    expect(screen.getByRole('button', { name: 'Add checkpoint' }).parentElement).not.toHaveStyle({
+      opacity: '1',
+    });
   });
 
   it('deletes an exam date after confirmation', async () => {

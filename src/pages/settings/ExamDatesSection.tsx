@@ -154,7 +154,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                 key={assessment.id}
                 layout={motionMultiplier > 0 ? 'position' : undefined}
                 initial={motionMultiplier > 0 ? { opacity: 0, y: -4 } : false}
-                animate={{ opacity: 1, y: 0 }}
+                animate={motionMultiplier > 0 ? { opacity: 1, y: 0 } : undefined}
                 exit={motionMultiplier > 0 ? { opacity: 0, y: -4 } : undefined}
                 transition={motionTransition('feedback', motionMultiplier)}
                 className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"

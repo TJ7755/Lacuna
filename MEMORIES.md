@@ -467,6 +467,8 @@ Happy DOM rejects an active Web Animation's completion promise when Testing Libr
 cancels it. On hosted Linux runners, Vitest reports that rejection as an `AbortError` after every
 assertion has passed. Component tests should use reduced motion unless animation is their subject;
 tests that enable motion and advance a transition must finish its relevant lifecycle before teardown.
+Reduced motion must omit `animate` as well as initial and exit states; a zero-duration target can
+still create a cancellable Web Animation.
 
 ## Mobile Safari owns its native history edge gesture
 
