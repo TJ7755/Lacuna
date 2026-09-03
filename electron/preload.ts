@@ -4,19 +4,42 @@ import type { ManualUpdateReason, UpdatePhase, UpdateState } from './updaterCont
 // The mcp.onInvoke/reply payloads are plain JSON envelopes (src/mcp/bridge/protocol.ts);
 // typed loosely here since the preload script's own tsconfig (tsconfig.preload.json) does
 // not include src/, to keep its CommonJS build independent of the app's module graph.
-type McpGrant = { courseId: string; scope: 'read' | 'write' | 'destructive'; grantedAt: number; label?: string };
-type McpInvokeRequest = { id: string; tool: string; input: unknown; agentId: string; grant: McpGrant };
+type McpGrant = {
+  courseId: string;
+  scope: 'read' | 'write' | 'destructive';
+  grantedAt: number;
+  label?: string;
+};
+type McpInvokeRequest = {
+  id: string;
+  tool: string;
+  input: unknown;
+  agentId: string;
+  grant: McpGrant;
+};
 type McpInvokeResponse =
   | { id: string; ok: true; result: unknown }
   | { id: string; ok: false; error: { kind: string; message: string } };
 type McpScope = 'read' | 'write' | 'destructive';
 type McpClientIdentity = { connectionId: string; name: string; version?: string };
-type McpConsentRequest = { id: string; tool: string; courseId: string; scope: 'write' | 'destructive'; client?: McpClientIdentity };
+type McpConsentRequest = {
+  id: string;
+  tool: string;
+  courseId: string;
+  scope: 'write' | 'destructive';
+  client?: McpClientIdentity;
+};
 type McpConsentResponse = { id: string; approved: boolean };
 type McpGrantNotice = { courseId: string; tool: string; client?: McpClientIdentity };
-type McpClientConnection = McpClientIdentity & { connectedAt: number; lastActivityAt: number; grants: McpGrant[] };
+type McpClientConnection = McpClientIdentity & {
+  connectedAt: number;
+  lastActivityAt: number;
+  grants: McpGrant[];
+};
 type McpScopeResolutionRequest = { id: string; tool: string; input: unknown };
-type McpScopeResolutionResponse = { id: string; ok: true; targets: { courseId: string; label?: string }[] } | { id: string; ok: false; error: { kind: string; message: string } };
+type McpScopeResolutionResponse =
+  | { id: string; ok: true; targets: { courseId: string; label?: string }[] }
+  | { id: string; ok: false; error: { kind: string; message: string } };
 type AiBridgeRequest = Record<string, unknown> & { type: string };
 type AiBridgeResult =
   | { ok: true; data: unknown }
@@ -39,7 +62,9 @@ const MANUAL_REASONS = new Set<ManualUpdateReason>([
 ]);
 
 function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+  return value !== null && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 function safeUpdateState(value: unknown): UpdateState | undefined {
@@ -93,23 +118,37 @@ function safeUpdateState(value: unknown): UpdateState | undefined {
   };
 }
 
-function aiRequestEnvelope(value: unknown): {
-  channelId: string;
-  id: string;
-  request: AiBridgeRequest;
-} | undefined {
+function aiRequestEnvelope(value: unknown):
+  | {
+      channelId: string;
+      id: string;
+      request: AiBridgeRequest;
+    }
+  | undefined {
   const item = record(value);
   const request = record(item?.request);
-  if (!item || Object.keys(item).length !== 3 || typeof item.channelId !== 'string' ||
-    item.channelId.length === 0 || typeof item.id !== 'string' || item.id.length === 0 ||
-    !request || typeof request.type !== 'string') return undefined;
+  if (
+    !item ||
+    Object.keys(item).length !== 3 ||
+    typeof item.channelId !== 'string' ||
+    item.channelId.length === 0 ||
+    typeof item.id !== 'string' ||
+    item.id.length === 0 ||
+    !request ||
+    typeof request.type !== 'string'
+  )
+    return undefined;
   return { channelId: item.channelId, id: item.id, request: request as AiBridgeRequest };
 }
 
 function aiDisconnectEnvelope(value: unknown): { channelId: string } | undefined {
   const item = record(value);
-  return item && Object.keys(item).length === 1 && typeof item.channelId === 'string' &&
-    item.channelId.length > 0 ? { channelId: item.channelId } : undefined;
+  return item &&
+    Object.keys(item).length === 1 &&
+    typeof item.channelId === 'string' &&
+    item.channelId.length > 0
+    ? { channelId: item.channelId }
+    : undefined;
 }
 
 function safeAiResult(value: unknown): AiBridgeResult {
@@ -143,6 +182,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => {
       ipcRenderer.removeListener('window:maximizedChange', handler);
     };
+  },
+  onOpenHelp: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('navigation:open-help', handler);
+    return () => ipcRenderer.removeListener('navigation:open-help', handler);
   },
   updater: {
     getState: async (): Promise<UpdateState> => {
@@ -235,7 +279,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     grant: (courseId: string, scope: McpScope, label?: string) =>
       ipcRenderer.invoke('mcp:grants:grant', courseId, scope, label),
     revoke: (courseId: string) => ipcRenderer.invoke('mcp:grants:revoke', courseId),
-    getConnections: (): Promise<McpClientConnection[]> => ipcRenderer.invoke('mcp:connections:list'),
+    getConnections: (): Promise<McpClientConnection[]> =>
+      ipcRenderer.invoke('mcp:connections:list'),
     grantConnection: (connectionId: string, courseId: string, scope: McpScope, label?: string) =>
       ipcRenderer.invoke('mcp:connections:grant', connectionId, courseId, scope, label),
     revokeConnection: (connectionId: string, courseId: string) =>
@@ -256,7 +301,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('mcp:scope', handler);
       return () => ipcRenderer.removeListener('mcp:scope', handler);
     },
-    replyScopeResolution: (response: McpScopeResolutionResponse) => ipcRenderer.send('mcp:scope:reply', response),
+    replyScopeResolution: (response: McpScopeResolutionResponse) =>
+      ipcRenderer.send('mcp:scope:reply', response),
     onInvoke: (callback: (request: McpInvokeRequest) => void) => {
       const handler = (_event: unknown, request: McpInvokeRequest) => callback(request);
       ipcRenderer.on('mcp:invoke', handler);

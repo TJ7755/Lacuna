@@ -1,5 +1,20 @@
 # Lacuna — next beta
 
+## Native desktop menus and commands
+
+- Added the standard application menu on macOS and the standard File, Edit and Window menus on
+  every desktop platform, restoring native About, Services, hide, quit, clipboard, selection and
+  window commands with their platform accelerators.
+- Added zoom and full-screen commands on every platform. Reload and developer tools remain
+  available in development builds but are deliberately absent from packaged releases.
+- Added a native Help command that opens Lacuna's existing in-app guidance, including the native
+  macOS shortcut and F1 on Windows and Linux.
+- Kept the menu template in a small pure module instead of adding another responsibility to the
+  Electron main-process entry point.
+
+**Checks:** red-to-green native-menu template regression; Electron and web typechecks; lint; unit
+tests.
+
 ## Electron renderer reloads
 
 - Preserve hash routes and query-bearing assets when the packaged `app://` protocol serves a
@@ -256,8 +271,7 @@ installs and high-severity audits in the root, relay and handwriting-maths works
 - Refreshed the root, relay and handwriting lockfiles with Bun 1.4.0 while preserving existing
   major-version boundaries. Raised the explicit minimums for Electron (42.11.0), React Router
   (6.30.6), Vite (6.4.3) and the nanoid override (3.3.18).
-- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at
-  5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
+- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at 5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
   layers, plus Vite 5 transitive dependencies in the relay and handwriting workspaces.
 
 **Checks:** frozen Bun 1.4.0 installs in all workspaces; root typecheck, lint and asset build, with
