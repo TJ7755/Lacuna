@@ -86,13 +86,15 @@ vi.mock('../hooks/useInstallPrompt', () => ({
   useInstallPrompt: () => ({ isInstallable: false, isInstalled: false, promptInstall: vi.fn() }),
 }));
 vi.mock('../db/backups', () => ({
+  deleteBackup: vi.fn(),
+  restoreBackup: vi.fn(),
+  takeAutoBackup: vi.fn(),
+}));
+vi.mock('../db/backupFolder', () => ({
   backupFolderName: () => new Promise(() => {}),
   chooseBackupFolder: vi.fn(),
   clearBackupFolder: vi.fn(),
-  deleteBackup: vi.fn(),
   folderMirrorSupported: () => false,
-  restoreBackup: vi.fn(),
-  takeAutoBackup: vi.fn(),
 }));
 vi.mock('../db/persistence', () => ({
   checkPersistentStorage: () => new Promise(() => {}),

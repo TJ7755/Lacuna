@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SyncState } from '../db/types';
-import type { SyncCredentials } from './pairing';
+import type { SyncCredentials } from './credentials';
 import {
   __resetTriggersForTests,
   clearUnlockedCredentials,
@@ -16,19 +16,21 @@ const {
   readSyncStateMock,
   syncWithCredentialsMock,
 } = vi.hoisted(() => ({
-    allowRelayConnectMock: vi.fn(),
-    pairingModuleExecutions: { count: 0 },
-    readRememberedCredentialsMock: vi.fn(),
-    readSyncStateMock: vi.fn(),
-    syncWithCredentialsMock: vi.fn(),
-  }));
+  allowRelayConnectMock: vi.fn(),
+  pairingModuleExecutions: { count: 0 },
+  readRememberedCredentialsMock: vi.fn(),
+  readSyncStateMock: vi.fn(),
+  syncWithCredentialsMock: vi.fn(),
+}));
 
 vi.mock('../db/mutationStamp', () => ({ readSyncState: readSyncStateMock }));
 vi.mock('./csp', () => ({ allowRelayConnect: allowRelayConnectMock }));
+vi.mock('./credentials', () => ({
+  readRememberedCredentials: readRememberedCredentialsMock,
+}));
 vi.mock('./pairing', () => {
   pairingModuleExecutions.count += 1;
   return {
-    readRememberedCredentials: readRememberedCredentialsMock,
     syncWithCredentials: syncWithCredentialsMock,
   };
 });

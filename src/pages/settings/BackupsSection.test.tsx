@@ -8,13 +8,16 @@ const mockCheckPersistentStorage = vi.fn().mockResolvedValue(null);
 const mockRequestPersistentStorage = vi.fn();
 
 vi.mock('../../db/backups', () => ({
+  deleteBackup: (id: number) => mockDeleteBackup(id),
+  restoreBackup: vi.fn(),
+  takeAutoBackup: vi.fn(),
+}));
+
+vi.mock('../../db/backupFolder', () => ({
   backupFolderName: vi.fn().mockResolvedValue(null),
   chooseBackupFolder: vi.fn(),
   clearBackupFolder: vi.fn(),
-  deleteBackup: (id: number) => mockDeleteBackup(id),
   folderMirrorSupported: vi.fn().mockReturnValue(false),
-  restoreBackup: vi.fn(),
-  takeAutoBackup: vi.fn(),
 }));
 
 vi.mock('../../db/persistence', () => ({
@@ -39,6 +42,10 @@ vi.mock('../../components/ui/Toast', () => ({
 
 describe('BackupsSection', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: undefined,
+    });
     mockDeleteBackup.mockReset();
     mockDeleteBackup.mockResolvedValue(undefined);
     mockNotify.mockClear();
@@ -130,5 +137,24 @@ describe('BackupsSection', () => {
     expect(
       screen.getByText('Replace all local data, disconnect AI and restore this point?'),
     ).toBeInTheDocument();
+  });
+
+  it('does not request or show browser persistence controls in Electron', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true },
+    });
+    mockCheckPersistentStorage.mockResolvedValue({
+      supported: true,
+      persisted: false,
+      usage: null,
+      quota: null,
+    });
+
+    render(<BackupsSection />);
+
+    expect(await screen.findByRole('heading', { name: 'Automatic backups' })).toBeInTheDocument();
+    expect(mockCheckPersistentStorage).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Request persistence' })).not.toBeInTheDocument();
   });
 });

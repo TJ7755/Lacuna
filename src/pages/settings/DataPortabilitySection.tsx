@@ -5,17 +5,12 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
-import { importBackup, readBackupFile, type ImportMode } from '../../db/portability';
+import type { ImportMode } from '../../db/portability';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import type { BackupFile } from '../../db/types';
-import {
-  ManualMergeError,
-  manualMerge,
-  type ManualMergeSummary,
-  type MergeDelta,
-} from '../../sync/manualMerge';
+import type * as ManualMergeModule from '../../sync/manualMerge';
+import type { ManualMergeSummary, MergeDelta } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
-import { replacementLifecycle } from '../../db/replacementLifecycle';
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -72,6 +67,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
     if (combineBusy) return;
     try {
       setPendingCombine(null);
+      const { readBackupFile } = await import('../../db/portability');
       setPending(await readBackupFile(file));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
@@ -83,6 +79,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
     try {
       setPending(null);
       setConfirmReplace(false);
+      const { readBackupFile } = await import('../../db/portability');
       setPendingCombine(await readBackupFile(file));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
@@ -92,13 +89,18 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   async function runCombine() {
     if (!pendingCombine || combineBusy) return;
     setCombineBusy(true);
+    let mergeModule: typeof ManualMergeModule | undefined;
     try {
-      const summary = await manualMerge(pendingCombine);
+      mergeModule = await import('../../sync/manualMerge');
+      const summary = await mergeModule.manualMerge(pendingCombine);
       notify(formatCombineSummary(summary), 'positive');
       setPendingCombine(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Combine failed.';
-      const modified = error instanceof ManualMergeError && error.databaseModified;
+      const modified =
+        mergeModule !== undefined &&
+        error instanceof mergeModule.ManualMergeError &&
+        error.databaseModified;
       notify(
         modified
           ? `${message} Restore from Automatic backups if this installation looks wrong.`
@@ -113,6 +115,10 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   async function runImport(mode: ImportMode) {
     if (!pending) return;
     try {
+      const [{ importBackup }, { replacementLifecycle }] = await Promise.all([
+        import('../../db/portability'),
+        import('../../db/replacementLifecycle'),
+      ]);
       await replacementLifecycle.replace(mode === 'replace' ? 'manual' : 'recovery', () =>
         importBackup(pending, mode),
       );
