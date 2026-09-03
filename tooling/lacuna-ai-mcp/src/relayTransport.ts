@@ -103,14 +103,17 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     return connection;
   }
 
-  async readBrowserMailbox(connection: ConnectedTerminalRelay): Promise<{
+  async readBrowserMailbox(connection: ConnectedTerminalRelay, signal?: AbortSignal): Promise<{
     generation: string;
     mailbox: ReturnType<typeof relayBrowserMailboxSchema.parse>;
   } | null> {
     const authenticated = authenticatedConnection(connection);
     const response = await this.fetchImpl(
       `${connection.relayUrl}/ai/s/${connection.sessionId}/browser`,
-      { headers: { Authorization: `Bearer ${authenticated.terminalToken}` } },
+      {
+        headers: { Authorization: `Bearer ${authenticated.terminalToken}` },
+        signal,
+      },
     );
     if (response.status === 404) return null;
     if (!response.ok) throw relayHttpError('read the Lacuna AI browser mailbox', response.status);
@@ -158,6 +161,7 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
         authenticated.terminalToken,
         body,
         this.recoveryTiming,
+        signal,
       );
     }
     if (response.status === 412) {
@@ -171,6 +175,7 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
           authenticated.terminalToken,
           body,
           this.recoveryTiming,
+          signal,
         );
       }
       throw relayHttpError('write the Lacuna AI terminal mailbox', response.status);
@@ -189,6 +194,7 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
       authenticated.terminalToken,
       body,
       this.recoveryTiming,
+      signal,
     );
   }
 }
@@ -218,7 +224,9 @@ async function recoverTerminalWrite(
   terminalToken: string,
   attemptedBody: string,
   timing: { now: () => number; wait: (milliseconds: number) => Promise<void> },
+  signal?: AbortSignal,
 ): Promise<string> {
+  if (signal?.aborted) throw new TerminalRelayReconnectRequiredError();
   const startedAt = timing.now();
   const deadline = startedAt + RECOVERY_DEADLINE_MS;
   const attemptedDigest = createHash('sha256').update(attemptedBody, 'utf8').digest('hex');
@@ -226,11 +234,13 @@ async function recoverTerminalWrite(
 
   for (const offsetMs of RECOVERY_READ_OFFSETS_MS) {
     const delayMs = startedAt + offsetMs - timing.now();
-    if (delayMs > 0) await timing.wait(delayMs);
+    if (delayMs > 0) await waitForRecoveryDelay(timing.wait(delayMs), signal);
     const remainingMs = deadline - timing.now();
     if (remainingMs <= 0) break;
 
     const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
     const timeout = setTimeout(
       () => controller.abort(),
       Math.min(RECOVERY_READ_TIMEOUT_MS, remainingMs),
@@ -245,12 +255,32 @@ async function recoverTerminalWrite(
       if (!response.ok) continue;
       return `"sha256:${attemptedDigest}"`;
     } catch {
+      if (signal?.aborted) throw new TerminalRelayReconnectRequiredError();
       // A read-only retry cannot overwrite a concurrent successor.
     } finally {
       clearTimeout(timeout);
+      signal?.removeEventListener('abort', cancel);
     }
   }
   throw new TerminalRelayReconnectRequiredError();
+}
+
+async function waitForRecoveryDelay(waiting: Promise<void>, signal?: AbortSignal): Promise<void> {
+  if (!signal) {
+    await waiting;
+    return;
+  }
+  if (signal.aborted) throw new TerminalRelayReconnectRequiredError();
+  let cancel: (() => void) | undefined;
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    cancel = () => reject(new TerminalRelayReconnectRequiredError());
+    signal.addEventListener('abort', cancel, { once: true });
+  });
+  try {
+    await Promise.race([waiting, cancelled]);
+  } finally {
+    if (cancel) signal.removeEventListener('abort', cancel);
+  }
 }
 
 function wait(milliseconds: number): Promise<void> {

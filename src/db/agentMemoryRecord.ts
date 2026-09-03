@@ -4,42 +4,34 @@ import type {
   AgentMemoryProvenance,
   AgentMemoryReference,
   AgentMemoryStatus,
-  AgentMemoryTag,
 } from './types';
+import {
+  AGENT_MEMORY_BASES,
+  AGENT_MEMORY_CONTENT_LIMIT,
+  AGENT_MEMORY_IDENTIFIER_LIMIT,
+  AGENT_MEMORY_PROVENANCE_ID_LIMIT,
+  AGENT_MEMORY_QUERY_LIMIT,
+  AGENT_MEMORY_REFERENCE_KINDS,
+  AGENT_MEMORY_REFERENCE_LABEL_LIMIT,
+  AGENT_MEMORY_REFERENCE_LIMIT,
+  AGENT_MEMORY_RESULT_LIMIT,
+  AGENT_MEMORY_STATUSES,
+  AGENT_MEMORY_TAGS,
+} from '../agentMemoryContract';
 
-export const AGENT_MEMORY_CONTENT_LIMIT = 8_000;
-export const AGENT_MEMORY_IDENTIFIER_LIMIT = 160;
-export const AGENT_MEMORY_REFERENCE_LABEL_LIMIT = 500;
-export const AGENT_MEMORY_REFERENCE_LIMIT = 25;
-export const AGENT_MEMORY_PROVENANCE_ID_LIMIT = 160;
-export const AGENT_MEMORY_QUERY_LIMIT = 1_000;
-export const AGENT_MEMORY_RESULT_LIMIT = 50;
-
-export const AGENT_MEMORY_TAGS = [
-  'misconception',
-  'plateau',
-  'preference',
-  'session',
-  'strength',
-  'context',
-] as const satisfies readonly AgentMemoryTag[];
-export const AGENT_MEMORY_STATUSES = [
-  'active',
-  'uncertain',
-  'resolved',
-] as const satisfies readonly AgentMemoryStatus[];
-export const AGENT_MEMORY_BASES = [
-  'learner-stated',
-  'agent-inferred',
-  'observed-performance',
-] as const satisfies readonly AgentMemoryBasis[];
-export const AGENT_MEMORY_REFERENCE_KINDS = [
-  'card',
-  'concept',
-  'lesson',
-  'question',
-  'course',
-] as const;
+export {
+  AGENT_MEMORY_BASES,
+  AGENT_MEMORY_CONTENT_LIMIT,
+  AGENT_MEMORY_IDENTIFIER_LIMIT,
+  AGENT_MEMORY_PROVENANCE_ID_LIMIT,
+  AGENT_MEMORY_QUERY_LIMIT,
+  AGENT_MEMORY_REFERENCE_KINDS,
+  AGENT_MEMORY_REFERENCE_LABEL_LIMIT,
+  AGENT_MEMORY_REFERENCE_LIMIT,
+  AGENT_MEMORY_RESULT_LIMIT,
+  AGENT_MEMORY_STATUSES,
+  AGENT_MEMORY_TAGS,
+};
 
 function isBoundedString(value: unknown, limit: number, allowEmpty = false): value is string {
   return (
