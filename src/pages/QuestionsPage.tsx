@@ -1,18 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import { CourseTabs } from '../components/course/CourseTabs';
+import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import {
-  ChevronLeftIcon,
-  EditIcon,
-  PlayIcon,
-  PlusIcon,
-  SparklesIcon,
-} from '../components/ui/icons';
+import { EditIcon, PlayIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
 import { useCourse, useLessons } from '../state/useCourseData';
 
 function dueLabel(due: number | null, now: number): string {
@@ -68,16 +62,12 @@ export function QuestionsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 md:px-10">
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <Link
-          to="/"
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          All courses
-        </Link>
-        <CourseTabs courseId={course.id} />
-      </div>
+      <CoursePageNavigation
+        courseId={course.id}
+        backTo="/"
+        backLabel="All courses"
+        className="mb-6"
+      />
 
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>

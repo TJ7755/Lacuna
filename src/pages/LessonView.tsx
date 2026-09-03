@@ -25,17 +25,14 @@ import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
-import { ChevronLeftIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
+import { PlayIcon, PlusIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
-import { CourseTabs } from '../components/course/CourseTabs';
+import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
-import {
-  ArchivedCourseBadge,
-  ArchivedCourseRestoreNotice,
-} from '../components/course/ArchivedCourseState';
+import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
 import {
   canEditLessons,
@@ -162,22 +159,14 @@ export function LessonView({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to={backTo}
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          {backLabel}
-        </Link>
-        <div className="flex min-w-0 items-center gap-3">
-          {archived ? (
-            <ArchivedCourseBadge />
-          ) : courseId ? (
-            <CourseTabs courseId={courseId} />
-          ) : null}
-          {archived ? null : !canEditLessons(course) ? (
+      <CoursePageNavigation
+        courseId={courseId ?? ''}
+        backTo={backTo}
+        backLabel={backLabel}
+        archived={archived}
+        className="mb-6"
+        trailing={
+          archived ? undefined : !canEditLessons(course) ? (
             <Link
               to={`/course/${courseId}/settings`}
               className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
@@ -189,9 +178,9 @@ export function LessonView({
               mode={viewMode}
               onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
             />
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
       {isInline && courseId && authoring && (
         <div
           role="group"

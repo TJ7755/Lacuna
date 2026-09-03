@@ -1,5 +1,18 @@
 # Lacuna — next beta
 
+## Stable course navigation
+
+- Replaced six page-specific course-navigation rows with one shared course-chrome module. Equal
+  outer grid tracks keep Path, Cards, Questions, Analytics and Settings centred independently of
+  each page's content width, back-link length or optional authoring control.
+- Preserved the existing active-tab spring, route-intent prefetch, archived-course state and mobile
+  section bar rather than introducing another navigation system.
+- Added a component contract and a production-browser regression that compares the navigation
+  centre across all five course surfaces.
+
+**Checks:** nine focused component tests; full web typecheck; Playwright discovery; production
+browser position check pending completion of the concurrent Settings static-closure refactor.
+
 ## Shared motion contract
 
 - Added semantic feedback, local, milestone and finale timing tiers to the existing motion utility,
