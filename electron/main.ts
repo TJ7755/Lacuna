@@ -19,6 +19,7 @@ import {
   type RendererEnvironment,
   VITE_RENDERER_ORIGIN,
 } from './securityPolicy.js';
+import { resolveAppAssetPath } from './appProtocolPath.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -200,28 +201,17 @@ const CONTENT_TYPE_MAP: Record<string, string> = {
 /** Serve production assets using the app:// custom protocol. */
 function registerAppProtocol(): void {
   protocol.handle('app', async (request) => {
-    // Extract the raw path part after the scheme. We deliberately do NOT use
-    // new URL().pathname because for non-special schemes (like app://) the host
-    // portion would be discarded, allowing traversal via the authority section
-    // (e.g. app://../../../etc/passwd would yield pathname === '/passwd').
-    let rawPath: string;
-    try {
-      rawPath = decodeURIComponent(request.url.slice('app://'.length));
-    } catch {
-      return new Response('Invalid URL', { status: 400 });
-    }
-
-    // Normalise and ensure the resolved path stays inside the dist folder.
     const distPath = path.resolve(path.join(app.getAppPath(), 'dist'));
-    const resolved = path.resolve(path.join(distPath, rawPath));
-    const relative = path.relative(distPath, resolved);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      return new Response('Forbidden', { status: 403 });
+    const assetPath = resolveAppAssetPath(request.url, distPath);
+    if (!assetPath.ok) {
+      return new Response(assetPath.status === 400 ? 'Invalid URL' : 'Forbidden', {
+        status: assetPath.status,
+      });
     }
 
     try {
-      const data = await fs.promises.readFile(resolved);
-      const ext = path.extname(resolved).toLowerCase();
+      const data = await fs.promises.readFile(assetPath.path);
+      const ext = path.extname(assetPath.path).toLowerCase();
       const type = CONTENT_TYPE_MAP[ext] || 'application/octet-stream';
 
       return new Response(data, {

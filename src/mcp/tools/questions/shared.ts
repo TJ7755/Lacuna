@@ -1,19 +1,15 @@
-import { z } from 'zod';
 import * as read from '../../../db/read';
 import {
   getQuestion as repoGetQuestion,
   listConcepts as repoListConcepts,
 } from '../../../questions/repository';
 import { McpToolException, type ToolResult } from '../../types';
-
-export const courseIdSchema = z.string().trim().min(1).describe('The id of the Course.');
-export const conceptIdSchema = z.string().trim().min(1).describe('The id of a Concept.');
-export const questionIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .describe('The id of a Question definition.');
-export const authoredTextSchema = z.string().trim().min(1);
+export {
+  authoredTextSchema,
+  conceptIdSchema,
+  courseIdSchema,
+  questionIdSchema,
+} from '../../contracts/questions';
 
 export function ok<T>(data: T): ToolResult<T> {
   return { data };

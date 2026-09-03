@@ -5,7 +5,7 @@ import log from 'electron-log';
 import { z } from 'zod';
 import { McpServer, type CallToolResult, type ServerContext } from '@modelcontextprotocol/server';
 import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
-import { TOOL_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '../../src/mcp/registry.js';
+import { TOOL_CONTRACT_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '../../src/mcp/contracts/registry.js';
 import type { McpClientIdentity } from '../../src/mcp/connections.js';
 import {
   CompanionLineDecoder,
@@ -197,11 +197,11 @@ export function startMcpCompanion(): StdioServerHandle {
         return appClient.serverInfo();
       },
     );
-    for (const tool of TOOL_REGISTRY) {
+    for (const tool of TOOL_CONTRACT_REGISTRY) {
       server.registerTool(
         tool.name,
         { description: tool.description, inputSchema: tool.inputSchema },
-        async (input, context) => {
+        async (input: unknown, context: ServerContext) => {
           appClient.updateIdentity(reportedIdentity(server, context, connectionId));
           return appClient.call(tool.name, input);
         },

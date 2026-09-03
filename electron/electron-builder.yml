@@ -5,8 +5,16 @@ directories:
 files:
   - dist/**/*
   - electron/dist-electron/**/*
-  - electron/assets/**/*
+  - electron/assets/fonts/**/*
   - electron/fonts.css
+  - '!**/*.map'
+  - '!**/*.{ts,tsx,cts,mts,jsx,tsbuildinfo}'
+  - '!**/{__tests__,__mocks__,test,tests,coverage,test-results,storybook}/**/*'
+  - '!**/*.{test,spec}.{js,cjs,mjs,ts,tsx,cts,mts,jsx}'
+  - '!**/{README*,CHANGELOG*,CHANGES*,HISTORY*,CONTRIBUTING*,CODE_OF_CONDUCT*,SECURITY*}.{md,markdown,txt}'
+electronLanguages:
+  - en-GB
+  - en-US
 win:
   target:
     - target: nsis
