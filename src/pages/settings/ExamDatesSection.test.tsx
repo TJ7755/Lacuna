@@ -6,6 +6,17 @@ import type { Card, CourseAssessment, Lesson } from '../../db/types';
 
 const motion = vi.hoisted(() => ({ multiplier: 0 }));
 
+async function finishRunningAnimations(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+  const animations = Array.from(document.querySelectorAll('*')).flatMap((element) =>
+    element.getAnimations(),
+  );
+  animations.forEach((animation) => animation.finish());
+  await Promise.allSettled(animations.map((animation) => animation.finished));
+}
+
 let mockExamDates: CourseAssessment[] | undefined;
 let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
@@ -162,6 +173,7 @@ describe('ExamDatesSection', () => {
     expect(screen.getByDisplayValue('Second mock')).toHaveFocus();
     await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
     expect(warning).not.toHaveBeenCalledWith(expect.stringContaining('pointerEvents'));
+    await finishRunningAnimations();
     warning.mockRestore();
   });
 
@@ -177,7 +189,7 @@ describe('ExamDatesSection', () => {
     await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
   });
 
-  it('brings a newly created assessment row in through the list transition', () => {
+  it('brings a newly created assessment row in through the list transition', async () => {
     motion.multiplier = 1;
     const view = render(<ExamDatesSection courseId="course-1" />);
     mockExamDates = [
@@ -190,6 +202,7 @@ describe('ExamDatesSection', () => {
     expect(screen.getByText('Second mock').closest('[style*="opacity"]')).toHaveStyle({
       opacity: '0',
     });
+    await finishRunningAnimations();
   });
 
   it('edits the sole final with the same assessment editor and offers no delete action', () => {

@@ -468,7 +468,9 @@ cancels it. On hosted Linux runners, Vitest reports that rejection as an `AbortE
 assertion has passed. Component tests should use reduced motion unless animation is their subject;
 tests that enable motion and advance a transition must finish its relevant lifecycle before teardown.
 Reduced motion must omit `animate` as well as initial and exit states; a zero-duration target can
-still create a cancellable Web Animation.
+still create a cancellable Web Animation. In Happy DOM, allow Motion two animation frames to create
+WAAPI objects before collecting, finishing and settling them; an immediate collection can miss work
+that the frame scheduler has not started yet.
 
 ## Mobile Safari owns its native history edge gesture
 

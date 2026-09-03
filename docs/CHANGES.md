@@ -7,7 +7,8 @@
   DOM holding cancellable animation objects during test teardown.
 - The assessment deletion test now waits for the outgoing editor's Motion exit to finish before
   Testing Library tears down the document. Assessment tests now use reduced motion unless they
-  explicitly verify a transition; the test covering a completed exit waits for it to finish.
+  explicitly verify a transition; those transition tests allow Motion to schedule its work, then
+  finish and settle every resulting Web Animation before teardown.
   Hosted Linux runners previously cancelled an unrelated active Happy DOM animation during cleanup,
   producing an unhandled `AbortError` after all assertions had passed and failing the unit-test shard.
 
