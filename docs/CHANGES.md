@@ -40,6 +40,108 @@ tests; full typecheck; focused E2E TypeScript check; ESLint; Prettier; diff chec
 **Checks:** focused production-preview Playwright regression with a deterministic delayed chunk;
 direct TypeScript and Prettier checks; diff check.
 
+## Native desktop menus and commands
+
+- Added the standard application menu on macOS and the standard File, Edit and Window menus on
+  every desktop platform, restoring native About, Services, hide, quit, clipboard, selection and
+  window commands with their platform accelerators.
+- Added zoom and full-screen commands on every platform. Reload and developer tools remain
+  available in development builds but are deliberately absent from packaged releases.
+- Added a native Help command that opens Lacuna's existing in-app guidance, including the native
+  macOS shortcut and F1 on Windows and Linux.
+- Kept the menu template in a small pure module instead of adding another responsibility to the
+  Electron main-process entry point.
+
+**Checks:** red-to-green native-menu template regression; Electron and web typechecks; lint; unit
+tests.
+
+## Electron renderer reloads
+
+- Preserve hash routes and query-bearing assets when the packaged `app://` protocol serves a
+  renderer reload, while retaining authority and traversal checks.
+
+**Checks:** focused app-protocol path tests; Electron typecheck, lint, formatting and preparation.
+
+## Electron package diet
+
+- Stopped copying the renderer's complete dependency graph into Electron after Vite had already
+  bundled it. Production dependencies now describe the Electron runtime only; renderer and build
+  inputs remain installed for development, and the redundant direct MCP core root was removed.
+- Narrowed the packaged file boundary to compiled output, the Electron font stylesheet and font
+  files. Source maps, TypeScript/declarations, tests and named project documentation are excluded,
+  while dependency licence files remain present.
+- Limited Chromium resources to British and US English. The rebuilt Windows package now contains
+  two locale packs rather than 55.
+- Ratcheted the Windows package gate from baseline-sized allowances to the measured slim package.
+  The old artefact fails all seven ceilings; the new artefact passes them.
+- Measured the Windows ASAR falling from 138,813,451 to 20,575,956 bytes (-85.2%), its file count
+  from 12,817 to 1,240 (-90.3%), and locale bytes from 49,471,161 to 1,137,014 (-97.7%). The macOS
+  application fell from 430,764 KiB to 254,104 KiB on disk (-41.0%).
+- Rebuilt the renderer at the fixed baseline and after the change. Initial JavaScript remained
+  exactly 866,840 bytes raw / 266,195 bytes gzip and initial CSS remained 121,519 / 17,795 bytes;
+  the package work did not alter its asset hashes or loading boundary.
+
+**Checks:** red-to-green Electron package-boundary tests; frozen lockfile install; web and Electron
+TypeScript; lint; fixed-baseline and changed renderer production builds plus asset audits; macOS
+arm64 and Windows x64 unpacked package builds; old Windows artefact rejected and new artefact passed
+the ratcheted package audit. No Electron application was launched.
+
+## Native packaged interaction validation
+
+- Added a packaged Electron interaction harness that spawns the resolved executable itself,
+  attaches over loopback CDP and exercises Quick search, Settings and seeded-course navigation
+  sequentially in the native renderer. Explicit process ownership avoids Playwright's intermittent
+  native Electron attachment race after its debugger sockets are already connected.
+- Kept the complete validation inside one launch and one Electron process tree. The harness has a
+  one-launch hard cap, never emulates a viewport, disables retries and tracing, and verifies normal
+  shutdown from the exact spawned child handle. Interaction timings begin only after the seeded
+  Dashboard is ready.
+- Retained raw input-to-feedback, input-to-usable and input-to-settled probes, finite-animation
+  settlement, Long Tasks and renderer errors. Removed the configurable one-sample report because
+  dressing a single observation up with distribution statistics proved nothing.
+- Kept the packaged-only interaction spec outside the ordinary Electron AI suite. Hosted AI CI
+  prepares unpackaged Electron code and must not pretend it has built a release executable.
+
+**Checks:** red-to-green Playwright suite-boundary regression; harness and root TypeScript; focused
+ESLint and formatting checks; separate AI and packaged Playwright test discovery. Packaged execution
+remains the explicit `test:e2e:electron-package` check.
+
+## Resumable AI write approvals
+
+- Kept approval-gated MCP tool invocations open while the user decides in Lacuna. The native and
+  relay companions now retry only the exact same run, call, tool and input, using Lacuna's supplied
+  retry delay and one bounded overall timeout.
+- Returned the committed tool result and its activity receipt through the original MCP invocation
+  after approval. Rejection, Stop, cancellation and timeout still terminate the call without
+  changing its identity or guessing whether another write should be attempted.
+- Applied one deadline and cancellation signal to the complete relay invocation, including mailbox
+  reads, acknowledgements, approval waits and retry writes. An interrupted write now requires a
+  reconnect because its outcome is unknowable; cancellation while waiting for approval publishes
+  no retry. Native Stop responses acknowledge and retire the exact active run before renewal ends.
+
+**Checks:** red-to-green native-socket and relay-mailbox approval-resumption, cancellation, blocked
+I/O, stale-mailbox and Stop-lifecycle tests; focused native and standalone AI MCP suites; root and
+standalone AI MCP typechecks and lint.
+
+## Electron package measurement gate
+
+- Added a read-only ASAR audit that reports package payload by dependency, shipped source maps,
+  build/test/documentation assets and external Chromium locale packs without extracting the app.
+- Added deterministic ceilings at the measured v0.2.3 Windows baseline. These prevent fresh bloat
+  now and will be tightened by the package-diet PRs; they are not an excuse to preserve the current
+  138.8 MB ASAR or its 49.5 MB of locale packs.
+- The Windows release job now enforces those ceilings against its freshly built explicit ASAR
+  before attestation or upload. Check mode rejects missing locale packs, and report mode rejects
+  ambiguous automatic ASAR discovery instead of quietly auditing whichever path sorts first.
+- Corrected build-only classification to include modern `.d.cts` and `.d.mts` declarations; the
+  measured baseline is 16,803,219 bytes across 2,014 files rather than the undercounted 12,802,628
+  bytes across 1,465 files.
+- Recorded the exact package and dominant dependency measurements in `docs/PERFORMANCE.md`.
+
+**Checks:** red-to-green classification and ASAR-selection tests; direct TypeScript check; audit and
+ceiling check against the existing v0.2.3 Windows ASAR; release-workflow gate inspection; production
+asset build and existing web asset budget.
+
 ## Complete exact-release workspace verification
 
 - Extended the exact-release verifier to run the relay typecheck, lint and tests and the standalone
@@ -209,8 +311,7 @@ installs and high-severity audits in the root, relay and handwriting-maths works
 - Refreshed the root, relay and handwriting lockfiles with Bun 1.4.0 while preserving existing
   major-version boundaries. Raised the explicit minimums for Electron (42.11.0), React Router
   (6.30.6), Vite (6.4.3) and the nanoid override (3.3.18).
-- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at
-  5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
+- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at 5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
   layers, plus Vite 5 transitive dependencies in the relay and handwriting workspaces.
 
 **Checks:** frozen Bun 1.4.0 installs in all workspaces; root typecheck, lint and asset build, with
@@ -3118,3 +3219,43 @@ opportunities remain open; the separate sticking-point fixes delivered afterward
 in "Unreleased — UI/UX audit implementation" above.
 
 **Checks:** documentation only; no code changed.
+# 2026-09-02 — Electron MCP contracts no longer package renderer handlers
+
+- Split MCP tool contracts (name, description, schema and scope) from renderer-only handlers.
+- Made the desktop server and data companion consume the contract registry while the renderer
+  executor retains the executable registry and exact existing tool order and surface version.
+- Added metafile and contract-parity gates, and moved Dexie, React and `ts-fsrs` out of packaged
+  runtime dependencies now that no Electron main-process entry imports them.
+- Reduced the generated server and companion JavaScript bundles by 79.5% and 86.4% respectively,
+  without changing the five-tool AI companion surface. Rebuilt unsigned Windows and macOS
+  packages reduced `app.asar` by a further 11.1%, with no renderer-output change.
+
+# 2026-09-02 — Electron MCP server split into deep internal modules
+
+- Kept `startMcpServer`, `getMcpStatus`, `stopMcpServer` and `McpStatus` as the unchanged lifecycle
+  interface while reducing `electron/mcp/server.ts` to the composition façade.
+- Moved renderer IPC, scope and consent decisions, process grants, tool execution and exact SDK
+  registration order behind `DataBridge`.
+- Moved authenticated local sockets, purpose routing, connection grants and status, and AI renderer
+  channels behind `CompanionBroker` without changing the data or AI wire envelopes.
+- Added interface tests for fail-closed renderer decisions, sender rejection, listener removal,
+  purpose and identity invariants, sequential socket messages, live status, file permissions and
+  socket/metadata cleanup. The packaged dependency gate now checks both internal modules directly.
+
+# 2026-09-02 — Failed MCP starts now clean up partial runtime state
+
+- A companion-broker or legacy-stdio startup failure now tears down installed renderer listeners,
+  local sockets, connection metadata and in-memory grants before returning the original error.
+- Added a lifecycle regression test covering both failure points; previously `stopMcpServer` saw
+  `running: false` and returned without touching the partially-created runtime.
+
+# 2026-09-02 — MCP lifecycle acquisition and shutdown are fenced
+
+- Concurrent starts now share one in-flight acquisition, including data-bridge IPC registration,
+  so a second caller cannot overwrite partially-acquired runtime state.
+- Data-bridge shutdown closes its invocation dispatcher and fences scope, consent and renderer
+  continuations before removing listeners or grants; pending calls settle immediately with the
+  stopped error instead of surviving until a ten-second timeout.
+- Runtime teardown now attempts the bridge, broker and stdio cleanup independently and clears
+  lifecycle state even when one step rejects. Normal stop reports all cleanup failures together;
+  failed start preserves its original error and reports attached cleanup failures separately.

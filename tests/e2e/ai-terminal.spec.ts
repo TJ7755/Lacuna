@@ -47,23 +47,15 @@ test('creates a complete authored course through approved AI tools', async ({ pa
   if (claimed.type !== 'message') throw new Error('Expected the terminal to claim the message.');
 
   const courseInput = { name: 'AI Algebra acceptance' };
-  const coursePending = await terminal.invokeTool(
+  const courseResponsePromise = terminal.invokeTool(
     claimed.runId,
     'create-course',
     'lacuna.create_course',
     courseInput,
   );
-  expect(coursePending).toMatchObject({
-    ok: false,
-    error: { kind: 'approval_required', approvalKind: 'write_call' },
-  });
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
-  const courseResponse = await terminal.invokeTool(
-    claimed.runId,
-    'create-course',
-    'lacuna.create_course',
-    courseInput,
-  );
+  const courseResponse = await courseResponsePromise;
   const course = successfulToolRecord(courseResponse);
   const courseId = requiredString(course, 'id');
   await expect(
@@ -71,23 +63,15 @@ test('creates a complete authored course through approved AI tools', async ({ pa
   ).toBeVisible();
 
   const lessonInput = { courseId, name: 'Linear equations' };
-  const lessonPending = await terminal.invokeTool(
+  const lessonResponsePromise = terminal.invokeTool(
     claimed.runId,
     'create-lesson',
     'lacuna.create_lesson',
     lessonInput,
   );
-  expect(lessonPending).toMatchObject({
-    ok: false,
-    error: { kind: 'approval_required', approvalKind: 'write_grant' },
-  });
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
-  const lessonResponse = await terminal.invokeTool(
-    claimed.runId,
-    'create-lesson',
-    'lacuna.create_lesson',
-    lessonInput,
-  );
+  const lessonResponse = await lessonResponsePromise;
   const lessonId = requiredString(successfulToolRecord(lessonResponse), 'id');
 
   const conceptResponse = await terminal.invokeTool(
@@ -220,25 +204,15 @@ test('carries misconception-first instructions through a memory-guided teaching 
     content: 'Division distributes over addition.',
     basis: 'learner-stated' as const,
   };
-  const pending = await terminal.invokeTool(
+  const memoryPromise = terminal.invokeTool(
     memoryRun.runId,
     'create-memory',
     'lacuna.create_memory',
     createInput,
   );
-  expect(pending).toMatchObject({
-    ok: false,
-    error: { kind: 'approval_required', approvalKind: 'write_grant' },
-  });
+  await expect(page.getByRole('button', { name: 'Approve' })).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
-  const memory = successfulToolRecord(
-    await terminal.invokeTool(
-      memoryRun.runId,
-      'create-memory',
-      'lacuna.create_memory',
-      createInput,
-    ),
-  );
+  const memory = successfulToolRecord(await memoryPromise);
   const memoryId = requiredString(memory, 'id');
   const memoryReply = 'I saved that as uncertain context.';
   await terminal.reply(memoryRun.runId, memoryRun.messageId, memoryReply);
