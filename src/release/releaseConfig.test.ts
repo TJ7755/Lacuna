@@ -303,7 +303,6 @@ describe('v0.2.4 release configuration', () => {
         artefact: 'lacuna-linux-x64',
         paths: [
           'release/*.AppImage',
-          'release/*.AppImage.blockmap',
           'release/*.deb',
           'release/latest-linux.yml',
         ],
@@ -353,6 +352,7 @@ describe('v0.2.4 release configuration', () => {
     expect(releaseWorkflow).not.toContain('  build-mac:');
     expect(releaseWorkflow).not.toContain('runs-on: macos-15');
     expect(releaseWorkflow).not.toContain('lacuna-macos-arm64');
+    expect(releaseWorkflow).not.toContain('release/*.AppImage.blockmap');
 
     const publisher = workflowJob(releaseWorkflow, 'publish-draft');
     expect(publisher).toContain('needs: [build-win, build-linux]');

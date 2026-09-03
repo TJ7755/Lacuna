@@ -10,10 +10,13 @@
   uploaded with a separate integrity manifest. They make no GitHub provenance claim.
 - Made workflow reruns preserve locally uploaded macOS draft assets instead of deleting files the
   workflow did not produce.
+- Corrected the Linux release allowlist for Electron Builder 26: AppImage block maps are embedded,
+  so a separate `*.AppImage.blockmap` requirement rejected a complete package set after the build.
 
-**Checks:** red-to-green release-version and workflow contract tests; native Electron AI and video
-embed gate on Apple Silicon; arm64 application and version inspection; ZIP and DMG integrity;
-packaged application interaction suite.
+**Checks:** red-to-green release-version, platform-split and embedded-AppImage-block-map workflow
+contracts; native Electron AI and video embed gate on Apple Silicon; arm64 application and version
+inspection; ZIP and DMG integrity; packaged application interaction suite; failed Linux release
+job inspected against Electron Builder 26's installed implementation and build log.
 
 ## Deterministic assessment-editor tests
 

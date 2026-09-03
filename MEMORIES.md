@@ -27,6 +27,12 @@ electron-builder's portable target runs a silent NSIS extraction before launchin
 Electron process. Keep the configured branded BMP for honest extraction feedback; renderer code
 cannot cover this phase, and the BMP cannot appear during an earlier Defender or SmartScreen scan.
 
+## Electron Builder 26 embeds the AppImage block map
+
+The Linux AppImage build logs `building embedded block map` and does not emit a separate
+`*.AppImage.blockmap` file. Release allowlists must require the AppImage, DEB and
+`latest-linux.yml`; requiring a sidecar rejects a complete Electron Builder 26 package set.
+
 ## Accelerated E2E polling must retain wall-clock deadlines
 
 The AI relay fixture may cap each polling sleep to keep successful tests fast, but its client clock
@@ -43,7 +49,7 @@ to make a package-manager shim executable.
 
 GitHub normalises spaces in uploaded filenames, while electron-builder writes a separately
 normalised safe name into updater metadata. Set explicit hyphenated `artifactName` values for every
-Windows target so `latest.yml`, the hosted asset and `SHA256SUMS.txt` name the same file.
+Windows target so `latest.yml`, the hosted asset and `SHA256SUMS-github.txt` name the same file.
 
 ## Hash routing needs no SPA catch-all
 

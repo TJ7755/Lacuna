@@ -45,7 +45,8 @@ The local run is physical Apple Silicon evidence, but it has no GitHub Actions O
 Each GitHub build uploads only its explicit release allowlist:
 
 - Windows: `*.exe`, `*.exe.blockmap`, and `latest.yml`;
-- Linux: `*.AppImage`, `*.AppImage.blockmap`, `*.deb`, and `latest-linux.yml`.
+- Linux: `*.AppImage`, `*.deb`, and `latest-linux.yml`. Electron Builder 26 embeds the AppImage
+  block map in the AppImage itself; it does not produce a separate `*.AppImage.blockmap` file.
 
 Before attestation, a native PowerShell check on Windows and a Bash check on Linux require at least
 one file from every listed class. Aggregate glob success is not enough.
