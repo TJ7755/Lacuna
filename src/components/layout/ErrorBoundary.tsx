@@ -70,6 +70,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleReset = () => {
+    if (!this.props.onReset) {
+      // React.lazy retains a rejected module promise. Reloading is the only
+      // reliable retry when the boundary has no narrower reset scope.
+      window.location.reload();
+      return;
+    }
     this.setState({
       error: null,
       componentStack: null,
@@ -77,7 +83,7 @@ export class ErrorBoundary extends Component<Props, State> {
       includeContent: false,
       copied: false,
     });
-    this.props.onReset?.();
+    this.props.onReset();
   };
 
   private async buildBundle(): Promise<DiagnosticBundle> {

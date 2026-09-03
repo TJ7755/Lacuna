@@ -1,7 +1,7 @@
 import { ChevronDownIcon, FlameIcon } from '../../components/ui/icons';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { Toggle } from '../../components/ui/Toggle';
-import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
+import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
 import { useStartInFocusMode } from '../../state/focusModePreference';
 import { useGradingMode } from '../../state/gradingMode';
@@ -10,10 +10,7 @@ import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { useTypingSetting } from '../../state/typingSetting';
 import { cn } from '../../components/ui/cn';
 import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
-import {
-  useAfterFinalExamPolicy,
-  type AfterFinalExamPolicy,
-} from '../../state/finalExamLifecycle';
+import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
 
 const FINAL_EXAM_POLICIES: Array<{
   value: AfterFinalExamPolicy;

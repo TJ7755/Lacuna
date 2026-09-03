@@ -1,8 +1,101 @@
 # Lacuna performance audit
 
+## Small interaction feedback (2 September 2026)
+
+The heatmap and upcoming-assessment feedback uses existing Motion runtime primitives and CSS
+utilities. The baseline is the editor-continuity branch immediately before this change; the
+production renderer remains functionally unchanged apart from the intentional feedback styles.
+
+| Production-build change | Before | After | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 867,917 bytes | 870,197 bytes | +2,280 bytes / +0.26% |
+| Initial JavaScript gzip | 266,665 bytes | 267,476 bytes | +811 bytes / +0.30% |
+| Initial CSS | 121,805 bytes | 122,613 bytes | +808 bytes / +0.66% |
+| App chunk | 468,150 bytes | 469,492 bytes | +1,342 bytes / +0.29% |
+
+The CSS increase is the tooltip and state-class vocabulary required for the new focus/hover
+surface. The Motion import was already part of the app closure for the heatmap; assessment
+feedback adds the small incremental initial JavaScript shown above, without a new dependency.
+
 Record of the original read-only audit on 11 August 2026 and the production
 follow-ups measured against later builds. Historical figures remain below so
 regressions are compared with the work that actually ran at the time.
+
+## Editor and settings continuity (2 September 2026)
+
+The Question editor, Course header, assessment editor and restore-point list now consume the
+existing motion runtime and shared timing contract. Measurements compare clean production builds
+on the same stacked branch; no new dependency or stylesheet was added.
+
+| Production-build change | Before | After | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 867,689 bytes | 867,917 bytes | +228 bytes / +0.026% |
+| Initial JavaScript gzip | 266,564 bytes | 266,665 bytes | +101 bytes / +0.038% |
+| Initial CSS | 121,805 bytes | 121,805 bytes | No change |
+| Lazy Question editor chunk | 14,458 bytes | 14,906 bytes | +448 bytes / +3.10% |
+| Lazy Course Settings chunk | 44,921 bytes | 45,784 bytes | +863 bytes / +1.92% |
+| Lazy Settings chunk | 81,201 bytes | 81,726 bytes | +525 bytes / +0.65% |
+
+## Shared motion contract (2 September 2026)
+
+The semantic motion foundation was measured in isolation on top of the
+course-section prefetch stack. Unused tiers and helpers remain tree-shaken; the
+existing disclosure helper consumes the shared standard easing.
+
+| Production-build change | Before | After | Change |
+|---|---:|---:|---:|
+| Initial JavaScript | 867,329 bytes | 867,361 bytes | +32 bytes / +0.004% |
+| Initial JavaScript gzip | 266,391 bytes | 266,392 bytes | +1 byte / +0.0004% |
+| Initial CSS | 121,519 bytes | 121,519 bytes | No change |
+
+## First-interaction baseline (2 September 2026)
+
+The original production-preview probe measured pointer-down to the first visible
+navigation acknowledgement separately from pointer-down to usable route content,
+plus Long Tasks. It compared five fresh-context cold samples with five same-context
+warm returns. That repeated baseline harness was retired after it identified the
+route-chunk delay; retaining a general reporting layer for one resolved interaction
+would add maintenance without protecting behaviour.
+
+`bun run perf:audit:web-interactions` now runs the focused regression with normal
+motion enabled. It injects a deterministic slow Cards chunk, proves that intent
+prefetch finishes before pointer-down, records acknowledgement and usable-content
+timings as attached JSON, and rejects a click path that absorbs the injected delay.
+
+The initial Path-to-Cards sample measured:
+
+| Interaction measurement   |  Median |     p95 |
+| ------------------------- | ------: | ------: |
+| Cold acknowledgement      | 28.3 ms | 28.8 ms |
+| Cold usable Cards content | 61.9 ms | 62.5 ms |
+| Warm acknowledgement      | 30.9 ms | 31.3 ms |
+| Warm usable Cards content | 30.9 ms | 31.3 ms |
+
+No Long Tasks occurred in the ten samples. This fast local route still showed
+roughly a twofold first-use ready penalty.
+
+The next stack layer then delayed the Cards route chunk by a deterministic 400 ms.
+Before the fix, the request finished 427.5 ms after pointer-down and usable Cards
+content appeared after 447.5 ms. Exact desktop and mobile intent prefetch moved the
+same request completion to 303.4 ms before pointer-down; usable content appeared
+after 45.1 ms, a 402.4 ms / 89.9% reduction. Acknowledgement remained 28.5 ms and
+the normal route animation was not shortened or removed. The controlled red and
+green runs both recorded zero Long Tasks.
+
+The original five-cold/five-warm production-preview measurement was then repeated
+without injected delay:
+
+| Production-preview change   |  Before |   After |            Change |
+| --------------------------- | ------: | ------: | ----------------: |
+| Cold usable median          | 61.9 ms | 43.1 ms | -18.8 ms / -30.4% |
+| Cold usable p95             | 62.5 ms | 43.5 ms | -19.0 ms / -30.4% |
+| Cold-to-warm median gap     | 31.0 ms | 12.8 ms | -18.2 ms / -58.7% |
+| Cold acknowledgement median | 28.3 ms | 26.6 ms |   -1.7 ms / -6.0% |
+
+All ten post-change samples again recorded zero Long Tasks. The controlled case
+proves that slow chunk delivery no longer lands on the click path; the ordinary
+production-preview comparison shows the smaller but still material improvement on
+the local fast path.
 
 ## Packaged Electron interaction validation
 

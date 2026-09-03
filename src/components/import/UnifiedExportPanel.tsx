@@ -7,17 +7,6 @@ import { DownloadIcon, FileTextIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useToast } from '../ui/Toast';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import {
-  exportCardsCsv,
-  exportCardsTsv,
-  exportCardsPlainText,
-  exportCardsMarkdownTable,
-  exportCardsJson,
-  downloadTextFile,
-  exportReviewHistoryCsv,
-  exportReviewHistoryJson,
-} from '../../db/export';
-import { downloadBackup } from '../../db/portability';
 
 // ---------------------------------------------------------------------------
 // Export format definitions
@@ -135,40 +124,49 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
     setBusy(true);
     try {
       switch (format.id) {
-        case 'json-backup':
+        case 'json-backup': {
+          const { downloadBackup } = await import('../../db/portability');
           await downloadBackup();
           break;
+        }
         case 'csv': {
+          const { downloadTextFile, exportCardsCsv } = await import('../../db/export');
           const csv = await exportCardsCsv();
           downloadTextFile(csv, `lacuna-cards-${stamp}.csv`, format.mimeType);
           break;
         }
         case 'tsv': {
+          const { downloadTextFile, exportCardsTsv } = await import('../../db/export');
           const tsv = await exportCardsTsv();
           downloadTextFile(tsv, `lacuna-cards-${stamp}.tsv`, format.mimeType);
           break;
         }
         case 'markdown-table': {
+          const { downloadTextFile, exportCardsMarkdownTable } = await import('../../db/export');
           const md = await exportCardsMarkdownTable();
           downloadTextFile(md, `lacuna-cards-${stamp}.md`, format.mimeType);
           break;
         }
         case 'json-array': {
+          const { downloadTextFile, exportCardsJson } = await import('../../db/export');
           const json = await exportCardsJson();
           downloadTextFile(json, `lacuna-cards-${stamp}.json`, format.mimeType);
           break;
         }
         case 'plain-text': {
+          const { downloadTextFile, exportCardsPlainText } = await import('../../db/export');
           const text = await exportCardsPlainText();
           downloadTextFile(text, `lacuna-cards-${stamp}.txt`, format.mimeType);
           break;
         }
         case 'review-history-csv': {
+          const { downloadTextFile, exportReviewHistoryCsv } = await import('../../db/export');
           const csv = await exportReviewHistoryCsv();
           downloadTextFile(csv, `lacuna-review-history-${stamp}.csv`, format.mimeType);
           break;
         }
         case 'review-history-json': {
+          const { downloadTextFile, exportReviewHistoryJson } = await import('../../db/export');
           const json = await exportReviewHistoryJson();
           downloadTextFile(json, `lacuna-review-history-${stamp}.json`, format.mimeType);
           break;
@@ -184,9 +182,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
   return (
     <div className="flex flex-col gap-5">
       {/* Eyebrow heading */}
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-        {heading}
-      </p>
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">{heading}</p>
 
       {/* Format grid — rounded-2xl cards with soft shadows per SPEC §3.4 */}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -216,14 +212,11 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
               <div className="text-sm font-medium text-ink transition-colors group-hover:text-ink">
                 {format.label}
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-ink-faint">
-                {format.description}
-              </p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-faint">{format.description}</p>
             </div>
           </motion.button>
         ))}
       </div>
-
     </div>
   );
 }

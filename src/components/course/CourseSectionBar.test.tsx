@@ -1,9 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CourseSectionBar } from './CourseSectionBar';
 
+const prefetchRoute = vi.hoisted(() => vi.fn());
+
+vi.mock('../../routes/prefetch', () => ({ prefetchRoute }));
+
 describe('CourseSectionBar', () => {
+  beforeEach(() => prefetchRoute.mockClear());
+
   it('renders all five course sections and marks Questions active', () => {
     render(
       <MemoryRouter initialEntries={['/course/course-1/questions']}>
@@ -41,5 +47,22 @@ describe('CourseSectionBar', () => {
     for (const name of ['Path', 'Cards', 'Questions', 'Analytics', 'Settings']) {
       expect(screen.getByRole('link', { name })).not.toHaveAttribute('aria-current');
     }
+  });
+
+  it('prefetches a section on pointer hover, focus and pointerdown intent', () => {
+    render(
+      <MemoryRouter initialEntries={['/course/course-1']}>
+        <CourseSectionBar />
+      </MemoryRouter>,
+    );
+    const cards = screen.getByRole('link', { name: 'Cards' });
+
+    fireEvent.pointerEnter(cards);
+    fireEvent.focus(cards);
+    fireEvent.pointerDown(cards);
+
+    expect(prefetchRoute).toHaveBeenNthCalledWith(1, '/course/course-1/cards');
+    expect(prefetchRoute).toHaveBeenNthCalledWith(2, '/course/course-1/cards');
+    expect(prefetchRoute).toHaveBeenNthCalledWith(3, '/course/course-1/cards');
   });
 });

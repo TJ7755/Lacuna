@@ -13,11 +13,9 @@ import {
   useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
-import { CourseTabs } from '../components/course/CourseTabs';
-import { ArchivedCourseBadge } from '../components/course/ArchivedCourseState';
+import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
-import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { buildQuestionAnalytics } from '../questions/analytics';
 
@@ -96,16 +94,13 @@ export function CourseAnalytics() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8 md:px-10">
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <Link
-          to={course.archived ? '/archived' : '/'}
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          {course.archived ? 'Archived courses' : 'All courses'}
-        </Link>
-        {course.archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={course.id} />}
-      </div>
+      <CoursePageNavigation
+        courseId={course.id}
+        backTo={course.archived ? '/archived' : '/'}
+        backLabel={course.archived ? 'Archived courses' : 'All courses'}
+        archived={course.archived}
+        className="mb-6"
+      />
 
       <motion.header
         initial={{ opacity: 0, y: 12 }}

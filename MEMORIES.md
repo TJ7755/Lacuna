@@ -151,6 +151,12 @@ Do not record what the codebase already states. Architecture, file layout, past 
 
 Keep each entry to a heading and a few lines. State the fact, then why it matters.
 
+## `AnimatePresence` pop-layout children must forward their DOM ref
+
+A custom component directly beneath `AnimatePresence mode="popLayout"` must forward the supplied
+ref to its DOM root. Drive discrete exit state such as `pointer-events: none` from `useIsPresent`
+rather than a motion variant, or Motion attempts an invalid interpolation and emits warnings.
+
 ---
 
 ## Vercel may omit Content-Length from browser requests

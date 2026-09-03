@@ -7,7 +7,7 @@
 import { readSyncState } from '../db/mutationStamp';
 import { allowRelayConnect } from './csp';
 import { loadSyncPairing } from './loaders';
-import type { SyncCredentials } from './pairing';
+import { readRememberedCredentials, type SyncCredentials } from './credentials';
 
 let currentCredentials: SyncCredentials | null = null;
 let installed = false;
@@ -37,7 +37,6 @@ async function restoreRememberedCredentials(): Promise<void> {
   const state = await readSyncState().catch(() => null);
   if (!state?.remembered) return;
   try {
-    const { readRememberedCredentials } = await loadSyncPairing();
     const credentials = readRememberedCredentials(state);
     if (!credentials || credentialGeneration !== generation) return;
     allowRelayConnect(credentials.relayUrl);

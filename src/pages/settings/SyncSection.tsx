@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
-import QRCode from 'react-qr-code';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { ClockIcon, CloseIcon, QrCodeIcon, ShareIcon, TrashIcon } from '../../components/ui/icons';
@@ -9,27 +8,24 @@ import { readSyncState } from '../../db/mutationStamp';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import type { SyncState } from '../../db/types';
 import { formatDateTime, formatRelativeTime } from '../../utils/datetime';
+import type { PairingPayload, PairingSession } from '../../sync/pairing';
 import {
-  deleteChannel,
-  encodePairingCode,
   forgetRememberedCredentials,
   readRememberedCredentials,
-  setupFirstDevice,
-  syncWithCredentials,
-  syncWithPassphrase,
-  unpair,
-  unlockSyncState,
-  joinFromPairingCode,
-  joinWithPassphrase,
-  validateRecoveryPassphrase,
-  type PairingPayload,
-  type PairingSession,
   type SyncCredentials,
-} from '../../sync/pairing';
+} from '../../sync/credentials';
+import { validateRecoveryPassphrase } from '../../sync/pairingConfig';
+import { loadSyncPairing } from '../../sync/loaders';
 import { allowRelayConnect } from '../../sync/csp';
 import { clearUnlockedCredentials, publishUnlockedCredentials } from '../../sync/triggers';
 import { SyncField } from './SyncField';
-import { SyncPairingFlow, type SyncPairingBusy, type SyncPairingMode } from './SyncPairingFlow';
+import type { SyncPairingBusy, SyncPairingMode } from './SyncPairingFlow';
+
+const loadSyncPairingFlow = () =>
+  import('./SyncPairingFlow').then((module) => ({ default: module.SyncPairingFlow }));
+const loadQrCode = () => import('react-qr-code');
+const SyncPairingFlow = lazy(loadSyncPairingFlow);
+const QRCode = lazy(loadQrCode);
 
 type PairingMode = 'idle' | SyncPairingMode;
 type BusyAction = 'setup' | 'join' | 'sync' | 'unpair' | 'delete' | null;
@@ -94,6 +90,7 @@ export function SyncSection() {
   const [busy, setBusy] = useState<BusyAction>(null);
   const [unlocked, setUnlocked] = useState<SyncCredentials | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [qrValue, setQrValue] = useState('');
   const [confirmUnpair, setConfirmUnpair] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionPassphrase, setActionPassphrase] = useState('');
@@ -121,7 +118,10 @@ export function SyncSection() {
   useEffect(() => {
     if (!showQr) return;
     qrPanelRef.current?.focus();
-    const hide = () => setShowQr(false);
+    const hide = () => {
+      setShowQr(false);
+      setQrValue('');
+    };
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') hide();
     };
@@ -159,12 +159,32 @@ export function SyncSection() {
     setMode('idle');
   }
 
+  function hideQr() {
+    setShowQr(false);
+    setQrValue('');
+  }
+
+  function preparePairingFlow() {
+    // Preloading is opportunistic. The page boundary performs the real retry
+    // with a reload if the module loader retains a failed chunk request.
+    void loadSyncPairingFlow().catch(() => undefined);
+  }
+
+  function preparePairingActions() {
+    void loadSyncPairing().catch(() => undefined);
+  }
+
+  function prepareQr() {
+    void Promise.all([loadSyncPairing(), loadQrCode()]).catch(() => undefined);
+  }
+
   function applySession(session: PairingSession) {
     setSyncState(session.state);
     setUnlocked(session.credentials);
     setActionPassphrase('');
     setMode('idle');
     setShowQr(false);
+    setQrValue('');
     setConfirmDelete(false);
     setConfirmUnpair(false);
   }
@@ -172,6 +192,7 @@ export function SyncSection() {
   async function handleSetup(relayUrl: string, mintSecret: string, passphrase: string) {
     setBusy('setup');
     try {
+      const { setupFirstDevice } = await loadSyncPairing();
       allowRelayConnect(relayUrl);
       const session = await setupFirstDevice(relayUrl, mintSecret, passphrase);
       applySession(session);
@@ -187,6 +208,7 @@ export function SyncSection() {
   async function handleManualJoin(relayUrl: string, channelId: string, passphrase: string) {
     setBusy('join');
     try {
+      const { joinWithPassphrase } = await loadSyncPairing();
       allowRelayConnect(relayUrl);
       const session = await joinWithPassphrase(relayUrl, channelId, passphrase);
       applySession(session);
@@ -202,6 +224,7 @@ export function SyncSection() {
   async function handleQrJoin(payload: PairingPayload, passphrase: string) {
     setBusy('join');
     try {
+      const { joinFromPairingCode } = await loadSyncPairing();
       allowRelayConnect(payload.relayUrl);
       const session = await joinFromPairingCode(payload, passphrase);
       applySession(session);
@@ -223,6 +246,7 @@ export function SyncSection() {
     if (isUnlocked) {
       setBusy('sync');
       try {
+        const { syncWithCredentials } = await loadSyncPairing();
         if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
         const session = await syncWithCredentials(unlocked);
         applySession(session);
@@ -242,6 +266,7 @@ export function SyncSection() {
     }
     setBusy('sync');
     try {
+      const { syncWithPassphrase } = await loadSyncPairing();
       if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
       const session = await syncWithPassphrase(syncState, actionPassphrase);
       applySession(session);
@@ -264,9 +289,11 @@ export function SyncSection() {
       }
     }
     try {
+      const { encodePairingCode, unlockSyncState } = await loadSyncPairing();
       const credentials = unlocked ?? (await unlockSyncState(syncState, actionPassphrase));
       setUnlocked(credentials);
       setActionPassphrase('');
+      setQrValue(encodePairingCode(credentials));
       setShowQr(true);
     } catch (error) {
       notify(errorMessage(error, 'Could not unlock the pairing QR code.'), 'negative');
@@ -298,12 +325,14 @@ export function SyncSection() {
   async function handleUnpair() {
     setBusy('unpair');
     try {
+      const { unpair } = await loadSyncPairing();
       await unpair();
       setSyncState(null);
       setUnlocked(null);
       setActionPassphrase('');
       setConfirmUnpair(false);
       setShowQr(false);
+      setQrValue('');
       notify('This device has been unpaired. The shared channel remains available.', 'positive');
     } catch (error) {
       notify(errorMessage(error, 'Could not unpair this device.'), 'negative');
@@ -323,6 +352,7 @@ export function SyncSection() {
     }
     setBusy('delete');
     try {
+      const { deleteChannel } = await loadSyncPairing();
       if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
       await deleteChannel(syncState, unlocked ?? actionPassphrase);
       setSyncState(null);
@@ -330,6 +360,7 @@ export function SyncSection() {
       setActionPassphrase('');
       setConfirmDelete(false);
       setShowQr(false);
+      setQrValue('');
       notify('The sync channel was deleted for every device.', 'positive');
     } catch (error) {
       notify(errorMessage(error, 'Could not delete the sync channel.'), 'negative');
@@ -338,7 +369,6 @@ export function SyncSection() {
     }
   }
 
-  const qrValue = unlocked ? encodePairingCode(unlocked) : '';
   const pairingBusy: SyncPairingBusy = busy === 'setup' || busy === 'join' ? busy : null;
 
   return (
@@ -360,13 +390,23 @@ export function SyncSection() {
         <>
           <StatusPanel state={syncState} />
           <div className="mb-5 flex flex-wrap gap-2">
-            <Button variant="primary" onClick={() => void handleSync()} disabled={busy !== null}>
+            <Button
+              variant="primary"
+              onClick={() => void handleSync()}
+              onPointerEnter={preparePairingActions}
+              onFocus={preparePairingActions}
+              onPointerDown={preparePairingActions}
+              disabled={busy !== null}
+            >
               <ClockIcon width={18} height={18} />
               {busy === 'sync' ? 'Syncing…' : 'Sync now'}
             </Button>
             <Button
               variant="secondary"
               onClick={() => void handleRevealQr()}
+              onPointerEnter={prepareQr}
+              onFocus={prepareQr}
+              onPointerDown={prepareQr}
               disabled={busy !== null}
             >
               <QrCodeIcon width={18} height={18} />
@@ -413,7 +453,7 @@ export function SyncSection() {
               aria-label="Sync pairing QR code"
               onBlur={(event) => {
                 const next = event.relatedTarget as Node | null;
-                if (!next || !event.currentTarget.contains(next)) setShowQr(false);
+                if (!next || !event.currentTarget.contains(next)) hideQr();
               }}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -429,24 +469,21 @@ export function SyncSection() {
                     Show this only while the other device is ready to scan.
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Hide pairing QR"
-                  onClick={() => setShowQr(false)}
-                >
+                <Button variant="ghost" size="sm" aria-label="Hide pairing QR" onClick={hideQr}>
                   <CloseIcon width={16} height={16} />
                 </Button>
               </div>
               <div className="flex flex-col items-center gap-4">
                 <div className="rounded-xl border border-line bg-white p-4">
-                  <QRCode
-                    value={qrValue}
-                    size={256}
-                    level="L"
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                  />
+                  <Suspense fallback={<div className="h-64 w-64" aria-hidden="true" />}>
+                    <QRCode
+                      value={qrValue}
+                      size={256}
+                      level="L"
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                    />
+                  </Suspense>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => void handleCopyPairingLink()}>
                   Copy pairing link
@@ -506,18 +543,20 @@ export function SyncSection() {
           </div>
         </>
       ) : mode === 'setup' || mode === 'join' ? (
-        <SyncPairingFlow
-          mode={mode}
-          busy={pairingBusy}
-          onSetup={(relayUrl, mintSecret, passphrase) =>
-            void handleSetup(relayUrl, mintSecret, passphrase)
-          }
-          onManualJoin={(relayUrl, channelId, passphrase) =>
-            void handleManualJoin(relayUrl, channelId, passphrase)
-          }
-          onQrJoin={(payload, passphrase) => void handleQrJoin(payload, passphrase)}
-          onCancel={cancelFlow}
-        />
+        <Suspense fallback={<p className="text-sm text-ink-faint">Preparing sync setup…</p>}>
+          <SyncPairingFlow
+            mode={mode}
+            busy={pairingBusy}
+            onSetup={(relayUrl, mintSecret, passphrase) =>
+              void handleSetup(relayUrl, mintSecret, passphrase)
+            }
+            onManualJoin={(relayUrl, channelId, passphrase) =>
+              void handleManualJoin(relayUrl, channelId, passphrase)
+            }
+            onQrJoin={(payload, passphrase) => void handleQrJoin(payload, passphrase)}
+            onCancel={cancelFlow}
+          />
+        </Suspense>
       ) : (
         <div className="rounded-xl border border-line bg-surface-raised/30 p-4">
           <SettingsSubsectionHeading className="mb-1 font-display text-lg">
@@ -528,11 +567,23 @@ export function SyncSection() {
             each study session once this device is unlocked.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" onClick={beginSetup}>
+            <Button
+              variant="primary"
+              onClick={beginSetup}
+              onPointerEnter={preparePairingFlow}
+              onFocus={preparePairingFlow}
+              onPointerDown={preparePairingFlow}
+            >
               <ShareIcon width={18} height={18} />
               Set up sync
             </Button>
-            <Button variant="secondary" onClick={beginJoin}>
+            <Button
+              variant="secondary"
+              onClick={beginJoin}
+              onPointerEnter={preparePairingFlow}
+              onFocus={preparePairingFlow}
+              onPointerDown={preparePairingFlow}
+            >
               <QrCodeIcon width={18} height={18} />
               Join another device
             </Button>

@@ -6,9 +6,9 @@ import { Toggle } from '../../components/ui/Toggle';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { useToast } from '../../components/ui/Toast';
 import { ChevronDownIcon } from '../../components/ui/icons';
-import { takeAutoBackup } from '../../db/backups';
 import { defaultFsrsParameters } from '../../fsrs/params';
-import { countReviews, MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
+import { countReviews } from '../../fsrs/optimise';
+import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useOptimiser } from '../../state/useOptimiser';
 import { optimiseEnabledForDeck, useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import type { Card, FsrsParameters } from '../../db/types';
@@ -76,6 +76,7 @@ export function OptimisationPanel({
     if (!optimiser.result || !optimiser.result.isOutOfSampleWin) return;
     // Restore point before touching scheduling weights (reuses the backup mechanism).
     try {
+      const { takeAutoBackup } = await import('../../db/backups');
       await takeAutoBackup();
     } catch (e) {
       if (import.meta.env.DEV) {
@@ -102,6 +103,7 @@ export function OptimisationPanel({
 
   async function resetToDefaults() {
     try {
+      const { takeAutoBackup } = await import('../../db/backups');
       await takeAutoBackup();
     } catch (e) {
       if (import.meta.env.DEV) {

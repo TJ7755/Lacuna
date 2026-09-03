@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { version } from './package.json';
+import { settingsStaticClosurePlugin } from './scripts/settings-static-closure';
 
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
 const crossOriginIsolationHeaders = {
@@ -92,6 +93,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    settingsStaticClosurePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: pwaInjectRegister,

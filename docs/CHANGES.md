@@ -11,6 +11,125 @@
 **Checks:** red-to-green `src/db/seed.test.ts`; root typecheck, focused ESLint, Prettier and
 `git diff --check`; rasterised replacement visually inspected in dark mode.
 
+## Small interaction feedback
+
+- Review heatmap cells are now keyboard-focusable and expose the same date/count detail on
+  deliberate hover and focus tooltips, while future cells remain non-interactive.
+- Upcoming assessment pills now use the shared compact hover and press response, with reduced
+  motion disabling transforms and transitions. Layout and assessment status semantics are unchanged.
+- No new dependency was added.
+
+**Checks:** focused component tests, web typecheck, focused lint and production asset build.
+
+## Editor and settings transition continuity
+
+- Question form and answer-type changes now use the shared same-surface transition instead of
+  replacing large authoring regions in one frame. The primary save label uses the feedback tier,
+  keeps one current accessible name and disables cleanly while the write is pending.
+- Course and Lesson titles now crossfade between display and rename states while preserving the
+  existing inline editing, keyboard and failure behaviour.
+- Assessment editors crossfade with their Add control, move focus into the current form and return
+  it to the triggering control, or to Add checkpoint when the edited assessment is deleted.
+  Assessment and restore-point rows now use restrained entry, exit and positional continuity;
+  deleting the final restore point completes the outgoing list transition before the empty state.
+- Every added transition follows the global slow, normal, fast and reduced-motion settings. The
+  production build added 228 raw / 101 gzip bytes to initial JavaScript; initial CSS did not change.
+- Outgoing same-surface steps become pointer-inert through presence state rather than asking Motion
+  to interpolate the discrete `pointer-events` property. The presence wrapper forwards its DOM ref
+  so `popLayout` can still measure and remove the outgoing surface without warnings.
+
+**Checks:** 34 focused red-to-green editor, header, assessment and backup tests; 76 tests including
+their Course Settings and Lesson View consumers; full typecheck; focused ESLint; production build
+and asset budget.
+
+## Settings action loading
+
+- Removed QR rendering, sync pairing, database export/import, manual merge, restore-point actions,
+  charts and the FSRS optimiser from the Settings route's static dependency closure. Those modules
+  now load only when the corresponding control is used; the visible Settings layout, motion and
+  accessibility contract are unchanged.
+- Split lightweight pairing configuration, remembered credentials, backup-folder metadata and the
+  optimiser threshold from their heavy execution modules. This lets Settings report current state
+  without quietly downloading the machinery for an action the user has not requested.
+- Added a production-build closure gate based on Rollup module identities, so hashed filenames
+  cannot hide a regression. Incremental Settings JavaScript fell from 789,082 to 105,557 raw bytes
+  (-86.6%) and from 220,892 to 28,701 gzip bytes (-87.0%); its static chunk count fell from 24 to 16.
+- Removed browser persistence-status checks and controls from packaged Electron Settings, and skip
+  the corresponding browser persistence request during Electron start-up. Electron keeps IndexedDB
+  under its application data directory, so a browser storage-pressure prompt was both redundant
+  and misleading there; restore points and folder mirroring remain available.
+
+**Checks:** red-to-green production closure build; focused closure, Settings, sync, portability,
+backup and optimiser tests; full typecheck, focused lint and production build.
+
+## Stable course navigation
+
+- Replaced six page-specific course-navigation rows with one shared course-chrome module. Equal
+  outer grid tracks keep Path, Cards, Questions, Analytics and Settings centred independently of
+  each page's content width, back-link length or optional authoring control.
+- Preserved the existing active-tab spring, route-intent prefetch, archived-course state and mobile
+  section bar rather than introducing another navigation system.
+- Added a component contract and a production-browser regression that compares the navigation
+  centre across all five course surfaces.
+
+**Checks:** nine focused component tests; full web typecheck; Playwright discovery; production
+browser position check across all five course surfaces.
+
+## Shared motion contract
+
+- Added semantic feedback, local, milestone and finale timing tiers to the existing motion utility,
+  together with shared standard, emphasised, neutral and linear easing curves. Later polish work can
+  now use one vocabulary instead of adding another page-specific number.
+- Kept the current slow, normal and fast multipliers and reduced-motion zero path intact. The
+  existing disclosure helper now consumes the shared standard easing without changing its timing.
+- Measured the production build before and after the foundation: initial JavaScript increased by
+  32 raw bytes and 1 gzip byte; initial CSS did not change.
+
+**Checks:** red-to-green focused motion-contract tests; full typecheck; before/after production
+asset build and performance budget.
+
+## Course-section first-interaction latency
+
+- Corrected route-intent prefetch so Course Path, lesson, Cards, Questions, Analytics and Settings
+  load their own exact chunks instead of every non-lesson route incorrectly warming Course Path.
+- Added the existing pointer-enter, focus and pointer-down intent behaviour to both desktop and
+  mobile course-section navigation. The transition timing and normal-motion choreography are
+  unchanged.
+- Added a deterministic browser regression with a 400 ms Cards chunk delay. Click-to-usable fell
+  from 447.5 ms to 45.1 ms, a 402.4 ms / 89.9% reduction, because the chunk now finishes before the
+  click rather than afterwards.
+- Repeated the ordinary five-cold/five-warm production-preview measurement: cold usable median fell
+  from 61.9 ms to 43.1 ms (-30.4%), and the cold-to-warm gap fell from 31.0 ms to 12.8 ms (-58.7%).
+
+**Checks:** red-to-green controlled-latency Playwright regression; 12 focused route and navigation
+tests; full typecheck; focused E2E TypeScript check; ESLint; Prettier; diff check.
+
+## First-interaction measurement evidence
+
+- Recorded a five-cold/five-warm production-preview baseline with normal motion, separate visible
+  acknowledgement and usable-content boundaries, and overlapping Long Task counts.
+- Retained the measured figures in `docs/PERFORMANCE.md`, then removed the general sample/report
+  layer after it had identified the route-chunk delay. The surviving focused regression records
+  the same boundaries as attached JSON without making noisy wall-clock percentiles a CI gate.
+
+**Checks:** focused production-preview Playwright regression with a deterministic delayed chunk;
+direct TypeScript and Prettier checks; diff check.
+
+## Native desktop menus and commands
+
+- Added the standard application menu on macOS and the standard File, Edit and Window menus on
+  every desktop platform, restoring native About, Services, hide, quit, clipboard, selection and
+  window commands with their platform accelerators.
+- Added zoom and full-screen commands on every platform. Reload and developer tools remain
+  available in development builds but are deliberately absent from packaged releases.
+- Added a native Help command that opens Lacuna's existing in-app guidance, including the native
+  macOS shortcut and F1 on Windows and Linux.
+- Kept the menu template in a small pure module instead of adding another responsibility to the
+  Electron main-process entry point.
+
+**Checks:** red-to-green native-menu template regression; Electron and web typechecks; lint; unit
+tests.
+
 ## Electron renderer reloads
 
 - Preserve hash routes and query-bearing assets when the packaged `app://` protocol serves a
@@ -267,8 +386,7 @@ installs and high-severity audits in the root, relay and handwriting-maths works
 - Refreshed the root, relay and handwriting lockfiles with Bun 1.4.0 while preserving existing
   major-version boundaries. Raised the explicit minimums for Electron (42.11.0), React Router
   (6.30.6), Vite (6.4.3) and the nanoid override (3.3.18).
-- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at
-  5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
+- Root audit findings fell from 69 to 21; the handwriting tool fell from 6 to 5; relay remained at 5. Remaining critical/high findings are confined to the deferred Vitest and electron-builder
   layers, plus Vite 5 transitive dependencies in the relay and handwriting workspaces.
 
 **Checks:** frozen Bun 1.4.0 installs in all workspaces; root typecheck, lint and asset build, with
