@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.4
+# Lacuna — version 0.2.5
 
-## 0.2.4 beta — desktop resilience and release hardening
+## 0.2.5 beta — Windows upgrade reliability
 
 ### Windows installer process coordination
 
@@ -16,6 +16,23 @@
 
 **Checks:** red-to-green installation guard and NSIS configuration contracts; Electron typecheck,
 root lint and packaged application interaction suite.
+
+### Release preparation
+
+- Set the application and desktop-download version to 0.2.5.
+- Corrected the specification, roadmap and macOS operator commands to distinguish the published
+  v0.2.4 artefacts from this hotfix release.
+
+**Checks:** release-configuration and desktop-download contract tests; root typecheck and lint.
+
+### Download checksum link
+
+- Replaced the Download page's dead `SHA256SUMS.txt` link with the versioned release page, which
+  exposes both the attested Windows/Linux manifest and the separate macOS integrity manifest.
+
+**Checks:** red-to-green desktop-download link regression; root typecheck and lint.
+
+## 0.2.4 beta — desktop resilience and release hardening
 
 ### Release preparation
 

@@ -9,9 +9,19 @@ afterEach(() => {
 
 describe('desktop download selection', () => {
   it('links to the current desktop release', () => {
-    expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.4/');
-    expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.4/');
-    expect(DOWNLOADS.linuxAppImage).toContain('/releases/download/v0.2.4/');
+    expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.5/');
+    expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.5/');
+    expect(DOWNLOADS.linuxAppImage).toContain('/releases/download/v0.2.5/');
+    expect(DOWNLOADS.release).toBe('https://github.com/TJ7755/Lacuna/releases/tag/v0.2.5');
+  });
+
+  it('links checksum guidance to the release containing both platform manifests', () => {
+    render(<Download />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('link', { name: 'View checksums and release files' })).toHaveAttribute(
+      'href',
+      DOWNLOADS.release,
+    );
   });
 
   it('detects supported desktop platforms without mistaking Android for Linux', () => {
