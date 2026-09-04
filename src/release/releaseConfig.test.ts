@@ -22,6 +22,10 @@ const aiMcpPackageJson = JSON.parse(
   readFileSync(resolve(root, 'tooling/lacuna-ai-mcp/package.json'), 'utf8'),
 ) as { devDependencies?: Record<string, string> };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
+const windowsInstallerInclude = readFileSync(
+  resolve(root, 'electron/windows-installer.nsh'),
+  'utf8',
+);
 const bunLock = readFileSync(resolve(root, 'bun.lock'), 'utf8');
 const relayBunLock = readFileSync(resolve(root, 'relay/bun.lock'), 'utf8');
 const handwritingBunLock = readFileSync(
@@ -191,6 +195,16 @@ describe('v0.2.4 release configuration', () => {
     expect(builderConfig).toMatch(/arch:\s*[\s\S]*?- x64/);
     expect(builderConfig).toMatch(/linux:[\s\S]*?icon: electron\/assets\/icon\.png/);
     expect(builderConfig).toMatch(/mac:[\s\S]*?icon: electron\/assets\/icon\.png/);
+  });
+
+  it('prevents registered companions from racing a Windows upgrade', () => {
+    expect(builderConfig).toMatch(/nsis:\s*[\s\S]*?include:\s*electron\/windows-installer\.nsh/);
+    expect(windowsInstallerInclude).toContain('!macro customCheckAppRunning');
+    expect(windowsInstallerInclude).toContain('GetCurrentProcessId');
+    expect(windowsInstallerInclude).toContain('installation-in-progress');
+    expect(windowsInstallerInclude).toContain('!insertmacro _CHECK_APP_RUNNING');
+    expect(windowsInstallerInclude).toContain('!macro customInstall');
+    expect(windowsInstallerInclude).toContain('Delete');
   });
 
   it('builds the Windows icon from the generated desktop artwork', () => {

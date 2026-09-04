@@ -2,6 +2,21 @@
 
 ## 0.2.4 beta — desktop resilience and release hardening
 
+### Windows installer process coordination
+
+- Prevented registered MCP and AI companion hosts from relaunching the installed `Lacuna.exe`
+  while NSIS is replacing application files. The installer now records its live process in the
+  per-user local state before closing old processes; every normal and companion entry point exits early
+  while that installer remains active.
+- Removed abandoned installation markers automatically. A failed or cancelled installer therefore
+  cannot prevent a later ordinary launch, and an age limit also closes the PID-reuse edge case.
+  Keeping the marker outside Electron's selectable profile makes custom-profile companions obey it.
+- Kept the portable payload unchanged. The reported “Failed to uninstall old application files”
+  dialog belongs to the NSIS installer; the published portable archive contains no uninstall path.
+
+**Checks:** red-to-green installation guard and NSIS configuration contracts; Electron typecheck,
+root lint and packaged application interaction suite.
+
 ### Release preparation
 
 - Set the application and desktop-download version to 0.2.4.

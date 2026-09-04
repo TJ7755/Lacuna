@@ -10,6 +10,7 @@ import {
   createApplicationShutdownHandler,
   registerCompanionProcessShutdown,
 } from './companionLifecycle.js';
+import { installationMarkerDirectory, shouldExitForInstallation } from './installationGuard.js';
 import {
   addElectronSecurityHeaders,
   canGrantRendererPermission,
@@ -59,6 +60,10 @@ function companionHostUserDataPath(): string {
   const argument = process.argv.find((value) => value.startsWith(companionHostUserDataArgument));
   return argument?.slice(companionHostUserDataArgument.length) || app.getPath('userData');
 }
+
+const installationInProgress = shouldExitForInstallation(
+  installationMarkerDirectory(companionHostUserDataPath()),
+);
 
 // ---------------------------------------------------------------------------
 // Window state persistence
@@ -374,9 +379,12 @@ function publishUpdateState(state: UpdateState): void {
 }
 
 /** Single instance lock — prevent multiple windows. */
-const gotTheLock = isCompanionProcess ? false : app.requestSingleInstanceLock();
+const gotTheLock =
+  installationInProgress || isCompanionProcess ? false : app.requestSingleInstanceLock();
 
-if (isCompanionProcess) {
+if (installationInProgress) {
+  app.exit(0);
+} else if (isCompanionProcess) {
   void app
     .whenReady()
     .then(async () => {
