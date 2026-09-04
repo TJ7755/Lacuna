@@ -392,7 +392,8 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/course/:courseId/learn`                               | Learn session (practice over every due card in the course)              | **no**    | lazy    |
 | `/lesson/:lessonId/learn`                               | Learn session (new cards for one lesson)                                | **no**    | lazy    |
 | `/learn`                                                | Review today session across every course                                | **no**    | lazy    |
-| `/welcome`                                              | First-run landing page                                                  | **no**    | lazy    |
+| `/welcome`                                              | Cinematic first-run landing page                                                  | **no**    | lazy    |
+| `/landing`                                              | Alias of the main cinematic landing               | **no**    | lazy    |
 | `/download`                                             | OS-aware desktop beta download page                                     | **no**    | lazy    |
 | `/method`                                               | Technical method page                                                   | **no**    | lazy    |
 | `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |

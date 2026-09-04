@@ -32,6 +32,7 @@ import {
   loadSettings,
   loadSharePage,
   loadWelcome,
+  loadLanding,
 } from './loaders';
 
 // Keep the dashboard as the only eager page. Every other route is loaded on demand
@@ -58,6 +59,7 @@ const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Welcome = lazy(loadWelcome);
+const Landing = lazy(loadLanding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 
@@ -176,6 +178,10 @@ export const router = createHashRouter([
         // The landing page is a full-screen editorial experience outside the shell.
         path: '/welcome',
         element: isolatedRoute('the landing page', lazyRoute(Welcome)),
+      },
+      {
+        path: '/landing',
+        element: isolatedRoute('the landing page', lazyRoute(Landing)),
       },
       {
         // Public download guidance stays outside the application shell.

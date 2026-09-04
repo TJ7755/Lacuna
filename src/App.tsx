@@ -101,7 +101,7 @@ function RouterWithOptionalAi() {
 const McpBridgeController = lazy(loadMcpBridgeController);
 
 function isPublicEntry(hash: string): boolean {
-  return /^#\/(?:welcome|download)\/?(?:[?#]|$)/.test(hash);
+  return /^#\/(?:welcome|landing|download)\/?(?:[?#]|$)/.test(hash);
 }
 
 export function App() {

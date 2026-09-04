@@ -1,0 +1,98 @@
+.landing-walkthrough {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 80px);
+  padding: 0 var(--landing-gutter) 12svh;
+  background: var(--cinema);
+  color: var(--ivory);
+  align-items: start;
+}
+.walkthrough-frame {
+  position: sticky;
+  top: max(48px, calc(50svh - (100vw - 2 * var(--landing-gutter) - 5vw) * 0.205));
+  aspect-ratio: 8 / 5;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 60px -20px #0008,
+    0 0 0 1px #e5dac933;
+}
+.walkthrough-frame img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #f8f6f1;
+  opacity: 0;
+  transform-origin: center;
+}
+.walkthrough-frame img[data-active='true'] {
+  opacity: 1;
+}
+.walkthrough-step {
+  min-height: 90svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.walkthrough-copy h3 {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: clamp(25px, 2.6vw, 38px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  max-width: 14ch;
+}
+.walkthrough-copy p {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--stone);
+  margin-top: 24px;
+  max-width: 29ch;
+}
+.walkthrough-inline {
+  display: none;
+}
+@media (max-width: 800px), (prefers-reduced-motion: reduce) {
+  .landing-walkthrough {
+    display: block;
+    padding-bottom: 60px;
+  }
+  .walkthrough-frame {
+    display: none;
+  }
+  .walkthrough-step {
+    min-height: 0;
+    gap: 32px;
+    padding: 48px 0 80px;
+  }
+  .walkthrough-inline {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow:
+      0 16px 36px -24px #0008,
+      0 0 0 1px #e5dac933;
+  }
+  .walkthrough-copy h3 {
+    max-width: none;
+  }
+  .walkthrough-copy p {
+    max-width: 40ch;
+    margin-top: 14px;
+  }
+}
+
+.walkthrough-drawing {
+  display: block;
+  width: 72px;
+  height: 68px;
+  margin-bottom: 24px;
+  stroke: var(--amber);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}

@@ -1,5 +1,36 @@
 # Lacuna — version 0.2.5
 
+## Unreleased — landing and method redesign
+
+- Promoted the approved cinematic landing to `/welcome`, the existing first-run entry.
+  `/landing` remains an alias for existing preview links.
+  The full-screen introduction uses Lacuna's charcoal, ivory and amber palette, with scroll-driven animation
+  blurring and resolving a word to portray the experience of an elusive answer.
+- Reused `/welcome`’s inertial wheel scrolling on `/landing`; touch and keyboard retain native
+  scrolling, and reduced motion bypasses the inertia.
+- Added an illustrated opening around the real dashboard. “Your subject”, “Your time” and
+  “Your exam” respond to pointer, keyboard and touch by emphasising parts of one SVG study scene.
+  The drawing keeps notes, study timing and an exam marker; the distracting figure was removed.
+  The opening withdraws before the memory sequence; off-screen controls become inert.
+- Carried the charcoal and amber palette through the product walkthrough, with small ink-line
+  drawings connecting it to the opening: a clock, lesson pages and a recall arrow. Added a Get started link beside the footer logo.
+- Kept the study drawings around the memory scene after the dashboard withdraws, softening
+  them with the answer blur. The three opening titles use equal colour emphasis with no underline.
+- Restyled The method with the same charcoal, amber and Instrument Sans, a drawn recall curve,
+  quieter section headings and matching navigation. Preserved interactive charts and model content;
+  replaced the outdated reference to claims on the former landing with a standalone introduction.
+- Switched landing typography to self-hosted Instrument Sans, preserving the Lacuna wordmark.
+- Replaced the illustrative card and feature rows with real in-app-browser screenshots of the
+  welcome course dashboard, path and study screen. A fixed frame follows adjacent scrolling copy;
+  image opacity, scale and focus track scroll continuously in both directions. Mobile and reduced
+  motion pair each static screenshot directly with its text.
+- Reduced cinematic scenes to two or three visual elements, with a keyboard-focus-only skip
+  link. Product, walkthrough and footer share a content grid.
+- Preserved explicit `/landing` entry on a fresh browser instead of redirecting it to `/welcome`.
+- Validated first-launch entry and mobile reduced motion red-to-green against the unchanged
+  merge-base build, plus scroll blur/recovery, screenshot transitions and mobile image pairing in Chromium. Web typecheck,
+  scoped ESLint and production build pass; desktop and mobile screenshots reviewed.
+
 ## 0.2.5 beta — Windows upgrade reliability
 
 ### Windows installer process coordination

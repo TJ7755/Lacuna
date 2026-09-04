@@ -1,0 +1,151 @@
+.method-page {
+  --paper: 40 9% 7%;
+  --surface: 40 9% 10%;
+  --surface-raised: 40 9% 13%;
+  --ink: 34 26% 95%;
+  --ink-soft: 34 14% 76%;
+  --ink-faint: 34 10% 65%;
+  --line: 35 10% 23%;
+  --line-strong: 35 13% 39%;
+  --accent: 36 92% 56%;
+  --accent-ink: 36 92% 64%;
+  --accent-soft: 36 35% 16%;
+  --font-body: 'Instrument Sans', sans-serif;
+  min-height: 100svh;
+}
+.method-page h1,
+.method-page h2,
+.method-page h3 {
+  font-family: 'Instrument Sans', sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.method-hero {
+  max-width: 1440px;
+  margin: auto;
+  padding: 210px var(--landing-gutter) 125px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  align-items: center;
+  gap: 50px;
+}
+.method-kicker {
+  color: var(--amber);
+  font-size: 16px;
+  margin-bottom: 26px;
+}
+.method-hero h1 {
+  font-size: clamp(48px, 6.1vw, 88px);
+  line-height: 1.04;
+  max-width: 12ch;
+}
+.method-hero-copy > p:last-child {
+  color: var(--stone);
+  font-size: 19px;
+  line-height: 1.65;
+  max-width: 40ch;
+  margin-top: 32px;
+}
+.method-sketch {
+  width: 100%;
+  overflow: visible;
+  stroke: var(--amber);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-5deg);
+}
+.method-sketch circle {
+  fill: var(--amber);
+}
+.method-sketch-axis {
+  stroke: #e5dac9;
+  opacity: 0.7;
+}
+.method-sketch-guide {
+  stroke-dasharray: 3 8;
+  opacity: 0.4;
+}
+.method-content {
+  max-width: 820px;
+  margin: auto;
+  padding: 0 36px;
+  font-size: 17px;
+  line-height: 1.75;
+}
+.method-part {
+  position: relative;
+  padding: 70px 0;
+  border-top: 1px solid hsl(var(--line));
+}
+.method-part-number {
+  color: var(--amber);
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.method-part h2 {
+  line-height: 1.15;
+}
+.method-content figure {
+  margin-top: 32px;
+  padding: clamp(12px, 3vw, 26px);
+  border-radius: 16px;
+  box-shadow: none;
+}
+.method-content figcaption {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 12px;
+}
+.method-ending {
+  padding: 80px 0;
+  border-top: 1px solid hsl(var(--line));
+}
+.method-ending h2 {
+  font-size: clamp(32px, 4vw, 46px);
+  line-height: 1.12;
+}
+.method-text-link {
+  color: var(--stone);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  font-size: 14px;
+}
+.method-sources {
+  padding: 30px 0 60px;
+  border-top: 1px solid hsl(var(--line));
+  color: var(--stone);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .method-hero {
+    padding: 150px var(--landing-gutter) 65px;
+    grid-template-columns: 1fr;
+    gap: 35px;
+  }
+  .method-hero-copy > p:last-child {
+    font-size: 17px;
+  }
+  .method-sketch {
+    width: 65%;
+    margin-left: auto;
+  }
+  .method-content {
+    padding: 0 var(--landing-gutter);
+    font-size: 16px;
+  }
+  .method-part {
+    padding: 48px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .method-page *,
+  .method-page *::before,
+  .method-page *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.method-content .shadow-paper {
+  box-shadow: none;
+}

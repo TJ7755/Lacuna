@@ -63,7 +63,7 @@ export const loadMergeReviewPanel = () =>
   }));
 
 export const loadWelcome = () =>
-  import('../pages/Welcome').then((module) => ({ default: module.Welcome }));
+  import('../pages/Landing').then((module) => ({ default: module.Landing }));
 
 export const loadDownload = () =>
   import('../pages/Download').then((module) => ({ default: module.Download }));
@@ -75,3 +75,6 @@ export const loadMcpBridgeController = () =>
   import('../components/mcp/McpBridgeController').then((module) => ({
     default: module.McpBridgeController,
   }));
+
+export const loadLanding = () =>
+  import('../pages/Landing').then((module) => ({ default: module.Landing }));

@@ -1,0 +1,142 @@
+.illustrated-opening {
+  position: absolute;
+  inset: 0;
+  padding: clamp(130px, 19svh, 200px) var(--landing-gutter) 0;
+  opacity: var(--hero, 1);
+  transform: translateY(calc((1 - var(--hero, 1)) * -70px));
+  visibility: visible;
+}
+.illustrated-opening[data-departed='true'] {
+  visibility: hidden;
+}
+.opening-title {
+  position: relative;
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 0.22em;
+  font-family: 'Instrument Sans', sans-serif;
+  font-weight: 500;
+  font-size: clamp(40px, 5.6vw, 80px);
+  letter-spacing: -0.055em;
+  line-height: 1.15;
+}
+.opening-title button {
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  color: var(--ivory);
+  background: transparent;
+  border: 0;
+  padding: 0 0 8px;
+  position: relative;
+}
+.opening-description {
+  color: var(--stone);
+  font-size: clamp(14px, 1.5vw, 18px);
+  margin: 20px 0 0;
+}
+.opening-composition {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  margin: 16px auto 0;
+  aspect-ratio: 11 / 5;
+}
+.study-illustration {
+  width: 100%;
+  height: 100%;
+  color: #e5dac9;
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.opening-dashboard {
+  position: absolute;
+  width: 54%;
+  left: 25%;
+  top: 15%;
+  border-radius: 9px;
+  overflow: hidden;
+  transform: rotate(-2deg);
+  box-shadow:
+    0 22px 60px #0005,
+    0 0 0 1px #ffffff20;
+}
+.opening-dashboard img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.illustration-subject,
+.illustration-time,
+.illustration-exam {
+  opacity: 0.45;
+  transition:
+    opacity 450ms ease,
+    transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+[data-emphasis='subject'] .illustration-subject {
+  opacity: 1;
+  transform: translateY(-7px) rotate(-3deg);
+}
+[data-emphasis='time'] .illustration-time {
+  opacity: 1;
+  transform: translateY(-6px);
+}
+[data-emphasis='exam'] .illustration-exam {
+  opacity: 1;
+  transform: translateY(-8px) rotate(2deg);
+}
+@media (max-width: 700px) {
+  .illustrated-opening {
+    padding: 155px 20px 0;
+  }
+  .opening-title {
+    position: relative;
+    padding-bottom: 10px;
+    display: grid;
+    gap: 4px;
+    font-size: clamp(38px, 9vw, 54px);
+  }
+  .opening-title button {
+    padding-bottom: 3px;
+  }
+  .opening-composition {
+    margin-top: 32px;
+    width: calc(100% + 24px);
+    margin-left: -12px;
+  }
+  .opening-dashboard {
+    width: 58%;
+    left: 24%;
+  }
+  .opening-description {
+    margin-top: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-opening {
+    position: relative;
+    padding: 140px 24px 50px;
+    opacity: 1;
+    transform: none;
+  }
+  .illustration-subject,
+  .illustration-time,
+  .illustration-exam {
+    transition: none;
+    transform: none;
+  }
+}
+/* The later narrative layers share this stage but must not intercept the hero controls. */
+.memory-stage > .memory-opening,
+.memory-stage > .memory-searching,
+.memory-stage > .memory-returning,
+.memory-word,
+.memory-caption {
+  pointer-events: none;
+}
