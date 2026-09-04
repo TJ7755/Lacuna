@@ -1,7 +1,7 @@
 {
   "name": "lacuna",
   "private": true,
-  "version": "0.2.4",
+  "version": "0.2.5",
   "packageManager": "bun@1.4.0",
   "type": "module",
   "main": "electron/dist-electron/main.js",
