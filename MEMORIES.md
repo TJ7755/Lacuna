@@ -27,6 +27,12 @@ electron-builder's portable target runs a silent NSIS extraction before launchin
 Electron process. Keep the configured branded BMP for honest extraction feedback; renderer code
 cannot cover this phase, and the BMP cannot appear during an earlier Defender or SmartScreen scan.
 
+## Electron Builder's NSIS process hook owns prerequisite initialisation
+
+Defining `customCheckAppRunning` replaces Electron Builder 26's complete default branch, including
+its `IS_POWERSHELL_AVAILABLE` call. A custom hook that delegates to `_CHECK_APP_RUNNING` must invoke
+that initialiser first or Windows packaging fails because `IsPowerShellAvailable` is undefined.
+
 ## Electron Builder 26 embeds the AppImage block map
 
 The Linux AppImage build logs `building embedded block map` and does not emit a separate

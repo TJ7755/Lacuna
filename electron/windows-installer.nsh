@@ -10,6 +10,7 @@ Var pid
   FileOpen $1 "$LOCALAPPDATA\${PRODUCT_NAME}\installation-in-progress" a
   FileWrite $1 "$0$\r$\n"
   FileClose $1
+  !insertmacro IS_POWERSHELL_AVAILABLE
   !insertmacro _CHECK_APP_RUNNING
 !macroend
 

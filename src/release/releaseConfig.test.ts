@@ -202,7 +202,11 @@ describe('v0.2.5 release configuration', () => {
     expect(windowsInstallerInclude).toContain('!macro customCheckAppRunning');
     expect(windowsInstallerInclude).toContain('GetCurrentProcessId');
     expect(windowsInstallerInclude).toContain('installation-in-progress');
+    expect(windowsInstallerInclude).toContain('!insertmacro IS_POWERSHELL_AVAILABLE');
     expect(windowsInstallerInclude).toContain('!insertmacro _CHECK_APP_RUNNING');
+    expect(windowsInstallerInclude.indexOf('!insertmacro IS_POWERSHELL_AVAILABLE')).toBeLessThan(
+      windowsInstallerInclude.indexOf('!insertmacro _CHECK_APP_RUNNING'),
+    );
     expect(windowsInstallerInclude).toContain('!macro customInstall');
     expect(windowsInstallerInclude).toContain('Delete');
   });
