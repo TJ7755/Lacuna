@@ -9,6 +9,7 @@ export type DesktopPlatform = 'windows' | 'macos' | 'linux';
 
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.2.5';
 const RELEASE_BASE = `https://github.com/TJ7755/Lacuna/releases/download/v${APP_VERSION}`;
+const RELEASE_PAGE = `https://github.com/TJ7755/Lacuna/releases/tag/v${APP_VERSION}`;
 
 export const DOWNLOADS = {
   windowsPortable: `${RELEASE_BASE}/Lacuna-Portable-${APP_VERSION}.exe`,
@@ -16,7 +17,7 @@ export const DOWNLOADS = {
   macDmg: `${RELEASE_BASE}/Lacuna-${APP_VERSION}-arm64.dmg`,
   linuxAppImage: `${RELEASE_BASE}/Lacuna-${APP_VERSION}.AppImage`,
   linuxDeb: `${RELEASE_BASE}/lacuna_${APP_VERSION}_amd64.deb`,
-  checksums: `${RELEASE_BASE}/SHA256SUMS.txt`,
+  release: RELEASE_PAGE,
 } as const;
 
 export function detectDesktopPlatform(userAgent: string): DesktopPlatform | null {
@@ -247,10 +248,10 @@ export function Download() {
             .
           </p>
           <a
-            href={DOWNLOADS.checksums}
+            href={DOWNLOADS.release}
             className="underline underline-offset-4 hover:text-ink-soft"
           >
-            Verify SHA-256 checksums
+            View checksums and release files
           </a>
         </div>
       </main>

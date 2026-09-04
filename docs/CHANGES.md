@@ -25,6 +25,13 @@ root lint and packaged application interaction suite.
 
 **Checks:** release-configuration and desktop-download contract tests; root typecheck and lint.
 
+### Download checksum link
+
+- Replaced the Download page's dead `SHA256SUMS.txt` link with the versioned release page, which
+  exposes both the attested Windows/Linux manifest and the separate macOS integrity manifest.
+
+**Checks:** red-to-green desktop-download link regression; root typecheck and lint.
+
 ## 0.2.4 beta — desktop resilience and release hardening
 
 ### Release preparation
