@@ -11,16 +11,37 @@ const scenes = [
   },
   {
     title: 'Follow your subject.',
-    text: 'Move through lessons with notes, cards and practice along the way.',
+    text: 'Keep explanations, flashcards and practice together in a course path. Work through your subject lesson by lesson.',
     image: 'course-path.png',
     drawing:
       'M8 9 L39 6 L43 47 L12 50 Z M17 20 L31 18 M18 28 L32 26 M48 30 L77 33 L74 72 L45 69 Z M54 43 L68 44 M53 52 L67 53 M28 57 C27 71 34 76 40 75',
   },
   {
     title: 'Bring the answer back.',
-    text: 'One question at a time. Try to recall it, then reveal the answer.',
+    text: 'Recall facts, fill in blanks, order steps and label diagrams. Automatic grading can use your answer and response time.',
     image: 'revision.png',
     drawing: 'M21 25 C33 8 65 9 73 31 C84 61 46 82 26 62 M10 29 L23 28 L24 14 M34 45 L43 54 L60 35',
+  },
+  {
+    title: 'Schedule for the day it matters.',
+    text: 'Set an exam date and choose what it covers. Lacuna prioritises the reviews predicted to improve recall on that day.',
+    image: 'exam-date.png',
+    drawing:
+      'M12 18 L72 15 L76 69 L15 72 Z M12 32 L73 29 M26 9 L27 24 M57 7 L58 22 M29 48 L40 59 L60 39',
+  },
+  {
+    title: 'Fit revision into your day.',
+    text: 'Set a session time limit and a daily review goal. Keep the workload manageable as you work towards your assessment.',
+    image: 'study-budget.png',
+    drawing:
+      'M24 8 L63 9 M27 11 C27 33 57 47 60 68 M60 12 C60 34 30 48 28 68 M23 72 L65 72 M34 62 L54 62 L44 50 Z',
+  },
+  {
+    title: 'Practise using what you know.',
+    text: 'Go beyond flashcards with application questions, checked numeric answers and worked explanations. Question practice has its own progress.',
+    image: 'application-questions.png',
+    drawing:
+      'M14 9 L60 7 L63 72 L17 74 Z M26 24 L49 22 M27 34 L43 33 M35 60 L61 29 L69 35 L43 66 Z M35 60 L33 70 L43 66',
   },
 ];
 

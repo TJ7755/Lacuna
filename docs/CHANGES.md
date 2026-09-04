@@ -2,6 +2,21 @@
 
 ## Unreleased — landing and method redesign
 
+- Added a scroll-drawn forgetting curve after the course journey, projecting to a fixed exam
+  day. Moving the next review updates the curve and exam recall using FSRS-6 for an explicitly
+  illustrative card with successful reviews. Prominent amber copy explains flexible review timing.
+  Reduced motion displays the complete chart.
+
+- Added a separate vertical course journey before “£0 forever”. Its winding trail draws with
+  scrolling; lesson, recall, practice and exam stops highlight automatically beside scrolling
+  example cards. Cards rotate in 3D with scroll progress to reveal answers on their reverse, without buttons. Reduced motion
+  shows the complete cards without reveal effects.
+
+- Made exam-day scheduling explicit in the opening tagline. Extended the existing screenshot
+  walkthrough with assessment scope/date, daily goals/session limits and application questions,
+  before the pricing and local-data scenes. Existing course-path and recall copy now names
+  supported card formats and optional automatic grading.
+
 - Restored expanding app-entry links with a persistent hover label and arrow. The clicked amber
   pill grows into one screen cover, then lifts away; reduced motion uses direct navigation with
   no extra page controls. Modified clicks retain normal link behaviour.

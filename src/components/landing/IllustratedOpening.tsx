@@ -28,7 +28,7 @@ export function IllustratedOpening() {
           </button>
         ))}
       </h1>
-      <p className="opening-description">Revision that brings it all together.</p>
+      <p className="opening-description">Spaced revision that schedules for your exam day.</p>
       <div className="opening-composition">
         <StudyIllustration />
         <div className="opening-dashboard">

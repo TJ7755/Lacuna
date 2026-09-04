@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
+import { CoursePathIllustration } from '../components/landing/CoursePathIllustration';
 import { ClosingScenes } from '../components/landing/ClosingScenes';
+import { ExamProjection } from '../components/landing/ExamProjection';
 import { LandingNav } from '../components/landing/LandingNav';
 import { LacunaIcon } from '../components/ui/icons';
 import { MemoryScene } from '../components/landing/MemoryScene';
@@ -60,6 +62,8 @@ export function Landing() {
           </div>
         </section>
         <ProductWalkthrough />
+        <CoursePathIllustration />
+        <ExamProjection />
         <ClosingScenes />
       </main>
       <footer className="landing-footer">

@@ -1,5 +1,44 @@
 import { expect, test } from '@playwright/test';
 
+test('exam projection responds to review timing while the exam stays fixed', async ({ page }) => {
+  await page.goto('/#/welcome');
+  const section = page.getByRole('region', { name: 'Remember it on exam day.' });
+  await section.scrollIntoViewIfNeeded();
+  const timing = section.getByRole('slider', { name: 'Next review' });
+  const projection = section.locator('output');
+  const before = await projection.textContent();
+  const curve = section.locator('.exam-curve-reviewed');
+  const beforeCurve = await curve.getAttribute('d');
+  const exam = section.locator('.exam-curve-deadline');
+  const examX = await exam.getAttribute('x1');
+  await timing.fill('6');
+  await expect(projection).not.toHaveText(before!);
+  expect(await curve.getAttribute('d')).not.toBe(beforeCurve);
+  await expect(exam).toHaveAttribute('x1', examX!);
+  for (const progress of [0.15, 0.85, 0.15]) {
+    await section.evaluate((element, amount) => {
+      const rect = element.getBoundingClientRect();
+      window.scrollTo({ top: scrollY + rect.top + (rect.height - innerHeight) * amount, behavior: 'instant' });
+    }, progress);
+    await expect.poll(async () => Number(await section.evaluate((element) =>
+      getComputedStyle(element).getPropertyValue('--curve-progress'),
+    ))).toBeCloseTo(progress, 2);
+    await expect.poll(async () => Number((await curve.evaluate((element) =>
+      getComputedStyle(element).strokeDashoffset,
+    )).match(/^calc\(([-\d.]+)px\)$/)?.[1])).toBeCloseTo(1 - progress, 2);
+  }
+  await timing.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(timing).toHaveValue('5');
+  await expect(section.getByText(/assuming successful reviews/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await section.scrollIntoViewIfNeeded();
+  await expect(timing).toBeVisible();
+  await expect(curve).toHaveCSS('stroke-dashoffset', '0px');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('landing preview survives first launch and offers an unrestricted journey', async ({
   page,
 }) => {
@@ -323,4 +362,86 @@ test('closing scenes separate the copy and doodles as scrolling reverses', async
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(copy).toHaveCSS('transform', 'none');
   await expect(drawings).toHaveCSS('transform', 'none');
+});
+
+test('walkthrough explains exam scheduling, time limits and application practice before pricing', async ({
+  page,
+}) => {
+  await page.goto('/#/welcome');
+  await expect(page.locator('.opening-description')).toHaveText(
+    'Spaced revision that schedules for your exam day.',
+  );
+  const walkthrough = page.getByRole('region', { name: 'Inside Lacuna' });
+  for (const name of [
+    'Schedule for the day it matters.',
+    'Fit revision into your day.',
+    'Practise using what you know.',
+  ]) {
+    const heading = walkthrough.getByRole('heading', { name, exact: true });
+    await heading.scrollIntoViewIfNeeded();
+    await expect(walkthrough.locator('.walkthrough-frame img[data-active="true"]')).toHaveAttribute(
+      'alt',
+      name,
+    );
+  }
+  expect(
+    await page.evaluate(
+      () =>
+        document.querySelector('.landing-walkthrough')!.getBoundingClientRect().bottom <=
+        document.querySelector('.closing-scene')!.getBoundingClientRect().top,
+    ),
+  ).toBe(true);
+});
+
+test('course journey follows scrolling forwards and backwards without buttons', async ({
+  page,
+}) => {
+  await page.goto('/#/welcome');
+  const journey = page.getByRole('region', { name: 'A course, one step at a time.' });
+  await expect(journey.locator('button')).toHaveCount(0);
+  for (const index of [0, 1, 2, 3, 1]) {
+    await journey.locator('.journey-example').nth(index).scrollIntoViewIfNeeded();
+    await expect(journey.locator('.journey-stop').nth(index)).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+  }
+  await expect(
+    journey.getByText('The rate at which something changes.', { exact: true }),
+  ).toBeVisible();
+  const recall = journey.locator('.journey-example').nth(1);
+  const answer = recall.locator('.journey-answer');
+  const turn = recall.locator('.journey-card-turn');
+  await expect(turn).toHaveCount(1);
+  for (const [offset, rotation] of [
+    [-0.2, 1],
+    [0.2, -1],
+    [-0.2, 1],
+  ] as const) {
+    await recall.evaluate(
+      (node, offset) =>
+        window.scrollTo({
+          top: scrollY + node.getBoundingClientRect().top + innerHeight * offset,
+          behavior: 'instant',
+        }),
+      offset,
+    );
+    await expect
+      .poll(() => turn.evaluate((node) => new DOMMatrix(getComputedStyle(node).transform).m11))
+      .toBeCloseTo(rotation, 3);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(turn).toHaveCSS('transform', 'none');
+  await expect(answer).toHaveCSS('transform', 'none');
+  await expect(answer).toHaveCSS('opacity', '1');
+  for (const title of [
+    'Start with the idea.',
+    'Bring it back to mind.',
+    'Put it to work.',
+    'A date to work towards.',
+  ]) {
+    await expect(journey.getByRole('heading', { name: title, exact: true })).toBeVisible();
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
