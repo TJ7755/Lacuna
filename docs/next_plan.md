@@ -8,19 +8,17 @@ deliberately frozen. Detailed specifications, implementation diaries and complet
 
 ## Current state
 
-### v0.2.4 beta
+### v0.2.5 beta
 
 **Status:** delivered.
 
-The current public release is **v0.2.4**; the development package is **v0.2.5** while its Windows
-upgrade hotfix is prepared. Lacuna is a local-first web/PWA and
+The current public release is **v0.2.5**. Lacuna is a local-first web/PWA and
 Electron learning application. Study data remains on-device; optional device sync and browser AI
 use the hosted relay, while packaged Electron AI uses its separate authenticated local companion.
 Windows, Linux and unsigned macOS desktop packages are beta artefacts with platform-specific update
-behaviour. The checked-in release workflow can attest a future tag, but the already-published
-v0.2.4 Windows and Linux artefacts have GitHub build provenance; the locally built macOS artefacts
-have a separate checksum manifest but no hosted provenance. Signing and the complete managed-device
-matrix remain release-readiness work.
+behaviour. The published v0.2.5 Windows and Linux artefacts have GitHub build provenance; the locally
+built macOS artefacts have a separate checksum manifest but no hosted provenance. Signing and the
+complete managed-device matrix remain release-readiness work.
 
 The application is usable. It is not declared stable or school-wide ready until the data-durability,
 dependency, release and device checks below have evidence on the exact release commit.
@@ -47,7 +45,7 @@ Ideas in old plans, audits or `docs/new_features_list.md` stay parked until a fr
 **Status:** in progress.
 
 Dependency refreshes, the supported Electron 42/Electron Builder 26 and Vitest 3 toolchain, root and
-relay audit jobs, and a provenance workflow for releases are delivered. The current v0.2.4 Windows
+relay audit jobs, and a provenance workflow for releases are delivered. The current v0.2.5 Windows
 and Linux artefacts are attested; the macOS artefacts are locally built and checksummed. Remaining
 work is the explicit signing decision and the
 complete managed-device matrix; every critical or high finding still needs a fix or a named owner
