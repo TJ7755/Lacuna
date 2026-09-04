@@ -33,7 +33,7 @@ export function installationMarkerDirectory(
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
   return platform === 'win32' && environment.LOCALAPPDATA
-    ? path.join(environment.LOCALAPPDATA, WINDOWS_MARKER_DIRECTORY)
+    ? path.win32.join(environment.LOCALAPPDATA, WINDOWS_MARKER_DIRECTORY)
     : hostUserDataPath;
 }
 

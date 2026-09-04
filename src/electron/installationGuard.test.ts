@@ -30,7 +30,7 @@ describe('Windows installation process guard', () => {
       installationMarkerDirectory('D:\\Profiles\\Lacuna school', 'win32', {
         LOCALAPPDATA: 'C:\\Users\\student\\AppData\\Local',
       }),
-    ).toBe('C:\\Users\\student\\AppData\\Local/Lacuna');
+    ).toBe(path.win32.join('C:\\Users\\student\\AppData\\Local', 'Lacuna'));
   });
 
   it('stops a companion from relaunching while the owning installer is active', async () => {

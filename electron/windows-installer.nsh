@@ -3,6 +3,8 @@
 Var pid
 
 !macro customCheckAppRunning
+  # The installer and uninstaller each invoke this hook. Append so every nested process records
+  # its own PID; the parent installer remains alive while ExecWait runs an older uninstaller.
   System::Call 'kernel32::GetCurrentProcessId() i.r0'
   CreateDirectory "$LOCALAPPDATA\${PRODUCT_NAME}"
   FileOpen $1 "$LOCALAPPDATA\${PRODUCT_NAME}\installation-in-progress" a
