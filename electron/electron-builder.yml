@@ -26,6 +26,7 @@ win:
   icon: electron/assets/icon.png
 nsis:
   artifactName: '${productName}-Setup-${version}.${ext}'
+  include: electron/windows-installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true

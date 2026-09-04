@@ -491,3 +491,11 @@ Direct `--ai-companion` configurations run `aiCompanionEntry.js` through the shi
 binary with `ELECTRON_RUN_AS_NODE=1`. The host app profile is passed separately through
 `--lacuna-host-user-data-dir`. Launching the full Electron app for this headless stdio bridge can
 exit cleanly before JavaScript starts on Windows.
+
+## Windows upgrades must suppress companion relaunches
+
+Registered MCP hosts can restart a companion after NSIS kills its installed `Lacuna.exe`, keeping
+the installation directory locked and making the old uninstaller fail. The installer writes live
+PIDs to the per-user Local AppData `Lacuna/installation-in-progress` marker; every Electron and
+direct Node companion entry must honour it regardless of its selected profile, while stale markers
+must never block ordinary application startup.

@@ -2846,6 +2846,12 @@ than exposing GitHub's updater metadata as user choices.
   shows a restrained Lacuna-branded bitmap while the Windows portable executable extracts. This
   gives immediate feedback before Electron exists; it does not claim progress or disguise any
   earlier Windows security scan.
+- **Windows upgrade coordination** (`electron/windows-installer.nsh`): before NSIS closes the
+  installed application, it records the live installer PID in Lacuna's per-user local state. Normal,
+  data-companion and AI-companion entry points refuse to start while any recorded installer remains
+  alive, preventing an MCP host from immediately relaunching `Lacuna.exe` and racing file removal.
+  Successful installation removes the marker; application start removes abandoned or stale markers.
+  The marker is deliberately independent of Electron's selectable user-data profile.
 - **Fonts** (`electron/assets/fonts/`): Fraunces, Geist and JetBrains Mono
   bundled as local TTF variable fonts. The main process injects
   `electron/fonts.css` via `webContents.insertCSS` so the app works fully
