@@ -13,9 +13,12 @@
   Keeping the marker outside Electron's selectable profile makes custom-profile companions obey it.
 - Kept the portable payload unchanged. The reported “Failed to uninstall old application files”
   dialog belongs to the NSIS installer; the published portable archive contains no uninstall path.
+- Preserved Electron Builder's PowerShell capability initialisation before delegating to its
+  process-closing macro. The first tagged cloud build exposed that overriding the outer hook also
+  bypassed this prerequisite, and NSIS correctly refused to compile the undefined variable.
 
 **Checks:** red-to-green installation guard and NSIS configuration contracts; Electron typecheck,
-root lint and packaged application interaction suite.
+root lint, an actual Windows cloud build and packaged application interaction suite.
 
 ### Release preparation
 
