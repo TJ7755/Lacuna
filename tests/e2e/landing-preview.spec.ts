@@ -257,3 +257,70 @@ test('welcome serves the approved landing and method shares its visual treatment
     .click();
   await expect(page).toHaveURL(/#\/welcome$/);
 });
+
+for (const motion of ['no-preference', 'reduce'] as const) {
+  test(`landing app entry keeps its label and honours ${motion}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: motion });
+    await page.goto('/#/welcome');
+    const nav = page.getByRole('navigation', { name: 'Landing navigation' });
+    await expect(nav.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna',
+    );
+    await expect(page.getByRole('heading', { name: '£0 forever.' })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: /reduced motion/i })).toHaveCount(0);
+    const cta = nav.getByRole('link', { name: 'Open Lacuna' });
+    await cta.hover();
+    await expect(cta.locator('.landing-cta-label')).toHaveCSS('opacity', '1');
+    await cta.click();
+    const overlay = page.locator('[data-landing-transition]');
+    if (motion === 'no-preference') await expect(overlay).toBeVisible();
+    else await expect(overlay).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(overlay).toHaveCount(0);
+  });
+}
+
+test('closing scenes separate the copy and doodles as scrolling reverses', async ({ page }) => {
+  await page.goto('/#/welcome');
+  await expect(
+    page.getByRole('heading', { name: 'Your study data stays on your device.' }),
+  ).toBeVisible();
+  const scene = page.locator('.closing-scene').first();
+  const copy = scene.locator('.closing-copy');
+  const drawings = scene.locator('.closing-drawings');
+  const scrollToProgress = async (progress: number) => {
+    await scene.evaluate((node, progress) => {
+      window.scrollTo({
+        top:
+          window.scrollY +
+          node.getBoundingClientRect().top +
+          (node.clientHeight - innerHeight) * progress,
+        behavior: 'instant',
+      });
+    }, progress);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+  };
+  await scrollToProgress(0);
+  await expect
+    .poll(() => copy.evaluate((node) => getComputedStyle(node).transform))
+    .not.toBe('none');
+  const initial = await copy.evaluate((node) => getComputedStyle(node).transform);
+  await scrollToProgress(1);
+  await expect
+    .poll(() => copy.evaluate((node) => getComputedStyle(node).transform))
+    .not.toBe(initial);
+  expect(await drawings.evaluate((node) => getComputedStyle(node).transform)).not.toBe(
+    await copy.evaluate((node) => getComputedStyle(node).transform),
+  );
+  await scrollToProgress(0);
+  await expect.poll(() => copy.evaluate((node) => getComputedStyle(node).transform)).toBe(initial);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(copy).toHaveCSS('transform', 'none');
+  await expect(drawings).toHaveCSS('transform', 'none');
+});

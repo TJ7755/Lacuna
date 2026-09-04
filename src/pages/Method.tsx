@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { LacunaIcon } from '../components/ui/icons';
+import { LandingNav } from '../components/landing/LandingNav';
+import { LandingCta } from '../components/welcome/LandingCta';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 import './Landing.css';
 import './Method.css';
@@ -54,15 +55,7 @@ export function Method() {
 
   return (
     <div className="landing-preview method-page">
-      <nav className="landing-nav" aria-label="Method navigation">
-        <Link to="/welcome" className="landing-brand">
-          <LacunaIcon />
-          Lacuna
-        </Link>
-        <Link to="/" className="landing-button landing-button-small">
-          Open Lacuna
-        </Link>
-      </nav>
+      <LandingNav label="Method navigation" />
       <header className="method-hero">
         <div className="method-hero-copy">
           <p className="method-kicker">The method</p>
@@ -279,9 +272,7 @@ export function Method() {
               reviews, the best way to find out is to study with it.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link to="/" className="landing-button">
-                Open Lacuna
-              </Link>
+              <LandingCta>Open Lacuna</LandingCta>
               <Link to="/welcome" className="method-text-link">
                 Back to Lacuna
               </Link>

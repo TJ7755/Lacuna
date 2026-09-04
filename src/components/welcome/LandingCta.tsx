@@ -1,18 +1,20 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getMotionMultiplier } from '../../state/motionSpeed';
 import { beginLandingTransition, COVERED_EVENT } from '../layout/LandingTransition';
+import './LandingCta.css';
 
-/**
- * The landing page's accent call-to-action. Hovering swaps the label for a
- * thin right arrow; clicking hands the button's rect to LandingTransition,
- * which grows it over the viewport before the dashboard is revealed —
- * navigation happens once the overlay reports the screen is covered. Under
- * reduced motion the button simply navigates.
- */
-export function LandingCta({ children }: { children: ReactNode }) {
+/** Keep the label visible on hover, then expand from the link's actual bounds.
+ * Navigation happens under the cover; reduced motion retains ordinary navigation. */
+export function LandingCta({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   const navigate = useNavigate();
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLAnchorElement>(null);
   const started = useRef(false);
 
   useEffect(() => {
@@ -24,30 +26,31 @@ export function LandingCta({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   return (
-    <button
+    <Link
+      to="/"
       ref={ref}
-      type="button"
-      onClick={() => {
-        if (started.current) return;
-        if (getMotionMultiplier() === 0 || !ref.current) {
-          navigate('/');
+      className={`landing-cta ${className}`}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
           return;
-        }
+        if (getMotionMultiplier() === 0 || !ref.current) return;
+        event.preventDefault();
+        if (started.current) return;
         started.current = true;
-        beginLandingTransition(ref.current.getBoundingClientRect());
+        const style = getComputedStyle(ref.current);
+        const rect = ref.current.getBoundingClientRect();
+        beginLandingTransition(rect, {
+          colour: style.backgroundColor,
+          // CSS clamps a pill's radius to half its height; preserve that physical radius as it grows.
+          radius: `${Math.min(parseFloat(style.borderRadius), rect.height / 2, rect.width / 2)}px`,
+        });
       }}
-      className="group/cta shadow-paper shadow-paper-hover relative inline-flex min-h-16 items-center rounded-[10px] border border-accent-ink/40 bg-accent px-9 text-base font-semibold text-accent-fg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
     >
-      <span className="transition-[opacity,transform] duration-200 ease-out group-hover/cta:-translate-y-1.5 group-hover/cta:opacity-0 group-focus-visible/cta:-translate-y-1.5 group-focus-visible/cta:opacity-0 motion-reduce:transition-none motion-reduce:group-hover/cta:translate-y-0 motion-reduce:group-hover/cta:opacity-100">
-        {children}
-      </span>
-      <span
-        className="absolute inset-0 grid translate-y-1.5 place-items-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/cta:translate-y-0 group-hover/cta:opacity-100 group-focus-visible/cta:translate-y-0 group-focus-visible/cta:opacity-100 motion-reduce:hidden"
-        aria-hidden="true"
-      >
-        <svg width="38" height="12" viewBox="0 0 38 12" fill="none">
+      <span className="landing-cta-label">{children}</span>
+      <span className="landing-cta-arrow" aria-hidden="true">
+        <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
           <path
-            d="M0 6h35M31 1l5 5-5 5"
+            d="M1 8h19M14 2l6 6-6 6"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
@@ -55,6 +58,6 @@ export function LandingCta({ children }: { children: ReactNode }) {
           />
         </svg>
       </span>
-    </button>
+    </Link>
   );
 }

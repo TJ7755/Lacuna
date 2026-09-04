@@ -1,0 +1,41 @@
+.landing-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 25px;
+  border-radius: 100px;
+  background: var(--amber, hsl(var(--accent)));
+  color: var(--cinema, hsl(var(--accent-fg)));
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.landing-cta:focus-visible {
+  outline: 2px solid var(--amber, hsl(var(--accent)));
+  outline-offset: 5px;
+}
+.landing-cta-arrow {
+  display: grid;
+  place-items: center;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(-5px);
+  transition:
+    width 300ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 200ms ease,
+    transform 300ms ease;
+}
+.landing-cta:hover .landing-cta-arrow,
+.landing-cta:focus-visible .landing-cta-arrow {
+  width: 30px;
+  opacity: 1;
+  transform: translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-cta-arrow {
+    display: none;
+    transition: none;
+  }
+}

@@ -214,7 +214,7 @@ export function AppShell() {
 
   return (
     // Arriving from the landing page's Get Started transition, the shell
-    // settles up from slightly under scale while the overlay halves part.
+    // settles up from slightly under scale while the amber cover lifts.
     // Skip the scale entirely otherwise — a standing transform here would pin
     // every `position: fixed` descendant to this wrapper.
     <motion.div

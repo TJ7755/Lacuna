@@ -1,23 +1,18 @@
 import { Link } from 'react-router-dom';
+import { ClosingScenes } from '../components/landing/ClosingScenes';
+import { LandingNav } from '../components/landing/LandingNav';
 import { LacunaIcon } from '../components/ui/icons';
 import { MemoryScene } from '../components/landing/MemoryScene';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 import { ProductWalkthrough } from '../components/landing/ProductWalkthrough';
+import { LandingCta } from '../components/welcome/LandingCta';
 import './Landing.css';
 
 export function Landing() {
   useSmoothScroll(true);
   return (
     <div className="landing-preview">
-      <nav className="landing-nav" aria-label="Landing navigation">
-        <Link to="/welcome" className="landing-brand">
-          <LacunaIcon />
-          Lacuna
-        </Link>
-        <Link className="landing-button landing-button-small" to="/">
-          Open Lacuna
-        </Link>
-      </nav>
+      <LandingNav label="Landing navigation" />
       <a
         className="landing-skip"
         href="#landing-product"
@@ -55,9 +50,7 @@ export function Landing() {
               your exam.
             </p>
             <div className="landing-actions">
-              <Link className="landing-button" to="/">
-                Open Lacuna
-              </Link>
+              <LandingCta>Open Lacuna</LandingCta>
               {!window.electronAPI?.isElectron && (
                 <Link className="landing-download" to="/download">
                   Download for desktop
@@ -67,10 +60,7 @@ export function Landing() {
           </div>
         </section>
         <ProductWalkthrough />
-        <div className="landing-portability">
-          <p>Your study data stays on your device.</p>
-          <Link to="/share?intent=import">Import a shared course</Link>
-        </div>
+        <ClosingScenes />
       </main>
       <footer className="landing-footer">
         <div className="landing-footer-start">
@@ -78,9 +68,7 @@ export function Landing() {
             <LacunaIcon />
             Lacuna
           </Link>
-          <Link className="landing-button landing-button-small" to="/">
-            Get started
-          </Link>
+          <LandingCta className="landing-button-small">Get started</LandingCta>
         </div>
         <Link to="/method">The method</Link>
       </footer>

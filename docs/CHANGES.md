@@ -2,6 +2,13 @@
 
 ## Unreleased — landing and method redesign
 
+- Restored expanding app-entry links with a persistent hover label and arrow. The clicked amber
+  pill grows into one screen cover, then lifts away; reduced motion uses direct navigation with
+  no extra page controls. Modified clicks retain normal link behaviour.
+- Gave the free-software and on-device-data messages full-height closing scenes, with separate
+  scroll-linked movement for the copy and outer cash/device drawings. Reduced motion keeps them static.
+- Added GitHub beside app entry and one “£0 forever” section after the walkthrough, with a smaller free-and-open-source link and hand-drawn pound notes and coins.
+
 - Promoted the approved cinematic landing to `/welcome`, the existing first-run entry.
   `/landing` remains an alias for existing preview links.
   The full-screen introduction uses Lacuna's charcoal, ivory and amber palette, with scroll-driven animation

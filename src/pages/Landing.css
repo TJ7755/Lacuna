@@ -324,20 +324,6 @@
     margin-top: 15px;
   }
 }
-.landing-portability {
-  padding: 50px var(--landing-gutter) 90px;
-  background: var(--cinema);
-  color: var(--stone);
-  font-size: 14px;
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.landing-portability a {
-  text-decoration: underline;
-  text-underline-offset: 5px;
-}
 .landing-footer-start {
   display: flex;
   align-items: center;
@@ -385,5 +371,65 @@
 @media (prefers-reduced-motion: reduce) {
   .memory-drawing {
     display: none;
+  }
+}
+.landing-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.landing-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--stone);
+  font-size: 14px;
+}
+.landing-github:hover {
+  color: var(--ivory);
+}
+@media (max-width: 700px) {
+  .landing-nav-actions {
+    gap: 14px;
+  }
+  .landing-nav-actions .landing-cta {
+    padding-inline: 15px;
+  }
+  .landing-github {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 380px) {
+  .landing-nav {
+    gap: 10px;
+  }
+  .landing-nav .landing-brand {
+    font-size: 22px;
+    gap: 6px;
+  }
+  .landing-nav .landing-brand svg {
+    width: 22px;
+  }
+  .landing-nav-actions {
+    gap: 10px;
+  }
+  .landing-github svg {
+    display: none;
+  }
+  .landing-nav-actions .landing-cta {
+    padding-inline: 12px;
+  }
+  .landing-nav-actions .landing-cta:hover .landing-cta-arrow,
+  .landing-nav-actions .landing-cta:focus-visible .landing-cta-arrow {
+    width: 22px;
+  }
+}
+
+@media (max-width: 380px) {
+  .landing-nav-actions .landing-cta-arrow svg {
+    width: 16px;
   }
 }
