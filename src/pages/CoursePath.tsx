@@ -609,6 +609,7 @@ export function CoursePath() {
             <PathNodeWithLine
               key={node.id}
               node={node}
+              index={i}
               isLast={i === visibleNodes.length - 1}
               current={!archived && node.id === currentNodeId}
               lockHint={

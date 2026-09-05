@@ -176,7 +176,9 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 Dashboard and course/lesson headings sit directly on the page without decorative panel
 frames. Course cards and functional grouping retain their boundaries. Empty-course and
 session-report states use small amber SVG line drawings in the landing page’s illustration
-style, without changing their controls or motion.
+style, without changing their controls or motion. The curriculum places up to three distinct study
+scenes beside alternate lesson stops; completed lessons tint their scene amber. Analytics empty
+states use drawings appropriate to their subject, while populated charts remain clear.
 
 ### 3.3 Motion language
 

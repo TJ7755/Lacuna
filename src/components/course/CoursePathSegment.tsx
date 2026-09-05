@@ -10,6 +10,7 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonNodeDetail } from './LessonNode';
 import { PathNodeView } from './PathNodeView';
 import { PathLine } from './PathLine';
+import { CoursePathDrawing } from './CoursePathDrawing';
 import { formatDate } from '../../utils/datetime';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 
@@ -43,6 +44,7 @@ export function lockHintFor(
  */
 export function PathNodeWithLine({
   node,
+  index = 0,
   isLast,
   current,
   lockHint,
@@ -59,6 +61,7 @@ export function PathNodeWithLine({
   lessonReorder,
 }: {
   node: PathNode;
+  index?: number;
   isLast: boolean;
   current: boolean;
   lockHint?: string;
@@ -79,7 +82,8 @@ export function PathNodeWithLine({
   const segmentCompleted = !isLast && node.nodeType === 'lesson' && node.status === 'completed';
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div className="relative flex w-full flex-col items-center">
+      <CoursePathDrawing node={node} index={index} />
       <PathNodeView
         node={node}
         current={current}

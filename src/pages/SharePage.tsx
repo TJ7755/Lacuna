@@ -424,11 +424,10 @@ export function SharePage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
       <header
-        className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8"
+        className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6"
       >
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
         <div className="relative">
-          <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Collaborate</p>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Share</h1>
           <p className="mt-3 max-w-prose text-sm text-ink-soft">
             Turn a course into a single code to send to anyone, and rebuild a course from a

@@ -2,6 +2,10 @@
 
 ## Unreleased — landing and method redesign
 
+- Added three non-repeating study scenes alongside the curriculum path, and distinct empty-state
+  drawings for analytics subjects. Share now uses a consistent text inset and drops the redundant
+  “Collaborate” label. Drawings stay decorative and leave charts and controls unobstructed.
+
 - Carried the landing page’s locally bundled Instrument Sans into app headings and body text,
   retaining Fraunces for the Lacuna wordmark. Removed decorative frames from dashboard and
   course/lesson headings and the empty dashboard. Added amber SVG course and recall drawings
