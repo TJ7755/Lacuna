@@ -53,7 +53,6 @@ export function CourseHeader({
     if (!onRename || savingTitle) return;
     setTitleDraft(title);
     setEditingTitle(true);
-    requestAnimationFrame(() => titleInput.current?.select());
   }
 
   function cancelRename() {
@@ -102,6 +101,8 @@ export function CourseHeader({
             {editingTitle ? (
               <motion.input
                 key="title-input"
+                autoFocus
+                onFocus={(event) => event.currentTarget.select()}
                 ref={titleInput}
                 value={titleDraft}
                 onChange={(event) => setTitleDraft(event.target.value)}

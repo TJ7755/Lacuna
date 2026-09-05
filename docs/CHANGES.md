@@ -2,6 +2,9 @@
 
 ## Unreleased — landing and method redesign
 
+- Fixed course and lesson rename fields opening without keyboard focus. Focus and title
+  selection now follow the animated input’s mount instead of a premature animation-frame callback.
+
 - Fixed the stuttering amber app-entry expansion by scaling and translating a small surface
   instead of animating a full-screen clip mask. Corners square off while the surface is still
   small; both expansion and reveal use native transform animations. Added a browser rendering
