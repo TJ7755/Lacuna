@@ -2,6 +2,9 @@
 
 ## Unreleased — landing and method redesign
 
+- Fixed Anki field conversion decoding nested quote entities twice. Entity decoding now
+  happens in one pass, preserving literal entity text from imported notes.
+
 - Bundled the Electron MCP SDK and schema implementation into shared modules, retaining
   their full licence texts. The macOS application archive falls from 18.05 MB to 11.12 MB;
   Windows archive budgets now enforce 14 MB and 600 files. Dependency versions are unchanged.

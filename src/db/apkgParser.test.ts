@@ -31,7 +31,7 @@ describe('Anki SQLite parsing', () => {
       collection.run('INSERT INTO notes VALUES (?, ?, ?, ?, ?)', [
         10,
         1,
-        '<b>Cell</b>\x1fLife',
+        '<b>Cell</b>\x1fLife &amp;quot; &amp;#39; &quot; &#39; &amp; &lt; &gt; &nbsp;',
         ' biology ',
         'Cell',
       ]);
@@ -56,7 +56,7 @@ describe('Anki SQLite parsing', () => {
     expect(parsed.cards[0]).toMatchObject({
       type: 'front_back',
       front: '**Cell**',
-      back: 'Life',
+      back: 'Life &quot; &#39; " \' & < >',
       stability: 12,
       tags: ['biology'],
       history: [

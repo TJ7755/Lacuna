@@ -93,9 +93,19 @@ function convertAnkiCloze(text: string): string {
   return convertAnkiHtml(text);
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  '&lt;': '<',
+  '&gt;': '>',
+  '&amp;': '&',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&nbsp;': ' ',
+};
+
 /** Convert Anki HTML fields to Markdown-compatible text. */
 function convertAnkiHtml(html: string): string {
-  // Simple HTML-to-Markdown conversions.
+  // Convert markup, then decode each original entity once. Chained replacements
+  // would decode nested text such as &amp;quot; twice.
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<div\s*\/?>/gi, '\n')
@@ -117,12 +127,7 @@ function convertAnkiHtml(html: string): string {
     .replace(/<h1\s*\/?>(.*?)<\/h1>/gi, '# $1\n')
     .replace(/<h2\s*\/?>(.*?)<\/h2>/gi, '## $1\n')
     .replace(/<h3\s*\/?>(.*?)<\/h3>/gi, '### $1\n')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&(?:lt|gt|amp|quot|#39|nbsp);/g, (entity) => HTML_ENTITIES[entity])
     .trim();
 }
 
