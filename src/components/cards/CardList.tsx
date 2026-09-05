@@ -1272,11 +1272,11 @@ const CardRow = React.memo(function CardRow({
 
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
+              <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
                 {cardTypeLabel(card)}
               </span>
               {showBack && (
-                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
                   Back
                 </span>
               )}
@@ -1288,19 +1288,19 @@ const CardRow = React.memo(function CardRow({
                 <span className="text-[11px] text-accent">New</span>
               )}
               {card.suspended && (
-                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
+                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
                   Suspended
                 </span>
               )}
               {!card.suspended && buried && (
-                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
+                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
                   Buried
                 </span>
               )}
               {leech && (
                 <span
                   title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
-                  className="rounded-full bg-negative/10 px-2 py-0.5 text-[11px] font-medium text-negative"
+                  className="rounded-lg bg-negative/10 px-2 py-0.5 text-[11px] font-medium text-negative"
                 >
                   Leech
                 </span>
@@ -1310,7 +1310,7 @@ const CardRow = React.memo(function CardRow({
                 <GeneratedCardBadge kind="occlusion" />
               )}
               {linked && (
-                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
                   Linked
                 </span>
               )}
@@ -1336,7 +1336,7 @@ const CardRow = React.memo(function CardRow({
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-soft"
+                    className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-soft"
                   >
                     {t}
                   </span>

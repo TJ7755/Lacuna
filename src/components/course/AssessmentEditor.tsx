@@ -251,7 +251,7 @@ export function AssessmentEditor({
                   aria-pressed={active}
                   onClick={() => toggleLesson(lesson.id)}
                   className={
-                    'rounded-full border px-3 py-1 text-xs transition-colors ' +
+                    'rounded-lg border px-3 py-1 text-xs transition-colors ' +
                     (active
                       ? 'border-accent bg-accent-soft text-accent'
                       : 'border-line text-ink-soft hover:border-line-strong')

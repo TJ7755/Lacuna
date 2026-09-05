@@ -58,7 +58,7 @@ export function OverallResults() {
             aria-selected={metric === key}
             onClick={() => setMetric(key)}
             className={
-              'rounded-full border px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors ' +
+              'rounded-lg border px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors ' +
               (metric === key
                 ? 'border-accent bg-accent-soft/70 text-accent-ink'
                 : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')

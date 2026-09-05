@@ -145,7 +145,7 @@ export function AiMemoryInspector({
                     {memory.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent"
+                        className="rounded-lg bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent"
                       >
                         {tag}
                       </span>

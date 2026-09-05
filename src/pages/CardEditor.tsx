@@ -511,7 +511,7 @@ export function CardEditor() {
                   {(card.tags ?? []).map((t) => (
                     <span
                       key={t}
-                      className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-soft"
+                      className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-soft"
                     >
                       {t}
                     </span>
@@ -944,7 +944,7 @@ export function CardEditor() {
               aria-pressed={alsoReverse}
               title="Also create a card testing the back side"
               className={cn(
-                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors',
                 alsoReverse
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line text-ink-soft hover:border-line-strong',
@@ -989,7 +989,7 @@ export function CardEditor() {
                 transition={
                   m > 0 ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0 }
                 }
-                className="inline-flex items-center gap-1.5 rounded-full bg-positive/15 px-3 py-1 text-sm font-medium text-positive"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-positive/15 px-3 py-1 text-sm font-medium text-positive"
               >
                 <motion.span
                   initial={m > 0 ? { scale: 0, rotate: -25 } : false}

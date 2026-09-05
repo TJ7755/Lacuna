@@ -26,9 +26,9 @@ interface UpcomingAssessmentsStripProps {
 }
 
 /**
- * Upcoming (future-dated) assessments, nearest first, as clickable pills.
+ * Upcoming (future-dated) assessments, nearest first, as rounded buttons.
  * Renders nothing when there are none — matching the empty-case convention
- * used elsewhere in CoursePath's header (e.g. the "Review updates" pill).
+ * used elsewhere in CoursePath's header (e.g. the "Review updates" button).
  */
 export function UpcomingAssessmentsStrip({
   assessments,
@@ -64,7 +64,7 @@ export function UpcomingAssessmentsStrip({
           whileTap={m > 0 ? { scale: 0.97 } : undefined}
           data-motion-transition-tier="feedback"
           transition={motionTransition('feedback', m)}
-          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-line-strong px-3 py-1.5 text-sm text-ink-soft transition-[border-color,background-color,color,transform] hover:border-accent hover:bg-accent/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:transition-none"
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-line-strong px-3 py-1.5 text-sm text-ink-soft transition-[border-color,background-color,color,transform] hover:border-accent hover:bg-accent/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 motion-reduce:transition-none"
         >
           <FlagIcon width={14} height={14} className="shrink-0 text-ink-faint" />
           <span className="font-medium text-ink">{assessment.name}</span>

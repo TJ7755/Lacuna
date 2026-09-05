@@ -18,7 +18,7 @@ export function GeneratedCardBadge({ kind }: { kind: keyof typeof KIND_META }) {
   return (
     <span
       title={title}
-      className="inline-flex items-center gap-1 rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint"
+      className="inline-flex items-center gap-1 rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint"
     >
       <Icon width={10} height={10} />
       {label}

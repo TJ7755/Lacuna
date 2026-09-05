@@ -352,7 +352,7 @@ function StatusPill({
   return (
     <span
       className={cn(
-        'rounded-full px-2.5 py-1 text-xs font-medium capitalize',
+        'rounded-lg px-2.5 py-1 text-xs font-medium capitalize',
         tone === 'positive' && 'bg-positive/10 text-positive',
         tone === 'negative' && 'bg-negative/10 text-negative',
         tone === 'warning' && 'bg-warning/10 text-warning-fg',

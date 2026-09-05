@@ -364,7 +364,7 @@ export function QuestionEditor() {
                               : [...current.prerequisiteConceptIds, concept.id],
                           }))
                         }
-                        className={`min-h-11 rounded-full border px-4 text-sm transition ${
+                        className={`min-h-11 rounded-lg border px-4 text-sm transition ${
                           selected
                             ? 'border-accent bg-accent-soft text-accent'
                             : 'border-line-strong text-ink-soft hover:text-ink'

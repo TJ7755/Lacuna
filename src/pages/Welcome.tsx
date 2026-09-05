@@ -361,7 +361,7 @@ export function Welcome() {
         aria-pressed={smoothScroll}
         onClick={toggleSmoothScroll}
         className={
-          'fixed right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-50 rounded-full border border-line-strong bg-paper/85 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft backdrop-blur transition-all hover:border-accent hover:text-ink ' +
+          'fixed right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-50 rounded-lg border border-line-strong bg-paper/85 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft backdrop-blur transition-all hover:border-accent hover:text-ink ' +
           (showScrollToggle
             ? 'translate-y-0 opacity-100'
             : 'pointer-events-none -translate-y-2 opacity-0')

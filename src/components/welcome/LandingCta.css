@@ -4,7 +4,7 @@
   justify-content: center;
   min-height: 52px;
   padding: 0 25px;
-  border-radius: 100px;
+  border-radius: 0.5rem;
   background: var(--amber, hsl(var(--accent)));
   color: var(--cinema, hsl(var(--accent-fg)));
   font-size: 14px;

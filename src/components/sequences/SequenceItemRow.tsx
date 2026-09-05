@@ -57,7 +57,7 @@ export function SequenceItemRow({
       )}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-ink/5 px-1.5 text-xs font-medium text-ink-faint">
+        <span className="flex h-6 min-w-6 items-center justify-center rounded-lg bg-ink/5 px-1.5 text-xs font-medium text-ink-faint">
           {index + 1}
         </span>
         <span className="text-sm font-medium text-ink-soft">

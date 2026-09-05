@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import type { MotionSpeed } from '../../state/motionSpeed';
+import { speedMultiplier, useMotionSpeed, type MotionSpeed } from '../../state/motionSpeed';
 import { cn } from '../../components/ui/cn';
 
 const OPTIONS: { value: MotionSpeed; label: string }[] = [
@@ -20,11 +20,13 @@ interface MotionSpeedControlProps {
   describedBy?: string;
 }
 
-export function MotionSpeedControl({
-  value,
-  onChange,
-  describedBy,
-}: MotionSpeedControlProps) {
+export function MotionSpeedControl({ value, onChange, describedBy }: MotionSpeedControlProps) {
+  useMotionSpeed();
+  const multiplier = speedMultiplier(value);
+  const movement = {
+    transitionDuration: `${380 * multiplier}ms`,
+    transitionTimingFunction: 'cubic-bezier(0.22, 1.35, 0.36, 1)',
+  };
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedIndex = OPTIONS.findIndex((option) => option.value === value);
   const position = POSITION_CLASSES[selectedIndex];
@@ -44,12 +46,13 @@ export function MotionSpeedControl({
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/6 right-1/6 top-2.5 h-1.5 rounded-full border border-line bg-paper"
+        className="pointer-events-none absolute left-1/6 right-1/6 top-0 h-8 rounded-lg border border-line bg-ink/5 shadow-inner"
       >
         <span
           data-testid="motion-speed-fill"
+          style={movement}
           className={cn(
-            'absolute inset-y-0 left-0 rounded-full bg-accent/70 transition-[width] duration-200 ease-out motion-reduce:transition-none',
+            'absolute inset-y-0 left-0 rounded-lg bg-accent/10 transition-[width] motion-reduce:transition-none',
             position.fill,
           )}
         />
@@ -58,15 +61,16 @@ export function MotionSpeedControl({
             key={marker.thumb}
             className={cn(
               'absolute top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full',
-              index <= selectedIndex ? 'bg-surface' : 'bg-line-strong',
+              index === selectedIndex ? 'bg-accent' : 'bg-line-strong',
               marker.thumb,
             )}
           />
         ))}
         <span
           data-testid="motion-speed-thumb"
+          style={movement}
           className={cn(
-            'absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-surface shadow-sm transition-[left] duration-200 ease-out motion-reduce:transition-none',
+            'absolute top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line-strong bg-surface shadow-[0_1px_4px_rgba(0,0,0,0.12)] transition-[left] motion-reduce:transition-none',
             position.thumb,
           )}
         />

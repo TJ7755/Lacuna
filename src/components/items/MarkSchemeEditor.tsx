@@ -127,7 +127,7 @@ export function MarkSchemeEditor({
               Draft mark scheme
             </Button>
           )}
-          <div className="rounded-full border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
+          <div className="rounded-lg border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
             {compilation.totalMarks} {compilation.totalMarks === 1 ? 'mark' : 'marks'} total
           </div>
         </div>
@@ -227,7 +227,7 @@ export function MarkSchemeEditor({
             <p className="mt-1 text-sm text-ink-faint">Write one student step per line. Results update as the scheme changes.</p>
           </div>
           {testResult && (
-            <div className="rounded-full border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
+            <div className="rounded-lg border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
               {testResult.marksEarned} / {testResult.marksAvailable} marks
             </div>
           )}
@@ -256,7 +256,7 @@ export function MarkSchemeEditor({
               <div className="space-y-2">
                 {testResult.lineVerdicts.map((verdict, index) => (
                   <div key={`${index}-${verdict.studentLine}`} className="flex items-start gap-3 rounded-lg border border-line bg-surface px-3 py-2">
-                    <span className={cn('mt-0.5 rounded-full px-2 py-0.5 text-xs tabular-nums', verdict.matchedLineIndex === null ? 'bg-negative/10 text-negative' : 'bg-positive/10 text-positive')}>
+                    <span className={cn('mt-0.5 rounded-lg px-2 py-0.5 text-xs tabular-nums', verdict.matchedLineIndex === null ? 'bg-negative/10 text-negative' : 'bg-positive/10 text-positive')}>
                       {verdict.marksEarned}
                     </span>
                     <span className="min-w-0 break-words font-mono text-sm text-ink">{verdict.studentLine}</span>
@@ -323,7 +323,7 @@ function FixtureRow({ fixture, scheme, onRemove, index }: { fixture: ItemFixture
         <div className="mt-1 truncate font-mono text-sm text-ink">{lines.join(' · ')}</div>
       </div>
       <span className="text-sm tabular-nums text-ink-soft">Expected {fixture.expectedMarks}, got {result?.marksEarned ?? '—'}</span>
-      <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', matches ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative')}>
+      <span className={cn('rounded-lg px-2.5 py-1 text-xs font-medium', matches ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative')}>
         {matches ? 'Pass' : 'Mismatch'}
       </span>
       <button type="button" onClick={onRemove} className="rounded-lg px-2 py-1 text-xs text-ink-faint hover:bg-ink/5 hover:text-ink">Remove</button>

@@ -322,7 +322,7 @@ export function OcclusionEditor() {
 
           {/* Live generated-card count, following the sequence editor's precedent. */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
-            <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+            <span className="rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
               {preview.length} card{preview.length === 1 ? '' : 's'} will be generated
             </span>
             {regions.length > 0 && (

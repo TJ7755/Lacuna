@@ -211,7 +211,7 @@ export function CourseCard({
 
       {hasPendingUpdate && (
         <div className="mb-4 -mt-2">
-          <span className="inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+          <span className="inline-flex items-center rounded-lg bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
             Update available
           </span>
         </div>

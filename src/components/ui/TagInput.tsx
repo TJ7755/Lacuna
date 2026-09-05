@@ -49,7 +49,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-            className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent"
+            className="inline-flex items-center gap-1 rounded-lg bg-accent-soft px-2 py-0.5 text-xs text-accent"
           >
             {tag}
             <button
@@ -79,7 +79,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
               type="button"
               onClick={() => addTag(s)}
               whileTap={{ scale: 0.92 }}
-              className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors hover:border-accent hover:text-accent active:border-accent active:text-accent"
+              className="rounded-lg border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors hover:border-accent hover:text-accent active:border-accent active:text-accent"
             >
               {s}
             </motion.button>

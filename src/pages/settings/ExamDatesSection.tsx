@@ -163,7 +163,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                   <div className="flex items-center gap-2 text-sm text-ink">
                     <span>{assessment.name}</span>
                     {assessment.kind === 'final' && (
-                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent">
+                      <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent">
                         Final
                       </span>
                     )}

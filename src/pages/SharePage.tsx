@@ -861,7 +861,7 @@ export function SharePage() {
                     {pending.summary.deckNames.map((name, i) => (
                       <li
                         key={`${name}-${i}`}
-                        className="rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-soft"
+                        className="rounded-lg border border-line bg-surface px-3 py-1 text-xs text-ink-soft"
                       >
                         {name}
                       </li>

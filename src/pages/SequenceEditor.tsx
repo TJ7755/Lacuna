@@ -469,7 +469,7 @@ export function SequenceEditor() {
               </div>
             </div>
           ) : (
-            <div className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
+            <div className="w-fit rounded-lg bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
               {preset.name}
             </div>
           )}
@@ -659,7 +659,7 @@ export function SequenceEditor() {
               <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">Preview</div>
               <span
                 className={cn(
-                  'rounded-full px-3 py-1 text-sm font-medium',
+                  'rounded-lg px-3 py-1 text-sm font-medium',
                   preview.length > 30
                     ? 'bg-warning/10 text-warning-fg'
                     : 'bg-accent-soft text-accent',

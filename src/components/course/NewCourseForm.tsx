@@ -154,7 +154,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
             onClick={() => setMode('create')}
             aria-pressed={mode === 'create'}
             className={cn(
-              'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
               mode === 'create'
                 ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
@@ -167,7 +167,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
             onClick={() => setMode('import')}
             aria-pressed={mode === 'import'}
             className={cn(
-              'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
               mode === 'import'
                 ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',

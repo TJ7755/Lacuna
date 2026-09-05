@@ -162,7 +162,7 @@ export function SearchPage() {
               whileHover={{ y: -1, transition: { duration: 0.1 * m } }}
               whileTap={{ scale: 0.95 }}
               className={cn(
-                'rounded-full border px-3 py-1 text-xs transition-colors',
+                'rounded-lg border px-3 py-1 text-xs transition-colors',
                 on
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line text-ink-soft hover:border-line-strong',
@@ -179,7 +179,7 @@ export function SearchPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.14 * m }}
-            className="rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:text-ink"
+            className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:text-ink"
           >
             Clear
           </motion.button>
@@ -271,7 +271,7 @@ export function SearchPage() {
                 )}
                 <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                   <span>{hit.contextName}</span>
-                  <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                  <span className="rounded-lg border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide">
                     Question
                   </span>
                   {hit.question.kind === 'generated' && <span>Generated family</span>}

@@ -498,7 +498,7 @@ export function UnifiedImportPanel({
               setShareNotice(null);
             }}
             className={cn(
-              'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
                 ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
@@ -515,7 +515,7 @@ export function UnifiedImportPanel({
               setShareNotice(null);
             }}
             className={cn(
-              'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
               shareMode
                 ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
@@ -661,7 +661,7 @@ export function UnifiedImportPanel({
                       type="button"
                       onClick={() => setFormatOverride(formatOverride === f ? null : f)}
                       className={cn(
-                        'rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all',
+                        'rounded-lg px-2.5 py-0.5 text-[10px] font-medium transition-all',
                         formatOverride === f
                           ? 'border border-accent/40 bg-accent-soft text-accent'
                           : 'border border-transparent bg-ink/5 text-ink-faint hover:bg-ink/10',
@@ -735,7 +735,7 @@ export function UnifiedImportPanel({
                           }}
                           className="flex items-center gap-2.5 rounded-xl border border-line bg-surface-raised/50 px-3 py-2 text-sm"
                         >
-                          <span className="shrink-0 rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                          <span className="shrink-0 rounded-lg bg-ink/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
                             {c.type === 'cloze' ? 'Cloze' : 'Basic'}
                           </span>
                           <span className="min-w-0 flex-1 truncate text-ink">{c.front}</span>
@@ -994,7 +994,7 @@ function ShareCodeImport({
                   {pending.summary.deckNames.map((name, i) => (
                     <li
                       key={`${name}-${i}`}
-                      className="rounded-full border border-accent/20 bg-accent-soft/50 px-3 py-1 text-xs font-medium text-accent"
+                      className="rounded-lg border border-accent/20 bg-accent-soft/50 px-3 py-1 text-xs font-medium text-accent"
                     >
                       {name}
                     </li>
@@ -1046,7 +1046,7 @@ function FormatBadge({ format, confidence }: { format: ImportFormat; confidence:
   return (
     <span
       className={cn(
-        'rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+        'rounded-lg border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
         colour,
       )}
     >

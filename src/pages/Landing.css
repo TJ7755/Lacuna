@@ -91,7 +91,7 @@
   min-height: 52px;
   padding: 0 25px;
   background: var(--amber);
-  border-radius: 100px;
+  border-radius: 0.5rem;
   color: var(--cinema);
   font-size: 14px;
   font-weight: 600;

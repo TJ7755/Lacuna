@@ -196,7 +196,7 @@ function StudyStreakBadge({ collapsed, stats }: { collapsed: boolean; stats?: St
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.3 * m }}
       className={cn(
-        'group/streak ml-auto flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium tabular text-accent',
+        'group/streak ml-auto flex items-center gap-1 rounded-lg bg-accent/10 px-2 py-0.5 text-[11px] font-medium tabular text-accent',
         collapsed && 'hidden',
       )}
       title={`${streak} day streak`}
@@ -278,7 +278,7 @@ const CourseRow = memo(function CourseRow({
     eligible > 0 ? (
       <span
         className={cn(
-          'ml-auto shrink-0 rounded-full bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
+          'ml-auto shrink-0 rounded-lg bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
           compact && 'text-[9px]',
         )}
       >

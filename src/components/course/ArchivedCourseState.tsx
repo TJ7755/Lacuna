@@ -1,6 +1,6 @@
 export function ArchivedCourseBadge() {
   return (
-    <span className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft">
+    <span className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft">
       Archived course
     </span>
   );

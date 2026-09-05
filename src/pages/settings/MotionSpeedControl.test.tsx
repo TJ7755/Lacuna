@@ -49,8 +49,11 @@ describe('MotionSpeedControl', () => {
 
     expect(group).toHaveClass('h-12');
     expect(group).not.toHaveClass('border', 'rounded-xl');
-    expect(fill).toHaveClass('transition-[width]', 'duration-200', 'motion-reduce:transition-none');
-    expect(thumb).toHaveClass('transition-[left]', 'duration-200', 'motion-reduce:transition-none');
-    expect(screen.getByRole('radio', { name: 'Normal' })).not.toHaveClass('bg-surface', 'shadow-sm');
+    expect(fill).toHaveClass('transition-[width]', 'motion-reduce:transition-none');
+    expect(thumb).toHaveClass('transition-[left]', 'motion-reduce:transition-none');
+    expect(screen.getByRole('radio', { name: 'Normal' })).not.toHaveClass(
+      'bg-surface',
+      'shadow-sm',
+    );
   });
 });

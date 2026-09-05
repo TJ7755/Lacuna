@@ -156,11 +156,11 @@ export function QuestionsPage() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full border border-line-strong px-2.5 py-1 text-ink-soft">
+                    <span className="rounded-lg border border-line-strong px-2.5 py-1 text-ink-soft">
                       {question.kind === 'fixed' ? 'Fixed' : 'Generated family'}
                     </span>
                     {question.suspended && (
-                      <span className="rounded-full bg-ink/5 px-2.5 py-1 text-ink-faint">
+                      <span className="rounded-lg bg-ink/5 px-2.5 py-1 text-ink-faint">
                         Suspended
                       </span>
                     )}

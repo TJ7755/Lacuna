@@ -408,7 +408,7 @@ export function FlipCard({
                   event.stopPropagation();
                   replayAudio();
                 }}
-                className="mt-6 min-h-11 rounded-full border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+                className="mt-6 min-h-11 rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
               >
                 Hear it again <span className="ml-1 text-xs text-ink-faint">R</span>
               </button>

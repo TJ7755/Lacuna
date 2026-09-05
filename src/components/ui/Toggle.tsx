@@ -34,16 +34,28 @@ export function Toggle({ checked, onChange, label, ariaLabel, id, disabled }: To
         onClick={() => !disabled && onChange(!checked)}
         style={{ transitionDuration: `${200 * multiplier}ms` }}
         className={cn(
-          'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
+          'relative h-7 w-12 shrink-0 rounded-lg border border-black/5 shadow-inner transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
           checked ? 'bg-accent' : 'bg-ink/20',
           disabled && 'cursor-not-allowed opacity-60',
         )}
       >
         <motion.span
-          className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow"
+          className="absolute top-0.5 left-0.5 grid h-[22px] w-[22px] place-items-center rounded-md border border-black/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.18)]"
+          initial={false}
           animate={{ x: checked ? 20 : 0 }}
-          transition={scaledSpring(multiplier, 500, 30)}
-        />
+          transition={scaledSpring(multiplier, 360, 26)}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              'flex gap-0.5 transition-colors',
+              checked ? 'text-accent' : 'text-ink-faint',
+            )}
+          >
+            <span className="h-2 w-0.5 rounded-sm bg-current" />
+            <span className="h-2 w-0.5 rounded-sm bg-current" />
+          </span>
+        </motion.span>
       </button>
       {label && <span className="text-sm text-ink-soft">{label}</span>}
     </label>

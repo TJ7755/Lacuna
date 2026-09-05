@@ -17,7 +17,7 @@ export function LessonViewModeToggle({
     <div
       role="group"
       aria-label="Workspace mode"
-      className="inline-flex h-8 shrink-0 items-center rounded-full border border-line bg-ink/5 p-0.5 text-xs"
+      className="inline-flex h-8 shrink-0 items-center rounded-lg border border-line bg-ink/5 p-0.5 text-xs"
     >
       {(['study', 'edit'] as const).map((option) => (
         <button
@@ -27,7 +27,7 @@ export function LessonViewModeToggle({
           aria-label={option === 'study' ? 'Study mode' : 'Author mode'}
           onClick={() => onChange(option)}
           className={cn(
-            'flex h-full items-center rounded-full px-3 font-medium transition-colors',
+            'flex h-full items-center rounded-lg px-3 font-medium transition-colors',
             mode === option
               ? 'bg-surface text-ink shadow-sm shadow-black/[0.04]'
               : 'text-ink-faint hover:text-ink',

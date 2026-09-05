@@ -110,7 +110,7 @@ export function PracticeNode({
         <button
           type="button"
           onClick={onAssessmentClick}
-          className="max-w-[10rem] rounded-full border border-warning/30 bg-warning/5 px-2.5 py-1 text-center text-[0.65rem] font-medium leading-tight text-warning transition-colors hover:border-warning/60 hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
+          className="max-w-[10rem] rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-1 text-center text-[0.65rem] font-medium leading-tight text-warning transition-colors hover:border-warning/60 hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
         >
           Prioritise {assessment.name}
         </button>

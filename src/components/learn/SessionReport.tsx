@@ -213,7 +213,7 @@ export function SessionReport({
           >
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+                'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium',
                 summary.masteryAfter >= summary.masteryBefore
                   ? 'bg-positive/10 text-positive'
                   : 'bg-negative/10 text-negative',
