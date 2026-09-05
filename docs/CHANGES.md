@@ -2,6 +2,12 @@
 
 ## Unreleased — landing and method redesign
 
+- Fixed older database upgrades losing inline review history before the v20/v26
+  canonical-history migrations could copy it. The current Card write guard now
+  leaves version-change transactions to the migration's own copy-and-verify step.
+  v1 and v8 profile regressions preserve review events, scheduling state and image
+  bytes through migration, JSON export, clean restore and database reopen.
+
 - Shared the shell's cards, history, courses and assessments between desktop/mobile navigation,
   Dashboard and the final-exam controller. Navigation retains derived figures only; leaving
   Dashboard drops its additional subscriptions and full card result. Scheduling performance

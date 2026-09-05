@@ -1290,10 +1290,14 @@ export const db = new LacunaDatabase();
 
 // This hook is the storage seam: direct repository writes, restores, imports and
 // generated-card modules cannot accidentally resurrect the retired projection.
-db.cards.hook('creating', (_primaryKey, card) => {
-  card.history = [];
+db.cards.hook('creating', (_primaryKey, card, transaction) => {
+  // Older upgrade steps still need the inline events. The v26 upgrade copies
+  // and verifies them before explicitly clearing the projection itself.
+  if (transaction.idbtrans.mode !== 'versionchange') card.history = [];
 });
-db.cards.hook('updating', () => ({ history: [] }));
+db.cards.hook('updating', (_changes, _primaryKey, _card, transaction) =>
+  transaction.idbtrans.mode === 'versionchange' ? undefined : { history: [] },
+);
 
 /** Possible outcomes when trying to open the database. */
 export type DbOpenResult =

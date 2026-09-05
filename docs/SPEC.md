@@ -26,6 +26,11 @@ included in that release. This specification describes the current development h
 `docs/next_plan.md` distinguishes published evidence from remaining
 work, while `docs/CHANGES.md` records changes in order.
 
+Historical v1 and v8 profiles have automated migration-to-current, JSON export,
+clean restore and reopen coverage, including review events and a v8 image asset.
+Card storage hooks preserve inline history during schema upgrades so the canonical
+history migration can copy and verify it before clearing the old projection.
+
 British English throughout. No emojis anywhere in the product or its copy.
 
 ---
