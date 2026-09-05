@@ -2,6 +2,9 @@
 
 ## Unreleased — landing and method redesign
 
+- Fixed the manual AI smoke runner to resolve Electron through its package entry point,
+  supporting Electron 42’s lazy runtime installation and non-macOS executables.
+
 - Removed the unreachable former Welcome page, its demo-only components and tests,
   and their unused animation styles. `/welcome` and `/landing` now share one lazy
   loader for the existing landing page. Removed unused scheduling/sync aliases,

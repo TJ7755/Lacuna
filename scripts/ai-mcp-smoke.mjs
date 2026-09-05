@@ -1,12 +1,14 @@
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
+const require = createRequire(import.meta.url);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const profile = process.env.LACUNA_MCP_SMOKE_PROFILE;
 const transport = new StdioClientTransport({
-  command: `${root}/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron`,
+  command: require('electron'),
   args: [root, '--ai-companion', ...(profile ? [`--user-data-dir=${profile}`] : [])],
   stderr: 'inherit',
 });
