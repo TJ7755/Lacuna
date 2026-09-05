@@ -50,22 +50,45 @@ export function LandingTransition() {
   if (!transition) return null;
   const { rect, covered, colour, radius } = transition;
   const multiplier = getMotionMultiplier();
+  const coverTransform = `translate3d(${-rect.left}px, ${-rect.top}px, 0) scale(${innerWidth / rect.width}, ${innerHeight / rect.height})`;
 
   return (
     <div className="fixed inset-0 z-[100]" data-landing-transition role="presentation">
       <motion.div
         key={covered ? 'reveal' : 'cover'}
-        className="absolute inset-0"
-        style={{ backgroundColor: colour }}
-        initial={
+        className={covered ? 'absolute inset-0' : 'absolute'}
+        style={
           covered
-            ? { y: 0 }
+            ? { backgroundColor: colour, willChange: 'transform' }
             : {
-                clipPath: `inset(${rect.top}px ${innerWidth - rect.right}px ${innerHeight - rect.bottom}px ${rect.left}px round ${radius})`,
+                backgroundColor: colour,
+                borderRadius: radius,
+                height: rect.height,
+                left: rect.left,
+                top: rect.top,
+                transformOrigin: '0 0',
+                width: rect.width,
+                willChange: 'transform',
               }
         }
-        animate={covered ? { y: '-100%' } : { clipPath: 'inset(0px 0px 0px 0px round 0px)' }}
-        transition={{ duration: 0.65 * multiplier, ease: covered ? REVEAL_EASE : SWEEP_EASE }}
+        initial={
+          covered
+            ? { transform: 'translateY(0%)' }
+            : { transform: 'translate3d(0, 0, 0) scale(1, 1)', borderRadius: radius }
+        }
+        animate={
+          covered
+            ? { transform: 'translateY(-100%)' }
+            : { transform: coverTransform, borderRadius: '0px' }
+        }
+        transition={
+          covered
+            ? { duration: 0.65 * multiplier, ease: REVEAL_EASE }
+            : {
+                transform: { duration: 0.65 * multiplier, ease: SWEEP_EASE },
+                borderRadius: { duration: 0.1 * multiplier, ease: SWEEP_EASE },
+              }
+        }
         onAnimationComplete={() => {
           if (covered) setTransition(null);
           else {

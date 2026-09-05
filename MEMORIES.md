@@ -505,3 +505,9 @@ the installation directory locked and making the old uninstaller fail. The insta
 PIDs to the per-user Local AppData `Lacuna/installation-in-progress` marker; every Electron and
 direct Node companion entry must honour it regardless of its selected profile, while stale markers
 must never block ordinary application startup.
+
+## Native animation does not guarantee compositor-only rendering
+
+Motion hands `clipPath` to WAAPI, but Chromium still repaints and rasterises an animated inset
+mask each frame. Verify raster work, not just the presence of a native Animation. Explicit
+`transform` keyframes use Motion's native path; separate `x`/`y` aliases use its JavaScript path.

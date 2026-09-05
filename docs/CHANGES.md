@@ -2,6 +2,11 @@
 
 ## Unreleased — landing and method redesign
 
+- Fixed the stuttering amber app-entry expansion by scaling and translating a small surface
+  instead of animating a full-screen clip mask. Corners square off while the surface is still
+  small; both expansion and reveal use native transform animations. Added a browser rendering
+  regression that rejects sustained per-frame rasterisation during expansion.
+
 - Added a scroll-drawn forgetting curve after the course journey, projecting to a fixed exam
   day. Moving the next review updates the curve and exam recall using FSRS-6 for an explicitly
   illustrative card with successful reviews. Prominent amber copy explains flexible review timing.
