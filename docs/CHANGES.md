@@ -16,6 +16,21 @@
 - Fixed course and lesson rename fields opening without keyboard focus. Focus and title
   selection now follow the animated input’s mount instead of a premature animation-frame callback.
 
+- Standardised text badges, filters, segmented tabs and import choices on the existing rounded
+  button radius across the app. Course and lesson headers now place schedule context in a
+  calendar row beneath their actions, and the course header no longer repeats the next lesson.
+  Lengthened study-card movement to 650 ms with a 350 ms fade at normal motion speed.
+- Added drag-to-select and arrow-key navigation to the course section track. Dragging previews
+  the destination and releasing opens it. The selection follows pointer movement continuously
+  within the track and settles onto the nearest section only on release. The white selection expands slightly while held and
+  springs back on release. Shared switches now use a raised rounded-square thumb
+  with a restrained spring; animation-speed stops use the same shape and a sliding indicator.
+
+- Shortened the Simple Learn heading and removed repetitive study-header subtitles while retaining
+  active tag and next-window context.
+  Cards now lift and settle with subtle perspective and the landing page's easing, keeping
+  study controls stationary and respecting motion-speed and reduced-motion preferences.
+
 - Fixed the stuttering amber app-entry expansion by scaling and translating a small surface
   instead of animating a full-screen clip mask. Corners square off while the surface is still
   small; both expansion and reveal use native transform animations. Added a browser rendering

@@ -643,7 +643,8 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText(/Ordinary Practice ordering/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Revision plan/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Ordinary Practice ordering/)).not.toBeInTheDocument();
     expect(await screen.findByText(/What is erosion/)).toBeInTheDocument();
     await answerYes();
 
@@ -1542,6 +1543,8 @@ describe('LearnMode course/lesson scope', () => {
 
     await continueFromNotes();
     await screen.findByText(/cause$/);
+    expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
     const firstServedId = document
       .querySelector('[data-study-card-id]')
       ?.getAttribute('data-study-card-id');

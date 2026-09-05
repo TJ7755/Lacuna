@@ -47,43 +47,43 @@ function computeHeaderInfo({
   switch (mode) {
     case 'simple':
       return {
-        title: singleDeck ? `${deckName} · Simple learn` : 'Simple learn · all courses',
-        subtitle: 'Loop until every card is correct',
+        title: 'Simple Learn',
+        subtitle: tagPart,
       };
     case 'cram':
       return {
         title: `${deckName} · Revision plan`,
-        subtitle: `Ordinary Practice ordering${revisionNextWindowDay ? ` · Next ${revisionNextWindowDay}` : ''}`,
+        subtitle: revisionNextWindowDay ? `Next ${revisionNextWindowDay}` : tagPart,
       };
     case 'filtered-due':
       return {
         title: `${deckName} · ${filterPart}`,
-        subtitle: tagPart || 'Only cards that are due today',
+        subtitle: tagPart,
       };
     case 'filtered-new':
       return {
         title: `${deckName} · ${filterPart}`,
-        subtitle: tagPart || 'Only cards you have not seen yet',
+        subtitle: tagPart,
       };
     case 'filtered-leech':
       return {
         title: `${deckName} · ${filterPart}`,
-        subtitle: tagPart || 'Only leech cards',
+        subtitle: tagPart,
       };
     case 'filtered-flagged':
       return {
         title: `${deckName} · ${filterPart}`,
-        subtitle: tagPart || 'Only flagged cards',
+        subtitle: tagPart,
       };
     case 'filtered-suspended':
       return {
         title: `${deckName} · ${filterPart}`,
-        subtitle: tagPart || 'Only suspended cards',
+        subtitle: tagPart,
       };
     case 'filtered':
       return {
         title: `${deckName} · ${filterPart}`,
-        subtitle: tagPart || 'Filtered cards',
+        subtitle: tagPart,
       };
     default:
       return {

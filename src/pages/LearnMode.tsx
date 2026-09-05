@@ -540,10 +540,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   <motion.div
                     key={current.id}
                     data-study-card-id={current.id}
-                    initial={{ opacity: 0, scale: 0.992 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.992 }}
-                    transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                    initial={m > 0 ? { opacity: 0, y: 32, scale: 0.96, rotateX: -4 } : false}
+                    animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+                    exit={m > 0 ? { opacity: 0, y: -24, scale: 0.97, rotateX: 3 } : undefined}
+                    transition={{
+                      duration: 0.65 * m,
+                      ease: [0.16, 1, 0.3, 1],
+                      opacity: { duration: 0.35 * m },
+                    }}
+                    style={{ transformPerspective: 1200 }}
                     className="w-full"
                   >
                     {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
