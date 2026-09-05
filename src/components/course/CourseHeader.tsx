@@ -1,31 +1,31 @@
-// Shared "course cockpit" header: exam eyebrow, display title, and caller
-// content beneath — typically the HeaderStats pill row. Used by CoursePath
+// Shared "course cockpit" header: schedule metadata, display title, and caller
+// content beneath — typically the HeaderStats row. Used by CoursePath
 // (full course) and, in a leaner form, LessonView.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
-import { EditIcon } from '../ui/icons';
+import { CalendarIcon, EditIcon } from '../ui/icons';
 import { motionTransition } from '../ui/motion';
 
 interface CourseHeaderProps {
   /** e.g. "Exam 12 July 2026". */
   eyebrow: string;
-  /** Pulses a small accent dot beside the eyebrow — reserve for an imminent exam. */
+  /** Emphasises the schedule row for an imminent exam. */
   examUrgent?: boolean;
   title: string;
   /** Enables inline title editing. Omit for read-only/shared content. */
   onRename?: (name: string) => void | Promise<void>;
   /** Entity noun used by the rename control and input label. */
   renameLabel?: 'course' | 'lesson';
-  /** Content under the title — typically the HeaderStats pill row. */
+  /** Content under the title — typically the HeaderStats row. */
   children?: ReactNode;
   className?: string;
 }
 
 /**
- * Frame for a course/lesson header: eyebrow row, display title, and
+ * Frame for a course/lesson header: display title, schedule row, and
  * caller-supplied content beneath (the HeaderStats row), so the same frame serves
  * both the CoursePath header and LessonView's leaner adoption.
  */
@@ -86,15 +86,6 @@ export function CourseHeader({
       )}
     >
       <div className="relative">
-        <div className="mb-1 flex items-center gap-2 text-sm uppercase tracking-[0.16em] text-ink-faint">
-          {examUrgent && (
-            <span
-              className="exam-pulse inline-block h-1.5 w-1.5 rounded-full bg-accent"
-              aria-hidden="true"
-            />
-          )}
-          {eyebrow}
-        </div>
         <div className="mb-5 flex min-w-0 items-center gap-2">
           <AnimatePresence initial={false} mode="popLayout">
             {editingTitle ? (
@@ -151,6 +142,17 @@ export function CourseHeader({
           )}
         </div>
         {children && <div className="flex flex-wrap gap-x-8 gap-y-4">{children}</div>}
+        <div
+          role="group"
+          aria-label="Study schedule"
+          className={cn(
+            'mt-6 flex items-center gap-2 border-t border-line pt-4 text-sm',
+            examUrgent ? 'text-accent' : 'text-ink-soft',
+          )}
+        >
+          <CalendarIcon width={16} height={16} aria-hidden="true" />
+          {eyebrow}
+        </div>
       </div>
     </header>
   );

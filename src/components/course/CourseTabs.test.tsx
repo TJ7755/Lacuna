@@ -22,6 +22,12 @@ function renderAt(path: string) {
 }
 
 describe('CourseTabs', () => {
+  it('slides to another section with arrow keys', () => {
+    renderAt('/course/course-1');
+    fireEvent.keyDown(screen.getByRole('link', { name: 'Path' }), { key: 'ArrowRight' });
+    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute('aria-current', 'page');
+  });
+
   beforeEach(() => prefetchRoute.mockClear());
 
   it('marks Path active on the course root route', () => {

@@ -3,6 +3,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { CourseHeader } from './CourseHeader';
 
 describe('CourseHeader', () => {
+  it('places exam context after the title and actions in a labelled calendar row', () => {
+    render(
+      <CourseHeader eyebrow="Exam 1 June 2027" title="Mechanics">
+        <button>Study</button>
+      </CourseHeader>,
+    );
+    const context = screen.getByRole('group', { name: 'Study schedule' });
+    expect(context).toHaveTextContent('Exam 1 June 2027');
+    expect(
+      screen.getByRole('button', { name: 'Study' }).compareDocumentPosition(context) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('renames through the visible edit control', async () => {
     const onRename = vi.fn().mockResolvedValue(undefined);
     render(

@@ -511,3 +511,10 @@ must never block ordinary application startup.
 Motion hands `clipPath` to WAAPI, but Chromium still repaints and rasterises an animated inset
 mask each frame. Verify raster work, not just the presence of a native Animation. Explicit
 `transform` keyframes use Motion's native path; separate `x`/`y` aliases use its JavaScript path.
+
+## Motion drag callbacks do not cancel native link dragging
+
+On a Motion element, `onDragStart` belongs to Motion's gesture API, not the browser's
+native `dragstart` event. A custom pointer slider containing links must disable native
+link dragging on the links themselves; otherwise Chromium starts a drag and stops
+sending the pointer moves and release that the slider needs.

@@ -1,4 +1,4 @@
-// Stat pills for the course/lesson headers (CoursePath, LessonView),
+// Stats for the course/lesson headers (CoursePath, LessonView),
 // replacing the old editorial sentence with a row of small labelled cards.
 // Supports optional lesson progress. British English throughout.
 
@@ -23,7 +23,7 @@ export interface HeaderStatsProps {
   className?: string;
 }
 
-function Pill({
+function Stat({
   icon,
   value,
   label,
@@ -37,7 +37,7 @@ function Pill({
   return (
     <div
       className={cn(
-        'flex items-center justify-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-sm',
+        'flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm',
         accent ? 'border-accent/40 bg-accent-fg/10 text-ink' : 'border-line-strong text-ink-soft',
       )}
     >
@@ -48,7 +48,7 @@ function Pill({
   );
 }
 
-/** Row of labelled stat pills replacing the old standfirst sentence. */
+/** Row of labelled stats replacing the old standfirst sentence. */
 export function HeaderStats({
   dueCount,
   masteryPct,
@@ -73,7 +73,7 @@ export function HeaderStats({
   // who cares most about the countdown can put it first.
   const available: Partial<Record<CourseStatId, React.ReactNode>> = {
     due: (
-      <Pill
+      <Stat
         key="due"
         icon={<HourglassIcon width={15} height={15} />}
         value={dueCount === 0 ? 'Nothing' : String(dueCount)}
@@ -83,7 +83,7 @@ export function HeaderStats({
     ),
     unmapped:
       unseenCount > 0 ? (
-        <Pill
+        <Stat
           key="unmapped"
           icon={<CompassIcon width={15} height={15} />}
           value={String(unseenCount)}
@@ -91,7 +91,7 @@ export function HeaderStats({
         />
       ) : undefined,
     mastery: (
-      <Pill
+      <Stat
         key="mastery"
         icon={<GaugeIcon width={15} height={15} />}
         value={`${masteryPct}%`}
@@ -99,7 +99,7 @@ export function HeaderStats({
       />
     ),
     exam: (
-      <Pill
+      <Stat
         key="exam"
         icon={<CalendarClockIcon width={15} height={15} />}
         value={
@@ -121,7 +121,7 @@ export function HeaderStats({
       />
     ),
     lessons: lessonProgress ? (
-      <Pill
+      <Stat
         key="lessons"
         icon={<MilestoneIcon width={15} height={15} />}
         value={`${lessonProgress.reached} of ${lessonProgress.total}`}

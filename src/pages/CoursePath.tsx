@@ -396,7 +396,6 @@ export function CoursePath() {
     (n) => n.nodeType === 'lesson' && n.status === 'available',
   );
   const currentNodeId = currentLessonNode?.id;
-  const nextStudyLabel = studyTarget?.label;
   // Curriculum position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.
   const { reached, total } = pathPosition(visibleNodes);
@@ -460,7 +459,7 @@ export function CoursePath() {
         />
       )}
 
-      {/* Header — title, a row of labelled stat pills (HeaderStats), and the
+      {/* Header — title, a row of labelled stats (HeaderStats), and the
           Study action. */}
       <CourseHeader
         className="mb-12"
@@ -530,12 +529,12 @@ export function CoursePath() {
               {pendingUpdate && (
                 <Link
                   to={`/course/${courseId}/updates`}
-                  className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+                  className="inline-flex min-h-11 items-center rounded-lg bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
                 >
                   Review updates
                 </Link>
               )}
-              {/* The due count already leads the stat pills above, so this line
+              {/* The due count already leads the stats above, so this line
                   only speaks when there is something the pills don't say. */}
               {(courseCards.length === 0 || dueCardCount === 0) && (
                 <p className="text-sm text-ink-faint">
@@ -546,12 +545,7 @@ export function CoursePath() {
               )}
             </div>
           )}
-          {/* Quiet pointer to where Study will draw from — the "you are here"
-              lesson (currentLessonNode), reusing the same node the path
-              highlights below rather than recomputing it. */}
-          {!archived && nextStudyLabel && (
-            <p className="mt-1.5 break-words text-xs text-ink-faint">Next: {nextStudyLabel}</p>
-          )}
+
         </div>
       </CourseHeader>
 
