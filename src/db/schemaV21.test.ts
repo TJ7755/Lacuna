@@ -5,6 +5,7 @@ import { db } from './schema';
 import { defaultFsrsParameters } from '../fsrs/params';
 import type { Card, CourseAssessment, CourseRecord, ReviewLog } from './types';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { exportDatabase, importBackup, validateBackup } from './portability';
 
 const parameters = defaultFsrsParameters();
 
@@ -48,6 +49,9 @@ function legacyCard(history: ReviewLog[]): Card {
     scheduledDays: 0,
     learningSteps: 0,
     history,
+    tags: ['historical'],
+    suspended: false,
+    buriedUntil: null,
     createdAt: 1,
     updatedAt: 1,
   };
@@ -213,5 +217,13 @@ describe('schema v21 domain storage', () => {
     expect(
       await db.schedulingPerformance.where('schedulingUnitId').equals('lesson-1').count(),
     ).toBe(1);
+
+    const exported = JSON.parse(JSON.stringify(await exportDatabase()));
+    expect(validateBackup(exported)).toBe(true);
+    await db.delete();
+    await db.open();
+    await importBackup(exported, 'replace');
+    const restored = JSON.parse(JSON.stringify(await exportDatabase()));
+    expect({ ...restored, exportedAt: 0 }).toEqual({ ...exported, exportedAt: 0 });
   });
 });

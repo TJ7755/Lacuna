@@ -2,6 +2,10 @@
 
 ## Unreleased — landing and method redesign
 
+- Added a v20 migrated-profile export/restore comparison and a two-profile Chromium
+  sync test that forces a stale relay write, then verifies both independently added
+  Cards survive convergence and reload. The relay is a stateful test fixture.
+
 - Fixed older database upgrades losing inline review history before the v20/v26
   canonical-history migrations could copy it. The current Card write guard now
   leaves version-change transactions to the migration's own copy-and-verify step.

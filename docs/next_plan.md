@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 4 September 2026.
+Reviewed 5 September 2026.
 
 This is the current decision surface: what Lacuna is now, what maintenance follows, and what is
 deliberately frozen. Detailed specifications, implementation diaries and completed arcs belong in
@@ -22,6 +22,11 @@ complete managed-device matrix remain release-readiness work.
 
 The application is usable. It is not declared stable or school-wide ready until the data-durability,
 dependency, release and device checks below have evidence on the exact release commit.
+
+There are currently no active users with active data (maintainer confirmation, 5 September).
+Historical compatibility defects are therefore latent defects, not recovery incidents.
+Prioritise first-use study, authoring, backup and sync on the intended devices over an exhaustive
+historical-profile matrix; retain the small migration regression suite already established.
 
 ## Feature freeze
 
@@ -58,10 +63,18 @@ and review date.
 **Status:** in progress; schema frozen at v26 unless a data-integrity defect forces a migration.
 
 Media-bearing full-backup round trips, replace and merge restore points, and quota/persistence-denial
-recovery are delivered. Historical fixtures migrate, but the required post-migration re-export proof
-remains outstanding. Other remaining work is concurrent sync convergence, native AI evidence,
+recovery are delivered. v1/v8 migration, JSON export, clean restore and reopen now preserve reviews,
+scheduling and referenced image bytes; a v20 round trip also covers split performance and provenance.
+Two Chromium profiles preserve independent Card additions after a forced relay 412 and reload.
+This uses the stateful relay fixture, not the hosted service, and does not prove same-record conflict
+or deletion convergence. Remaining work is broader/live sync convergence, native AI evidence,
 locked-down Windows installed/portable/update checks, the clean-account macOS matrix, and an explicit
 signing/notarisation decision.
+
+Local checks on 5 September: 137 targeted migration, backup and sync tests; web/desktop typechecks;
+lint; Chromium full-backup recovery, first-device pairing and forced concurrent-write convergence;
+Electron companion transport and video embeds. These are development-checkout checks, not an
+exact-release or clean-account certification. The companion harness does not prove model-authored AI.
 
 **Exit:** no known path silently loses data and every advertised desktop artefact has reproducible
 evidence.
