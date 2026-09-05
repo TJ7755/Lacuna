@@ -5,12 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, type CallToolResult } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import {
-  _electron as electron,
-  expect,
-  test,
-  type ElectronApplication,
-} from '@playwright/test';
+import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(import.meta.url);
@@ -100,7 +95,9 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     await page.waitForLoadState('domcontentloaded');
     await page.emulateMedia({ reducedMotion: 'reduce' });
 
-    const openLacuna = page.getByRole('link', { name: 'Open Lacuna', exact: true });
+    const openLacuna = page
+      .getByRole('navigation', { name: 'Landing navigation' })
+      .getByRole('link', { name: 'Open Lacuna', exact: true });
     await expect(openLacuna).toBeVisible();
     await openLacuna.click();
     await page.waitForURL((url) => url.hash === '#/');
@@ -127,18 +124,12 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     const composer = panel.getByRole('textbox', { name: 'Message AI' });
     await expect(composer).toBeDisabled();
 
-    client = await startCompanion(
-      executablePath,
-      profile,
-      'Playwright native transport',
-    );
+    client = await startCompanion(executablePath, profile, 'Playwright native transport');
 
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name).sort()).toEqual(expectedTools);
 
-    const connection = toolData(
-      await client.callTool({ name: 'lacuna.connect', arguments: {} }),
-    );
+    const connection = toolData(await client.callTool({ name: 'lacuna.connect', arguments: {} }));
     expect(connection.connectionId).toEqual(expect.any(String));
     await expect(panel.getByText('Playwright native transport', { exact: true })).toBeVisible();
 
@@ -205,11 +196,7 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     client = undefined;
 
     await page.reload({ waitUntil: 'commit' });
-    client = await startCompanion(
-      executablePath,
-      profile,
-      'Playwright reload probe',
-    );
+    client = await startCompanion(executablePath, profile, 'Playwright reload probe');
     const reconnecting = client.callTool({ name: 'lacuna.connect', arguments: {} });
     await page.waitForLoadState('domcontentloaded');
     expect(toolData(await reconnecting).connectionId).toEqual(expect.any(String));

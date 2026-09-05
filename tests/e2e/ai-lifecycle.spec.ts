@@ -65,7 +65,7 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   const peerPage = await peerContext.newPage();
   await syncRelay.attach(peerPage);
   await peerPage.goto('/');
-  await peerPage.getByRole('button', { name: 'Open Lacuna', exact: true }).first().click();
+  await peerPage.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
   await peerPage.goto('/#/settings#settings-sync');
   await peerPage
     .locator('#settings-sync')

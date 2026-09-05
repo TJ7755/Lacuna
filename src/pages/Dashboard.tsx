@@ -8,7 +8,8 @@ import { StudySignals } from '../components/dashboard/StudySignals';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
-import { LacunaIcon, PlusIcon } from '../components/ui/icons';
+import { StudyDrawing } from '../components/ui/StudyDrawing';
+import { PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -97,8 +98,7 @@ export function Dashboard() {
       {/* On a phone the title and non-shrinking action share limited horizontal space.
           Keep the side padding tight while giving the single-line heading balanced
           vertical space at each breakpoint. */}
-      <header className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface px-4 py-5 md:mb-10 md:px-8 md:py-7">
-        <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
+      <header className="relative mb-8 py-5 md:mb-12 md:py-7">
         <div className="relative flex items-center justify-between gap-3 md:gap-4">
           <div className="min-w-0">
             <h1 className="font-display text-3xl tracking-tight md:text-6xl">Courses</h1>
@@ -390,12 +390,9 @@ function EmptyState({
   onCreateCourse: () => void;
 }) {
   return (
-    <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center">
-      <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+    <div className="relative flex flex-col items-center justify-center px-4 py-20 text-center">
       <div className="relative flex flex-col items-center">
-        <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm shadow-accent/20">
-          <LacunaIcon width={28} height={28} />
-        </div>
+        <StudyDrawing kind="course" className="mb-7 h-28 w-28" />
         <h2 className="mb-2 font-display text-2xl">
           {hasArchivedCourses ? 'No active courses' : 'No courses yet'}
         </h2>

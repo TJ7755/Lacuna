@@ -1,7 +1,14 @@
 @import 'tailwindcss';
 @import 'highlight.js/styles/github-dark.css';
 
-/* Distinctive typography (Fraunces / Geist / JetBrains Mono) is loaded via <link> in index.html. */
+/* Instrument Sans is shared with the landing page and available offline. */
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('/fonts/InstrumentSans-Variable.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -92,8 +99,9 @@
   --color-warning: hsl(var(--warning));
   --color-warning-fg: hsl(var(--warning-fg));
 
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Geist', system-ui, sans-serif;
+  --font-brand: 'Fraunces', 'Georgia', serif;
+  --font-display: 'Instrument Sans', sans-serif;
+  --font-body: 'Instrument Sans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
@@ -156,8 +164,8 @@
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-weight: 400;
+    letter-spacing: -0.025em;
   }
 
   ::selection {

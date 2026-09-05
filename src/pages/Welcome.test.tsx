@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createHashRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { forwardRef } from 'react';
@@ -52,9 +52,11 @@ describe('Welcome import entry points', () => {
   it('gives the welcome journey one primary app action and one desktop alternative', () => {
     render(<Welcome />, { wrapper: MemoryRouter });
 
-    expect(screen.getAllByRole('button', { name: 'Open Lacuna' })[0]).toHaveClass(
-      'border-accent-ink/40',
-    );
+    expect(
+      within(
+        screen.getByRole('heading', { name: 'Study for the day that counts.' }).parentElement!,
+      ).getByRole('link', { name: 'Open Lacuna' }),
+    ).toHaveClass('landing-cta');
     expect(screen.getAllByRole('link', { name: 'Download desktop app' })[0]).toHaveClass(
       'hidden',
       'sm:inline-flex',

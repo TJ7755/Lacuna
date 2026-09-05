@@ -504,7 +504,7 @@ export function Sidebar({
           <div className="leading-tight">
             <div
               className={cn(
-                'font-display tracking-tight',
+                'font-brand tracking-tight',
                 sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
               )}
             >

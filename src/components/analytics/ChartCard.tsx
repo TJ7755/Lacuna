@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
+import { StudyDrawing } from '../ui/StudyDrawing';
 
 /** A titled container giving every chart a consistent frame and empty state. */
 export function ChartCard({
@@ -9,6 +10,7 @@ export function ChartCard({
   description,
   empty,
   emptyMessage,
+  emptyDrawing = 'recall',
   children,
   delay = 0,
   className,
@@ -18,6 +20,7 @@ export function ChartCard({
   description?: string;
   empty?: boolean;
   emptyMessage?: string;
+  emptyDrawing?: ComponentProps<typeof StudyDrawing>['kind'];
   children: ReactNode;
   delay?: number;
   className?: string;
@@ -39,12 +42,16 @@ export function ChartCard({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24 * m, delay: (d + 0.1) * m }}
           className={cn(
-            'grid place-items-center text-sm text-ink-faint',
+            'flex flex-col items-center justify-center gap-5 text-center text-sm text-ink-faint',
             compactEmpty ? 'min-h-24 py-6' : 'h-64 min-h-[14rem]',
             className,
           )}
         >
-          {emptyMessage ?? 'Not enough data yet.'}
+          <StudyDrawing
+            kind={emptyDrawing}
+            className={compactEmpty ? 'h-16 w-16 opacity-70' : 'h-24 w-24 opacity-70'}
+          />
+          <p>{emptyMessage ?? 'Not enough data yet.'}</p>
         </motion.div>
       ) : (
         <motion.div

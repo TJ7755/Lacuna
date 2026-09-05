@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/Button';
+import { StudyDrawing } from '../ui/StudyDrawing';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useChartColours } from '../analytics/useChartColours';
 import {
@@ -140,11 +141,12 @@ export function SessionReport({
             initial={m > 0 ? { scale: 0, rotate: -25 } : false}
             animate={{ scale: 1, rotate: 0 }}
             transition={m > 0 ? { type: 'spring', stiffness: 420, damping: 16, delay: 0.15 * m } : { duration: 0 }}
-            className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-positive/15 text-positive"
+            className="mb-5 w-fit"
           >
-            <CheckIcon width={28} height={28} />
+            <StudyDrawing kind="recall" className="h-24 w-24" />
           </motion.div>
         )}
+        {!summary.reachedGoal && <StudyDrawing kind="recall" className="mb-5 h-24 w-24" />}
         <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
           {summary.reachedGoal
             ? 'Goal reached'

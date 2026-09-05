@@ -200,6 +200,7 @@ export function Analytics() {
         <FadeInView className="lg:col-span-2" delay={0.04} y={0}>
           <ChartCard
             title="Forecast"
+            emptyDrawing="prediction"
             description="Cards due and new cards scheduled per day for the next 30 days."
             empty={cards.length === 0}
             emptyMessage="Add cards to see your forecast."
@@ -247,6 +248,7 @@ export function Analytics() {
         <FadeInView delay={0.06} y={0}>
           <ChartCard
             title="Predicted exam-day score"
+            emptyDrawing="prediction"
             description="Average predicted retrievability across all courses over time."
             empty={trajectory.length < 2}
             emptyMessage="Study cards to start plotting your trajectory."
@@ -286,6 +288,7 @@ export function Analytics() {
         <FadeInView delay={0.12} y={0}>
           <ChartCard
             title="Prediction accuracy"
+            emptyDrawing="accuracy"
             description="Brier score for predicted recall versus actual recall. Lower is better."
             empty={prediction.length === 0}
             emptyMessage="Review cards with existing memory state to measure prediction accuracy."
@@ -342,6 +345,7 @@ export function Analytics() {
         <FadeInView delay={0.18} y={0}>
           <ChartCard
             title="Review volume"
+            emptyDrawing="activity"
             description="Reviews completed each day over the past 30 days."
             empty={!hasReviews}
             emptyMessage="Your daily review counts will appear here."
@@ -371,6 +375,7 @@ export function Analytics() {
         <FadeInView delay={0.24} y={0}>
           <ChartCard
             title="Study time"
+            emptyDrawing="time"
             description="Minutes spent studying each day over the past 30 days."
             empty={!hasReviews}
             emptyMessage="Study time will appear after your first review sessions."
@@ -409,6 +414,7 @@ export function Analytics() {
         <FadeInView delay={0.3} y={0}>
           <ChartCard
             title="Observed recall by card age"
+            emptyDrawing="recall"
             description="Every review, grouped by time since the card was first reviewed; n is shown in the tooltip."
             empty={!hasReviews}
             emptyMessage="Retention data will appear after your first reviews."
@@ -441,6 +447,7 @@ export function Analytics() {
         <FadeInView delay={0.36} y={0}>
           <ChartCard
             title="Leech count by course"
+            emptyDrawing="leech"
             description="Number of leech cards in each course."
             empty={leeches.length === 0}
             emptyMessage="No leeches found — great job keeping up with reviews!"
@@ -477,6 +484,7 @@ export function Analytics() {
         <FadeInView delay={0.42} y={0}>
           <ChartCard
             title="Stability profile"
+            emptyDrawing="stability"
             description="How many cards fall into each stability range."
             empty={cards.length === 0}
             emptyMessage="Add cards to see their stability profile."
