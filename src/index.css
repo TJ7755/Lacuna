@@ -99,7 +99,7 @@
   --color-warning: hsl(var(--warning));
   --color-warning-fg: hsl(var(--warning-fg));
 
-  --font-brand: 'Fraunces', Georgia, serif;
+  --font-brand: 'Fraunces', 'Georgia', serif;
   --font-display: 'Instrument Sans', sans-serif;
   --font-body: 'Instrument Sans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;

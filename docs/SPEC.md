@@ -162,7 +162,7 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
 ### 3.2 Typography
 
-- **Display (`font-display`, Instrument Sans):** all headings (`h1`–`h4`), weight 400, slight
+- **Display (`font-display`, Instrument Sans):** headings (`h1`–`h4`), default weight 400, slight
   negative letter-spacing. Page titles are `text-4xl`/`text-5xl`.
 - **Body (`font-body`, Instrument Sans):** all running text, weight 400. The font is bundled
   locally and shared with the landing page.
