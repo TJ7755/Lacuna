@@ -375,7 +375,7 @@ export function AppShell() {
                 <span className="block h-0.5 w-5 bg-current" />
               </span>
             </button>
-            <span className="flex items-center gap-2 font-display text-lg">
+            <span className="flex items-center gap-2 font-brand text-lg">
               <LacunaIcon width={18} height={18} className="text-accent" />
               Lacuna
             </span>

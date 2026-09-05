@@ -162,14 +162,21 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
 ### 3.2 Typography
 
-- **Display (`font-display`, Fraunces):** all headings (`h1`–`h4`), weight 500, slight
+- **Display (`font-display`, Instrument Sans):** all headings (`h1`–`h4`), weight 400, slight
   negative letter-spacing. Page titles are `text-4xl`/`text-5xl`.
-- **Body (`font-body`, Geist):** all running text, weight 400.
+- **Body (`font-body`, Instrument Sans):** all running text, weight 400. The font is bundled
+  locally and shared with the landing page.
+- **Brand (`font-brand`, Fraunces):** the Lacuna wordmark.
 - **Mono (`font-mono`, JetBrains Mono):** code, and `.tabular` numerals (progress %, stats,
   streak, timers) via `font-variant-numeric: tabular-nums`.
 - Eyebrow labels are small uppercase with wide tracking (`tracking-[0.18em]`,
   `text-ink-faint`).
 - A global font-scale control multiplies all text (see §15).
+
+Dashboard and course/lesson headings sit directly on the page without decorative panel
+frames. Course cards and functional grouping retain their boundaries. Empty-course and
+session-report states use small amber SVG line drawings in the landing page’s illustration
+style, without changing their controls or motion.
 
 ### 3.3 Motion language
 
@@ -488,7 +495,7 @@ course with exactly one lesson skips the path entirely and renders that lesson d
 (no one-node path). The header is the shared `CourseHeader` cockpit
 (`src/components/course/CourseHeader.tsx`, with stat primitives in `CourseHeaderStat.tsx`
 and `MasteryRing.tsx`): exam eyebrow (pulses when the exam is within three days, via the
-`exam-pulse` animation), serif title, and a row of stat blocks each carrying a plain-language
+`exam-pulse` animation), display title, and a row of stat blocks each carrying a plain-language
 one-line descriptor so distinct metrics can't be conflated. Curriculum position ("Lesson X of
 N") is a pacing metric, kept visually and semantically separate from mastery (mean predicted
 FSRS retention, shown as a ring rather than a bar) and from due-today (a live count of cards a

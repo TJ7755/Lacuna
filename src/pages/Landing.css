@@ -1,10 +1,3 @@
-@font-face {
-  font-family: Instrument Sans;
-  src: url(/fonts/InstrumentSans-Variable.ttf) format('truetype');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
 .landing-preview {
   --cinema: #131210;
   --ivory: #f5f2ee;
@@ -20,6 +13,44 @@
     sans-serif;
   -webkit-user-select: text;
   user-select: text;
+}
+.landing-faq {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 48px;
+  padding: 100px var(--landing-gutter) 140px;
+}
+.landing-faq h2 {
+  font-size: clamp(32px, 4vw, 52px);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+.landing-faq details {
+  border-bottom: 1px solid #b1a89d33;
+}
+.landing-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 64px;
+  padding: 18px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 18px;
+}
+.landing-faq summary::-webkit-details-marker { display: none; }
+.landing-faq summary span { color: var(--amber); font-size: 24px; }
+.landing-faq details[open] summary span { transform: rotate(45deg); }
+.landing-faq p {
+  max-width: 52ch;
+  padding: 0 32px 24px 0;
+  color: var(--stone);
+  font-size: 15px;
+  line-height: 1.7;
+}
+@media (max-width: 700px) {
+  .landing-faq { grid-template-columns: 1fr; gap: 28px; padding-block: 64px 80px; }
 }
 .landing-preview a,
 .landing-preview button {
@@ -42,7 +73,7 @@
   gap: 24px;
 }
 .landing-brand {
-  font-family: var(--font-display);
+  font-family: var(--font-brand);
   display: inline-flex;
   align-items: center;
   gap: 10px;

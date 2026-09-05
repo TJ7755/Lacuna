@@ -1,4 +1,4 @@
-// Shared "course cockpit" header: exam eyebrow, serif title, and caller
+// Shared "course cockpit" header: exam eyebrow, display title, and caller
 // content beneath — typically the HeaderStats pill row. Used by CoursePath
 // (full course) and, in a leaner form, LessonView.
 
@@ -25,7 +25,7 @@ interface CourseHeaderProps {
 }
 
 /**
- * Frame for a course/lesson header: eyebrow row, serif display title, and
+ * Frame for a course/lesson header: eyebrow row, display title, and
  * caller-supplied content beneath (the HeaderStats row), so the same frame serves
  * both the CoursePath header and LessonView's leaner adoption.
  */
@@ -81,11 +81,10 @@ export function CourseHeader({
   return (
     <header
       className={cn(
-        'relative overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8',
+        'relative py-6 md:py-8',
         className,
       )}
     >
-      <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
       <div className="relative">
         <div className="mb-1 flex items-center gap-2 text-sm uppercase tracking-[0.16em] text-ink-faint">
           {examUrgent && (

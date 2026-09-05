@@ -3,6 +3,7 @@ import { CoursePathIllustration } from '../components/landing/CoursePathIllustra
 import { ClosingScenes } from '../components/landing/ClosingScenes';
 import { ExamProjection } from '../components/landing/ExamProjection';
 import { LandingNav } from '../components/landing/LandingNav';
+import { LandingFaq } from '../components/landing/LandingFaq';
 import { LacunaIcon } from '../components/ui/icons';
 import { MemoryScene } from '../components/landing/MemoryScene';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
@@ -65,6 +66,7 @@ export function Landing() {
         <CoursePathIllustration />
         <ExamProjection />
         <ClosingScenes />
+        <LandingFaq />
       </main>
       <footer className="landing-footer">
         <div className="landing-footer-start">

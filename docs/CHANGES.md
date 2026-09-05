@@ -2,6 +2,12 @@
 
 ## Unreleased — landing and method redesign
 
+- Carried the landing page’s locally bundled Instrument Sans into app headings and body text,
+  retaining Fraunces for the Lacuna wordmark. Removed decorative frames from dashboard and
+  course/lesson headings and the empty dashboard. Added amber SVG course and recall drawings
+  to empty-course and session-report states. Existing animations and course selection remain.
+  Added a four-question landing FAQ covering pricing, exam dates, Anki import and offline study.
+
 - Fixed course and lesson rename fields opening without keyboard focus. Focus and title
   selection now follow the animated input’s mount instead of a premature animation-frame callback.
 
