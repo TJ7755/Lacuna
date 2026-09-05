@@ -518,3 +518,9 @@ On a Motion element, `onDragStart` belongs to Motion's gesture API, not the brow
 native `dragstart` event. A custom pointer slider containing links must disable native
 link dragging on the links themselves; otherwise Chromium starts a drag and stops
 sending the pointer moves and release that the slider needs.
+
+## Worker ID generation must not import the database schema
+
+`makeId` remains re-exported from `schema.ts` for database callers, but workers must import it
+from `utils/id.ts`. Importing the schema solely to generate IDs executes database initialisation
+and pulls migrations and storage dependencies into an otherwise isolated parser.

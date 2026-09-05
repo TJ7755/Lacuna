@@ -2752,7 +2752,9 @@ defaults** is always available.
 
 - UI reads use Dexie `useLiveQuery` hooks (`src/state/useData.ts` and course-specific hooks) so
   the interface reacts to writes automatically. Non-React callers use the plain async queries in
-  `src/db/read.ts`.
+  `src/db/read.ts`. Assessment details resolve all course assessments from one read transaction
+  over assessments, lessons, cards and lesson links; coverage does not hydrate review histories.
+  Course diagnostic counts use indexed counts rather than materialising cards.
 - On first run a small, deletable **demo course** (with lessons, notes and cards) is
   seeded (`seedIfFirstRun`, `src/db/seed.ts`).
 - A daily restore point is taken in the background after seeding.
@@ -2997,6 +2999,16 @@ provenance attestation. The maintainer procedure and verification commands are r
 `docs/maintenance/release.md`.
 
 ### Build output
+
+Anki ZIP/SQLite parsing lives in `src/db/apkgParser.ts`, separate from the persistence and
+worker launcher in `src/db/apkgImport.ts`. The worker cannot import application storage;
+`src/build/apkgBoundary.test.ts` enforces that boundary. Worker-free environments load the
+parser dynamically. Imported image hashes come from the existing asset-storage result.
+
+The Electron MCP build bundles the SDK and Zod into shared ESM chunks. Only Electron,
+electron-log and Node built-ins remain external to those chunks. Generated output includes
+full third-party licence texts and removes obsolete chunks before each build. The SDK and
+Zod remain development dependencies because their used code is already in the package.
 
 Packaged files land in `release/` (gitignored). The electron-builder
 configuration is at `electron/electron-builder.yml`. Packaging stays on the maintained Electron

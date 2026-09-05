@@ -9,15 +9,12 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 };
 const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
 
-const packagedRuntimeDependencies = [
-  '@modelcontextprotocol/server',
-  'electron-log',
-  'electron-updater',
-  'zod',
-] as const;
+const packagedRuntimeDependencies = ['electron-log', 'electron-updater'] as const;
 
 const buildOnlyDependencies = [
   '@modelcontextprotocol/client',
+  '@modelcontextprotocol/server',
+  'zod',
   '@napi-rs/wasm-runtime',
   '@open-spaced-repetition/binding',
   '@vercel/analytics',
@@ -66,9 +63,7 @@ describe('Electron package boundary', () => {
     expect(builderConfig).toContain(
       "  - '!**/{__tests__,__mocks__,test,tests,coverage,test-results,storybook}/**/*'",
     );
-    expect(builderConfig).toContain(
-      "  - '!**/*.{test,spec}.{js,cjs,mjs,ts,tsx,cts,mts,jsx}'",
-    );
+    expect(builderConfig).toContain("  - '!**/*.{test,spec}.{js,cjs,mjs,ts,tsx,cts,mts,jsx}'");
     expect(builderConfig).toContain(
       "  - '!**/{README*,CHANGELOG*,CHANGES*,HISTORY*,CONTRIBUTING*,CODE_OF_CONDUCT*,SECURITY*}.{md,markdown,txt}'",
     );

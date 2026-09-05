@@ -2,6 +2,20 @@
 
 ## Unreleased — landing and method redesign
 
+- Bundled the Electron MCP SDK and schema implementation into shared modules, retaining
+  their full licence texts. The macOS application archive falls from 18.05 MB to 11.12 MB;
+  Windows archive budgets now enforce 14 MB and 600 files. Dependency versions are unchanged.
+- Separated Anki ZIP/SQLite parsing from application persistence, reducing its worker from
+  198 KB to 56 KB. Retained the worker-free fallback, added a real SQLite parser fixture and
+  a build-boundary regression, and removed duplicate hashing during image ingestion.
+- Assessment detail queries now share a consistent course snapshot, scope lesson links and
+  omit unused review histories. Diagnostic counts use indexed aggregate queries rather than
+  loading cards or issuing a count per lesson. Query/hash regressions fail on the merge base.
+- Removed two disconnected AI fixture/conformance modules and their self-only tests (318 lines).
+  Existing executable AI contracts and lifecycle tests remain.
+
+- Updated the packaged interaction harness to use the current landing-page link rather than
+  waiting indefinitely for the retired button.
 - Fixed the manual AI smoke runner to resolve Electron through its package entry point,
   supporting Electron 42’s lazy runtime installation and non-macOS executables.
 

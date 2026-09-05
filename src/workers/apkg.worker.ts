@@ -3,11 +3,8 @@
 // Size and zip-bomb guards (50 MB file / 100 MB uncompressed / 5000 files) live in
 // parseApkgBuffer — this worker delegates directly, so no duplicate check is needed.
 
-import {
-  parseApkgBuffer,
-  type ApkgImportResult,
-  type ApkgParseOptions,
-} from '../db/apkgImport';
+import { parseApkgBuffer } from '../db/apkgParser';
+import type { ApkgImportResult, ApkgParseOptions } from '../db/apkgTypes';
 
 interface ApkgWorkerRequest {
   buffer: ArrayBuffer;

@@ -2,7 +2,7 @@
 //
 // This is the non-React counterpart to src/state/useData.ts / useCourseData.ts: the
 // hooks keep using useLiveQuery for the UI, while this module is for callers with no
-// React tree — chiefly the future MCP tool surface (src/mcp/tools/read.ts), but usable
+// React tree — chiefly the MCP tool surface (src/mcp/tools/read.ts), but usable
 // by any non-React caller. Every function is a plain async function built directly on
 // Dexie (see src/db/diagnostics.ts for the established non-hook style of touching the
 // database) and the existing pure analytics modules — no scoring/eligibility logic is
@@ -22,6 +22,7 @@ import type {
   Course,
   CourseAssessment,
   Lesson,
+  LessonCardLink,
   Occlusion,
   RevisionPlan,
   Sequence,
@@ -296,17 +297,12 @@ export interface CourseAssessmentDetails {
   };
 }
 
-/** Full persisted semantics plus authoritative resolved scope for one assessment. */
-export async function getCourseAssessmentDetails(
-  assessmentId: string,
-): Promise<CourseAssessmentDetails | null> {
-  const assessment = await db.courseAssessments.get(assessmentId);
-  if (!assessment) return null;
-  const [lessons, cards, links] = await Promise.all([
-    listLessons(assessment.courseId),
-    listCardsForCourse(assessment.courseId),
-    db.lessonCards.toArray(),
-  ]);
+function assessmentDetails(
+  assessment: CourseAssessment,
+  lessons: Lesson[],
+  cards: Card[],
+  links: LessonCardLink[],
+): CourseAssessmentDetails {
   const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
   return {
     assessment,
@@ -317,13 +313,51 @@ export async function getCourseAssessmentDetails(
   };
 }
 
+async function assessmentScope(courseId: string) {
+  // Coverage uses card membership, never review history. Keep the persisted cards
+  // unhydrated so listing assessments does not allocate an entire review log.
+  const [lessons, cards] = await Promise.all([
+    listLessons(courseId),
+    db.cards.where('courseId').equals(courseId).toArray(),
+  ]);
+  const links = lessons.length
+    ? await db.lessonCards
+        .where('lessonId')
+        .anyOf(lessons.map((lesson) => lesson.id))
+        .toArray()
+    : [];
+  return { lessons, cards, links };
+}
+
+/** Full persisted semantics plus authoritative resolved scope for one assessment. */
+export async function getCourseAssessmentDetails(
+  assessmentId: string,
+): Promise<CourseAssessmentDetails | null> {
+  return db.transaction(
+    'r',
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards],
+    async () => {
+      const assessment = await db.courseAssessments.get(assessmentId);
+      if (!assessment) return null;
+      const { lessons, cards, links } = await assessmentScope(assessment.courseId);
+      return assessmentDetails(assessment, lessons, cards, links);
+    },
+  );
+}
+
 /** Every assessment and its resolved scope, ordered by assessment date. */
 export async function listCourseAssessmentDetails(
   courseId: string,
 ): Promise<CourseAssessmentDetails[]> {
-  const assessments = await listCourseAssessments(courseId);
-  return Promise.all(
-    assessments.map(async (assessment) => (await getCourseAssessmentDetails(assessment.id))!),
+  return db.transaction(
+    'r',
+    [db.courseAssessments, db.lessons, db.cards, db.lessonCards],
+    async () => {
+      const assessments = await listCourseAssessments(courseId);
+      if (assessments.length === 0) return [];
+      const { lessons, cards, links } = await assessmentScope(courseId);
+      return assessments.map((assessment) => assessmentDetails(assessment, lessons, cards, links));
+    },
   );
 }
 
@@ -356,22 +390,21 @@ export async function diagnosticsSummary(
 
   const lessons = await listLessons(courseId);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [cards, notesCounts, lessonCardsCounts, practiceNodes, assessments, sequences] =
-    await Promise.all([
-      listCardsForCourse(courseId),
-      Promise.all(lessonIds.map((id) => db.notes.where('lessonId').equals(id).count())),
-      Promise.all(lessonIds.map((id) => db.lessonCards.where('lessonId').equals(id).count())),
-      db.practiceNodes.where('courseId').equals(courseId).count(),
-      listCourseAssessmentDetails(courseId),
-      db.sequences.where('courseId').equals(courseId).count(),
-    ]);
+  const [cards, notes, lessonCards, practiceNodes, assessments, sequences] = await Promise.all([
+    db.cards.where('courseId').equals(courseId).count(),
+    lessonIds.length ? db.notes.where('lessonId').anyOf(lessonIds).count() : 0,
+    lessonIds.length ? db.lessonCards.where('lessonId').anyOf(lessonIds).count() : 0,
+    db.practiceNodes.where('courseId').equals(courseId).count(),
+    listCourseAssessmentDetails(courseId),
+    db.sequences.where('courseId').equals(courseId).count(),
+  ]);
 
   return {
     courseId,
     lessons: lessons.length,
-    cards: cards.length,
-    notes: notesCounts.reduce((sum, count) => sum + count, 0),
-    lessonCards: lessonCardsCounts.reduce((sum, count) => sum + count, 0),
+    cards,
+    notes,
+    lessonCards,
     practiceNodes,
     courseAssessments: assessments.length,
     assessments,

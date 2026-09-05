@@ -23,9 +23,9 @@ type FileRecord = {
 
 const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
-  archiveBytes: 22_000_000,
-  payloadBytes: 22_000_000,
-  payloadFileCount: 1_400,
+  archiveBytes: 14_000_000,
+  payloadBytes: 14_000_000,
+  payloadFileCount: 600,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,

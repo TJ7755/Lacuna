@@ -1,5 +1,68 @@
 # Lacuna performance audit
 
+## Worker, query and desktop package cleanup (5 September 2026)
+
+Compared with merge-base `62b539ab` (the merged landing/dead-font cleanup), using the
+same installed dependency versions and macOS arm64 unpacked packaging configuration:
+
+| Measurement | Before | After |
+|---|---:|---:|
+| macOS `app.asar` | 18,047,205 bytes | 11,115,563 bytes |
+| ASAR payload | 17,735,725 bytes | 10,995,955 bytes |
+| ASAR payload files | 1,211 | 453 |
+| Anki parsing worker | 198,261 bytes | 56,326 bytes |
+| Anki worker gzip (level 9) | 61,300 bytes | 20,841 bytes |
+| Initial JavaScript | 877,362 bytes | 877,353 bytes |
+
+The archive shrank 38.4%; the parsing worker shrank 71.6%. These are application
+archive and JavaScript measurements, not installer download or whole-process RAM
+measurements. The unchanged Chromium runtime still dominates the installed app.
+Initial application JavaScript is effectively unchanged.
+
+The MCP build now bundles its SDK and Zod into shared ESM chunks, retaining Electron
+and electron-log as runtime externals. It emits the full licences of every bundled
+package and clears obsolete generated chunks before building. No dependency version
+changed. The Windows archive/payload budget is now 14 MB and 600 files, down from
+22 MB and 1,400 files; existing locale and source-map limits remain.
+
+Anki parsing now has no application database dependency. ZIP/SQLite parsing, Anki
+field mapping and persistence are separate modules; the browser only loads the parser
+on the main thread when workers are unavailable. Image ingestion reuses the hash
+returned by asset storage rather than hashing the bytes twice. The two-asset regression
+now observes two SHA-256 calls instead of three.
+
+Assessment details share one course snapshot across all assessments. The three-assessment
+regression drops card and lesson reads from three each to one, scopes lesson links, and
+eliminates review-history hydration. Diagnostic note/link counts use indexed multi-lesson
+counts; the card count also avoids loading card bodies and review histories. These
+remove allocations and database requests without claiming an unmeasured heap reduction.
+
+Four regression assertions fail against the merge base and pass after the changes.
+The parser also has a real SQLite/ZIP fixture covering standard cards, cloze cards,
+media and review-history extraction. Two disconnected AI fixture/conformance islands
+were removed (318 lines); they had no production consumers and do not affect bundle size.
+
+Validation: 3,029 unit tests pass, as do web/Electron typechecks, lint, the asset budget,
+the native AI companion message cycle, packaged macOS interactions and production offline
+reload. The packaged interaction harness's stale button selector was corrected to the
+current landing link in a separate commit. The Windows x64 package cross-built on macOS has the same 11,115,563-byte archive and
+453 payload files, and passes the tightened archive, source-map, build-only-asset and locale
+checks. Its Electron ZIP was verified against the release's SHA-256 manifest before use.
+Windows runtime execution requires the native Windows CI runner; macOS cross-packaging is
+not a substitute.
+
+### Remaining opportunities
+
+- The sidebar and dashboard independently load and hydrate much of the same data.
+  Sharing their base snapshot is the next runtime priority, with subscription/query-count
+  tests across writes, navigation and the mobile drawer.
+- CoursePath similarly combines fragmented hooks that reread its course snapshot.
+  Reuse the existing study-flow snapshot rather than introducing another cache.
+- Command palette and study sheet code is still imported eagerly. Any lazy-loading change
+  should preserve focus restoration, exit animation and first-interaction latency tests.
+- The maths verifier's narrow expression grammar still uses mathjs. Replacement needs
+  explicit syntax/numeric parity evidence; dependency removal alone is not sufficient.
+
 ## Small interaction feedback (2 September 2026)
 
 The heatmap and upcoming-assessment feedback uses existing Motion runtime primitives and CSS
