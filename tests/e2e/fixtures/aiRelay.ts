@@ -33,7 +33,7 @@ export async function pairBrowserAndTerminal(
   );
 
   await page.goto('/');
-  await page.getByRole('button', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
   await page.goto('/#/settings#settings-ai');
   await page.getByRole('switch', { name: 'Enable AI' }).click();
   await page.getByRole('button', { name: 'AI', exact: true }).first().click();

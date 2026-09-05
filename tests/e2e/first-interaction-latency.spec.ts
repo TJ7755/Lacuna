@@ -95,8 +95,8 @@ test('prefetches the Cards chunk before the first intended click', async ({ page
 
 async function openSeededCourse(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Study for the day that counts.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Open Lacuna', exact: true }).first().click();
+  await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Curriculum', exact: true })).toBeVisible();
