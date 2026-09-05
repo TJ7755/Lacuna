@@ -2,7 +2,8 @@
 
 ## Unreleased — landing and method redesign
 
-- Added three non-repeating study scenes alongside the curriculum path, and distinct empty-state
+- Replaced straight curriculum connectors with varied ink-like curves, retaining amber for
+  completed stretches. Added three non-repeating study scenes alongside the curriculum path, and distinct empty-state
   drawings for analytics subjects. Share now uses a consistent text inset and drops the redundant
   “Collaborate” label. Drawings stay decorative and leave charts and controls unobstructed.
 

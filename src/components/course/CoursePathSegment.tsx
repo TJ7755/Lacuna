@@ -122,7 +122,7 @@ export function PathNodeWithLine({
           }
         />
       )}
-      {!isLast && <PathLine completed={segmentCompleted} />}
+      {!isLast && <PathLine completed={segmentCompleted} index={index} />}
     </div>
   );
 }
