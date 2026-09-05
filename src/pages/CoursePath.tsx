@@ -4,20 +4,11 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import { db } from '../db/schema';
-import {
-  useLessons,
-  useCourse,
-  useCourseAssessments,
-  useCourseCards,
-  useCoursePerformance,
-  useCourseSummary,
-  usePendingMergeReview,
-  usePracticeNodes,
-} from '../state/useCourseData';
+import { usePendingMergeReview } from '../state/useCourseData';
+import { useCourseStudyFlowRecords } from '../state/useCourseStudyFlowRecords';
+import { computeCourseSummaries } from '../state/courseSummaries';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
@@ -59,10 +50,6 @@ import { useToast } from '../components/ui/Toast';
 import type {
   Card,
   CourseAssessment,
-  LessonCardExposure,
-  LessonCardLink,
-  LessonCompletion,
-  PracticeMilestone,
   PracticeNode,
 } from '../db/types';
 
@@ -94,40 +81,29 @@ export function CoursePath() {
   } | null>(null);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
 
-  // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
-  // When courseId is absent the query resolves immediately to null.
-  const course = useCourse(courseId);
-  const lessons = useLessons(courseId);
-  const assessments = useCourseAssessments(courseId);
-  const courseCards = useCourseCards(courseId);
-  const summary = useCourseSummary(courseId);
-  const practiceNodes = usePracticeNodes(courseId);
+  const records = useCourseStudyFlowRecords(courseId);
+  const course = records?.course;
+  const lessons = records?.lessons;
+  const courseCards = records?.cards;
+  // Match the existing Dexie sort: an undated assessment keeps its relative position.
+  const assessments = useMemo(
+    () => records?.assessments.slice().sort((a, b) => (a.examDate ?? NaN) - (b.examDate ?? NaN)),
+    [records],
+  );
+  const practiceNodes = records?.practiceNodes;
+  const lessonLinks = records?.links;
+  const exposures = records?.exposures;
+  const lessonCompletions = records?.completions;
+  const practiceMilestones = records?.milestones;
+  const perf = records?.performance;
+  const summary = useMemo(() => {
+    if (!records) return undefined;
+    if (!records.course) return null;
+    return computeCourseSummaries(
+      [records.course], records.lessons, records.cards, records.assessments,
+    )[records.course.id];
+  }, [records]);
   const pendingUpdate = usePendingMergeReview(courseId);
-  const lessonIds = useMemo(() => (lessons ?? []).map((lesson) => lesson.id), [lessons]);
-  const lessonIdsKey = lessonIds.join(',');
-  const lessonLinks = useLiveQuery<LessonCardLink[]>(
-    () => (lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : []),
-    [lessonIdsKey],
-  );
-  const exposures = useLiveQuery<LessonCardExposure[]>(
-    () =>
-      lessonIds.length > 0
-        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
-        : [],
-    [lessonIdsKey],
-  );
-  const lessonCompletions = useLiveQuery<LessonCompletion[]>(
-    () =>
-      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-    [lessonIdsKey],
-  );
-  const practiceMilestones = useLiveQuery<PracticeMilestone[]>(
-    () => (courseId ? db.practiceMilestones.where('courseId').equals(courseId).toArray() : []),
-    [courseId],
-  );
-  // Per-deck response-time calibration is resolved behind the Course/Lesson
-  // boundary and re-scoped into one course-wide mean below.
-  const perf = useCoursePerformance(courseId, courseCards);
   const archived = course?.archived === true;
   const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
   const authoring = course ? !archived && isLessonAuthoringMode(course) : false;

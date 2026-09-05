@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateCourse } from '../../db/repository';
 import type { Course } from '../../db/types';
@@ -8,12 +8,16 @@ import {
   markFinalExamHandled,
   useAfterFinalExamPolicy,
 } from '../../state/finalExamLifecycle';
-import { useCourses } from '../../state/useCourseData';
+import { useSidebarData } from '../../state/useCourseData';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 
 export function FinalExamLifecycleController() {
-  const courses = useCourses();
+  const sharedCourses = useSidebarData()?.courses;
+  const courses = useMemo(
+    () => sharedCourses?.slice().sort((a, b) => a.createdAt - b.createdAt),
+    [sharedCourses],
+  );
   const [policy] = useAfterFinalExamPolicy();
   const { notify } = useToast();
   const navigate = useNavigate();

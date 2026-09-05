@@ -18,7 +18,6 @@ import type {
 } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { practiceScopeVersion } from '../course/studyPools';
-import type { CourseSummary } from '../state/useCourseData';
 
 const mockNavigate = vi.fn();
 const {
@@ -49,7 +48,6 @@ let mockCourse: Course | null | undefined;
 let mockLessons: Lesson[] | undefined;
 let mockAssessments: CourseAssessment[] | undefined;
 let mockCourseCards: Card[] | undefined;
-let mockSummary: CourseSummary | null | undefined;
 let mockPracticeNodes: PracticeNode[] | undefined;
 let mockPendingMerge: null;
 let mockPerformance: unknown[] | undefined;
@@ -96,9 +94,20 @@ vi.mock('../state/useCourseData', () => ({
   useCourseAssessments: () => mockAssessments,
   useCourseCards: () => mockCourseCards,
   useCoursePerformance: () => mockPerformance,
-  useCourseSummary: () => mockSummary,
   usePracticeNodes: () => mockPracticeNodes,
   usePendingMergeReview: () => mockPendingMerge,
+}));
+
+vi.mock('../state/useCourseStudyFlowRecords', () => ({
+  useCourseStudyFlowRecords: () => {
+    if (mockCourse === undefined || mockLessons === undefined || mockAssessments === undefined ||
+        mockCourseCards === undefined || mockPracticeNodes === undefined || mockPerformance === undefined) return undefined;
+    return {
+      course: mockCourse, lessons: mockLessons, assessments: mockAssessments, cards: mockCourseCards,
+      practiceNodes: mockPracticeNodes, performance: mockPerformance, links: live.links,
+      exposures: live.exposures, completions: live.completions, milestones: live.milestones,
+    };
+  },
 }));
 
 vi.mock('./LessonView', () => ({
@@ -177,17 +186,6 @@ const practiceNode: PracticeNode = {
   updatedAt: 0,
 };
 
-const summary: CourseSummary = {
-  lessonCount: 2,
-  cardCount: 0,
-  mastery: 0,
-  unreviewed: 0,
-  eligible: 0,
-  completedLessonCount: 0,
-  reviewedCardCount: 0,
-  reviewedTodayCount: 0,
-};
-
 function makeCard(id: string, lessonId: string): Card {
   return {
     id,
@@ -249,7 +247,6 @@ beforeEach(() => {
   mockLessons = [lesson1, lesson2];
   mockAssessments = [];
   mockCourseCards = [];
-  mockSummary = summary;
   mockPracticeNodes = [];
   mockPendingMerge = null;
   mockPerformance = [];

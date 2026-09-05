@@ -452,6 +452,13 @@ a central route guard returns direct study, authoring or mutation URLs to that o
 keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
 lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
 
+Dashboard and navigation share one shell-owned live query, also supplying the final-exam
+controller. Desktop and mobile navigation consume the same derived result. Dashboard alone
+retains hydrated cards and observes lesson progress and course calibration; leaving it removes
+those extra subscriptions after the navigation query resolves. Full-screen Learn navigation
+owns its query only while its drawer is mounted. Course Path derives its header summary from
+the same course records used to build its path, using the study conductor's shared reader.
+
 **Course path** (`/course/:courseId`):
 
 ```

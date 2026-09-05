@@ -13,7 +13,7 @@ let afterFinalExam: 'ask' | 'archive' | 'keep-revising' = 'ask';
 let courses: Course[] = [];
 
 vi.mock('../../db/repository', () => ({ updateCourse }));
-vi.mock('../../state/useCourseData', () => ({ useCourses: () => courses }));
+vi.mock('../../state/useCourseData', () => ({ useSidebarData: () => ({ courses }) }));
 vi.mock('../../state/finalExamLifecycle', async (importOriginal) => {
   const actual = await importOriginal<typeof FinalExamLifecycle>();
   return { ...actual, useAfterFinalExamPolicy: () => [afterFinalExam, vi.fn()] };

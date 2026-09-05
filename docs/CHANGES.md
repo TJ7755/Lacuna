@@ -2,6 +2,14 @@
 
 ## Unreleased — landing and method redesign
 
+- Shared the shell's cards, history, courses and assessments between desktop/mobile navigation,
+  Dashboard and the final-exam controller. Navigation retains derived figures only; leaving
+  Dashboard drops its additional subscriptions and full card result. Scheduling performance
+  is read in one batch across courses, preserving Dashboard's separate course calibration.
+- Course Path now reuses the study conductor's existing course reader and computes its header
+  summary from those records, removing the unused standalone summary hook. Database regressions demonstrate one card/history read instead
+  of two on both Dashboard and Course Path, with no extra read when mobile navigation opens.
+
 - Fixed Anki field conversion decoding nested quote entities twice. Entity decoding now
   happens in one pass, preserving literal entity text from imported notes.
 

@@ -1,11 +1,13 @@
 import 'fake-indexeddb/auto';
+import type { ReactNode } from 'react';
+import { ShellCourseDataProvider } from './ShellCourseData';
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCourse, createCourseCard } from '../db/repository';
+import { createCourse, createCourseCard, createLesson } from '../db/repository';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { db } from '../db/schema';
 import { computeStudyStats } from '../fsrs/stats';
-import { useCourseDashboardData } from './useCourseData';
+import { useCourseDashboardData, useSidebarData } from './useCourseData';
 
 beforeEach(async () => {
   await Promise.all([
@@ -29,6 +31,12 @@ describe('useCourseDashboardData', () => {
   it('computes the complete StudyStats object from Course calibration', async () => {
     const course = await createCourse('Biology');
     const card = await createCourseCard(course.id, 'front_back', 'Cell', 'Unit of life');
+    const lesson = await createLesson(course.id, 'Introduction');
+    await db.lessonCompletions.put({
+      lessonId: lesson.id,
+      completedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
     const now = Date.now();
     await db.cards.update(card.id, { due: now + 24 * 60 * 60 * 1000 });
     await db.coursePerformance.update(course.id, {
@@ -48,8 +56,20 @@ describe('useCourseDashboardData', () => {
 
     const persistedCards = await hydrateCardsWithHistory(await db.cards.toArray());
     const expected = computeStudyStats(persistedCards, new Map([[course.id, 30]]));
-    const { result } = renderHook(() => useCourseDashboardData());
+    const { result } = renderHook(
+      () => ({ dashboard: useCourseDashboardData(), sidebar: useSidebarData() }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <ShellCourseDataProvider includeDashboard>{children}</ShellCourseDataProvider>
+        ),
+      },
+    );
 
-    await waitFor(() => expect(result.current?.stats).toEqual(expected));
+    await waitFor(() => expect(result.current.dashboard?.stats).toEqual(expected));
+    expect(result.current.sidebar?.stats).toEqual(
+      computeStudyStats(persistedCards, new Map([[card.schedulingUnitId!, 5]])),
+    );
+    expect(result.current.dashboard?.summaries[course.id].completedLessonCount).toBe(1);
+    expect(result.current.sidebar?.summaries[course.id].completedLessonCount).toBe(0);
   });
 });

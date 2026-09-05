@@ -1,9 +1,5 @@
 import { useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/schema';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
-import { performanceForCourseBackingDecks } from '../db/backingDecks';
-import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
+import { useCourseStudyFlowRecords } from './useCourseStudyFlowRecords';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
@@ -16,18 +12,7 @@ import {
   type CourseStudyFlowSnapshot,
 } from '../course/studyFlowSnapshot';
 import { planNextStudyStep, type StudyFlowDecision } from '../course/studyFlowPlanner';
-import type {
-  Course,
-  Lesson,
-  Card,
-  CourseAssessment,
-  LessonCardLink,
-  LessonCardExposure,
-  LessonCompletion,
-  PracticeNode,
-  PracticeMilestone,
-  UserPerformance,
-} from '../db/types';
+import type { Course } from '../db/types';
 
 interface CourseStudyFlowData {
   course: Course;
@@ -36,87 +21,12 @@ interface CourseStudyFlowData {
   generation: number;
 }
 
-interface CourseStudyFlowRecords {
-  course: Course | null;
-  lessons: Lesson[];
-  cards: Card[];
-  assessments: CourseAssessment[];
-  links: LessonCardLink[];
-  exposures: LessonCardExposure[];
-  completions: LessonCompletion[];
-  practiceNodes: PracticeNode[];
-  milestones: PracticeMilestone[];
-  performance: UserPerformance[];
-}
-
 /** Loads one authoritative course snapshot for both preview and conductor decisions. */
 export function useCourseStudyFlow(
   courseId: string | undefined,
   refreshKey = 0,
 ): CourseStudyFlowData | null | undefined {
-  const records = useLiveQuery<CourseStudyFlowRecords>(async () => {
-    if (!courseId) {
-      return {
-        course: null,
-        lessons: [],
-        cards: [],
-        assessments: [],
-        links: [],
-        exposures: [],
-        completions: [],
-        practiceNodes: [],
-        milestones: [],
-        performance: [],
-      };
-    }
-    const [courseRecord, assessments] = await Promise.all([
-      db.courses.get(courseId),
-      db.courseAssessments.where('courseId').equals(courseId).toArray(),
-    ]);
-    if (!courseRecord) {
-      return {
-        course: null,
-        lessons: [],
-        cards: [],
-        assessments: [],
-        links: [],
-        exposures: [],
-        completions: [],
-        practiceNodes: [],
-        milestones: [],
-        performance: [],
-      };
-    }
-    const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-    const [lessons, rawCards, practiceNodes, milestones] = await Promise.all([
-      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
-      db.cards.where('courseId').equals(courseId).toArray(),
-      db.practiceNodes.where('courseId').equals(courseId).toArray(),
-      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
-    ]);
-    const cards = await hydrateCardsWithHistory(rawCards);
-    const lessonIds = lessons.map((lesson) => lesson.id);
-    const [links, exposures, completions, performance] = await Promise.all([
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0
-        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
-        : [],
-      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      performanceForCourseBackingDecks(courseId, cards),
-    ]);
-    return {
-      course,
-      lessons,
-      cards,
-      assessments,
-      links,
-      exposures,
-      completions,
-      practiceNodes,
-      milestones,
-      performance,
-    };
-  }, [courseId, refreshKey]);
+  const records = useCourseStudyFlowRecords(courseId, refreshKey);
 
   return useMemo(() => {
     if (records === undefined) return undefined;

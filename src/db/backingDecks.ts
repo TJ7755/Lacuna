@@ -61,8 +61,11 @@ export async function performanceForCourseBackingDecks(
   courseId: string,
   cards: Card[],
 ): Promise<UserPerformance[]> {
+  return performanceForCards(cards.filter((card) => card.courseId === courseId));
+}
+
+export async function performanceForCards(cards: Card[]): Promise<UserPerformance[]> {
   const ids = [...new Set(cards
-    .filter((card) => card.courseId === courseId)
     .map((card) => card.schedulingUnitId)
     .filter((id): id is string => !!id))];
   const rows = await db.schedulingPerformance.bulkGet(ids);
