@@ -31,7 +31,6 @@ import {
   loadSequenceEditor,
   loadSettings,
   loadSharePage,
-  loadWelcome,
   loadLanding,
 } from './loaders';
 
@@ -58,7 +57,6 @@ const QuestionsPage = lazy(loadQuestionsPage);
 const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
-const Welcome = lazy(loadWelcome);
 const Landing = lazy(loadLanding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
@@ -177,7 +175,7 @@ export const router = createHashRouter([
       {
         // The landing page is a full-screen editorial experience outside the shell.
         path: '/welcome',
-        element: isolatedRoute('the landing page', lazyRoute(Welcome)),
+        element: isolatedRoute('the landing page', lazyRoute(Landing)),
       },
       {
         path: '/landing',

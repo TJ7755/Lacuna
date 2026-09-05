@@ -139,8 +139,6 @@ export function loadHalfLifeLogisticCoefficients(raw: unknown): HalfLifeLogistic
   };
 }
 
-export const halfLifeLogisticLoad = loadHalfLifeLogisticCoefficients(frozenCoefficients);
-
 export function projectionForHalfLifeLogistic(raw: unknown): RevisionProjection {
   const loaded = loadHalfLifeLogisticCoefficients(raw);
   return loaded.valid

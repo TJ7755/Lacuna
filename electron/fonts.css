@@ -10,30 +10,6 @@
 }
 
 @font-face {
-  font-family: 'Fraunces';
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('../assets/fonts/Fraunces-Italic-VariableFont.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('../assets/fonts/Geist-VariableFont.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'Geist';
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('../assets/fonts/Geist-Italic-VariableFont.ttf') format('truetype');
-}
-
-@font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 100 800;

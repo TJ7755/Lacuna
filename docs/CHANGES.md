@@ -2,6 +2,15 @@
 
 ## Unreleased — landing and method redesign
 
+- Removed the unreachable former Welcome page, its demo-only components and tests,
+  and their unused animation styles. `/welcome` and `/landing` now share one lazy
+  loader for the existing landing page. Removed unused scheduling/sync aliases,
+  a course-section helper and duplicate model-coefficient validation at module load.
+- Removed the unused Geist family from hosted font requests and desktop assets,
+  and the unused italic Fraunces desktop font. This saves 750,428 bytes of bundled
+  fonts and their startup base64 conversion. The active Instrument Sans, Fraunces
+  and JetBrains Mono fonts remain available, including italic monospace for Markdown.
+
 - Replaced straight curriculum connectors with varied ink-like curves, retaining amber for
   completed stretches. Added three non-repeating study scenes alongside the curriculum path, and distinct empty-state
   drawings for analytics subjects. Share now uses a consistent text inset and drops the redundant

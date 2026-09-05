@@ -62,9 +62,6 @@ export const loadMergeReviewPanel = () =>
     default: module.MergeReviewPanel,
   }));
 
-export const loadWelcome = () =>
-  import('../pages/Landing').then((module) => ({ default: module.Landing }));
-
 export const loadDownload = () =>
   import('../pages/Download').then((module) => ({ default: module.Download }));
 

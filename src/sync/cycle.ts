@@ -90,9 +90,6 @@ export function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
   return promise;
 }
 
-/** Named alias for callers that prefer the operation rather than the mechanism. */
-export const runSyncCycle = syncCycle;
-
 /** Reset the module-level single-flight guard between isolated tests. */
 export function __resetSyncFlightForTests(): void {
   inFlight = null;
