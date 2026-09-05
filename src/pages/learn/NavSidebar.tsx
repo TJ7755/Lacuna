@@ -1,4 +1,5 @@
 import { AnimatePresence, m as motion } from 'motion/react';
+import { ShellCourseDataProvider } from '../../state/ShellCourseData';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
@@ -25,7 +26,9 @@ export function NavSidebar({ open, onClose }: { open: boolean; onClose: () => vo
             exit={{ x: -280 }}
             transition={{ type: 'spring', stiffness: 260, damping: 30 }}
           >
-            <Sidebar collapsed={false} onToggleCollapsed={onClose} />
+            <ShellCourseDataProvider>
+              <Sidebar collapsed={false} onToggleCollapsed={onClose} />
+            </ShellCourseDataProvider>
           </motion.div>
         </motion.div>
       )}

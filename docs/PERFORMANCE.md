@@ -507,3 +507,27 @@ improvement.
 
 The AI companion surface is deliberately unchanged. Its five-tool bundle remains separate from
 the broader data contract registry.
+
+## Shared reactive data reads (5 September 2026)
+
+The shell now owns one query for navigation and the mounted Dashboard. Its two Sidebar
+instances and final-exam controller consume that result. The course path reuses the study
+conductor's course reader rather than loading its summary separately.
+
+| Boundary | Before | After |
+| --- | --- | --- |
+| Dashboard plus navigation: card/history reads | 2 each | 1 each |
+| Opening mobile navigation | Another card/history read | No additional read |
+| Course Path and header: card/history reads | 2 each | 1 each |
+| Navigation scheduling performance | One bulk read per course | One bulk read across courses |
+
+`AppShell.data.test.tsx` and `CoursePath.data.test.tsx` run against real Dexie tables and fail
+on `32d1a13e` with two card reads where one is required. They pass on this branch. The shell
+test also checks updates, mobile navigation, leaving Dashboard and unmounting. Calibration
+coverage retains the distinction between course response times and scheduling-unit pacing.
+
+There is no global card cache. Off Dashboard, the settled shell result contains courses,
+lessons, summaries and statistics, with no cards or history array. The old Dashboard result
+can survive briefly while the replacement navigation query resolves. Dashboard-only table
+writes no longer trigger navigation reads after that transition. These are query-count and
+retained-data guarantees, not a measured percentage reduction in process heap.

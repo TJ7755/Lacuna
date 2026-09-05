@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
+import { ShellCourseDataProvider } from '../../state/ShellCourseData';
 import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -42,6 +43,15 @@ const ROUTE_VARIANTS = {
 };
 
 export function AppShell() {
+  const { pathname } = useLocation();
+  return (
+    <ShellCourseDataProvider includeDashboard={pathname === '/'}>
+      <AppShellLayout />
+    </ShellCourseDataProvider>
+  );
+}
+
+function AppShellLayout() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   // Sync sidebar collapsed state across tabs.

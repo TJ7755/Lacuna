@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db/schema';
 import { useCard } from './useData';
-import { useCourse, useCourseSummary, useLesson, useSequence } from './useCourseData';
+import { useCourse, useLesson, useSequence } from './useCourseData';
 
 describe('single-record live-query hooks', () => {
   beforeEach(async () => {
@@ -20,7 +20,6 @@ describe('single-record live-query hooks', () => {
     ['lesson', () => useLesson('missing')],
     ['sequence', () => useSequence('missing')],
     ['card', () => useCard('missing')],
-    ['course summary', () => useCourseSummary('missing')],
   ];
 
   it.each(missingRecordHooks)('returns null after a missing %s lookup completes', async (_label, hook) => {
