@@ -77,8 +77,9 @@ British English throughout. No emojis anywhere in the product or its copy.
   `rehype-katex` + `rehype-highlight` + `rehype-raw`. KaTeX and highlight.js styles imported
   globally; the restricted expression parser uses the number-only `mathjs/number` entry point.
 - **Charts:** Recharts.
-- **Fonts (loaded via `<link>` in `index.html`):** Fraunces (display), Geist (body),
-  JetBrains Mono (code and the timer/tabular figures).
+- **Fonts:** locally bundled Instrument Sans (body and headings), Fraunces (brand),
+  JetBrains Mono (code and the timer/tabular figures). `webBootstrap.ts` adds hosted
+  Fraunces and JetBrains Mono stylesheets on HTTP(S).
 - **Testing:** Vitest 3 with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
   and `happy-dom` for UI component and hook tests. `test:coverage` retains the critical-domain
   gate; `test:coverage:recovery` separately measures persistence, sync merge, quota warnings,
@@ -2863,10 +2864,11 @@ than exposing GitHub's updater metadata as user choices.
   alive, preventing an MCP host from immediately relaunching `Lacuna.exe` and racing file removal.
   Successful installation removes the marker; application start removes abandoned or stale markers.
   The marker is deliberately independent of Electron's selectable user-data profile.
-- **Fonts** (`electron/assets/fonts/`): Fraunces, Geist and JetBrains Mono
+- **Fonts** (`electron/assets/fonts/`): Fraunces and JetBrains Mono
   bundled as local TTF variable fonts. The main process injects
   `electron/fonts.css` via `webContents.insertCSS` so the app works fully
-  offline. The hosted Google Fonts links are added only on HTTP(S), so Electron does not make a
+  offline. Instrument Sans ships with the shared renderer assets in `public/fonts/`.
+  The hosted Google Fonts links are added only on HTTP(S), so Electron does not make a
   request which its production CSP would reject.
 - **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub Releases and checks
   the beta channel shortly after launch. A narrow, validated preload surface exposes only current

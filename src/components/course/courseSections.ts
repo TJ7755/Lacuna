@@ -40,20 +40,6 @@ export function courseIdFromPath(pathname: string): string | null {
   return COURSE_ROOT.exec(pathname)?.[1] ?? null;
 }
 
-/**
- * Which section should read as current, including from pages nested inside one.
- *
- * Path owns the course root, so it is the fallback rather than a prefix match: every
- * course route starts with Path's (empty) suffix and would otherwise match it first.
- */
-export function activeCourseSectionIndex(pathname: string, courseId: string): number {
-  const base = `/course/${courseId}`;
-  for (let index = COURSE_SECTIONS.length - 1; index >= 1; index -= 1) {
-    if (pathname.startsWith(`${base}${COURSE_SECTIONS[index].suffix}`)) return index;
-  }
-  return 0;
-}
-
 export function courseSectionPath(courseId: string, index: number): string | null {
   const section = COURSE_SECTIONS[index];
   if (!section) return null;

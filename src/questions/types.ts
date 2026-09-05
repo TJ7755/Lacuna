@@ -5,9 +5,8 @@ import type {
   Grade,
   LineVerdict,
 } from '../db/types';
-import { CURRENT_ITEM_PAYLOAD_VERSION, type QuestionPayload } from '../items/types';
+import type { QuestionPayload } from '../items/types';
 
-export const CURRENT_QUESTION_PAYLOAD_VERSION = CURRENT_ITEM_PAYLOAD_VERSION;
 export const QUESTION_SCHEDULER_VERSION = 'fsrs-6-question-v1' as const;
 export const QUESTION_GRADE_MAPPING_VERSION = 'full-good-otherwise-again-v1' as const;
 

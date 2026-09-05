@@ -21,6 +21,11 @@ describe('hosted web bootstrap', () => {
         href: expect.stringContaining('https://fonts.googleapis.com/css2'),
       }),
     );
+    const stylesheet = links.find((link) => link.rel === 'stylesheet')!;
+    expect(new URL(stylesheet.href).searchParams.getAll('family')).toEqual([
+      'Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700',
+      'JetBrains Mono:wght@400;500;600',
+    ]);
   });
 
   it('does not attempt service-worker registration from a packaged app origin', async () => {
