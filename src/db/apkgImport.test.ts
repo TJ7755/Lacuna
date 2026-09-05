@@ -13,13 +13,11 @@ import { db } from './schema';
 import {
   importApkgResult,
   parseApkg,
-  parseApkgBuffer,
-  MAX_APKG_FILE_COUNT,
-  MAX_APKG_SIZE_BYTES,
-  MAX_APKG_UNCOMPRESSED_BYTES,
   type ApkgCardDraft,
   type ApkgImportResult,
 } from './apkgImport';
+import { parseApkgBuffer } from './apkgParser';
+import { MAX_APKG_FILE_COUNT, MAX_APKG_SIZE_BYTES, MAX_APKG_UNCOMPRESSED_BYTES } from './apkgTypes';
 import { MAX_AUDIO_BYTES } from './assets';
 import { createCourse, createLesson } from './repository';
 import { reviewHistoryEntryId } from './reviewHistory';
@@ -290,6 +288,7 @@ describe('importApkgResult', () => {
 
   it('stores referenced images and audio and rewrites their Anki markers', async () => {
     vi.stubGlobal('Image', undefined);
+    const digest = vi.spyOn(crypto.subtle, 'digest');
     const imageBytes = new TextEncoder().encode('image bytes');
     const audioBytes = new TextEncoder().encode('audio bytes');
     const result = makeResult({
@@ -310,6 +309,8 @@ describe('importApkgResult', () => {
     const assets = await db.assets.toArray();
 
     expect(assets).toHaveLength(2);
+    expect(digest).toHaveBeenCalledTimes(2);
+    digest.mockRestore();
     const image = assets.find((asset) => asset.kind === 'image');
     const audio = assets.find((asset) => asset.kind === 'audio');
     expect(image?.mimeType).toBe('image/png');

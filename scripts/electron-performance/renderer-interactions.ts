@@ -19,7 +19,9 @@ async function twoAnimationFrames(page: Page): Promise<void> {
 
 export async function waitForSeededDashboard(page: Page): Promise<void> {
   const dashboard = page.getByRole('heading', { name: 'Courses', exact: true });
-  const openLacuna = page.getByRole('button', { name: 'Open Lacuna', exact: true }).first();
+  const openLacuna = page
+    .getByRole('navigation', { name: 'Landing navigation' })
+    .getByRole('link', { name: 'Open Lacuna', exact: true });
   await openLacuna.or(dashboard).waitFor({ state: 'visible' });
   if (!(await dashboard.isVisible().catch(() => false))) {
     await openLacuna.click();

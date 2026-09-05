@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import type { ReviewLog } from './types';
 import {
@@ -7,6 +7,7 @@ import {
   createCourseAssessment,
   createLesson,
   createLessonCard,
+  createNote,
   createPracticeNode,
   createSequence,
   linkCardToLesson,
@@ -24,6 +25,8 @@ import {
   listCardsForCourse,
   listCardsForLesson,
   listCourseAssessments,
+  listCourseAssessmentDetails,
+  getCourseAssessmentDetails,
   listCourses,
   listDueCards,
   listLessons,
@@ -54,6 +57,7 @@ async function clearAll(): Promise<void> {
 
 describe('read.ts', () => {
   beforeEach(clearAll);
+  afterEach(() => vi.restoreAllMocks());
 
   it('reads revision plans by assessment and course', async () => {
     const course = await createCourse('Biology');
@@ -379,6 +383,80 @@ describe('read.ts', () => {
       const course = await createCourse('Course A');
       expect(await db.practiceNodes.where('courseId').equals(course.id).toArray()).toEqual([]);
       expect(await listCourseAssessments(course.id)).toHaveLength(1);
+    });
+  });
+
+  describe('assessment read costs', () => {
+    it('resolves all assessments from one course snapshot without loading review history', async () => {
+      const course = await createCourse('Biology');
+      const first = await createLesson(course.id, 'Cells');
+      const second = await createLesson(course.id, 'Genetics');
+      const card = await createLessonCard(course.id, second.id, 'front_back', 'q', 'a');
+      await linkCardToLesson(first.id, card.id);
+      await createCourseAssessment(course.id, 'Cells paper', 1000, { afterLessonId: first.id });
+      await createCourseAssessment(course.id, 'Genetics paper', 2000, {
+        afterLessonId: second.id,
+        coverageMode: 'custom',
+        lessonIds: [second.id],
+      });
+      const expected = await Promise.all(
+        (await listCourseAssessments(course.id)).map((assessment) =>
+          getCourseAssessmentDetails(assessment.id),
+        ),
+      );
+      const cards = vi.spyOn(db.cards, 'where');
+      const lessons = vi.spyOn(db.lessons, 'where');
+      const history = vi.spyOn(db.reviewHistory, 'where');
+      const globalLinks = vi.spyOn(db.lessonCards, 'toArray');
+      const links = vi.spyOn(db.lessonCards, 'where');
+
+      const actual = await listCourseAssessmentDetails(course.id);
+      expect(actual).toEqual(expected);
+      expect(actual.slice(0, 2)).toMatchObject([
+        {
+          assessment: { name: 'Cells paper' },
+          placementIndex: 0,
+          coveredLessonIds: [first.id],
+          cardIds: [card.id],
+        },
+        {
+          assessment: { name: 'Genetics paper' },
+          placementIndex: 1,
+          coveredLessonIds: [second.id],
+          cardIds: [card.id],
+        },
+      ]);
+      expect(actual.every((detail) => detail.cardIds.includes(card.id))).toBe(true);
+      expect(cards).toHaveBeenCalledTimes(1);
+      expect(lessons).toHaveBeenCalledTimes(1);
+      expect(history).not.toHaveBeenCalled();
+      expect(globalLinks).not.toHaveBeenCalled();
+      expect(links).toHaveBeenCalledExactlyOnceWith('lessonId');
+    });
+
+    it('counts notes across lessons with one indexed query and no history hydration', async () => {
+      const course = await createCourse('Biology');
+      const courseLessons = [];
+      for (const name of ['Cells', 'Genetics', 'Ecology']) {
+        const lesson = await createLesson(course.id, name);
+        const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+        await createNote(lesson.id, name);
+        courseLessons.push({ lesson, card });
+      }
+      await linkCardToLesson(courseLessons[0].lesson.id, courseLessons[1].card.id);
+      const links = vi.spyOn(db.lessonCards, 'where');
+      const notes = vi.spyOn(db.notes, 'where');
+      const history = vi.spyOn(db.reviewHistory, 'where');
+      expect(await diagnosticsSummary(course.id)).toMatchObject({
+        lessons: 3,
+        cards: 3,
+        notes: 3,
+        lessonCards: 1,
+      });
+      // One count and one scoped coverage read, independent of the number of lessons.
+      expect(links).toHaveBeenCalledTimes(2);
+      expect(notes).toHaveBeenCalledExactlyOnceWith('lessonId');
+      expect(history).not.toHaveBeenCalled();
     });
   });
 

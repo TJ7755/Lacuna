@@ -54,10 +54,8 @@
     "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.0.0",
     "electron-log": "^5.4.4",
-    "electron-updater": "^6.8.9",
-    "zod": "4.2.0"
+    "electron-updater": "^6.8.9"
   },
   "overrides": {
     "nanoid": "3.3.18",
@@ -68,6 +66,7 @@
   "devDependencies": {
     "@electron/asar": "3.4.1",
     "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
     "@napi-rs/wasm-runtime": "1.1.0",
     "@open-spaced-repetition/binding": "^0.4.0",
     "@playwright/test": "^1.62.1",
@@ -122,6 +121,7 @@
     "vite": "^6.4.3",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "3.2.7",
-    "wait-on": "^7.2.0"
+    "wait-on": "^7.2.0",
+    "zod": "4.2.0"
   }
 }
