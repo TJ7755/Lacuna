@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Card } from '../../db/types';
 import { FlipCard } from './FlipCard';
@@ -57,18 +57,29 @@ function renderRevealed() {
 describe('FlipCard audio replay', () => {
   it('returns to the audio face without leaving the answer phase', () => {
     const onHide = renderRevealed();
-    expect(screen.getByText('answer face')).toBeInTheDocument();
+    const card = screen.getByRole('button', { name: 'Hide answer' });
+    expect(
+      within(card.querySelector('[data-study-face]') as HTMLElement).getByText('answer face'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Hear it again/ }));
 
-    expect(screen.getByText('audio face')).toBeInTheDocument();
+    const replayedCard = screen.getByRole('button', { name: 'Show answer again' });
+    expect(
+      within(replayedCard.querySelector('[data-study-face]') as HTMLElement).getByText(
+        'audio face',
+      ),
+    ).toBeInTheDocument();
     expect(onHide).not.toHaveBeenCalled();
   });
 
   it('uses R as the replay binding', () => {
     renderRevealed();
     fireEvent.keyDown(window, { key: 'r' });
-    expect(screen.getByText('audio face')).toBeInTheDocument();
+    const card = screen.getByRole('button', { name: 'Show answer again' });
+    expect(
+      within(card.querySelector('[data-study-face]') as HTMLElement).getByText('audio face'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -98,7 +109,10 @@ describe('FlipCard hint disclosure', () => {
     );
 
     expect(
-      screen.getByText('Hints add 1.5 seconds to the response time used for silent grading.'),
+      within(
+        screen.getByRole('button', { name: 'Show answer' }).querySelector('[data-study-face]')!
+          .parentElement!,
+      ).getByText('Hints add 1.5 seconds to the response time used for silent grading.'),
     ).toBeInTheDocument();
   });
 });

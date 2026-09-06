@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom';
 import { LearnMode, LearnSkeleton } from './LearnMode';
 import { db } from '../db/schema';
@@ -69,6 +69,26 @@ async function answerYesAndWaitForExposure(lessonId: string) {
 
 async function continueFromNotes() {
   fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+}
+
+function studyFaceText(text: string | RegExp) {
+  const matches = [...document.querySelectorAll<HTMLElement>('[data-study-face]')].flatMap((face) =>
+    within(face).queryAllByText(text),
+  );
+  if (matches.length !== 1) {
+    throw new Error(`Expected one visible study-face match, found ${matches.length}`);
+  }
+  return matches[0];
+}
+
+async function findStudyFaceText(text: string | RegExp) {
+  return waitFor(() => studyFaceText(text));
+}
+
+function queryStudyFaceText(text: string | RegExp) {
+  return [...document.querySelectorAll<HTMLElement>('[data-study-face]')].find((face) =>
+    within(face).queryByText(text),
+  );
 }
 
 async function storedReviewsForCard(cardId: string) {
@@ -143,8 +163,8 @@ describe('LearnMode course/lesson scope', () => {
       expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
       await act(async () => resolveLineMap(lineMap));
       await continueFromNotes();
-      expect(await screen.findByText('Next line?')).toBeInTheDocument();
-      expect(screen.queryByText('Next item?')).not.toBeInTheDocument();
+      expect(await findStudyFaceText('Next line?')).toBeInTheDocument();
+      expect(queryStudyFaceText('Next item?')).toBeUndefined();
     } finally {
       lookup.mockRestore();
     }
@@ -288,7 +308,7 @@ describe('LearnMode course/lesson scope', () => {
     window.dispatchEvent(notesUnload);
     expect(notesUnload.defaultPrevented).toBe(false);
     await continueFromNotes();
-    expect(await screen.findByText(/Shared Q/)).toBeInTheDocument();
+    expect(await findStudyFaceText(/Shared Q/)).toBeInTheDocument();
   });
 
   it('excludes already-reviewed (non-new) cards from a lesson session', async () => {
@@ -318,8 +338,8 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     await continueFromNotes();
-    expect(await screen.findByText(/New Q/)).toBeInTheDocument();
-    expect(screen.queryByText(/Reviewed Q/)).not.toBeInTheDocument();
+    expect(await findStudyFaceText(/New Q/)).toBeInTheDocument();
+    expect(queryStudyFaceText(/Reviewed Q/)).toBeUndefined();
   });
 
   it('ignores the legacy due filter because lessons teach every unexposed member', async () => {
@@ -352,7 +372,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     const seen = new Set<string>();
     for (let index = 0; index < 3; index++) {
-      const card = await screen.findByText(/^(Due Q|Not Due Q|New Q)$/);
+      const card = await findStudyFaceText(/^(Due Q|Not Due Q|New Q)$/);
       seen.add(card.textContent ?? '');
       if (index < 2) await answerYes();
     }
@@ -389,7 +409,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     const seen = new Set<string>();
     for (let index = 0; index < 3; index++) {
-      const card = await screen.findByText(/^(Due Q|Not Due Q|New Q)$/);
+      const card = await findStudyFaceText(/^(Due Q|Not Due Q|New Q)$/);
       seen.add(card.textContent ?? '');
       if (index < 2) await answerYes();
     }
@@ -575,8 +595,8 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     expect(await screen.findByText('Revolutions paper')).toBeInTheDocument();
-    expect(await screen.findByText(/Assessment question/)).toBeInTheDocument();
-    expect(screen.queryByText(/Unrelated question/)).not.toBeInTheDocument();
+    expect(await findStudyFaceText(/Assessment question/)).toBeInTheDocument();
+    expect(queryStudyFaceText(/Unrelated question/)).toBeUndefined();
 
     await answerYes();
     await waitFor(async () => {
@@ -645,7 +665,7 @@ describe('LearnMode course/lesson scope', () => {
 
     expect(await screen.findByRole('heading', { name: /Revision plan/ })).toBeInTheDocument();
     expect(screen.queryByText(/Ordinary Practice ordering/)).not.toBeInTheDocument();
-    expect(await screen.findByText(/What is erosion/)).toBeInTheDocument();
+    expect(await findStudyFaceText(/What is erosion/)).toBeInTheDocument();
     await answerYes();
 
     await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
@@ -721,7 +741,7 @@ describe('LearnMode course/lesson scope', () => {
 
     const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
     fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
-    expect(await screen.findByText('hello')).toBeInTheDocument();
+    expect(await findStudyFaceText('hello')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^no$/i }));
 
     await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
@@ -919,13 +939,13 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    const firstQuestion = (await screen.findByText(/undo question/i)).textContent;
+    const firstQuestion = (await findStudyFaceText(/undo question/i)).textContent;
     await answerYes();
     expect(await screen.findByText(/^(Easy|Good|Hard) · \d+% recall at exam$/)).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
 
     await waitFor(async () => expect(await db.reviewHistory.count()).toBe(0));
-    expect(await screen.findByText(firstQuestion ?? '')).toBeInTheDocument();
+    expect(await findStudyFaceText(firstQuestion ?? '')).toBeInTheDocument();
   });
 
   it('does not offer Undo after the answer has finished the session', async () => {
@@ -944,7 +964,7 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    await screen.findByText('Only question');
+    await findStudyFaceText('Only question');
     await answerYes();
 
     expect(
@@ -1261,8 +1281,8 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText('Available question')).toBeInTheDocument();
-    expect(screen.queryByText('Suspended question')).not.toBeInTheDocument();
+    expect(await findStudyFaceText('Available question')).toBeInTheDocument();
+    expect(queryStudyFaceText('Suspended question')).toBeUndefined();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
     expect(document.querySelectorAll('[data-session-card-status]')).toHaveLength(0);
   });
@@ -1296,8 +1316,8 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText('Flagged question')).toBeInTheDocument();
-    expect(screen.queryByText('Unflagged question')).not.toBeInTheDocument();
+    expect(await findStudyFaceText('Flagged question')).toBeInTheDocument();
+    expect(queryStudyFaceText('Unflagged question')).toBeUndefined();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
@@ -1445,7 +1465,7 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText('Touch question')).toBeInTheDocument();
+    expect(await findStudyFaceText('Touch question')).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
     const dialog = await screen.findByRole('dialog', { name: 'Card actions' });
     expect(dialog.parentElement).toBe(document.body);
@@ -1472,7 +1492,7 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText('Thumb question')).toBeInTheDocument();
+    expect(await findStudyFaceText('Thumb question')).toBeInTheDocument();
     // The card surface is itself a button labelled "Show answer"; the grading control is
     // the real <button> element.
     const candidates = await screen.findAllByRole('button', { name: /show answer/i });
@@ -1508,7 +1528,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
     fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
-    expect(await screen.findByText('Visible answer')).toBeInTheDocument();
+    expect(await findStudyFaceText('Visible answer')).toBeInTheDocument();
 
     await act(async () => {
       writeStartInFocusMode(true);
@@ -1517,7 +1537,7 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Visible answer')).toBeInTheDocument();
+      expect(studyFaceText('Visible answer')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^yes$/i })).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
@@ -1542,7 +1562,7 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     await continueFromNotes();
-    await screen.findByText(/cause$/);
+    await findStudyFaceText(/cause$/);
     expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
     const firstServedId = document
@@ -1642,7 +1662,7 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     await continueFromNotes();
-    expect(await screen.findByText('Define erosion')).toBeInTheDocument();
+    expect(await findStudyFaceText('Define erosion')).toBeInTheDocument();
     expect(
       [...Array(localStorage.length)].some((_, index) =>
         localStorage.key(index)?.startsWith('lacuna.simpleSession.v1:'),
@@ -1657,7 +1677,7 @@ describe('LearnMode course/lesson scope', () => {
       '0 of 1 Card answered',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
-    expect(screen.getByText('Define erosion')).toBeInTheDocument();
+    expect(studyFaceText('Define erosion')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));

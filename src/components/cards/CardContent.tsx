@@ -3,6 +3,7 @@ import { MarkdownView } from '../markdown/MarkdownView';
 import { isLabelCardId, parseSequenceFront } from '../../db/sequenceGeneration';
 import type { Card, Occlusion } from '../../db/types';
 import { OcclusionStudyFace } from '../occlusion/OcclusionStudyFace';
+import { cn } from '../ui/cn';
 
 type Side = 'front' | 'back';
 
@@ -86,18 +87,20 @@ export const CardContent = memo(function CardContent({
     const isFirst = body === firstPrompt;
     const cueParagraphs = isFirst ? [] : body.split('\n\n');
     return (
-      <div className={className}>
-        <div className="mb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-          {headerText}
+      <div className={cn('grid h-full grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)]', className)}>
+        <div className="flex items-end justify-center pb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
+          <span>{headerText}</span>
         </div>
-        {cueParagraphs.length > 0 && (
-          <div className="mb-4 flex flex-col gap-2 text-ink-soft">
+        {cueParagraphs.length > 0 ? (
+          <div className="flex flex-col gap-2 text-ink-soft">
             {cueParagraphs.map((paragraph, i) => (
               <MarkdownView key={i} source={paragraph} />
             ))}
           </div>
+        ) : (
+          <div className="text-ink">{firstPrompt}</div>
         )}
-        <div className="text-ink">{isFirst ? firstPrompt : nextPrompt}</div>
+        <div className="pt-4 text-ink">{isFirst ? null : nextPrompt}</div>
       </div>
     );
   }
