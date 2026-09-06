@@ -92,6 +92,8 @@ export interface RecordReviewResult {
    * can rewind the stamp as well as `lastInteractedAt`.
    */
   updatedAtBefore: number | undefined;
+  /** Transaction snapshot used to reject undo after intervening writes. */
+  undoStateAfter: string | undefined;
 }
 
 export interface ReviewTrajectorySampleArgs {
@@ -238,6 +240,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
             kind,
             lastInteractedAtBefore: undefined,
             updatedAtBefore: undefined,
+            undoStateAfter: undefined,
           };
         }
 
@@ -327,6 +330,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           kind,
           lastInteractedAtBefore,
           updatedAtBefore,
+          undoStateAfter: await reviewUndoState(card.id, deck.id, kind),
         };
       },
     );
@@ -360,6 +364,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           kind: args.kind ?? 'scheduling-unit',
           lastInteractedAtBefore: undefined,
           updatedAtBefore: undefined,
+          undoStateAfter: undefined,
         };
       }
     }
@@ -398,6 +403,25 @@ export interface ReviewUndo {
    * {@link RecordReviewResult.updatedAtBefore}), restored on undo.
    */
   updatedAtBefore: number | undefined;
+  /** Transaction snapshot used to reject undo after intervening writes. */
+  undoStateAfter: string | undefined;
+}
+
+// Read inside the caller's transaction. Timestamps alone cannot distinguish
+// writes in the same millisecond, and calibration is shared by several cards.
+async function reviewUndoState(
+  cardId: string,
+  unitId: string,
+  kind: ReviewUnitKind,
+): Promise<string> {
+  const card = await db.cards.get(cardId);
+  const unit =
+    kind === 'course' ? await db.courses.get(unitId) : await db.schedulingUnits.get(unitId);
+  const performance =
+    kind === 'course'
+      ? await db.coursePerformance.get(unitId)
+      : await db.schedulingPerformance.get(unitId);
+  return JSON.stringify([card, unit, performance]);
 }
 
 /**
@@ -430,13 +454,14 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         if (session && session.eventId !== undo.eventId) {
           throw new Error('The review event no longer matches its session history entry.');
         }
-        // Fail closed when the card moved on after this review (a later review or an
-        // edit): restoring cardBefore would discard that newer state while leaving its
-        // review event in place. The reviewed card is stamped with the same clock value
-        // as its event (see recordReview), so any later mutation changes updatedAt.
-        const currentCard = await db.cards.get(undo.cardBefore.id);
-        if (currentCard && reviewEvent && currentCard.updatedAt !== reviewEvent.timestamp) {
-          throw new Error('The card changed after this review, so undo is no longer available.');
+        if (
+          !undo.undoStateAfter ||
+          undo.undoStateAfter !==
+            (await reviewUndoState(undo.cardBefore.id, undo.deckId, undo.kind))
+        ) {
+          throw new Error(
+            'The card or scheduling unit changed after this review, so undo is no longer available.',
+          );
         }
         await db.cards.put(projectCardForStorage(undo.cardBefore));
         await restoreReviewUnitPerformance(undo.deckId, undo.perfBefore, undo.kind);

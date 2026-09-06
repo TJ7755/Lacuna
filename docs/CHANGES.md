@@ -65,7 +65,9 @@
   re-importing the lineage clears the receipt. Lesson exposure and completion writes
   run inside transactions so concurrent calls cannot collide on the unique key, and
   the compatibility barrel re-exports `replaceReviewHistoryForCards`. Undoing a review
-  fails closed when the card changed afterwards instead of restoring stale state, an
+  compares the committed Card, unit and calibration state before restoring anything,
+  refusing intervening writes even within the same millisecond. This prevents undo
+  from erasing another Card’s contribution to shared performance. An
   empty requested lesson scope keeps its identity through Simple-resume persistence,
   and the shared-course settings section reports detach and preference failures
   instead of dropping them as unhandled rejections.
