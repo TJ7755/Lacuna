@@ -59,6 +59,7 @@ export {
   ensureLessonDeck,
   normaliseCardText,
   removeTagFromCards,
+  replaceReviewHistoryForCards,
   rescheduleCards,
   restoreCards,
   setCardFlag,

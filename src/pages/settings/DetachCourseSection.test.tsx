@@ -48,6 +48,35 @@ describe('DetachCourseSection', () => {
     expect(notify).toHaveBeenCalledWith('Course detached. You can now edit it freely.', 'neutral');
   });
 
+  it('keeps the confirmation open and notifies when detaching fails', async () => {
+    detachCourse.mockRejectedValueOnce(new Error('The course could not be found.'));
+    render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Detach course' }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Detach' }));
+      await Promise.resolve();
+    });
+
+    expect(notify).toHaveBeenCalledWith('The course could not be found.', 'negative');
+    expect(screen.getByText('Detach this course?')).toBeInTheDocument();
+  });
+
+  it('notifies when the auto-accept update fails', async () => {
+    setCourseAutoAcceptUpdates.mockRejectedValueOnce(
+      new Error('This course is not a shared copy.'),
+    );
+    render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('switch', { name: 'Apply updates automatically' }));
+      await Promise.resolve();
+    });
+
+    expect(setCourseAutoAcceptUpdates).toHaveBeenCalledWith('course-1', true);
+    expect(notify).toHaveBeenCalledWith('This course is not a shared copy.', 'negative');
+  });
+
   it('cancels back to the trigger button without detaching', () => {
     render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Detach course' }));

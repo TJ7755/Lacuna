@@ -214,15 +214,22 @@ export function useLearnSession({
         lessonId,
         sessionId,
         tagFilter,
-        filterParams: filterParamsIdentity
-          ? (filterParamsIdentity.split('\0') as CardFilter[])
-          : [],
-        requestScopeLessonIds: requestScopeLessonIdsIdentity?.split('\0'),
+        // Pass the original arrays: deriving them from the serialised identities turns
+        // an empty scope into [''] (''.split('\0')), which persists under a different
+        // Simple-resume key than the loading effect's empty set. The identities stay
+        // as memo dependencies only.
+        filterParams,
+        requestScopeLessonIds,
         practiceNodeKey: practiceNodeKeyParam,
         assessmentId: requestAssessmentId,
         planId: requestPlanId,
         windowId: requestWindowId,
       }),
+    // The serialised identities are the memo triggers: depending on the raw arrays
+    // would rebuild the scope (and reload the session) whenever the caller passes a
+    // rebuilt-but-equal array. Their content always changes the key when it changes,
+    // so reading the arrays inside cannot go stale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       courseId,
       lessonId,

@@ -5,6 +5,8 @@ import type {
   Card,
   CourseRecord,
   Lesson,
+  LineageIdMapping,
+  PendingMergeReview,
   ReviewLog,
   SessionHistoryEntry,
   Tombstone,
@@ -469,6 +471,43 @@ describe('mergeSnapshots', () => {
     const b = backup({ tombstones: [tombstone('notes', 'n1', 30)] });
     const merged = expectPeerProperties(a, b);
     expect(merged.tombstones).toEqual([tombstone('notes', 'n1', 30)]);
+  });
+
+  it('honours detach tombstones for lineage mappings and pending merge reviews', () => {
+    const mapping: LineageIdMapping = {
+      id: 'lineage-1',
+      courseId: 'course-1',
+      lessonIds: [],
+      noteIds: [],
+      cardIds: [],
+      sequenceIds: [],
+      lessonSnapshots: {},
+      noteSnapshots: {},
+      cardSnapshots: {},
+    };
+    const review: PendingMergeReview = {
+      id: 'review-1',
+      courseId: 'course-1',
+      lineageId: 'lineage-1',
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [] },
+        updates: { lessons: [], notes: [], cards: [] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [] },
+        conflicts: [],
+      },
+      createdAt: 10,
+    };
+    const detached = backup({
+      tombstones: [
+        tombstone('lineageIdMappings', 'lineage-1', 20),
+        tombstone('pendingMergeReviews', 'review-1', 20),
+      ],
+    });
+    const peer = backup({ lineageIdMappings: [mapping], pendingMergeReviews: [review] });
+    const merged = expectPeerProperties(detached, peer);
+    expect(merged.lineageIdMappings).toEqual([]);
+    expect(merged.pendingMergeReviews).toEqual([]);
   });
 
   it('does not re-apply leech policy onto newest-wins content flags', () => {

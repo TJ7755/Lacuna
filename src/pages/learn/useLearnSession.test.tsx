@@ -13,6 +13,7 @@ import { db } from '../../db/schema';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { CardFilter } from '../../db/search';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
+import { simpleSessionStorageKey } from './simpleSessionPersistence';
 import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
 
 const distraction: DistractionTracker = {
@@ -407,6 +408,39 @@ describe('useLearnSession load identity', () => {
     expect(result.current.phase).not.toBe('loading');
     expect(result.current.events.current).toHaveLength(1);
     expect(result.current.schedulerProgress).toBe(progressAfterAnswer);
+  });
+
+  it('persists an empty requested lesson scope without a phantom empty-string id', () => {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('lacuna.simpleSession.v1:')) localStorage.removeItem(key);
+    }
+    const { result } = renderHook((props: UseLearnSessionParams) => useLearnSession(props), {
+      initialProps: sessionParams({
+        courseId: 'course-1',
+        sessionId: 'session-empty-scope',
+        requestScopeLessonIds: [],
+        isSimpleMode: true,
+      }),
+    });
+
+    act(() => {
+      result.current.persistSimpleResume();
+    });
+
+    const scope = {
+      kind: 'practice' as const,
+      courseId: 'course-1',
+      sessionId: 'session-empty-scope',
+      nodeKey: undefined,
+      assessmentId: undefined,
+      planId: undefined,
+      windowId: undefined,
+    };
+    expect(
+      localStorage.getItem(simpleSessionStorageKey({ ...scope, lessonIds: [] })),
+    ).not.toBeNull();
+    expect(localStorage.getItem(simpleSessionStorageKey({ ...scope, lessonIds: [''] }))).toBeNull();
   });
 
   it('reloads when the practice node changes even if the lesson ids are unchanged', async () => {

@@ -241,16 +241,23 @@ export async function detachCourse(courseId: string): Promise<void> {
   try {
     await db.transaction(
       'rw',
-      [db.courses, db.lineageIdMappings, db.pendingMergeReviews],
-      async () => {
+      [db.courses, db.lineageIdMappings, db.pendingMergeReviews, db.tombstones],
+      async (tx) => {
         const course = await db.courses.get(courseId);
         if (!course) throw new Error('The course could not be found.');
         const lineageId = course.distributedCopy?.lineageId;
+        const pendingReviewIds = (
+          await db.pendingMergeReviews.where('courseId').equals(courseId).primaryKeys()
+        ).map(String);
         await db.courses.update(courseId, stampUpdatedAt({ distributedCopy: undefined }));
         if (lineageId) {
           await db.lineageIdMappings.delete(lineageId);
+          // A peer merge must not resurrect the severed lineage registry (see
+          // mergeSnapshots' tombstone filter for these tables).
+          await recordTombstone(tx, 'lineageIdMappings', lineageId);
         }
         await db.pendingMergeReviews.where('courseId').equals(courseId).delete();
+        await recordTombstones(tx, 'pendingMergeReviews', pendingReviewIds);
       },
     );
   } catch (err) {

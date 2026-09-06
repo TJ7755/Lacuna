@@ -430,6 +430,14 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         if (session && session.eventId !== undo.eventId) {
           throw new Error('The review event no longer matches its session history entry.');
         }
+        // Fail closed when the card moved on after this review (a later review or an
+        // edit): restoring cardBefore would discard that newer state while leaving its
+        // review event in place. The reviewed card is stamped with the same clock value
+        // as its event (see recordReview), so any later mutation changes updatedAt.
+        const currentCard = await db.cards.get(undo.cardBefore.id);
+        if (currentCard && reviewEvent && currentCard.updatedAt !== reviewEvent.timestamp) {
+          throw new Error('The card changed after this review, so undo is no longer available.');
+        }
         await db.cards.put(projectCardForStorage(undo.cardBefore));
         await restoreReviewUnitPerformance(undo.deckId, undo.perfBefore, undo.kind);
         // Dexie's update() deletes the property when the patch value is undefined, so

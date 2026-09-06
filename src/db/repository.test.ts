@@ -114,6 +114,46 @@ describe('undoReview', () => {
     );
   });
 
+  it('refuses to undo a review after the card changed', async () => {
+    const deck = await createCourse('Stale undo guard');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const perfBefore = (await performanceForReviewUnit(deck.id)) ?? null;
+    const result = await recordReview({
+      card,
+      eventId: 'event-stale-undo',
+      sessionId: 'session-stale-undo',
+      sessionKind: 'deck',
+      deck,
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+    // Guarantee the edit lands on a later clock value than the review's stamp.
+    while (Date.now() <= result.card.updatedAt) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    await updateCard(card.id, { front: 'edited after review' });
+
+    await expect(
+      undoReview({
+        eventId: 'event-stale-undo',
+        cardBefore: result.cardBefore,
+        perfBefore,
+        sessionHistoryId: result.sessionHistoryId,
+        deckId: deck.id,
+        kind: 'scheduling-unit',
+        lastInteractedAtBefore: result.lastInteractedAtBefore,
+        updatedAtBefore: result.updatedAtBefore,
+      }),
+    ).rejects.toThrow('changed after this review');
+    // The newer content and its review event survive the refused undo.
+    expect((await db.cards.get(card.id))!.front).toBe('edited after review');
+    expect(
+      await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-stale-undo')),
+    ).toBeDefined();
+  });
+
   it('keeps persisted cards compact while record and undo hydrate canonical history', async () => {
     const deck = await createCourse('Review history consistency');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');

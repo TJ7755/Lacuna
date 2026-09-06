@@ -558,20 +558,27 @@ export async function upsertLessonCardExposure(
   cardId: string,
   taughtAt: number = Date.now(),
 ): Promise<LessonCardExposure> {
-  const existing = await db.lessonCardExposures.get([lessonId, cardId]);
-  if (existing) return existing;
-  const exposure = stampUpdatedAt({ lessonId, cardId, taughtAt }, taughtAt);
-  await db.lessonCardExposures.add(exposure);
-  return exposure;
+  // Serialise the read-then-add so concurrent callers cannot both observe no row
+  // and collide on the second add's unique key.
+  return db.transaction('rw', [db.lessonCardExposures], async () => {
+    const existing = await db.lessonCardExposures.get([lessonId, cardId]);
+    if (existing) return existing;
+    const exposure = stampUpdatedAt({ lessonId, cardId, taughtAt }, taughtAt);
+    await db.lessonCardExposures.add(exposure);
+    return exposure;
+  });
 }
 
 export async function markLessonComplete(
   lessonId: string,
   completedAt: number = Date.now(),
 ): Promise<LessonCompletion> {
-  const existing = await db.lessonCompletions.get(lessonId);
-  if (existing) return existing;
-  const completion = stampUpdatedAt({ lessonId, completedAt }, completedAt);
-  await db.lessonCompletions.add(completion);
-  return completion;
+  // As above: the read and the conditional add must run atomically.
+  return db.transaction('rw', [db.lessonCompletions], async () => {
+    const existing = await db.lessonCompletions.get(lessonId);
+    if (existing) return existing;
+    const completion = stampUpdatedAt({ lessonId, completedAt }, completedAt);
+    await db.lessonCompletions.add(completion);
+    return completion;
+  });
 }

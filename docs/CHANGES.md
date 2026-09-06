@@ -59,6 +59,17 @@
 - Removed two disconnected AI fixture/conformance modules and their self-only tests (318 lines).
   Existing executable AI contracts and lifecycle tests remain.
 
+- Hardened the consolidation against review findings. Detaching a course now records
+  tombstones for its lineage mapping and pending merge reviews, and the sync merge
+  honours those receipts so a peer snapshot cannot resurrect severed lineage state;
+  re-importing the lineage clears the receipt. Lesson exposure and completion writes
+  run inside transactions so concurrent calls cannot collide on the unique key, and
+  the compatibility barrel re-exports `replaceReviewHistoryForCards`. Undoing a review
+  fails closed when the card changed afterwards instead of restoring stale state, an
+  empty requested lesson scope keeps its identity through Simple-resume persistence,
+  and the shared-course settings section reports detach and preference failures
+  instead of dropping them as unhandled rejections.
+
 - Updated the packaged interaction harness to use the current landing-page link rather than
   waiting indefinitely for the retired button.
 - Fixed the manual AI smoke runner to resolve Electron through its package entry point,

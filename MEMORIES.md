@@ -486,6 +486,14 @@ fencing only `importBackup()` leaves a race where a write can land after the can
 Manual replacement invalidates the AI session before draining work, while peer and recovery
 application preserve it.
 
+## Worktree component tests need a real node_modules, not a symlink
+
+A Git worktree whose `node_modules` is a symlink into the main checkout resolves two
+copies of the `vitest` module, so `@testing-library/jest-dom` extends one `expect`
+while tests use the other and every `toBeInTheDocument` fails with "Invalid Chai
+property". Non-DOM suites are unaffected, which makes the failure look test-specific.
+For component suites, populate the worktree with `cp -al` (hardlink copy) instead.
+
 ## Use a throwaway worktree, never stashes, to test a baseline
 
 The prompter keeps long-lived stashes from unrelated branches in this repository, so `git stash`

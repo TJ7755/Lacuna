@@ -227,13 +227,32 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     (memory) => memory.courseId === null || courses.some((course) => course.id === memory.courseId),
   );
   const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
-  const lineageIdMappings = mergeLineageMappings(left.lineageIdMappings, right.lineageIdMappings);
+  // Detached lineage state carries deletion receipts (see detachCourse): honour them here
+  // so a peer snapshot cannot resurrect a severed registry or its queued review.
+  // Lineage mappings carry no updatedAt, so any tombstone for the id wins outright.
+  const detachedLineageIds = new Set(
+    [...tombstones.values()]
+      .filter((row) => row.table === 'lineageIdMappings')
+      .map((row) => row.recordId),
+  );
+  const detachedReviewDeletedAt = new Map(
+    [...tombstones.values()]
+      .filter((row) => row.table === 'pendingMergeReviews')
+      .map((row) => [row.recordId, row.deletedAt]),
+  );
+  const lineageIdMappings = mergeLineageMappings(
+    left.lineageIdMappings,
+    right.lineageIdMappings,
+  ).filter((mapping) => !detachedLineageIds.has(mapping.id));
   const pendingMergeReviews = newestWins(
     left.pendingMergeReviews,
     right.pendingMergeReviews,
     (row) => row.courseId,
     (row) => row.createdAt,
-  );
+  ).filter((review) => {
+    const deletedAt = detachedReviewDeletedAt.get(review.id);
+    return deletedAt === undefined || review.createdAt > deletedAt;
+  });
 
   const liveCardIds = new Set(cards.map((card) => card.id));
   const unionedReviews = unionReviews(left, right);

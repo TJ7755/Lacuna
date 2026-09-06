@@ -1668,6 +1668,16 @@ describe('detachCourse', () => {
     expect(await db.pendingMergeReviews.where('courseId').equals(course.id).toArray()).toEqual([]);
     // Lesson content itself is untouched by detach.
     expect(await db.lessons.get(lesson.id)).toBeDefined();
+    // The severed lineage state leaves deletion receipts so a peer sync merge
+    // cannot resurrect it (see mergeSnapshots' tombstone filter).
+    expect(await db.tombstones.get(['lineageIdMappings', lineageId])).toMatchObject({
+      table: 'lineageIdMappings',
+      recordId: lineageId,
+    });
+    expect(await db.tombstones.get(['pendingMergeReviews', 'review-1'])).toMatchObject({
+      table: 'pendingMergeReviews',
+      recordId: 'review-1',
+    });
   });
 
   it('is a no-op on lineage/review tables for a course with no distributedCopy', async () => {
