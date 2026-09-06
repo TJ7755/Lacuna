@@ -13,53 +13,61 @@ beforeEach(async () => {
 });
 
 it('keeps activity and new-card caps correct without reading full review records', async () => {
-  const now = Date.now();
-  const course = await createCourse('Activity');
-  await db.courses.update(course.id, { newCardsPerDay: 1 });
-  const introduced = await createCourseCard(course.id, 'front_back', 'Introduced', 'Answer');
-  const due = await createCourseCard(course.id, 'front_back', 'Due', 'Answer');
-  await createCourseCard(course.id, 'front_back', 'New', 'Answer');
-  const review = (timestamp: number): ReviewLog => ({
-    timestamp,
-    grade: 3,
-    responseTimeSec: 2,
-    distracted: false,
-    stabilityBefore: null,
-    stabilityAfter: 2,
-    difficultyBefore: null,
-    difficultyAfter: 5,
-    retrievabilityAtReview: null,
-  });
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  await db.reviewHistory.bulkAdd([
-    ...reviewHistoryEntriesForCard({ ...introduced, history: [review(now)] }),
-    ...reviewHistoryEntriesForCard({ ...due, history: [review(yesterday.getTime()), review(now)] }),
-  ]);
-  await db.cards.update(introduced.id, { state: 2, lastReviewed: now, due: now + 86_400_000 });
-  await db.cards.update(due.id, { state: 2, lastReviewed: now, due: now - 1 });
-  const reading = vi.fn((value) => value);
-  db.reviewHistory.hook('reading', reading);
+  const now = new Date(2026, 8, 6, 12).getTime();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
   try {
-    const { result, unmount } = renderHook(
-      () => ({
-        sidebar: useSidebarData(),
-        dashboard: useCourseDashboardData(),
+    const course = await createCourse('Activity');
+    await db.courses.update(course.id, { newCardsPerDay: 1 });
+    const introduced = await createCourseCard(course.id, 'front_back', 'Introduced', 'Answer');
+    const due = await createCourseCard(course.id, 'front_back', 'Due', 'Answer');
+    await createCourseCard(course.id, 'front_back', 'New', 'Answer');
+    const review = (timestamp: number): ReviewLog => ({
+      timestamp,
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    });
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    await db.reviewHistory.bulkAdd([
+      ...reviewHistoryEntriesForCard({ ...introduced, history: [review(now)] }),
+      ...reviewHistoryEntriesForCard({
+        ...due,
+        history: [review(yesterday.getTime()), review(now)],
       }),
-      {
-        wrapper: ({ children }: { children: ReactNode }) => (
-          <ShellCourseDataProvider includeDashboard>{children}</ShellCourseDataProvider>
-        ),
-      },
-    );
-    await waitFor(() => expect(result.current.dashboard?.stats.reviewedToday).toBe(2));
-    expect(result.current.dashboard?.stats.streak).toBe(2);
-    expect(result.current.sidebar?.summaries[course.id].eligible).toBe(1);
-    expect(result.current.dashboard?.summaries[course.id].reviewedTodayCount).toBe(2);
-    expect(reading).not.toHaveBeenCalled();
-    unmount();
+    ]);
+    await db.cards.update(introduced.id, { state: 2, lastReviewed: now, due: now + 86_400_000 });
+    await db.cards.update(due.id, { state: 2, lastReviewed: now, due: now - 1 });
+    const reading = vi.fn((value) => value);
+    db.reviewHistory.hook('reading', reading);
+    try {
+      const { result, unmount } = renderHook(
+        () => ({
+          sidebar: useSidebarData(),
+          dashboard: useCourseDashboardData(),
+        }),
+        {
+          wrapper: ({ children }: { children: ReactNode }) => (
+            <ShellCourseDataProvider includeDashboard>{children}</ShellCourseDataProvider>
+          ),
+        },
+      );
+      await waitFor(() => expect(result.current.dashboard?.stats.reviewedToday).toBe(2));
+      expect(result.current.dashboard?.stats.streak).toBe(2);
+      expect(result.current.sidebar?.summaries[course.id].eligible).toBe(1);
+      expect(result.current.dashboard?.summaries[course.id].reviewedTodayCount).toBe(2);
+      expect(reading).not.toHaveBeenCalled();
+      unmount();
+    } finally {
+      db.reviewHistory.hook('reading').unsubscribe(reading);
+    }
   } finally {
-    db.reviewHistory.hook('reading').unsubscribe(reading);
+    clock.mockRestore();
   }
 });
 

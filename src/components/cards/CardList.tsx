@@ -1248,6 +1248,7 @@ const CardRow = React.memo(function CardRow({
         onPointerCancel={handlePointerCancel}
         tabIndex={0}
         aria-expanded={expanded}
+        data-card-id={card.id}
         className={cn(
           'relative z-10 cursor-pointer rounded-xl border bg-surface p-4',
           selected

@@ -65,16 +65,18 @@ beforeEach(async () => {
   Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
 });
 
-it('shares one cards and history read across the dashboard and both navigation surfaces', async () => {
+it('shares one cards and compact activity read across the dashboard and both navigation surfaces', async () => {
   const cards = vi.spyOn(db.cards, 'toArray');
   const history = vi.spyOn(db.reviewHistory, 'where');
+  const activity = vi.spyOn(db.reviewActivity, 'toArray');
   const assessments = vi.spyOn(db.courseAssessments, 'toArray');
   const courseOrdering = vi.spyOn(db.courses, 'orderBy');
   const view = renderShell();
   await waitFor(() => expect(screen.getByTestId('dashboard-count')).toHaveTextContent('1'));
   await waitFor(() => expect(screen.getByTestId('sidebar-count')).toHaveTextContent('1'));
   expect(cards).toHaveBeenCalledTimes(1);
-  expect(history).toHaveBeenCalledTimes(1);
+  expect(history).not.toHaveBeenCalled();
+  expect(activity).toHaveBeenCalledTimes(1);
   expect(assessments).toHaveBeenCalledTimes(1);
   expect(courseOrdering).not.toHaveBeenCalled();
 
@@ -83,12 +85,14 @@ it('shares one cards and history read across the dashboard and both navigation s
   for (const sidebar of screen.getAllByTestId('sidebar-count'))
     expect(sidebar).toHaveTextContent('1');
   expect(cards).toHaveBeenCalledTimes(1);
-  expect(history).toHaveBeenCalledTimes(1);
+  expect(history).not.toHaveBeenCalled();
+  expect(activity).toHaveBeenCalledTimes(1);
   expect(assessments).toHaveBeenCalledTimes(1);
   expect(courseOrdering).not.toHaveBeenCalled();
 
   cards.mockClear();
   history.mockClear();
+  activity.mockClear();
   assessments.mockClear();
   await act(async () => {
     const course = (await db.courses.toArray())[0];
@@ -98,7 +102,8 @@ it('shares one cards and history read across the dashboard and both navigation s
   for (const sidebar of screen.getAllByTestId('sidebar-count'))
     expect(sidebar).toHaveTextContent('2');
   expect(cards).toHaveBeenCalledTimes(1);
-  expect(history).toHaveBeenCalledTimes(1);
+  expect(history).not.toHaveBeenCalled();
+  expect(activity).toHaveBeenCalledTimes(1);
   expect(assessments).toHaveBeenCalledTimes(1);
   expect(courseOrdering).not.toHaveBeenCalled();
   view.unmount();

@@ -277,9 +277,9 @@ describe('undoReview', () => {
       correct: true,
     });
 
-    expect(
-      (await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-hint')))!.hintUsed,
-    ).toBe(true);
+    expect((await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-hint')))!.hintUsed).toBe(
+      true,
+    );
     expect(
       (await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-no-hint')))!.hintUsed,
     ).toBe(false);
@@ -315,24 +315,24 @@ describe('undoReview', () => {
       ],
     });
 
-    expect(
-      await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-numeric')),
-    ).toMatchObject({
-      grade: 4,
-      correct: true,
-      marksEarned: 1,
-      marksAvailable: 1,
-      lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
-      checkerDisputes: [
-        {
-          reportedAt: 1_725_123_456_789,
-          question: '2 + 2',
-          studentLine: '4',
-          verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
-          checkerSeeds: ['card:0:0'],
-        },
-      ],
-    });
+    expect(await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-numeric'))).toMatchObject(
+      {
+        grade: 4,
+        correct: true,
+        marksEarned: 1,
+        marksAvailable: 1,
+        lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
+        checkerDisputes: [
+          {
+            reportedAt: 1_725_123_456_789,
+            question: '2 + 2',
+            studentLine: '4',
+            verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+            checkerSeeds: ['card:0:0'],
+          },
+        ],
+      },
+    );
   });
 
   it('course-keyed review updates Course.lastInteractedAt, course performance and sessionHistory.courseId', async () => {
@@ -587,6 +587,13 @@ describe('undoReview', () => {
     const deck = await createCourse('Deferred trajectory');
     const first = await createCard(deck.id, 'front_back', 'first', 'answer');
     const second = await createCard(deck.id, 'front_back', 'second', 'answer');
+    const realSetTimeout = globalThis.setTimeout;
+    const fallbackTimer = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation(((...args: Parameters<typeof setTimeout>) =>
+        args[1] === 250
+          ? realSetTimeout(() => {}, 0)
+          : realSetTimeout(...args)) as typeof setTimeout);
     const frames: FrameRequestCallback[] = [];
     const requestFrame = vi
       .spyOn(globalThis, 'requestAnimationFrame')
@@ -632,6 +639,7 @@ describe('undoReview', () => {
     } finally {
       cardsWhere.mockRestore();
       requestFrame.mockRestore();
+      fallbackTimer.mockRestore();
     }
   });
 
@@ -639,6 +647,13 @@ describe('undoReview', () => {
     const deck = await createCourse('Coalesced undo');
     const first = await createCard(deck.id, 'front_back', 'first', 'answer');
     const second = await createCard(deck.id, 'front_back', 'second', 'answer');
+    const realSetTimeout = globalThis.setTimeout;
+    const fallbackTimer = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation(((...args: Parameters<typeof setTimeout>) =>
+        args[1] === 250
+          ? realSetTimeout(() => {}, 0)
+          : realSetTimeout(...args)) as typeof setTimeout);
     const frames: FrameRequestCallback[] = [];
     const requestFrame = vi
       .spyOn(globalThis, 'requestAnimationFrame')
@@ -688,6 +703,7 @@ describe('undoReview', () => {
       expect(await db.sessionHistory.count()).toBe(1);
     } finally {
       requestFrame.mockRestore();
+      fallbackTimer.mockRestore();
     }
   });
 

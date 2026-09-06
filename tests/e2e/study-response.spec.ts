@@ -1,19 +1,37 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('makes the revealed answer readable within a short interaction transition', async ({
   page,
 }) => {
+  const frontText = 'Which value is the response marker?';
   await enterFreshLacuna(page);
-  await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
+  await createCourse(page, 'Study response regression');
+  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Front' }).fill(frontText);
+  await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');
+  await page.getByRole('button', { name: 'Add card', exact: true }).click();
+  await expect(page).not.toHaveURL(/\/cards\/new$/);
+  await expect(page.getByText(frontText, { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await page
-    .getByRole('button', { name: /Start:|Continue:/ })
-    .first()
-    .click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const reveal = page.getByRole('button', { name: /Show answer/i }).last();
   await expect(reveal).toBeVisible();
+  await expect(
+    page.locator('[data-study-card-id]').getByText(frontText, { exact: true }),
+  ).toBeVisible();
+  // Measure the flip after the study entrance settles, not two overlapping transitions.
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => {})),
+    );
+  });
 
   const courseId = /#\/course\/([^/]+)/.exec(page.url())?.[1];
   expect(courseId).toBeTruthy();
@@ -45,7 +63,6 @@ test('makes the revealed answer readable within a short interaction transition',
   await page.goto(`/#/course/${courseId}/learn`);
   await page.reload();
   await expect(page.locator('[data-study-face="front"]').first()).toBeVisible();
-  const frontText = await page.locator('[data-study-face="front"]').first().innerText();
   const reviewedId = await page
     .locator('[data-study-face="front"]')
     .first()
@@ -82,7 +99,8 @@ test('makes the revealed answer readable within a short interaction transition',
   await page.goto(`/#/course/${courseId}/cards`);
   const frontPrefix = frontText.trim().split(/\s+/).slice(0, 4).join(' ');
   await page.getByPlaceholder('Search all cards…').fill(frontPrefix);
-  const row = page.locator('[tabindex="0"][aria-expanded]').filter({ hasText: frontPrefix });
+  // Hover previews can display the back; the search still identifies this single Card.
+  const row = page.locator(`[data-card-id="${reviewedId}"]`);
   await expect(row).toHaveCount(1);
   await row.click();
   await expect(page.getByText('Mean response time', { exact: true })).toBeVisible();
