@@ -1,6 +1,10 @@
-# Lacuna — version 0.2.5
+# Lacuna — version 0.2.6
 
-## Unreleased — landing and method redesign
+## 0.2.6 beta — performance, landing and method redesign
+
+- Reused successful CI and Security checks for the exact release commit instead of repeating
+  those suites in the release workflow. Native Windows/Linux builds remain in Actions;
+  macOS packaging and artefact validation run locally.
 
 - Removed full review-history loading from global search and the collapsed Card library; expanded
   analytics hydrate only their selected Card. Dashboard and sidebar statistics now

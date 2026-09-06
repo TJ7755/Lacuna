@@ -32,15 +32,16 @@ neither proves that the exact release tag names the workflow commit.
 
 ## Verification and native builds
 
-The verifier runs the root typechecking, linting, unit and coverage suites, asset build, canonical
-release scenario, performance gate and browser end-to-end suite before any package job starts. It
-also runs the relay's typecheck, lint and tests, then the standalone AI MCP tool's typecheck, lint,
-tests and build.
+The verifier requires successful ordinary CI and Security push workflows for the exact tagged
+commit on master or main. Those workflows cover root typechecking, lint, all unit shards and
+coverage, the canonical release scenario, browser end-to-end tests, relay checks and standalone
+AI MCP checks. The release verifier reuses that evidence rather than running those suites again.
+It installs only the root dependencies, builds assets and runs the additional performance budget
+before any native package job starts. Windows and Linux still build natively in Actions; macOS
+builds and package checks run locally on Apple Silicon.
 
-The root and relay dependency installations are both required. The relay owns a separate lockfile.
-The standalone AI MCP tool intentionally uses the root installation, but its normal test suite
-imports the real in-process relay handler and store, so the relay dependency tree must also be
-installed. Do not add an unlocked installation inside `tooling/lacuna-ai-mcp`.
+Ordinary CI still requires both root and relay installations: the AI MCP test suite imports the
+real relay handler and store. Do not add an unlocked installation inside `tooling/lacuna-ai-mcp`.
 
 The package matrix is:
 
@@ -73,10 +74,9 @@ Each GitHub native build job uses `actions/attest@v4` to create build-provenance
 exact files in its upload allowlist. Those jobs have only `contents: read`, `id-token: write`,
 `attestations: write` and `artifact-metadata: write`; only the publisher receives `contents: write`.
 
-Before repeating the release checks, the tag workflow requires successful ordinary `CI` and
+Before building release packages, the tag workflow requires successful ordinary `CI` and
 `Security` push workflows for the exact tagged commit on `master` or `main`. A tag created before
-those workflows finish fails closed and must be rerun after both succeed. Repeating selected checks
-inside the release workflow is not treated as evidence that the ordinary commit checks passed.
+those workflows finish fails closed and must be rerun after both succeed. The asset-budget check inside the release workflow is not a substitute for those completed workflows.
 
 After both GitHub package jobs pass, the publisher downloads their named workflow artefacts and
 writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately before adding it to
@@ -90,19 +90,19 @@ bun install --frozen-lockfile
 bun run test:e2e:electron-ai
 CSC_IDENTITY_AUTO_DISCOVERY=false bun run electron:build:mac
 bun run test:e2e:electron-package
-unzip -t release/Lacuna-0.2.5-arm64-mac.zip
-hdiutil verify release/Lacuna-0.2.5-arm64.dmg
+unzip -t release/Lacuna-0.2.6-arm64-mac.zip
+hdiutil verify release/Lacuna-0.2.6-arm64.dmg
 shasum -a 256 \
-  release/Lacuna-0.2.5-arm64.dmg \
-  release/Lacuna-0.2.5-arm64.dmg.blockmap \
-  release/Lacuna-0.2.5-arm64-mac.zip \
-  release/Lacuna-0.2.5-arm64-mac.zip.blockmap \
+  release/Lacuna-0.2.6-arm64.dmg \
+  release/Lacuna-0.2.6-arm64.dmg.blockmap \
+  release/Lacuna-0.2.6-arm64-mac.zip \
+  release/Lacuna-0.2.6-arm64-mac.zip.blockmap \
   release/latest-mac.yml \
   > release/SHA256SUMS-macos.txt
 ```
 
 After the Actions workflow has created the draft, upload those six local files with `gh release
-upload v0.2.5 ... --clobber`. The workflow deliberately preserves draft assets it does not own, so
+upload v0.2.6 ... --clobber`. The workflow deliberately preserves draft assets it does not own, so
 a rerun does not delete the local macOS files. `SHA256SUMS-macos.txt` provides an integrity check,
 not provenance: neither it nor the macOS artefacts can pass `gh attestation verify`.
 

@@ -82,9 +82,7 @@ function workflowJob(workflow: string, name: string): string {
   const start = lines.findIndex((line) => line === `  ${name}:`);
   if (start === -1) throw new Error(`Workflow job ${name} does not exist`);
 
-  const nextJob = lines.findIndex(
-    (line, index) => index > start && /^ {2}[a-z0-9-]+:$/.test(line),
-  );
+  const nextJob = lines.findIndex((line, index) => index > start && /^ {2}[a-z0-9-]+:$/.test(line));
   return lines.slice(start, nextJob === -1 ? lines.length : nextJob).join('\n');
 }
 
@@ -93,9 +91,7 @@ function workflowStep(job: string, name: string): string {
   const start = lines.findIndex((line) => line === `      - name: ${name}`);
   if (start === -1) throw new Error(`Workflow step ${name} does not exist`);
 
-  const nextStep = lines.findIndex(
-    (line, index) => index > start && line.startsWith('      - '),
-  );
+  const nextStep = lines.findIndex((line, index) => index > start && line.startsWith('      - '));
   return lines.slice(start, nextStep === -1 ? lines.length : nextStep).join('\n');
 }
 
@@ -115,9 +111,9 @@ function blockScalarValues(block: string, key: string): string[] {
   return values;
 }
 
-describe('v0.2.5 release configuration', () => {
+describe('v0.2.6 release configuration', () => {
   it('identifies the public app repository and release version', () => {
-    expect(packageJson.version).toBe('0.2.5');
+    expect(packageJson.version).toBe('0.2.6');
     expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({
@@ -177,9 +173,9 @@ describe('v0.2.5 release configuration', () => {
   });
 
   it('lets Electron 42 lazily install its platform runtime for desktop tests', () => {
-    expect(electronAiE2e).toContain("createRequire(import.meta.url)");
+    expect(electronAiE2e).toContain('createRequire(import.meta.url)');
     expect(electronAiE2e).toContain("require('electron')");
-    expect(electronAiE2e).not.toContain("node_modules/electron/dist");
+    expect(electronAiE2e).not.toContain('node_modules/electron/dist');
   });
 
   it('builds the supported Windows, Linux and macOS artefacts', () => {
@@ -246,24 +242,24 @@ describe('v0.2.5 release configuration', () => {
     expect(updaterServiceSource).toContain('options.updater.autoInstallOnAppQuit = false');
   });
 
-  it('gates one draft publisher on complete release verification', () => {
+  it('gates one draft publisher on exact-commit CI without repeating its suites', () => {
     const verifyJob = workflowJob(releaseWorkflow, 'verify');
     for (const command of [
       'bun run typecheck',
       'bun run lint',
       'bun run test:ci:unit',
       'bun run test:coverage',
-      'bun run build:assets',
+      'bun run test:coverage:recovery',
       'bun run release:scenario',
       'bun run test:e2e:web',
-      'bun run perf:check',
     ]) {
-      expect(verifyJob).toContain(command);
+      expect(ciWorkflow).toContain(command);
+      expect(verifyJob).not.toContain(command);
     }
+    expect(verifyJob).toContain('bun run build:assets');
+    expect(verifyJob).toContain('bun run perf:check');
     expect(verifyJob).toContain('fetch-depth: 0');
-    expect(verifyJob).toContain(
-      'tag_commit="$(git rev-parse --verify "${GITHUB_REF}^{commit}")"',
-    );
+    expect(verifyJob).toContain('tag_commit="$(git rev-parse --verify "${GITHUB_REF}^{commit}")"');
     expect(verifyJob).toContain('if [[ "$tag_commit" != "$GITHUB_SHA" ]]');
     const exactCommitChecks = workflowStep(verifyJob, 'Require successful CI for this commit');
     expect(exactCommitChecks).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
@@ -273,31 +269,11 @@ describe('v0.2.5 release configuration', () => {
     expect(exactCommitChecks).toContain('.head_branch == "master"');
     expect(exactCommitChecks).toContain('.head_branch == "main"');
     expect(exactCommitChecks).toContain('.conclusion == "success"');
-    expect(verifyJob.match(/- run: bun install --frozen-lockfile/g)).toHaveLength(2);
-
-    const relayInstall =
-      '- run: bun install --frozen-lockfile\n        working-directory: relay';
-    const relayVerification = workflowStep(verifyJob, 'Verify relay workspace');
-    expect(relayVerification).toContain('working-directory: relay');
-    expect(blockScalarValues(relayVerification, 'run')).toEqual([
-      'bun run typecheck',
-      'bun run lint',
-      'bun run test',
-    ]);
-    expect(verifyJob.indexOf(relayInstall)).toBeLessThan(verifyJob.indexOf(relayVerification));
-
-    const aiMcpVerification = workflowStep(verifyJob, 'Verify standalone AI MCP');
-    expect(aiMcpVerification).toContain('working-directory: tooling/lacuna-ai-mcp');
-    expect(blockScalarValues(aiMcpVerification, 'run')).toEqual([
-      'bun run typecheck',
-      'bun run lint',
-      'bun run test',
-      'bun run build',
-    ]);
-    expect(verifyJob.indexOf(relayInstall)).toBeLessThan(verifyJob.indexOf(aiMcpVerification));
-    expect(verifyJob).not.toMatch(
-      /bun install --frozen-lockfile\n\s+working-directory: tooling\/lacuna-ai-mcp/,
-    );
+    expect(verifyJob.match(/- run: bun install --frozen-lockfile/g)).toHaveLength(1);
+    for (const workspace of ['relay', 'tooling/lacuna-ai-mcp']) {
+      expect(ciWorkflow).toContain(`working-directory: ${workspace}`);
+      expect(verifyJob).not.toContain(`working-directory: ${workspace}`);
+    }
 
     const githubPlatforms = [
       {
@@ -319,11 +295,7 @@ describe('v0.2.5 release configuration', () => {
         build: 'bun run electron:build:linux',
         label: 'Linux',
         artefact: 'lacuna-linux-x64',
-        paths: [
-          'release/*.AppImage',
-          'release/*.deb',
-          'release/latest-linux.yml',
-        ],
+        paths: ['release/*.AppImage', 'release/*.deb', 'release/latest-linux.yml'],
       },
     ] as const;
 
