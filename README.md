@@ -286,6 +286,11 @@ is in `docs/scientific-assessment.md`; it records evidence strength, modelling a
 and the limits of the current claims. Use `docs/WEBSITE_TEST_CHECKLIST.md` for the complete
 browser release-verification pass.
 
+[The maintenance roadmap](docs/next_plan.md) is the current work queue;
+[planning records](docs/plans/README.md) preserve completed and deferred work.
+[Repository governance](docs/maintenance/governance.md) records verified GitHub controls and
+[release maintenance](docs/maintenance/release.md) records the signing and rollout policy.
+
 ## Tech
 
 React 18, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Motion, Recharts, mathjs,

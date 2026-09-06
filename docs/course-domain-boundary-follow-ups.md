@@ -1,6 +1,12 @@
 # Course/domain boundary follow-ups
 
-**Status:** scoped UI containment complete — seven boundary workstreams tracked; internal scheduling containment and storage migration remain separate
+**Status:** delivered — historical UI containment record.
+
+> The later schema-v22 cutover removed the Deck/Folder stores and split performance storage;
+> schema v26 made review history canonical. References below to a future storage migration,
+> live Deck tables or transitional CardList contracts describe the earlier checkpoint, not today's
+> work queue. See [the current roadmap](next_plan.md), [the specification](SPEC.md) and
+> [the v22 compatibility contract](storage-v22-compatibility.md).
 
 **Branch:** `refactor/course-domain-boundary`
 

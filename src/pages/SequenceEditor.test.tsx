@@ -20,7 +20,7 @@ vi.mock('../components/ui/Toast', () => ({
   useToast: () => ({ notify: vi.fn() }),
 }));
 
-vi.mock('../db/repository', () => ({
+vi.mock('../db/sequenceRepository', () => ({
   createSequence: (...args: unknown[]) => createSequence(...args),
   updateSequence: (...args: unknown[]) => updateSequence(...args),
   deleteSequence: vi.fn(),

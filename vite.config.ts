@@ -21,7 +21,7 @@ export const workbox = {
     // These shared modules load during the first launch before the newly
     // installed worker controls the page, but the Cards route imports them too.
     // Precache that core closure; unrelated lazy pages remain runtime-only.
-    'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan}-*.js',
+    'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan,sequenceGeneration}-*.js',
   ],
   runtimeCaching: [
     {

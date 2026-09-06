@@ -17,6 +17,7 @@ export interface StatefulSyncRelay {
   requests: string[];
   attach(page: Page): Promise<void>;
   collideNextStateWrites(): void;
+  releaseStateWriteBarrier(): void;
 }
 
 export async function installStatefulSyncRelay(page: Page): Promise<StatefulSyncRelay> {
@@ -56,6 +57,11 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
         release = resolve;
       });
       writeBarrier = { arrived: 0, ready, release };
+    },
+    releaseStateWriteBarrier() {
+      const barrier = writeBarrier;
+      writeBarrier = undefined;
+      barrier?.release();
     },
   };
 }

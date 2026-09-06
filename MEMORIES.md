@@ -14,6 +14,8 @@ GitHub marks desktop beta releases as pre-releases and the application deliberat
 Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and unsigned macOS builds
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.
+The maintainer permits unsigned limited beta releases but requires signing, including macOS
+notarisation, before wider school rollout (6 September 2026).
 
 ## Desktop packages share one generated icon source
 
@@ -69,6 +71,13 @@ Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all r
 `index.html` turns a missing content-hashed asset into cacheable `200 text/html`; Workbox can then
 preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
 and stale-chunk recovery must retain its one-reload guard.
+
+## Repository splits can change the offline shell's shared chunks
+
+A shared dependency fetched before service-worker control is not in the runtime cache, even if a
+visited lazy route later imports it. After changing the bundle graph, run the cold offline Cards
+reload test and keep Workbox's exact eager precache list aligned with emitted dependencies.
+The persistence split exposed this for `sequenceGeneration`; precaching every lazy page is unnecessary.
 
 ## AI and data MCP companions have different authority
 

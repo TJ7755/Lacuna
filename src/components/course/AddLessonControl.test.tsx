@@ -12,7 +12,7 @@ const createLesson = vi.fn().mockResolvedValue({
   updatedAt: 1,
 });
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/lessonRepository', () => ({
   createLesson: (...args: unknown[]) => createLesson(...args),
 }));
 

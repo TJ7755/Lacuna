@@ -7,7 +7,7 @@ import type { Card, Lesson } from '../../db/types';
 const mockNotify = vi.fn();
 const mockLinkCardsToLesson = vi.fn();
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/lessonRepository', () => ({
   linkCardsToLesson: (...args: unknown[]) => mockLinkCardsToLesson(...args),
 }));
 

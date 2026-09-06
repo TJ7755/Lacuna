@@ -2,6 +2,26 @@
 
 ## Unreleased — landing and method redesign
 
+- Extended two-profile Chromium sync coverage to simultaneous Card edits, newer deletion versus
+  edit, and concurrent reviews, with forced stale writes and persisted convergence after reload.
+  Review assertions check both event identities and the complete replayed schedule. A separate
+  persistence integration test covers review merge, database reopen and export. The browser
+  scenarios exercise manual sync against a stateful relay fixture.
+- Separated Card, review, Course, Lesson and assessment persistence into their owning repositories,
+  retaining the existing transaction scopes and compatibility exports. Study and authoring callers
+  now import the relevant owner directly; existing specialised readers remain in place.
+  Kept cold offline Cards reload working by including the newly separated shared sequence-generation
+  chunk in the service worker's existing core precache list.
+- Extracted pure study scope and Simple/revision answer transitions while retaining one session
+  lifecycle coordinator. Characterisation covers undo persistence and the existing study flows;
+  focused tests cover scope identity, requeueing, retry, parking and completion.
+- Enforced GitHub `master` protection with CI/security checks, an up-to-date PR and resolved review
+  conversations, including administrators. Force pushes and deletion are blocked. Mandatory human
+  approval is deferred while there is only one writer. Unsigned limited beta releases remain
+  permitted; Windows/macOS signing and macOS notarisation are required before wider school rollout.
+- Marked superseded storage, AI and Course planning records as historical and linked them to the
+  single current maintenance roadmap, specification and compatibility contract.
+
 - Added a v20 migrated-profile export/restore comparison and a two-profile Chromium
   sync test that forces a stale relay write, then verifies both independently added
   Cards survive convergence and reload. The relay is a stateful test fixture.

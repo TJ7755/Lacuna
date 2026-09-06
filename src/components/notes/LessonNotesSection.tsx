@@ -13,7 +13,7 @@ import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
 import { collapse } from '../ui/motion';
 import { PlusIcon } from '../ui/icons';
-import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/repository';
+import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/noteRepository';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { Note } from '../../db/types';
 

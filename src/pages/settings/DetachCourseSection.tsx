@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { Toggle } from '../../components/ui/Toggle';
 import { useToast } from '../../components/ui/Toast';
-import { detachCourse, setCourseAutoAcceptUpdates } from '../../db/repository';
+import { detachCourse, setCourseAutoAcceptUpdates } from '../../db/courseRepository';
 
 export interface DetachCourseSectionProps {
   courseId: string;

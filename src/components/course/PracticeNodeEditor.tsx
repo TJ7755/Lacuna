@@ -11,7 +11,11 @@ import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
-import { createPracticeNode, updatePracticeNode, deletePracticeNode } from '../../db/repository';
+import {
+  createPracticeNode,
+  updatePracticeNode,
+  deletePracticeNode,
+} from '../../db/practiceNodeRepository';
 import type { Lesson, PracticeNode } from '../../db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { PracticeNodeFields } from './PracticeNodeFields';

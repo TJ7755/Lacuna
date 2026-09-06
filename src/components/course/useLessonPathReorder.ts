@@ -4,7 +4,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { Lesson } from '../../db/types';
-import { reorderLessons } from '../../db/repository';
+import { reorderLessons } from '../../db/lessonRepository';
 import { hapticStrong } from '../../utils/haptic';
 
 const HOLD_DELAY_MS = 350;

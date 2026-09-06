@@ -6,7 +6,7 @@
 // effect in LearnMode.tsx), so this batches one `listSequences` per distinct courseId
 // among the pool's generated cards rather than querying per-card.
 
-import { listSequences } from './repository';
+import { listSequences } from './sequenceRepository';
 import { sequenceForItemId } from './sequenceGeneration';
 import type { Card, Sequence } from './types';
 

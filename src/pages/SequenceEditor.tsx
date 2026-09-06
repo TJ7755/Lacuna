@@ -31,7 +31,7 @@ import {
   snapshotSequence,
   updateSequence,
   type SequenceSnapshot,
-} from '../db/repository';
+} from '../db/sequenceRepository';
 import type { EditorOriginState } from '../utils/editorOrigin';
 import type { SequenceItem, SequencePresetId } from '../db/types';
 

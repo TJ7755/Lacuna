@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as RepositoryModule from './db/repository';
+import type * as RepositoryModule from './db/courseRepository';
 import type * as SchemaModule from './db/schema';
 
 function deferred<T>() {
@@ -30,7 +30,7 @@ vi.mock('./db/schema', async (importOriginal) => ({
 vi.mock('./db/persistence', () => ({
   requestPersistentStorage: dependencies.requestPersistentStorage,
 }));
-vi.mock('./db/repository', async (importOriginal) => ({
+vi.mock('./db/courseRepository', async (importOriginal) => ({
   ...(await importOriginal<typeof RepositoryModule>()),
   stampMissingLessonViewModes: dependencies.stampMissingLessonViewModes,
 }));

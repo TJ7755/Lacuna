@@ -5,7 +5,7 @@ import { DetachCourseSection } from './DetachCourseSection';
 const detachCourse = vi.fn().mockResolvedValue(undefined);
 const setCourseAutoAcceptUpdates = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/courseRepository', () => ({
   detachCourse: (...args: unknown[]) => detachCourse(...args),
   setCourseAutoAcceptUpdates: (...args: unknown[]) => setCourseAutoAcceptUpdates(...args),
 }));

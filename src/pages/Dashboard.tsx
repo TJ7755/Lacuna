@@ -14,7 +14,7 @@ import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useDashboardSort } from '../state/dashboardSort';
-import { updateCourse } from '../db/repository';
+import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { Course } from '../db/types';

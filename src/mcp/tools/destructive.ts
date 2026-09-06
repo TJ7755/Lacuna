@@ -12,6 +12,7 @@
 
 import type { z } from 'zod';
 import * as read from '../../db/read';
+import { deleteCourseAssessment as repoDeleteCourseAssessment } from '../../db/assessmentRepository';
 import {
   deleteCards,
   snapshotCards,
@@ -24,7 +25,6 @@ import {
   setCardsSuspended,
   setCardFlag,
   rescheduleCards as repoRescheduleCards,
-  deleteCourseAssessment as repoDeleteCourseAssessment,
 } from '../../db/repository';
 import {
   deleteOcclusion as repoDeleteOcclusion,

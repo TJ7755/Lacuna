@@ -38,7 +38,7 @@ import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourse
 import { Button } from '../components/ui/Button';
 import { PlayIcon, PlusIcon } from '../components/ui/icons';
 
-import { updateCourse } from '../db/repository';
+import { updateCourse } from '../db/courseRepository';
 import {
   canEditLessons,
   isLessonAuthoringMode,

@@ -5,7 +5,7 @@ import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
 import { useLessons } from '../../state/useCourseData';
-import { updateLesson, deleteLesson, reorderLessons } from '../../db/repository';
+import { updateLesson, deleteLesson, reorderLessons } from '../../db/lessonRepository';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 export interface LessonManagementSectionProps {

@@ -19,6 +19,6 @@ The jobs use read-only repository permissions except for the CodeQL analysis job
 maintainer; review the scheduled output and dependency updates before each beta release.
 
 GitHub branch protection, required checks, alert notification, and CODEOWNERS enforcement are
-repository settings rather than files in this checkout. This document does not claim those settings
-are enabled. Release provenance, signing, and managed-device verification are covered by the
+repository settings rather than files in this checkout. The [governance record](governance.md)
+contains the dated API verification and policy decisions. Release provenance, signing, and managed-device verification are covered by the
 release maintenance documentation and remain separate from these static analysis gates.

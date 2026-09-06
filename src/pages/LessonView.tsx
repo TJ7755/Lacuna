@@ -41,7 +41,8 @@ import {
 } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
-import { updateCourse, updateLesson } from '../db/repository';
+import { updateCourse } from '../db/courseRepository';
+import { updateLesson } from '../db/lessonRepository';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';

@@ -7,7 +7,7 @@ import { moveLessonIds, useLessonPathReorder } from './useLessonPathReorder';
 const reorderLessons = vi.fn().mockResolvedValue(undefined);
 const hapticStrong = vi.fn();
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/lessonRepository', () => ({
   reorderLessons: (...args: unknown[]) => reorderLessons(...args),
 }));
 

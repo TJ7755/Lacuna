@@ -20,7 +20,7 @@ import {
   createCourseAssessment,
   deleteCourseAssessment,
   updateCourseAssessment,
-} from '../../db/repository';
+} from '../../db/assessmentRepository';
 import { db } from '../../db/schema';
 import type { CourseAssessment } from '../../db/types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';

@@ -19,7 +19,7 @@ import {
   setCardsSuspended,
   snapshotCards,
   unsuspendCard,
-} from '../../db/repository';
+} from '../../db/cardRepository';
 import { isLeech } from '../../fsrs/leech';
 import {
   CheckIcon,

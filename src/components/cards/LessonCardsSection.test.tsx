@@ -37,8 +37,10 @@ vi.mock('../../db/schema', () => ({
   },
 }));
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/cardRepository', () => ({
   restoreCards: vi.fn(),
+}));
+vi.mock('../../db/lessonRepository', () => ({
   unlinkCardFromLesson: (...args: unknown[]) => mockUnlink(...args),
 }));
 

@@ -57,11 +57,11 @@ vi.mock('../state/useCourseData', () => ({
   useLessonBackingDeck: () => undefined,
 }));
 
-vi.mock('../db/repository', () => ({
+vi.mock('../db/lessonRepository', () => ({
   createLesson: mockCreateLesson,
-  updateCourse: mockUpdateCourse,
   updateLesson: mockUpdateLesson,
 }));
+vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],

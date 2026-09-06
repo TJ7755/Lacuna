@@ -11,7 +11,7 @@ const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
 let courses: Course[] | undefined;
 
 vi.mock('../state/useCourseData', () => ({ useCourses: () => courses }));
-vi.mock('../db/repository', () => ({ updateCourse: mockUpdateCourse }));
+vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify }) }));
 
 const archived = {

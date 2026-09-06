@@ -1,5 +1,10 @@
 # Post-PR #101 roadmap findings
 
+> **Historical assessment, superseded.** This records the position on 28 August immediately
+> after PR #101. Domain actions, teaching instructions and learner memories subsequently shipped;
+> they are not outstanding implementation work. See [the current roadmap](next_plan.md) and
+> [the delivered AI plan](plans/ai-sidebar.md). Preserve the dated findings below as history.
+
 **Date:** 28 August 2026
 
 **Question:** After PR #101, what should happen next, and does that mean completing the AI/LLM

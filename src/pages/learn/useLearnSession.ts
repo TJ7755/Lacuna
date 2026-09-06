@@ -21,18 +21,11 @@ import type {
   SchedulingUnitRecord,
   UserPerformance,
 } from '../../db/types';
-import {
-  buryCard,
-  listNotes,
-  ratchetLessonUnlock,
-  recordReview,
-  savePracticeMilestoneProgress,
-  setCardFlag,
-  suspendCard,
-  undoReview,
-  upsertLessonCardExposure,
-} from '../../db/repository';
-import type { ReviewUndo } from '../../db/repository';
+import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
+import { ratchetLessonUnlock, upsertLessonCardExposure } from '../../db/lessonRepository';
+import { listNotes } from '../../db/noteRepository';
+import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
+import { recordReview, undoReview, type ReviewUndo } from '../../db/reviewRepository';
 import {
   completeRevisionWindow,
   refreshRevisionPlan,
@@ -119,8 +112,9 @@ import {
   clearSimpleSession,
   loadSimpleSession,
   saveSimpleSession,
-  type SimpleSessionScope,
 } from './simpleSessionPersistence';
+import { resolveLearnSessionScope } from './sessionScope';
+import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
@@ -211,60 +205,45 @@ export function useLearnSession({
   // Exactly one of courseId/lessonId is set by the matching route (or neither,
   // for the cross-course Review today session). The lesson route (/lesson/:lessonId/learn)
   // carries no courseId, so it is resolved from the loaded lesson (see resolvedCourseId).
-  const isLessonScoped = !!lessonId;
-  const isCourseScoped = !!courseId && !lessonId;
-  const isGlobal = !courseId && !lessonId;
-  const requestScopeLessonIdsKey =
-    requestScopeLessonIds === undefined ? undefined : requestScopeLessonIds.join('\0');
-  const filterParamsKey = filterParams.join('\0');
-  const simpleSessionScope = useMemo<SimpleSessionScope>(() => {
-    if (lessonId) return { kind: 'lesson', lessonId };
-    if (
-      courseId &&
-      (sessionId ||
-        practiceNodeKeyParam ||
-        requestScopeLessonIdsKey !== undefined ||
-        requestAssessmentId ||
-        requestPlanId ||
-        requestWindowId)
-    ) {
-      return {
-        kind: 'practice',
+  const requestScopeLessonIdsIdentity = requestScopeLessonIds?.join('\0');
+  const filterParamsIdentity = filterParams.join('\0');
+  const sessionScope = useMemo(
+    () =>
+      resolveLearnSessionScope({
         courseId,
+        lessonId,
         sessionId,
-        nodeKey: practiceNodeKeyParam ?? undefined,
-        lessonIds:
-          requestScopeLessonIdsKey === undefined ? undefined : requestScopeLessonIdsKey.split('\0'),
+        tagFilter,
+        filterParams: filterParamsIdentity
+          ? (filterParamsIdentity.split('\0') as CardFilter[])
+          : [],
+        requestScopeLessonIds: requestScopeLessonIdsIdentity?.split('\0'),
+        practiceNodeKey: practiceNodeKeyParam,
         assessmentId: requestAssessmentId,
         planId: requestPlanId,
         windowId: requestWindowId,
-      };
-    }
-    if (courseId) {
-      return {
-        kind: 'course',
-        courseId,
-        filters: filterParamsKey ? filterParamsKey.split('\0') : [],
-        tag: tagFilter ?? undefined,
-      };
-    }
-    return {
-      kind: 'global',
-      filters: filterParamsKey ? filterParamsKey.split('\0') : [],
-      tag: tagFilter ?? undefined,
-    };
-  }, [
-    courseId,
-    filterParamsKey,
-    lessonId,
-    practiceNodeKeyParam,
-    requestAssessmentId,
-    requestPlanId,
+      }),
+    [
+      courseId,
+      lessonId,
+      sessionId,
+      tagFilter,
+      filterParamsIdentity,
+      requestScopeLessonIdsIdentity,
+      practiceNodeKeyParam,
+      requestAssessmentId,
+      requestPlanId,
+      requestWindowId,
+    ],
+  );
+  const {
+    isLessonScoped,
+    isCourseScoped,
+    isGlobal,
     requestScopeLessonIdsKey,
-    requestWindowId,
-    sessionId,
-    tagFilter,
-  ]);
+    filterParamsKey,
+    simpleSessionScope,
+  } = sessionScope;
 
   const startInFocusModeRef = useRef(startInFocusMode);
   useEffect(() => {
@@ -1436,21 +1415,23 @@ export function useLearnSession({
             if (lessonExposureIdRef.current) {
               await upsertLessonCardExposure(lessonExposureIdRef.current, cardNow.id);
             }
-            simpleMastered.current.add(cardNow.id);
-            simpleWrong.current.delete(cardNow.id);
-          } else {
-            simpleWrong.current.add(cardNow.id);
-            // Re-queue the card at the end so it comes back later.
-            simpleQueue.current = [
-              ...simpleQueue.current.filter((c) => c.id !== cardNow.id),
-              cardNow,
-            ];
           }
-          const nextOutcomes = new Map(sessionCardOutcomesRef.current);
-          nextOutcomes.set(cardNow.id, correct ? 'correct' : 'wrong');
-          sessionCardOutcomesRef.current = nextOutcomes;
-          setSessionCardOutcomes(nextOutcomes);
-          persistSimpleResume(nextOutcomes);
+          const nextSimple = transitionSimpleAnswer(
+            {
+              queue: simpleQueue.current,
+              mastered: simpleMastered.current,
+              wrong: simpleWrong.current,
+              outcomes: sessionCardOutcomesRef.current,
+            },
+            cardNow,
+            correct,
+          );
+          simpleQueue.current = nextSimple.queue;
+          simpleMastered.current = nextSimple.mastered;
+          simpleWrong.current = nextSimple.wrong;
+          sessionCardOutcomesRef.current = nextSimple.outcomes;
+          setSessionCardOutcomes(nextSimple.outcomes);
+          persistSimpleResume(nextSimple.outcomes);
 
           const remaining = simpleQueue.current.filter(
             (c) => !simpleMastered.current.has(c.id),
@@ -1547,29 +1528,36 @@ export function useLearnSession({
         }
 
         if (revisionPlanRef.current && requestWindowId) {
-          revisionCovered.current.add(updated.id);
           if (recorded) revisionReviewEventIds.current.push(eventId);
-          if (correct) {
-            revisionImproved.current.add(updated.id);
-            revisionCompleted.current.add(updated.id);
-            revisionRetryAt.current.delete(updated.id);
-          } else {
-            const failures = (revisionFailures.current.get(updated.id) ?? 0) + 1;
-            revisionFailures.current.set(updated.id, failures);
-            const window = revisionPlanRef.current.windows.find(
-              (candidate) => candidate.id === requestWindowId,
-            );
-            const windowEndsAt = window
-              ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
-              : Date.now();
-            const productiveAt = updated.due ?? Date.now();
-            if (failures >= 2 || productiveAt >= windowEndsAt) {
-              revisionParked.current.add(updated.id);
-              revisionRetryAt.current.delete(updated.id);
-            } else {
-              revisionRetryAt.current.set(updated.id, Math.max(Date.now(), productiveAt));
-            }
-          }
+          const now = Date.now();
+          const window = revisionPlanRef.current.windows.find(
+            (candidate) => candidate.id === requestWindowId,
+          );
+          const nextRevision = transitionRevisionAnswer(
+            {
+              covered: revisionCovered.current,
+              improved: revisionImproved.current,
+              parked: revisionParked.current,
+              completed: revisionCompleted.current,
+              retryAt: revisionRetryAt.current,
+              failures: revisionFailures.current,
+            },
+            {
+              cardId: updated.id,
+              correct,
+              now,
+              productiveAt: updated.due ?? now,
+              windowEndsAt: window
+                ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
+                : now,
+            },
+          );
+          revisionCovered.current = nextRevision.covered;
+          revisionImproved.current = nextRevision.improved;
+          revisionParked.current = nextRevision.parked;
+          revisionCompleted.current = nextRevision.completed;
+          revisionRetryAt.current = nextRevision.retryAt;
+          revisionFailures.current = nextRevision.failures;
         } else if (grade === 1) {
           // Global sessions span several decks, so size the cooldown to just this
           // card's deck; course/lesson sessions are already scoped to their own

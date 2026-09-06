@@ -5,7 +5,7 @@ import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { TagInput } from '../ui/TagInput';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
-import { updateCard } from '../../db/repository';
+import { updateCard } from '../../db/cardRepository';
 import { hasCloze } from '../markdown/cloze';
 import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';

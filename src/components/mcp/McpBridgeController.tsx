@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../ui/Toast';
 import { db } from '../../db/schema';
-import {
-  restoreCards,
-  restoreCourse,
-  restoreLesson,
-  restoreSequence,
-  type CardSnapshot,
-  type CourseSnapshot,
-  type LessonSnapshot,
-  type SequenceSnapshot,
-} from '../../db/repository';
+import { restoreCards, type CardSnapshot } from '../../db/cardRepository';
+import { restoreCourse, type CourseSnapshot } from '../../db/courseRepository';
+import { restoreLesson, type LessonSnapshot } from '../../db/lessonRepository';
+import { restoreSequence, type SequenceSnapshot } from '../../db/sequenceRepository';
 import { restoreOcclusion, type OcclusionSnapshot } from '../../db/occlusionRepository';
 import {
   restoreConcept,

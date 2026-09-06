@@ -9,7 +9,7 @@ import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
-import { stampMissingLessonViewModes } from './db/repository';
+import { stampMissingLessonViewModes } from './db/courseRepository';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';

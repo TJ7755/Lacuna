@@ -9,7 +9,7 @@ const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }));
 
-vi.mock('../db/repository', () => ({ updateCourse: mockUpdateCourse }));
+vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify }) }));
 
 vi.mock('react-router-dom', () => ({

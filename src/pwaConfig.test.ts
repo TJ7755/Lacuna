@@ -38,7 +38,7 @@ describe('service-worker asset caching', () => {
 
   it('precaches only the shared modules required by the controlled offline Cards spine', () => {
     expect(workbox.globPatterns).toContain(
-      'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan}-*.js',
+      'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan,sequenceGeneration}-*.js',
     );
     expect(workbox.globPatterns).not.toContain('assets/*Page-*.js');
     expect(workbox.globPatterns).not.toContain('assets/*.js');

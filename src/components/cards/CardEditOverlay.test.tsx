@@ -5,7 +5,7 @@ import type { Card } from '../../db/types';
 
 const mockUpdateCard = vi.fn();
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/cardRepository', () => ({
   updateCard: (...args: unknown[]) => mockUpdateCard(...args),
 }));
 

@@ -23,7 +23,7 @@ vi.mock('../../db/importEngine', () => ({
   parseImportAuto: () => ({ cards: [], skipped: 0 }),
 }));
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/cardRepository', () => ({
   checkDuplicatesBatch: vi.fn(() => Promise.resolve(new Set())),
 }));
 

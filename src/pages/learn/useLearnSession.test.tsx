@@ -339,6 +339,16 @@ describe('useLearnSession answer boundary', () => {
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
     expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(1);
+
+    await act(async () => {
+      await result.current.undoLast();
+    });
+
+    expect(result.current.current?.id).toBe(currentCardId);
+    expect(result.current.phase).toBe('question');
+    expect(result.current.events.current).toHaveLength(0);
+    expect(result.current.canUndo).toBe(false);
+    expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(0);
   });
 });
 

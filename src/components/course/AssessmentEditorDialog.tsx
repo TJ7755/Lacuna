@@ -12,7 +12,7 @@ import {
   createCourseAssessment,
   deleteCourseAssessment,
   updateCourseAssessment,
-} from '../../db/repository';
+} from '../../db/assessmentRepository';
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';

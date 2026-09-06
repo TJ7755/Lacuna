@@ -54,7 +54,7 @@ vi.mock('../components/ui/Toast', () => ({
   useToast: () => ({ notify: vi.fn() }),
 }));
 
-vi.mock('../db/repository', () => ({
+vi.mock('../db/cardRepository', () => ({
   checkDuplicate: (...args: unknown[]) => checkDuplicate(...args),
   createLessonCard: vi.fn(),
   createLessonCardWithReverse: vi.fn(),

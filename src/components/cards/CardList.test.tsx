@@ -22,7 +22,7 @@ vi.mock('../../state/inputMode', () => ({
   useIsTouchMode: () => false,
 }));
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/cardRepository', () => ({
   addTagToCards: vi.fn(),
   assignCardsToLesson: vi.fn(),
   createCards: vi.fn(),
@@ -360,7 +360,7 @@ describe('CardList', () => {
   });
 
   it('marks linked cards and removes their lesson link instead of deleting the card', async () => {
-    const { deleteCards } = await import('../../db/repository');
+    const { deleteCards } = await import('../../db/cardRepository');
     const onUnlinkCard = vi.fn();
     render(
       <CardList
@@ -393,7 +393,7 @@ describe('CardList', () => {
   });
 
   it('bulk-assigns selected cards to a lesson', async () => {
-    const { assignCardsToLesson } = await import('../../db/repository');
+    const { assignCardsToLesson } = await import('../../db/cardRepository');
     render(
       <CardList
         cards={[mockCard, mockCard2]}
@@ -419,7 +419,7 @@ describe('CardList', () => {
   });
 
   it('unassigns selected cards when the Unassigned option is chosen', async () => {
-    const { assignCardsToLesson } = await import('../../db/repository');
+    const { assignCardsToLesson } = await import('../../db/cardRepository');
     render(
       <CardList
         cards={[mockCard]}
