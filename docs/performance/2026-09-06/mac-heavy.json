@@ -1,0 +1,224 @@
+{
+  "measuredAt": "2026-09-06T13:07:25.671Z",
+  "label": "mac-m5-24gb",
+  "platform": "darwin",
+  "arch": "arm64",
+  "totalMemoryBytes": 25769803776,
+  "logicalCpus": 10,
+  "cpu": "Apple M5",
+  "browser": "151.0.7922.34",
+  "repetitions": 3,
+  "rates": [
+    1,
+    4,
+    6
+  ],
+  "smoke": false,
+  "productionIndexBytes": 2211,
+  "timingMethod": "Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.",
+  "limitations": "Headless Chromium; CPU throttling affects renderer execution, not an entire low-end CPU/GPU/storage system. JavaScript heap is not total application RAM. Linux memory includes OS, browser and runner.",
+  "runs": [
+    {
+      "rate": 1,
+      "counts": {
+        "courses": 10,
+        "lessons": 100,
+        "cards": 10000,
+        "reviews": 200000
+      },
+      "samples": [
+        {
+          "name": "dashboard-load",
+          "iteration": 0,
+          "elapsedMs": 8450.403541999985,
+          "jsHeapUsedBytes": 248947312,
+          "taskDurationMs": 5140.91
+        },
+        {
+          "name": "global-search",
+          "iteration": 0,
+          "elapsedMs": 5411.550624999974,
+          "jsHeapUsedBytes": 485866240,
+          "taskDurationMs": 3352.9179999999997
+        },
+        {
+          "name": "course-open",
+          "iteration": 0,
+          "elapsedMs": 958.499833000009,
+          "jsHeapUsedBytes": 528481496,
+          "taskDurationMs": 819.9290000000001
+        },
+        {
+          "name": "cards-open",
+          "iteration": 0,
+          "elapsedMs": 1266.4069590000436,
+          "jsHeapUsedBytes": 609563896,
+          "taskDurationMs": 1201.575
+        },
+        {
+          "name": "cards-search",
+          "iteration": 0,
+          "elapsedMs": 197.81575000000885,
+          "jsHeapUsedBytes": 357624160,
+          "taskDurationMs": 203.04100000000068
+        },
+        {
+          "name": "study-open",
+          "iteration": 0,
+          "elapsedMs": 1327.5333329999703,
+          "jsHeapUsedBytes": 409801004,
+          "taskDurationMs": 1094.137
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 65.87625000003027,
+          "jsHeapUsedBytes": 412756516,
+          "taskDurationMs": 38.296000000000774
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 0,
+          "elapsedMs": 3799.4620829999913,
+          "jsHeapUsedBytes": 588325980,
+          "taskDurationMs": 2179.2549999999997
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 1,
+          "elapsedMs": 5645.996791999962,
+          "jsHeapUsedBytes": 282868588,
+          "taskDurationMs": -10329.787
+        },
+        {
+          "name": "global-search",
+          "iteration": 1,
+          "elapsedMs": 5480.957958000014,
+          "jsHeapUsedBytes": 392192052,
+          "taskDurationMs": 3454.936
+        },
+        {
+          "name": "course-open",
+          "iteration": 1,
+          "elapsedMs": 945.8167499999981,
+          "jsHeapUsedBytes": 437493004,
+          "taskDurationMs": 810.5979999999997
+        },
+        {
+          "name": "cards-open",
+          "iteration": 1,
+          "elapsedMs": 1215.9102080000448,
+          "jsHeapUsedBytes": 513944752,
+          "taskDurationMs": 1144.3469999999998
+        },
+        {
+          "name": "cards-search",
+          "iteration": 1,
+          "elapsedMs": 133.14850000001024,
+          "jsHeapUsedBytes": 518140704,
+          "taskDurationMs": 127.29299999999988
+        },
+        {
+          "name": "study-open",
+          "iteration": 1,
+          "elapsedMs": 1315.0207919999957,
+          "jsHeapUsedBytes": 577113208,
+          "taskDurationMs": 1072.229
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 65.88462499994785,
+          "jsHeapUsedBytes": 579774276,
+          "taskDurationMs": 37.394000000000815
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 1,
+          "elapsedMs": 4264.920333000016,
+          "jsHeapUsedBytes": 552095156,
+          "taskDurationMs": 2620.006999999999
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 2,
+          "elapsedMs": 7521.475084000034,
+          "jsHeapUsedBytes": 266492204,
+          "taskDurationMs": -7822.923000000001
+        },
+        {
+          "name": "global-search",
+          "iteration": 2,
+          "elapsedMs": 7108.013666999992,
+          "jsHeapUsedBytes": 492678272,
+          "taskDurationMs": 4562.614
+        },
+        {
+          "name": "course-open",
+          "iteration": 2,
+          "elapsedMs": 1602.0041670000064,
+          "jsHeapUsedBytes": 544193872,
+          "taskDurationMs": 1274.8629999999998
+        },
+        {
+          "name": "cards-open",
+          "iteration": 2,
+          "elapsedMs": 1685.6086249999935,
+          "jsHeapUsedBytes": 614806540,
+          "taskDurationMs": 1592.5200000000004
+        },
+        {
+          "name": "cards-search",
+          "iteration": 2,
+          "elapsedMs": 158.71429199998965,
+          "jsHeapUsedBytes": 620358856,
+          "taskDurationMs": 159.09800000000018
+        },
+        {
+          "name": "study-open",
+          "iteration": 2,
+          "elapsedMs": 1513.19650000002,
+          "jsHeapUsedBytes": 392456796,
+          "taskDurationMs": 1395.764999999999
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 65.62358299997868,
+          "jsHeapUsedBytes": 379921588,
+          "taskDurationMs": 38.87800000000041
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 2,
+          "elapsedMs": 4647.4070000000065,
+          "jsHeapUsedBytes": 557975184,
+          "taskDurationMs": 2754.6549999999997
+        },
+        {
+          "name": "backup-size",
+          "bytes": 145872791
+        },
+        {
+          "name": "backup-export",
+          "iteration": 0,
+          "elapsedMs": 2879.916749999975,
+          "jsHeapUsedBytes": 975375040,
+          "taskDurationMs": 2157.4980000000005
+        },
+        {
+          "name": "backup-preview",
+          "iteration": 0,
+          "elapsedMs": 739.1854160000221,
+          "jsHeapUsedBytes": 631235272,
+          "taskDurationMs": 723.9580000000033
+        }
+      ],
+      "errors": [
+        "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Data replaced from backup.')\nExpected: visible\nTimeout: 180000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"to.be.visible\" with timeout 180000ms\n  - waiting for getByText('Data replaced from backup.')\n"
+      ],
+      "memoryBefore": null,
+      "memorySamples": []
+    }
+  ]
+}

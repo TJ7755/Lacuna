@@ -13,6 +13,7 @@ import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
+import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
 
 export interface CourseSummary {
   /** Count of non-extension lessons in the course. */
@@ -62,6 +63,7 @@ export function computeCourseSummaries(
   assessments: CourseAssessment[] = [],
   now: number = Date.now(),
   progress: CourseSummaryProgress = EMPTY_SUMMARY_PROGRESS,
+  activity?: ReviewActivity,
 ): Record<string, CourseSummary> {
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
@@ -104,7 +106,7 @@ export function computeCourseSummaries(
         !extensionLessonIds.has(c.primaryLessonId),
     );
     const available = availableCards(coreCards, now);
-    const pool = studyPool(coreCards, course, now);
+    const pool = studyPool(coreCards, course, now, activity);
     const readyNow = dueCards(pool, now).length + pool.filter((card) => card.state === 0).length;
     const coreLessons = (lessonsByCourse[course.id] ?? []).filter((lesson) => !lesson.isExtension);
     const completedLessonCount = coreLessons.filter((lesson) =>
@@ -130,7 +132,9 @@ export function computeCourseSummaries(
       completedLessonCount,
       reviewedCardCount: coreCards.filter((card) => card.lastReviewed !== null).length,
       reviewedTodayCount: coreCards.filter((card) =>
-        card.history.some((review) => review.timestamp >= today && review.timestamp <= now),
+        cardReviewTimestamps(card, activity).some(
+          (timestamp) => timestamp >= today && timestamp <= now,
+        ),
       ).length,
     };
   }

@@ -60,4 +60,22 @@ describe('review heatmap bucketing', () => {
     const b = cardWith([3000]);
     expect(reviewTimestamps([a, b]).sort((x, y) => x - y)).toEqual([1000, 2000, 3000]);
   });
+
+  it('uses canonical activity and preserves duplicate review timestamps', () => {
+    const card = cardWith([9999]);
+    card.id = 'canonical-card';
+    const activity = new Map([['canonical-card', [1000, 1000, 2000]]]);
+
+    expect(reviewTimestamps([card], activity)).toEqual([1000, 1000, 2000]);
+  });
+
+  it('does not fall back to card history for an empty or missing activity entry', () => {
+    const card = cardWith([9999]);
+    card.id = 'canonical-card';
+    const empty = new Map<string, readonly number[]>();
+    const partial = new Map([['other-card', [1000]]]);
+
+    expect(reviewTimestamps([card], empty)).toEqual([]);
+    expect(reviewTimestamps([card], partial)).toEqual([]);
+  });
 });

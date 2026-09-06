@@ -136,4 +136,41 @@ describe('studyPool', () => {
     expect(pool).toContain('new1');
     expect(pool).toContain('new2');
   });
+
+  it('uses canonical activity for the rolling 24-hour new-card budget', () => {
+    const cards = [
+      makeCard({
+        id: 'introduced',
+        state: 2,
+        createdAt: 1,
+        lastReviewed: NOW,
+        history: [review(NOW - 2 * MS_PER_DAY)],
+      }),
+      makeCard({ id: 'new1', createdAt: 2 }),
+      makeCard({ id: 'new2', createdAt: 3 }),
+    ];
+    const activity = new Map([['introduced', [NOW - 1_000]]]);
+
+    const pool = studyPool(cards, deck(2), NOW, activity).map((c) => c.id);
+    expect(pool).toContain('new1');
+    expect(pool).not.toContain('new2');
+  });
+
+  it('does not count stale card history when canonical activity is empty', () => {
+    const cards = [
+      makeCard({
+        id: 'introduced',
+        state: 2,
+        createdAt: 1,
+        lastReviewed: NOW,
+        history: [review(NOW - 1_000)],
+      }),
+      makeCard({ id: 'new1', createdAt: 2 }),
+      makeCard({ id: 'new2', createdAt: 3 }),
+    ];
+
+    const pool = studyPool(cards, deck(2), NOW, new Map()).map((c) => c.id);
+    expect(pool).toContain('new1');
+    expect(pool).toContain('new2');
+  });
 });

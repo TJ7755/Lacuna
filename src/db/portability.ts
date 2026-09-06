@@ -1,6 +1,7 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
 import { db, makeId } from './schema';
+import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';
 import { migrateCardRecord, type LegacyCard } from './migrations';
 import type {
   BackupFile,
@@ -524,7 +525,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           await db.revisionPlans.bulkAdd(backup.revisionPlans);
         }
         if (hydratedReviewHistory.length > 0) {
-          await db.reviewHistory.bulkPut(hydratedReviewHistory);
+          await addReviewHistoryInBatches(hydratedReviewHistory);
         }
         if (storageProjection.schedulingUnits.length > 0) {
           await db.schedulingUnits.bulkPut(storageProjection.schedulingUnits);
@@ -782,7 +783,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         const existingIds = new Set(existingReviewHistory.map((entry) => entry.id));
         const missingReviewHistory = resolvedIncoming.filter((entry) => !existingIds.has(entry.id));
         if (missingReviewHistory.length > 0) {
-          await db.reviewHistory.bulkAdd(missingReviewHistory);
+          await addReviewHistoryInBatches(missingReviewHistory);
         }
       }
 

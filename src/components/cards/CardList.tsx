@@ -44,14 +44,11 @@ import type { ParsedCard } from '../../db/import';
 import type { ApkgImportResult } from '../../db/apkgImport';
 import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
+import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 
 const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),
 );
-const CardAnalytics = lazy(() =>
-  import('./CardAnalytics').then((module) => ({ default: module.CardAnalytics })),
-);
-
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
 interface AssignableLesson {
   id: string;
@@ -1414,13 +1411,11 @@ const CardRow = React.memo(function CardRow({
               onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">
-                <Suspense fallback={<div className="h-32 animate-pulse rounded-xl bg-ink/[0.03]" />}>
-                  <CardAnalytics
-                    card={card}
-                    schedulingConfig={schedulingConfig}
-                    motionMultiplier={m}
-                  />
-                </Suspense>
+                <ExpandedCardAnalytics
+                  card={card}
+                  schedulingConfig={schedulingConfig}
+                  motionMultiplier={m}
+                />
               </div>
             </motion.div>
           )}

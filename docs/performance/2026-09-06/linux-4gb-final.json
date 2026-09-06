@@ -1,0 +1,1404 @@
+{
+  "completed": true,
+  "measuredAt": "2026-09-06T14:34:01.589Z",
+  "label": "Linux-4GiB",
+  "platform": "linux",
+  "arch": "arm64",
+  "totalMemoryBytes": 4095639552,
+  "logicalCpus": 2,
+  "cpu": "unknown",
+  "browser": "151.0.7922.34",
+  "repetitions": 3,
+  "burstReviews": 10,
+  "rates": [
+    1
+  ],
+  "smoke": false,
+  "mode": "full",
+  "productionIndexBytes": 2211,
+  "timingMethod": "Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.",
+  "limitations": "Headless Chromium; CPU throttling affects renderer execution, not an entire low-end CPU/GPU/storage system. JavaScript heap is not total application RAM. Linux memory includes OS, browser and runner.",
+  "runs": [
+    {
+      "rate": 1,
+      "counts": {
+        "courses": 10,
+        "lessons": 100,
+        "cards": 10000,
+        "reviews": 200000
+      },
+      "samples": [
+        {
+          "name": "dashboard-load",
+          "iteration": 0,
+          "elapsedMs": 4773.727919000001,
+          "jsHeapUsedBytes": 238002820,
+          "taskDurationMs": 3082.578
+        },
+        {
+          "name": "global-search",
+          "iteration": 0,
+          "elapsedMs": 396.28700000000026,
+          "jsHeapUsedBytes": 242574952,
+          "taskDurationMs": 161.00599999999997
+        },
+        {
+          "name": "course-open",
+          "iteration": 0,
+          "elapsedMs": 1111.549250000001,
+          "jsHeapUsedBytes": 272774252,
+          "taskDurationMs": 689.3659999999998
+        },
+        {
+          "name": "cards-open",
+          "iteration": 0,
+          "elapsedMs": 931.8246259999996,
+          "jsHeapUsedBytes": 325055884,
+          "taskDurationMs": 845.2289999999998
+        },
+        {
+          "name": "cards-search",
+          "iteration": 0,
+          "elapsedMs": 179.2263750000002,
+          "jsHeapUsedBytes": 330154712,
+          "taskDurationMs": 146.31400000000028
+        },
+        {
+          "name": "study-open",
+          "iteration": 0,
+          "elapsedMs": 1717.5807460000015,
+          "jsHeapUsedBytes": 381105204,
+          "taskDurationMs": 870.527
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 313.7783620000009,
+          "jsHeapUsedBytes": 383735456,
+          "taskDurationMs": 98.58400000000067,
+          "inputToReadableMs": 223.52000000000407
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 0,
+          "elapsedMs": 257.5425919999998,
+          "jsHeapUsedBytes": 373156240,
+          "taskDurationMs": 96.23999999999988,
+          "inputToReadableMs": 174.54499999999825
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 1,
+          "elapsedMs": 1061.4158360000001,
+          "jsHeapUsedBytes": 143346096,
+          "taskDurationMs": null
+        },
+        {
+          "name": "global-search",
+          "iteration": 1,
+          "elapsedMs": 281.60205699999824,
+          "jsHeapUsedBytes": 147397940,
+          "taskDurationMs": 147.79900000000012
+        },
+        {
+          "name": "course-open",
+          "iteration": 1,
+          "elapsedMs": 1074.2420020000009,
+          "jsHeapUsedBytes": 184419644,
+          "taskDurationMs": 624.6469999999999
+        },
+        {
+          "name": "cards-open",
+          "iteration": 1,
+          "elapsedMs": 914.6481129999993,
+          "jsHeapUsedBytes": 241064452,
+          "taskDurationMs": 882.0470000000003
+        },
+        {
+          "name": "cards-search",
+          "iteration": 1,
+          "elapsedMs": 187.8761910000012,
+          "jsHeapUsedBytes": 245681588,
+          "taskDurationMs": 168.1910000000002
+        },
+        {
+          "name": "study-open",
+          "iteration": 1,
+          "elapsedMs": 1863.9660509999994,
+          "jsHeapUsedBytes": 272225456,
+          "taskDurationMs": 1388.4759999999999
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 264.6542819999995,
+          "jsHeapUsedBytes": 274482160,
+          "taskDurationMs": 45.706000000000024,
+          "inputToReadableMs": 179.02500000000146
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 1,
+          "elapsedMs": 244.32612100000188,
+          "jsHeapUsedBytes": 284657248,
+          "taskDurationMs": 52.24999999999991,
+          "inputToReadableMs": 177.46500000000378
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 2,
+          "elapsedMs": 1350.226867999998,
+          "jsHeapUsedBytes": 148387896,
+          "taskDurationMs": null
+        },
+        {
+          "name": "global-search",
+          "iteration": 2,
+          "elapsedMs": 301.819148999999,
+          "jsHeapUsedBytes": 151859924,
+          "taskDurationMs": 179.006
+        },
+        {
+          "name": "course-open",
+          "iteration": 2,
+          "elapsedMs": 1901.2592439999971,
+          "jsHeapUsedBytes": 174472596,
+          "taskDurationMs": 1132.954
+        },
+        {
+          "name": "cards-open",
+          "iteration": 2,
+          "elapsedMs": 1178.656175,
+          "jsHeapUsedBytes": 233338372,
+          "taskDurationMs": 1144.1629999999998
+        },
+        {
+          "name": "cards-search",
+          "iteration": 2,
+          "elapsedMs": 218.54467000000295,
+          "jsHeapUsedBytes": 85729680,
+          "taskDurationMs": 198.04900000000015
+        },
+        {
+          "name": "study-open",
+          "iteration": 2,
+          "elapsedMs": 1182.511469000001,
+          "jsHeapUsedBytes": 107072588,
+          "taskDurationMs": 672.3889999999999
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 278.5806620000003,
+          "jsHeapUsedBytes": 109284736,
+          "taskDurationMs": 48.962999999999646,
+          "inputToReadableMs": 192.00499999999738
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 2,
+          "elapsedMs": 227.96017399999982,
+          "jsHeapUsedBytes": 119397516,
+          "taskDurationMs": 39.90999999999989,
+          "inputToReadableMs": 163.94500000000698
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 246.89875200000097,
+          "jsHeapUsedBytes": 121583084,
+          "taskDurationMs": 41.44699999999979,
+          "inputToReadableMs": 177.1999999999971
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 0,
+          "elapsedMs": 231.03668599999946,
+          "jsHeapUsedBytes": 108778584,
+          "taskDurationMs": 50.184999999999924,
+          "inputToReadableMs": 163.38500000000204
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 247.7696509999987,
+          "jsHeapUsedBytes": 110814524,
+          "taskDurationMs": 42.0670000000003,
+          "inputToReadableMs": 179.48500000000058
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 1,
+          "elapsedMs": 224.87099299999682,
+          "jsHeapUsedBytes": 119882488,
+          "taskDurationMs": 51.96999999999985,
+          "inputToReadableMs": 162.11499999999796
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 279.6327280000005,
+          "jsHeapUsedBytes": 121821700,
+          "taskDurationMs": 59.70999999999993,
+          "inputToReadableMs": 191.42000000000553
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 2,
+          "elapsedMs": 239.88207899999907,
+          "jsHeapUsedBytes": 130898192,
+          "taskDurationMs": 53.71499999999951,
+          "inputToReadableMs": 158.81500000000233
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 3,
+          "elapsedMs": 246.63491499999873,
+          "jsHeapUsedBytes": 132899144,
+          "taskDurationMs": 44.318999999999775,
+          "inputToReadableMs": 176.72500000000582
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 3,
+          "elapsedMs": 231.1409480000002,
+          "jsHeapUsedBytes": 111067496,
+          "taskDurationMs": 52.54999999999921,
+          "inputToReadableMs": 161.63000000000466
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 4,
+          "elapsedMs": 246.0508979999977,
+          "jsHeapUsedBytes": 112972652,
+          "taskDurationMs": 38.0250000000002,
+          "inputToReadableMs": 179.97500000000582
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 4,
+          "elapsedMs": 231.08971200000087,
+          "jsHeapUsedBytes": 121406044,
+          "taskDurationMs": 61.2560000000002,
+          "inputToReadableMs": 160.25
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 5,
+          "elapsedMs": 258.6544780000004,
+          "jsHeapUsedBytes": 123311800,
+          "taskDurationMs": 40.34199999999988,
+          "inputToReadableMs": 177.66500000000087
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 5,
+          "elapsedMs": 229.6653640000004,
+          "jsHeapUsedBytes": 131705160,
+          "taskDurationMs": 39.400000000000546,
+          "inputToReadableMs": 163.26000000000204
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 6,
+          "elapsedMs": 229.04261499999848,
+          "jsHeapUsedBytes": 133570212,
+          "taskDurationMs": 36.06600000000082,
+          "inputToReadableMs": 162.0550000000003
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 6,
+          "elapsedMs": 228.30111100000067,
+          "jsHeapUsedBytes": 112823892,
+          "taskDurationMs": 52.687999999999846,
+          "inputToReadableMs": 159.09999999999854
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 7,
+          "elapsedMs": 247.77170599999954,
+          "jsHeapUsedBytes": 114775284,
+          "taskDurationMs": 35.12000000000004,
+          "inputToReadableMs": 175.38999999999942
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 7,
+          "elapsedMs": 226.68446100000074,
+          "jsHeapUsedBytes": 123173748,
+          "taskDurationMs": 39.47700000000065,
+          "inputToReadableMs": 161.34500000000116
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 8,
+          "elapsedMs": 244.64670800000022,
+          "jsHeapUsedBytes": 125061904,
+          "taskDurationMs": 32.54400000000057,
+          "inputToReadableMs": 177.82999999999447
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 8,
+          "elapsedMs": 230.06898400000136,
+          "jsHeapUsedBytes": 133327972,
+          "taskDurationMs": 37.29399999999927,
+          "inputToReadableMs": 159.67499999999563
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 9,
+          "elapsedMs": 229.72937100000127,
+          "jsHeapUsedBytes": 135174304,
+          "taskDurationMs": 32.53800000000062,
+          "inputToReadableMs": 159.875
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 9,
+          "elapsedMs": 226.50558999999703,
+          "jsHeapUsedBytes": 114686796,
+          "taskDurationMs": 60.398999999999425,
+          "inputToReadableMs": 159.73500000000058
+        },
+        {
+          "name": "backup-size",
+          "bytes": 145881126
+        },
+        {
+          "name": "backup-export",
+          "iteration": 0,
+          "elapsedMs": 4059.496873,
+          "jsHeapUsedBytes": 297833200,
+          "taskDurationMs": 3103.2309999999993
+        },
+        {
+          "name": "backup-preview",
+          "iteration": 0,
+          "elapsedMs": 663.9800269999978,
+          "jsHeapUsedBytes": 263789276,
+          "taskDurationMs": 605.2089999999986
+        },
+        {
+          "name": "backup-replace",
+          "iteration": 0,
+          "elapsedMs": 51496.28221600001,
+          "jsHeapUsedBytes": 322452700,
+          "taskDurationMs": 12141.805999999999
+        }
+      ],
+      "errors": [],
+      "memoryBefore": {
+        "availableKiB": 3418720,
+        "swapUsedKiB": 0,
+        "majorFaults": 3675,
+        "oomKills": 0
+      },
+      "memorySamples": [
+        {
+          "availableKiB": 3379620,
+          "swapUsedKiB": 0,
+          "majorFaults": 3816,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3344876,
+          "swapUsedKiB": 0,
+          "majorFaults": 3876,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3308428,
+          "swapUsedKiB": 0,
+          "majorFaults": 3876,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3252256,
+          "swapUsedKiB": 0,
+          "majorFaults": 3876,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3201656,
+          "swapUsedKiB": 0,
+          "majorFaults": 3876,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3142240,
+          "swapUsedKiB": 0,
+          "majorFaults": 3876,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2946184,
+          "swapUsedKiB": 0,
+          "majorFaults": 3876,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2779152,
+          "swapUsedKiB": 0,
+          "majorFaults": 3877,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2642120,
+          "swapUsedKiB": 0,
+          "majorFaults": 3925,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2835272,
+          "swapUsedKiB": 0,
+          "majorFaults": 3938,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2816536,
+          "swapUsedKiB": 0,
+          "majorFaults": 3979,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2841976,
+          "swapUsedKiB": 0,
+          "majorFaults": 3983,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2819280,
+          "swapUsedKiB": 0,
+          "majorFaults": 4006,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2794908,
+          "swapUsedKiB": 0,
+          "majorFaults": 4054,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2765048,
+          "swapUsedKiB": 0,
+          "majorFaults": 4055,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2734820,
+          "swapUsedKiB": 0,
+          "majorFaults": 4069,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2737036,
+          "swapUsedKiB": 0,
+          "majorFaults": 4069,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2724864,
+          "swapUsedKiB": 0,
+          "majorFaults": 4069,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2729412,
+          "swapUsedKiB": 0,
+          "majorFaults": 4084,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2718924,
+          "swapUsedKiB": 0,
+          "majorFaults": 4158,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2576596,
+          "swapUsedKiB": 0,
+          "majorFaults": 4159,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2619512,
+          "swapUsedKiB": 0,
+          "majorFaults": 4195,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2644292,
+          "swapUsedKiB": 0,
+          "majorFaults": 4235,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2830420,
+          "swapUsedKiB": 0,
+          "majorFaults": 4249,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2833672,
+          "swapUsedKiB": 0,
+          "majorFaults": 4309,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2806420,
+          "swapUsedKiB": 0,
+          "majorFaults": 4319,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2788744,
+          "swapUsedKiB": 0,
+          "majorFaults": 4319,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2783296,
+          "swapUsedKiB": 0,
+          "majorFaults": 4333,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2824464,
+          "swapUsedKiB": 0,
+          "majorFaults": 4333,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2802516,
+          "swapUsedKiB": 0,
+          "majorFaults": 4333,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2803748,
+          "swapUsedKiB": 0,
+          "majorFaults": 4337,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2819564,
+          "swapUsedKiB": 0,
+          "majorFaults": 4431,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2759272,
+          "swapUsedKiB": 0,
+          "majorFaults": 4461,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2892296,
+          "swapUsedKiB": 0,
+          "majorFaults": 4473,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2876220,
+          "swapUsedKiB": 0,
+          "majorFaults": 4503,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2915764,
+          "swapUsedKiB": 0,
+          "majorFaults": 4508,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2908872,
+          "swapUsedKiB": 0,
+          "majorFaults": 4508,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2896668,
+          "swapUsedKiB": 0,
+          "majorFaults": 4508,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2882844,
+          "swapUsedKiB": 0,
+          "majorFaults": 4566,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2871520,
+          "swapUsedKiB": 0,
+          "majorFaults": 4584,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2884904,
+          "swapUsedKiB": 0,
+          "majorFaults": 4584,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2888408,
+          "swapUsedKiB": 0,
+          "majorFaults": 4584,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2880724,
+          "swapUsedKiB": 0,
+          "majorFaults": 4597,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2878308,
+          "swapUsedKiB": 0,
+          "majorFaults": 4597,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2884072,
+          "swapUsedKiB": 0,
+          "majorFaults": 4601,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2884492,
+          "swapUsedKiB": 0,
+          "majorFaults": 4601,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2882912,
+          "swapUsedKiB": 0,
+          "majorFaults": 4601,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2888352,
+          "swapUsedKiB": 0,
+          "majorFaults": 4601,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3003640,
+          "swapUsedKiB": 0,
+          "majorFaults": 4601,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2997872,
+          "swapUsedKiB": 0,
+          "majorFaults": 4601,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3006060,
+          "swapUsedKiB": 0,
+          "majorFaults": 4602,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3008336,
+          "swapUsedKiB": 0,
+          "majorFaults": 4602,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3013028,
+          "swapUsedKiB": 0,
+          "majorFaults": 4602,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 3013580,
+          "swapUsedKiB": 0,
+          "majorFaults": 4603,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2995400,
+          "swapUsedKiB": 0,
+          "majorFaults": 4616,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2855660,
+          "swapUsedKiB": 0,
+          "majorFaults": 4635,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2900868,
+          "swapUsedKiB": 0,
+          "majorFaults": 4636,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2850164,
+          "swapUsedKiB": 0,
+          "majorFaults": 4637,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2753092,
+          "swapUsedKiB": 0,
+          "majorFaults": 4638,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2571344,
+          "swapUsedKiB": 0,
+          "majorFaults": 4638,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2297924,
+          "swapUsedKiB": 0,
+          "majorFaults": 4638,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2248060,
+          "swapUsedKiB": 0,
+          "majorFaults": 4641,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2115772,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2538568,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2525864,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2503944,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2517984,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2527396,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2531152,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2499368,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2524156,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2517620,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2540556,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2544936,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2571988,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2566112,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2572484,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2688340,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2712828,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2720012,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2691944,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2703596,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2715512,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2705528,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2725908,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2724048,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2716864,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2729836,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2712572,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2706040,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2722636,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2753976,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2762892,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2745000,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2719416,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2716664,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2746528,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2686064,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2692932,
+          "swapUsedKiB": 0,
+          "majorFaults": 4643,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2693036,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2709296,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2708120,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2736328,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2755852,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2764304,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2772408,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2794428,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2780632,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2778820,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2789656,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2787480,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2785204,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2785732,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2796148,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2800100,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2795752,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2777868,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2779388,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2774048,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2774168,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2771744,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2777572,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2788724,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2780064,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2774908,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2774324,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2769324,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2771380,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2762924,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2760712,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2758660,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2758372,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2760692,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2750792,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2740932,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2736144,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2726116,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2731572,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2717140,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2708520,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2709388,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2694032,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2702128,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2704928,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2689324,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2676924,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2675284,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2682920,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2663124,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2656032,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2659064,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2656800,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2630420,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2625728,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2626376,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2643492,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2641832,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2632924,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2640848,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2640160,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2655432,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2621416,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2648496,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2653356,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2650528,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2644524,
+          "swapUsedKiB": 0,
+          "majorFaults": 4644,
+          "oomKills": 0
+        },
+        {
+          "availableKiB": 2657024,
+          "swapUsedKiB": 0,
+          "majorFaults": 4669,
+          "oomKills": 0
+        }
+      ]
+    }
+  ]
+}

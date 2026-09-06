@@ -60,6 +60,10 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
 } from '../questions/types';
+import {
+  reviewActivityProjectionMiddleware,
+  type ReviewActivityRow,
+} from './reviewActivityProjection';
 
 /**
  * Write one migration batch while checking only the destination keys needed for
@@ -143,6 +147,7 @@ class LacunaDatabase extends Dexie {
   pendingMergeReviews!: Table<PendingMergeReview, string>;
   occlusions!: Table<Occlusion, string>;
   reviewHistory!: Table<ReviewHistoryEntry, string>;
+  reviewActivity!: Table<ReviewActivityRow, string>;
   schedulingUnits!: Table<SchedulingUnitRecord, string>;
   coursePerformance!: Table<CoursePerformance, string>;
   schedulingPerformance!: Table<SchedulingPerformance, string>;
@@ -1262,6 +1267,30 @@ class LacunaDatabase extends Dexie {
           offset += cards.length;
         }
       });
+
+    // Version 27: materialise the timestamp-only review projection by card. The
+    // projection is derived from canonical history and is not part of backups.
+    this.version(27)
+      .stores({ reviewActivity: 'cardId' })
+      .upgrade(async (tx) => {
+        const timestamps = new Map<string, number[]>();
+        await tx
+          .table<ReviewHistoryEntry, string>('reviewHistory')
+          .orderBy('cardId')
+          .each((entry) => {
+            const values = timestamps.get(entry.cardId) ?? [];
+            values.push(entry.timestamp);
+            timestamps.set(entry.cardId, values);
+          });
+        if (timestamps.size > 0) {
+          await tx.table<ReviewActivityRow, string>('reviewActivity').bulkPut(
+            [...timestamps].map(([cardId, values]) => ({
+              cardId,
+              timestamps: values.sort((a, b) => a - b),
+            })),
+          );
+        }
+      });
   }
 }
 
@@ -1283,10 +1312,11 @@ function containsReviewProjection(
   return true;
 }
 
-const CURRENT_SCHEMA_VERSION = 26;
+const CURRENT_SCHEMA_VERSION = 27;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24, 26]);
 
 export const db = new LacunaDatabase();
+db.use(reviewActivityProjectionMiddleware);
 
 // This hook is the storage seam: direct repository writes, restores, imports and
 // generated-card modules cannot accidentally resurrect the retired projection.

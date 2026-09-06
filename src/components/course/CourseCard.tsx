@@ -16,12 +16,14 @@ import { useCourseCardMetric } from '../../state/courseCardMetric';
 import { PlayIcon } from '../ui/icons';
 import type { Card, Course } from '../../db/types';
 import type { CourseSummary } from '../../state/useCourseData';
+import { cardReviewTimestamps, type ReviewActivity } from '../../fsrs/heatmap';
 
 export interface CourseCardProps {
   course: Course;
   summary?: CourseSummary;
   /** The course's cards, used by the hover detail modules. */
   cards?: Card[];
+  reviewActivity?: ReviewActivity;
   /** A merge re-import has queued updates for this course (Arc 7 §7.5). */
   hasPendingUpdate?: boolean;
   onClick: () => void;
@@ -67,6 +69,7 @@ export function CourseCard({
   course,
   summary,
   cards,
+  reviewActivity,
   hasPendingUpdate = false,
   onClick,
   onStudy,
@@ -132,8 +135,8 @@ export function CourseCard({
     const counts = new Array<number>(ACTIVITY_DAYS).fill(0);
     let total = 0;
     for (const card of cards) {
-      for (const log of card.history) {
-        const age = Math.round((today - startOfDay(log.timestamp)) / DAY_MS);
+      for (const timestamp of cardReviewTimestamps(card, reviewActivity)) {
+        const age = Math.round((today - startOfDay(timestamp)) / DAY_MS);
         if (age >= 0 && age < ACTIVITY_DAYS) {
           counts[ACTIVITY_DAYS - 1 - age] += 1;
           total += 1;
@@ -141,7 +144,7 @@ export function CourseCard({
       }
     }
     return { counts, total, max: Math.max(...counts, 1) };
-  }, [detailSettings.activity, cards]);
+  }, [detailSettings.activity, cards, reviewActivity]);
 
   const modules: ReactNode[] = [];
   if (nextDueLabel !== null) {

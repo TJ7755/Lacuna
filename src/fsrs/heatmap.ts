@@ -6,10 +6,20 @@
 import { startOfDay } from '../utils/datetime';
 import type { Card } from '../db/types';
 
+/** Canonical review timestamps without the full per-attempt scheduling records. */
+export type ReviewActivity = ReadonlyMap<string, readonly number[]>;
+
+export function cardReviewTimestamps(card: Card, activity?: ReviewActivity): readonly number[] {
+  return activity === undefined
+    ? card.history.map((log) => log.timestamp)
+    : (activity.get(card.id) ?? []);
+}
+
 /** Every review timestamp across the given cards (one per logged review). */
-export function reviewTimestamps(cards: Card[]): number[] {
+export function reviewTimestamps(cards: Card[], activity?: ReviewActivity): number[] {
   const out: number[] = [];
-  for (const card of cards) for (const log of card.history) out.push(log.timestamp);
+  for (const card of cards)
+    for (const timestamp of cardReviewTimestamps(card, activity)) out.push(timestamp);
   return out;
 }
 

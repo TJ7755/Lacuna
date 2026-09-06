@@ -80,6 +80,28 @@ describe('computeStudyStats — reviewed today', () => {
     });
     expect(computeStudyStats([c], new Map(), NOW).reviewedToday).toBe(2);
   });
+
+  it('uses canonical activity for the streak and reviewed-today count', () => {
+    const c = card({ id: 'canonical-card', history: [review(TODAY - 10 * MS_PER_DAY)] });
+    const activity = new Map([
+      ['canonical-card', [TODAY + 1000, TODAY - MS_PER_DAY + 1000, TODAY - 2 * MS_PER_DAY + 1000]],
+    ]);
+
+    const stats = computeStudyStats([c], new Map(), NOW, undefined, activity);
+    expect(stats.streak).toBe(3);
+    expect(stats.reviewedToday).toBe(1);
+  });
+
+  it('does not fall back to stale card history when canonical activity is empty', () => {
+    const c = card({
+      id: 'canonical-card',
+      history: [review(TODAY + 1000), review(TODAY - MS_PER_DAY + 1000)],
+    });
+
+    const stats = computeStudyStats([c], new Map(), NOW, undefined, new Map());
+    expect(stats.streak).toBe(0);
+    expect(stats.reviewedToday).toBe(0);
+  });
 });
 
 describe('computeStudyStats — 7-day time forecast', () => {

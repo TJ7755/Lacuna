@@ -371,9 +371,9 @@ export function FlipCard({
             exit={{ rotateX: 92, opacity: 0, scale: 0.97, x: swipe.x }}
             transition={{
               x: { type: 'spring', stiffness: 480, damping: 32, mass: 0.9 },
-              rotateX: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
-              opacity: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
-              scale: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
+              rotateX: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
+              opacity: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
+              scale: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
             }}
             style={{ transformOrigin: 'center center', x: swipeXSpring }}
             className={cn(
@@ -385,9 +385,7 @@ export function FlipCard({
             )}
           >
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
+              data-study-face={displayedFront ? 'front' : 'back'}
               className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl"
             >
               <CardContent

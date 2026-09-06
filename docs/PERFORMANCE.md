@@ -1,5 +1,8 @@
 # Lacuna performance audit
 
+The [6 September heavy-data report](performance/2026-09-06/README.md) covers 10,000 Cards,
+200,000 reviews, Mac CPU throttling and disposable 4/8 GiB Linux VMs.
+
 ## Worker, query and desktop package cleanup (5 September 2026)
 
 Compared with merge-base `62b539ab` (the merged landing/dead-font cleanup), using the

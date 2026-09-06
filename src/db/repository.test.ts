@@ -31,7 +31,7 @@ import {
 async function waitForTrajectorySample(
   eventId: string,
 ): Promise<SessionHistoryEntry & { id: number }> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
     const entry = await db.sessionHistory.where('eventId').equals(eventId).first();
     if (entry?.id !== undefined) return entry as SessionHistoryEntry & { id: number };
     await new Promise((resolve) => setTimeout(resolve, 5));
@@ -581,6 +581,146 @@ describe('undoReview', () => {
 
     expect(cardsWhere).not.toHaveBeenCalled();
     expect(await db.sessionHistory.count()).toBe(1);
+  });
+
+  it('defers and coalesces the daily trajectory scan until after the next frame', async () => {
+    const deck = await createCourse('Deferred trajectory');
+    const first = await createCard(deck.id, 'front_back', 'first', 'answer');
+    const second = await createCard(deck.id, 'front_back', 'second', 'answer');
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+    const cardsWhere = vi.spyOn(db.cards, 'where');
+
+    try {
+      await recordReview({
+        card: first,
+        deck,
+        eventId: 'event-deferred-first',
+        sessionId: 'session-deferred',
+        sessionKind: 'deck',
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+      });
+      await recordReview({
+        card: second,
+        deck,
+        eventId: 'event-deferred-second',
+        sessionId: 'session-deferred',
+        sessionKind: 'deck',
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(frames).toHaveLength(1);
+      expect(cardsWhere).not.toHaveBeenCalled();
+      expect(await db.sessionHistory.count()).toBe(0);
+
+      frames[0](performance.now());
+      await waitForTrajectorySample('event-deferred-second');
+      expect(cardsWhere).toHaveBeenCalledTimes(1);
+      expect(await db.sessionHistory.count()).toBe(1);
+    } finally {
+      cardsWhere.mockRestore();
+      requestFrame.mockRestore();
+    }
+  });
+
+  it('falls back to an earlier coalesced event when the latest review is undone before sampling', async () => {
+    const deck = await createCourse('Coalesced undo');
+    const first = await createCard(deck.id, 'front_back', 'first', 'answer');
+    const second = await createCard(deck.id, 'front_back', 'second', 'answer');
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+
+    try {
+      await recordReview({
+        card: first,
+        deck,
+        eventId: 'event-coalesced-a',
+        sessionId: 'session-coalesced',
+        sessionKind: 'deck',
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+      });
+      const perfBeforeSecond = (await performanceForReviewUnit(deck.id)) ?? null;
+      const secondResult = await recordReview({
+        card: second,
+        deck,
+        eventId: 'event-coalesced-b',
+        sessionId: 'session-coalesced',
+        sessionKind: 'deck',
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+      });
+      await undoReview({
+        eventId: 'event-coalesced-b',
+        cardBefore: secondResult.cardBefore,
+        perfBefore: perfBeforeSecond,
+        deckId: deck.id,
+        kind: secondResult.kind,
+        lastInteractedAtBefore: secondResult.lastInteractedAtBefore,
+        updatedAtBefore: secondResult.updatedAtBefore,
+        undoStateAfter: secondResult.undoStateAfter,
+      });
+
+      frames[0](performance.now());
+      const sample = await waitForTrajectorySample('event-coalesced-a');
+      expect(sample.eventId).toBe('event-coalesced-a');
+      expect(await db.sessionHistory.count()).toBe(1);
+    } finally {
+      requestFrame.mockRestore();
+    }
+  });
+
+  it('runs a frame-suspended trajectory job once through its timer fallback', async () => {
+    const deck = await createCourse('Suspended frame');
+    const card = await createCard(deck.id, 'front_back', 'question', 'answer');
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+
+    try {
+      await recordReview({
+        card,
+        deck,
+        eventId: 'event-frame-fallback',
+        sessionId: 'session-frame-fallback',
+        sessionKind: 'deck',
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+      });
+      await waitForTrajectorySample('event-frame-fallback');
+      frames[0](performance.now());
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(await db.sessionHistory.count()).toBe(1);
+    } finally {
+      requestFrame.mockRestore();
+    }
   });
 
   it('makes repeated undo harmless and permits a genuine retry afterwards', async () => {

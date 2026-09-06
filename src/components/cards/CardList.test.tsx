@@ -7,6 +7,11 @@ import type { ApkgImportResult } from '../../db/apkgImport';
 import { courseCardListContext, type CardListContext } from './cardListContext';
 
 const mockNotify = vi.fn();
+const dataHooks = vi.hoisted(() => ({ useCard: vi.fn() }));
+
+vi.mock('../../state/useData', () => ({
+  useCard: dataHooks.useCard,
+}));
 
 vi.mock('../ui/Toast', () => ({
   useToast: () => ({ notify: mockNotify }),
@@ -81,7 +86,9 @@ vi.mock('../ui/Button', () => ({
 }));
 
 vi.mock('./CardAnalytics', () => ({
-  CardAnalytics: () => <div data-testid="card-analytics">Analytics</div>,
+  CardAnalytics: ({ card }: { card: Card }) => (
+    <div data-testid="card-analytics">Analytics history: {card.history.length}</div>
+  ),
 }));
 
 vi.mock('../import/UnifiedImportPanel', () => ({
@@ -178,6 +185,8 @@ const mockContext = courseCardListContext({
 
 beforeEach(() => {
   mockNotify.mockClear();
+  dataHooks.useCard.mockReset();
+  dataHooks.useCard.mockImplementation((id?: string) => (id ? mockCard : null));
 });
 
 /**
@@ -212,6 +221,59 @@ describe('CardList', () => {
 
     fireEvent.click(await screen.findByText('What is the capital of France?'));
     expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
+  });
+
+  it('hydrates canonical history for an expanded raw card even when its reps projection is zero', async () => {
+    const review = {
+      timestamp: Date.now(),
+      grade: 3 as const,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 1,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+    const rawReviewed = {
+      ...mockCard,
+      reps: 0,
+    };
+    dataHooks.useCard.mockImplementation((id?: string) =>
+      id === rawReviewed.id ? { ...rawReviewed, history: [review] } : null,
+    );
+
+    render(<CardList cards={[rawReviewed]} context={mockContext} onEditCard={vi.fn()} />);
+    expect(dataHooks.useCard).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByText('What is the capital of France?'));
+    expect(await screen.findByText('Analytics history: 1')).toBeInTheDocument();
+    expect(dataHooks.useCard).toHaveBeenLastCalledWith(rawReviewed.id);
+  });
+
+  it('does not reload canonical history supplied by an already-hydrated caller', async () => {
+    const hydrated = {
+      ...mockCard,
+      history: [
+        {
+          timestamp: Date.now(),
+          grade: 3 as const,
+          responseTimeSec: 2,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 1,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    };
+
+    render(<CardList cards={[hydrated]} context={mockContext} onEditCard={vi.fn()} />);
+    fireEvent.click(await screen.findByText('What is the capital of France?'));
+
+    expect(await screen.findByText('Analytics history: 1')).toBeInTheDocument();
+    expect(dataHooks.useCard).not.toHaveBeenCalled();
   });
 
   it('routes APKG imports through the context capability', async () => {
