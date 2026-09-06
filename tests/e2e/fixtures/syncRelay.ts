@@ -16,6 +16,7 @@ export interface StatefulSyncRelay {
   relayBase: string;
   requests: string[];
   attach(page: Page): Promise<void>;
+  collideNextStateWrites(): void;
 }
 
 export async function installStatefulSyncRelay(page: Page): Promise<StatefulSyncRelay> {
@@ -23,11 +24,25 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
   const relayPath = new URL(relayBase).pathname;
   const requests: string[] = [];
   const slots = new Map<RelaySlot, StoredSlot>();
+  let writeBarrier: { arrived: number; ready: Promise<void>; release(): void } | undefined;
 
   const attach = async (target: Page): Promise<void> => {
-    await target.route(`${relayBase}/**`, (route) =>
-      handleRoute(route, relayBase, relayPath, requests, slots),
-    );
+    await target.route(`${relayBase}/**`, async (route) => {
+      const barrier = writeBarrier;
+      if (
+        barrier &&
+        route.request().method() === 'PUT' &&
+        route.request().url().endsWith('/state')
+      ) {
+        barrier.arrived += 1;
+        if (barrier.arrived === 2) {
+          writeBarrier = undefined;
+          barrier.release();
+        }
+        await barrier.ready;
+      }
+      await handleRoute(route, relayBase, relayPath, requests, slots);
+    });
   };
   await attach(page);
 
@@ -35,6 +50,13 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
     relayBase,
     requests,
     attach,
+    collideNextStateWrites() {
+      let release!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      writeBarrier = { arrived: 0, ready, release };
+    },
   };
 }
 

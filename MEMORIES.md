@@ -2,6 +2,12 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Current Dexie hooks also run during historical upgrades
+
+The v26 Card history guard runs when earlier upgrades rewrite cards. Clearing history
+there destroys events before v20 can copy them. Exempt version-change transactions;
+the v26 migration explicitly copies, verifies and clears the projection itself.
+
 ## The desktop release channel is an unsigned beta
 
 GitHub marks desktop beta releases as pre-releases and the application deliberately follows them.
