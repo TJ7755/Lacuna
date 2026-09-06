@@ -7,6 +7,10 @@
   Review assertions check both event identities and the complete replayed schedule. A separate
   persistence integration test covers review merge, database reopen and export. The browser
   scenarios exercise manual sync against a stateful relay fixture.
+  Hold relay pulls during divergent edits so an early automatic sync cannot consume one edit
+  before the deliberate write collision; exercise that ordering with a real focus trigger.
+  Keep the completion probe bounded so navigation during a merge cannot strand the Settings
+  button lookup after both devices have already converged.
 - Separated Card, review, Course, Lesson and assessment persistence into their owning repositories,
   retaining the existing transaction scopes and compatibility exports. Study and authoring callers
   now import the relevant owner directly; existing specialised readers remain in place.

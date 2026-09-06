@@ -132,6 +132,12 @@ The v1 crypto boundary accepts only 32 lowercase-hex channel IDs and 64 lowercas
 
 The relay's ETag is an opaque compare-and-swap generation. `src/sync/cycle.ts` retries one stale generation but deliberately does not treat it as an authenticated monotonic clock, so P5 provides no rollback protection against replay of an older valid ciphertext. Do not present the relay as a freshness authority until a high-water-mark design is explicitly approved.
 
+## Forced sync collisions must fence pulls before divergent edits
+
+A two-upload test barrier can hang if automatic sync consumes an edit first: an already-converged
+device correctly skips its upload. Hold relay state pulls before local edits and release them only
+after both cycles arrive, so both writers still compare against the intended shared generation.
+
 ## P6 pairing QR is a short-lived display of bearer capability
 
 `src/sync/pairing.ts` encodes the relay URL, channel id, write token and channel key in the QR; the relay mint secret is intentionally absent and is never persisted by the app. Settings reveals the QR only after an explicit action and hides it on blur or visibility loss. Do not turn the QR into a background-rendered status decoration or add the mint secret to its payload.

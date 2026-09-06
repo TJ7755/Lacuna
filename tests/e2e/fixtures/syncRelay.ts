@@ -16,8 +16,12 @@ export interface StatefulSyncRelay {
   relayBase: string;
   requests: string[];
   attach(page: Page): Promise<void>;
+  holdStatePulls(): void;
+  statePullArrivals(): number;
+  waitForStatePulls(arrivals: number): Promise<void>;
+  releaseStatePullsAfter(arrivals: number): Promise<void>;
   collideNextStateWrites(): void;
-  releaseStateWriteBarrier(): void;
+  releaseBarriers(): void;
 }
 
 export async function installStatefulSyncRelay(page: Page): Promise<StatefulSyncRelay> {
@@ -26,9 +30,24 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
   const requests: string[] = [];
   const slots = new Map<RelaySlot, StoredSlot>();
   let writeBarrier: { arrived: number; ready: Promise<void>; release(): void } | undefined;
+  let pullBarrier:
+    | {
+        arrived: number;
+        cancelled: boolean;
+        ready: Promise<void>;
+        release(): void;
+        arrivalWaiters: Array<() => void>;
+      }
+    | undefined;
 
   const attach = async (target: Page): Promise<void> => {
     await target.route(`${relayBase}/**`, async (route) => {
+      const pull = pullBarrier;
+      if (pull && route.request().method() === 'GET' && route.request().url().endsWith('/state')) {
+        pull.arrived += 1;
+        pull.arrivalWaiters.splice(0).forEach((resolve) => resolve());
+        await pull.ready;
+      }
       const barrier = writeBarrier;
       if (
         barrier &&
@@ -51,6 +70,31 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
     relayBase,
     requests,
     attach,
+    holdStatePulls() {
+      let release!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      pullBarrier = { arrived: 0, cancelled: false, ready, release, arrivalWaiters: [] };
+    },
+    statePullArrivals() {
+      return pullBarrier?.arrived ?? 0;
+    },
+    async waitForStatePulls(arrivals: number) {
+      const barrier = pullBarrier;
+      if (!barrier) throw new Error('No state-pull barrier is installed.');
+      while (barrier.arrived < arrivals) {
+        await new Promise<void>((resolve) => barrier.arrivalWaiters.push(resolve));
+        if (barrier.cancelled) throw new Error('The state-pull barrier was released early.');
+      }
+    },
+    async releaseStatePullsAfter(arrivals: number) {
+      const barrier = pullBarrier;
+      await this.waitForStatePulls(arrivals);
+      if (!barrier) throw new Error('No state-pull barrier is installed.');
+      pullBarrier = undefined;
+      barrier.release();
+    },
     collideNextStateWrites() {
       let release!: () => void;
       const ready = new Promise<void>((resolve) => {
@@ -58,7 +102,14 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
       });
       writeBarrier = { arrived: 0, ready, release };
     },
-    releaseStateWriteBarrier() {
+    releaseBarriers() {
+      const pull = pullBarrier;
+      pullBarrier = undefined;
+      if (pull) {
+        pull.cancelled = true;
+        pull.arrivalWaiters.splice(0).forEach((resolve) => resolve());
+        pull.release();
+      }
       const barrier = writeBarrier;
       writeBarrier = undefined;
       barrier?.release();

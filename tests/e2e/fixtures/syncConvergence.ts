@@ -89,8 +89,10 @@ export async function syncNow(page: Page): Promise<void> {
   ]);
   await expect
     .poll(
-      async () =>
-        page.url().includes('/settings') ? await button.isEnabled().catch(() => false) : true,
+      async () => {
+        if (new URL(page.url()).hash !== '#/settings') return true;
+        return button.isEnabled({ timeout: 250 }).catch(() => false);
+      },
       { timeout: 30_000 },
     )
     .toBe(true);

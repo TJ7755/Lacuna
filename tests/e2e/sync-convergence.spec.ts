@@ -96,7 +96,11 @@ async function collideAndConverge(page: Page, peer: Page, relay: StatefulSyncRel
     });
   }
   relay.collideNextStateWrites();
-  await Promise.all([syncNow(page), syncNow(peer)]);
+  // Hold the remote generation stable until both devices have started their
+  // cycle. This also captures a focus-triggered cycle that began while the
+  // divergent edits were being made, rather than letting it consume one edit
+  // before the deliberate collision.
+  await Promise.all([syncNow(page), syncNow(peer), relay.releaseStatePullsAfter(2)]);
   await expect.poll(() => collisions, { timeout: 30_000 }).toBeGreaterThan(0);
   // The winning writer pulls again to receive the loser's merged successor.
   await syncNow(page);
@@ -109,6 +113,7 @@ test('two browser profiles preserve both additions after colliding relay writes'
 }) => {
   const { courseId, peer, peerContext, relay } = await preparePeers(browser, page);
   try {
+    relay.holdStatePulls();
     await Promise.all([
       addCard(page, courseId, 'Device A addition'),
       addCard(peer, courseId, 'Device B addition'),
@@ -122,7 +127,7 @@ test('two browser profiles preserve both additions after colliding relay writes'
       await expect(device.getByText('Device B addition', { exact: true })).toBeVisible();
     }
   } finally {
-    relay.releaseStateWriteBarrier();
+    relay.releaseBarriers();
     await peer.unrouteAll({ behavior: 'ignoreErrors' });
     await peerContext.close();
   }
@@ -134,6 +139,19 @@ test('two browser profiles converge simultaneous edits to the same card', async 
 }) => {
   const { courseId, peer, peerContext, relay } = await preparePeers(browser, page, 'Shared card');
   try {
+    relay.holdStatePulls();
+    // Reproduce the production focus trigger beginning before the edits. The
+    // pull gate keeps that cycle from exporting either device until both edits
+    // below have finished and the second device has joined the collision.
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+          return relay.statePullArrivals();
+        },
+        { intervals: [1_600], timeout: 10_000 },
+      )
+      .toBeGreaterThan(0);
     await Promise.all([
       editOnlyCard(page, courseId, 'Device A edit'),
       editOnlyCard(peer, courseId, 'Device B edit'),
@@ -163,7 +181,7 @@ test('two browser profiles converge simultaneous edits to the same card', async 
     expect(peerCards).toEqual(pageCards);
     expect(pageCards[0].front).toBe(expectedFront);
   } finally {
-    relay.releaseStateWriteBarrier();
+    relay.releaseBarriers();
     await peer.unrouteAll({ behavior: 'ignoreErrors' });
     await peerContext.close();
   }
@@ -175,6 +193,7 @@ test('a newer deletion wins over an unsynchronised edit to the same card', async
 }) => {
   const { courseId, peer, peerContext, relay } = await preparePeers(browser, page, 'Shared card');
   try {
+    relay.holdStatePulls();
     await editOnlyCard(peer, courseId, 'Peer edit before deletion');
     const peerEdit = (await readAll<Card>(peer, 'cards')).find(
       (card) => card.courseId === courseId,
@@ -198,7 +217,7 @@ test('a newer deletion wins over an unsynchronised edit to the same card', async
       ).toBeVisible();
     }
   } finally {
-    relay.releaseStateWriteBarrier();
+    relay.releaseBarriers();
     await peer.unrouteAll({ behavior: 'ignoreErrors' });
     await peerContext.close();
   }
@@ -215,6 +234,7 @@ test('two browser profiles preserve concurrent reviews of the same card', async 
     true,
   );
   try {
+    relay.holdStatePulls();
     const initialCard = (await readAll<Card>(page, 'cards')).find(
       (card) => card.courseId === courseId,
     )!;
@@ -268,7 +288,7 @@ test('two browser profiles preserve concurrent reviews of the same card', async 
     expect(pageCards[0].reps).toBe(2);
     expect(schedulingProjection(pageCards[0])).toEqual(schedulingProjection(expected));
   } finally {
-    relay.releaseStateWriteBarrier();
+    relay.releaseBarriers();
     await peer.unrouteAll({ behavior: 'ignoreErrors' });
     await peerContext.close();
   }
