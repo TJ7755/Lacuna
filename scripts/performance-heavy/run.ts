@@ -72,12 +72,12 @@ await new Promise<void>((done) => server.listen(port, '127.0.0.1', done));
 const address = server.address();
 if (!address || typeof address === 'string') throw new Error('Server has no port.');
 const origin = `http://127.0.0.1:${address.port}`;
-const browser = await chromium.launch({ headless: true });
+const browser = profileDir ? undefined : await chromium.launch({ headless: true });
 let activeRunProfile: string | undefined;
 let activeContext: Awaited<ReturnType<typeof chromium.launchPersistentContext>> | undefined;
 const interrupt = () => {
   void activeContext?.close();
-  void browser.close();
+  void browser?.close();
 };
 process.once('SIGINT', interrupt);
 process.once('SIGTERM', interrupt);
@@ -90,7 +90,7 @@ const report: Record<string, unknown> = {
   totalMemoryBytes: totalmem(),
   logicalCpus: cpus().length,
   cpu: cpus()[0]?.model,
-  browser: browser.version(),
+  browser: browser?.version(),
   repetitions,
   burstReviews,
   rates,
@@ -219,13 +219,14 @@ try {
           reducedMotion: 'no-preference',
           serviceWorkers: 'block',
         })
-      : await browser.newContext({
+      : await browser!.newContext({
           viewport: { width: 1365, height: 900 },
           locale: 'en-GB',
           reducedMotion: 'no-preference',
           serviceWorkers: 'block',
         });
     activeContext = context;
+    report.browser = context.browser()?.version();
     const page = await context.newPage();
     page.on('console', (message) => {
       if (message.type() === 'log') console.log(message.text());
@@ -268,16 +269,19 @@ try {
     const samples: unknown[] = [];
     const memoryBefore = await linuxMemory();
     const memorySamples: NonNullable<Awaited<ReturnType<typeof linuxMemory>>>[] = [];
-    let sampling = false;
-    const timer = setInterval(async () => {
-      if (sampling) return;
-      sampling = true;
-      try {
-        const sample = await linuxMemory();
-        if (sample) memorySamples.push(sample);
-      } finally {
-        sampling = false;
-      }
+    let pendingSample: Promise<void> | undefined;
+    const timer = setInterval(() => {
+      if (pendingSample) return;
+      pendingSample = linuxMemory()
+        .then((sample) => {
+          if (sample) memorySamples.push(sample);
+        })
+        .catch((error) => {
+          errors.push(`Memory sampling failed: ${String(error)}`);
+        })
+        .finally(() => {
+          pendingSample = undefined;
+        });
     }, 500);
     const run = { rate, counts, samples, errors, memoryBefore, memorySamples };
     runs.push(run);
@@ -466,6 +470,7 @@ try {
       process.exitCode = 1;
     } finally {
       clearInterval(timer);
+      await pendingSample;
       const finalMemory = await linuxMemory();
       if (finalMemory) memorySamples.push(finalMemory);
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
@@ -481,7 +486,7 @@ try {
   await writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await activeContext?.close();
   if (activeRunProfile) await removeOwnedProfile(activeRunProfile);
-  await browser.close();
+  await browser?.close();
   process.removeListener('SIGINT', interrupt);
   process.removeListener('SIGTERM', interrupt);
   await new Promise<void>((done) => server.close(() => done()));

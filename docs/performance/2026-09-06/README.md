@@ -94,7 +94,20 @@ live-query invalidation and historical migrations. Backup tests prove bounded wr
 when a later batch fails. Regression assertions also cover avoiding full-history reads and preserving
 canonical activity, duplicate timestamps and rolling new-card limits.
 
+Before release, the complete local unit suite covered 3,081 passing tests across runs (socket suites
+needed local socket permission). CI exposed a stale full-history-read expectation and brittle demo
+Card selection in the new browser test; the corrected browser regression authors its own Card,
+waits for the study entrance to settle, keeps the 250 ms assertion and selects analytics by Card ID.
+Three consecutive corrected browser runs passed. Seventy-two focused tests passed after review fixes.
+
 ## Interpretation and limits
+
+CodeRabbit subsequently found that the persistent-profile harness retained an unused idle Chromium
+process. The recorded whole-guest RAM figures include that extra process; do not interpret them as
+Lacuna-only memory. The retained reports are historical measurements, not reruns of the corrected
+harness. The harness now launches only the browser it uses and awaits in-flight memory sampling
+before final report serialisation. The VM files had already been disposed of; the historical results
+are retained with this caveat rather than silently rewritten.
 
 Neither VM used swap or recorded OOM kills. Extra RAM therefore does not address the main remaining
 cost in this workload. Differences between two short runs are not evidence that 8 GiB is slower or
