@@ -559,3 +559,15 @@ sending the pointer moves and release that the slider needs.
 `makeId` remains re-exported from `schema.ts` for database callers, but workers must import it
 from `utils/id.ts`. Importing the schema solely to generate IDs executes database initialisation
 and pulls migrations and storage dependencies into an otherwise isolated parser.
+
+## IndexedDB key-only reads can still scan every event
+
+Dexie 4 compound-index `.keys()` uses a key cursor, not a bulk index-key read.
+Avoid equating smaller payloads with constant-time queries: measure large histories,
+and preserve duplicate timestamps when replacing event reads with activity projections.
+
+## Measure study readability from the actual browser input
+
+Motion retains outgoing Card nodes during exit animations, so the first matching node may be
+the old Card. Playwright visibility also permits zero opacity, and polling adds artificial delay.
+Measure a different readable face on animation frames from the actual click event.

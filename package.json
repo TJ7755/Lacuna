@@ -1,7 +1,7 @@
 {
   "name": "lacuna",
   "private": true,
-  "version": "0.2.5",
+  "version": "0.2.6",
   "packageManager": "bun@1.4.0",
   "type": "module",
   "main": "electron/dist-electron/main.js",
@@ -30,6 +30,7 @@
     "test:e2e:electron-ai": "bun run electron:prepare && playwright test -c playwright.electron-ai.config.ts",
     "test:e2e:electron-package": "playwright test -c playwright.electron-performance.config.ts",
     "perf:audit": "bun scripts/performance-audit.ts",
+    "perf:audit:heavy": "bun run build:assets && node scripts/performance-heavy/build.mjs && node artifacts/performance/run.mjs",
     "perf:audit:web-interactions": "playwright test -c playwright.web.config.ts tests/e2e/first-interaction-latency.spec.ts --project=chromium --workers=1",
     "perf:audit:electron-package": "bun scripts/electron-package-audit.ts",
     "perf:check:electron-package": "bun scripts/electron-package-audit.ts --asar release/win-unpacked/resources/app.asar --check",

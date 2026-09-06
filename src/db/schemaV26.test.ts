@@ -94,7 +94,7 @@ describe('schema v26 review-history cutover', () => {
     await db.open();
 
     const stored = (await db.cards.get('card-1'))!;
-    expect(db.verno).toBe(26);
+    expect(db.verno).toBe(27);
     expect(stored.history).toEqual([]);
     expect(await db.reviewHistory.where('cardId').equals('card-1').count()).toBe(2);
     expect(await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-1'))).toMatchObject({

@@ -796,7 +796,7 @@ Schema **v12** adds `lessonCardExposures`, `lessonCompletions`, `noteAnnotations
 Linked rows are not backfilled because the old display-only link proves nothing about where
 the card was taught.
 
-### Review history (schemas v20 and v26)
+### Review history (schemas v20, v26 and v27)
 
 Schema **v20** adds the canonical `reviewHistory` store, indexed by
 `id, cardId, deckId, courseId, primaryLessonId` and `timestamp`. A `ReviewHistoryEntry`
@@ -812,6 +812,20 @@ legacy backup, peer and APKG inputs may still supply inline-only events at the i
 explicit canonical result, including an empty one, remains authoritative. Current backups and peer
 snapshots carry each event once in `reviewHistory`; their Card rows carry an empty `history` array.
 No event is pruned or compacted by this cutover.
+
+Schema **v27** atomically backfills a derived `reviewActivity` table containing each Card’s
+review timestamps. Database middleware maintains it in the same transaction as every canonical
+review mutation, including imports, deletion and undo. Duplicate timestamps remain distinct;
+projection failure aborts the transaction. The derived table is excluded from backups and sync.
+Dashboard and sidebar activity reads use these compact rows for streaks, heatmaps and rolling
+new-card limits, filtering out events whose Card is absent. Search uses Card projections directly;
+its content and management filters do not need history. The Card library also reads projections;
+expanding a Card hydrates its canonical history for analytics. Study and history-sensitive readers
+retain the canonical hydration interface.
+
+After durable grading, trajectory sampling waits until the next browser frame, coalesces pending
+work for the same unit/day, and yields during prediction to keep subsequent interactions responsive.
+Backup replacement and merge write review history in bounded batches inside their existing atomic transaction.
 
 ### Concepts and Questions (schema v24)
 

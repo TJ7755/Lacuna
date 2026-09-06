@@ -2,7 +2,8 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { performanceForCards } from '../db/backingDecks';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { readReviewActivity } from '../db/reviewActivityRead';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { db } from '../db/schema';
 import type { Card, Course, Lesson } from '../db/types';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
@@ -17,6 +18,7 @@ interface SidebarData {
 
 interface CourseDashboardData extends SidebarData {
   allCards: Card[];
+  reviewActivity: ReviewActivity;
 }
 
 interface ShellCourseData {
@@ -52,10 +54,10 @@ export function ShellCourseDataProvider({
     const courses = records.map((record) =>
       hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
     );
-    const hydratedCards = await hydrateCardsWithHistory(cards);
+    const activity = await readReviewActivity(cards);
     const courseIds = new Set(courses.map((course) => course.id));
     const performance = await performanceForCards(
-      hydratedCards.filter((card) => card.courseId && courseIds.has(card.courseId)),
+      cards.filter((card) => card.courseId && courseIds.has(card.courseId)),
     );
     const now = Date.now();
     const activeCourseIds = new Set(
@@ -64,17 +66,26 @@ export function ShellCourseDataProvider({
     const sidebar: SidebarData = {
       courses,
       lessons,
-      summaries: computeCourseSummaries(courses, lessons, hydratedCards, assessments, now),
+      summaries: computeCourseSummaries(
+        courses,
+        lessons,
+        cards,
+        assessments,
+        now,
+        undefined,
+        activity,
+      ),
       stats: computeStudyStats(
-        hydratedCards,
+        cards,
         buildDeckSecondsMap(performance),
         now,
         activeCourseIds,
+        activity,
       ),
     };
 
-    // Navigation retains derived figures, never the full card/history graph. Only
-    // the mounted dashboard needs that graph and these extra table subscriptions.
+    // Navigation retains derived figures. The dashboard also needs card projections
+    // and compact activity timestamps for its hover details and heatmap.
     if (!dashboardRows) return { sidebar };
 
     const [links, exposures, completions, coursePerformance] = dashboardRows;
@@ -89,15 +100,24 @@ export function ShellCourseDataProvider({
       dashboard: {
         courses,
         lessons,
-        allCards: hydratedCards,
-        summaries: computeCourseSummaries(courses, lessons, hydratedCards, assessments, now, {
-          links,
-          exposures,
-          completions,
-        }),
+        allCards: cards,
+        reviewActivity: activity,
+        summaries: computeCourseSummaries(
+          courses,
+          lessons,
+          cards,
+          assessments,
+          now,
+          {
+            links,
+            exposures,
+            completions,
+          },
+          activity,
+        ),
         // Dashboard response-time calibration is course-based; navigation keeps
         // scheduling-unit pacing. Sharing the records must not conflate the two.
-        stats: computeStudyStats(hydratedCards, courseSeconds, now, activeCourseIds),
+        stats: computeStudyStats(cards, courseSeconds, now, activeCourseIds, activity),
       },
     };
   }, [includeDashboard]);

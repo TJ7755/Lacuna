@@ -9,7 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   useCourse,
   useLessons,
-  useCourseCards,
+  useCourseCardProjections,
   useOcclusions,
   useSequences,
   useCourseBankBackingDecks,
@@ -37,7 +37,7 @@ export function CardsPage() {
 
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
-  const cards = useCourseCards(courseId);
+  const cards = useCourseCardProjections(courseId);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);
   const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);

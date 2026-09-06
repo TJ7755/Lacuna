@@ -1,7 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { createPortal } from 'react-dom';
-import { bucketReviewsByDay, reviewTimestamps, addDays } from '../../fsrs/heatmap';
+import {
+  bucketReviewsByDay,
+  reviewTimestamps,
+  addDays,
+  type ReviewActivity,
+} from '../../fsrs/heatmap';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate, startOfDay } from '../../utils/datetime';
 import { motionTransition } from '../ui/motion';
@@ -29,11 +34,11 @@ export function clampTooltipLeft(cellRect: Pick<DOMRect, 'left' | 'width'>, tool
  * A contribution-style review calendar (reviews per local day), theme-aware via the
  * accent colour. Built entirely from existing review logs; nothing is persisted.
  */
-export function ReviewHeatmap({ cards }: { cards: Card[] }) {
+export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: ReviewActivity }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const { columns, total, max, monthLabels } = useMemo(() => {
-    const buckets = bucketReviewsByDay(reviewTimestamps(cards));
+    const buckets = bucketReviewsByDay(reviewTimestamps(cards, activity));
     const today = startOfDay(Date.now());
     // Monday-indexed weekday so weeks read left-to-right, Monday at the top.
     const weekday = (new Date(today).getDay() + 6) % 7;
@@ -81,7 +86,7 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
     }
 
     return { columns: cols, total: sum, max: maxCount, monthLabels: labels };
-  }, [cards]);
+  }, [cards, activity]);
 
   const navigableCells = useMemo(
     () =>

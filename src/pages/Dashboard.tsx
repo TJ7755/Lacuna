@@ -18,6 +18,7 @@ import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { Course } from '../db/types';
+import { cardReviewTimestamps } from '../fsrs/heatmap';
 
 interface CourseMenuState {
   course: Course;
@@ -145,6 +146,7 @@ export function Dashboard() {
                 course={course}
                 summary={summaries?.[course.id]}
                 cards={cardsByCourse[course.id]}
+                reviewActivity={data?.reviewActivity}
                 hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
                 onClick={() =>
                   navigate(
@@ -165,11 +167,12 @@ export function Dashboard() {
       )}
 
       {/* Review activity heatmap */}
-      {allCards && allCards.some((c) => c.history.length > 0) && (
-        <div className="mt-10">
-          <ReviewHeatmap cards={allCards} />
-        </div>
-      )}
+      {allCards &&
+        allCards.some((c) => cardReviewTimestamps(c, data?.reviewActivity).length > 0) && (
+          <div className="mt-10">
+            <ReviewHeatmap cards={allCards} activity={data?.reviewActivity} />
+          </div>
+        )}
 
       {courseMenu && (
         <CourseContextMenu

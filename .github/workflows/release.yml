@@ -23,8 +23,6 @@ jobs:
           bun-version: 1.4.0
 
       - run: bun install --frozen-lockfile
-      - run: bun install --frozen-lockfile
-        working-directory: relay
 
       - name: Validate release tag
         shell: bash
@@ -65,31 +63,10 @@ jobs:
             fi
           done
 
-      - name: Verify relay workspace
-        working-directory: relay
-        run: |
-          bun run typecheck
-          bun run lint
-          bun run test
-
-      - name: Verify standalone AI MCP
-        working-directory: tooling/lacuna-ai-mcp
-        run: |
-          bun run typecheck
-          bun run lint
-          bun run test
-          bun run build
-
-      - run: bun run typecheck
-      - run: bun run lint
-      - run: bun run test:ci:unit
-      - run: bun run test:coverage
-      - run: bun run test:coverage:recovery
+      # CI and Security above already verify this exact commit. Only the asset
+      # budget is not covered by ordinary CI; do not repeat its complete suites.
       - run: bun run build:assets
-      - run: bun run release:scenario
       - run: bun run perf:check
-      - run: bunx playwright install --with-deps chromium
-      - run: bun run test:e2e:web
 
   build-win:
     needs: verify

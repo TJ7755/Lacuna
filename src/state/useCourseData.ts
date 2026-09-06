@@ -192,6 +192,14 @@ export function useCourseCards(courseId: string | undefined): Card[] | undefined
   );
 }
 
+/** Stored card projections for management surfaces that do not need review events up front. */
+export function useCourseCardProjections(courseId: string | undefined): Card[] | undefined {
+  return useLiveQuery(
+    () => (courseId ? db.cards.where('courseId').equals(courseId).toArray() : []),
+    [courseId],
+  );
+}
+
 /** Review events for one course through the canonical event-store adapter. */
 export function useCourseReviewHistory(
   courseId: string | undefined,

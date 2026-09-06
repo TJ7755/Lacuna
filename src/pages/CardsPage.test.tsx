@@ -19,7 +19,7 @@ let observedContexts: {
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLessons: () => mockLessons,
-  useCourseCards: () => mockCards,
+  useCourseCardProjections: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
   useCourseBankBackingDecks: () =>

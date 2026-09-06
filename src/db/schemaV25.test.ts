@@ -14,7 +14,7 @@ describe('schema v25 agent memories through the current schema', () => {
 
   it('adds the indexed memory store and includes it in migration snapshots', async () => {
     await db.open();
-    expect(db.verno).toBe(26);
+    expect(db.verno).toBe(27);
     expect(db.agentMemories.schema.indexes.map((index) => index.name)).toEqual(
       expect.arrayContaining(['courseId', 'status', 'updatedAt', 'tags']),
     );
@@ -31,7 +31,7 @@ describe('schema v25 agent memories through the current schema', () => {
     });
     db.close();
 
-    const snapshot = await readAllDataFromVersion('lacuna', 26);
+    const snapshot = await readAllDataFromVersion('lacuna', 27);
     expect(snapshot.agentMemories).toEqual([expect.objectContaining({ id: 'memory-1' })]);
   });
 });

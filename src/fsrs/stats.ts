@@ -7,6 +7,7 @@
 import type { Card, UserPerformance } from '../db/types';
 import { MS_PER_DAY } from './params';
 import { startOfDay } from '../utils/datetime';
+import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 
 /** Fallback per-review time (seconds) for a deck with no calibration yet. */
 export const DEFAULT_REVIEW_SECONDS = 8;
@@ -97,6 +98,7 @@ export function computeStudyStats(
   deckSeconds: Map<string, number>,
   now: number = Date.now(),
   forecastSourceIds?: ReadonlySet<string>,
+  activity?: ReviewActivity,
 ): StudyStats {
   const today = startOfDay(now);
 
@@ -104,8 +106,8 @@ export function computeStudyStats(
   const studiedDays = new Set<number>();
   let reviewedToday = 0;
   for (const card of cards) {
-    for (const log of card.history) {
-      const day = startOfDay(log.timestamp);
+    for (const timestamp of cardReviewTimestamps(card, activity)) {
+      const day = startOfDay(timestamp);
       studiedDays.add(day);
       if (day === today) reviewedToday += 1;
     }

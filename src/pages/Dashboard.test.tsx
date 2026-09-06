@@ -176,6 +176,19 @@ function setCourseData(courses: Course[] = [mockCourse]) {
 }
 
 describe('Dashboard', () => {
+  it('shows review activity when stored cards have no inline history', () => {
+    mockCourseDashboardData = {
+      courses: [mockCourse],
+      lessons: [],
+      allCards: [mockCard],
+      reviewActivity: new Map([[mockCard.id, [Date.now()]]]),
+      summaries: {},
+      stats: { reviewedToday: 1, streak: 1, forecast: [] },
+    };
+    render(<Dashboard />);
+    expect(screen.getByTestId('review-heatmap')).toBeInTheDocument();
+  });
+
   it('renders skeleton when data is loading', async () => {
     render(<Dashboard />);
     // The placeholder is withheld until loading has lasted long enough to be worth

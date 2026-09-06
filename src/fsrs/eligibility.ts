@@ -12,6 +12,7 @@
 
 import { MS_PER_DAY } from './params';
 import type { Card, SchedulerConfig } from '../db/types';
+import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */
 export function isAvailable(card: Card, now: number = Date.now()): boolean {
@@ -39,11 +40,17 @@ export function dueCards(cards: Card[], now: number = Date.now()): Card[] {
  *  Uses a rolling window so a late-night session that crosses midnight does not
  *  double-spend the daily new-card budget.
  */
-function newCardsIntroducedRecently(cards: Card[], now: number = Date.now()): number {
+function newCardsIntroducedRecently(
+  cards: Card[],
+  now: number = Date.now(),
+  activity?: ReviewActivity,
+): number {
   const cutoff = now - MS_PER_DAY;
   return cards.filter((c) => {
-    if (c.history.length === 0) return false;
-    const firstReview = c.history.reduce((min, h) => Math.min(min, h.timestamp), Infinity);
+    const firstReview = cardReviewTimestamps(c, activity).reduce(
+      (min, timestamp) => Math.min(min, timestamp),
+      Infinity,
+    );
     return firstReview !== Infinity && firstReview > cutoff;
   }).length;
 }
@@ -54,7 +61,12 @@ function newCardsIntroducedRecently(cards: Card[], now: number = Date.now()): nu
  * undefined/zero cap means unlimited. New cards are admitted oldest-first so the
  * deck's authored order is respected. Accepts any SchedulerConfig (a Deck or a Course).
  */
-export function studyPool(cards: Card[], deck: SchedulerConfig, now: number = Date.now()): Card[] {
+export function studyPool(
+  cards: Card[],
+  deck: SchedulerConfig,
+  now: number = Date.now(),
+  activity?: ReviewActivity,
+): Card[] {
   // Archived decks are withdrawn from all study, but their cards are retained and
   // still counted in progress/objective denominators (which use availableCards).
   if (deck.archived) return [];
@@ -62,7 +74,7 @@ export function studyPool(cards: Card[], deck: SchedulerConfig, now: number = Da
   const cap = Math.floor(deck.newCardsPerDay ?? 0);
   if (cap <= 0) return available; // unlimited
 
-  const budget = Math.max(cap - newCardsIntroducedRecently(available, now), 0);
+  const budget = Math.max(cap - newCardsIntroducedRecently(available, now, activity), 0);
   const newAllowed = new Set(
     available
       .filter((c) => c.state === 0)
