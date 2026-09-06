@@ -123,9 +123,8 @@
   text-decoration: underline;
 }
 .memory-sequence {
-  height: 480svh;
-  --hero: 1;
-  --memory-visible: 0;
+  height: 280svh;
+  --memory-visible: 1;
   --loss: 0;
   --opening: 1;
   --searching: 0;
@@ -322,7 +321,7 @@
     position: relative;
     height: auto;
     min-height: 0;
-    padding: 0 24px 70px;
+    padding: 70px 24px;
   }
   .memory-stage > .memory-opening {
     position: static;

@@ -2,6 +2,12 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Landing copy must preserve the scroll's attention budget
+
+The landing design deliberately presents only one or two focal points at each scroll position.
+Do not stack category labels, explanatory paragraphs, reassurance and feature controls beneath
+the opening headline. Explain the product progressively through the existing scenes.
+
 ## Current Dexie hooks also run during historical upgrades
 
 The v26 Card history guard runs when earlier upgrades rewrite cards. Clearing history

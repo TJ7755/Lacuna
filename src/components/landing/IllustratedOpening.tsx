@@ -1,34 +1,18 @@
-import { useState } from 'react';
+import { LandingCta } from '../welcome/LandingCta';
 import { StudyIllustration } from './StudyIllustration';
 import './IllustratedOpening.css';
 
-const emphases = ['subject', 'time', 'exam'] as const;
-
 export function IllustratedOpening() {
-  const [emphasis, setEmphasis] = useState<(typeof emphases)[number]>('subject');
   return (
     <section
       className="illustrated-opening"
       aria-label="Revision around your exam"
-      data-emphasis={emphasis}
+      data-emphasis="exam"
     >
-      <h1 className="opening-title">
-        {emphases.map((item) => (
-          <button
-            type="button"
-            key={item}
-            aria-pressed={emphasis === item}
-            onPointerEnter={(event) => {
-              if (event.pointerType !== 'touch') setEmphasis(item);
-            }}
-            onFocus={() => setEmphasis(item)}
-            onClick={() => setEmphasis(item)}
-          >
-            Your {item}.
-          </button>
-        ))}
-      </h1>
-      <p className="opening-description">Spaced revision that schedules for your exam day.</p>
+      <h1 className="opening-title">Put your revision time where it matters.</h1>
+      <div className="landing-actions">
+        <LandingCta>Start revising</LandingCta>
+      </div>
       <div className="opening-composition">
         <StudyIllustration />
         <div className="opening-dashboard">

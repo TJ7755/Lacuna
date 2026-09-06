@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { IllustratedOpening } from './IllustratedOpening';
 import { StudyIllustration } from './StudyIllustration';
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
@@ -14,24 +13,9 @@ export function MemoryScene() {
     let frame = 0;
     const paint = () => {
       frame = 0;
-      if (media.matches) {
-        const opening = section.querySelector<HTMLElement>('.illustrated-opening');
-        if (opening) {
-          opening.dataset.departed = 'false';
-          opening.inert = false;
-        }
-        return;
-      }
+      if (media.matches) return;
       const rect = section.getBoundingClientRect();
       const whole = clamp(-rect.top / Math.max(1, rect.height - window.innerHeight));
-      const hero = 1 - clamp((whole - 0.04) / 0.16);
-      section.style.setProperty('--hero', String(hero));
-      section.style.setProperty('--memory-visible', String(clamp((whole - 0.15) / 0.1)));
-      const opening = section.querySelector<HTMLElement>('.illustrated-opening');
-      if (opening) {
-        opening.dataset.departed = String(hero === 0);
-        opening.inert = hero === 0;
-      }
       const progress = clamp((whole - 0.24) / 0.76);
       const loss = clamp((progress - 0.14) / 0.24);
       const returnToStudy = clamp((progress - 0.67) / 0.23);
@@ -61,7 +45,6 @@ export function MemoryScene() {
   return (
     <section className="memory-sequence" ref={ref} aria-label="From familiarity to recall">
       <div className="memory-stage">
-        <IllustratedOpening />
         <div className="memory-drawing" aria-hidden="true">
           <StudyIllustration />
         </div>
