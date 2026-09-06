@@ -14,6 +14,8 @@ GitHub marks desktop beta releases as pre-releases and the application deliberat
 Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and unsigned macOS builds
 update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
 claim macOS auto-update until the application is signed.
+The maintainer permits unsigned limited beta releases but requires signing, including macOS
+notarisation, before wider school rollout (6 September 2026).
 
 ## Desktop packages share one generated icon source
 
@@ -70,6 +72,13 @@ Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all r
 preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
 and stale-chunk recovery must retain its one-reload guard.
 
+## Repository splits can change the offline shell's shared chunks
+
+A shared dependency fetched before service-worker control is not in the runtime cache, even if a
+visited lazy route later imports it. After changing the bundle graph, run the cold offline Cards
+reload test and keep Workbox's exact eager precache list aligned with emitted dependencies.
+The persistence split exposed this for `sequenceGeneration`; precaching every lazy page is unnecessary.
+
 ## AI and data MCP companions have different authority
 
 The web AI panel uses short-lived codes and encrypted relay mailboxes; packaged Electron AI uses a
@@ -122,6 +131,12 @@ The v1 crypto boundary accepts only 32 lowercase-hex channel IDs and 64 lowercas
 ## P5 relay generations are CAS, not freshness
 
 The relay's ETag is an opaque compare-and-swap generation. `src/sync/cycle.ts` retries one stale generation but deliberately does not treat it as an authenticated monotonic clock, so P5 provides no rollback protection against replay of an older valid ciphertext. Do not present the relay as a freshness authority until a high-water-mark design is explicitly approved.
+
+## Forced sync collisions must fence pulls before divergent edits
+
+A two-upload test barrier can hang if automatic sync consumes an edit first: an already-converged
+device correctly skips its upload. Hold relay state pulls before local edits and release them only
+after both cycles arrive, so both writers still compare against the intended shared generation.
 
 ## P6 pairing QR is a short-lived display of bearer capability
 
@@ -470,6 +485,14 @@ the exclusive lifecycle across candidate snapshotting and merging as well as the
 fencing only `importBackup()` leaves a race where a write can land after the candidate snapshot.
 Manual replacement invalidates the AI session before draining work, while peer and recovery
 application preserve it.
+
+## Worktree component tests need a real node_modules, not a symlink
+
+A Git worktree whose `node_modules` is a symlink into the main checkout resolves two
+copies of the `vitest` module, so `@testing-library/jest-dom` extends one `expect`
+while tests use the other and every `toBeInTheDocument` fails with "Invalid Chai
+property". Non-DOM suites are unaffected, which makes the failure look test-specific.
+For component suites, populate the worktree with `cp -al` (hardlink copy) instead.
 
 ## Use a throwaway worktree, never stashes, to test a baseline
 

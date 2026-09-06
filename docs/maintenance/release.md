@@ -6,6 +6,18 @@ tested separately on the maintainer's Apple Silicon device, then uploaded to tha
 path publishes the draft. Publishing remains a deliberate maintainer action after every artefact
 has been inspected.
 
+## Signing policy
+
+Maintainer decision, 6 September 2026: the limited beta may continue with explicitly unsigned
+desktop packages. Windows and macOS application signing is required before wider school rollout,
+including notarisation for macOS. This closes the policy decision; it does not claim that certificates,
+credentials or signed builds already exist.
+
+Until that gate is met, retain the beta/pre-release designation and the documented manual-update
+behaviour for unsigned macOS. Windows NSIS and Linux AppImage retain their existing updater paths;
+Windows portable and Linux DEB remain manual updates. A wider rollout requires evidence from the
+actual signed release artefacts as well as the existing data-durability and device gates.
+
 ## Trigger integrity
 
 The workflow accepts tags matching `v*`, then rejects the run unless both conditions hold:
@@ -106,4 +118,6 @@ with it using the platform's SHA-256 tool. Compare the macOS files with
 macOS assets, and refuses to overwrite an already published release.
 
 Repository plan, branch protection, required checks and release-review rules are GitHub settings.
-They cannot be proved by this checkout and must be reviewed separately by the maintainer.
+They cannot be proved by this checkout. See the [governance record](governance.md) for dated API
+verification, the distinction between preparing a draft and approving publication, and remaining
+policy decisions.

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
-import { markLessonComplete } from '../db/repository';
+import { markLessonComplete } from '../db/lessonRepository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
 import { KeyHints } from '../components/ui/KeyHints';

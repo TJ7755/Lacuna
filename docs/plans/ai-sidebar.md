@@ -1,6 +1,11 @@
 # AI sidebar — one-week usable prototype
 
-**Status:** implementation and streamlined verification complete — normal PR review pending
+**Status:** delivered — historical prototype implementation and verification record.
+
+> Domain tools, teaching instructions and learner memories are implemented. The dated execution
+> schedule below is not an active backlog. Current native AI evidence and release checks belong
+> to [the maintenance roadmap](../next_plan.md); this record does not certify the current desktop
+> release or a model-authored native exchange.
 
 **Written:** 27 August 2026
 
@@ -49,7 +54,7 @@ Delivered and source-backed:
 - closed-panel activity capsule with compact follow-up editing, Stop continuity across the desktop
   breakpoint and modal suppression.
 
-## Remaining prototype acceptance target
+## Recorded prototype acceptance
 
 All six prototype scenarios have passed through the real browser and real repositories:
 

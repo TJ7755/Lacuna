@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
-import { createLesson } from '../../db/repository';
+import { createLesson } from '../../db/lessonRepository';
 import type { Lesson } from '../../db/types';
 
 /** Suggested name for the next lesson in a course (e.g. "Lesson 2"). */

@@ -1,5 +1,10 @@
 # Card history consistency findings
 
+> **Historical assessment of mirrored storage.** Schema v26 subsequently ended the dual write:
+> `reviewHistory` is canonical and stored `Card.history` is empty. The findings and line references
+> below describe the 12 August checkpoint. See [the specification](SPEC.md#review-history-schemas-v20-and-v26)
+> for current persistence behaviour and [the roadmap](next_plan.md) for remaining work.
+
 **Date:** 12 August 2026
 
 **Scope:** `recordReview`/`undoReview`, backup export/import, course and lesson snapshots,

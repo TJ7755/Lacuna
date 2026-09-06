@@ -1,7 +1,7 @@
 import type { ApkgImportResult } from '../../db/apkgImport';
 import type { ParsedCard } from '../../db/import';
 import { importApkgResult } from '../../db/apkgImport';
-import { createCards, restoreCards, type CardSnapshot } from '../../db/repository';
+import { createCards, restoreCards, type CardSnapshot } from '../../db/cardRepository';
 import type { SchedulerConfig } from '../../db/types';
 
 /** A destination available to an explicitly legacy card-move action. */

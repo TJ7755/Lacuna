@@ -32,7 +32,8 @@
 
 import { z } from 'zod';
 import { db, makeId } from './schema';
-import { createCards, createCourse } from './repository';
+import { createCards } from './cardRepository';
+import { createCourse } from './courseRepository';
 import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,

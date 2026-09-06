@@ -416,6 +416,26 @@ describe('repository mutation stamps and tombstones', () => {
     expect(completionReplay.updatedAt).toBe(completion.updatedAt);
   });
 
+  it('serialises concurrent lesson exposure and completion writes', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
+
+    const [firstExposure, secondExposure] = await Promise.all([
+      upsertLessonCardExposure(lesson.id, card.id, 100),
+      upsertLessonCardExposure(lesson.id, card.id, 100),
+    ]);
+    expect(secondExposure).toEqual(firstExposure);
+    expect(await db.lessonCardExposures.count()).toBe(1);
+
+    const [firstCompletion, secondCompletion] = await Promise.all([
+      markLessonComplete(lesson.id, 200),
+      markLessonComplete(lesson.id, 200),
+    ]);
+    expect(secondCompletion).toEqual(firstCompletion);
+    expect(await db.lessonCompletions.count()).toBe(1);
+  });
+
   it('advances updatedAt on scheduling units and performance rows', async () => {
     const course = await createCourse('Biology');
     const courseUnit = await db.schedulingUnits.get(course.id);

@@ -18,7 +18,7 @@ import {
 } from '../db/share';
 import { referencedAssetHashes } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
-import { publishCourse } from '../db/repository';
+import { publishCourse } from '../db/courseRepository';
 import {
   findCourseForLineage,
   importLineageFirstTime,

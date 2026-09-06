@@ -29,10 +29,8 @@ import type {
 } from './types';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { gatherCounts, type DiagnosticBundle } from './diagnostics';
-import {
-  listNotes as repositoryListNotes,
-  listSequences as repositoryListSequences,
-} from './repository';
+import { listNotes as repositoryListNotes } from './noteRepository';
+import { listSequences as repositoryListSequences } from './sequenceRepository';
 import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
 import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
 import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';

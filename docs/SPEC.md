@@ -731,11 +731,14 @@ A course's static metadata includes `name`, `description`, and optional `examBoa
 Course Settings and included in batch-generation prompt context only when present; they do not
 create a first-class exam-board or specification entity.
 
-The React-free persistence modules in `src/db/` expose course operations. The general
-`repository.ts` still owns Course, Lesson, Card, review and assessment writes; cohesive Note,
-Practice-node, Sequence and revision-plan writes live in their named repository modules. Read
-operations live in `read.ts`. The current assessment interface replaces the old course-exam-date
-interface.
+The React-free persistence modules in `src/db/` expose course operations. Card, review, Course,
+Lesson and assessment writes live in `cardRepository.ts`, `reviewRepository.ts`,
+`courseRepository.ts`, `lessonRepository.ts` and `assessmentRepository.ts`, alongside the existing
+Note, Practice-node, Sequence and revision-plan repositories. Each operation retains its complete
+Dexie transaction scope, including cascades, review history and tombstones. `repository.ts` is a
+compatibility export surface; new callers should import the owning module. Read operations remain
+in `read.ts` and the existing specialised readers. The assessment interface replaces the old
+course-exam-date interface.
 Batch linking validates lesson/card existence, same-course membership and non-primary
 membership in one `lessonCards` write transaction; IndexedDB serialises overlapping writes
 to that store, making the idempotent duplicate check safe without another schema index.

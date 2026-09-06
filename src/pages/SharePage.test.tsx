@@ -41,7 +41,7 @@ vi.mock('../state/useCourseData', () => ({
     mockCourses?.find((course) => course.id === courseId) ?? null,
 }));
 
-vi.mock('../db/repository', () => ({
+vi.mock('../db/courseRepository', () => ({
   publishCourse: vi.fn(() =>
     Promise.resolve({ lineageId: 'lineage-1', revision: 1, publishedAt: Date.now() }),
   ),

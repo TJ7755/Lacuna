@@ -13,6 +13,10 @@
 import type { z } from 'zod';
 import { db } from '../../db/schema';
 import type { CourseAssessment } from '../../db/types';
+import {
+  createCourseAssessment as repoCreateCourseAssessment,
+  updateCourseAssessment as repoUpdateCourseAssessment,
+} from '../../db/assessmentRepository';
 import * as read from '../../db/read';
 import {
   createCourse as repoCreateCourse,
@@ -27,8 +31,6 @@ import {
   linkCardToLesson as repoLinkCardToLesson,
   createSequence as repoCreateSequence,
   updateSequence as repoUpdateSequence,
-  createCourseAssessment as repoCreateCourseAssessment,
-  updateCourseAssessment as repoUpdateCourseAssessment,
 } from '../../db/repository';
 import {
   createOcclusion as repoCreateOcclusion,

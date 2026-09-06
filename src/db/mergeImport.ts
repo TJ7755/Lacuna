@@ -44,7 +44,7 @@ import {
   updateSequence,
 } from './repository';
 import { ensureLessonBackingDeck, syncCourseSchedulingUnits } from './backingDecks';
-import { stampUpdatedAt } from './mutationStamp';
+import { clearTombstone, stampUpdatedAt } from './mutationStamp';
 import { updateOcclusion } from './occlusionRepository';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
@@ -826,7 +826,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
 
-  return db.transaction('rw', MERGE_TABLES, async () => {
+  return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await createCourse(payload.course.n || 'Shared course', {
       description: payload.course.d ?? '',
       examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
@@ -991,6 +991,9 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await syncCourseSchedulingUnits(course.id);
 
     await db.lineageIdMappings.put(mapping);
+    // Re-importing a lineage after detach revives its registry, so drop the
+    // deletion receipt — the same restore-clears-tombstone rule delete/undo uses.
+    await clearTombstone(tx, 'lineageIdMappings', payload.li);
     await db.pendingMergeReviews.where('courseId').equals(course.id).delete();
 
     return { course };

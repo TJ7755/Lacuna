@@ -2,6 +2,13 @@
 
 **Status:** delivered in schema v22
 
+> **Historical plan; import policy was subsequently superseded.** The proposed automatic
+> conversion of old backups and flat Deck share payloads below is not supported today. Non-empty
+> legacy Deck/Folder backup rows and v1 flat Deck shares are explicitly rejected. The
+> [v22 compatibility note](../storage-v22-compatibility.md) is the current contract. Database
+> upgrades and importing a backup are separate paths. See [the roadmap](../next_plan.md) for
+> current work rather than reopening these completed removal gates.
+
 **Written:** 13 August 2026
 
 **Supersedes the destructive gate in:** [storage-migration.md](storage-migration.md) phase 5

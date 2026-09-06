@@ -117,16 +117,20 @@ vi.mock('./LessonView', () => ({
   },
 }));
 
-vi.mock('../db/repository', () => ({
+vi.mock('../db/lessonRepository', () => ({
   createLesson: mockCreateLesson,
-  updateCourse: mockUpdateCourse,
+  reorderLessons: mockReorderLessons,
+}));
+vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
+vi.mock('../db/practiceNodeRepository', () => ({
   createPracticeNode: mockCreatePracticeNode,
   updatePracticeNode: mockUpdatePracticeNode,
   deletePracticeNode: mockDeletePracticeNode,
+}));
+vi.mock('../db/assessmentRepository', () => ({
   createCourseAssessment: mockCreateCourseAssessment,
   updateCourseAssessment: mockUpdateCourseAssessment,
   deleteCourseAssessment: mockDeleteCourseAssessment,
-  reorderLessons: mockReorderLessons,
 }));
 
 vi.mock('../state/motionSpeed', () => ({

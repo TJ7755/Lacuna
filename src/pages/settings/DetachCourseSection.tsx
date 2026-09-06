@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { Toggle } from '../../components/ui/Toggle';
 import { useToast } from '../../components/ui/Toast';
-import { detachCourse, setCourseAutoAcceptUpdates } from '../../db/repository';
+import { detachCourse, setCourseAutoAcceptUpdates } from '../../db/courseRepository';
 
 export interface DetachCourseSectionProps {
   courseId: string;
@@ -28,13 +28,25 @@ export function DetachCourseSection({ courseId, autoAcceptUpdates }: DetachCours
   const [confirming, setConfirming] = useState(false);
 
   async function handleDetach() {
-    await detachCourse(courseId);
-    notify('Course detached. You can now edit it freely.', 'neutral');
-    setConfirming(false);
+    try {
+      await detachCourse(courseId);
+      notify('Course detached. You can now edit it freely.', 'neutral');
+      setConfirming(false);
+    } catch (error) {
+      // Keep the confirmation open so the detach can be retried.
+      notify(error instanceof Error ? error.message : 'Could not detach the course.', 'negative');
+    }
   }
 
   async function handleAutoAcceptChange(checked: boolean) {
-    await setCourseAutoAcceptUpdates(courseId, checked);
+    try {
+      await setCourseAutoAcceptUpdates(courseId, checked);
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : 'Could not update the preference.',
+        'negative',
+      );
+    }
   }
 
   return (

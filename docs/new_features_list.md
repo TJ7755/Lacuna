@@ -1,5 +1,10 @@
 # Lacuna Course Architecture Plan
 
+> **Historical proposal, not an active backlog.** Course/Lesson architecture and the removal of
+> Deck/Folder stores have shipped. Unimplemented ideas below remain parked under the current
+> feature freeze; this document does not authorise them. Use [the roadmap](next_plan.md) for
+> current work and [the specification](SPEC.md) for delivered behaviour.
+
 ## Document Purpose
 
 This plan details the complete migration from Lacuna's current `Folder → Deck → Card` model to a `Course → Lesson → Note + Card` learning operating system. It covers the data model, UI changes, migration strategy, and implementation phases.

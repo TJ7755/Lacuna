@@ -38,7 +38,7 @@ const createCourseAssessment = vi.fn().mockResolvedValue(undefined);
 const updateCourseAssessment = vi.fn().mockResolvedValue(undefined);
 const deleteCourseAssessment = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../db/repository', () => ({
+vi.mock('../../db/assessmentRepository', () => ({
   createCourseAssessment: (...args: unknown[]) => createCourseAssessment(...args),
   updateCourseAssessment: (...args: unknown[]) => updateCourseAssessment(...args),
   deleteCourseAssessment: (...args: unknown[]) => deleteCourseAssessment(...args),

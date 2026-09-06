@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { linkCardsToLesson } from '../../db/repository';
+import { linkCardsToLesson } from '../../db/lessonRepository';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { CheckIcon, CloseIcon, SearchIcon } from '../ui/icons';

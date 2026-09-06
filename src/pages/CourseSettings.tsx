@@ -7,8 +7,13 @@ import { CoursePageNavigation } from '../components/course/CoursePageNavigation'
 import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
-import { deleteCourse, snapshotCourse, restoreCourse, updateCourse } from '../db/repository';
-import type { CourseSnapshot } from '../db/repository';
+import {
+  deleteCourse,
+  snapshotCourse,
+  restoreCourse,
+  updateCourse,
+  type CourseSnapshot,
+} from '../db/courseRepository';
 import {
   clampRequestRetention,
   defaultFsrsParameters,

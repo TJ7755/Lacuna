@@ -2,6 +2,30 @@
 
 ## Unreleased — landing and method redesign
 
+- Extended two-profile Chromium sync coverage to simultaneous Card edits, newer deletion versus
+  edit, and concurrent reviews, with forced stale writes and persisted convergence after reload.
+  Review assertions check both event identities and the complete replayed schedule. A separate
+  persistence integration test covers review merge, database reopen and export. The browser
+  scenarios exercise manual sync against a stateful relay fixture.
+  Hold relay pulls during divergent edits so an early automatic sync cannot consume one edit
+  before the deliberate write collision; exercise that ordering with a real focus trigger.
+  Keep the completion probe bounded so navigation during a merge cannot strand the Settings
+  button lookup after both devices have already converged.
+- Separated Card, review, Course, Lesson and assessment persistence into their owning repositories,
+  retaining the existing transaction scopes and compatibility exports. Study and authoring callers
+  now import the relevant owner directly; existing specialised readers remain in place.
+  Kept cold offline Cards reload working by including the newly separated shared sequence-generation
+  chunk in the service worker's existing core precache list.
+- Extracted pure study scope and Simple/revision answer transitions while retaining one session
+  lifecycle coordinator. Characterisation covers undo persistence and the existing study flows;
+  focused tests cover scope identity, requeueing, retry, parking and completion.
+- Enforced GitHub `master` protection with CI/security checks, an up-to-date PR and resolved review
+  conversations, including administrators. Force pushes and deletion are blocked. Mandatory human
+  approval is deferred while there is only one writer. Unsigned limited beta releases remain
+  permitted; Windows/macOS signing and macOS notarisation are required before wider school rollout.
+- Marked superseded storage, AI and Course planning records as historical and linked them to the
+  single current maintenance roadmap, specification and compatibility contract.
+
 - Added a v20 migrated-profile export/restore comparison and a two-profile Chromium
   sync test that forces a stale relay write, then verifies both independently added
   Cards survive convergence and reload. The relay is a stateful test fixture.
@@ -34,6 +58,19 @@
   loading cards or issuing a count per lesson. Query/hash regressions fail on the merge base.
 - Removed two disconnected AI fixture/conformance modules and their self-only tests (318 lines).
   Existing executable AI contracts and lifecycle tests remain.
+
+- Hardened the consolidation against review findings. Detaching a course now records
+  tombstones for its lineage mapping and pending merge reviews, and the sync merge
+  honours those receipts so a peer snapshot cannot resurrect severed lineage state;
+  re-importing the lineage clears the receipt. Lesson exposure and completion writes
+  run inside transactions so concurrent calls cannot collide on the unique key, and
+  the compatibility barrel re-exports `replaceReviewHistoryForCards`. Undoing a review
+  compares the committed Card, unit and calibration state before restoring anything,
+  refusing intervening writes even within the same millisecond. This prevents undo
+  from erasing another Card’s contribution to shared performance. An
+  empty requested lesson scope keeps its identity through Simple-resume persistence,
+  and the shared-course settings section reports detach and preference failures
+  instead of dropping them as unhandled rejections.
 
 - Updated the packaged interaction harness to use the current landing-page link rather than
   waiting indefinitely for the retired button.

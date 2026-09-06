@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateCourse } from '../../db/repository';
+import { updateCourse } from '../../db/courseRepository';
 import type { Course } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {

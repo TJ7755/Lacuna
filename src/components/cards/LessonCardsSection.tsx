@@ -21,7 +21,7 @@ import {
 } from '../../state/useCourseData';
 import { db } from '../../db/schema';
 import { ensureLessonBackingDeck } from '../../db/backingDecks';
-import { unlinkCardFromLesson } from '../../db/repository';
+import { unlinkCardFromLesson } from '../../db/lessonRepository';
 import type { Card, SchedulerConfig } from '../../db/types';
 
 interface LessonCardsSectionProps {

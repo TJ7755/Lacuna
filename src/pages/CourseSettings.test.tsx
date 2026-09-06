@@ -70,15 +70,19 @@ vi.mock('../state/motionSpeed', () => ({
   speedMultiplier: () => 1,
 }));
 
-vi.mock('../db/repository', () => ({
+vi.mock('../db/courseRepository', () => ({
   updateCourse: (id: string, changes: Record<string, unknown>) => mockUpdateCourse(id, changes),
   deleteCourse: (id: string) => mockDeleteCourse(id),
   snapshotCourse: (id: string) => mockSnapshotCourse(id),
   restoreCourse: (snapshot: unknown) => mockRestoreCourse(snapshot),
+}));
+vi.mock('../db/assessmentRepository', () => ({
   createCourseAssessment: vi.fn().mockResolvedValue(undefined),
   updateCourseAssessment: (id: string, changes: Record<string, unknown>) =>
     mockUpdateCourseAssessment(id, changes),
   deleteCourseAssessment: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../db/lessonRepository', () => ({
   updateLesson: vi.fn().mockResolvedValue(undefined),
   deleteLesson: vi.fn().mockResolvedValue(undefined),
   reorderLessons: vi.fn().mockResolvedValue(undefined),

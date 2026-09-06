@@ -26,7 +26,7 @@ import {
   createCourseCardWithReverse,
   createCourseBasicReversedPair,
   updateCard,
-} from '../db/repository';
+} from '../db/cardRepository';
 import { hasCloze } from '../components/markdown/cloze';
 import { sequenceForItemId } from '../db/sequenceGeneration';
 import { occlusionForRegionId } from '../db/occlusionGeneration';

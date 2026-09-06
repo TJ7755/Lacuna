@@ -12,10 +12,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
-vi.mock('../../db/repository', () => ({
-  createCourse: mocks.createCourse,
-  createLesson: mocks.createLesson,
-}));
+vi.mock('../../db/courseRepository', () => ({ createCourse: mocks.createCourse }));
+vi.mock('../../db/lessonRepository', () => ({ createLesson: mocks.createLesson }));
 vi.mock('../import/UnifiedImportPanel', () => ({
   ShareCodeImportPanel: ({
     onShareImport,

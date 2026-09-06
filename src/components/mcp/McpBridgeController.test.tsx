@@ -22,12 +22,10 @@ vi.mock('../../mcp/bridge/scopeResolver', () => ({ resolveToolScopes: mocks.reso
 vi.mock('../../db/schema', () => ({
   db: { courses: { get: vi.fn().mockResolvedValue({ name: 'Biology' }) } },
 }));
-vi.mock('../../db/repository', () => ({
-  restoreCards: mocks.restoreCards,
-  restoreCourse: vi.fn(),
-  restoreLesson: vi.fn(),
-  restoreSequence: mocks.restoreSequence,
-}));
+vi.mock('../../db/cardRepository', () => ({ restoreCards: mocks.restoreCards }));
+vi.mock('../../db/courseRepository', () => ({ restoreCourse: vi.fn() }));
+vi.mock('../../db/lessonRepository', () => ({ restoreLesson: vi.fn() }));
+vi.mock('../../db/sequenceRepository', () => ({ restoreSequence: mocks.restoreSequence }));
 vi.mock('../../questions/repository', () => ({
   restoreConcept: mocks.restoreConcept,
   restoreQuestion: mocks.restoreQuestion,

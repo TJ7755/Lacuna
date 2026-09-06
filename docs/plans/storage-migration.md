@@ -1,6 +1,12 @@
 # Storage and review-history migration
 
-**Status:** phase 5 closed in schema v22; hidden Deck and Folder stores removed after compatibility and rollback gates passed
+**Status:** delivered — domain storage cutover in schema v22; canonical review-history cutover in v26.
+
+> **Historical implementation plan.** The intermediate checkpoints below retain their original
+> context: Deck/Folder and `userPerformance` stores are gone, and stored Cards have empty history
+> projections. They are not further migration instructions. The [specification](../SPEC.md) and
+> [v22 compatibility note](../storage-v22-compatibility.md) describe the current contracts;
+> [the roadmap](../next_plan.md) owns remaining maintenance.
 
 **Reviewed:** 13 August 2026
 

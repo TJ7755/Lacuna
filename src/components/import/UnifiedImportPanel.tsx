@@ -18,7 +18,7 @@ import {
   parseImportAuto,
   type UnifiedImportOptions,
 } from '../../db/importEngine';
-import { checkDuplicatesBatch } from '../../db/repository';
+import { checkDuplicatesBatch } from '../../db/cardRepository';
 import { parseApkg, type ApkgImportResult } from '../../db/apkgImport';
 import {
   decodeShare,
