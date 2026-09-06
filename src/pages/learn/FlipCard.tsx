@@ -2,18 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
 import type { Card, Grade, Occlusion } from '../../db/types';
-import { CardContent } from '../../components/cards/CardContent';
-import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint';
 import { speedMultiplier, type MotionSpeed } from '../../state/motionSpeed';
 import type { AnswerStrictness } from '../../state/answerStrictness';
-import { answerComparisonOptions } from '../../state/answerStrictness';
-import { compareAnswer } from '../../utils/answerComparison';
 import { cn } from '../../components/ui/cn';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
-import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { LearnModeType, Phase } from './types';
 import { isAudioCardFront } from '../../media/audio';
-import { HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
+import { StudyCardFace } from './StudyCardFace';
+import { CardSizeMeasurements, useStableCardHeight } from './useStableCardHeight';
 
 function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
   if (!revealed) return 'border-line shadow-xl shadow-black/5';
@@ -278,6 +274,30 @@ export function FlipCard({
   }, [phase, swipeXMotion]);
 
   const displayedFront = !revealed || showAudioFront;
+  const surfaceClassName =
+    'flex min-h-[12rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[14rem] md:px-12 md:py-14';
+
+  const { height: stableHeight, frontRef, backRef } = useStableCardHeight();
+  const face = (side: 'front' | 'back', measuring = false) => (
+    <StudyCardFace
+      card={card}
+      side={side}
+      audioCard={audioCard}
+      audioAutoplay={audioCard && side === 'front'}
+      isLinesModeCard={isLinesModeCard}
+      hintStep={hintStep}
+      hintAffectsScheduling={hintAffectsScheduling}
+      isTyping={isTyping}
+      typedAnswer={typedAnswer}
+      answerStrictness={answerStrictness}
+      occlusion={occlusion}
+      occlusionAnswerText={occlusionAnswerText}
+      motionMultiplier={m}
+      measuring={measuring}
+      onReplayAudio={replayAudio}
+      onRevealHint={() => onRevealHint?.()}
+    />
+  );
 
   return (
     <div className="flex flex-1 items-center justify-center" style={{ perspective: '1600px' }}>
@@ -303,6 +323,14 @@ export function FlipCard({
           else if (phase === 'answer') onHide();
         }}
       >
+        <CardSizeMeasurements
+          front={face('front', true)}
+          back={face('back', true)}
+          surfaceClassName={surfaceClassName}
+          frontRef={frontRef}
+          backRef={backRef}
+        />
+
         {/* Swipe hint glow — appears during a drag to whisper the outcome.
             Positioned behind the card so the border stays crisp. */}
         <AnimatePresence>
@@ -375,121 +403,16 @@ export function FlipCard({
               opacity: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
               scale: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
             }}
-            style={{ transformOrigin: 'center center', x: swipeXSpring }}
+            style={{ transformOrigin: 'center center', x: swipeXSpring, minHeight: stableHeight }}
             className={cn(
               // A modest floor keeps short cards from looking like a stray label without
               // making a two-line card float in an otherwise empty container. Longer cards
               // grow past it as before.
-              'relative z-10 flex min-h-[12rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[14rem] md:px-12 md:py-14',
+              'relative z-10 ' + surfaceClassName,
               modeBorderClass(mode, revealed),
             )}
           >
-            <motion.div
-              data-study-face={displayedFront ? 'front' : 'back'}
-              className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl"
-            >
-              <CardContent
-                card={card}
-                side={displayedFront ? 'front' : 'back'}
-                audioAutoplay={audioCard && displayedFront}
-                sequenceCue
-                sequenceMode={isLinesModeCard ? 'lines' : 'list'}
-                occlusion={occlusion}
-              />
-            </motion.div>
-            {audioCard && revealed && !displayedFront && (
-              <button
-                type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerUp={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  replayAudio();
-                }}
-                className="mt-6 min-h-11 rounded-lg border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
-              >
-                Hear it again <span className="ml-1 text-xs text-ink-faint">R</span>
-              </button>
-            )}
-            {/* Hint ladder for lines-mode sequence cards: two optional, ungraded steps
-                between question and reveal (see docs/archive/roadmap-2026-08-11.md §1.5). Clicking the button
-                must not flip the card, hence the pointer/click guards. */}
-            {isLinesModeCard && !revealed && phase === 'question' && (
-              <div
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                {(hintStep ?? 0) > 0 && (
-                  <>
-                    <LineHintDisplay
-                      answer={typingExpectedAnswer(card)}
-                      step={hintStep as 1 | 2}
-                      m={m}
-                    />
-                    {hintAffectsScheduling && (
-                      <p className="mx-auto mt-2 max-w-prose text-center text-xs text-ink-faint">
-                        Hints add {HINT_TIME_PENALTY_SEC} seconds to the response time used for
-                        silent grading.
-                      </p>
-                    )}
-                  </>
-                )}
-                {(hintStep ?? 0) < 2 && (
-                  <LineHintButton
-                    step={(hintStep ?? 0) as 0 | 1}
-                    onReveal={() => onRevealHint?.()}
-                  />
-                )}
-              </div>
-            )}
-            {/* In "type your answer" mode, show the typed answer against the correct one on
-                reveal, with per-word match/mismatch highlighting (see answerComparison.ts).
-                This is feedback only — grading below is still the learner's own call. */}
-            {isTyping &&
-              revealed &&
-              typedAnswer !== undefined &&
-              (() => {
-                const comparison = compareAnswer(
-                  typedAnswer,
-                  typingExpectedAnswer(card, occlusionAnswerText),
-                  answerComparisonOptions(answerStrictness),
-                );
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-                    className="mx-auto mt-6 max-w-prose border-t border-line pt-6 text-center"
-                  >
-                    <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-                      Your answer
-                    </div>
-                    <div className="mb-4 text-lg text-ink">
-                      {typedAnswer.trim() || <span className="italic text-ink-faint">(empty)</span>}
-                    </div>
-                    <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-accent">
-                      Correct answer
-                    </div>
-                    <div className="text-lg">
-                      {comparison.words.map((word, i) => (
-                        <span
-                          key={i}
-                          className={
-                            word.matched
-                              ? 'text-positive'
-                              : 'text-negative underline decoration-negative/50'
-                          }
-                        >
-                          {word.text}
-                          {i < comparison.words.length - 1 ? ' ' : ''}
-                        </span>
-                      ))}
-                    </div>
-                  </motion.div>
-                );
-              })()}
+            {face(displayedFront ? 'front' : 'back')}
           </motion.div>
         </AnimatePresence>
       </div>

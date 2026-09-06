@@ -708,6 +708,13 @@ foot of the screen with a drag handle, and the flip card accepts left/right swip
 Yes/No equivalent. In keyboard mode, `Y`/`N` (silent) or `1`–`4` (manual) are the grading
 keys, and the bottom controls are still rendered for discoverability.
 
+Before either side is displayed, the flip card measures its front and back at the current
+responsive width and uses the larger height for both. Asset resolution and viewport-width changes
+update that shared height, so Markdown, maths and media do not make the card shell jump on reveal.
+The measurement render is hidden from accessibility and pointer interaction, and it never enables
+audio autoplay. Generated sequence cards keep the current cue on the card's vertical centre line;
+their sequence label and recall instruction sit above and below that shared cue/answer anchor.
+
 **Card editor**, **Course settings**, **Settings**, **Search** follow the same
 centred-column pattern with an eyebrow + display title and `rounded-2xl` sections; the
 editor and course settings add a sticky bottom action bar.

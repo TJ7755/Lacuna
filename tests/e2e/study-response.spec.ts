@@ -20,7 +20,7 @@ test('makes the revealed answer readable within a short interaction transition',
   const reveal = page.getByRole('button', { name: /Show answer/i }).last();
   await expect(reveal).toBeVisible();
   await expect(
-    page.locator('[data-study-card-id]').getByText(frontText, { exact: true }),
+    page.locator('[data-study-face="front"]').getByText(frontText, { exact: true }),
   ).toBeVisible();
   // Measure the flip after the study entrance settles, not two overlapping transitions.
   await page.evaluate(async () => {
@@ -36,13 +36,13 @@ test('makes the revealed answer readable within a short interaction transition',
   const courseId = /#\/course\/([^/]+)/.exec(page.url())?.[1];
   expect(courseId).toBeTruthy();
   const elapsed = await reveal.evaluate((button) => {
-    const front = document.querySelector('[data-study-card-id] .prose-lacuna')?.textContent;
+    const front = document.querySelector('[data-study-face] .prose-lacuna')?.textContent;
     if (!front) throw new Error('The front of the study Card is missing.');
     return new Promise<number>((resolve, reject) => {
       const started = performance.now();
       (button as HTMLButtonElement).click();
       function sample() {
-        const content = document.querySelector('[data-study-card-id] .prose-lacuna');
+        const content = document.querySelector('[data-study-face] .prose-lacuna');
         let opacity = 1;
         for (let element = content; element; element = element.parentElement) {
           opacity *= Number(getComputedStyle(element).opacity);

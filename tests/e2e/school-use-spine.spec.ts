@@ -31,9 +31,13 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   const studyCard = page.locator('[data-study-card-id]');
-  await expect(studyCard.getByText(front, { exact: true })).toBeVisible();
+  await expect(
+    studyCard.locator('[data-study-face="front"]').getByText(front, { exact: true }),
+  ).toBeVisible();
   await page.keyboard.press('Space');
-  await expect(studyCard.getByText(back, { exact: true })).toBeVisible();
+  await expect(
+    studyCard.locator('[data-study-face="back"]').getByText(back, { exact: true }),
+  ).toBeVisible();
   await page.keyboard.press('Y');
 
   await expect(page.getByText('Step complete', { exact: true })).toBeVisible();

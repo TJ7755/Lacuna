@@ -6,6 +6,11 @@
   those suites in the release workflow. Native Windows/Linux builds remain in Actions;
   macOS packaging and artefact validation run locally.
 
+- Kept each Learn-mode flip card at the larger of its front and back heights, recalculating after
+  responsive width changes and media resolution so revealing an answer no longer resizes the card.
+  Generated sequence cues and their answers now share a vertical anchor, with the sequence label
+  and recall instruction arranged around the cue instead of shifting the whole face on reveal.
+
 - Removed full review-history loading from global search and the collapsed Card library; expanded
   analytics hydrate only their selected Card. Dashboard and sidebar statistics now
   read a timestamp-only projection maintained atomically through additive schema v27, preserving
