@@ -415,6 +415,15 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |
 | `/study`                                                | Redirects to `/`                                                        | yes       | eager   |
 
+The public landing opens with one headline, direct app entry and the existing illustration.
+Supporting copy is distributed across the scroll so each scene has only one or two focal points. Its
+walkthrough leads with assessment coverage and session time limits; the exam projection and
+course journey precede the shorter familiarity-and-recall story. The illustrative recall curve
+remains explicitly a prediction assuming successful reviews, not a promised learner outcome.
+Recall and Practice example cards accept click, touch, Enter and Space to toggle their answer.
+Their existing scroll reveal applies until the first activation; subsequent scrolling does not
+override that card's manual state. Reduced motion shows only the selected face without rotation.
+
 There is no user-facing route for a bare deck or folder; `/deck/:deckId` is kept only as a
 redirect so old bookmarks and share-code links do not dead-end. `/study` — the former
 standalone Study Today page, folded into the Dashboard in Arc 10 §10.1 — is the same

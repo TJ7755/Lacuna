@@ -5,6 +5,7 @@ import { ExamProjection } from '../components/landing/ExamProjection';
 import { LandingNav } from '../components/landing/LandingNav';
 import { LandingFaq } from '../components/landing/LandingFaq';
 import { LacunaIcon } from '../components/ui/icons';
+import { IllustratedOpening } from '../components/landing/IllustratedOpening';
 import { MemoryScene } from '../components/landing/MemoryScene';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 import { ProductWalkthrough } from '../components/landing/ProductWalkthrough';
@@ -28,14 +29,7 @@ export function Landing() {
         Skip to Lacuna
       </a>
       <main>
-        <MemoryScene />
-        <section className="landing-bridge">
-          <p>
-            Familiar isn’t the same
-            <br />
-            as ready to recall.
-          </p>
-        </section>
+        <IllustratedOpening />
         <section
           id="landing-product"
           className="landing-product"
@@ -63,8 +57,16 @@ export function Landing() {
           </div>
         </section>
         <ProductWalkthrough />
-        <CoursePathIllustration />
         <ExamProjection />
+        <CoursePathIllustration />
+        <MemoryScene />
+        <section className="landing-bridge">
+          <p>
+            Familiar isn’t the same
+            <br />
+            as ready to recall.
+          </p>
+        </section>
         <ClosingScenes />
         <LandingFaq />
       </main>

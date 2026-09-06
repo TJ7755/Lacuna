@@ -3,6 +3,20 @@ import './ProductWalkthrough.css';
 
 const scenes = [
   {
+    title: 'Schedule for the day it matters.',
+    text: 'Set an exam date and choose what it covers. Lacuna prioritises the reviews predicted to improve recall on that day.',
+    image: 'exam-date.png',
+    drawing:
+      'M12 18 L72 15 L76 69 L15 72 Z M12 32 L73 29 M26 9 L27 24 M57 7 L58 22 M29 48 L40 59 L60 39',
+  },
+  {
+    title: 'Fit revision into your day.',
+    text: 'Set a session time limit and a daily review goal. Keep the workload manageable as you work towards your assessment.',
+    image: 'study-budget.png',
+    drawing:
+      'M24 8 L63 9 M27 11 C27 33 57 47 60 68 M60 12 C60 34 30 48 28 68 M23 72 L65 72 M34 62 L54 62 L44 50 Z',
+  },
+  {
     title: 'See what needs your time.',
     text: 'Your courses and the week’s revision, together in one place.',
     image: 'study-plan.png',
@@ -21,20 +35,6 @@ const scenes = [
     text: 'Recall facts, fill in blanks, order steps and label diagrams. Automatic grading can use your answer and response time.',
     image: 'revision.png',
     drawing: 'M21 25 C33 8 65 9 73 31 C84 61 46 82 26 62 M10 29 L23 28 L24 14 M34 45 L43 54 L60 35',
-  },
-  {
-    title: 'Schedule for the day it matters.',
-    text: 'Set an exam date and choose what it covers. Lacuna prioritises the reviews predicted to improve recall on that day.',
-    image: 'exam-date.png',
-    drawing:
-      'M12 18 L72 15 L76 69 L15 72 Z M12 32 L73 29 M26 9 L27 24 M57 7 L58 22 M29 48 L40 59 L60 39',
-  },
-  {
-    title: 'Fit revision into your day.',
-    text: 'Set a session time limit and a daily review goal. Keep the workload manageable as you work towards your assessment.',
-    image: 'study-budget.png',
-    drawing:
-      'M24 8 L63 9 M27 11 C27 33 57 47 60 68 M60 12 C60 34 30 48 28 68 M23 72 L65 72 M34 62 L54 62 L44 50 Z',
   },
   {
     title: 'Practise using what you know.',

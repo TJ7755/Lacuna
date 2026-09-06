@@ -2,6 +2,16 @@
 
 ## Unreleased — landing and method redesign
 
+- Made the landing's Recall and Practice examples flippable by click, touch or keyboard.
+  Untouched cards retain their scroll-driven reveal; interacting gives that card manual control
+  for the rest of the visit. Reduced motion swaps the faces without a rotation.
+
+- Brought the exam-focused proposition and a direct start action into the landing page's opening.
+  Kept that opening to one headline and one action; supporting explanations stay in later scenes.
+  The walkthrough now starts with exam coverage and time limits, followed by the exam-recall
+  illustration and course journey. The shorter memory story follows the product explanation;
+  existing drawings, screenshots and reduced-motion behaviour are retained.
+
 - Extended two-profile Chromium sync coverage to simultaneous Card edits, newer deletion versus
   edit, and concurrent reviews, with forced stale writes and persisted convergence after reload.
   Review assertions check both event identities and the complete replayed schedule. A separate

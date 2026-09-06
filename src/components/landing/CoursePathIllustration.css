@@ -114,6 +114,19 @@
   display: grid;
   transform-style: preserve-3d;
 }
+button.journey-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.journey-card[data-manual='true'] .journey-card-turn {
+  transition: transform 450ms ease;
+}
 .journey-card[data-flippable='true'] .journey-card-turn {
   transform: rotateY(calc(var(--answer-reveal) * 180deg));
 }
@@ -179,6 +192,12 @@
   }
   .journey-card-turn {
     gap: 12px;
+  }
+  .journey-card[data-manual='true'] .journey-card-turn {
+    transition: none;
+  }
+  .journey-card-face[aria-hidden='true'] {
+    display: none;
   }
   .journey-card-face {
     grid-area: auto;

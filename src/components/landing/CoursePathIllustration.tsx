@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { JourneyCard } from './JourneyCard';
 import './CoursePathIllustration.css';
 
 const stops = [
@@ -33,6 +34,7 @@ const trail =
 export function CoursePathIllustration() {
   const ref = useRef<HTMLElement>(null);
   const [selected, setSelected] = useState(0);
+  const [revealed, setRevealed] = useState<boolean[]>([]);
   useEffect(() => {
     const section = ref.current;
     if (!section) return;
@@ -54,12 +56,16 @@ export function CoursePathIllustration() {
       }
       setSelected(Math.round(position));
       section.style.setProperty('--journey-progress', String(media.matches ? 1 : position / 3));
-      examples.forEach((example, index) => {
+      const nextRevealed = examples.map((example, index) => {
         const reveal = media.matches
           ? 1
           : Math.max(0, Math.min(1, (middle - centres[index]) / (innerHeight * 0.22) + 0.65));
         example.style.setProperty('--answer-reveal', String(reveal * reveal * (3 - 2 * reveal)));
+        return reveal >= 0.5;
       });
+      setRevealed((previous) =>
+        nextRevealed.every((value, index) => value === previous[index]) ? previous : nextRevealed,
+      );
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(paint);
@@ -116,22 +122,21 @@ export function CoursePathIllustration() {
               aria-labelledby={`journey-step-${index}`}
             >
               <h3 id={`journey-step-${index}`}>{stop.title}</h3>
-              <div className="journey-card" data-flippable={index === 1 || index === 2}>
-                <div className="journey-card-turn">
-                  <div className="journey-card-face">
-                    <p>{stop.text}</p>
+              {index === 1 || index === 2 ? (
+                <JourneyCard
+                  question={stop.text}
+                  answer={index === 1
+                    ? 'The rate at which something changes.'
+                    : 'f′(x) = eˣ, so f′(0) = e⁰ = 1.'}
+                  automaticallyRevealed={revealed[index] ?? false}
+                />
+              ) : (
+                <div className="journey-card">
+                  <div className="journey-card-turn">
+                    <div className="journey-card-face"><p>{stop.text}</p></div>
                   </div>
-                  {(index === 1 || index === 2) && (
-                    <div className="journey-card-face journey-answer">
-                      <p>
-                        {index === 1
-                          ? 'The rate at which something changes.'
-                          : 'f′(x) = eˣ, so f′(0) = e⁰ = 1.'}
-                      </p>
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
             </article>
           ))}
         </div>

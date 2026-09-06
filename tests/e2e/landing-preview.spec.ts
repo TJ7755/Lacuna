@@ -1,5 +1,47 @@
 import { expect, test } from '@playwright/test';
 
+test('opening limits attention to the headline and one action', async ({ page }) => {
+  await page.goto('/#/landing');
+  const hero = page.getByRole('region', { name: 'Revision around your exam' });
+  await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
+    'Put your revision time where it matters.',
+  );
+  await expect(hero.locator('p')).toHaveCount(0);
+  await expect(hero.getByRole('button')).toHaveCount(0);
+  await expect(hero.getByRole('link')).toHaveCount(1);
+  await hero.getByRole('link', { name: 'Start revising' }).click();
+  await expect(page).toHaveURL(/#\/$/);
+});
+
+test('landing leads with exam planning before the memory story', async ({ page }) => {
+  await page.goto('/#/landing');
+
+  const hero = page.getByRole('region', { name: 'Revision around your exam' });
+  await expect(
+    hero.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Start revising' })).toHaveAttribute('href', '#/');
+
+  const order = await page.locator('main').evaluate((main) => {
+    const children = Array.from(main.children);
+    const indexOf = (selector: string) => children.findIndex((child) => child.matches(selector));
+    return {
+      hero: indexOf('.illustrated-opening'),
+      product: indexOf('#landing-product'),
+      walkthrough: indexOf('.landing-walkthrough'),
+      memory: indexOf('.memory-sequence'),
+    };
+  });
+  expect(order.hero).toBe(0);
+  expect(order.product).toBeGreaterThan(order.hero);
+  expect(order.walkthrough).toBeGreaterThan(order.product);
+  expect(order.memory).toBeGreaterThan(order.walkthrough);
+
+  const firstWalkthroughImage = page.locator('.walkthrough-frame img').first();
+  await expect(firstWalkthroughImage).toHaveAttribute('src', /\/landing\/exam-date\.png$/);
+  await expect(firstWalkthroughImage).toHaveAttribute('data-active', 'true');
+});
+
 test('exam projection responds to review timing while the exam stays fixed', async ({ page }) => {
   await page.goto('/#/welcome');
   const section = page.getByRole('region', { name: 'Remember it on exam day.' });
@@ -43,7 +85,9 @@ test('landing preview survives first launch and offers an unrestricted journey',
   page,
 }) => {
   await page.goto('/#/landing');
-  await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toBeVisible();
   await expect(page).toHaveURL(/#\/landing$/);
   await page.getByRole('link', { name: 'Skip to Lacuna' }).focus();
   await page.getByRole('link', { name: 'Skip to Lacuna' }).click();
@@ -58,7 +102,9 @@ test('mobile reduced motion shows the complete story without horizontal overflow
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/#/landing');
-  await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toBeVisible();
   await expect(page.getByText('You just can’t bring it back.', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -67,18 +113,28 @@ test('mobile reduced motion shows the complete story without horizontal overflow
 
 test('native scrolling blurs then resolves the answer', async ({ page }) => {
   await page.goto('/#/landing');
-  await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toBeVisible();
   const answer = page.locator('.memory-answer');
   await expect(answer).toHaveCSS('filter', 'blur(0px)');
   await page.evaluate(() => {
     const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    window.scrollTo({ top: (scene.offsetHeight - innerHeight) * 0.61, behavior: 'instant' });
+    const rect = scene.getBoundingClientRect();
+    window.scrollTo({
+      top: scrollY + rect.top + (rect.height - innerHeight) * 0.61,
+      behavior: 'instant',
+    });
   });
   await expect(answer).toHaveCSS('filter', 'blur(23px)');
   await expect(page.locator('.memory-caption .memory-searching')).toHaveCSS('opacity', '1');
   await page.evaluate(() => {
     const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    window.scrollTo({ top: (scene.offsetHeight - innerHeight) * 0.96, behavior: 'instant' });
+    const rect = scene.getBoundingClientRect();
+    window.scrollTo({
+      top: scrollY + rect.top + (rect.height - innerHeight) * 0.96,
+      behavior: 'instant',
+    });
   });
   await expect(answer).toHaveCSS('filter', 'blur(0px)');
 });
@@ -89,7 +145,9 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   }) => {
     await page.emulateMedia({ reducedMotion });
     await page.goto('/#/landing');
-    await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    ).toBeVisible();
     await page.mouse.move(200, 400);
     await page.mouse.wheel(0, 400);
     await expect
@@ -101,7 +159,9 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 test('cinematic opening is quiet and lower sections share their alignment', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/#/landing');
-  await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toBeVisible();
   for (const caption of [
     'A familiar feeling.',
     'Revision, with your exam in mind.',
@@ -128,10 +188,9 @@ test('walkthrough pairs real screenshots with scrolling text and uses Instrument
   page,
 }) => {
   await page.goto('/#/landing');
-  await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toHaveCSS(
-    'font-family',
-    /Instrument Sans/,
-  );
+  await expect(
+    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toHaveCSS('font-family', /Instrument Sans/);
   await expect(page.getByRole('heading', { name: 'Make room for remembering.' })).toHaveCSS(
     'font-family',
     /Instrument Sans/,
@@ -199,7 +258,9 @@ test('screenshot transitions track scroll in both directions', async ({ page }) 
 test('mobile walkthrough keeps each screenshot with its text', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/landing');
-  await expect(page.getByRole('heading', { name: 'You remember learning it.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+  ).toBeVisible();
   await expect(page.locator('.walkthrough-frame')).toBeHidden();
   for (const step of await page.locator('.walkthrough-step').all()) {
     await step.scrollIntoViewIfNeeded();
@@ -209,18 +270,12 @@ test('mobile walkthrough keeps each screenshot with its text', async ({ page }) 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('illustrated opening responds to pointer and keyboard', async ({ page }) => {
+test('illustrated opening offers keyboard app entry beside the product image', async ({ page }) => {
   await page.goto('/#/landing');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
-  await expect(hero).toBeVisible();
-  await page.getByRole('button', { name: 'Your time.' }).hover();
-  await expect(hero).toHaveAttribute('data-emphasis', 'time');
-  await page.getByRole('button', { name: 'Your exam.' }).focus();
-  await expect(hero).toHaveAttribute('data-emphasis', 'exam');
-  await expect(page.getByRole('button', { name: 'Your exam.' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  const start = hero.getByRole('link', { name: 'Start revising' });
+  await start.focus();
+  await expect(start).toBeFocused();
   await expect(
     hero.getByRole('img', {
       name: 'Lacuna dashboard showing the welcome course and daily revision',
@@ -228,45 +283,49 @@ test('illustrated opening responds to pointer and keyboard', async ({ page }) =>
   ).toBeVisible();
 });
 
-test('illustrated opening withdraws into memory and supports touch', async ({ page }) => {
+test('illustrated opening stays independent from memory and supports touch', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/landing');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
-  await page.getByRole('button', { name: 'Your exam.' }).click();
+  await expect(hero.getByRole('link', { name: 'Start revising' })).toBeInViewport();
   await expect(hero).toHaveAttribute('data-emphasis', 'exam');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => {
     const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    window.scrollTo({ top: (scene.offsetHeight - innerHeight) * 0.3, behavior: 'instant' });
+    const rect = scene.getBoundingClientRect();
+    window.scrollTo({
+      top: scrollY + rect.top + (rect.height - innerHeight) * 0.3,
+      behavior: 'instant',
+    });
   });
-  await expect(page.locator('.illustrated-opening')).toHaveAttribute('inert', '');
+  await expect(hero).not.toHaveAttribute('inert', '');
+  await expect(hero).toHaveAttribute('data-emphasis', 'exam');
   await expect(page.locator('.memory-answer')).toHaveCSS('opacity', '1');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(hero).not.toHaveAttribute('inert', '');
 });
 
-test('footer offers app entry and the hero titles have equal emphasis', async ({ page }) => {
+test('footer offers app entry', async ({ page }) => {
   await page.goto('/#/landing');
   const footer = page.getByRole('contentinfo');
   await expect(footer.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '#/');
   const title = page.locator('.opening-title');
   expect(await title.evaluate((node) => getComputedStyle(node, '::after').content)).toBe('none');
-  const colours = await title
-    .locator('button')
-    .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).color));
-  expect(new Set(colours).size).toBe(1);
   await footer.getByRole('link', { name: 'Get started' }).click();
   await expect(page).toHaveURL(/#\/$/);
 });
 
-test('memory scene retains drawings after the dashboard leaves', async ({ page }) => {
+test('memory scene retains its drawings after the hero', async ({ page }) => {
   await page.goto('/#/landing');
   await expect(page.locator('.memory-drawing svg')).toHaveCount(1);
   await page.evaluate(() => {
     const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    window.scrollTo({ top: (scene.offsetHeight - innerHeight) * 0.3, behavior: 'instant' });
+    const rect = scene.getBoundingClientRect();
+    window.scrollTo({
+      top: scrollY + rect.top + (rect.height - innerHeight) * 0.3,
+      behavior: 'instant',
+    });
   });
-  await expect(page.locator('.illustrated-opening')).toHaveAttribute('inert', '');
   await expect(page.locator('.memory-drawing')).toHaveCSS('opacity', '0.7');
 });
 
@@ -368,9 +427,6 @@ test('walkthrough explains exam scheduling, time limits and application practice
   page,
 }) => {
   await page.goto('/#/welcome');
-  await expect(page.locator('.opening-description')).toHaveText(
-    'Spaced revision that schedules for your exam day.',
-  );
   const walkthrough = page.getByRole('region', { name: 'Inside Lacuna' });
   for (const name of [
     'Schedule for the day it matters.',
@@ -393,12 +449,12 @@ test('walkthrough explains exam scheduling, time limits and application practice
   ).toBe(true);
 });
 
-test('course journey follows scrolling forwards and backwards without buttons', async ({
+test('course journey follows scrolling forwards and backwards with flippable examples', async ({
   page,
 }) => {
   await page.goto('/#/welcome');
   const journey = page.getByRole('region', { name: 'A course, one step at a time.' });
-  await expect(journey.locator('button')).toHaveCount(0);
+  await expect(journey.getByRole('button')).toHaveCount(2);
   for (const index of [0, 1, 2, 3, 1]) {
     await journey.locator('.journey-example').nth(index).scrollIntoViewIfNeeded();
     await expect(journey.locator('.journey-stop').nth(index)).toHaveAttribute(
