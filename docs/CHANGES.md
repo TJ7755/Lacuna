@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Cancelled pending Learn-mode answer feedback when leaving or changing a session, preventing
+  timer callbacks from updating an unmounted view.
+
 - Made release and companion tests portable to Windows checkouts by normalising YAML line
   endings, using native path expectations and checking Unix permission bits only on Unix.
 

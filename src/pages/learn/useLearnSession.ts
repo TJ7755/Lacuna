@@ -1325,6 +1325,8 @@ export function useLearnSession({
     })();
     return () => {
       cancelled = true;
+      if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
     };
     // The effect depends on session identity, not object identity, so the
     // serialised keys are the triggers. The arrays are read for their values
