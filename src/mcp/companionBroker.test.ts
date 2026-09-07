@@ -282,7 +282,8 @@ describe('Electron MCP companion broker interface', () => {
 
     await broker.stop();
 
-    expect(metadataMode).toBe(0o600);
+    // Windows does not expose Unix permission bits; the broker applies chmod on Unix only.
+    if (process.platform !== 'win32') expect(metadataMode).toBe(0o600);
     expect(socketMode).toBe(0o600);
     expect(client.socket.destroyed).toBe(true);
     await expect(readFile(companionConnectionFilePath(electron.userDataPath), 'utf8')).rejects.toMatchObject({

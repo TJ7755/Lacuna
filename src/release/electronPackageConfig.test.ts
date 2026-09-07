@@ -7,7 +7,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
-const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
+const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8').replace(/\r\n/g, '\n');
 
 const packagedRuntimeDependencies = ['electron-log', 'electron-updater'] as const;
 

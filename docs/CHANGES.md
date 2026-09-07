@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Made release and companion tests portable to Windows checkouts by normalising YAML line
+  endings, using native path expectations and checking Unix permission bits only on Unix.
+
 - Reused successful CI and Security checks for the exact release commit instead of repeating
   those suites in the release workflow. Native Windows/Linux builds remain in Actions;
   macOS packaging and artefact validation run locally.
