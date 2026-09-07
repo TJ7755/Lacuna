@@ -192,6 +192,10 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ## `AnimatePresence` pop-layout children must forward their DOM ref
 
+Outgoing route outlets retain old route parameters while `useLocation` observes the new
+destination. Redirect guards inside animated outlets must check `useIsPresent` before
+navigating, or an exiting page can repeatedly pull navigation back to its old route.
+
 A custom component directly beneath `AnimatePresence mode="popLayout"` must forward the supplied
 ref to its DOM root. Drive discrete exit state such as `pointer-events: none` from `useIsPresent`
 rather than a motion variant, or Motion attempts an invalid interpolation and emits warnings.

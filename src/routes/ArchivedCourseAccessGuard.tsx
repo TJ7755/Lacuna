@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useIsPresent } from 'motion/react';
 import { matchPath, Navigate, useLocation, useParams } from 'react-router-dom';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCourse, useLesson } from '../state/useCourseData';
@@ -27,6 +28,7 @@ export function ArchivedCourseAccessGuard({ children }: { children: ReactNode })
     lessonId?: string;
   }>();
   const location = useLocation();
+  const isPresent = useIsPresent();
   const lesson = useLesson(courseIdParam ? undefined : lessonId);
   const courseId = courseIdParam ?? lesson?.courseId;
   const course = useCourse(courseId);
@@ -42,7 +44,14 @@ export function ArchivedCourseAccessGuard({ children }: { children: ReactNode })
     );
   }
 
-  if (course?.archived && courseId && !allowsArchivedInspection(location.pathname, courseId)) {
+  // Exiting pages retain their route params but observe the new global location.
+  // Only the incoming/current page may redirect; the outgoing guard must let it leave.
+  if (
+    isPresent &&
+    course?.archived &&
+    courseId &&
+    !allowsArchivedInspection(location.pathname, courseId)
+  ) {
     return <Navigate to={`/course/${courseId}`} replace />;
   }
 
