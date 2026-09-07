@@ -21,7 +21,7 @@ const handwritingPackageJson = JSON.parse(
 const aiMcpPackageJson = JSON.parse(
   readFileSync(resolve(root, 'tooling/lacuna-ai-mcp/package.json'), 'utf8'),
 ) as { devDependencies?: Record<string, string> };
-const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8');
+const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8').replace(/\r\n/g, '\n');
 const windowsInstallerInclude = readFileSync(
   resolve(root, 'electron/windows-installer.nsh'),
   'utf8',
@@ -34,9 +34,9 @@ const handwritingBunLock = readFileSync(
 );
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
 const updaterServiceSource = readFileSync(resolve(root, 'electron/updaterService.ts'), 'utf8');
-const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
-const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8');
-const securityWorkflow = readFileSync(resolve(root, '.github/workflows/security.yml'), 'utf8');
+const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8').replace(/\r\n/g, '\n');
+const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8').replace(/\r\n/g, '\n');
+const securityWorkflow = readFileSync(resolve(root, '.github/workflows/security.yml'), 'utf8').replace(/\r\n/g, '\n');
 const prepareElectronBuild = readFileSync(
   resolve(root, 'scripts/prepare-electron-build.mjs'),
   'utf8',

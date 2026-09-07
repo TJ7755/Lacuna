@@ -79,7 +79,7 @@ describe('companion connection metadata', () => {
       companionUserDataPath: '/tmp/lacuna-companion-ai',
       appImageFile: '/home/student/Applications/Lacuna.AppImage',
     }, '--ai-companion')).toEqual({
-      command: '/home/student/Applications/Lacuna.AppImage',
+      command: path.resolve('/home/student/Applications/Lacuna.AppImage'),
       args: [
         '--ai-companion',
         '--lacuna-host-user-data-dir=/home/student/.config/Lacuna',
@@ -124,7 +124,7 @@ describe('companion connection metadata', () => {
     }, '--ai-companion')).toEqual({
       command: '/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron',
       args: [
-        '/repo/electron/dist-electron/mcp/aiCompanionEntry.js',
+        path.join('/repo', 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js'),
         '--lacuna-host-user-data-dir=/tmp/lacuna-v022-manual.Q3lViI',
         '--lacuna-app-version=0.2.2',
       ],

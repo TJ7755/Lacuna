@@ -1,5 +1,15 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { AnimatePresence, usePresence } from 'motion/react';
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  useLocation,
+  useOutlet,
+} from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Course, Lesson } from '../db/types';
 import { ArchivedCourseAccessGuard } from './ArchivedCourseAccessGuard';
@@ -26,6 +36,22 @@ const lesson = {
 
 function LocationProbe() {
   return <output data-testid="location">{useLocation().pathname}</output>;
+}
+
+function RetainedPage({ children }: { children: ReactNode }) {
+  // Hold the outgoing page through navigation without depending on animation timing.
+  usePresence();
+  return <>{children}</>;
+}
+
+function AnimatedOutlet() {
+  const location = useLocation();
+  const outlet = useOutlet();
+  return (
+    <AnimatePresence mode="wait">
+      <RetainedPage key={location.pathname}>{outlet}</RetainedPage>
+    </AnimatePresence>
+  );
 }
 
 function renderGuardedRoute(path: string) {
@@ -60,6 +86,42 @@ beforeEach(() => {
 });
 
 describe('ArchivedCourseAccessGuard', () => {
+  it.each(['/', '/archived', '/settings', '/course/course-2/cards', '/learn'])(
+    'does not redirect navigation to %s while the archived page exits',
+    async (destination) => {
+      const router = createMemoryRouter(
+        [
+          {
+            element: <AnimatedOutlet />,
+            children: [
+              {
+                path: '/course/:courseId',
+                element: (
+                  <ArchivedCourseAccessGuard>
+                    <p>Archived overview</p>
+                  </ArchivedCourseAccessGuard>
+                ),
+              },
+              { path: '*', element: <p>Destination</p> },
+            ],
+          },
+        ],
+        { initialEntries: ['/course/course-1'] },
+      );
+      render(<RouterProvider router={router} />);
+      const navigate = router.navigate.bind(router);
+      // Record redirects without letting the broken guard create an endless loop.
+      const redirect = vi.spyOn(router, 'navigate').mockResolvedValue();
+      await act(async () => {
+        await navigate(destination);
+      });
+
+      expect(screen.getByText('Archived overview')).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(destination);
+      expect(redirect).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(['/course/course-1', '/course/course-1/lesson/lesson-1', '/course/course-1/analytics'])(
     'allows archived inspection at %s',
     (path) => {

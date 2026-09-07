@@ -2,6 +2,16 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Fixed navigation becoming trapped in an archived course: its outgoing page no longer
+  redirects the new destination during exit animations. Archived study and editing routes
+  remain restricted until the course is restored.
+
+- Cancelled pending Learn-mode answer feedback when leaving or changing a session, preventing
+  timer callbacks from updating an unmounted view.
+
+- Made release and companion tests portable to Windows checkouts by normalising YAML line
+  endings, using native path expectations and checking Unix permission bits only on Unix.
+
 - Reused successful CI and Security checks for the exact release commit instead of repeating
   those suites in the release workflow. Native Windows/Linux builds remain in Actions;
   macOS packaging and artefact validation run locally.
