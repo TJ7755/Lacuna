@@ -8,7 +8,8 @@ import type { ExamDateContext } from '../fsrs/examDate';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { cardSchedulingHorizon } from '../fsrs/horizon';
-import { isAvailable } from '../fsrs/eligibility';
+import { isAvailable, studyPool } from '../fsrs/eligibility';
+import type { ReviewActivity } from '../fsrs/heatmap';
 import { isLeech } from '../fsrs/leech';
 import { MASTERY_R } from '../fsrs/params';
 
@@ -171,6 +172,22 @@ export interface PracticeReadiness {
   securedCardCount: number;
   totalCardCount: number;
   fraction: number;
+}
+
+/** Due reviews still needing Practice, plus introductions admitted by the daily cap. */
+export function dueStudyPool(
+  cards: Card[],
+  course: Course,
+  examDateContext: ExamDateContext,
+  now: number = Date.now(),
+  activity?: ReviewActivity,
+): Card[] {
+  const due = studyPool(cards, course, now, activity).filter(
+    (card) => card.state === 0 || (card.due !== null && card.due !== undefined && card.due <= now),
+  );
+  // A scheduled review can already be secured at a nearby exam horizon.
+  // Use Practice's mastery rule so the count does not promise that review.
+  return eligiblePracticePool(due, course, examDateContext, now);
 }
 
 /**

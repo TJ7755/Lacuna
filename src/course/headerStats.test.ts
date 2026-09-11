@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Course, CourseAssessment, ReviewLog } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson, ReviewLog } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { courseHeaderStats } from './headerStats';
+import { computeCourseSummaries } from '../state/courseSummaries';
+import { makeExamDateContext } from '../fsrs/examDate';
+import { eligiblePracticePool } from './studyPools';
 
 const NOW = Date.UTC(2026, 5, 4, 10);
 
@@ -81,6 +84,55 @@ function review(timestamp: number): ReviewLog {
 }
 
 describe('courseHeaderStats', () => {
+  it('uses the primary lesson exam override in headers and dashboard counts', () => {
+    const course = makeCourse();
+    const lesson: Lesson = {
+      id: 'lesson',
+      courseId: course.id,
+      name: 'Lesson',
+      orderIndex: 0,
+      isExtension: false,
+      createdAt: 0,
+      updatedAt: 0,
+      examDate: NOW + 3_600_000,
+    };
+    const card = makeCard('secured', {
+      courseId: course.id,
+      primaryLessonId: lesson.id,
+      state: 2,
+      due: NOW - 1,
+      stability: 2,
+      lastReviewed: NOW - MS_PER_DAY,
+    });
+    expect(courseHeaderStats(course, [], [card], 0, NOW, [lesson]).dueCardCount).toBe(0);
+    expect(computeCourseSummaries([course], [lesson], [card], [], NOW)[course.id].eligible).toBe(0);
+  });
+
+  it.each(['expectedMarks', 'securedTopics'] as const)(
+    'omits secured overdue cards before the exam for %s, retaining weak reviews',
+    (examObjective) => {
+      const course = makeCourse({ examDate: NOW + 60 * 60 * 1000, examObjective });
+      const secured = makeCard('secured', {
+        courseId: course.id,
+        state: 2,
+        due: NOW - 1,
+        stability: 2,
+        lastReviewed: NOW - MS_PER_DAY,
+      });
+      const weak = makeCard('weak', { ...secured, id: 'weak', stability: 0.5 });
+      const cards = [secured, weak];
+      const context = makeExamDateContext(course, [], []);
+      expect(eligiblePracticePool(cards, course, context, NOW)).toEqual([weak]);
+      expect(courseHeaderStats(course, [], cards, 0, NOW).dueCardCount).toBe(1);
+      expect(computeCourseSummaries([course], [], cards, [], NOW)[course.id].eligible).toBe(1);
+      expect(courseHeaderStats(course, [], [secured], 0, NOW).dueCardCount).toBe(0);
+      // Once the exam passes, ordinary Practice uses the maintenance horizon.
+      const afterExam = course.examDate! + 1;
+      expect(eligiblePracticePool(cards, course, context, afterExam)).toHaveLength(2);
+      expect(courseHeaderStats(course, [], cards, 0, afterExam).dueCardCount).toBe(2);
+    },
+  );
+
   it('passes mastery through and reports the nearest exam and its urgency', () => {
     const course = makeCourse();
     const examDates = [
