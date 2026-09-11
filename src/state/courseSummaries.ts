@@ -9,8 +9,8 @@ import type {
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
-import { lessonCardMembership } from '../course/studyPools';
+import { availableCards } from '../fsrs/eligibility';
+import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
 import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
@@ -24,7 +24,7 @@ export interface CourseSummary {
   mastery: number;
   /** Number of core cards that have never been reviewed. */
   unreviewed: number;
-  /** Reviews due now plus brand-new cards admitted by today's cap. */
+  /** Due reviews below Practice mastery plus introductions admitted by today's cap. */
   eligible: number;
   /** Number of core lessons whose material has been taught. */
   completedLessonCount: number;
@@ -106,8 +106,6 @@ export function computeCourseSummaries(
         !extensionLessonIds.has(c.primaryLessonId),
     );
     const available = availableCards(coreCards, now);
-    const pool = studyPool(coreCards, course, now, activity);
-    const readyNow = dueCards(pool, now).length + pool.filter((card) => card.state === 0).length;
     const coreLessons = (lessonsByCourse[course.id] ?? []).filter((lesson) => !lesson.isExtension);
     const completedLessonCount = coreLessons.filter((lesson) =>
       lessonTaught(
@@ -128,7 +126,7 @@ export function computeCourseSummaries(
       cardCount: coreCards.length,
       mastery: progressValue(available, course, now, examDateContext),
       unreviewed: available.filter((c) => c.lastReviewed === null).length,
-      eligible: readyNow,
+      eligible: dueStudyPool(coreCards, course, examDateContext, now, activity).length,
       completedLessonCount,
       reviewedCardCount: coreCards.filter((card) => card.lastReviewed !== null).length,
       reviewedTodayCount: coreCards.filter((card) =>

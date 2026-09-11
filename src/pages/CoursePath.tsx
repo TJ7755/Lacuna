@@ -15,7 +15,7 @@ import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
-import { lessonCardMembership } from '../course/studyPools';
+import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
 import {
   currentAssessmentPracticeContext,
   type AssessmentPracticeOption,
@@ -387,6 +387,7 @@ export function CoursePath() {
     courseCards,
     summary?.mastery ?? 0,
     now,
+    lessons,
   );
   const masteryPct = Math.round(mastery * 100);
 
@@ -395,7 +396,9 @@ export function CoursePath() {
     const cards = lessonCardsById.get(lessonId) ?? [];
     return {
       cardCount: cards.length,
-      dueCount: dueCards(availableCards(cards, now), now).length,
+      dueCount: dueStudyPool(cards, course, examDateContext!, now).filter(
+        (card) => card.state !== 0,
+      ).length,
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
