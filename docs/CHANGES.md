@@ -2,6 +2,11 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Aligned due-card counts and lookup with Practice's exam-horizon mastery rule. Reviews
+  already secured for an exam later today no longer appear as due work that Practice
+  will omit. Weak reviews and capped introductions remain counted; passed exams continue
+  to use the existing maintenance horizon, including primary-lesson exam overrides.
+
 - Fixed navigation becoming trapped in an archived course: its outgoing page no longer
   redirects the new destination during exit animations. Archived study and editing routes
   remain restricted until the course is restored.
