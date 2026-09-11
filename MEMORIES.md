@@ -1,5 +1,12 @@
 # Lacuna MEMORIES.md
 
+## Missing installed package files can come from Bun's cache
+
+On this Windows checkout, reinstalling with `--force --no-cache` still left packages
+without their declared ESM entry points. A fresh `BUN_INSTALL_CACHE_DIR` with
+`--force --backend copyfile` restored the files and tests passed. Rule out the cache
+before treating missing package files as dependency incompatibilities.
+
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
 ## Landing copy must preserve the scroll's attention budget
