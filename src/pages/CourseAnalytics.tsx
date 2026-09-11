@@ -13,7 +13,6 @@ import {
   useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -21,7 +20,7 @@ import { buildQuestionAnalytics } from '../questions/analytics';
 
 function CourseAnalyticsSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
       <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
       <div className="mb-8 space-y-3">
         <div className="h-3 w-20 animate-pulse rounded bg-ink/10" />
@@ -93,15 +92,7 @@ export function CourseAnalytics() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
-        course={course}
-        courseId={course.id}
-        backTo={course.archived ? '/archived' : '/'}
-        backLabel={course.archived ? 'Archived courses' : 'All courses'}
-        archived={course.archived}
-        className="mb-4"
-      />
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
 
       <motion.header
         initial={{ opacity: 0, y: 12 }}

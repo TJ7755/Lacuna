@@ -30,7 +30,6 @@ import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmen
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { PathNodeWithLine, lockHintFor } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
@@ -399,15 +398,7 @@ export function CoursePath() {
   const unseenCount = courseCards.filter((c) => c.lastReviewed === null || c.state === 0).length;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
-        courseId={courseId ?? ''}
-        backTo={archived ? '/archived' : '/'}
-        backLabel={archived ? 'Archived courses' : 'All courses'}
-        archived={archived}
-        className="mb-4"
-        course={course}
-      />
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
 
       {/* A single upcoming assessment is already named by the card's eyebrow and counted
           by its days-to-go pill, so the strip would be a third copy of one date. It earns

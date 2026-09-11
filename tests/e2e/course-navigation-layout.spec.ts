@@ -19,7 +19,7 @@ for (const width of [390, 1000, 1920]) {
       page.locator('[data-course-page-navigation]').evaluate((navigation) => {
         const frame = navigation.parentElement!;
         const back = navigation.querySelector('a')!.getBoundingClientRect();
-        const title = frame.querySelector('h1')!.getBoundingClientRect();
+        const title = navigation.closest('main')!.querySelector('h1')!.getBoundingClientRect();
         const bounds = frame.getBoundingClientRect();
         return {
           left: bounds.x,
@@ -100,6 +100,67 @@ test('Questions has no post-instruction caption', async ({ page }) => {
     .click();
   await expect(page.getByRole('heading', { level: 1, name: 'Questions' })).toBeVisible();
   await expect(page.getByText('Post-instruction practice', { exact: true })).toHaveCount(0);
+});
+
+test('course navigation stays mounted while switching sections in both directions', async ({
+  page,
+}) => {
+  await openSeededCourse(page);
+  const navigation = await page.locator('[data-course-page-navigation]').elementHandle();
+  const mode = await page.getByRole('group', { name: 'Workspace mode' }).elementHandle();
+  for (const label of ['Cards', 'Questions', 'Path']) {
+    await page
+      .locator('nav[aria-label="Course sections"]:visible')
+      .getByRole('link', { name: label, exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole('heading', { name: label === 'Path' ? 'Curriculum' : label, exact: true })
+        .first(),
+    ).toBeVisible();
+    expect(await navigation!.evaluate((element) => element.isConnected)).toBe(true);
+    expect(await mode!.evaluate((element) => element.isConnected)).toBe(true);
+    await expect(page.locator('[data-course-page-navigation]')).toHaveCount(1);
+  }
+});
+
+test('course pages slide together in the tab direction beneath stationary navigation', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openSeededCourse(page);
+  for (const [label, direction] of [
+    ['Cards', 1],
+    ['Path', -1],
+  ] as const) {
+    const navigation = page.locator('[data-course-page-navigation]');
+    await navigation.evaluate((element, direction) => {
+      element.removeAttribute('data-observed-slide');
+      element.addEventListener(
+        'click',
+        () => {
+          const deadline = performance.now() + 1500;
+          const sample = () => {
+            const pages = [...document.querySelectorAll('[data-route-content]')];
+            const offsets = pages.map(
+              (page) => new DOMMatrixReadOnly(getComputedStyle(page).transform).m41,
+            );
+            // popLayout retains the outgoing page first and mounts the incoming page last.
+            if (offsets.length === 2 && offsets[0] * direction < -1 && offsets[1] * direction > 1) {
+              element.setAttribute('data-observed-slide', 'true');
+            } else if (performance.now() < deadline) {
+              requestAnimationFrame(sample);
+            }
+          };
+          requestAnimationFrame(sample);
+        },
+        { once: true },
+      );
+    }, direction);
+    await navigation.getByRole('link', { name: label, exact: true }).click();
+    await expect(navigation).toHaveAttribute('data-observed-slide', 'true');
+    await expect(page.locator('[data-route-content]')).toHaveCount(1);
+  }
 });
 
 test('course section navigation keeps one stable horizontal position', async ({ page }) => {

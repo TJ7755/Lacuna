@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
@@ -61,14 +60,7 @@ export function QuestionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
-        course={course}
-        courseId={course.id}
-        backTo="/"
-        backLabel="All courses"
-        className="mb-4"
-      />
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
 
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5 pt-6 md:pt-8">
         <div>
@@ -206,7 +198,7 @@ export function QuestionsPage() {
 
 function QuestionsPageSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
       <div className="mb-8 h-11 w-56 animate-pulse rounded-xl bg-ink/10" />
       <div className="mb-8 grid gap-3 sm:grid-cols-2">
         <div className="h-40 animate-pulse rounded-2xl bg-ink/10" />
