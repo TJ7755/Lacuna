@@ -6,6 +6,9 @@
   and the Prettier ESLint configuration to 10.1.8. Retained the existing application
   frameworks and compiler, lint and test majors to avoid an unrelated migration.
 
+- Updated the relay's Prettier ESLint configuration to 10.1.8, retaining its
+  existing compiler, Node types, ESLint, Vite and Vitest compatibility boundaries.
+
 - Aligned due-card counts and lookup with Practice's exam-horizon mastery rule. Reviews
   already secured for an exam later today no longer appear as due work that Practice
   will omit. Weak reviews and capped introductions remain counted; passed exams continue
