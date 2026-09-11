@@ -2,9 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
-- Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3, Zod to 4.5.4
-  and the Prettier ESLint configuration to 10.1.8. Retained the existing application
-  frameworks and compiler, lint and test majors to avoid an unrelated migration.
+- Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3 and the Prettier
+  ESLint configuration to 10.1.8. Retained Zod's existing MCP wire schema and the
+  application frameworks and compiler, lint and test majors.
 
 - Updated Electron to 44.2.0 and Electron Builder to 26.16.0, retaining the release
   checks for patched packaging dependencies and platform-specific build behaviour.
