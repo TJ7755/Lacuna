@@ -14,6 +14,9 @@
   will omit. Weak reviews and capped introductions remain counted; passed exams continue
   to use the existing maintenance horizon, including primary-lesson exam overrides.
 
+- Made the assessment-deletion focus test wait for the asynchronous editor update,
+  retaining its focus assertion without racing the completed deletion callback.
+
 - Fixed navigation becoming trapped in an archived course: its outgoing page no longer
   redirects the new destination during exit animations. Archived study and editing routes
   remain restricted until the course is restored.

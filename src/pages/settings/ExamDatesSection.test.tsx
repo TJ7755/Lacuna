@@ -185,7 +185,9 @@ describe('ExamDatesSection', () => {
     fireEvent.click(screen.getByText('Yes'));
 
     await waitFor(() => expect(deleteCourseAssessment).toHaveBeenCalledWith('exam-1'));
-    expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add checkpoint' })).toHaveFocus(),
+    );
     await waitFor(() => expect(screen.queryByDisplayValue('Mock exam')).not.toBeInTheDocument());
   });
 
