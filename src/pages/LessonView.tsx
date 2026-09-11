@@ -154,7 +154,7 @@ export function LessonView({
     nearestExam,
     examUrgent,
     dueCardCount: lessonDueCount,
-  } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now);
+  } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now, lessons);
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
   const authoring = !archived && isLessonAuthoringMode(course);
 
