@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated the isolated handwriting prototype to TypeScript 7.0.2 while retaining
+  its existing Vite 6 and Vitest 3 build and test tools.
+
 - Made the assessment-deletion focus test wait for the asynchronous editor update,
   retaining its focus assertion without racing the completed deletion callback.
 
