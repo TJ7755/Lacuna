@@ -30,20 +30,14 @@ import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmen
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { PathNodeWithLine, lockHintFor } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { useStudySheet } from '../components/learn/StudySheetContext';
-import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
 import { PlayIcon, PlusIcon } from '../components/ui/icons';
 
 import { updateCourse } from '../db/courseRepository';
-import {
-  canEditLessons,
-  isLessonAuthoringMode,
-  resolveLessonViewMode,
-} from '../course/lessonViewMode';
+import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
@@ -105,7 +99,6 @@ export function CoursePath() {
   }, [records]);
   const pendingUpdate = usePendingMergeReview(courseId);
   const archived = course?.archived === true;
-  const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
   const authoring = course ? !archived && isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(
     (message: string) => notify(message, 'negative'),
@@ -405,26 +398,7 @@ export function CoursePath() {
   const unseenCount = courseCards.filter((c) => c.lastReviewed === null || c.state === 0).length;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
-        courseId={courseId ?? ''}
-        backTo={archived ? '/archived' : '/'}
-        backLabel={archived ? 'Archived courses' : 'All courses'}
-        archived={archived}
-        className="mb-4"
-        trailing={
-          archived ? undefined : !canEditLessons(course) ? (
-            <span className="hidden text-xs text-ink-faint sm:inline">
-              Authoring is locked for shared courses
-            </span>
-          ) : (
-            <LessonViewModeToggle
-              mode={lessonViewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
-          )
-        }
-      />
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
 
       {/* A single upcoming assessment is already named by the card's eyebrow and counted
           by its days-to-go pill, so the strip would be a third copy of one date. It earns

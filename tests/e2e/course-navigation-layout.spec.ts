@@ -8,6 +8,161 @@ const COURSE_SECTIONS = [
   { label: 'Settings', heading: 'Settings' },
 ] as const;
 
+for (const width of [390, 1000, 1920]) {
+  test(`course page frames and titles stay aligned with Path at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openSeededCourse(page);
+    const measure = () =>
+      page.locator('[data-course-page-navigation]').evaluate((navigation) => {
+        const frame = navigation.parentElement!;
+        const back = navigation.querySelector('a')!.getBoundingClientRect();
+        const title = navigation.closest('main')!.querySelector('h1')!.getBoundingClientRect();
+        const bounds = frame.getBoundingClientRect();
+        return {
+          left: bounds.x,
+          width: bounds.width,
+          backX: back.x,
+          backY: back.y,
+          titleX: title.x,
+          titleY: title.y,
+        };
+      });
+    const baseline = await measure();
+    await page.screenshot({ path: testInfo.outputPath('Path.png') });
+    for (const section of COURSE_SECTIONS.slice(1)) {
+      await page
+        .locator('nav[aria-label="Course sections"]:visible')
+        .getByRole('link', { name: section.label, exact: true })
+        .click();
+      await expect(
+        page.getByRole('heading', { level: 1, name: section.heading, exact: true }),
+      ).toBeVisible();
+      await expect
+        .poll(
+          async () => {
+            const actual = await measure();
+            return Math.max(
+              ...Object.keys(baseline).map((key) =>
+                Math.abs(
+                  actual[key as keyof typeof actual] - baseline[key as keyof typeof baseline],
+                ),
+              ),
+            );
+          },
+          { message: `${section.label} must retain Path's frame, back link and title position` },
+        )
+        .toBeLessThanOrEqual(1);
+      await expect(page.getByText('Post-instruction practice', { exact: true })).toHaveCount(0);
+      expect(
+        await page.locator('main').evaluate((main) => main.scrollWidth - main.clientWidth),
+      ).toBeLessThanOrEqual(1);
+      await expect(page.getByRole('group', { name: 'Workspace mode' })).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath(`${section.label}.png`) });
+    }
+  });
+}
+
+test('workspace mode is shared by every course section', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openSeededCourse(page);
+  for (const [index, section] of COURSE_SECTIONS.entries()) {
+    await page
+      .locator('nav[aria-label="Course sections"]:visible')
+      .getByRole('link', { name: section.label, exact: true })
+      .click();
+    await expect(
+      page.getByRole('heading', { name: section.heading, exact: true }).first(),
+    ).toBeVisible();
+    const mode = page.getByRole('group', { name: 'Workspace mode' });
+    await expect(mode).toBeVisible();
+    if (index > 0) {
+      await expect(
+        mode.getByRole('button', { name: index % 2 ? 'Author mode' : 'Study mode' }),
+      ).toHaveAttribute('aria-pressed', 'true');
+    }
+    await mode.getByRole('button', { name: index % 2 ? 'Study mode' : 'Author mode' }).click();
+  }
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Author mode', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
+test('Questions has no post-instruction caption', async ({ page }) => {
+  await openSeededCourse(page);
+  await page
+    .locator('nav[aria-label="Course sections"]:visible')
+    .getByRole('link', { name: 'Questions', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Questions' })).toBeVisible();
+  await expect(page.getByText('Post-instruction practice', { exact: true })).toHaveCount(0);
+});
+
+test('course navigation stays mounted while switching sections in both directions', async ({
+  page,
+}) => {
+  await openSeededCourse(page);
+  const navigation = await page.locator('[data-course-page-navigation]').elementHandle();
+  const mode = await page.getByRole('group', { name: 'Workspace mode' }).elementHandle();
+  for (const label of ['Cards', 'Questions', 'Path']) {
+    await page
+      .locator('nav[aria-label="Course sections"]:visible')
+      .getByRole('link', { name: label, exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole('heading', { name: label === 'Path' ? 'Curriculum' : label, exact: true })
+        .first(),
+    ).toBeVisible();
+    expect(await navigation!.evaluate((element) => element.isConnected)).toBe(true);
+    expect(await mode!.evaluate((element) => element.isConnected)).toBe(true);
+    await expect(page.locator('[data-course-page-navigation]')).toHaveCount(1);
+  }
+});
+
+test('course pages slide together in the tab direction beneath stationary navigation', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openSeededCourse(page);
+  for (const [label, direction] of [
+    ['Cards', 1],
+    ['Path', -1],
+  ] as const) {
+    const navigation = page.locator('[data-course-page-navigation]');
+    await navigation.evaluate((element, direction) => {
+      element.removeAttribute('data-observed-slide');
+      element.addEventListener(
+        'click',
+        () => {
+          const deadline = performance.now() + 1500;
+          const sample = () => {
+            const pages = [...document.querySelectorAll('[data-route-content]')];
+            const offsets = pages.map(
+              (page) => new DOMMatrixReadOnly(getComputedStyle(page).transform).m41,
+            );
+            // popLayout retains the outgoing page first and mounts the incoming page last.
+            if (offsets.length === 2 && offsets[0] * direction < -1 && offsets[1] * direction > 1) {
+              element.setAttribute('data-observed-slide', 'true');
+            } else if (performance.now() < deadline) {
+              requestAnimationFrame(sample);
+            }
+          };
+          requestAnimationFrame(sample);
+        },
+        { once: true },
+      );
+    }, direction);
+    await navigation.getByRole('link', { name: label, exact: true }).click();
+    await expect(navigation).toHaveAttribute('data-observed-slide', 'true');
+    await expect(page.locator('[data-route-content]')).toHaveCount(1);
+  }
+});
+
 test('course section navigation keeps one stable horizontal position', async ({ page }) => {
   await openSeededCourse(page);
   const positions: Array<{ label: string; centreX: number }> = [];
@@ -43,7 +198,7 @@ async function openSeededCourse(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
-  await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
+  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Curriculum', exact: true })).toBeVisible();
 }
 

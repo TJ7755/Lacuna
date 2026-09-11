@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
@@ -277,20 +276,13 @@ export function CourseSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
-        courseId={course.id}
-        backTo="/"
-        backLabel="All courses"
-        className="mb-6"
-      />
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
       <div className="flex gap-8">
         <div className="min-w-0 max-w-2xl flex-1">
-          <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-            <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+          <header className="relative mb-8 pt-6 md:pt-8">
             <div className="relative">
-              <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Course</p>
               <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
+              <p className="mt-2 text-sm text-ink-soft">{course.name}</p>
             </div>
           </header>
 
@@ -557,7 +549,7 @@ export function CourseSettings() {
 
 function CourseSettingsSkeleton() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
       <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
       <div className="mb-8 space-y-3">
         <div className="h-3 w-20 animate-pulse rounded bg-ink/10" />

@@ -1,3 +1,4 @@
+import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
@@ -239,7 +240,15 @@ function renderPage() {
     <MemoryRouter initialEntries={['/course/course-1']}>
       <ToastProvider>
         <Routes>
-          <Route path="/course/:courseId" element={<CoursePath />} />
+          <Route
+            path="/course/:courseId"
+            element={
+              <>
+                <CourseSectionNavigation courseId="course-1" />
+                <CoursePath />
+              </>
+            }
+          />
         </Routes>
       </ToastProvider>
     </MemoryRouter>,
