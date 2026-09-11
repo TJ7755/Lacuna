@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated the relay's Prettier ESLint configuration to 10.1.8, retaining its
+  existing compiler, Node types, ESLint, Vite and Vitest compatibility boundaries.
+
 - Fixed navigation becoming trapped in an archived course: its outgoing page no longer
   redirects the new destination during exit animations. Archived study and editing routes
   remain restricted until the course is restored.
