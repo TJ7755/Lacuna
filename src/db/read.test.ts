@@ -204,6 +204,21 @@ describe('read.ts', () => {
   });
 
   describe('listDueCards', () => {
+    it('omits due cards already secured for a lesson exam later today', async () => {
+      const course = await createCourse('Exam course');
+      const lesson = await createLesson(course.id, 'Exam lesson');
+      const now = Date.now();
+      await db.lessons.update(lesson.id, { examDate: now + 3_600_000 });
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'due', 'answer');
+      await db.cards.update(card.id, {
+        state: 2,
+        due: now - 1,
+        stability: 2,
+        lastReviewed: now - 86_400_000,
+      });
+      expect(await listDueCards(course.id, undefined, now)).toEqual([]);
+    });
+
     it('returns [] for a missing course', async () => {
       expect(await listDueCards('missing')).toEqual([]);
     });

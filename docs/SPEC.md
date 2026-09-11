@@ -515,6 +515,13 @@ card's applicable exam horizon; this is not the narrower `card.due` timestamp co
 do not enter this pool or the Path conductor in v1; they are reached deliberately from the separate
 Questions tab.
 
+"Due now" counts include scheduled reviews only while they remain below Practice's
+mastery threshold, plus new cards admitted by the daily cap. A review already secured
+for an exam later today is omitted even if its saved due timestamp has passed. Counts
+use the same per-card exam horizons as Practice; after an exam passes, the existing
+maintenance horizon applies. Future-scheduled cards can still be offered by Practice
+without being counted as due.
+
 Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
 course with exactly one lesson skips the path entirely and renders that lesson directly
 (no one-node path). The header is the shared `CourseHeader` cockpit

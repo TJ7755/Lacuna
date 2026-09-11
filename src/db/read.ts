@@ -32,7 +32,8 @@ import { gatherCounts, type DiagnosticBundle } from './diagnostics';
 import { listNotes as repositoryListNotes } from './noteRepository';
 import { listSequences as repositoryListSequences } from './sequenceRepository';
 import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
-import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
+import { availableCards } from '../fsrs/eligibility';
+import { dueStudyPool } from '../course/studyPools';
 import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
 import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
@@ -138,8 +139,8 @@ export async function getCard(cardId: string): Promise<Card | null> {
 }
 
 /**
- * Cards a study session would serve right now for a course: due reviews plus
- * brand-new cards admitted under the course's newCardsPerDay cap (studyPool),
+ * Cards a study session would serve right now for a course: due reviews below
+ * Practice mastery plus new cards admitted under the course's newCardsPerDay cap,
  * ranked by the course's objective (sortByObjective) and capped at `limit` when
  * given. Mirrors the "due now" semantics in src/course/headerStats.ts.
  */
@@ -155,9 +156,8 @@ export async function listDueCards(
     listLessons(courseId),
     listCourseAssessments(courseId),
   ]);
-  const pool = studyPool(cards, course, now);
-  const servable = dueCards(pool, now).concat(pool.filter((c) => c.state === 0));
   const examDateContext = makeExamDateContext(course, lessons, assessments);
+  const servable = dueStudyPool(cards, course, examDateContext, now);
   const oc = makeObjectiveContext(course, examDateContext);
   const sorted = sortByObjective(servable, oc, now).map((s) => s.card);
   return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
