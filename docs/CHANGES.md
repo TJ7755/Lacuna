@@ -2,6 +2,10 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3 and the Prettier
+  ESLint configuration to 10.1.8. Retained Zod's existing MCP wire schema and the
+  application frameworks and compiler, lint and test majors.
+
 - Updated Electron to 44.2.0 and Electron Builder to 26.16.0, retaining the release
   checks for patched packaging dependencies and platform-specific build behaviour.
 
@@ -12,6 +16,9 @@
   already secured for an exam later today no longer appear as due work that Practice
   will omit. Weak reviews and capped introductions remain counted; passed exams continue
   to use the existing maintenance horizon, including primary-lesson exam overrides.
+
+- Made the assessment-deletion focus test wait for the asynchronous editor update,
+  retaining its focus assertion without racing the completed deletion callback.
 
 - Fixed navigation becoming trapped in an archived course: its outgoing page no longer
   redirects the new destination during exit animations. Archived study and editing routes
