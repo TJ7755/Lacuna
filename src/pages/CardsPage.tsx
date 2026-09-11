@@ -108,14 +108,15 @@ export function CardsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       <CoursePageNavigation
+        course={course}
         courseId={courseId ?? ''}
         backTo="/"
         backLabel="All courses"
-        className="mb-6"
+        className="mb-4"
       />
 
       {/* Header */}
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <div>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Cards</h1>
           <p className="mt-2 text-sm text-ink-soft">

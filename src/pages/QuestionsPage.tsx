@@ -61,19 +61,17 @@ export function QuestionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       <CoursePageNavigation
+        course={course}
         courseId={course.id}
         backTo="/"
         backLabel="All courses"
-        className="mb-6"
+        className="mb-4"
       />
 
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-5 pt-6 md:pt-8">
         <div>
-          <p className="mb-2 text-xs uppercase tracking-[0.18em] text-ink-faint">
-            Post-instruction practice
-          </p>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Questions</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-ink-soft">
             Apply what you have learnt in fixed problems and varied generated examples. Question
@@ -208,7 +206,7 @@ export function QuestionsPage() {
 
 function QuestionsPageSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       <div className="mb-8 h-11 w-56 animate-pulse rounded-xl bg-ink/10" />
       <div className="mb-8 grid gap-3 sm:grid-cols-2">
         <div className="h-40 animate-pulse rounded-2xl bg-ink/10" />

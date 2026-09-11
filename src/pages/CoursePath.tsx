@@ -32,18 +32,13 @@ import { PathNodeWithLine, lockHintFor } from '../components/course/CoursePathSe
 import { CourseHeader } from '../components/course/CourseHeader';
 import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { useStudySheet } from '../components/learn/StudySheetContext';
-import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
 import { PlayIcon, PlusIcon } from '../components/ui/icons';
 
 import { updateCourse } from '../db/courseRepository';
-import {
-  canEditLessons,
-  isLessonAuthoringMode,
-  resolveLessonViewMode,
-} from '../course/lessonViewMode';
+import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
@@ -105,7 +100,6 @@ export function CoursePath() {
   }, [records]);
   const pendingUpdate = usePendingMergeReview(courseId);
   const archived = course?.archived === true;
-  const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
   const authoring = course ? !archived && isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(
     (message: string) => notify(message, 'negative'),
@@ -412,18 +406,7 @@ export function CoursePath() {
         backLabel={archived ? 'Archived courses' : 'All courses'}
         archived={archived}
         className="mb-4"
-        trailing={
-          archived ? undefined : !canEditLessons(course) ? (
-            <span className="hidden text-xs text-ink-faint sm:inline">
-              Authoring is locked for shared courses
-            </span>
-          ) : (
-            <LessonViewModeToggle
-              mode={lessonViewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
-          )
-        }
+        course={course}
       />
 
       {/* A single upcoming assessment is already named by the card's eyebrow and counted

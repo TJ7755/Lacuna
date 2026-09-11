@@ -398,7 +398,7 @@ function AppShellLayout() {
             className={cn(
               'min-w-0 flex-1 overflow-y-auto overscroll-y-none',
               'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pl-0',
-              inCourse && 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
+              inCourse && '[scrollbar-gutter:stable] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
             )}
             style={{ touchAction: 'pan-y' }}
             onPointerDown={onPointerDown}
