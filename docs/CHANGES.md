@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated Electron to 44.2.0 and Electron Builder to 26.16.0, retaining the release
+  checks for patched packaging dependencies and platform-specific build behaviour.
+
 - Updated the relay's Prettier ESLint configuration to 10.1.8, retaining its
   existing compiler, Node types, ESLint, Vite and Vitest compatibility boundaries.
 
