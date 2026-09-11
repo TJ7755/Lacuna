@@ -138,8 +138,8 @@ describe('v0.2.6 release configuration', () => {
   });
 
   it('uses the maintained Electron Builder 26 toolchain without vulnerable transitive versions', () => {
-    expect(packageJson.devDependencies?.['electron-builder']).toBe('^26.15.7');
-    expect(resolvedVersions('electron-builder')).toEqual(['26.15.7']);
+    expect(packageJson.devDependencies?.['electron-builder']).toBe('^26.16.0');
+    expect(resolvedVersions('electron-builder')).toEqual(['26.16.0']);
     expectResolvedAtLeast('app-builder-lib', [26, 15, 0]);
     expectResolvedAtLeast('builder-util-runtime', [9, 7, 0]);
     expectResolvedAtLeast('tar', [7, 5, 21]);

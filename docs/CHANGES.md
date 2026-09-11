@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated Electron to 44.2.0 and Electron Builder to 26.16.0, retaining the release
+  checks for patched packaging dependencies and platform-specific build behaviour.
+
 - Fixed navigation becoming trapped in an archived course: its outgoing page no longer
   redirects the new destination during exit animations. Archived study and editing routes
   remain restricted until the course is restored.
