@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Made the assessment-deletion focus test wait for the asynchronous editor update,
+  retaining its focus assertion without racing the completed deletion callback.
+
 - Fixed navigation becoming trapped in an archived course: its outgoing page no longer
   redirects the new destination during exit animations. Archived study and editing routes
   remain restricted until the course is restored.
