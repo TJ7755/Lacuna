@@ -2,6 +2,10 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3, Zod to 4.5.4
+  and the Prettier ESLint configuration to 10.1.8. Retained the existing application
+  frameworks and compiler, lint and test majors to avoid an unrelated migration.
+
 - Aligned due-card counts and lookup with Practice's exam-horizon mastery rule. Reviews
   already secured for an exam later today no longer appear as due work that Practice
   will omit. Weak reviews and capped introductions remain counted; passed exams continue
