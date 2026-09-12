@@ -148,11 +148,21 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
-  await page
-    .getByRole('button', { name: /Show answer/i })
-    .last()
-    .click();
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+
+  // Scheduling can serve either sequence card first. Advance only if the cue
+  // whose alignment this test measures is not already on the current front.
+  if (
+    (await card
+      .locator('[data-study-face="front"]')
+      .getByText('King William the Conqueror', { exact: true })
+      .count()) === 0
+  ) {
+    await page
+      .getByRole('button', { name: /Show answer/i })
+      .last()
+      .click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  }
 
   const secondCard = page.locator('[data-study-card-id]').filter({
     has: page
