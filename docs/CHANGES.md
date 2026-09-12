@@ -2,6 +2,15 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Made study cards follow swipes directly and travel fully off-screen when graded,
+  with the same directional departure for keyboard shortcuts and grading buttons.
+  Incoming cards now rise gently into place. Replaced the broad drag glow with a compact
+  Yes/No cue while retaining the full colour pulse after grading. Reduced motion skips
+  the travel, repeated grades are guarded, and leaving study cancels a pending departure.
+  Card height measurements now ignore entrance scaling, keeping long fronts and backs
+  aligned. Study browser checks also wait for completed grading and tolerate either
+  sequence starting card without confusing outgoing editors with saved card rows.
+
 - Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3 and the Prettier
   ESLint configuration to 10.1.8. Retained Zod's existing MCP wire schema and the
   application frameworks and compiler, lint and test majors.
