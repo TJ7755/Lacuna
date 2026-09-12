@@ -11,9 +11,8 @@ export function useStableCardHeight() {
     if (!front || !back) return;
 
     const measure = () => {
-      const next = Math.ceil(
-        Math.max(front.getBoundingClientRect().height, back.getBoundingClientRect().height),
-      );
+      // Layout height must not include the study card's animated entrance scale.
+      const next = Math.max(front.offsetHeight, back.offsetHeight);
       if (next > 0) setHeight((current) => (current === next ? current : next));
     };
 

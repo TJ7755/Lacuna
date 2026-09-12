@@ -2,6 +2,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Card } from '../../db/types';
 import { FlipCard } from './FlipCard';
+import type * as MotionSpeedModule from '../../state/motionSpeed';
+
+vi.mock('../../state/motionSpeed', async (importOriginal) => ({
+  ...(await importOriginal<typeof MotionSpeedModule>()),
+  speedMultiplier: () => 0,
+}));
 
 vi.mock('../../components/cards/CardContent', () => ({
   CardContent: ({ side }: { side: 'front' | 'back' }) => (
@@ -31,7 +37,7 @@ const card: Card = {
   updatedAt: 0,
 };
 
-function renderRevealed() {
+function renderRevealed(onAnswer = vi.fn()) {
   const onHide = vi.fn();
   render(
     <FlipCard
@@ -46,13 +52,42 @@ function renderRevealed() {
       hintsOpen={false}
       onReveal={vi.fn()}
       onHide={onHide}
-      onAnswer={vi.fn()}
+      onAnswer={onAnswer}
       mode="fsrs"
       answerStrictness="standard"
     />,
   );
   return onHide;
 }
+
+describe('FlipCard reduced-motion swipes', () => {
+  function swipe(dx: number, cancel = false) {
+    const target = screen.getByRole('button', { name: 'Hide answer' });
+    fireEvent.pointerDown(target, { clientX: 200, clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(target, { clientX: 200 + dx, clientY: 200, pointerId: 1 });
+    if (cancel) fireEvent.pointerCancel(target, { pointerId: 1 });
+    else fireEvent.pointerUp(target, { clientX: 200 + dx, clientY: 200, pointerId: 1 });
+  }
+
+  it.each([-100, 100])('grades a %ipx swipe immediately and only once', (dx) => {
+    const answer = vi.fn();
+    renderRevealed(answer);
+    swipe(dx);
+    expect(answer).toHaveBeenCalledExactlyOnceWith(dx > 0, 'touch');
+    swipe(dx);
+    expect(answer).toHaveBeenCalledOnce();
+  });
+
+  it('keeps cancelled and below-threshold swipes ungraded, then accepts a new swipe', () => {
+    const answer = vi.fn();
+    renderRevealed(answer);
+    swipe(40);
+    swipe(-100, true);
+    expect(answer).not.toHaveBeenCalled();
+    swipe(100);
+    expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch');
+  });
+});
 
 describe('FlipCard audio replay', () => {
   it('returns to the audio face without leaving the answer phase', () => {

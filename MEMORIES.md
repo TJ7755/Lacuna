@@ -525,6 +525,10 @@ Happy DOM rejects an active Web Animation's completion promise when Testing Libr
 cancels it. On hosted Linux runners, Vitest reports that rejection as an `AbortError` after every
 assertion has passed. Component tests should use reduced motion unless animation is their subject;
 tests that enable motion and advance a transition must finish its relevant lifecycle before teardown.
+Tests that freeze `performance.now()` for grading must use reduced motion: imperative Motion
+transitions use that clock to finish, so a frozen clock also prevents their completion callbacks.
+An entrance guard must also reset during effect cleanup: StrictMode stops the first animation
+and replays setup, and retaining the guard can strand the card at its initial zero opacity.
 Reduced motion must omit `animate` as well as initial and exit states; a zero-duration target can
 still create a cancellable Web Animation. In Happy DOM, allow Motion two animation frames to create
 WAAPI objects before collecting, finishing and settling them; an immediate collection can miss work

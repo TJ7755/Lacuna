@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
+import { AnimatePresence, m as motion, animate, useIsPresent, useMotionValue } from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
 import type { Card, Grade, Occlusion } from '../../db/types';
 import { speedMultiplier, type MotionSpeed } from '../../state/motionSpeed';
@@ -32,8 +32,8 @@ function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
 /**
  * A card that flips vertically to reveal its answer, and responds to touch and mouse
  * gestures: tap to flip, swipe left for No, swipe right for Yes. The swipe interaction
- * is springy — the card follows the finger, a directional glow hints at the outcome,
- * and releasing past the threshold commits the answer with a satisfying snap.
+ * follows the finger directly, with a compact outcome cue. Accepted swipes retain
+ * their direction and leave the viewport before handing over to the next card.
  */
 export function FlipCard({
   card,
@@ -101,7 +101,8 @@ export function FlipCard({
   const selectionLenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeThreshold = 60;
-  const maxDrag = 180;
+  const isPresent = useIsPresent();
+  const committed = useRef(false);
 
   const replayAudio = useCallback(() => {
     if (!audioCard || phase !== 'answer') return;
@@ -136,16 +137,22 @@ export function FlipCard({
     return () => window.removeEventListener('keydown', onReplayKey);
   }, [audioCard, phase, menuOpen, editing, navOpen, hintsOpen, replayAudio]);
 
-  // Spring-physics x position for the snap-back so the card feels tactile.
+  // Follow the pointer without spring lag; only an abandoned swipe springs back.
   const swipeXMotion = useMotionValue(0);
-  const swipeXSpring = useSpring(swipeXMotion, { stiffness: 480, damping: 32, mass: 0.9 });
+  const resetSwipe = useCallback(() => {
+    if (m === 0) swipeXMotion.jump(0);
+    else animate(swipeXMotion, 0, { type: 'spring', stiffness: 480, damping: 38 });
+    setSwipe({ x: 0, hint: null });
+  }, [m, swipeXMotion]);
+  useEffect(() => () => swipeXMotion.stop(), [swipeXMotion]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (swipeRef.current.dragging) return;
+      if (swipeRef.current.dragging || committed.current || !isPresent) return;
       if ((e.target as Element).closest('audio, button, input, textarea, a')) return;
       // Ignore swipes when any overlay is open.
       if (menuOpen || editing || navOpen || hintsOpen) return;
+      swipeXMotion.stop();
       swipeRef.current = {
         x: 0,
         startX: e.clientX,
@@ -157,7 +164,7 @@ export function FlipCard({
       containerRef.current?.setPointerCapture?.(e.pointerId);
       setSwipe({ x: 0, hint: null });
     },
-    [menuOpen, editing, navOpen, hintsOpen],
+    [menuOpen, editing, navOpen, hintsOpen, isPresent, swipeXMotion],
   );
 
   const handlePointerMove = useCallback(
@@ -173,13 +180,11 @@ export function FlipCard({
         }
       }
       if (!swipeRef.current.isSwipe) return;
-      // Clamp the visual drag so the card never flies off-screen.
-      const clamped = Math.max(-maxDrag, Math.min(maxDrag, dx));
-      swipeRef.current.x = clamped;
-      swipeXMotion.set(clamped);
+      swipeRef.current.x = dx;
+      swipeXMotion.set(dx);
       const hint: 'left' | 'right' | null =
-        clamped < -swipeThreshold / 2 ? 'left' : clamped > swipeThreshold / 2 ? 'right' : null;
-      setSwipe({ x: clamped, hint });
+        dx < -swipeThreshold / 2 ? 'left' : dx > swipeThreshold / 2 ? 'right' : null;
+      setSwipe({ x: dx, hint });
     },
     [phase, swipeXMotion],
   );
@@ -193,45 +198,19 @@ export function FlipCard({
       const wasSwipe = swipeRef.current.isSwipe;
       swipeRef.current.isSwipe = false;
       if (wasSwipe) {
-        if (dx < -swipeThreshold) {
-          // Swipe left = No
-          if (phase === 'answer') {
-            hapticMedium();
-            setHasSwiped(true);
-            try {
-              localStorage.setItem('lacuna.learnHints', '1');
-            } catch {
-              /* ignore */
-            }
-            swipeXMotion.set(0);
-            setSwipe({ x: 0, hint: null });
-            void onAnswer(false, 'touch');
-          } else {
-            // Snap back if not in answer phase.
-            swipeXMotion.set(0);
-            setSwipe({ x: 0, hint: null });
+        if (Math.abs(dx) > swipeThreshold && phase === 'answer') {
+          committed.current = true;
+          hapticMedium();
+          setHasSwiped(true);
+          try {
+            localStorage.setItem('lacuna.learnHints', '1');
+          } catch {
+            /* ignore */
           }
-        } else if (dx > swipeThreshold) {
-          // Swipe right = Yes
-          if (phase === 'answer') {
-            hapticMedium();
-            setHasSwiped(true);
-            try {
-              localStorage.setItem('lacuna.learnHints', '1');
-            } catch {
-              /* ignore */
-            }
-            swipeXMotion.set(0);
-            setSwipe({ x: 0, hint: null });
-            void onAnswer(true, 'touch');
-          } else {
-            swipeXMotion.set(0);
-            setSwipe({ x: 0, hint: null });
-          }
+          // The shared transition carries swipe, button and keyboard grades off-screen.
+          void onAnswer(dx > 0, 'touch');
         } else {
-          // Not far enough — spring back.
-          swipeXMotion.set(0);
-          setSwipe({ x: 0, hint: null });
+          resetSwipe();
         }
       } else {
         // It was a tap/click — flip the card unless the user selected text.
@@ -250,28 +229,29 @@ export function FlipCard({
         }
       }
     },
-    [phase, audioCard, onReveal, onHide, onAnswer, swipeXMotion],
+    [phase, audioCard, onReveal, onHide, onAnswer, resetSwipe],
   );
 
   const handlePointerCancel = useCallback(
     (e: React.PointerEvent) => {
+      if (committed.current) return;
       containerRef.current?.releasePointerCapture?.(e.pointerId);
       swipeRef.current.dragging = false;
       swipeRef.current.isSwipe = false;
-      swipeXMotion.set(0);
-      setSwipe({ x: 0, hint: null });
+      resetSwipe();
     },
-    [swipeXMotion],
+    [resetSwipe],
   );
 
   // Safety net: clear any lingering swipe state when the card flips back to question.
   useEffect(() => {
-    if (phase === 'question') {
+    if (phase === 'question' && isPresent) {
+      committed.current = false;
       setShowAudioFront(false);
-      swipeXMotion.set(0);
+      swipeXMotion.jump(0);
       setSwipe({ x: 0, hint: null });
     }
-  }, [phase, swipeXMotion]);
+  }, [phase, isPresent, swipeXMotion]);
 
   const displayedFront = !revealed || showAudioFront;
   const surfaceClassName =
@@ -315,6 +295,7 @@ export function FlipCard({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onKeyDown={(event) => {
+          if (committed.current || !isPresent) return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           event.preventDefault();
           event.stopPropagation();
@@ -330,27 +311,6 @@ export function FlipCard({
           frontRef={frontRef}
           backRef={backRef}
         />
-
-        {/* Swipe hint glow — appears during a drag to whisper the outcome.
-            Positioned behind the card so the border stays crisp. */}
-        <AnimatePresence>
-          {swipe.hint && (
-            <motion.div
-              aria-hidden
-              key={swipe.hint}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, x: swipe.x }}
-              exit={{ opacity: 0 }}
-              transition={{ opacity: { duration: 0.12 * m }, x: { duration: 0 } }}
-              className={
-                'pointer-events-none absolute inset-y-0 z-0 w-56 rounded-3xl ' +
-                (swipe.hint === 'right'
-                  ? '-right-56 bg-gradient-to-r from-positive/20 to-transparent'
-                  : '-left-56 bg-gradient-to-l from-negative/15 to-transparent')
-              }
-            />
-          )}
-        </AnimatePresence>
 
         {/* Touch swipe indicators — persistent hints that show the available gestures. */}
         {isTouchMode &&
@@ -394,16 +354,15 @@ export function FlipCard({
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={displayedFront ? 'front' : 'back'}
-            initial={{ rotateX: -92, opacity: 0, scale: 0.97, x: swipe.x }}
-            animate={{ rotateX: 0, opacity: 1, scale: 1 }}
-            exit={{ rotateX: 92, opacity: 0, scale: 0.97, x: swipe.x }}
+            initial={m > 0 ? { rotateX: -92, opacity: 0, scale: 0.97 } : false}
+            animate={m > 0 ? { rotateX: 0, opacity: 1, scale: 1 } : undefined}
+            exit={m > 0 ? { rotateX: 92, opacity: 0, scale: 0.97 } : undefined}
             transition={{
-              x: { type: 'spring', stiffness: 480, damping: 32, mass: 0.9 },
               rotateX: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
               opacity: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
               scale: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
             }}
-            style={{ transformOrigin: 'center center', x: swipeXSpring, minHeight: stableHeight }}
+            style={{ transformOrigin: 'center center', x: swipeXMotion, minHeight: stableHeight }}
             className={cn(
               // A modest floor keeps short cards from looking like a stray label without
               // making a two-line card float in an otherwise empty container. Longer cards
@@ -412,6 +371,26 @@ export function FlipCard({
               modeBorderClass(mode, revealed),
             )}
           >
+            {/* Keep drag feedback on the card, away from the page-wide grading pulse. */}
+            {swipe.hint && (
+              <div
+                aria-hidden="true"
+                className={cn(
+                  'pointer-events-none absolute top-3 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+                  swipe.hint === 'right'
+                    ? 'left-4 bg-positive/10 text-positive'
+                    : 'right-4 bg-negative/10 text-negative',
+                )}
+                style={{ opacity: Math.min(1, Math.abs(swipe.x) / swipeThreshold) }}
+              >
+                {swipe.hint === 'right' ? (
+                  <CheckIcon width={14} height={14} />
+                ) : (
+                  <CloseIcon width={14} height={14} />
+                )}
+                {swipe.hint === 'right' ? 'Yes' : 'No'}
+              </div>
+            )}
             {face(displayedFront ? 'front' : 'back')}
           </motion.div>
         </AnimatePresence>
