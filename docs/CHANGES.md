@@ -2,6 +2,25 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Enlarged the navigation logo and fixed its colours to the original black-and-orange
+  artwork, with extra space inside the black square and the wordmark centred to its
+  right in desktop and mobile navigation.
+- Slowed the card flip from 180 ms to 560 ms at normal speed. Both halves of the flip
+  follow the animation speed setting, with an immediate reveal for reduced motion.
+- Added a 180 ms pause after study cards leave and slowed the next card's entrance
+  from 280 ms to 360 ms at normal animation speed. Reduced motion remains immediate;
+  leaving a session cancels the pending grade. Red/green feedback now plays during
+  dismissal and finishes before the next card appears; removed the expanding circular
+  flash and the separate session feedback timer.
+
+- Removed redundant subtitles and category captions across Settings, Help, Search,
+  Question editing and Analytics, including the sidebar brand tagline and section-rail
+  headings. Navigation, field labels and consequential settings guidance remain.
+  Opened page headers across Settings, Help, Analytics, Search, Share and Archived
+  courses, while retaining cards around related content. Help now uses one card per
+  topic instead of nested prose cards. Question analytics now uses a compact performance
+  table, with sample counts and exclusions in an expandable details row.
+
 - Wait for persisted workspace mode before reloading in browser tests, and for the
   initial page transition to finish before measuring course-section slides.
 

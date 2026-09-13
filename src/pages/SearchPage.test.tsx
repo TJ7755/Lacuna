@@ -118,6 +118,8 @@ describe('SearchPage', () => {
     render(<SearchPage />, { wrapper: MemoryRouter });
 
     expect(screen.getByRole('heading', { name: 'Search content' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Search content' }).closest('header')).not.toHaveClass('bg-surface');
+    expect(screen.queryByText('Library')).not.toBeInTheDocument();
     expect(screen.queryByText('Ctrl/Cmd+K')).not.toBeInTheDocument();
   });
 

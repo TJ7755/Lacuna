@@ -255,10 +255,9 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
   return (
     <ChartCard
       title="Course comparison"
-            emptyDrawing="comparison"
-      description="Select two courses to compare their statistics side by side."
+      emptyDrawing="comparison"
       empty={courses.length < 2}
-      emptyMessage="Create at least two courses to compare them."
+      emptyMessage="Create two courses to compare."
       delay={0}
       className="h-auto"
       compactEmpty

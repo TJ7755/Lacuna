@@ -164,6 +164,22 @@ describe('SectionRail', () => {
     expect(screen.queryByLabelText('Jump to section')).not.toBeInTheDocument();
   });
 
+  it('does not add a decorative caption above the desktop navigation', () => {
+    mockViewport(true);
+    render(<Harness />);
+
+    expect(screen.queryByText('On this page')).not.toBeInTheDocument();
+  });
+
+  it('uses a modest desktop container without restoring the caption or heavy shadow', () => {
+    mockViewport(true);
+    render(<Harness />);
+
+    const surface = screen.getByRole('navigation').parentElement;
+    expect(surface).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+    expect(surface).not.toHaveClass('shadow-xl');
+  });
+
   it('renders only the mobile jumper below the desktop breakpoint', () => {
     mockViewport(false);
     render(<Harness />);

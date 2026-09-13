@@ -21,14 +21,10 @@ export function PomodoroSection() {
       id="settings-pomodoro"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <ClockIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Pomodoro timer</SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        A built-in focus timer for your study sessions. Customise the durations to match your own
-        rhythm.
-      </p>
       <div className="grid grid-cols-3 gap-4">
         <DurationInput
           label="Focus"

@@ -14,7 +14,6 @@ import {
   ChevronRightIcon,
   DashboardIcon,
   FlameIcon,
-  LacunaIcon,
   HelpIcon,
   MoonIcon,
   PlusIcon,
@@ -485,35 +484,29 @@ export function Sidebar({
       <div
         className={cn(
           'flex items-center gap-3',
-          sidebarSettings.compactMode ? 'px-4 py-3' : 'px-5 py-5',
-          collapsed && 'justify-center px-0',
+          sidebarSettings.compactMode ? 'py-3' : 'py-5',
+          collapsed ? 'justify-center px-0' : sidebarSettings.compactMode ? 'px-4' : 'px-5',
         )}
       >
-        <span
+        <img
+          data-testid="sidebar-brand-mark"
+          src={`${import.meta.env.BASE_URL}icon.svg`}
+          alt=""
+          aria-hidden="true"
           className={cn(
-            'grid shrink-0 place-items-center rounded-xl bg-accent text-accent-fg',
-            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+            'shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-[3px]',
+            sidebarSettings.compactMode ? 'h-10 w-10' : 'h-11 w-11',
           )}
-        >
-          <LacunaIcon
-            width={sidebarSettings.compactMode ? 18 : 20}
-            height={sidebarSettings.compactMode ? 18 : 20}
-          />
-        </span>
+        />
         {!collapsed && (
-          <div className="leading-tight">
-            <div
-              className={cn(
-                'font-brand tracking-tight',
-                sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
-              )}
-            >
-              Lacuna
-            </div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-faint">
-              Spaced revision
-            </div>
-          </div>
+          <span
+            className={cn(
+              'font-brand font-medium leading-none tracking-tight',
+              sidebarSettings.compactMode ? 'text-2xl' : 'text-[28px]',
+            )}
+          >
+            Lacuna
+          </span>
         )}
       </div>
 

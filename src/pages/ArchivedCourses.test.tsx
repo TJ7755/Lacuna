@@ -30,11 +30,11 @@ beforeEach(() => {
 });
 
 describe('ArchivedCourses', () => {
-  it('uses the eyebrow-free page-header spacing', () => {
+  it('uses an open page header with contained course cards', () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('banner')).toHaveClass('p-7', 'md:p-9');
-    expect(screen.getByRole('banner')).not.toHaveClass('p-6', 'md:p-8');
+    expect(screen.getByRole('banner')).not.toHaveClass('bg-surface');
+    expect(screen.getByRole('listitem')).toHaveClass('bg-surface');
   });
 
   it('lists only archived courses and restores one explicitly', async () => {

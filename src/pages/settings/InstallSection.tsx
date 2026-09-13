@@ -10,17 +10,12 @@ export function InstallSection() {
       id="settings-install"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <DownloadIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">
           {window.electronAPI?.isElectron ? 'Install & updates' : 'Install'}
         </SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        {window.electronAPI?.isElectron
-          ? 'Keep the desktop application current.'
-          : 'Add Lacuna to your home screen for quick access and offline use.'}
-      </p>
       <InstallPanel />
     </section>
   );

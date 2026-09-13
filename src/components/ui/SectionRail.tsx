@@ -78,24 +78,22 @@ interface SectionRailProps {
   activeSection: string;
   onNavigate: (id: string) => void;
   motionMultiplier: number;
-  title?: string;
 }
 
 /** Sticky desktop sidebar nav, rendered only from the `xl` breakpoint up. */
-export function SectionRail({ sections, activeSection, onNavigate, motionMultiplier, title = 'On this page' }: SectionRailProps) {
+export function SectionRail({ sections, activeSection, onNavigate, motionMultiplier }: SectionRailProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   if (!isDesktop) return null;
 
   return (
-    <aside className="w-56 shrink-0">
+    <aside aria-label="Page sections" className="w-56 shrink-0">
       <div className="sticky top-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5"
+          className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-sm"
         >
-          <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">{title}</div>
           <LayoutGroup>
             <nav className="relative flex flex-col gap-1">
               {sections.map((section, index) => (

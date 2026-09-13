@@ -18,6 +18,7 @@ describe('StudyCardTransition', () => {
     await waitFor(() => expect(view.getByText('Readable question')).toHaveStyle({ opacity: '1' }));
     view.unmount();
   });
+
   it('finishes departure before committing and ignores repeated grades', async () => {
     const ref = createRef<StudyCardTransitionHandle>();
     const commit = vi.fn();
@@ -45,7 +46,7 @@ describe('StudyCardTransition', () => {
     );
     act(() => ref.current!.dismiss(false, commit));
     view.unmount();
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     expect(commit).not.toHaveBeenCalled();
   });
 

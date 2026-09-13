@@ -282,7 +282,6 @@ export function CourseSettings() {
           <header className="relative mb-8 pt-6 md:pt-8">
             <div className="relative">
               <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
-              <p className="mt-2 text-sm text-ink-soft">{course.name}</p>
             </div>
           </header>
 
