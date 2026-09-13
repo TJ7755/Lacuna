@@ -4,11 +4,11 @@ test('opening limits attention to the headline and one action', async ({ page })
   await page.goto('/#/landing');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
   await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
-    'Put your revision time where it matters.',
+    'Your revision, built around your exam.',
   );
   await expect(hero.locator('p')).toHaveCount(0);
-  await expect(hero.getByRole('button')).toHaveCount(0);
-  await expect(hero.getByRole('link')).toHaveCount(1);
+  await expect(hero.getByRole('button', { name: 'Pause illustrations' })).toHaveCount(1);
+  await expect(hero.getByRole('link')).toHaveCount(2);
   await hero.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
 });
@@ -18,7 +18,7 @@ test('landing leads with exam planning before the memory story', async ({ page }
 
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
   await expect(
-    hero.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    hero.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Start revising' })).toHaveAttribute('href', '#/');
 
@@ -26,7 +26,7 @@ test('landing leads with exam planning before the memory story', async ({ page }
     const children = Array.from(main.children);
     const indexOf = (selector: string) => children.findIndex((child) => child.matches(selector));
     return {
-      hero: indexOf('.illustrated-opening'),
+      hero: indexOf('.motion-opening'),
       product: indexOf('#landing-product'),
       walkthrough: indexOf('.landing-walkthrough'),
       memory: indexOf('.memory-sequence'),
@@ -42,57 +42,16 @@ test('landing leads with exam planning before the memory story', async ({ page }
   await expect(firstWalkthroughImage).toHaveAttribute('data-active', 'true');
 });
 
-test('exam projection responds to review timing while the exam stays fixed', async ({ page }) => {
-  await page.goto('/#/welcome');
-  const section = page.getByRole('region', { name: 'Remember it on exam day.' });
-  await section.scrollIntoViewIfNeeded();
-  const timing = section.getByRole('slider', { name: 'Next review' });
-  const projection = section.locator('output');
-  const before = await projection.textContent();
-  const curve = section.locator('.exam-curve-reviewed');
-  const beforeCurve = await curve.getAttribute('d');
-  const exam = section.locator('.exam-curve-deadline');
-  const examX = await exam.getAttribute('x1');
-  await timing.fill('6');
-  await expect(projection).not.toHaveText(before!);
-  expect(await curve.getAttribute('d')).not.toBe(beforeCurve);
-  await expect(exam).toHaveAttribute('x1', examX!);
-  for (const progress of [0.15, 0.85, 0.15]) {
-    await section.evaluate((element, amount) => {
-      const rect = element.getBoundingClientRect();
-      window.scrollTo({ top: scrollY + rect.top + (rect.height - innerHeight) * amount, behavior: 'instant' });
-    }, progress);
-    await expect.poll(async () => Number(await section.evaluate((element) =>
-      getComputedStyle(element).getPropertyValue('--curve-progress'),
-    ))).toBeCloseTo(progress, 2);
-    await expect.poll(async () => Number((await curve.evaluate((element) =>
-      getComputedStyle(element).strokeDashoffset,
-    )).match(/^calc\(([-\d.]+)px\)$/)?.[1])).toBeCloseTo(1 - progress, 2);
-  }
-  await timing.focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect(timing).toHaveValue('5');
-  await expect(section.getByText(/assuming successful reviews/)).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await section.scrollIntoViewIfNeeded();
-  await expect(timing).toBeVisible();
-  await expect(curve).toHaveCSS('stroke-dashoffset', '0px');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-});
-
-test('landing preview survives first launch and offers an unrestricted journey', async ({
-  page,
-}) => {
+test('landing survives first launch and offers an unrestricted journey', async ({ page }) => {
   await page.goto('/#/landing');
   await expect(
-    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toBeVisible();
   await expect(page).toHaveURL(/#\/landing$/);
   await page.getByRole('link', { name: 'Skip to Lacuna' }).focus();
   await page.getByRole('link', { name: 'Skip to Lacuna' }).click();
-  await expect(page.getByRole('heading', { name: 'Make room for remembering.' })).toBeInViewport();
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).last().click();
+  await expect(page.getByRole('heading', { name: 'Your time. Your pace.' })).toBeInViewport();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).last().click();
   await expect(page).toHaveURL(/#\/$/);
 });
 
@@ -103,7 +62,7 @@ test('mobile reduced motion shows the complete story without horizontal overflow
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/#/landing');
   await expect(
-    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toBeVisible();
   await expect(page.getByText('You just can’t bring it back.', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
@@ -114,7 +73,7 @@ test('mobile reduced motion shows the complete story without horizontal overflow
 test('native scrolling blurs then resolves the answer', async ({ page }) => {
   await page.goto('/#/landing');
   await expect(
-    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toBeVisible();
   const answer = page.locator('.memory-answer');
   await expect(answer).toHaveCSS('filter', 'blur(0px)');
@@ -146,7 +105,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.emulateMedia({ reducedMotion });
     await page.goto('/#/landing');
     await expect(
-      page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+      page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
     ).toBeVisible();
     await page.mouse.move(200, 400);
     await page.mouse.wheel(0, 400);
@@ -160,7 +119,7 @@ test('cinematic opening is quiet and lower sections share their alignment', asyn
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/#/landing');
   await expect(
-    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toBeVisible();
   for (const caption of [
     'A familiar feeling.',
@@ -175,7 +134,6 @@ test('cinematic opening is quiet and lower sections share their alignment', asyn
     const left = (selector: string) =>
       document.querySelector(selector)!.getBoundingClientRect().left;
     return [
-      left('.landing-product-intro'),
       left('.landing-walkthrough') +
         parseFloat(getComputedStyle(document.querySelector('.landing-walkthrough')!).paddingLeft),
       left('.landing-footer .landing-brand'),
@@ -189,9 +147,9 @@ test('walkthrough pairs real screenshots with scrolling text and uses Instrument
 }) => {
   await page.goto('/#/landing');
   await expect(
-    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toHaveCSS('font-family', /Instrument Sans/);
-  await expect(page.getByRole('heading', { name: 'Make room for remembering.' })).toHaveCSS(
+  await expect(page.getByRole('heading', { name: 'Your time. Your pace.' })).toHaveCSS(
     'font-family',
     /Instrument Sans/,
   );
@@ -259,7 +217,7 @@ test('mobile walkthrough keeps each screenshot with its text', async ({ page }) 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/landing');
   await expect(
-    page.getByRole('heading', { name: 'Put your revision time where it matters.' }),
+    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
   ).toBeVisible();
   await expect(page.locator('.walkthrough-frame')).toBeHidden();
   for (const step of await page.locator('.walkthrough-step').all()) {
@@ -270,25 +228,21 @@ test('mobile walkthrough keeps each screenshot with its text', async ({ page }) 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('illustrated opening offers keyboard app entry beside the product image', async ({ page }) => {
+test('opening offers keyboard app entry beside decorative artwork', async ({ page }) => {
   await page.goto('/#/landing');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
   const start = hero.getByRole('link', { name: 'Start revising' });
   await start.focus();
   await expect(start).toBeFocused();
-  await expect(
-    hero.getByRole('img', {
-      name: 'Lacuna dashboard showing the welcome course and daily revision',
-    }),
-  ).toBeVisible();
+  await expect(hero.locator('.revision-reel')).toHaveAttribute('aria-hidden', 'true');
 });
 
-test('illustrated opening stays independent from memory and supports touch', async ({ page }) => {
+test('opening stays independent from memory and supports touch', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#/landing');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
   await expect(hero.getByRole('link', { name: 'Start revising' })).toBeInViewport();
-  await expect(hero).toHaveAttribute('data-emphasis', 'exam');
+  await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => {
     const scene = document.querySelector('.memory-sequence') as HTMLElement;
@@ -299,19 +253,19 @@ test('illustrated opening stays independent from memory and supports touch', asy
     });
   });
   await expect(hero).not.toHaveAttribute('inert', '');
-  await expect(hero).toHaveAttribute('data-emphasis', 'exam');
+  await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
   await expect(page.locator('.memory-answer')).toHaveCSS('opacity', '1');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(hero).not.toHaveAttribute('inert', '');
 });
 
-test('footer offers app entry', async ({ page }) => {
+test('closing section offers app entry', async ({ page }) => {
   await page.goto('/#/landing');
-  const footer = page.getByRole('contentinfo');
-  await expect(footer.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '#/');
-  const title = page.locator('.opening-title');
+  const footer = page.getByRole('region', { name: 'Ready to make it stick?' });
+  await expect(footer.getByRole('link', { name: 'Start revising' })).toHaveAttribute('href', '#/');
+  const title = page.locator('.motion-opening h1');
   expect(await title.evaluate((node) => getComputedStyle(node, '::after').content)).toBe('none');
-  await footer.getByRole('link', { name: 'Get started' }).click();
+  await footer.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
 });
 
@@ -360,14 +314,14 @@ for (const motion of ['no-preference', 'reduce'] as const) {
   test(`landing app entry keeps its label and honours ${motion}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: motion });
     await page.goto('/#/welcome');
-    const nav = page.getByRole('navigation', { name: 'Landing navigation' });
-    await expect(nav.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
-      'href',
-      'https://github.com/TJ7755/Lacuna',
-    );
+    await expect(
+      page.getByRole('contentinfo').getByRole('link', { name: 'GitHub' }),
+    ).toHaveAttribute('href', 'https://github.com/TJ7755/Lacuna');
     await expect(page.getByRole('heading', { name: '£0 forever.' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: /reduced motion/i })).toHaveCount(0);
-    const cta = nav.getByRole('link', { name: 'Open Lacuna' });
+    const cta = page
+      .getByRole('region', { name: 'Revision around your exam' })
+      .getByRole('link', { name: 'Start revising' });
     await cta.hover();
     await expect(cta.locator('.landing-cta-label')).toHaveCSS('opacity', '1');
     await cta.click();

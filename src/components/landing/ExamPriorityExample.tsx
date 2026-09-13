@@ -27,8 +27,7 @@ export function ExamPriorityExample() {
     <div className="calendar-and-recall">
       <div className="exam-calendar">
         <div className="exam-calendar-toolbar">
-          <span>When are you free?</span>
-          <strong className="exam-fixed-date">Exam · {label(dates[EXAM_DAY])}</strong>
+          <span>Tap the times you’re free</span>
         </div>
         <div
           className="exam-calendar-window"
@@ -70,12 +69,6 @@ export function ExamPriorityExample() {
               </div>
             ))}
           </div>
-        </div>
-        <div className="exam-calendar-footer">
-          <span>Example week</span>
-          <output aria-live="polite">
-            {sessions.length ? `${sessions.length} reviews scheduled` : 'Choose a free slot'}
-          </output>
         </div>
       </div>
       <CalendarRecall slots={sessions} />

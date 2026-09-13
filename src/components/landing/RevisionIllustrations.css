@@ -53,7 +53,7 @@
     opacity: 0;
   }
 }
-.motion-opening-prototype[data-paused='true'] .revision-reel .revision-object {
+.motion-opening[data-paused='true'] .revision-reel .revision-object {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {

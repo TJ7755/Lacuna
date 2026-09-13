@@ -4,16 +4,15 @@ import { LacunaIcon } from '../ui/icons';
 import { LandingCta } from '../welcome/LandingCta';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { RevisionIllustrations } from './RevisionIllustrations';
-import './MotionOpeningPrototype.css';
+import './LandingHero.css';
 
-// Branch-only exploration: compare ?variant=motion with the existing landing route.
-export function MotionOpeningPrototype() {
+export function LandingHero() {
   const [paused, setPaused] = useState(false);
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
   return (
     <section
-      className="motion-opening-prototype"
+      className="motion-opening"
       aria-label="Revision around your exam"
       data-paused={paused || multiplier === 0}
       style={{ '--reel-duration': `${24 * (multiplier || 1)}s` } as CSSProperties}
@@ -22,7 +21,7 @@ export function MotionOpeningPrototype() {
         <div className="motion-opening-mark" aria-hidden="true">
           <LacunaIcon />
         </div>
-        <h1>
+        <h1 aria-label="Your revision, built around your exam.">
           <span className="motion-opening-line">
             Your revision
             <RevisionIllustrations />,
@@ -58,7 +57,7 @@ export function MotionOpeningPrototype() {
   );
 }
 
-export function MotionPrototypeNav() {
+export function LandingHeader() {
   const [docked, setDocked] = useState(false);
   useEffect(() => {
     const heroMark = document.querySelector('.motion-opening-mark');
@@ -71,22 +70,13 @@ export function MotionPrototypeNav() {
     return () => observer.disconnect();
   }, []);
   return (
-    <nav
-      className="landing-nav motion-prototype-nav"
-      data-docked={docked}
-      aria-label="Landing navigation"
-    >
-      <Link
-        to="/welcome?variant=motion"
-        className="landing-brand"
-        aria-hidden={docked}
-        tabIndex={docked ? -1 : 0}
-      >
+    <nav className="landing-nav motion-header" data-docked={docked} aria-label="Landing navigation">
+      <Link to="/welcome" className="landing-brand" aria-hidden={docked} tabIndex={docked ? -1 : 0}>
         <LacunaIcon />
         Lacuna
       </Link>
       <Link
-        to="/welcome?variant=motion"
+        to="/welcome"
         className="motion-nav-mark"
         aria-label="Lacuna"
         aria-hidden={!docked}
@@ -94,16 +84,18 @@ export function MotionPrototypeNav() {
       >
         <LacunaIcon />
       </Link>
-      <Link className="motion-prototype-download" to="/download">
-        Download for desktop <span aria-hidden="true">↗</span>
-      </Link>
+      {!window.electronAPI?.isElectron && (
+        <Link className="motion-header-download" to="/download">
+          Download for desktop <span aria-hidden="true">↗</span>
+        </Link>
+      )}
     </nav>
   );
 }
 
-export function MotionClosingPrototype() {
+export function LandingClosing() {
   return (
-    <section className="motion-closing-prototype" aria-labelledby="motion-closing-title">
+    <section className="motion-closing" aria-labelledby="motion-closing-title">
       <h2 id="motion-closing-title">Ready to make it stick?</h2>
       <div className="motion-closing-actions">
         <LandingCta>Start revising</LandingCta>

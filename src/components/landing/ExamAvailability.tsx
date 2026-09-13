@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { ExamPriorityExample } from './ExamPriorityExample';
 import { RevisionGlyph } from './RevisionIllustrations';
-import './ExamFitPrototype.css';
+import './ExamAvailability.css';
 
-export function ExamFitPrototype() {
+export function ExamAvailability() {
   const ref = useRef<HTMLElement>(null);
   const timeRef = useRef<HTMLDivElement>(null);
   const examRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ export function ExamFitPrototype() {
   return (
     <section
       id="landing-product"
-      className="exam-fit-prototype"
+      className="exam-availability"
       aria-label="Revision for your time and exam day"
       tabIndex={-1}
       ref={ref}
@@ -58,7 +58,7 @@ export function ExamFitPrototype() {
           <RevisionGlyph kind="clock" />
         </div>
         <div className="exam-fit-beat exam-fit-exam-beat" ref={examRef} aria-hidden="true">
-          <h2>Your exam. Your availability.</h2>
+          <h2>Lacuna works around you</h2>
           <ExamPriorityExample />
         </div>
       </div>

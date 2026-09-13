@@ -1,4 +1,4 @@
-.exam-fit-prototype {
+.exam-availability {
   --fit: 0;
   --time-opacity: 1;
   --exam-opacity: 0;
@@ -61,7 +61,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce), (max-width: 1000px) {
-  .exam-fit-prototype {
+  .exam-availability {
     height: auto;
   }
   .exam-fit-stage {
@@ -83,14 +83,8 @@
 .exam-fit-beat[aria-hidden='true'] {
   pointer-events: none;
 }
-.exam-fit-exam-beat h2 {
-  font-size: clamp(40px, 5vw, 68px);
-}
 .exam-fit-exam-beat {
   gap: 32px;
-}
-
-.exam-fit-exam-beat {
   min-width: 0;
 }
 .exam-fit-exam-beat h2 {

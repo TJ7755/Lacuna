@@ -158,7 +158,7 @@ export function Download() {
   return (
     <div className="download-page">
       <nav className="download-nav" aria-label="Public navigation">
-        <Link to="/landing?variant=motion" className="download-brand">
+        <Link to="/landing" className="download-brand">
           <LacunaIcon className="size-7" /> Lacuna
         </Link>
         <Link to="/" className="download-browser-link">

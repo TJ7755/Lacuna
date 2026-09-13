@@ -9,8 +9,7 @@
 .exam-calendar {
   min-width: 0;
 }
-.exam-calendar-toolbar,
-.exam-calendar-footer {
+.exam-calendar-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,11 +18,6 @@
 .exam-calendar-toolbar {
   margin-bottom: 24px;
   font-size: 18px;
-}
-.exam-fixed-date {
-  color: var(--amber);
-  font-size: 16px;
-  font-weight: 500;
 }
 .exam-calendar-window {
   overflow-x: auto;
@@ -80,9 +74,9 @@
   height: 86px;
   margin: 8px 6px;
   padding: 10px;
-  border: 1px dashed #ffffff20;
+  border: 1px solid #ffffff28;
   border-radius: 10px;
-  background: transparent;
+  background: #ffffff08;
   color: var(--stone);
   cursor: pointer;
   transition:
@@ -91,7 +85,21 @@
     transform 220ms;
 }
 .exam-calendar-slot:hover {
-  background: #ffffff0b;
+  border-color: var(--amber);
+  transform: translateY(-2px);
+}
+.exam-calendar-slot[aria-pressed='false']:hover {
+  background: #f7a51d18;
+  color: var(--amber);
+}
+.exam-calendar-slot:active {
+  transform: scale(0.97);
+}
+.exam-calendar-slot[aria-pressed='false'] strong {
+  align-self: center;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ivory, #f5f2ed);
 }
 .exam-calendar-slot > span,
 .exam-calendar-slot small {
@@ -110,11 +118,6 @@
   background: hsl(150 65% 50%);
   color: #111;
   animation: calendar-slot-arrive 280ms ease-out;
-}
-.exam-calendar-footer {
-  margin-top: 16px;
-  color: var(--stone);
-  font-size: 14px;
 }
 .exam-calendar button:focus-visible,
 .exam-calendar-window:focus-visible {
@@ -167,10 +170,7 @@
   fill: var(--stone);
   font-size: 13px;
 }
-.calendar-recall > span {
-  color: var(--stone);
-  font-size: 13px;
-}
+
 @keyframes calendar-slot-arrive {
   from {
     transform: scale(0.94);

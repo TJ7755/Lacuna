@@ -10,8 +10,8 @@ interface TraceEvent {
 test('app-entry expansion does not rerasterise a viewport mask every frame', async ({ page }) => {
   await page.goto('/#/welcome');
   const cta = page
-    .getByRole('navigation', { name: 'Landing navigation' })
-    .getByRole('link', { name: 'Open Lacuna' });
+    .getByRole('region', { name: 'Revision around your exam' })
+    .getByRole('link', { name: 'Start revising' });
   await expect(cta).toBeVisible();
   await page.evaluate(() => {
     window.addEventListener('lacuna:landing-transition', () => performance.mark('landing-begin'));
@@ -74,40 +74,62 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
   ).toBeLessThanOrEqual(2);
 });
 
-for (const label of ['Start revising', 'Open Lacuna']) {
+for (const label of ['Revision around your exam', 'Ready to make it stick?']) {
   test(`${label} launches promptly while preserving the continuous cover`, async ({ page }) => {
     await page.goto('/#/welcome');
     await page.evaluate(() => {
-      const samples: { phase: string; duration: number; quarterWidth: number; viewport: number }[] = [];
+      const samples: { phase: string; duration: number; quarterWidth: number; viewport: number }[] =
+        [];
       Object.assign(window, { launchSamples: samples });
       let covered = false;
-      window.addEventListener('lacuna:landing-covered', () => { covered = true; });
-      window.addEventListener('lacuna:landing-transition', () => {
-        const sample = () => {
-          const surface = document.querySelector('[data-landing-transition] > div');
-          const animation = surface?.getAnimations().find((entry) =>
-            (entry.effect as KeyframeEffect).getKeyframes().some((frame) => frame.transform),
-          );
-          const phase = covered ? 'reveal' : 'cover';
-          if (animation && !samples.some((entry) => entry.phase === phase)) {
-            const duration = Number(animation.effect!.getTiming().duration);
-            const previous = animation.currentTime;
-            animation.currentTime = duration / 4;
-            const quarterWidth = surface!.getBoundingClientRect().width;
-            animation.currentTime = previous;
-            samples.push({ phase, duration, quarterWidth, viewport: innerWidth });
-          }
-          if (samples.length < 2) requestAnimationFrame(sample);
-        };
-        requestAnimationFrame(sample);
-      }, { once: true });
+      window.addEventListener('lacuna:landing-covered', () => {
+        covered = true;
+      });
+      window.addEventListener(
+        'lacuna:landing-transition',
+        () => {
+          const sample = () => {
+            const surface = document.querySelector('[data-landing-transition] > div');
+            const animation = surface
+              ?.getAnimations()
+              .find((entry) =>
+                (entry.effect as KeyframeEffect).getKeyframes().some((frame) => frame.transform),
+              );
+            const phase = covered ? 'reveal' : 'cover';
+            if (animation && !samples.some((entry) => entry.phase === phase)) {
+              const duration = Number(animation.effect!.getTiming().duration);
+              const previous = animation.currentTime;
+              animation.currentTime = duration / 4;
+              const quarterWidth = surface!.getBoundingClientRect().width;
+              animation.currentTime = previous;
+              samples.push({ phase, duration, quarterWidth, viewport: innerWidth });
+            }
+            if (samples.length < 2) requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+        },
+        { once: true },
+      );
     });
-    await page.getByRole('link', { name: label, exact: true }).first().click();
+    await page
+      .getByRole('region', { name: label })
+      .getByRole('link', { name: 'Start revising', exact: true })
+      .click();
     await expect(page).toHaveURL(/#\/$/);
     await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
-    const samples = await page.evaluate(() => (window as unknown as {
-      launchSamples: { phase: string; duration: number; quarterWidth: number; viewport: number }[];
-    }).launchSamples);
+    const samples = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            launchSamples: {
+              phase: string;
+              duration: number;
+              quarterWidth: number;
+              viewport: number;
+            }[];
+          }
+        ).launchSamples,
+    );
     expect(samples.map((sample) => sample.phase)).toEqual(['cover', 'reveal']);
     expect(samples[0].duration).toBeLessThanOrEqual(260);
     expect(samples[1].duration).toBeLessThanOrEqual(260);
@@ -121,28 +143,44 @@ test('the launch cover replaces the outgoing landing fade', async ({ page }) => 
   await page.goto('/#/welcome');
   await page.evaluate(() => {
     Object.assign(window, { landingFadeDuringReveal: false });
-    window.addEventListener('lacuna:landing-covered', () => {
-      const inspect = () => {
-        if (!document.querySelector('[data-landing-transition]')) return;
-        let ancestor = document.querySelector('.landing-preview')?.parentElement;
-        while (ancestor) {
-          const fading = ancestor.getAnimations().some((animation) =>
-            Number(animation.effect?.getTiming().duration) > 0 &&
-            (animation.effect as KeyframeEffect).getKeyframes().some((frame) => frame.opacity === '0'),
-          );
-          if (fading) Object.assign(window, { landingFadeDuringReveal: true });
-          ancestor = ancestor.parentElement;
-        }
+    window.addEventListener(
+      'lacuna:landing-covered',
+      () => {
+        const inspect = () => {
+          if (!document.querySelector('[data-landing-transition]')) return;
+          let ancestor = document.querySelector('.landing-page')?.parentElement;
+          while (ancestor) {
+            const fading = ancestor
+              .getAnimations()
+              .some(
+                (animation) =>
+                  Number(animation.effect?.getTiming().duration) > 0 &&
+                  (animation.effect as KeyframeEffect)
+                    .getKeyframes()
+                    .some((frame) => frame.opacity === '0'),
+              );
+            if (fading) Object.assign(window, { landingFadeDuringReveal: true });
+            ancestor = ancestor.parentElement;
+          }
+          requestAnimationFrame(inspect);
+        };
         requestAnimationFrame(inspect);
-      };
-      requestAnimationFrame(inspect);
-    }, { once: true });
+      },
+      { once: true },
+    );
   });
-  await page.getByRole('link', { name: 'Start revising', exact: true }).click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/#\/$/);
   await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as {
-    landingFadeDuringReveal: boolean;
-  }).landingFadeDuringReveal)).toBe(false);
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            landingFadeDuringReveal: boolean;
+          }
+        ).landingFadeDuringReveal,
+    ),
+  ).toBe(false);
 });

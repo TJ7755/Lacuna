@@ -55,7 +55,7 @@ export function Method() {
   }, []);
 
   return (
-    <div className="landing-preview method-page">
+    <div className="landing-page method-page">
       <LandingNav label="Method navigation" />
       <header className="method-hero">
         <div className="method-hero-copy">

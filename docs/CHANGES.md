@@ -2,48 +2,15 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
-- Corrected the calendar interaction: the exam stays fixed while visitors toggle free
-  days and times. A small illustrative planner chooses only available slots, with a
-  linked FSRS forgetting curve beside the calendar. Removed the later standalone curve
-  from the motion variant; narrow screens stack the combined scene without pinning it.
-
-- Replaced the abstract recall-points example with a large interactive weekly calendar.
-  Selecting an exam date moves illustrative revision sessions and slides to that week;
-  week navigation, touch scrolling and reduced motion are supported.
-
-- Removed the redundant subtitle above the interactive exam-date example.
-
-- Reduced the download choice to its heading, platform selector, primary button and
-  one compatibility line. Removed version and marketing copy; installation guidance
-  and alternative packages are available through Installation help. Added one brief
-  mechanism explanation to each of the two separate exam-introduction moments.
-  Reduced the opening headline, artwork and button scale and increased the hero's
-  surrounding space, including the bottom controls' inset. Replaced the static exam
-  symbol with a deadline slider comparing recall gains for two illustrative cards using
-  the existing memory model. Hidden controls are inert until their scroll moment appears.
-
-- Rebuilt the prototype's exam introduction as two separate scroll moments: one
-  headline and one simple icon at a time. Removed all supporting paragraphs and
-  diagram captions; a short empty beat separates the messages. Reduced motion
-  presents the same two moments as ordinary stacked sections.
-
-- Added a branch-only landing exploration at `/#/landing?variant=motion`: a spacious
-  exam-focused headline with gliding revision illustrations, pause and reduced-motion
-  support, quieter navigation, and a final start/download invitation. The existing
-  landing remains available without the variant parameter; the dev preview includes
-  a comparison link. This is a design demonstration, not an approved replacement.
-  Its navigation now stays visible while scrolling, with a centred Lacuna mark
-  appearing as the larger hero mark leaves view and disappearing on return.
-  The left branding now hides during that handover. An animated introduction before
-  the UI walkthrough explains session time limits and exam-day review priorities.
-  Replaced the three detailed illustrations with twelve flat motifs using the app's
-  brighter accent palette, with 300 ms entrances and a longer cycle before repetition.
-  Raised the inline artwork to align with the headline and grouped footer links on the right.
-
-- Brought the download and method pages into the landing page's dark visual style.
-  Downloads now centre one large platform action with alternative packages disclosed
-  on request. The method page has a clear entry action and keeps coefficient details
-  behind an expandable section while retaining its interactive explanations.
+- Updated the public landing page with a spacious exam-focused hero, twelve flat animated
+  illustrations, a centred logo on scroll and a clear closing action. The approved design
+  is served directly at `/welcome` and `/landing`, without variant or comparison controls.
+  The availability calendar keeps the exam fixed and links selected free slots to an
+  illustrative FSRS recall curve with a labelled 80–100% axis. Keyboard access, reduced
+  motion and narrow-screen layouts are supported; the superseded hero and chart are removed.
+- Updated Download and Method to the same dark visual style. Download presents one
+  platform action and compatibility line, with installation guidance on request. Method
+  retains its interactive explanations and discloses coefficient details on request.
 
 - Prevented the ordinary welcome-route exit fade from running beneath the app-entry
   cover, where it briefly exposed the old landing page during the dashboard reveal.

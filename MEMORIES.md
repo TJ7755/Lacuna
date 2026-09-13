@@ -36,7 +36,7 @@ and installation instructions from the initial view. Keep help available on requ
 
 Landing illustrations should use simple flat silhouettes and bright colours from the app's
 palette. Detailed paper textures, perspective and muted shading were rejected; match the
-simplicity of the brand mark. Keep inspiration brands out of prototype identifiers and copy.
+simplicity of the brand mark. Keep inspiration brands out of landing identifiers and copy.
 
 ## Current Dexie hooks also run during historical upgrades
 
