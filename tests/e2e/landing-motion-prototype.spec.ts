@@ -1,9 +1,29 @@
 import { expect, test } from '@playwright/test';
 
+test('the hero mark hands over to the centred fixed header when scrolling', async ({ page }) => {
+  await page.goto('/#/landing?variant=motion');
+  const nav = page.getByRole('navigation', { name: 'Landing navigation' });
+  await expect(nav).toHaveCSS('position', 'fixed');
+  const mark = nav.locator('.motion-nav-mark');
+  await expect(mark).toHaveCSS('opacity', '0');
+  await page.getByRole('region', { name: 'Ready to make it stick?' }).scrollIntoViewIfNeeded();
+  await expect(mark).toHaveCSS('opacity', '1');
+  await expect(nav).toBeInViewport();
+  const box = await mark.boundingBox();
+  expect(box!.x + box!.width / 2).toBeCloseTo((await page.evaluate(() => innerWidth)) / 2, 0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(mark).toHaveCSS('transition-property', 'none');
+  await expect(nav.getByRole('link', { name: 'Download for desktop' })).toBeInViewport();
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await expect(mark).toHaveCSS('opacity', '0');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('motion prototype keeps a stable promise, accessible motion control and direct entry', async ({
   page,
 }) => {
-  await page.goto('/#/landing?variant=muse');
+  await page.goto('/#/landing?variant=motion');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
   await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
     'Your revision, built around your exam.',
@@ -27,7 +47,7 @@ test('motion prototype keeps a stable promise, accessible motion control and dir
 });
 
 test('prototype ends with a clear choice to start or download', async ({ page }) => {
-  await page.goto('/#/landing?variant=muse');
+  await page.goto('/#/landing?variant=motion');
   const ending = page.getByRole('region', { name: 'Ready to make it stick?' });
   await ending.scrollIntoViewIfNeeded();
   await expect(ending.getByRole('heading')).toBeInViewport();

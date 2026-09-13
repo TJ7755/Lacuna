@@ -20,14 +20,14 @@ import './Landing.css';
 export function Landing() {
   useSmoothScroll(true);
   const [searchParams] = useSearchParams();
-  const motionPrototype = searchParams.get('variant') === 'muse';
+  const motionPrototype = searchParams.get('variant') === 'motion';
   return (
     <div className={`landing-preview${motionPrototype ? ' landing-motion-prototype' : ''}`}>
       {motionPrototype ? <MotionPrototypeNav /> : <LandingNav label="Landing navigation" />}
       {import.meta.env.DEV && (
         <Link
           className="motion-prototype-comparison"
-          to={motionPrototype ? '?variant=original' : '?variant=muse'}
+          to={motionPrototype ? '?variant=original' : '?variant=motion'}
         >
           {motionPrototype ? 'Prototype / View original' : 'Original / View prototype'}
         </Link>

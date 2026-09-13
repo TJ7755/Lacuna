@@ -1,11 +1,11 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { LacunaIcon } from '../ui/icons';
 import { LandingCta } from '../welcome/LandingCta';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import './MotionOpeningPrototype.css';
 
-// Branch-only exploration: compare ?variant=muse with the existing landing route.
+// Branch-only exploration: compare ?variant=motion with the existing landing route.
 function RevisionObjects() {
   return (
     <span className="revision-reel" aria-hidden="true">
@@ -137,12 +137,30 @@ export function MotionOpeningPrototype() {
 }
 
 export function MotionPrototypeNav() {
+  const [docked, setDocked] = useState(false);
+  useEffect(() => {
+    const heroMark = document.querySelector('.motion-opening-mark');
+    if (!heroMark) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setDocked(entry.boundingClientRect.bottom <= 96),
+      { rootMargin: '-96px 0px 0px 0px' },
+    );
+    observer.observe(heroMark);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <nav className="landing-nav" aria-label="Landing navigation">
-      <Link to="/welcome?variant=muse" className="landing-brand">
+    <nav
+      className="landing-nav motion-prototype-nav"
+      data-docked={docked}
+      aria-label="Landing navigation"
+    >
+      <Link to="/welcome?variant=motion" className="landing-brand">
         <LacunaIcon />
         Lacuna
       </Link>
+      <span className="motion-nav-mark" aria-hidden="true">
+        <LacunaIcon />
+      </span>
       <Link className="motion-prototype-download" to="/download">
         Download for desktop <span aria-hidden="true">↗</span>
       </Link>
