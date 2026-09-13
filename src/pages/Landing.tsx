@@ -1,4 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  MotionOpeningPrototype,
+  MotionPrototypeNav,
+  MotionClosingPrototype,
+} from '../components/landing/MotionOpeningPrototype';
 import { CoursePathIllustration } from '../components/landing/CoursePathIllustration';
 import { ClosingScenes } from '../components/landing/ClosingScenes';
 import { ExamProjection } from '../components/landing/ExamProjection';
@@ -14,9 +19,19 @@ import './Landing.css';
 
 export function Landing() {
   useSmoothScroll(true);
+  const [searchParams] = useSearchParams();
+  const motionPrototype = searchParams.get('variant') === 'muse';
   return (
-    <div className="landing-preview">
-      <LandingNav label="Landing navigation" />
+    <div className={`landing-preview${motionPrototype ? ' landing-motion-prototype' : ''}`}>
+      {motionPrototype ? <MotionPrototypeNav /> : <LandingNav label="Landing navigation" />}
+      {import.meta.env.DEV && (
+        <Link
+          className="motion-prototype-comparison"
+          to={motionPrototype ? '?variant=original' : '?variant=muse'}
+        >
+          {motionPrototype ? 'Prototype / View original' : 'Original / View prototype'}
+        </Link>
+      )}
       <a
         className="landing-skip"
         href="#landing-product"
@@ -29,7 +44,7 @@ export function Landing() {
         Skip to Lacuna
       </a>
       <main>
-        <IllustratedOpening />
+        {motionPrototype ? <MotionOpeningPrototype /> : <IllustratedOpening />}
         <section
           id="landing-product"
           className="landing-product"
@@ -47,7 +62,7 @@ export function Landing() {
               your exam.
             </p>
             <div className="landing-actions">
-              <LandingCta>Open Lacuna</LandingCta>
+              <LandingCta>{motionPrototype ? 'Start revising' : 'Open Lacuna'}</LandingCta>
               {!window.electronAPI?.isElectron && (
                 <Link className="landing-download" to="/download">
                   Download for desktop
@@ -69,6 +84,7 @@ export function Landing() {
         </section>
         <ClosingScenes />
         <LandingFaq />
+        {motionPrototype && <MotionClosingPrototype />}
       </main>
       <footer className="landing-footer">
         <div className="landing-footer-start">
@@ -76,8 +92,15 @@ export function Landing() {
             <LacunaIcon />
             Lacuna
           </Link>
-          <LandingCta className="landing-button-small">Get started</LandingCta>
+          {!motionPrototype && (
+            <LandingCta className="landing-button-small">Get started</LandingCta>
+          )}
         </div>
+        {motionPrototype && (
+          <a href="https://github.com/TJ7755/Lacuna" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        )}
         <Link to="/method">The method</Link>
       </footer>
     </div>

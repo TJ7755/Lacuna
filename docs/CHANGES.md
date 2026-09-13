@@ -2,6 +2,12 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
+- Added a branch-only landing exploration at `/#/landing?variant=muse`: a spacious
+  exam-focused headline with gliding revision illustrations, pause and reduced-motion
+  support, quieter navigation, and a final start/download invitation. The existing
+  landing remains available without the variant parameter; the dev preview includes
+  a comparison link. This is a design demonstration, not an approved replacement.
+
 - Prevented the ordinary welcome-route exit fade from running beneath the app-entry
   cover, where it briefly exposed the old landing page during the dashboard reveal.
 
