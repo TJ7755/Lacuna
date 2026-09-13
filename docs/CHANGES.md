@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Prevented the ordinary welcome-route exit fade from running beneath the app-entry
+  cover, where it briefly exposed the old landing page during the dashboard reveal.
+
 - Made landing-page app entry respond immediately and reveal the dashboard sooner.
   The existing solid expansion now accelerates quickly, and the dashboard settles
   with an undelayed, non-bouncing spring. Motion-speed settings and reduced motion

@@ -21,9 +21,14 @@ export function beginLandingTransition(rect: DOMRect, appearance: Appearance): v
   window.dispatchEvent(new CustomEvent(BEGIN_EVENT, { detail: { rect, ...appearance } }));
 }
 
+/** The route boundary can skip its fade while the solid launch cover is present. */
+export function hasLandingArrival(): boolean {
+  return sessionStorage.getItem(ARRIVAL_KEY) === '1';
+}
+
 /** One-shot check for the arrival flag set by beginLandingTransition. */
 export function consumeLandingArrival(): boolean {
-  const arrived = sessionStorage.getItem(ARRIVAL_KEY) === '1';
+  const arrived = hasLandingArrival();
   if (arrived) sessionStorage.removeItem(ARRIVAL_KEY);
   return arrived;
 }

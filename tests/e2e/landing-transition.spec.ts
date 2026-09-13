@@ -116,3 +116,33 @@ for (const label of ['Start revising', 'Open Lacuna']) {
     expect(samples[0].quarterWidth / samples[0].viewport).toBeGreaterThan(0.6);
   });
 }
+
+test('the launch cover replaces the outgoing landing fade', async ({ page }) => {
+  await page.goto('/#/welcome');
+  await page.evaluate(() => {
+    Object.assign(window, { landingFadeDuringReveal: false });
+    window.addEventListener('lacuna:landing-covered', () => {
+      const inspect = () => {
+        if (!document.querySelector('[data-landing-transition]')) return;
+        let ancestor = document.querySelector('.landing-preview')?.parentElement;
+        while (ancestor) {
+          const fading = ancestor.getAnimations().some((animation) =>
+            Number(animation.effect?.getTiming().duration) > 0 &&
+            (animation.effect as KeyframeEffect).getKeyframes().some((frame) => frame.opacity === '0'),
+          );
+          if (fading) Object.assign(window, { landingFadeDuringReveal: true });
+          ancestor = ancestor.parentElement;
+        }
+        requestAnimationFrame(inspect);
+      };
+      requestAnimationFrame(inspect);
+    }, { once: true });
+  });
+  await page.getByRole('link', { name: 'Start revising', exact: true }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as {
+    landingFadeDuringReveal: boolean;
+  }).landingFadeDuringReveal)).toBe(false);
+});
