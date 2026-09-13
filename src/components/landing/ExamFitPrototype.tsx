@@ -57,11 +57,7 @@ export function ExamFitPrototype() {
           <RevisionGlyph kind="clock" />
         </div>
         <div className="exam-fit-beat exam-fit-exam-beat" ref={examRef} aria-hidden="true">
-          <h2>
-            Ready for
-            <br /> exam day.
-          </h2>
-          <p>Move the date. See which review helps more.</p>
+          <h2>Pick your exam day.</h2>
           <ExamPriorityExample />
         </div>
       </div>

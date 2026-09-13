@@ -28,7 +28,8 @@ Do not stack category labels, explanatory paragraphs, reassurance and feature co
 the opening headline. Explain the product progressively through the existing scenes.
 For the exam introduction, separate ideas in time. A headline and symbol alone were too
 abstract; use a compact interactive example to demonstrate cause and effect, with brief
-explanation. Avoid stacking paragraphs and diagram captions around it.
+explanation. Prefer concrete calendar days and revision sessions over abstract recall-point
+tables. Avoid stacking subtitles and diagram captions around the interaction.
 The download choice needs only a compatibility line; omit version labels, slogans
 and installation instructions from the initial view. Keep help available on request.
 

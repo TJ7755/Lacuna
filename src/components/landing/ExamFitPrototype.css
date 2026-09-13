@@ -89,6 +89,19 @@
 .exam-fit-exam-beat {
   gap: 32px;
 }
-.exam-fit-exam-beat > p {
-  margin: -12px 0 0;
+
+.exam-fit-exam-beat {
+  min-width: 0;
+}
+.exam-fit-exam-beat h2 {
+  font-size: clamp(32px, 4.5vw, 62px);
+}
+@media (max-height: 760px) and (min-width: 701px) {
+  .exam-fit-stage {
+    padding-top: 104px;
+    padding-bottom: 24px;
+  }
+  .exam-fit-exam-beat {
+    gap: 20px;
+  }
 }

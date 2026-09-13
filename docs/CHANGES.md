@@ -2,6 +2,12 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
+- Replaced the abstract recall-points example with a large interactive weekly calendar.
+  Selecting an exam date moves illustrative revision sessions and slides to that week;
+  week navigation, touch scrolling and reduced motion are supported.
+
+- Removed the redundant subtitle above the interactive exam-date example.
+
 - Reduced the download choice to its heading, platform selector, primary button and
   one compatibility line. Removed version and marketing copy; installation guidance
   and alternative packages are available through Installation help. Added one brief

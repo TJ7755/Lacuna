@@ -1,62 +1,175 @@
-.exam-priority-example {
-  width: min(100%, 460px);
+.exam-calendar {
+  width: min(1120px, 100%);
   text-align: left;
 }
-.exam-priority-example label {
+.exam-calendar-toolbar,
+.exam-calendar-navigation,
+.exam-calendar-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  font-size: 18px;
-  color: var(--stone);
+  gap: 16px;
 }
-.exam-priority-example output {
-  color: var(--amber);
-  font-variant-numeric: tabular-nums;
+.exam-calendar-toolbar {
+  margin-bottom: 24px;
 }
-.exam-priority-example input {
-  display: block;
-  width: 100%;
-  height: 44px;
-  margin: 8px 0 18px;
-  accent-color: var(--amber);
-  cursor: pointer;
-}
-.exam-priority-example input:focus-visible {
-  outline: 2px solid var(--amber);
-  outline-offset: 4px;
-  border-radius: 8px;
-}
-.exam-priority-row {
+.exam-calendar-toolbar label {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 18px 0;
-  border-top: 1px solid #ffffff15;
-  font-size: 20px;
-}
-.exam-priority-rank {
   color: var(--stone);
-  font-size: 15px;
+  font-size: 18px;
 }
-.exam-priority-row strong {
-  margin-left: auto;
+.exam-calendar-toolbar input {
+  color-scheme: dark;
+  border: 1px solid #ffffff20;
+  border-radius: 12px;
+  background: #ffffff06;
+  padding: 12px 16px;
   color: var(--amber);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+  font: inherit;
 }
-.exam-priority-row small {
-  font-size: 14px;
+.exam-calendar-navigation {
+  font-size: 16px;
 }
-.exam-priority-note {
-  display: block;
-  max-width: 44ch;
-  margin-top: 16px;
-  font-size: 14px;
-  line-height: 1.5;
+.exam-calendar-navigation button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff0a;
+  border: 0;
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+.exam-calendar-navigation button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.exam-calendar-window {
+  overflow-x: auto;
+  border: 1px solid #ffffff18;
+  border-radius: 20px;
+  background: #ffffff03;
+}
+.exam-calendar-canvas {
+  min-width: 850px;
+  overflow: hidden;
+}
+.exam-calendar-track {
+  display: flex;
+  position: relative;
+  width: 400%;
+  height: 370px;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.exam-calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 0 0 25%;
+}
+.exam-calendar-day {
+  border-right: 1px solid #ffffff10;
+  position: relative;
+}
+.exam-calendar-day[data-exam='true'] {
+  background: #f7a51d0a;
+}
+.exam-calendar-day > button {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 0;
+  cursor: pointer;
+}
+.exam-calendar-day > button span {
   color: var(--stone);
+  font-size: 14px;
+}
+.exam-calendar-day > button strong {
+  font-size: 32px;
+  font-weight: 500;
+}
+.exam-calendar-day > button[aria-pressed='true'] {
+  color: var(--amber);
+}
+.exam-calendar-day > button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.exam-calendar-deadline {
+  margin: 12px 8px;
+  border-radius: 12px;
+  background: var(--amber);
+  padding: 18px 4px;
+  color: var(--cinema);
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+}
+.exam-calendar-session {
+  position: absolute;
+  width: calc(100% / 28 - 12px);
+  margin-left: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  color: #111;
+  transition: left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.exam-calendar-session strong,
+.exam-calendar-session span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.exam-calendar-session span {
+  opacity: 0.7;
+}
+.exam-calendar-session-0 {
+  background: hsl(213 90% 64%);
+}
+.exam-calendar-session-1 {
+  background: hsl(150 65% 50%);
+}
+.exam-calendar-session-2 {
+  background: hsl(265 85% 70%);
+}
+.exam-calendar-footer {
+  margin-top: 16px;
+  color: var(--stone);
+  font-size: 14px;
+}
+.exam-calendar button:focus-visible,
+.exam-calendar input:focus-visible,
+.exam-calendar-window:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: -2px;
 }
 @media (max-width: 700px) {
-  .exam-priority-row {
-    font-size: 18px;
-    padding: 14px 0;
+  .exam-calendar-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .exam-calendar-toolbar label {
+    justify-content: space-between;
+    font-size: 16px;
+  }
+  .exam-calendar-navigation {
+    justify-content: space-between;
+  }
+  .exam-calendar-track {
+    height: 340px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .exam-calendar-track,
+  .exam-calendar-session {
+    transition: none;
   }
 }
