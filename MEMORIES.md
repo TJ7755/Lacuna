@@ -1,5 +1,17 @@
 # Lacuna MEMORIES.md
 
+## Await browser storage checks before polling their result
+
+Use `expect.poll(() => page.evaluate(...))` for asynchronous IndexedDB assertions.
+The installed browser runner can treat a Promise returned to `waitForFunction` as
+truthy before it resolves, allowing navigation to cancel a pending study grade.
+
+## Less card-heavy does not mean flat pages
+
+Keep cards around related content, charts and settings. The prompter wants fewer
+nested boxes, open page headings and less redundant copy, not every surface removed.
+The landing page is a reference for restraint and spacing, not a template for app pages.
+
 ## Missing installed package files can come from Bun's cache
 
 On this Windows checkout, reinstalling with `--force --no-cache` still left packages

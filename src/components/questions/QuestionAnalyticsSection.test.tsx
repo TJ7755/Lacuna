@@ -69,9 +69,7 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.getByText('Fixed · first presentation')).toBeInTheDocument();
     expect(screen.getByText('Generated · repeated variants')).toBeInTheDocument();
     expect(screen.getByText('Criterion 0')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Create and practise Questions to see application evidence here.'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('No question attempts yet.')).not.toBeInTheDocument();
   });
 
   it('renders every evidence cohort, raw marks, exclusions and all versioned criteria', () => {
@@ -103,8 +101,16 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.getByText('Generated · novel variants')).toBeInTheDocument();
     expect(screen.getByText('Generated · repeated variants')).toBeInTheDocument();
     expect(screen.getByText('Recorded marks')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Question performance' }).parentElement?.parentElement).toHaveClass('bg-surface', 'rounded-2xl');
+    expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
+    expect(screen.getByText('Attempt details').closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText('Unique variants seen').nextElementSibling).toHaveTextContent('2');
+    expect(screen.getByText('Repeated presentations').nextElementSibling).toHaveTextContent(
+      '1 / 3',
+    );
+    expect(screen.getByText('Fixed questions seen').nextElementSibling).toHaveTextContent('2 / 2');
     expect(screen.getByText('3 / 6')).toBeInTheDocument();
-    expect(screen.getByText('Excluded evidence')).toBeInTheDocument();
+    expect(screen.getByText(/Excluded attempts/)).toBeInTheDocument();
     expect(screen.getByText('Checker withheld')).toBeInTheDocument();
     expect(screen.getByText('Criterion 3')).toBeInTheDocument();
     expect(screen.getByText('question-3')).toBeInTheDocument();

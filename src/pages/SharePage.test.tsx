@@ -179,6 +179,8 @@ describe('SharePage', () => {
   it('deep-links full recovery through the hash router and retains the section anchor', () => {
     render(<SharePage />);
 
+    expect(screen.getByRole('heading', { name: 'Share' }).closest('header')).not.toHaveClass('bg-surface');
+    expect(screen.getByRole('heading', { name: 'Export a course' }).closest('section')).toHaveClass('bg-surface');
     expect(screen.getByRole('link', { name: 'Open full backup and recovery' })).toHaveAttribute(
       'href',
       '#/settings#settings-export',

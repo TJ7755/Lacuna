@@ -126,7 +126,10 @@ describe('CourseAnalytics', () => {
     const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
     expect(generatedHeadline).not.toBeNull();
     expect(within(generatedHeadline!).getByText('100%')).toBeInTheDocument();
-    expect(screen.getByText(/not included in Card readiness/)).toBeInTheDocument();
+    expect(screen.queryByText(/not included in Card readiness/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Separate evidence')).not.toBeInTheDocument();
+    expect(screen.queryByText('Memory evidence')).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Cards' })).toBeInTheDocument();
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
   });

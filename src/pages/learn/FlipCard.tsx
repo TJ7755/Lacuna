@@ -358,9 +358,8 @@ export function FlipCard({
             animate={m > 0 ? { rotateX: 0, opacity: 1, scale: 1 } : undefined}
             exit={m > 0 ? { rotateX: 92, opacity: 0, scale: 0.97 } : undefined}
             transition={{
-              rotateX: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
-              opacity: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
-              scale: { duration: 0.09 * m, ease: [0.16, 1, 0.3, 1] },
+              duration: 0.28 * m,
+              ease: [0.16, 1, 0.3, 1],
             }}
             style={{ transformOrigin: 'center center', x: swipeXMotion, minHeight: stableHeight }}
             className={cn(

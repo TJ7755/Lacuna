@@ -127,10 +127,8 @@ export function SearchPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
-      <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-        <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
+      <header className="mb-10">
         <div className="relative">
-          <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Library</p>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Search content</h1>
         </div>
       </header>

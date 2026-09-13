@@ -21,9 +21,7 @@ import { buildQuestionAnalytics } from '../questions/analytics';
 function CourseAnalyticsSkeleton() {
   return (
     <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
-      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
       <div className="mb-8 space-y-3">
-        <div className="h-3 w-20 animate-pulse rounded bg-ink/10" />
         <div className="h-10 w-56 animate-pulse rounded bg-ink/10" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
@@ -32,7 +30,6 @@ function CourseAnalyticsSkeleton() {
             <div className="rounded-2xl border border-line bg-surface p-5">
               <div className="mb-4 space-y-2">
                 <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
-                <div className="h-4 w-64 animate-pulse rounded-lg bg-ink/5" />
               </div>
               <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
             </div>
@@ -93,7 +90,6 @@ export function CourseAnalytics() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
-
       <motion.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -102,15 +98,13 @@ export function CourseAnalytics() {
       >
         <div className="relative">
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Analytics</h1>
-          <p className="mt-1 text-sm text-ink-soft">{course.name}</p>
         </div>
       </motion.header>
 
       <QuestionAnalyticsSection analytics={questionAnalytics} />
 
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Memory evidence</p>
-        <h2 className="mt-1 font-display text-2xl text-ink">Cards</h2>
+        <h2 className="font-display text-2xl text-ink">Cards</h2>
       </div>
       <CourseAnalyticsCharts
         course={course}

@@ -423,22 +423,14 @@ export function SharePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
-      <header
-        className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
+      <header className="mb-10">
         <div className="relative">
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Share</h1>
-          <p className="mt-3 max-w-prose text-sm text-ink-soft">
-            Turn a course into a single code to send to anyone, and rebuild a course from a
-            code you have been given. Codes carry text material only; scheduling and review
-            history stay private to each person.
-          </p>
         </div>
       </header>
 
       {/* Export */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6 shadow-sm">
+      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
         <div className="mb-1 flex items-center gap-2">
           <DownloadIcon width={18} height={18} className="text-accent" />
           <h2 className="font-display text-xl">Export a course</h2>
@@ -727,7 +719,7 @@ export function SharePage() {
       {/* Import */}
       <section
         ref={importSectionRef}
-        className="rounded-2xl border border-line bg-surface p-6 shadow-sm"
+        className="rounded-2xl border border-line bg-surface p-6"
       >
         <div className="mb-1 flex items-center gap-2">
           <UploadIcon width={18} height={18} className="text-accent" />

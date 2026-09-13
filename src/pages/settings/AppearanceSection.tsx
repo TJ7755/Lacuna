@@ -18,13 +18,10 @@ export function AppearanceSection() {
       id="settings-appearance"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-4 flex items-center gap-2 text-accent">
         <MoonIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Appearance</SettingsSectionHeading>
       </div>
-      <p className="mb-4 text-sm text-ink-soft">
-        Lacuna defaults to a dark theme. Your choice is remembered on this device.
-      </p>
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2 text-sm">
           {resolvedTheme === 'dark' ? (
@@ -61,10 +58,7 @@ export function AppearanceSection() {
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
-        <div className="mb-1 text-sm">Accent colour</div>
-        <p className="mb-3 text-sm text-ink-soft">
-          Sets the highlight colour used across the app. Remembered on this device.
-        </p>
+        <div className="mb-3 text-sm">Accent colour</div>
         <div className="flex flex-wrap gap-3">
           {ACCENTS.map((option) => {
             const active = accent === option.key;
@@ -89,13 +83,10 @@ export function AppearanceSection() {
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
-        <div className="mb-1 flex items-baseline justify-between">
+        <div className="mb-3 flex items-baseline justify-between">
           <span className="text-sm">Text size</span>
           <span className="tabular text-sm text-ink-faint">{Math.round(scale * 100)}%</span>
         </div>
-        <p className="mb-3 text-sm text-ink-soft">
-          Scales all text across the app. Remembered on this device.
-        </p>
         <div className="flex gap-2">
           {FONT_SCALE_STEPS.map((step) => {
             const active = Math.round(scale * 100) === Math.round(step.value * 100);
@@ -128,8 +119,7 @@ export function AppearanceSection() {
           </span>
         </div>
         <p id="animation-speed-description" className="mb-2 text-sm text-ink-soft">
-          Adjust how quickly decorative animations play across the app. Does not affect functional
-          timers or progress bars.
+          Decorative animations only; timers and progress bars keep their normal speed.
         </p>
         <MotionSpeedControl
           value={motionSpeed}

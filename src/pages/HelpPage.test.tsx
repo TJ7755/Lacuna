@@ -46,10 +46,19 @@ describe('HelpPage', () => {
     const rail = screen.getByRole('button', { name: 'Courses & lessons' }).closest('aside');
 
     expect(screen.queryByText('Documentation')).not.toBeInTheDocument();
-    expect(header).toHaveClass('p-7', 'md:p-9');
+    expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
     expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
     expect(contentColumn).not.toHaveClass('max-w-4xl');
     expect(rail).toHaveClass('w-56');
-    expect(screen.getByText('On this page')).toBeInTheDocument();
+    expect(screen.queryByText('On this page')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Everything you need to know about using Lacuna/),
+    ).not.toBeInTheDocument();
+
+    const courseSection = screen.getByRole('heading', { name: 'Courses & lessons' }).closest('section');
+    const sectionCard = courseSection?.firstElementChild;
+    const courseExplanation = screen.getByRole('heading', { name: 'Courses' }).parentElement;
+    expect(sectionCard).toHaveClass('rounded-2xl', 'border', 'bg-surface', 'p-6', 'md:p-8');
+    expect(courseExplanation).not.toHaveClass('rounded-xl', 'bg-surface-raised', 'p-5');
   });
 });

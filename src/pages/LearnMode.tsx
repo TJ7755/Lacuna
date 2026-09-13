@@ -54,6 +54,7 @@ interface LearnModeProps {
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
+  const undoInFlightRef = useRef(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
@@ -150,8 +151,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setHintsOpen,
     navOpen,
     setNavOpen,
-    feedback,
-    feedbackSource,
     typedAnswer,
     setTypedAnswer,
     typingInputRef,
@@ -215,7 +214,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     distraction,
     typingSetting,
     startInFocusMode,
-    m,
   });
 
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
@@ -223,24 +221,41 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
   const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
 
+  const undoWithTransitionCancel = useCallback(async () => {
+    if (undoInFlightRef.current) return;
+    undoInFlightRef.current = true;
+    try {
+      cardTransitionRef.current?.cancel();
+      await undoLast();
+    } finally {
+      undoInFlightRef.current = false;
+    }
+  }, [undoLast]);
+
   const answerWithUndo = useCallback(
     (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
+      if (undoInFlightRef.current) return;
       const commit = () =>
         void (async () => {
-          const result = await answer(input, source);
+          const result = await answer(input);
           if (result.undoAvailable) {
             notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
               actionLabel: 'Undo',
-              onAction: () => void undoLast(),
+              onAction: () => void undoWithTransitionCancel(),
               replaceKey: 'learn-answer',
             });
           }
         })();
       // Machine-marked cards measure response time at submission, so keep that path immediate.
       if (typeof input === 'object' || !cardTransitionRef.current) commit();
-      else cardTransitionRef.current.dismiss(typeof input === 'number' ? input > 1 : input, commit);
+      else
+        cardTransitionRef.current.dismiss(
+          typeof input === 'number' ? input > 1 : input,
+          commit,
+          source,
+        );
     },
-    [answer, notify, undoLast],
+    [answer, notify, undoWithTransitionCancel],
   );
 
   useLearnKeyboardShortcuts({
@@ -252,7 +267,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isLinesModeCard,
     hintStep,
     setHintStep,
-    undoLast,
+    undoLast: undoWithTransitionCancel,
     navOpen,
     setNavOpen,
     menuOpen,
@@ -385,67 +400,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
             className="flex min-h-screen flex-col"
           >
-            {/* Grading feedback: a directional glow that sweeps in from the side the user
-          swiped — left for No, right for Yes — plus a radial ring that pulses outward.
-          Purely decorative and never intercepts input. */}
-            <AnimatePresence>
-              {feedback && (
-                <>
-                  {feedbackSource === 'touch' ? (
-                    <motion.div
-                      key={`${feedback}-glow`}
-                      aria-hidden
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.18 * m }}
-                      className={
-                        'pointer-events-none fixed inset-y-0 z-30 w-56 ' +
-                        (feedback === 'right'
-                          ? 'right-0 bg-gradient-to-l from-positive/25 to-transparent'
-                          : 'left-0 bg-gradient-to-r from-negative/20 to-transparent')
-                      }
-                    />
-                  ) : (
-                    <motion.div
-                      key={`${feedback}-glow`}
-                      aria-hidden
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.18 * m }}
-                      className={
-                        'pointer-events-none fixed inset-x-0 bottom-0 z-30 h-40 ' +
-                        (feedback === 'right'
-                          ? 'bg-gradient-to-t from-positive/25 to-transparent'
-                          : 'bg-gradient-to-t from-negative/20 to-transparent')
-                      }
-                    />
-                  )}
-                  <motion.div
-                    key={`${feedback}-ring`}
-                    aria-hidden
-                    className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center"
-                    initial={{ opacity: 0.6 }}
-                    animate={{ opacity: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5 * m, ease: 'easeOut' }}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.6, opacity: 0.5 }}
-                      animate={{ scale: 2.5, opacity: 0 }}
-                      transition={{ duration: 0.55 * m, ease: [0.16, 1, 0.3, 1] }}
-                      className={
-                        'h-96 w-96 rounded-full ' +
-                        (feedback === 'right'
-                          ? 'bg-positive/15 ring-4 ring-positive/20'
-                          : 'bg-negative/10 ring-4 ring-negative/15')
-                      }
-                    />
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
             {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
             <AnimatePresence>
               {editing && current && (
