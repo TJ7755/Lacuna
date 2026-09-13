@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Block new grades while Undo is restoring the previous answer, including after
+  cancelling a card departure. Grading resumes when Undo succeeds or reports a failure.
+
 - Updated the Share browser layout check for its open heading, preserving alignment
   coverage and checking that the removed subtitle stays absent.
 

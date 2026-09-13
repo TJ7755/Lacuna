@@ -54,6 +54,7 @@ interface LearnModeProps {
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
+  const undoInFlightRef = useRef(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
@@ -220,13 +221,20 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
   const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
 
-  const undoWithTransitionCancel = useCallback(() => {
-    cardTransitionRef.current?.cancel();
-    return undoLast();
+  const undoWithTransitionCancel = useCallback(async () => {
+    if (undoInFlightRef.current) return;
+    undoInFlightRef.current = true;
+    try {
+      cardTransitionRef.current?.cancel();
+      await undoLast();
+    } finally {
+      undoInFlightRef.current = false;
+    }
   }, [undoLast]);
 
   const answerWithUndo = useCallback(
     (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
+      if (undoInFlightRef.current) return;
       const commit = () =>
         void (async () => {
           const result = await answer(input);
