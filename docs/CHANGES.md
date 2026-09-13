@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Wait for persisted workspace mode before reloading in browser tests, and for the
+  initial page transition to finish before measuring course-section slides.
+
 - Updated study browser coverage to verify off-screen button departures and centred
   incoming cards. Stable-height checks now measure layout height independently of
   the temporary entrance scale.
