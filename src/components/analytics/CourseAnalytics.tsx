@@ -73,8 +73,7 @@ export function CourseAnalytics({
       <FadeInView className="lg:col-span-2" delay={0} y={0}>
         <ChartCard
           title="Predicted exam-day score"
-            emptyDrawing="prediction"
-          description="Average predicted retrievability across the course's cards, over time."
+          emptyDrawing="prediction"
           empty={trajectory.length < 2}
           emptyMessage="Study this course to start plotting your trajectory."
           delay={0}
@@ -113,8 +112,7 @@ export function CourseAnalytics({
       <FadeInView className="lg:col-span-2" delay={0.06} y={0}>
         <ChartCard
           title="Lesson breakdown"
-            emptyDrawing="course"
-          description="Mastery and completion per lesson. Line shows card count."
+          emptyDrawing="course"
           empty={breakdown.length === 0}
           emptyMessage="This course has no lessons yet."
           delay={0.06}
@@ -171,8 +169,7 @@ export function CourseAnalytics({
       <FadeInView delay={0.12} y={0}>
         <ChartCard
           title="Card stability profile"
-            emptyDrawing="stability"
-          description="How many cards fall into each stability range."
+          emptyDrawing="stability"
           empty={cards.length === 0}
           emptyMessage="Add cards to see their stability profile."
           delay={0.12}
@@ -200,8 +197,7 @@ export function CourseAnalytics({
       <FadeInView delay={0.18} y={0}>
         <ChartCard
           title="Review volume"
-            emptyDrawing="activity"
-          description="Reviews completed each day over the past 30 days."
+          emptyDrawing="activity"
           empty={!hasReviews}
           emptyMessage="Your daily review counts will appear here."
           delay={0.18}

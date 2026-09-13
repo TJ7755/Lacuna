@@ -107,6 +107,13 @@ describe('QuestionEditor', () => {
     mocks.createFixed.mockResolvedValue(undefined);
   });
 
+  it('uses the task title without repeating it in a decorative eyebrow', async () => {
+    renderEditor();
+
+    expect(await screen.findByRole('heading', { name: 'Create a Question' })).toBeInTheDocument();
+    expect(screen.queryByText('New definition')).not.toBeInTheDocument();
+  });
+
   it('creates a fixed Question with a worked explanation and one target Concept', async () => {
     renderEditor();
 

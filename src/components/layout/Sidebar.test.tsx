@@ -16,9 +16,51 @@ vi.mock('../../state/useCourseData', () => ({
 
 afterEach(() => {
   Reflect.deleteProperty(window, 'electronAPI');
+  localStorage.removeItem('lacuna.sidebarSettings');
 });
 
 describe('Sidebar', () => {
+  it('shows the brand without a tagline', () => {
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+    expect(screen.getByText('Lacuna')).toBeInTheDocument();
+    expect(screen.queryByText(/spaced revision|spaced repetition/i)).not.toBeInTheDocument();
+
+    const mark = screen.getByTestId('sidebar-brand-mark');
+    expect(mark.tagName).toBe('IMG');
+    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-[#0a0a0b]');
+    expect(screen.getByText('Lacuna')).toHaveClass('text-xl');
+  });
+
+  it('keeps the fixed-colour mark inside the collapsed sidebar', () => {
+    render(<Sidebar collapsed onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const mark = screen.getByTestId('sidebar-brand-mark');
+    expect(mark.tagName).toBe('IMG');
+    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark).toHaveClass('h-9', 'w-9');
+    expect(mark.parentElement).toHaveClass('px-0', 'justify-center');
+    expect(mark.parentElement).not.toHaveClass('px-5');
+    expect(screen.getByRole('complementary')).toHaveClass(
+      'w-[calc(72px+env(safe-area-inset-left))]',
+    );
+  });
+
+  it('uses a compact 32px brand mark in compact mode', () => {
+    localStorage.setItem(
+      'lacuna.sidebarSettings',
+      JSON.stringify({ showDueCounts: true, compactMode: true }),
+    );
+
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const mark = screen.getByTestId('sidebar-brand-mark');
+    expect(mark.tagName).toBe('IMG');
+    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark).toHaveClass('h-8', 'w-8');
+    expect(screen.getByText('Lacuna')).toHaveClass('text-lg');
+  });
+
   it('keeps the archive destination fixed in the Courses group and archived courses out of the list', () => {
     mockCourses = [
       { id: 'active', name: 'Active course', archived: false } as Course,

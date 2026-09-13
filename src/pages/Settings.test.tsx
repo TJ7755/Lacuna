@@ -262,7 +262,7 @@ describe('Settings', () => {
     });
   });
 
-  it('uses the full content column without a decorative header eyebrow', () => {
+  it('uses an open page header and full content column', () => {
     render(<Settings />);
 
     const heading = screen.getByRole('heading', { level: 1, name: 'Settings' });
@@ -270,9 +270,16 @@ describe('Settings', () => {
     const contentColumn = header?.parentElement;
 
     expect(screen.queryByText('Preferences')).not.toBeInTheDocument();
-    expect(header).toHaveClass('p-7', 'md:p-9');
+    expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
     expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
     expect(contentColumn).not.toHaveClass('max-w-2xl');
+  });
+
+  it('keeps cards where they group related settings', () => {
+    render(<Settings />);
+
+    const appearance = document.getElementById('settings-appearance');
+    expect(appearance).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
   });
 
   it('keeps a consistent gap after every settings group', () => {
@@ -281,6 +288,20 @@ describe('Settings', () => {
     document.querySelectorAll('section[id^="settings-group-"]').forEach((group) => {
       expect(group).toHaveClass('mb-8');
     });
+  });
+
+  it('omits redundant explanatory copy from settings headings and self-evident controls', () => {
+    render(<Settings />);
+
+    [
+      'Make Lacuna comfortable to read, navigate and control on this device.',
+      'Choose how study sessions, answers and focus time work.',
+      'Lacuna defaults to a dark theme. Your choice is remembered on this device.',
+      'Sets the highlight colour used across the app. Remembered on this device.',
+      'Scales all text across the app. Remembered on this device.',
+      'Choose how all active courses are ordered on the dashboard.',
+      'Control what information appears in the sidebar navigation and how compact it is.',
+    ].forEach((copy) => expect(screen.queryByText(copy)).not.toBeInTheDocument());
   });
 
   it('renders task groups, sections and subsections at successive heading levels', () => {

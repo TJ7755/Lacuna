@@ -186,6 +186,16 @@ describe('AppShell mobile navigation', () => {
     });
   }
 
+  it('uses the fixed Lacuna colours for mobile branding', () => {
+    renderShell();
+
+    const mark = screen.getByTestId('mobile-brand-mark');
+    expect(mark.tagName).toBe('IMG');
+    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark).toHaveClass('h-[18px]', 'w-[18px]', 'p-0.5', 'bg-[#0a0a0b]');
+    expect(mark.parentElement).toHaveTextContent('Lacuna');
+  });
+
   it('opens the drawer after a deliberate right swipe from the left viewport edge', () => {
     renderShell();
 

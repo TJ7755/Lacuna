@@ -43,29 +43,16 @@ function SectionCard({
   icon,
   label,
   children,
-  accent = 'accent',
 }: {
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
-  accent?: 'accent' | 'positive' | 'negative' | 'warning';
 }) {
-  const iconBgClass =
-    accent === 'positive'
-      ? 'bg-positive/10 text-positive'
-      : accent === 'negative'
-        ? 'bg-negative/10 text-negative'
-        : accent === 'warning'
-          ? 'bg-warning/10 text-warning-fg'
-          : 'bg-accent/10 text-accent';
-
   return (
-    <div className="rounded-2xl border border-line bg-surface p-7 shadow-sm md:p-8">
+    <div className="rounded-2xl border border-line bg-surface p-6 md:p-8">
       <div className="mb-5 flex items-center gap-3">
-        <span className={`grid h-10 w-10 place-items-center rounded-xl ${iconBgClass}`}>
-          {icon}
-        </span>
-        <h2 className="font-display text-2xl tracking-tight">{label}</h2>
+        <span className="text-accent">{icon}</span>
+        <h2 className="font-display text-3xl tracking-tight">{label}</h2>
       </div>
       {children}
     </div>
@@ -86,7 +73,7 @@ function ModeCard({
   tip?: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface-raised/60 p-5 transition-colors hover:border-line-strong">
+    <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
       <h3 className="mb-1.5 font-medium text-ink">{title}</h3>
       <p className="mb-3 text-sm text-ink-soft">{description}</p>
       <div className="space-y-2 text-sm text-ink-soft">
@@ -160,7 +147,7 @@ export function HelpPage() {
               order along a path.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Courses</h3>
                 <p className="text-sm text-ink-soft">
                   A course is the top-level subject you are studying &mdash; a module, a subject, an
@@ -168,7 +155,7 @@ export function HelpPage() {
                   course with a single lesson skips the path and opens straight into that lesson.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">The course path</h3>
                 <p className="text-sm text-ink-soft">
                   The path is an ordered sequence of lessons. Completing a lesson unlocks the next
@@ -187,7 +174,7 @@ export function HelpPage() {
                   </li>
                 </ul>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Lessons and notes</h3>
                 <p className="text-sm text-ink-soft">
                   A lesson holds the notes and cards for one topic. Notes are Markdown blocks where
@@ -198,14 +185,14 @@ export function HelpPage() {
                   the course&apos;s Cards tab.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Cards</h3>
                 <p className="text-sm text-ink-soft">
                   Every course has a Cards tab listing all of its Cards in one place, regardless of
                   which lesson they belong to. Use it to browse, search, edit or bulk-manage cards.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
                   Course Settings holds exam dates, the study objective, scheduling optimisation,
@@ -315,7 +302,7 @@ export function HelpPage() {
               session works.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">1. Question phase</h3>
                 <p className="text-sm text-ink-soft">
                   The card is shown front-side only. Read the question and try to recall the answer.
@@ -330,7 +317,7 @@ export function HelpPage() {
                   answer&rsquo; button.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">2. Answer phase</h3>
                 <p className="text-sm text-ink-soft">
                   The card flips to reveal the answer. Compare your recalled answer with the actual
@@ -346,7 +333,7 @@ export function HelpPage() {
                   &amp; scheduling&rsquo;.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">3. Card actions</h3>
                 <p className="text-sm text-ink-soft">
                   During a study session, you can perform actions on the current card without
@@ -474,20 +461,20 @@ export function HelpPage() {
               In touch-first mode, the study interface supports swipe gestures for faster grading.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Tap to flip</h3>
                 <p className="text-sm text-ink-soft">
                   Tap anywhere on the card to reveal the answer. Tap again to hide it.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Swipe right = Yes</h3>
                 <p className="text-sm text-ink-soft">
                   In the answer phase, swipe right on the card to mark it correct. A green glow
                   appears to confirm the action.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Swipe left = No</h3>
                 <p className="text-sm text-ink-soft">
                   In the answer phase, swipe left on the card to mark it wrong. A red glow appears
@@ -508,7 +495,7 @@ export function HelpPage() {
               Understanding the progress bar and scheduling helps you use Lacuna more effectively.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">What the progress bar means</h3>
                 <p className="text-sm text-ink-soft">
                   The progress bar shows how close your course is to being exam-ready. The exact
@@ -525,7 +512,7 @@ export function HelpPage() {
                   </li>
                 </ul>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">FSRS scheduling</h3>
                 <p className="text-sm text-ink-soft">
                   Lacuna uses FSRS (Free Spaced Repetition Scheduler), an open-source algorithm that
@@ -538,7 +525,7 @@ export function HelpPage() {
                   frequently, while cards you struggle with will come back sooner.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Optimisation</h3>
                 <p className="text-sm text-ink-soft">
                   Lacuna can fit the FSRS weights to your own review history. This is where most of
@@ -561,28 +548,28 @@ export function HelpPage() {
               Lacuna supports several card types for different kinds of learning.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Basic card</h3>
                 <p className="text-sm text-ink-soft">
                   A simple front-and-back flashcard. The question appears on the front; the answer
                   on the back. This is the default and works for most material.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Reversed card</h3>
                 <p className="text-sm text-ink-soft">
                   Creates two cards from one note: one in each direction. Useful for vocabulary
                   (English-to-French and French-to-English) or any bidirectional knowledge.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Typing-answer card</h3>
                 <p className="text-sm text-ink-soft">
                   You type the answer into a text box before revealing. This is more demanding than
                   simply recalling, and is excellent for spelling, formulae, or precise terminology.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Cloze card</h3>
                 <p className="text-sm text-ink-soft">
                   A sentence with one or more words hidden. You recall the hidden words before
@@ -590,7 +577,7 @@ export function HelpPage() {
                   questions.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Audio card</h3>
                 <p className="text-sm text-ink-soft">
                   Attach or record a short clip, add an optional prompt and provide the answer.
@@ -599,7 +586,7 @@ export function HelpPage() {
                   Autoplay and playback speed are under Settings &rarr; Study &amp; scheduling.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Diagram card</h3>
                 <p className="text-sm text-ink-soft">
                   Generated from a labelled diagram: the labels are covered and one is ringed for
@@ -622,7 +609,7 @@ export function HelpPage() {
               appear in lesson Card study, Practice nodes, assessment revision or the course path.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Fixed and generated Questions</h3>
                 <p className="text-sm text-ink-soft">
                   A fixed Question always presents the authored problem. A generated family creates
@@ -630,7 +617,7 @@ export function HelpPage() {
                   Primary skill practised and may name prerequisite Concepts.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Practice and marking</h3>
                 <p className="text-sm text-ink-soft">
                   Practise 10 serves due Questions first, then unseen Questions where space remains;
@@ -639,7 +626,7 @@ export function HelpPage() {
                   answers as Again, and uncertain or disputed results do not change the schedule.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Attempts and feedback</h3>
                 <p className="text-sm text-ink-soft">
                   Each presentation records its exact problem before display. Your first submission
@@ -665,7 +652,7 @@ export function HelpPage() {
               in sync.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Cue window</h3>
                 <p className="text-sm text-ink-soft">
                   Each generated card’s front shows the preceding item or two (the cue window, two
@@ -673,7 +660,7 @@ export function HelpPage() {
                   list. This targets the point in a list you are most likely to forget: the middle.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Chunks</h3>
                 <p className="text-sm text-ink-soft">
                   Long sequences can be split into named chunks. The first item of a chunk is cued
@@ -681,7 +668,7 @@ export function HelpPage() {
                   independently of one another.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Label cards</h3>
                 <p className="text-sm text-ink-soft">
                   Turning on label cards additionally generates an unordered label-to-value card for
@@ -689,7 +676,7 @@ export function HelpPage() {
                   depend on position in the sequence at all.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Editing generated cards</h3>
                 <p className="text-sm text-ink-soft">
                   Cards generated from a sequence are read-only in the card editor and carry a
@@ -714,7 +701,7 @@ export function HelpPage() {
               editing the diagram keeps them in sync.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Labels and features</h3>
                 <p className="text-sm text-ink-soft">
                   A <strong>label</strong> box covers text already printed on the diagram — you type
@@ -725,7 +712,7 @@ export function HelpPage() {
                   answered by reading the picture or by elimination.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Editing a diagram</h3>
                 <p className="text-sm text-ink-soft">
                   Moving, resizing or re-pairing a box updates that card and keeps its memory state;
@@ -735,7 +722,7 @@ export function HelpPage() {
                   is easier.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Sharing a diagram</h3>
                 <p className="text-sm text-ink-soft">
                   Share codes cannot carry image or audio files, so a shared diagram card arrives as
@@ -754,7 +741,7 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Set an exam date</h3>
                 <p className="text-sm text-ink-soft">
                   The single most important thing you can do is set an accurate exam date and time
@@ -763,14 +750,14 @@ export function HelpPage() {
                   Settings.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Keep cards small</h3>
                 <p className="text-sm text-ink-soft">
                   Each card should test one atomic fact. Complex cards that require multiple steps
                   are harder to remember and harder to grade. If a card keeps failing, split it.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Be honest when grading</h3>
                 <p className="text-sm text-ink-soft">
                   The algorithm is only as good as your self-assessment. If you were not sure, mark
@@ -778,7 +765,7 @@ export function HelpPage() {
                   day.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Use the Pomodoro timer</h3>
                 <p className="text-sm text-ink-soft">
                   The built-in Pomodoro timer helps you maintain focus. Short breaks prevent
@@ -786,7 +773,7 @@ export function HelpPage() {
                   &rarr; Pomodoro timer.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Export your data regularly</h3>
                 <p className="text-sm text-ink-soft">
                   All your data lives locally in your browser. Use the automatic backups feature
@@ -814,21 +801,14 @@ export function HelpPage() {
         </Link>
 
         <div>
-          <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-7 md:p-9">
-            <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
-            <div className="relative">
-              <h1 className="font-display text-4xl tracking-tight md:text-6xl">Help</h1>
-              <p className="mt-3 max-w-xl text-base text-ink-soft">
-                Everything you need to know about using Lacuna, from study modes to keyboard
-                shortcuts.
-              </p>
-            </div>
+          <header className="mb-12 pt-2 md:mb-16 md:pt-4">
+            <h1 className="font-display text-4xl tracking-tight md:text-5xl">Help</h1>
           </header>
 
           {/* Sections */}
           <div className="flex flex-col gap-8">
             {sections.map((s) => (
-              <section key={s.id} id={s.id}>
+              <section key={s.id} id={s.id} className="scroll-mt-8">
                 <SectionCard icon={s.icon} label={s.label}>
                   {s.content}
                 </SectionCard>
@@ -837,15 +817,15 @@ export function HelpPage() {
           </div>
 
           {/* Footer */}
-          <div className="mt-10 rounded-2xl border border-line bg-surface p-6 text-center shadow-sm">
-            <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+          <div className="mt-4 border-t border-line py-10 text-left">
+            <div className="mb-3 text-accent">
               <InfoIcon width={20} height={20} />
             </div>
             <p className="mb-3 text-base text-ink-soft">
               Still have questions? Check the settings pages for more granular controls, or explore
               the analytics page to understand your study patterns.
             </p>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap gap-2">
               <Link to="/settings">
                 <Button variant="secondary" size="sm">
                   <SettingsIcon width={16} height={16} />

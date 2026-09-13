@@ -17,16 +17,10 @@ export function InputModeSection() {
       id="settings-input"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-4 flex items-center gap-2 text-accent">
         <KeyboardIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Input mode</SettingsSectionHeading>
       </div>
-      <p className="mb-4 text-sm text-ink-soft">
-        Choose how Lacuna presents its interface. Keyboard-first keeps the compact,
-        shortcut-driven layout. Touch-first enlarges controls, reveals gesture hints,
-        and opens a bottom-sheet menu for reviewing and editing cards. Both modes
-        stay fully functional — you can switch at any time.
-      </p>
       <div className="grid grid-cols-3 gap-2">
         {INPUT_OPTIONS.map((option) => {
           const active = inputMode === option.key;

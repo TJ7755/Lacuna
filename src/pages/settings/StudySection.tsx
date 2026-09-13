@@ -31,26 +31,23 @@ export function StudySection() {
 
   return (
     <section id="settings-study" className="mb-8 rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <FlameIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">
           Session behaviour
         </SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Choose how sessions present cards, collect answers and keep you focused.
-      </p>
 
       <SettingToggle
         title="Manual four-point grading"
-        description="By default Lacuna grades silently from whether you were right and how long you took, so you only press Yes or No. Turn this on to grade each card yourself with the four FSRS buttons (Again, Hard, Good, Easy) and their keyboard shortcuts."
+        description="Off: Lacuna infers a grade from correctness and response time. On: choose Again, Hard, Good or Easy."
         checked={gradingMode === 'manual'}
         onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
       />
       <SettingToggle
         bordered
         title="Type your answer"
-        description="Type the answer before reveal instead of just flipping the card. Works for front/back, reversed and cloze cards; the typed answer is compared against the correct one, but you still grade yourself."
+        description="Your answer is compared with the correct one; you still grade yourself."
         checked={typingSetting === 'type'}
         onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
       />
@@ -58,14 +55,13 @@ export function StudySection() {
       <SettingToggle
         bordered
         title="Autoplay audio cards"
-        description="Start an audio clip when its question face appears. Browser autoplay rules can still require the first play to be started manually."
+        description="Your browser may require you to start the first clip manually."
         checked={audioSettings.autoplay}
         onChange={(autoplay) => setAudioSettings({ ...audioSettings, autoplay })}
       />
       <div className="mt-5 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm">Audio playback speed</div>
-          <p className="mt-1 text-sm text-ink-soft">Applied to every audio card on this device.</p>
         </div>
         <div className="flex shrink-0 gap-1" role="radiogroup" aria-label="Audio playback speed">
           {AUDIO_PLAYBACK_SPEEDS.map((speed) => (
@@ -124,7 +120,7 @@ export function StudySection() {
             Start Learn sessions in Focus Mode
           </label>
           <p className="mt-1 text-sm text-ink-soft">
-            Hide session controls when Learn opens. Press Esc at any time to leave Focus Mode.
+            Hides session controls on open. Press Esc to leave.
           </p>
         </div>
         <Toggle
@@ -148,19 +144,15 @@ export function CourseDefaultsSection() {
       id="settings-course-defaults"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-2 flex items-center gap-2 text-accent">
         <FlameIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">
           Scheduling &amp; practice
         </SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Shared starting points for scheduling and automatic practice. A course&apos;s own settings
-        always take priority.
-      </p>
+      <p className="mb-5 text-sm text-ink-soft">Applies unless overridden per course.</p>
       <SettingToggle
         title="Auto-insert practice nodes"
-        description="Automatically add practice nodes between lessons on the course path."
         checked={practiceDefaults.autoPractice}
         onChange={(checked) => setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })}
       />
@@ -197,8 +189,7 @@ export function CourseDefaultsSection() {
           <span className="min-w-0">
             <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
             <span className="mt-1 block text-sm text-ink-soft">
-              Lacuna uses its recommended scheduling model by default. Open this only if you want
-              courses without their own override to fit scheduling to your review history.
+              Fit default scheduling to your review history.
             </span>
           </span>
           <ChevronDownIcon
@@ -211,7 +202,7 @@ export function CourseDefaultsSection() {
         <div className="mt-5 rounded-xl border border-line bg-surface-raised/50 p-4">
           <SettingToggle
             title="Optimise scheduling"
-            description={`Fit each course's FSRS weights to your own review history. Optimisation starts only after at least ${MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied without your confirmation. You can override this per course in its settings.`}
+            description={`Fits FSRS weights after ${MIN_OPTIMISE_REVIEWS} reviews. Changes require confirmation and can be overridden per course.`}
             checked={autoOptimise}
             onChange={setAutoOptimise}
           />
@@ -223,8 +214,7 @@ export function CourseDefaultsSection() {
           <span className="min-w-0">
             <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
             <span className="mt-1 block text-sm text-ink-soft">
-              Keep the recommended thresholds unless you need tighter control over when Lacuna
-              inserts practice into a course path.
+              Adjust when practice nodes appear on course paths.
             </span>
           </span>
           <ChevronDownIcon
@@ -293,7 +283,7 @@ function SettingToggle({
   bordered = false,
 }: {
   title: string;
-  description: string;
+  description?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   bordered?: boolean;
@@ -307,7 +297,7 @@ function SettingToggle({
     >
       <div className="min-w-0">
         <div className="text-sm">{title}</div>
-        <p className="mt-1 text-sm text-ink-soft">{description}</p>
+        {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
       </div>
       <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
     </div>

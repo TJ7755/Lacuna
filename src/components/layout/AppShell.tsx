@@ -14,7 +14,7 @@ import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
 import { KeyHints } from '../ui/KeyHints';
-import { CloseIcon, LacunaIcon } from '../ui/icons';
+import { CloseIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -376,9 +376,15 @@ function AppShellLayout() {
                 <span className="block h-0.5 w-5 bg-current" />
               </span>
             </button>
-            <span className="flex items-center gap-2 font-brand text-lg">
-              <LacunaIcon width={18} height={18} className="text-accent" />
-              Lacuna
+            <span className="flex items-center gap-2 font-brand text-lg font-medium leading-none tracking-tight">
+              <img
+                data-testid="mobile-brand-mark"
+                src={`${import.meta.env.BASE_URL}icon.svg`}
+                alt=""
+                aria-hidden="true"
+                className="h-[18px] w-[18px] shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-0.5"
+              />
+              <span>Lacuna</span>
             </span>
           </div>
 

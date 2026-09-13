@@ -25,13 +25,10 @@ export function DashboardSection() {
       id="settings-dashboard"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <GridIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Dashboard</SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Choose how all active courses are ordered on the dashboard.
-      </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {SORT_OPTIONS.map((option) => {
           const active = dashboardSort === option.key;
@@ -55,12 +52,9 @@ export function DashboardSection() {
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
-        <SettingsSubsectionHeading className="mb-1 text-sm font-medium text-ink">
+        <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
           Course progress metric
         </SettingsSubsectionHeading>
-        <p className="mb-4 text-sm text-ink-soft">
-          Choose the progress measure shown on each dashboard course card.
-        </p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {(
             [
@@ -91,12 +85,9 @@ export function DashboardSection() {
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
-        <SettingsSubsectionHeading className="mb-1 text-sm font-medium text-ink">
+        <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
           Card hover detail
         </SettingsSubsectionHeading>
-        <p className="mb-4 text-sm text-ink-soft">
-          Choose what a course card reveals when you hover over it.
-        </p>
         <div className="flex flex-col gap-3">
           <Toggle
             id="card-detail-next-due"

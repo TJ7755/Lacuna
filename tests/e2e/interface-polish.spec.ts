@@ -31,14 +31,16 @@ for (const width of [390, 1440]) {
     ).toBeVisible();
     await page.goto('/#/share');
     await expect(page.getByText('Collaborate', { exact: true })).toHaveCount(0);
-    const intro = page
-      .getByRole('heading', { name: 'Share', exact: true })
-      .locator('..')
-      .locator('p');
+    const heading = page.getByRole('heading', { name: 'Share', exact: true });
+    await expect(heading).toBeVisible();
+    await expect(heading.locator('xpath=ancestor::header[1]').locator('p')).toHaveCount(0);
+    const exportSection = page
+      .getByRole('heading', { name: 'Export a course', exact: true })
+      .locator('xpath=ancestor::section[1]');
     const exportCopy = page.getByText(/Select a course, then generate a code/);
     await expect(exportCopy).toBeVisible();
     expect(
-      Math.abs((await intro.boundingBox())!.x - (await exportCopy.boundingBox())!.x),
+      Math.abs((await heading.boundingBox())!.x - (await exportSection.boundingBox())!.x),
     ).toBeLessThan(1);
     await page.screenshot({ animations: 'disabled', path: test.info().outputPath('share.png') });
     await page.goto('/#/analytics');

@@ -24,6 +24,15 @@ const courses = [
 const cards: Card[] = [];
 
 describe('CourseComparison', () => {
+  it('does not repeat the comparison controls in explanatory copy', () => {
+    render(<CourseComparison courses={[]} cards={cards} />, { wrapper: MemoryRouter });
+
+    expect(
+      screen.queryByText('Select two courses to compare their statistics side by side.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Create two courses to compare.')).toBeInTheDocument();
+  });
+
   it('links each compared course name to its own analytics page', () => {
     render(<CourseComparison courses={courses} cards={cards} />, { wrapper: MemoryRouter });
 

@@ -7,13 +7,46 @@
 
 - Made landing-page app entry respond immediately and reveal the dashboard sooner.
   The solid expansion and reveal each take 240 ms, with immediate acceleration;
-  the dashboard settles with an undelayed, non-bouncing 320 ms spring. Motion-speed settings and reduced motion
-  retain their existing behaviour.
+  the dashboard settles with an undelayed, non-bouncing 320 ms spring. Motion-speed
+  settings and reduced motion retain their existing behaviour.
 
 - Simplified the landing page's recall scene to one heading, a quieter graph and a
   compact review-timing control. Removed the oversized orange sentence, repeated
   graph annotations and bottom footnote; kept the illustrative/successful-review
   qualification beside the legend and preserved keyboard and reduced-motion behaviour.
+
+- Simplified Quick search with a short input prompt and a small ink-style search
+  drawing. Keyboard hints appear on the first opening per device, then stay hidden
+  on later visits; keyboard controls and screen-reader announcements remain available.
+
+- Block new grades while Undo is restoring the previous answer, including after
+  cancelling a card departure. Grading resumes when Undo succeeds or reports a failure.
+
+- Updated the Share browser layout check for its open heading, preserving alignment
+  coverage and checking that the removed subtitle stays absent.
+
+- Fixed Undo during a pending study-card departure, including when it restores the
+  same card. Cancelling the transition now prevents a stale grade being recorded.
+
+- Fixed navigation branding to the original black-and-orange artwork, with extra
+  internal padding and a centred wordmark. Retained the previous proportions: a 36px
+  desktop mark (32px compact) and 18px mobile mark, with 20px, 18px and 18px wordmarks
+  respectively.
+- Slowed the card flip from 180 ms to 560 ms at normal speed. Both halves of the flip
+  follow the animation speed setting, with an immediate reveal for reduced motion.
+- Added a 180 ms pause after study cards leave and slowed the next card's entrance
+  from 280 ms to 360 ms at normal animation speed. Reduced motion remains immediate;
+  leaving a session cancels the pending grade. Red/green feedback now plays during
+  dismissal and finishes before the next card appears; removed the expanding circular
+  flash and the separate session feedback timer.
+
+- Removed redundant subtitles and category captions across Settings, Help, Search,
+  Question editing and Analytics, including the sidebar brand tagline and section-rail
+  headings. Navigation, field labels and consequential settings guidance remain.
+  Opened page headers across Settings, Help, Analytics, Search, Share and Archived
+  courses, while retaining cards around related content. Help now uses one card per
+  topic instead of nested prose cards. Question analytics now uses a compact performance
+  table, with sample counts and exclusions in an expandable details row.
 
 - Stop offering another recurring Practice session or due-card review after the final
   lesson when the remaining cards are scheduled for later. Recurring actions now use
