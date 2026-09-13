@@ -2,6 +2,8 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Report rejected Study/Author mode saves through the existing toast feedback.
+
 - Fixed duplicate navigation and workspace controls in single-lesson courses after
   moving course navigation into the shell. Archived analytics coverage now renders
   the shell-owned navigation alongside the page, preserving its read-only assertions.

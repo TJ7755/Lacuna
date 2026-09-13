@@ -8,6 +8,7 @@ import type { CourseRecord } from '../../db/types';
 import { updateCourse } from '../../db/courseRepository';
 import { canEditLessons, resolveLessonViewMode } from '../../course/lessonViewMode';
 import { LessonViewModeToggle } from './LessonViewModeToggle';
+import { useToast } from '../ui/Toast';
 
 interface CoursePageNavigationProps {
   courseId: string;
@@ -33,13 +34,18 @@ export function CoursePageNavigation({
   trailing,
   className,
 }: CoursePageNavigationProps) {
+  const { notify } = useToast();
   const controls =
     trailing ??
     (course && !archived && !course.archived ? (
       canEditLessons(course) ? (
         <LessonViewModeToggle
           mode={resolveLessonViewMode(course)}
-          onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+          onChange={(mode) => {
+            void updateCourse(course.id, { lessonViewMode: mode }).catch(() => {
+              notify('Could not save workspace mode. Try again.', 'negative');
+            });
+          }}
         />
       ) : (
         <Link

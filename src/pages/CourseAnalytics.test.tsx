@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
 import { CourseAnalytics } from './CourseAnalytics';
+import { ToastProvider } from '../components/ui/Toast';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 
 const mocks = vi.hoisted(() => ({
@@ -115,9 +116,9 @@ describe('CourseAnalytics', () => {
     };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <Routes>
+        <ToastProvider><Routes>
           <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
-        </Routes>
+        </Routes></ToastProvider>
       </MemoryRouter>,
     );
 
@@ -136,9 +137,9 @@ describe('CourseAnalytics', () => {
 
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <Routes>
+        <ToastProvider><Routes>
           <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
-        </Routes>
+        </Routes></ToastProvider>
       </MemoryRouter>,
     );
 
