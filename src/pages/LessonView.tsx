@@ -276,7 +276,7 @@ export function LessonView({
                 <p className="text-sm text-ink-faint">
                   {lessonCards.length === 0
                     ? 'Add cards to begin studying.'
-                    : 'Nothing due — next lesson available.'}
+                    : 'Nothing due right now.'}
                 </p>
               )}
             </div>
