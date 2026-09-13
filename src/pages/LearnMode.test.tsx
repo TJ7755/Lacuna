@@ -23,6 +23,14 @@ import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 import { writeStartInFocusMode } from '../state/focusModePreference';
 import { loadSimpleSession } from './learn/simpleSessionPersistence';
+import type * as MotionSpeedModule from '../state/motionSpeed';
+
+// These session tests freeze response-time clocks; motion itself is covered by
+// StudyCardTransition and the browser interaction regressions.
+vi.mock('../state/motionSpeed', async (importOriginal) => ({
+  ...(await importOriginal<typeof MotionSpeedModule>()),
+  speedMultiplier: () => 0,
+}));
 
 describe('LearnSkeleton', () => {
   it('renders the skeleton loading screen', () => {

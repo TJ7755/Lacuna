@@ -235,14 +235,18 @@ Specific motion (current state of the app):
   gesture** — drag left past a threshold to spring open a per-card action tray, drag right
   to quick-toggle the flag — backed by a `useSpring`-driven `useMotionValue` with a springy
   snap-back below the threshold.
-- **Learn answer feedback:** the instant a card is graded, a soft full-width glow rises from
-  the foot of the screen — green for correct, muted red for incorrect — for ~0.5 s. It is
-  purely decorative (`pointer-events-none`), fired independently of the async write so the
-  reward always lands on the keypress, and never delays the next card. A radial ring
-  pulses outward from centre as a secondary cue.
+- **Learn answer feedback:** after the card departs, a soft glow confirms the grade —
+  green for correct, muted red for incorrect — with a radial pulse from the centre.
+  Swipe feedback comes from the corresponding side; keyboard feedback rises from the foot
+  of the screen. Both remain decorative (`pointer-events-none`) and independent of the write.
+- **Study card hand-off:** swipe, button and keyboard grades carry the card fully beyond
+  the appropriate viewport edge in 200 ms before grading advances the session. Repeated
+  inputs are ignored during departure, and unmounting cancels a pending grade. Incoming
+  cards rise 20 px and settle from 97% scale over 280 ms, including repeated cards.
+  The motion-speed setting scales these timings; reduced motion grades immediately.
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
-  Swipe gestures (right = Yes, left = No) share the same spring physics as the card-list row
-  swipes; the flip card is the only place in the app that combines rotation with translation.
+  Swipes follow the pointer directly, with a compact Yes/No cue on the card. Abandoned
+  swipes spring back; accepted swipes retain their offset through the shared departure.
 - **In-place steps:** picker-to-options sheets, Learn reveal-to-grade, Question checking,
   Numeric/Working results, Lesson Study/Author mode and other same-surface steps keep their
   chrome still and crossfade the step (`StepSwap`). Forward and back take a short sideways

@@ -94,31 +94,22 @@ test('starts a real lesson study interaction', async ({ page }) => {
   const card = page.locator('[data-study-card-id]').first();
   const cardId = await card.getAttribute('data-study-card-id');
   expect(cardId).not.toBeNull();
-  const centreSamples = page.evaluate(
-    () =>
-      new Promise<number[]>((resolve) => {
-        const samples: number[] = [];
-        const startedAt = performance.now();
-        function sample() {
-          const surface = document.querySelector('[data-study-card-id]');
-          if (surface) {
-            const bounds = surface.getBoundingClientRect();
-            samples.push(bounds.left + bounds.width / 2);
-          }
-          if (performance.now() - startedAt < 400) requestAnimationFrame(sample);
-          else resolve(samples);
-        }
-        requestAnimationFrame(sample);
-      }),
-  );
+  const initialCentre = await card.evaluate((surface) => {
+    const bounds = surface.getBoundingClientRect();
+    return bounds.left + bounds.width / 2;
+  });
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
     'data-study-card-id',
     cardId ?? '',
   );
-  const centres = await centreSamples;
-  expect(centres.length).toBeGreaterThan(1);
-  expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(1);
+  await expect
+    .poll(() => card.evaluate((surface, centre) => {
+      const bounds = surface.getBoundingClientRect();
+      return Math.abs(bounds.left + bounds.width / 2 - centre);
+    }, initialCentre))
+    .toBeLessThan(1);
+  await expect(card).toHaveCSS('opacity', '1');
 });
 
 test('opens an archived course as read-only content', async ({ page }) => {

@@ -13,7 +13,7 @@ test('makes the revealed answer readable within a short interaction transition',
   await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await expect(page.getByText(frontText, { exact: true })).toBeVisible();
+  await expect(page.locator('[data-card-id]').getByText(frontText, { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -58,6 +58,7 @@ test('makes the revealed answer readable within a short interaction transition',
   });
   expect(elapsed).toBeLessThan(250);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page.locator('[data-study-face="back"]')).toHaveCount(0);
   // Lesson introduction is deliberately ungraded. Enter scheduled course review
   // before asserting that canonical review analytics exist.
   await page.goto(`/#/course/${courseId}/learn`);

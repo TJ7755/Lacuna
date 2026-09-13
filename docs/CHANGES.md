@@ -2,6 +2,22 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Wait for persisted workspace mode before reloading in browser tests, and for the
+  initial page transition to finish before measuring course-section slides.
+
+- Updated study browser coverage to verify off-screen button departures and centred
+  incoming cards. Stable-height checks now measure layout height independently of
+  the temporary entrance scale.
+
+- Made study cards follow swipes directly and travel fully off-screen when graded,
+  with the same directional departure for keyboard shortcuts and grading buttons.
+  Incoming cards now rise gently into place. Replaced the broad drag glow with a compact
+  Yes/No cue while retaining the full colour pulse after grading. Reduced motion skips
+  the travel, repeated grades are guarded, and leaving study cancels a pending departure.
+  Card height measurements now ignore entrance scaling, keeping long fronts and backs
+  aligned. Study browser checks also wait for completed grading and tolerate either
+  sequence starting card without confusing outgoing editors with saved card rows.
+
 - Report rejected Study/Author mode saves through the existing toast feedback.
 
 - Fixed duplicate navigation and workspace controls in single-lesson courses after

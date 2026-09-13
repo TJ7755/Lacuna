@@ -83,7 +83,9 @@ test('workspace mode is shared by every course section', async ({ page }) => {
         mode.getByRole('button', { name: index % 2 ? 'Author mode' : 'Study mode' }),
       ).toHaveAttribute('aria-pressed', 'true');
     }
-    await mode.getByRole('button', { name: index % 2 ? 'Study mode' : 'Author mode' }).click();
+    const targetMode = mode.getByRole('button', { name: index % 2 ? 'Study mode' : 'Author mode' });
+    await targetMode.click();
+    await expect(targetMode).toHaveAttribute('aria-pressed', 'true');
   }
   await page.reload();
   await expect(page.getByRole('button', { name: 'Author mode', exact: true })).toHaveAttribute(
@@ -133,6 +135,7 @@ test('course pages slide together in the tab direction beneath stationary naviga
     ['Cards', 1],
     ['Path', -1],
   ] as const) {
+    await expect(page.locator('[data-route-content]')).toHaveCount(1);
     const navigation = page.locator('[data-course-page-navigation]');
     await navigation.evaluate((element, direction) => {
       element.removeAttribute('data-observed-slide');
