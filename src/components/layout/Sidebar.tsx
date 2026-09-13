@@ -495,14 +495,14 @@ export function Sidebar({
           aria-hidden="true"
           className={cn(
             'shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-[3px]',
-            sidebarSettings.compactMode ? 'h-10 w-10' : 'h-11 w-11',
+            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
           )}
         />
         {!collapsed && (
           <span
             className={cn(
               'font-brand font-medium leading-none tracking-tight',
-              sidebarSettings.compactMode ? 'text-2xl' : 'text-[28px]',
+              sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
             )}
           >
             Lacuna

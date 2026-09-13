@@ -192,7 +192,7 @@ describe('AppShell mobile navigation', () => {
     const mark = screen.getByTestId('mobile-brand-mark');
     expect(mark.tagName).toBe('IMG');
     expect(mark).toHaveAttribute('src', '/icon.svg');
-    expect(mark).toHaveClass('h-8', 'w-8', 'p-0.5', 'bg-[#0a0a0b]');
+    expect(mark).toHaveClass('h-[18px]', 'w-[18px]', 'p-0.5', 'bg-[#0a0a0b]');
     expect(mark.parentElement).toHaveTextContent('Lacuna');
   });
 

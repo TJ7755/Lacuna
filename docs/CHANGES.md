@@ -8,9 +8,10 @@
 - Fixed Undo during a pending study-card departure, including when it restores the
   same card. Cancelling the transition now prevents a stale grade being recorded.
 
-- Enlarged the navigation logo and fixed its colours to the original black-and-orange
-  artwork, with extra space inside the black square and the wordmark centred to its
-  right in desktop and mobile navigation.
+- Fixed navigation branding to the original black-and-orange artwork, with extra
+  internal padding and a centred wordmark. Retained the previous proportions: a 36px
+  desktop mark (32px compact) and 18px mobile mark, with 20px, 18px and 18px wordmarks
+  respectively.
 - Slowed the card flip from 180 ms to 560 ms at normal speed. Both halves of the flip
   follow the animation speed setting, with an immediate reveal for reduced motion.
 - Added a 180 ms pause after study cards leave and slowed the next card's entrance

@@ -28,17 +28,17 @@ describe('Sidebar', () => {
     const mark = screen.getByTestId('sidebar-brand-mark');
     expect(mark.tagName).toBe('IMG');
     expect(mark).toHaveAttribute('src', '/icon.svg');
-    expect(mark).toHaveClass('h-11', 'w-11', 'p-[3px]', 'bg-[#0a0a0b]');
-    expect(screen.getByText('Lacuna')).toHaveClass('text-[28px]');
+    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-[#0a0a0b]');
+    expect(screen.getByText('Lacuna')).toHaveClass('text-xl');
   });
 
-  it('keeps the enlarged fixed-colour mark inside the collapsed sidebar', () => {
+  it('keeps the fixed-colour mark inside the collapsed sidebar', () => {
     render(<Sidebar collapsed onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
     const mark = screen.getByTestId('sidebar-brand-mark');
     expect(mark.tagName).toBe('IMG');
     expect(mark).toHaveAttribute('src', '/icon.svg');
-    expect(mark).toHaveClass('h-11', 'w-11');
+    expect(mark).toHaveClass('h-9', 'w-9');
     expect(mark.parentElement).toHaveClass('px-0', 'justify-center');
     expect(mark.parentElement).not.toHaveClass('px-5');
     expect(screen.getByRole('complementary')).toHaveClass(
@@ -46,7 +46,7 @@ describe('Sidebar', () => {
     );
   });
 
-  it('uses a compact 40px brand mark in compact mode', () => {
+  it('uses a compact 32px brand mark in compact mode', () => {
     localStorage.setItem(
       'lacuna.sidebarSettings',
       JSON.stringify({ showDueCounts: true, compactMode: true }),
@@ -57,8 +57,8 @@ describe('Sidebar', () => {
     const mark = screen.getByTestId('sidebar-brand-mark');
     expect(mark.tagName).toBe('IMG');
     expect(mark).toHaveAttribute('src', '/icon.svg');
-    expect(mark).toHaveClass('h-10', 'w-10');
-    expect(screen.getByText('Lacuna')).toHaveClass('text-2xl');
+    expect(mark).toHaveClass('h-8', 'w-8');
+    expect(screen.getByText('Lacuna')).toHaveClass('text-lg');
   });
 
   it('keeps the archive destination fixed in the Courses group and archived courses out of the list', () => {

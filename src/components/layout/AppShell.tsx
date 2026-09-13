@@ -376,13 +376,13 @@ function AppShellLayout() {
                 <span className="block h-0.5 w-5 bg-current" />
               </span>
             </button>
-            <span className="flex items-center gap-2.5 font-brand text-[22px] font-medium leading-none tracking-tight">
+            <span className="flex items-center gap-2 font-brand text-lg font-medium leading-none tracking-tight">
               <img
                 data-testid="mobile-brand-mark"
                 src={`${import.meta.env.BASE_URL}icon.svg`}
                 alt=""
                 aria-hidden="true"
-                className="h-8 w-8 shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-0.5"
+                className="h-[18px] w-[18px] shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-0.5"
               />
               <span>Lacuna</span>
             </span>
