@@ -78,7 +78,7 @@ import {
   sessionServePool,
 } from '../../fsrs/session';
 import type { SessionContext, SessionUnit } from '../../fsrs/session';
-import { availableCards, dueCards } from '../../fsrs/eligibility';
+import { availableCards, dueCards, studyPool } from '../../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../../fsrs/stats';
 import { startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
@@ -1177,6 +1177,9 @@ export function useLearnSession({
           // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
           newCardsPerDay: course.learnFirst === false ? schedulingUnit.newCardsPerDay : undefined,
         };
+        if (course.learnFirst === false && !plannedRevision) {
+          cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
+        }
         units = [course];
         sessionUnits = [
           {
