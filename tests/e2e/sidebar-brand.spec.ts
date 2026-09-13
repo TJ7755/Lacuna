@@ -16,14 +16,17 @@ test('the brand keeps its size and centres in the collapsed rail', async ({ page
   await expect
     .poll(async () => {
       const bounds = await mark.boundingBox();
-      return bounds?.width;
+      const rail = await page.getByRole('complementary').boundingBox();
+      if (!bounds || !rail) return Infinity;
+      return Math.abs(bounds.x + bounds.width / 2 - (rail.x + rail.width / 2));
     })
-    .toBe(expanded!.width);
+    .toBeLessThanOrEqual(1);
 
   const collapsed = await mark.boundingBox();
   const rail = await page.getByRole('complementary').boundingBox();
   expect(collapsed).not.toBeNull();
   expect(rail).not.toBeNull();
+  expect(collapsed!.width).toBe(expanded!.width);
   expect(collapsed!.width).toBe(collapsed!.height);
   expect(
     Math.abs(collapsed!.x + collapsed!.width / 2 - (rail!.x + rail!.width / 2)),
