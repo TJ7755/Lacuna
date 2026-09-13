@@ -6,6 +6,11 @@
   drawing. Keyboard hints appear on the first opening per device, then stay hidden
   on later visits; keyboard controls and screen-reader announcements remain available.
 
+- Removed the sidebar shortcut badge and persistent study counts. Course rows reveal
+  ready/new card counts and their exam date in a small hover card; Dashboard reveals
+  the streak and reviews completed today. Details also open on keyboard focus, respect
+  reduced motion and leave touch navigation unchanged.
+
 - Block new grades while Undo is restoring the previous answer, including after
   cancelling a card departure. Grading resumes when Undo succeeds or reports a failure.
 
