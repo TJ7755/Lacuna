@@ -4,6 +4,7 @@ import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
+import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { ToastProvider } from '../components/ui/Toast';
 import type { Card, Course, Lesson, Note } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
@@ -148,8 +149,9 @@ function renderInline(
   pathActions?: { onAddPractice: () => void; onAddCheckpoint: () => void },
 ) {
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={['/course/course-1']}>
       <ToastProvider>
+        <CourseSectionNavigation courseId="course-1" />
         <LessonView
           courseId="course-1"
           lessonId="lesson-1"
