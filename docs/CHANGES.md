@@ -2,6 +2,11 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Simplified the landing page's recall scene to one heading, a quieter graph and a
+  compact review-timing control. Removed the oversized orange sentence, repeated
+  graph annotations and bottom footnote; kept the illustrative/successful-review
+  qualification beside the legend and preserved keyboard and reduced-motion behaviour.
+
 - Stop offering another recurring Practice session or due-card review after the final
   lesson when the remaining cards are scheduled for later. Recurring actions now use
   the existing due-and-mastery filter; curricular Practice and exposed introductions
