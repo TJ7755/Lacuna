@@ -1,0 +1,225 @@
+.motion-opening {
+  min-height: 100svh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 170px max(32px, 8vw) 180px;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 42%, #30271a55, transparent 57%);
+}
+.motion-opening-content {
+  width: 100%;
+  max-width: 1040px;
+}
+.motion-opening-mark {
+  color: var(--amber);
+  margin: 0 auto 44px;
+  width: 60px;
+}
+.motion-opening-mark svg {
+  width: 60px;
+  height: 60px;
+  stroke-width: 1.2;
+}
+.motion-opening h1 {
+  font-size: clamp(40px, 5.3vw, 78px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.058em;
+  margin: 0 auto;
+  max-width: 1220px;
+}
+.motion-opening-line {
+  display: block;
+}
+.motion-opening-emphasis {
+  color: var(--amber);
+  white-space: nowrap;
+  padding-left: 0.08em;
+}
+.motion-opening .landing-cta {
+  margin-top: 52px;
+  min-width: 184px;
+  min-height: 52px;
+  border-radius: 40px;
+  font-size: 15px;
+}
+.motion-opening-discover {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--stone);
+  font-size: 14px;
+  white-space: nowrap;
+  padding: 12px;
+}
+.motion-opening-discover span {
+  color: var(--amber);
+  font-size: 20px;
+}
+.motion-opening-discover:hover {
+  color: var(--ivory);
+}
+.motion-opening-pause {
+  position: absolute;
+  bottom: 69px;
+  right: var(--landing-gutter);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b1a89d35;
+  border-radius: 50%;
+  color: var(--stone);
+  background: transparent;
+  cursor: pointer;
+}
+.motion-header-download {
+  font-size: 13px;
+  color: var(--stone);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.landing-motion .motion-header {
+  position: fixed;
+  height: 96px;
+  background: transparent;
+  transition: background-color 240ms ease;
+}
+.motion-header[data-docked='true'] {
+  background: var(--cinema);
+}
+.motion-header .landing-brand {
+  transition: opacity 200ms ease;
+}
+.motion-header[data-docked='true'] .landing-brand {
+  opacity: 0;
+  pointer-events: none;
+}
+.motion-nav-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--amber);
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 8px)) scale(0.88);
+  transition:
+    opacity 240ms ease,
+    transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  pointer-events: none;
+}
+.motion-nav-mark svg {
+  width: 38px;
+  height: 38px;
+}
+.motion-header[data-docked='true'] .motion-nav-mark {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.landing-motion #landing-product {
+  scroll-margin-top: 96px;
+}
+.motion-header-download:hover {
+  color: var(--ivory);
+}
+.motion-header-download span {
+  font-size: 20px;
+}
+.motion-closing {
+  min-height: calc(100svh - 115px);
+  padding: 120px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-top: 1px solid #b1a89d20;
+}
+.motion-closing h2 {
+  font-size: clamp(36px, 4.3vw, 64px);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  margin-bottom: 44px;
+}
+.motion-closing-actions {
+  display: grid;
+  gap: 12px;
+  width: min(100%, 320px);
+}
+.motion-closing-actions > a {
+  min-height: 58px;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 15px;
+}
+.motion-closing-download {
+  background: #ffffff09;
+  color: var(--ivory);
+}
+.motion-closing-download:hover {
+  background: #ffffff12;
+}
+.landing-motion .landing-footer {
+  border-top: 0;
+}
+@media (max-width: 700px) {
+  .motion-opening {
+    padding: 145px 32px 165px;
+  }
+  .motion-opening-mark {
+    margin-bottom: 35px;
+    width: 46px;
+  }
+  .motion-opening-mark svg {
+    width: 46px;
+    height: 46px;
+  }
+  .motion-opening h1 {
+    font-size: clamp(32px, 8vw, 52px);
+    line-height: 1.2;
+  }
+  .motion-opening-line:last-child {
+    max-width: 11ch;
+    margin-inline: auto;
+  }
+  .motion-opening .landing-cta {
+    margin-top: 38px;
+    min-height: 50px;
+  }
+  .motion-header-download {
+    font-size: 11px;
+    gap: 7px;
+  }
+  .motion-opening-discover {
+    bottom: 65px;
+  }
+  .motion-opening-pause {
+    bottom: 65px;
+    right: 32px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-motion .motion-header,
+  .motion-header .landing-brand,
+  .motion-nav-mark {
+    transition: none;
+  }
+  .motion-opening-pause {
+    display: none;
+  }
+}

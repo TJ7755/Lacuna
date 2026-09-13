@@ -1,0 +1,215 @@
+.download-page {
+  --download-bg: #131210;
+  --download-fg: #f5f2ee;
+  --download-muted: #aaa49a;
+  --download-accent: #f6a328;
+  min-height: 100dvh;
+  background: var(--download-bg);
+  color: var(--download-fg);
+  font-family: 'Instrument Sans', sans-serif;
+  padding: 0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left));
+  color-scheme: dark;
+}
+.download-page a,
+.download-page button {
+  -webkit-tap-highlight-color: transparent;
+}
+.download-page :is(a, button):focus-visible {
+  outline: 2px solid var(--download-accent);
+  outline-offset: 6px;
+}
+.download-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(
+    100%,
+    calc(
+      100vw - 2 *
+        max(
+          24px,
+          7vw,
+          calc((100vw - 1200px) / 2),
+          env(safe-area-inset-left),
+          env(safe-area-inset-right)
+        )
+    )
+  );
+  margin: auto;
+  padding: 28px 0;
+}
+.download-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-brand);
+  font-size: 25px;
+  letter-spacing: -0.04em;
+}
+.download-brand svg {
+  color: var(--download-accent);
+}
+.download-browser-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  color: var(--download-muted);
+}
+.download-browser-link:hover {
+  color: var(--download-fg);
+}
+.download-main {
+  max-width: 680px;
+  margin: auto;
+}
+.download-choice {
+  min-height: calc(100svh - 180px);
+  padding: 60px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.download-intro {
+  text-align: center;
+}
+.download-intro h1 {
+  font-family: inherit;
+  font-size: clamp(52px, 7vw, 88px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+.download-platforms {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 48px auto 36px;
+}
+.download-platforms button {
+  min-height: 56px;
+  padding: 0 28px;
+  border-radius: 999px;
+  color: var(--download-muted);
+  background: #201e1a;
+  transition:
+    background 150ms,
+    color 150ms;
+}
+.download-platforms button:hover {
+  color: var(--download-fg);
+}
+.download-platforms button[aria-pressed='true'] {
+  background: var(--download-fg);
+  color: var(--download-bg);
+}
+.download-selection {
+  text-align: center;
+}
+.download-compatibility {
+  margin-top: 20px;
+  font-size: 16px;
+  color: var(--download-muted);
+}
+.download-action {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 460px);
+  min-height: 70px;
+  padding: 18px 24px;
+  border-radius: 999px;
+  background: var(--download-accent);
+  color: var(--download-bg);
+  font-size: 19px;
+  font-weight: 600;
+  transition: background 150ms;
+}
+.download-action:hover {
+  background: #ffb746;
+}
+.download-alternative {
+  margin-top: 26px;
+}
+.download-alternative button {
+  min-height: 44px;
+  color: var(--download-muted);
+  font-size: 14px;
+}
+.download-alternative button span {
+  padding-left: 12px;
+  color: var(--download-accent);
+}
+.download-alternative-content {
+  padding-top: 12px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--download-muted);
+}
+.download-inline-link {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.download-inline-link:hover {
+  color: var(--download-fg);
+}
+.download-help {
+  padding: 40px 0 64px;
+  color: var(--download-muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.download-help p + p {
+  margin-top: 20px;
+}
+.download-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0 24px;
+  color: var(--download-muted);
+  font-size: 15px;
+}
+.download-footer button,
+.download-footer a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.download-footer button:hover {
+  color: var(--download-fg);
+}
+@media (max-width: 520px) {
+  .download-nav {
+    padding-top: 18px;
+  }
+  .download-brand {
+    font-size: 22px;
+  }
+  .download-browser-link {
+    font-size: 14px;
+    gap: 8px;
+  }
+  .download-platforms {
+    gap: 6px;
+    margin-top: 36px;
+  }
+  .download-platforms button {
+    flex: 1;
+    padding: 0 16px;
+  }
+  .download-footer {
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .download-page *,
+  .download-page *::before,
+  .download-page *::after {
+    transition: none;
+  }
+}

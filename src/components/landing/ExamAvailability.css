@@ -1,0 +1,101 @@
+.exam-availability {
+  --fit: 0;
+  --time-opacity: 1;
+  --exam-opacity: 0;
+  height: 250svh;
+  background: var(--cinema);
+}
+.exam-fit-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 520px;
+  display: grid;
+  padding: 130px 24px 80px;
+  overflow: hidden;
+}
+.exam-fit-beat {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(36px, 6svh, 64px);
+  text-align: center;
+}
+.exam-fit-beat h2 {
+  font-size: clamp(48px, 6.8vw, 92px);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1.08;
+  margin: 0;
+}
+.exam-fit-beat > svg {
+  width: clamp(108px, 12vw, 160px);
+  height: clamp(108px, 12vw, 160px);
+}
+.exam-fit-beat p {
+  max-width: 38ch;
+  margin: -22px 0 0;
+  color: var(--stone);
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.5;
+}
+.exam-fit-time-beat {
+  opacity: var(--time-opacity);
+}
+.exam-fit-exam-beat {
+  opacity: var(--exam-opacity);
+}
+.exam-fit-time-beat .revision-glyph-clock path {
+  transform-box: view-box;
+  transform-origin: 50% 52%;
+  transform: rotate(calc(var(--fit) * 90deg));
+}
+@media (max-width: 700px) {
+  .exam-fit-stage {
+    padding: 120px 24px 80px;
+  }
+  .exam-fit-beat h2 {
+    font-size: clamp(46px, 12vw, 66px);
+  }
+}
+@media (prefers-reduced-motion: reduce), (max-width: 1000px) {
+  .exam-availability {
+    height: auto;
+  }
+  .exam-fit-stage {
+    position: relative;
+    height: auto;
+    padding: 0;
+  }
+  .exam-fit-beat {
+    grid-area: auto;
+    min-height: 85svh;
+    padding: 120px 24px 80px;
+    opacity: 1;
+  }
+  .exam-fit-time-beat .revision-glyph-clock path {
+    transform: none;
+  }
+}
+
+.exam-fit-beat[aria-hidden='true'] {
+  pointer-events: none;
+}
+.exam-fit-exam-beat {
+  gap: 32px;
+  min-width: 0;
+}
+.exam-fit-exam-beat h2 {
+  font-size: clamp(32px, 4.5vw, 62px);
+}
+@media (max-height: 760px) and (min-width: 701px) {
+  .exam-fit-stage {
+    padding-top: 104px;
+    padding-bottom: 24px;
+  }
+  .exam-fit-exam-beat {
+    gap: 20px;
+  }
+}

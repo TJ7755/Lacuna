@@ -199,7 +199,7 @@ test('course section navigation keeps one stable horizontal position', async ({ 
 
 async function openSeededCourse(page: Page): Promise<void> {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
   await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Curriculum', exact: true })).toBeVisible();

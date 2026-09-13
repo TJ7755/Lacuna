@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 export async function enterFreshLacuna(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
 }

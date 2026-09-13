@@ -2,6 +2,16 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
+- Updated the public landing page with a spacious exam-focused hero, twelve flat animated
+  illustrations, a centred logo on scroll and a clear closing action. The approved design
+  is served directly at `/welcome` and `/landing`, without variant or comparison controls.
+  The availability calendar keeps the exam fixed and links selected free slots to an
+  illustrative FSRS recall curve with a labelled 80–100% axis. Keyboard access, reduced
+  motion and narrow-screen layouts are supported; the superseded hero and chart are removed.
+- Updated Download and Method to the same dark visual style. Download presents one
+  platform action and compatibility line, with installation guidance on request. Method
+  retains its interactive explanations and discloses coefficient details on request.
+
 - Prevented the ordinary welcome-route exit fade from running beneath the app-entry
   cover, where it briefly exposed the old landing page during the dashboard reveal.
 
