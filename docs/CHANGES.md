@@ -2,6 +2,10 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Fixed duplicate navigation and workspace controls in single-lesson courses after
+  moving course navigation into the shell. Archived analytics coverage now renders
+  the shell-owned navigation alongside the page, preserving its read-only assertions.
+
 - Aligned Cards, Questions, Analytics and course Settings with Path's content width,
   back link and title position, keeping the course scroll gutter stable between tabs.
   Removed the Questions caption and kept the shared Study/Author control visible

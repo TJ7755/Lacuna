@@ -42,9 +42,12 @@ export function CoursePageNavigation({
           onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
         />
       ) : (
-        <span className="hidden text-xs text-ink-faint sm:inline">
+        <Link
+          to={`/course/${course.id}/settings`}
+          className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
+        >
           Authoring is locked for shared courses
-        </span>
+        </Link>
       )
     ) : undefined);
   return (
