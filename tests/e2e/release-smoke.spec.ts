@@ -11,10 +11,12 @@ async function openSeededDashboard(page: Page) {
 test('first launch reaches the seeded dashboard', async ({ page }) => {
   await openSeededDashboard(page);
   await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
-  const shortcutLabel = await page.evaluate(() =>
-    navigator.platform.startsWith('Mac') ? '⌘K' : 'Ctrl+K',
-  );
-  await expect(page.getByRole('button', { name: 'Quick search' })).toContainText(shortcutLabel);
+  const searchButton = page.getByRole('button', { name: 'Quick search', exact: true });
+  await expect(searchButton).toHaveText('Quick search');
+  await expect(searchButton.locator('kbd')).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByRole('dialog', { name: 'Quick search' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Search all content' })).toBeFocused();
 });
 
 test('creates a course with its first lesson', async ({ page }) => {
