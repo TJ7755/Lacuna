@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('opening the course rename field focuses and selects its title', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await page.getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
   await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Author mode', exact: true }).click();

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('the brand keeps its size and centres in the collapsed rail', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
 
   const mark = page.getByTestId('sidebar-brand-mark');
@@ -37,7 +37,7 @@ test('the brand keeps its size and centres in the collapsed rail', async ({ page
 test('the mobile brand retains its original proportions', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
 
   const mark = page.getByTestId('mobile-brand-mark');

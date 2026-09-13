@@ -96,8 +96,8 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     await page.emulateMedia({ reducedMotion: 'reduce' });
 
     const openLacuna = page
-      .getByRole('navigation', { name: 'Landing navigation' })
-      .getByRole('link', { name: 'Open Lacuna', exact: true });
+      .getByRole('region', { name: 'Revision around your exam' })
+      .getByRole('link', { name: 'Start revising', exact: true });
     await expect(openLacuna).toBeVisible();
     await openLacuna.click();
     await page.waitForURL((url) => url.hash === '#/');

@@ -6,7 +6,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
       await page.goto('/');
-      await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+      await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
       const heading = page.getByRole('heading', { name: 'Courses', exact: true });
       await expect(heading).toBeVisible();
       await expect(heading).toHaveCSS('font-family', /Instrument Sans/);
@@ -64,7 +64,7 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('an empty study session carries the recall drawing into its report', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await page.getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/learn`);
