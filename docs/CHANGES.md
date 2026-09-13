@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.6
+# Lacuna — version 0.2.7
 
-## 0.2.6 beta — performance, landing and method redesign
+## 0.2.7 beta — study interactions and navigation polish
 
 - Prevented the ordinary welcome-route exit fade from running beneath the app-entry
   cover, where it briefly exposed the old landing page during the dashboard reveal.
@@ -115,6 +115,8 @@
 
 - Made release and companion tests portable to Windows checkouts by normalising YAML line
   endings, using native path expectations and checking Unix permission bits only on Unix.
+
+## 0.2.6 beta — performance, landing and method redesign
 
 - Reused successful CI and Security checks for the exact release commit instead of repeating
   those suites in the release workflow. Native Windows/Linux builds remain in Actions;
