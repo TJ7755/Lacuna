@@ -11,6 +11,7 @@ import type { Phase } from './types';
 
 export interface StudyCardTransitionHandle {
   dismiss: (correct: boolean, commit: () => void, source?: 'touch' | 'keyboard') => void;
+  cancel: () => void;
 }
 
 const resting = 'translateX(0px) translateY(0px) scale(1)';
@@ -78,6 +79,16 @@ export const StudyCardTransition = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
+      cancel() {
+        if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
+        commitTimer.current = null;
+        busy.current = false;
+        transform.jump(resting);
+        opacity.jump(1);
+        feedbackOpacity.jump(0);
+        setFeedback(null);
+        setDeparting(false);
+      },
       dismiss(correct, commit, source = 'keyboard') {
         if (busy.current) return;
         busy.current = true;

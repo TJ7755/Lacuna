@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Fixed Undo during a pending study-card departure, including when it restores the
+  same card. Cancelling the transition now prevents a stale grade being recorded.
+
 - Enlarged the navigation logo and fixed its colours to the original black-and-orange
   artwork, with extra space inside the black square and the wordmark centred to its
   right in desktop and mobile navigation.

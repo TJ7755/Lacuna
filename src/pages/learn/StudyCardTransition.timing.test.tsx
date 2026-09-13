@@ -85,6 +85,31 @@ describe('StudyCardTransition timing', () => {
     },
   );
 
+  it('lets Undo cancel a pending grade even when it restores the same card', () => {
+    vi.useFakeTimers();
+    animateMock.mockClear();
+    const ref = createRef<StudyCardTransitionHandle>();
+    const commit = vi.fn();
+    const view = render(
+      <StudyCardTransition ref={ref} cardId="one" phase="answer" multiplier={1}>
+        Card
+      </StudyCardTransition>,
+    );
+
+    act(() => ref.current!.dismiss(false, commit));
+    void act(completeLatestAnimation);
+    act(() => ref.current!.cancel());
+    void act(() => vi.advanceTimersByTime(500));
+    expect(commit).not.toHaveBeenCalled();
+    expect(view.container.querySelector('[data-study-feedback]')).toBeNull();
+    act(() => ref.current!.dismiss(true, commit));
+    void act(completeLatestAnimation);
+    void act(() => vi.advanceTimersByTime(180));
+    expect(commit).toHaveBeenCalledOnce();
+    view.unmount();
+    vi.useRealTimers();
+  });
+
   it('cancels a pending grade when the answer is hidden during the pause', () => {
     vi.useFakeTimers();
     animateMock.mockClear();

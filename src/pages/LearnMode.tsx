@@ -220,6 +220,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
   const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
 
+  const undoWithTransitionCancel = useCallback(() => {
+    cardTransitionRef.current?.cancel();
+    return undoLast();
+  }, [undoLast]);
+
   const answerWithUndo = useCallback(
     (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
       const commit = () =>
@@ -228,7 +233,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           if (result.undoAvailable) {
             notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
               actionLabel: 'Undo',
-              onAction: () => void undoLast(),
+              onAction: () => void undoWithTransitionCancel(),
               replaceKey: 'learn-answer',
             });
           }
@@ -242,7 +247,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           source,
         );
     },
-    [answer, notify, undoLast],
+    [answer, notify, undoWithTransitionCancel],
   );
 
   useLearnKeyboardShortcuts({
@@ -254,7 +259,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isLinesModeCard,
     hintStep,
     setHintStep,
-    undoLast,
+    undoLast: undoWithTransitionCancel,
     navOpen,
     setNavOpen,
     menuOpen,
