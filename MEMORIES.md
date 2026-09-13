@@ -26,8 +26,11 @@ Durable facts about how to work in this repository, for every agent regardless o
 The landing design deliberately presents only one or two focal points at each scroll position.
 Do not stack category labels, explanatory paragraphs, reassurance and feature controls beneath
 the opening headline. Explain the product progressively through the existing scenes.
-For the exam introduction, use one headline and one symbol per scroll moment. Even
-a short paragraph plus diagram labels was too much; separate ideas in time instead.
+For the exam introduction, separate ideas in time. A headline and symbol alone were too
+abstract; use a compact interactive example to demonstrate cause and effect, with brief
+explanation. Avoid stacking paragraphs and diagram captions around it.
+The download choice needs only a compatibility line; omit version labels, slogans
+and installation instructions from the initial view. Keep help available on request.
 
 Landing illustrations should use simple flat silhouettes and bright colours from the app's
 palette. Detailed paper textures, perspective and muted shading were rejected; match the

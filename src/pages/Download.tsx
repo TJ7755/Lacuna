@@ -57,71 +57,85 @@ function DownloadButton({ href, children }: { href: string; children: ReactNode 
 
 function WindowsDownload() {
   return (
-    <div>
-      <p className="download-eyebrow">Recommended for locked-down computers</p>
-      <h2 className="download-choice-title">Windows portable</h2>
-      <p className="download-description">
-        Best for school and work computers. It needs no installer or administrator account: download
-        it, keep it in a folder you can access, then run it.
-      </p>
-      <div className="download-action-group">
-        <DownloadButton href={DOWNLOADS.windowsPortable}>Download for Windows</DownloadButton>
-        <span className="download-meta">x64 · manual updates</span>
-      </div>
-      <AlternativeDownload platform="Windows">
-        <p>
-          Want automatic updates?{' '}
-          <a className="download-inline-link" href={DOWNLOADS.windowsInstaller}>
-            Download the Windows installer
-          </a>
-          . A managed computer may block installers even when they do not request administrator
-          access.
-        </p>
-      </AlternativeDownload>
-    </div>
+    <>
+      <DownloadButton href={DOWNLOADS.windowsPortable}>Download for Windows</DownloadButton>
+      <p className="download-compatibility">64-bit Windows · portable</p>
+    </>
   );
 }
 
 function MacDownload() {
   return (
-    <div>
-      <p className="download-eyebrow">macOS download</p>
-      <h2 className="download-choice-title">Apple Silicon Mac</h2>
-      <p className="download-description">
-        Download the disk image, drag Lacuna into Applications, then open it. This build supports
-        M-series Macs; Intel Macs are not supported in this beta.
-      </p>
-      <div className="download-action-group">
-        <DownloadButton href={DOWNLOADS.macDmg}>Download for macOS</DownloadButton>
-        <span className="download-meta">Apple Silicon · manual updates</span>
-      </div>
-    </div>
+    <>
+      <DownloadButton href={DOWNLOADS.macDmg}>Download for macOS</DownloadButton>
+      <p className="download-compatibility">Apple Silicon only</p>
+    </>
   );
 }
 
 function LinuxDownload() {
   return (
-    <div>
-      <p className="download-eyebrow">Recommended Linux download</p>
-      <h2 className="download-choice-title">Linux AppImage</h2>
-      <p className="download-description">
-        No system installation is needed. Download the file, allow it to run as a program in its
-        file permissions, then open it.
-      </p>
-      <div className="download-action-group">
-        <DownloadButton href={DOWNLOADS.linuxAppImage}>Download for Linux</DownloadButton>
-        <span className="download-meta">x64 · automatic updates</span>
-      </div>
-      <AlternativeDownload platform="Linux">
-        <p>
-          On Debian or Ubuntu?{' '}
-          <a className="download-inline-link" href={DOWNLOADS.linuxDeb}>
-            Download the DEB package
-          </a>
-          . It installs through the system package manager and updates manually.
-        </p>
-      </AlternativeDownload>
-    </div>
+    <>
+      <DownloadButton href={DOWNLOADS.linuxAppImage}>Download for Linux</DownloadButton>
+      <p className="download-compatibility">64-bit Linux · AppImage</p>
+    </>
+  );
+}
+
+function InstallationHelp({ platform }: { platform: DesktopPlatform | null }) {
+  return (
+    <section className="download-help" aria-label="Installation help">
+      {platform === 'windows' && (
+        <>
+          <p>
+            The portable build needs no installer or administrator account. Keep it in a folder you
+            can access. It uses manual updates.
+          </p>
+          <p>
+            Lacuna is not yet code-signed. If Windows blocks it, use More info → Run anyway only
+            when you downloaded Lacuna from this page.
+          </p>
+          <AlternativeDownload platform="Windows">
+            <p>
+              <a className="download-inline-link" href={DOWNLOADS.windowsInstaller}>
+                Download the Windows installer
+              </a>{' '}
+              for automatic updates. Managed computers may block installers.
+            </p>
+          </AlternativeDownload>
+        </>
+      )}
+      {platform === 'macos' && (
+        <>
+          <p>
+            Drag Lacuna into Applications. This build supports Apple Silicon Macs only and uses
+            manual updates.
+          </p>
+          <p>
+            Lacuna is not yet code-signed. Use Privacy &amp; Security → Open Anyway only when you
+            downloaded Lacuna from this page.
+          </p>
+        </>
+      )}
+      {platform === 'linux' && (
+        <>
+          <p>
+            Allow the AppImage to run in its file permissions, then open it. It uses automatic
+            updates. Only grant permission when you downloaded Lacuna from this page.
+          </p>
+          <AlternativeDownload platform="Linux">
+            <p>
+              <a className="download-inline-link" href={DOWNLOADS.linuxDeb}>
+                Download the DEB package
+              </a>{' '}
+              for Debian or Ubuntu. It uses manual updates.
+            </p>
+          </AlternativeDownload>
+        </>
+      )}
+      <p>This is prerelease software. Keep a backup of important course data.</p>
+      <p>Existing browser data is not copied into the desktop app automatically.</p>
+    </section>
   );
 }
 
@@ -134,6 +148,7 @@ const platformDownloads: Record<DesktopPlatform, () => ReactNode> = {
 export function Download() {
   const detected = detectDesktopPlatform(navigator.userAgent);
   const [selected, setSelected] = useState<DesktopPlatform | null>(detected);
+  const [helpOpen, setHelpOpen] = useState(false);
   const SelectedDownload = selected ? platformDownloads[selected] : null;
 
   useEffect(() => {
@@ -151,85 +166,47 @@ export function Download() {
         </Link>
       </nav>
       <main className="download-main">
-        <header className="download-intro">
-          <p className="download-eyebrow">Desktop beta · version {APP_VERSION}</p>
-          <h1>Download Lacuna.</h1>
-          <p>Your revision. On your computer.</p>
-        </header>
-        <div className="download-platforms" role="group" aria-label="Operating system">
-          {(Object.keys(platformLabels) as DesktopPlatform[]).map((platform) => (
-            <button
-              key={platform}
-              type="button"
-              aria-pressed={selected === platform}
-              onClick={() => setSelected(platform)}
-            >
-              {platformLabels[platform]}
-            </button>
-          ))}
-        </div>
-        <section className="download-selection" aria-live="polite" aria-atomic="true">
-          {SelectedDownload ? (
-            <SelectedDownload />
-          ) : (
-            <div>
-              <h2 className="download-choice-title">Choose your computer</h2>
-              <p className="download-description">
-                Select Windows, macOS or Linux to find your download.
-              </p>
-            </div>
-          )}
-        </section>
-
-        <section className="download-guidance">
-          <p className="download-guidance-title">Before you open the beta</p>
-          <div className="download-guidance-copy">
-            {selected === 'windows' && (
-              <p>
-                Lacuna is not yet code-signed. Windows may show “Windows protected your PC”; use
-                <span className="download-emphasis"> More info → Run anyway</span> only when you
-                downloaded Lacuna from this page.
-              </p>
-            )}
-            {selected === 'macos' && (
-              <p>
-                Lacuna is not yet code-signed. macOS will block the first launch; use
-                <span className="download-emphasis">
-                  {' '}
-                  Privacy &amp; Security → Open Anyway
-                </span>{' '}
-                only when you downloaded Lacuna from this page.
-              </p>
-            )}
-            {selected === 'linux' && (
-              <p>
-                Some desktop environments will ask you to confirm that the AppImage may run. Only
-                grant that permission when you downloaded Lacuna from this page.
-              </p>
-            )}
-            <p>This is prerelease software. Keep a current backup of important course data.</p>
+        <div className="download-choice">
+          <header className="download-intro">
+            <h1>Download Lacuna.</h1>
+          </header>
+          <div className="download-platforms" role="group" aria-label="Operating system">
+            {(Object.keys(platformLabels) as DesktopPlatform[]).map((platform) => (
+              <button
+                key={platform}
+                type="button"
+                aria-pressed={selected === platform}
+                onClick={() => {
+                  setSelected(platform);
+                  setHelpOpen(false);
+                }}
+              >
+                {platformLabels[platform]}
+              </button>
+            ))}
           </div>
-        </section>
-
-        <section className="download-data">
-          <h2>Your data stays yours.</h2>
-          <p>
-            Your courses and review history stay on this device. Existing browser data is not copied
-            into the desktop app automatically.
-          </p>
-        </section>
+          <section className="download-selection" aria-live="polite" aria-atomic="true">
+            {SelectedDownload ? (
+              <SelectedDownload />
+            ) : (
+              <p className="download-compatibility">Choose your computer.</p>
+            )}
+          </section>
+        </div>
         <footer className="download-footer">
-          <p>
-            No download needed?{' '}
-            <Link to="/" className="download-inline-link">
-              Use Lacuna in your browser
-            </Link>
-            .
-          </p>
+          <button
+            type="button"
+            aria-expanded={helpOpen}
+            aria-controls="download-help"
+            onClick={() => setHelpOpen(!helpOpen)}
+          >
+            Installation help
+          </button>
           <a href={DOWNLOADS.release} className="download-inline-link">
             View checksums and release files
           </a>
         </footer>
+        <div id="download-help">{helpOpen && <InstallationHelp platform={selected} />}</div>
       </main>
     </div>
   );

@@ -1,0 +1,62 @@
+.exam-priority-example {
+  width: min(100%, 460px);
+  text-align: left;
+}
+.exam-priority-example label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  color: var(--stone);
+}
+.exam-priority-example output {
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+}
+.exam-priority-example input {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 8px 0 18px;
+  accent-color: var(--amber);
+  cursor: pointer;
+}
+.exam-priority-example input:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.exam-priority-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid #ffffff15;
+  font-size: 20px;
+}
+.exam-priority-rank {
+  color: var(--stone);
+  font-size: 15px;
+}
+.exam-priority-row strong {
+  margin-left: auto;
+  color: var(--amber);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.exam-priority-row small {
+  font-size: 14px;
+}
+.exam-priority-note {
+  display: block;
+  max-width: 44ch;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--stone);
+}
+@media (max-width: 700px) {
+  .exam-priority-row {
+    font-size: 18px;
+    padding: 14px 0;
+  }
+}

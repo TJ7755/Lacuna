@@ -37,8 +37,12 @@ test('motion prototype keeps a stable promise, accessible motion control and dir
   await expect(reel).toHaveAttribute('aria-hidden', 'true');
   await expect(reel.locator('.revision-object')).toHaveCount(12);
   const tile = reel.locator('.revision-object').first();
-  const before = await tile.evaluate((el) => getComputedStyle(el).transform);
-  await expect.poll(() => tile.evaluate((el) => getComputedStyle(el).transform)).not.toBe(before);
+  const transforms = () =>
+    reel
+      .locator('.revision-object')
+      .evaluateAll((items) => items.map((item) => getComputedStyle(item).transform).join('|'));
+  const before = await transforms();
+  await expect.poll(transforms).not.toBe(before);
   await page.getByRole('button', { name: 'Pause illustrations' }).click();
   await expect(tile).toHaveCSS('animation-play-state', 'paused');
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -52,10 +56,15 @@ test('motion prototype keeps a stable promise, accessible motion control and dir
   await expect(page).toHaveURL(/#\/$/);
 });
 
-test('exam introduction presents one idea at a time without subtitles', async ({ page }) => {
+test('exam introduction explains one idea at a time', async ({ page }) => {
   await page.goto('/#/landing?variant=motion');
   const scene = page.locator('#landing-product');
-  await expect(scene.locator('p, svg text')).toHaveCount(0);
+  await expect(scene.locator('svg text')).toHaveCount(0);
+  await expect(scene.locator('p')).toHaveCount(2);
+  await expect(scene.locator('.exam-fit-time-beat p')).toHaveText('Set a session time limit.');
+  await expect(scene.locator('.exam-fit-exam-beat p')).toHaveText(
+    'Move the date. See which review helps more.',
+  );
   expect(
     await page.locator('main').evaluate((main) => {
       const sections = [...main.children];
@@ -123,4 +132,32 @@ test('prototype ends with a clear choice to start or download', async ({ page })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await ending.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
+});
+
+test('exam example responds to the chosen deadline and stays out of the hidden beat', async ({
+  page,
+}) => {
+  await page.goto('/#/landing?variant=motion');
+  const scene = page.locator('#landing-product');
+  await expect(scene.getByRole('slider', { name: 'Exam in' })).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const slider = scene.getByRole('slider', { name: 'Exam in' });
+  await slider.scrollIntoViewIfNeeded();
+  await expect(slider).toHaveValue('14');
+  const result = scene.locator('.exam-priority-result');
+  const initial = await result.innerText();
+  await slider.fill('3');
+  await expect(slider).toHaveAttribute('aria-valuetext', '3 days');
+  await expect(result).not.toHaveText(initial);
+  await expect(result.locator('.exam-priority-row').first()).toContainText('Cell division');
+  await slider.fill('42');
+  await expect(result.locator('.exam-priority-row').first()).toContainText('Chemical bonds');
+  await slider.fill('3');
+  await slider.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(slider).toHaveValue('4');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await slider.scrollIntoViewIfNeeded();
+  await expect(slider).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

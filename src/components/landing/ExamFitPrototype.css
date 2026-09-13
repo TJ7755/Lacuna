@@ -2,7 +2,6 @@
   --fit: 0;
   --time-opacity: 1;
   --exam-opacity: 0;
-  --exam-draw: 0;
   height: 250svh;
   background: var(--cinema);
 }
@@ -35,6 +34,13 @@
   width: clamp(108px, 12vw, 160px);
   height: clamp(108px, 12vw, 160px);
 }
+.exam-fit-beat p {
+  max-width: 38ch;
+  margin: -22px 0 0;
+  color: var(--stone);
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.5;
+}
 .exam-fit-time-beat {
   opacity: var(--time-opacity);
 }
@@ -45,10 +51,6 @@
   transform-box: view-box;
   transform-origin: 50% 52%;
   transform: rotate(calc(var(--fit) * 90deg));
-}
-.exam-fit-exam-beat .revision-glyph-calendar path:last-child {
-  stroke-dasharray: 100;
-  stroke-dashoffset: calc((1 - var(--exam-draw)) * 100);
 }
 @media (max-width: 700px) {
   .exam-fit-stage {
@@ -76,7 +78,17 @@
   .exam-fit-time-beat .revision-glyph-clock path {
     transform: none;
   }
-  .exam-fit-exam-beat .revision-glyph-calendar path:last-child {
-    stroke-dashoffset: 0;
-  }
+}
+
+.exam-fit-beat[aria-hidden='true'] {
+  pointer-events: none;
+}
+.exam-fit-exam-beat h2 {
+  font-size: clamp(40px, 5vw, 68px);
+}
+.exam-fit-exam-beat {
+  gap: 32px;
+}
+.exam-fit-exam-beat > p {
+  margin: -12px 0 0;
 }

@@ -2,6 +2,15 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
+- Reduced the download choice to its heading, platform selector, primary button and
+  one compatibility line. Removed version and marketing copy; installation guidance
+  and alternative packages are available through Installation help. Added one brief
+  mechanism explanation to each of the two separate exam-introduction moments.
+  Reduced the opening headline, artwork and button scale and increased the hero's
+  surrounding space, including the bottom controls' inset. Replaced the static exam
+  symbol with a deadline slider comparing recall gains for two illustrative cards using
+  the existing memory model. Hidden controls are inert until their scroll moment appears.
+
 - Rebuilt the prototype's exam introduction as two separate scroll moments: one
   headline and one simple icon at a time. Removed all supporting paragraphs and
   diagram captions; a short empty beat separates the messages. Reduced motion

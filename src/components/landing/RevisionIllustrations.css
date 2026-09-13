@@ -17,10 +17,10 @@
 .revision-reel {
   display: inline-block;
   position: relative;
-  width: 1.46em;
+  width: 1.28em;
   height: 1.5em;
   vertical-align: -0.25em;
-  margin: -0.25em 0.035em -0.15em 0.13em;
+  margin: -0.25em 0.035em -0.15em 0.1em;
   overflow: hidden;
 }
 .revision-reel .revision-object {
@@ -32,8 +32,8 @@
   animation-delay: calc(var(--reel-duration, 24s) * (var(--object-index) / 12 - 1 - 0.0125));
 }
 .revision-reel .revision-object svg {
-  width: 1.12em;
-  height: 1.12em;
+  width: 1.04em;
+  height: 1.04em;
 }
 @keyframes revision-glyph-rise {
   0% {

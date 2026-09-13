@@ -4,25 +4,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 150px 24px 155px;
+  padding: 170px max(32px, 8vw) 180px;
   text-align: center;
   background: radial-gradient(ellipse at 50% 42%, #30271a55, transparent 57%);
 }
 .motion-opening-content {
   width: 100%;
+  max-width: 1040px;
 }
 .motion-opening-mark {
   color: var(--amber);
   margin: 0 auto 44px;
-  width: 68px;
+  width: 60px;
 }
 .motion-opening-mark svg {
-  width: 68px;
-  height: 68px;
+  width: 60px;
+  height: 60px;
   stroke-width: 1.2;
 }
 .motion-opening-prototype h1 {
-  font-size: clamp(44px, 6.15vw, 92px);
+  font-size: clamp(40px, 5.3vw, 78px);
   font-weight: 500;
   line-height: 1.15;
   letter-spacing: -0.058em;
@@ -39,14 +40,14 @@
 }
 .motion-opening-prototype .landing-cta {
   margin-top: 52px;
-  min-width: 204px;
-  min-height: 58px;
+  min-width: 184px;
+  min-height: 52px;
   border-radius: 40px;
-  font-size: 16px;
+  font-size: 15px;
 }
 .motion-opening-discover {
   position: absolute;
-  bottom: 47px;
+  bottom: 64px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -66,7 +67,7 @@
 }
 .motion-opening-pause {
   position: absolute;
-  bottom: 52px;
+  bottom: 69px;
   right: var(--landing-gutter);
   width: 40px;
   height: 40px;
@@ -197,18 +198,18 @@
 }
 @media (max-width: 700px) {
   .motion-opening-prototype {
-    padding: 135px 22px 155px;
+    padding: 145px 32px 165px;
   }
   .motion-opening-mark {
     margin-bottom: 35px;
-    width: 52px;
+    width: 46px;
   }
   .motion-opening-mark svg {
-    width: 52px;
-    height: 52px;
+    width: 46px;
+    height: 46px;
   }
   .motion-opening-prototype h1 {
-    font-size: clamp(37px, 8.7vw, 60px);
+    font-size: clamp(32px, 8vw, 52px);
     line-height: 1.2;
   }
   .motion-opening-line:last-child {
@@ -217,7 +218,7 @@
   }
   .motion-opening-prototype .landing-cta {
     margin-top: 38px;
-    min-height: 54px;
+    min-height: 50px;
   }
   .motion-prototype-download {
     font-size: 11px;
@@ -228,7 +229,7 @@
   }
   .motion-opening-pause {
     bottom: 65px;
-    right: 20px;
+    right: 32px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

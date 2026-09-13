@@ -8,6 +8,22 @@ afterEach(() => {
 });
 
 describe('desktop download selection', () => {
+  it('keeps the initial download choice to one compatibility line', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Macintosh' });
+    const { container } = render(<Download />, { wrapper: MemoryRouter });
+    expect(container.querySelectorAll('main p')).toHaveLength(1);
+    expect(screen.queryByText(/Desktop beta.*version/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Your revision. On your computer.')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Download Lacuna.' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Download for macOS' })).toHaveAttribute(
+      'href',
+      DOWNLOADS.macDmg,
+    );
+    expect(screen.queryByText(/drag Lacuna/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
+    expect(screen.getByText(/Privacy & Security/)).toBeVisible();
+  });
+
   it('links to the current desktop release', () => {
     expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.5/');
     expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.5/');
@@ -31,6 +47,7 @@ describe('desktop download selection', () => {
     expect(
       screen.queryByRole('link', { name: 'Download the Windows installer' }),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
     fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
     expect(screen.getByRole('link', { name: 'Download the Windows installer' })).toHaveAttribute(
       'href',
@@ -40,6 +57,7 @@ describe('desktop download selection', () => {
     expect(
       screen.queryByRole('link', { name: 'Download the DEB package' }),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
     fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
     expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
       'href',
@@ -64,15 +82,15 @@ describe('desktop download selection', () => {
 
     render(<Download />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('heading', { name: 'Choose your computer' })).toBeVisible();
-    expect(screen.queryByRole('heading', { name: 'Windows portable' })).not.toBeInTheDocument();
+    expect(screen.getByText('Choose your computer.')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Download for Windows' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Windows' })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Windows' }));
-    expect(screen.getByRole('heading', { name: 'Windows portable' })).toBeVisible();
+    expect(screen.getByText('64-bit Windows · portable')).toBeVisible();
   });
 
   it('recommends the no-admin portable build on Windows and explains its update trade-off', () => {
@@ -82,14 +100,15 @@ describe('desktop download selection', () => {
 
     render(<Download />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('heading', { name: 'Windows portable' })).toBeVisible();
+    expect(screen.getByText('64-bit Windows · portable')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
     expect(screen.getByText(/no installer or administrator account/i)).toBeVisible();
     expect(screen.getByText(/browser data is not copied/i)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Windows' })).toHaveAttribute(
       'href',
       DOWNLOADS.windowsPortable,
     );
-    expect(screen.getByText('x64 · manual updates')).toBeVisible();
+    expect(screen.getByText(/It uses manual updates/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
     expect(screen.getByRole('link', { name: 'Download the Windows installer' })).toHaveAttribute(
       'href',
@@ -108,8 +127,9 @@ describe('desktop download selection', () => {
     render(<Download />, { wrapper: MemoryRouter });
 
     fireEvent.click(screen.getByRole('button', { name: 'macOS' }));
-    expect(screen.getByRole('heading', { name: 'Apple Silicon Mac' })).toBeVisible();
-    expect(screen.getByText('Apple Silicon · manual updates')).toBeVisible();
+    expect(screen.getByText('Apple Silicon only')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
+    expect(screen.getByText(/Apple Silicon Macs only and uses manual updates/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for macOS' })).toHaveAttribute(
       'href',
       DOWNLOADS.macDmg,
@@ -124,8 +144,9 @@ describe('desktop download selection', () => {
     ).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
-    expect(screen.getByRole('heading', { name: 'Linux AppImage' })).toBeVisible();
-    expect(screen.getByText('x64 · automatic updates')).toBeVisible();
+    expect(screen.getByText('64-bit Linux · AppImage')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
+    expect(screen.getByText(/It uses automatic updates/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Download for Linux' })).toHaveAttribute(
       'href',
       DOWNLOADS.linuxAppImage,
