@@ -2,6 +2,10 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Simplified Quick search with a short input prompt and a small ink-style search
+  drawing. Keyboard hints appear on the first opening per device, then stay hidden
+  on later visits; keyboard controls and screen-reader announcements remain available.
+
 - Block new grades while Undo is restoring the previous answer, including after
   cancelling a card departure. Grading resumes when Undo succeeds or reports a failure.
 

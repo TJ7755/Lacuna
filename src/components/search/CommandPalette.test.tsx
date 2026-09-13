@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { flushSync } from 'react-dom';
-import { useEffect, useRef, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from './CommandPalette';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
@@ -116,7 +116,33 @@ vi.mock('../../state/useSearchData', () => ({
 }));
 
 describe('CommandPalette', () => {
-  beforeEach(() => dataHooks.useSearchData.mockClear());
+  beforeEach(() => {
+    dataHooks.useSearchData.mockClear();
+    localStorage.clear();
+  });
+
+  it('shows shortcut hints for the first opening only, including after remounting', () => {
+    const renderPalette = (open: boolean) => (
+      <StrictMode>
+        <CommandPalette open={open} onClose={vi.fn()} />
+      </StrictMode>
+    );
+    const first = render(renderPalette(false), { wrapper: MemoryRouter });
+    first.rerender(renderPalette(true));
+    expect(screen.getByText('Navigate')).toBeInTheDocument();
+    expect(screen.getByText('Esc')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Search…');
+    expect(screen.queryByText('Type to search across every course.')).not.toBeInTheDocument();
+
+    first.rerender(renderPalette(false));
+    first.rerender(renderPalette(true));
+    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
+    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
+    first.unmount();
+
+    render(renderPalette(true), { wrapper: MemoryRouter });
+    expect(screen.queryByText('Navigate')).not.toBeInTheDocument();
+  });
 
   it('restores focus to the Quick search trigger after Escape closes the palette', async () => {
     function Harness() {
@@ -146,7 +172,7 @@ describe('CommandPalette', () => {
     const trigger = screen.getByRole('button', { name: 'Quick search' });
     trigger.focus();
     fireEvent.click(trigger);
-    const input = await screen.findByPlaceholderText(/search courses/i);
+    const input = await screen.findByRole('combobox');
 
     fireEvent.keyDown(input, { key: 'Escape' });
 
@@ -163,14 +189,14 @@ describe('CommandPalette', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Quick search' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog.style.opacity).toBe('');
-    expect(screen.getByPlaceholderText(/search courses/i)).toHaveFocus();
+    expect(screen.getByRole('combobox')).toHaveFocus();
     expect(dataHooks.useSearchData).toHaveBeenCalled();
   });
 
   it('updates search results without a fixed debounce delay', () => {
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'missing' },
     });
 
@@ -197,7 +223,7 @@ describe('CommandPalette', () => {
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Palatine' },
     });
 
@@ -214,7 +240,7 @@ describe('CommandPalette', () => {
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Course Context' },
     });
 
@@ -231,7 +257,7 @@ describe('CommandPalette', () => {
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Palatine' },
     });
 
@@ -248,7 +274,7 @@ describe('CommandPalette', () => {
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
-    const input = screen.getByPlaceholderText(/search courses/i);
+    const input = screen.getByRole('combobox');
     expect(input).toHaveAttribute('role', 'combobox');
     expect(input).toHaveAttribute('aria-controls', 'palette-listbox');
     expect(input).toHaveAttribute('aria-autocomplete', 'list');
@@ -297,7 +323,7 @@ describe('CommandPalette', () => {
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
-    const input = screen.getByPlaceholderText(/search courses/i);
+    const input = screen.getByRole('combobox');
     fireEvent.change(input, { target: { value: 'Palatine' } });
 
     const options = await screen.findAllByRole('option');
@@ -330,12 +356,12 @@ describe('CommandPalette', () => {
     expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
     expect(liveRegion?.textContent).toMatch(/Type to search/);
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Palatine' },
     });
     expect(liveRegion?.textContent).toMatch(/1 result available/);
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'missing' },
     });
     expect(liveRegion?.textContent).toMatch(/No results for missing/);
@@ -355,7 +381,7 @@ describe('CommandPalette', () => {
     );
     render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'final velocity' },
     });
 
