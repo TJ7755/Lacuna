@@ -47,30 +47,26 @@ test('motion prototype keeps a stable promise, accessible motion control and dir
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(hero.getByRole('link', { name: 'Start revising' })).toBeInViewport();
   await hero.getByRole('link', { name: 'See how it works' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Your time sets the pace. Exam day sets the goal.' }),
-  ).toBeInViewport();
+  await expect(page.getByRole('heading', { name: 'Your time. Your pace.' })).toBeInViewport();
   await hero.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
 });
 
-test('exam introduction precedes the UI and animates the session around a fixed exam', async ({
-  page,
-}) => {
+test('exam introduction presents one idea at a time without subtitles', async ({ page }) => {
   await page.goto('/#/landing?variant=motion');
-  const scene = page.getByRole('region', {
-    name: 'Your time sets the pace. Exam day sets the goal.',
-  });
-  await expect(scene).toBeVisible();
+  const scene = page.locator('#landing-product');
+  await expect(scene.locator('p, svg text')).toHaveCount(0);
   expect(
     await page.locator('main').evaluate((main) => {
       const sections = [...main.children];
       return (
-        sections.findIndex((el) => el.id === 'landing-product') === 1 &&
+        sections[1].id === 'landing-product' &&
         sections[2].classList.contains('landing-walkthrough')
       );
     }),
   ).toBe(true);
+  const time = scene.locator('.exam-fit-time-beat');
+  const exam = scene.locator('.exam-fit-exam-beat');
   const scrollTo = async (progress: number) => {
     await scene.evaluate(
       (el, value) =>
@@ -81,20 +77,33 @@ test('exam introduction precedes the UI and animates the session around a fixed 
       progress,
     );
   };
-  await scrollTo(0);
-  const card = scene.locator('.exam-fit-card').first();
-  const initial = await card.evaluate((el) => getComputedStyle(el).transform);
-  const exam = scene.locator('.exam-fit-date');
-  const examTransform = await exam.getAttribute('transform');
-  await scrollTo(1);
-  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).transform)).not.toBe(initial);
-  await expect(exam).toHaveAttribute('transform', examTransform!);
-  await scrollTo(0);
-  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).transform)).toBe(initial);
+  for (const progress of [0, 0.3, 0.5, 0.7, 1, 0]) {
+    await scrollTo(progress);
+    await expect
+      .poll(() => scene.evaluate((el) => Number(getComputedStyle(el).getPropertyValue('--fit'))))
+      .toBeCloseTo(progress, 2);
+    const opacity = await scene.evaluate((el) =>
+      [...el.querySelectorAll('.exam-fit-beat')].map((beat) =>
+        Number(getComputedStyle(beat).opacity),
+      ),
+    );
+    expect(opacity.filter((value) => value > 0.01).length).toBeLessThanOrEqual(1);
+    if (progress === 0) {
+      await expect(time).toHaveCSS('opacity', '1');
+      await expect(exam).toHaveAttribute('aria-hidden', 'true');
+    }
+    if (progress === 1) {
+      await expect(exam).toHaveCSS('opacity', '1');
+      await expect(time).toHaveAttribute('aria-hidden', 'true');
+    }
+  }
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   await scene.scrollIntoViewIfNeeded();
   await expect(scene.locator('.exam-fit-stage')).toHaveCSS('position', 'relative');
+  await expect(time).toHaveCSS('opacity', '1');
+  await expect(exam).toHaveCSS('opacity', '1');
+  await expect(scene.getByRole('heading')).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

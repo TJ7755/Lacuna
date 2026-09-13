@@ -2,6 +2,11 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
+- Rebuilt the prototype's exam introduction as two separate scroll moments: one
+  headline and one simple icon at a time. Removed all supporting paragraphs and
+  diagram captions; a short empty beat separates the messages. Reduced motion
+  presents the same two moments as ordinary stacked sections.
+
 - Added a branch-only landing exploration at `/#/landing?variant=motion`: a spacious
   exam-focused headline with gliding revision illustrations, pause and reduced-motion
   support, quieter navigation, and a final start/download invitation. The existing
