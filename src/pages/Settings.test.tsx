@@ -194,7 +194,7 @@ describe('Settings', () => {
   it('labels switches whose visible descriptions sit outside the control', () => {
     render(<Settings />);
 
-    expect(screen.getByRole('switch', { name: 'Show ready card counts' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Show course hover details' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'After the final exam' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Ask me/ })).toBeChecked();
     expect(screen.getByRole('switch', { name: 'Compact mode' })).toBeInTheDocument();

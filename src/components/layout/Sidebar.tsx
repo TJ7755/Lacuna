@@ -9,6 +9,8 @@ import {
   ArchiveIcon,
   CardsIcon,
   ChartIcon,
+  CheckIcon,
+  CalendarIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -26,9 +28,9 @@ import {
 import { useSidebarData } from '../../state/useCourseData';
 import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
-import type { StudyStats } from '../../fsrs/stats';
 import { prefetchRoute } from '../../routes/prefetch';
-import { quickSearchShortcutLabel } from '../../electron/runtime';
+import { formatDate } from '../../utils/datetime';
+import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -55,7 +57,7 @@ function NavItem({
   label,
   collapsed,
   end,
-  streakBadge,
+  details,
   compact,
 }: {
   to: string;
@@ -63,43 +65,44 @@ function NavItem({
   label: string;
   collapsed: boolean;
   end?: boolean;
-  streakBadge?: React.ReactNode;
+  details?: SidebarDetail[];
   compact?: boolean;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   return (
-    <NavLink
-      to={to}
-      end={end}
-      onPointerEnter={() => prefetchRoute(to)}
-      onPointerDown={() => prefetchRoute(to)}
-      onFocus={() => prefetchRoute(to)}
-      title={collapsed ? label : undefined}
-      className={({ isActive }) =>
-        cn(
-          'group relative flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
-          compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-          collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-          isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-        )
-      }
-    >
-      {({ isActive }) => (
-        <>
-          {isActive && (
-            <motion.span
-              layoutId="nav-active"
-              transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
-            />
-          )}
-          <span className="shrink-0">{icon}</span>
-          {!collapsed && <span className="truncate">{label}</span>}
-          {!collapsed && streakBadge}
-        </>
-      )}
-    </NavLink>
+    <SidebarHoverCard title={label} details={details}>
+      <NavLink
+        to={to}
+        end={end}
+        onPointerEnter={() => prefetchRoute(to)}
+        onPointerDown={() => prefetchRoute(to)}
+        onFocus={() => prefetchRoute(to)}
+        title={collapsed ? label : undefined}
+        className={({ isActive }) =>
+          cn(
+            'group relative flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
+            compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+            collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
+            isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          )
+        }
+      >
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <motion.span
+                layoutId="nav-active"
+                transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
+              />
+            )}
+            <span className="shrink-0">{icon}</span>
+            {!collapsed && <span className="truncate">{label}</span>}
+          </>
+        )}
+      </NavLink>
+    </SidebarHoverCard>
   );
 }
 
@@ -142,9 +145,7 @@ function ActionNavItem({
   );
 }
 
-/** The sidebar's quick-search entry: opens the palette rather than routing to a
- *  page, with a visible ⌘K/Ctrl+K hint so it is discoverable without
- *  reading the shortcuts cheatsheet first. */
+/** Opens the palette without leaving the current page. */
 function SearchNavItem({
   onOpenPalette,
   collapsed,
@@ -154,12 +155,11 @@ function SearchNavItem({
   collapsed: boolean;
   compact?: boolean;
 }) {
-  const shortcutLabel = quickSearchShortcutLabel();
   return (
     <button
       type="button"
       onClick={onOpenPalette}
-      title={collapsed ? `Quick search (${shortcutLabel})` : undefined}
+      title={collapsed ? 'Quick search' : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
         compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
@@ -170,43 +170,8 @@ function SearchNavItem({
       <span className="shrink-0">
         <SearchIcon />
       </span>
-      {!collapsed && (
-        <>
-          <span className="flex-1 truncate">Quick search</span>
-          <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
-            {shortcutLabel}
-          </kbd>
-        </>
-      )}
+      {!collapsed && <span className="flex-1 truncate">Quick search</span>}
     </button>
-  );
-}
-
-function StudyStreakBadge({ collapsed, stats }: { collapsed: boolean; stats?: StudyStats }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-  const streak = stats?.streak ?? 0;
-  if (streak === 0) {
-    return null;
-  }
-  return (
-    <motion.span
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.3 * m }}
-      className={cn(
-        'group/streak ml-auto flex items-center gap-1 rounded-lg bg-accent/10 px-2 py-0.5 text-[11px] font-medium tabular text-accent',
-        collapsed && 'hidden',
-      )}
-      title={`${streak} day streak`}
-    >
-      <FlameIcon width={12} height={12} />
-      {streak}
-      {/* Hover: the bubble grows a word, expanding pill-to-squircle in place. */}
-      <span className="max-w-0 overflow-hidden whitespace-nowrap transition-[max-width] duration-300 ease-out group-hover/streak:max-w-20">
-        day streak
-      </span>
-    </motion.span>
   );
 }
 
@@ -248,7 +213,7 @@ const CourseRow = memo(function CourseRow({
   courseId,
   courseName,
   lessons,
-  eligible,
+  details,
   expanded,
   onToggle,
   collapsed,
@@ -258,7 +223,7 @@ const CourseRow = memo(function CourseRow({
   courseId: string;
   courseName: string;
   lessons: Lesson[];
-  eligible: number;
+  details?: SidebarDetail[];
   expanded: Set<string>;
   onToggle: (id: string) => void;
   collapsed: boolean;
@@ -273,65 +238,58 @@ const CourseRow = memo(function CourseRow({
     location.pathname === `/course/${courseId}` ||
     location.pathname.startsWith(`/course/${courseId}/`);
 
-  const eligibleBadge =
-    eligible > 0 ? (
-      <span
-        className={cn(
-          'ml-auto shrink-0 rounded-lg bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
-          compact && 'text-[9px]',
-        )}
-      >
-        {eligible}
-      </span>
-    ) : null;
-
   // Collapsed sidebar: icon-only link to the course page for every course.
   if (collapsed) {
     return (
-      <NavLink
-        to={`/course/${courseId}`}
-        onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
-        onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
-        onFocus={() => prefetchRoute(`/course/${courseId}`)}
-        title={courseName}
-        className={() =>
-          cn(
-            'flex min-h-11 items-center justify-center rounded-lg transition-all duration-150',
-            compact ? 'py-1.5' : 'py-2',
-            isCourseActive
-              ? 'bg-accent-soft text-accent'
-              : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-          )
-        }
-      >
-        <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
-      </NavLink>
+      <SidebarHoverCard title={courseName} details={details}>
+        <NavLink
+          to={`/course/${courseId}`}
+          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+          onFocus={() => prefetchRoute(`/course/${courseId}`)}
+          title={courseName}
+          className={() =>
+            cn(
+              'flex min-h-11 items-center justify-center rounded-lg transition-all duration-150',
+              compact ? 'py-1.5' : 'py-2',
+              isCourseActive
+                ? 'bg-accent-soft text-accent'
+                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+            )
+          }
+        >
+          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
+        </NavLink>
+      </SidebarHoverCard>
     );
   }
 
   // Single-lesson course: plain NavLink, no expander.
   if (!isMultiLesson) {
     return (
-      <NavLink
-        to={`/course/${courseId}`}
-        onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
-        onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
-        onFocus={() => prefetchRoute(`/course/${courseId}`)}
-        className={({ isActive }) =>
-          cn(
-            'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
-            compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-            'hover:translate-x-0.5',
-            isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-          )
-        }
-      >
-        <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
-        <span className="flex flex-1 items-center gap-2 min-w-0">
-          <span className="truncate">{courseName}</span>
-          {eligibleBadge}
-        </span>
-      </NavLink>
+      <SidebarHoverCard title={courseName} details={details}>
+        <NavLink
+          to={`/course/${courseId}`}
+          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+          onFocus={() => prefetchRoute(`/course/${courseId}`)}
+          className={({ isActive }) =>
+            cn(
+              'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
+              compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
+              'hover:translate-x-0.5',
+              isActive
+                ? 'bg-accent-soft text-accent'
+                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+            )
+          }
+        >
+          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
+          <span className="flex flex-1 items-center gap-2 min-w-0">
+            <span className="truncate">{courseName}</span>
+          </span>
+        </NavLink>
+      </SidebarHoverCard>
     );
   }
 
@@ -369,27 +327,28 @@ const CourseRow = memo(function CourseRow({
             <ChevronDownIcon width={12} height={12} />
           </motion.span>
         </button>
-        <div
-          role="link"
-          tabIndex={0}
-          onClick={() => navigate(`/course/${courseId}`)}
-          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
-          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
-          onFocus={() => prefetchRoute(`/course/${courseId}`)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              navigate(`/course/${courseId}`);
-            }
-          }}
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
-        >
-          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
-          <span className="flex flex-1 items-center gap-2 min-w-0">
-            <span className="truncate">{courseName}</span>
-            {eligibleBadge}
-          </span>
-        </div>
+        <SidebarHoverCard title={courseName} details={details}>
+          <div
+            role="link"
+            tabIndex={0}
+            onClick={() => navigate(`/course/${courseId}`)}
+            onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+            onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+            onFocus={() => prefetchRoute(`/course/${courseId}`)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                navigate(`/course/${courseId}`);
+              }
+            }}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
+          >
+            <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
+            <span className="flex flex-1 items-center gap-2 min-w-0">
+              <span className="truncate">{courseName}</span>
+            </span>
+          </div>
+        </SidebarHoverCard>
       </div>
 
       <AnimatePresence>
@@ -561,10 +520,21 @@ export function Sidebar({
                 label={n.id === 'search' ? 'Search content' : n.label}
                 collapsed={collapsed}
                 compact={sidebarSettings.compactMode}
-                streakBadge={
-                  n.id === 'dashboard' ? (
-                    <StudyStreakBadge collapsed={collapsed} stats={data?.stats} />
-                  ) : undefined
+                details={
+                  n.id === 'dashboard' && data?.stats
+                    ? [
+                        {
+                          icon: <FlameIcon width={14} height={14} />,
+                          label: 'Day streak',
+                          value: data.stats.streak,
+                        },
+                        {
+                          icon: <CheckIcon width={14} height={14} />,
+                          label: 'Reviewed today',
+                          value: data.stats.reviewedToday,
+                        },
+                      ]
+                    : undefined
                 }
               />
             ),
@@ -651,8 +621,30 @@ export function Sidebar({
                   courseId={course.id}
                   courseName={course.name}
                   lessons={lessonsByCourse.get(course.id) ?? []}
-                  eligible={
-                    sidebarSettings.showDueCounts ? (summaries?.[course.id]?.eligible ?? 0) : 0
+                  details={
+                    sidebarSettings.showDueCounts && summaries?.[course.id]
+                      ? [
+                          {
+                            icon: <CardsIcon width={14} height={14} />,
+                            label: 'Ready to study',
+                            value: summaries[course.id].eligible,
+                          },
+                          {
+                            icon: <SparklesIcon width={14} height={14} />,
+                            label: 'New cards',
+                            value: summaries[course.id].unreviewed,
+                          },
+                          ...(course.examDate
+                            ? [
+                                {
+                                  icon: <CalendarIcon width={14} height={14} />,
+                                  label: 'Exam',
+                                  value: formatDate(course.examDate, course.timeZone),
+                                },
+                              ]
+                            : []),
+                        ]
+                      : undefined
                   }
                   expanded={expandedCourses}
                   onToggle={toggleCourse}

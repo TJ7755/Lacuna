@@ -19,7 +19,7 @@ export function SidebarSection() {
         <SettingsSectionHeading className="font-display text-xl">Sidebar</SettingsSectionHeading>
       </div>
       <SettingToggle
-        title="Show ready card counts"
+        title="Show course hover details"
         checked={sidebarSettings.showDueCounts}
         onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
       />
