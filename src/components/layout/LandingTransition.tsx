@@ -88,9 +88,9 @@ export function LandingTransition() {
         }
         transition={
           covered
-            ? { duration: 0.36 * multiplier, ease: REVEAL_EASE }
+            ? { duration: 0.24 * multiplier, ease: REVEAL_EASE }
             : {
-                transform: { duration: 0.38 * multiplier, ease: SWEEP_EASE },
+                transform: { duration: 0.24 * multiplier, ease: SWEEP_EASE },
                 borderRadius: { duration: 0.08 * multiplier, ease: SWEEP_EASE },
               }
         }

@@ -58,8 +58,8 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
   for (const event of events) {
     if (
       event.name !== 'RasterTask' ||
-      event.ts < begin!.ts + 200_000 ||
-      event.ts > covered!.ts - 50_000
+      event.ts < begin!.ts + 120_000 ||
+      event.ts > covered!.ts - 30_000
     )
       continue;
     const tile = event.args?.tileData;
@@ -109,8 +109,8 @@ for (const label of ['Start revising', 'Open Lacuna']) {
       launchSamples: { phase: string; duration: number; quarterWidth: number; viewport: number }[];
     }).launchSamples);
     expect(samples.map((sample) => sample.phase)).toEqual(['cover', 'reveal']);
-    expect(samples[0].duration).toBeLessThanOrEqual(420);
-    expect(samples[1].duration).toBeLessThanOrEqual(400);
+    expect(samples[0].duration).toBeLessThanOrEqual(260);
+    expect(samples[1].duration).toBeLessThanOrEqual(260);
     // The expansion has already covered most of the width at its first quarter,
     // rather than spending the first half of the transition winding up.
     expect(samples[0].quarterWidth / samples[0].viewport).toBeGreaterThan(0.6);

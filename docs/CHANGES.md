@@ -6,8 +6,8 @@
   cover, where it briefly exposed the old landing page during the dashboard reveal.
 
 - Made landing-page app entry respond immediately and reveal the dashboard sooner.
-  The existing solid expansion now accelerates quickly, and the dashboard settles
-  with an undelayed, non-bouncing spring. Motion-speed settings and reduced motion
+  The solid expansion and reveal each take 240 ms, with immediate acceleration;
+  the dashboard settles with an undelayed, non-bouncing 320 ms spring. Motion-speed settings and reduced motion
   retain their existing behaviour.
 
 - Simplified the landing page's recall scene to one heading, a quieter graph and a

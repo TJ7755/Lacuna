@@ -221,7 +221,7 @@ function AppShellLayout() {
     <motion.div
       initial={arrivedFromLanding && motionEnabled ? { scale: 0.975 } : false}
       animate={arrivedFromLanding && motionEnabled ? { scale: 1 } : undefined}
-      transition={{ type: 'spring', duration: 0.46 * m, bounce: 0 }}
+      transition={{ type: 'spring', duration: 0.32 * m, bounce: 0 }}
       className="flex h-screen overflow-hidden flex-col"
     >
       <div ref={titlebarRef} className="shrink-0">
