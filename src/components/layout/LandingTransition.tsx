@@ -8,7 +8,7 @@ const BEGIN_EVENT = 'lacuna:landing-transition';
 export const COVERED_EVENT = 'lacuna:landing-covered';
 const ARRIVAL_KEY = 'lacuna.landingArrival';
 
-const SWEEP_EASE = [0.65, 0, 0.25, 1] as const;
+const SWEEP_EASE = [0.16, 1, 0.3, 1] as const;
 const REVEAL_EASE = [0.22, 1, 0.36, 1] as const;
 
 interface Appearance {
@@ -21,9 +21,14 @@ export function beginLandingTransition(rect: DOMRect, appearance: Appearance): v
   window.dispatchEvent(new CustomEvent(BEGIN_EVENT, { detail: { rect, ...appearance } }));
 }
 
+/** The route boundary can skip its fade while the solid launch cover is present. */
+export function hasLandingArrival(): boolean {
+  return sessionStorage.getItem(ARRIVAL_KEY) === '1';
+}
+
 /** One-shot check for the arrival flag set by beginLandingTransition. */
 export function consumeLandingArrival(): boolean {
-  const arrived = sessionStorage.getItem(ARRIVAL_KEY) === '1';
+  const arrived = hasLandingArrival();
   if (arrived) sessionStorage.removeItem(ARRIVAL_KEY);
   return arrived;
 }
@@ -83,10 +88,10 @@ export function LandingTransition() {
         }
         transition={
           covered
-            ? { duration: 0.65 * multiplier, ease: REVEAL_EASE }
+            ? { duration: 0.24 * multiplier, ease: REVEAL_EASE }
             : {
-                transform: { duration: 0.65 * multiplier, ease: SWEEP_EASE },
-                borderRadius: { duration: 0.1 * multiplier, ease: SWEEP_EASE },
+                transform: { duration: 0.24 * multiplier, ease: SWEEP_EASE },
+                borderRadius: { duration: 0.08 * multiplier, ease: SWEEP_EASE },
               }
         }
         onAnimationComplete={() => {
