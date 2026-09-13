@@ -328,7 +328,10 @@ describe('course share codes (v2)', () => {
   beforeEach(reset);
 
   it('round-trips a course with lessons, notes, mixed card types and an exam date', async () => {
-    const course = await createCourse('Biology', { unlockMode: 'semi-linear' });
+    const course = await createCourse('Biology', {
+      unlockMode: 'semi-linear',
+      learnFirst: false,
+    });
     const lessonA = await createLesson(course.id, 'Cells');
     const lessonB = await createLesson(course.id, 'Genetics');
 
@@ -361,6 +364,7 @@ describe('course share codes (v2)', () => {
 
     expect(payload.course.n).toBe('Biology');
     expect(payload.course.um).toBe('semi-linear');
+    expect(payload.course.lf).toBe(0);
     expect(payload.lessons).toHaveLength(2);
     expect(payload.lessons.map((l) => l.n)).toEqual(['Cells', 'Genetics']);
     expect(payload.lessons[0].notes).toHaveLength(1);
@@ -386,6 +390,7 @@ describe('course share codes (v2)', () => {
     expect(result.courseIds).toEqual([imported.id]);
     expect(imported.name).toBe('Biology');
     expect(imported.unlockMode).toBe('semi-linear');
+    expect(imported.learnFirst).toBe(false);
     // Imported courses default to study (read-only) mode, regardless of the
     // sharer's own lessonViewMode — the share payload never packs it.
     expect(imported.lessonViewMode).toBe('study');

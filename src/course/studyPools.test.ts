@@ -11,6 +11,7 @@ import { makeExamDateContext } from '../fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import {
   eligiblePracticePool,
+  directLessonStudyPool,
   lessonCardMembership,
   lessonStudyPool,
   practiceCardScope,
@@ -109,9 +110,60 @@ describe('lesson pools', () => {
     expect(lessonStudyPool('l1', cards, links, [exposure('l2', 'linked')])).toEqual(cards);
     expect(lessonStudyPool('l1', cards, links, [exposure('l1', 'linked')])).toEqual([]);
   });
+
+  it('admits lesson members directly while respecting the new-card cap', () => {
+    const cards = [
+      makeCard('first', 'l1', { createdAt: 1 }),
+      makeCard('second', 'l1', { createdAt: 2 }),
+      makeCard('other-lesson', 'l2', { createdAt: 0 }),
+    ];
+    const course = { ...makeCourse(), newCardsPerDay: 1 };
+
+    expect(directLessonStudyPool('l1', cards, [], course, NOW).map((card) => card.id)).toEqual([
+      'first',
+    ]);
+  });
+
+  it('counts recent introductions across the whole course for a direct lesson', () => {
+    const introducedElsewhere = makeCard('introduced', 'l2', {
+      state: 1,
+      history: [
+        {
+          timestamp: NOW - 1,
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 1,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    const newLessonCard = makeCard('new', 'l1');
+    expect(
+      directLessonStudyPool(
+        'l1',
+        [introducedElsewhere, newLessonCard],
+        [],
+        { ...makeCourse(), newCardsPerDay: 1 },
+        NOW,
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('practice pools', () => {
+  it('admits reached unexposed cards when introductions are disabled', () => {
+    const card = makeCard('primary', 'l1', { state: 1 });
+    expect(
+      practiceCardScope([card], [], [], {
+        reachedLessonIds: new Set(['l1']),
+        requireExposure: false,
+      }),
+    ).toEqual([card]);
+  });
   it('requires both reached membership and an exposure somewhere', () => {
     const cards = [makeCard('primary', 'l1'), makeCard('linked', 'l3'), makeCard('unseen', 'l1')];
     const scope = practiceCardScope(

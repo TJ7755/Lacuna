@@ -54,7 +54,7 @@ export function currentAssessmentPracticeContext(
     context.cards,
     context.links,
     context.exposures,
-    { reachedLessonIds },
+    { reachedLessonIds, requireExposure: context.course.learnFirst !== false },
     now,
     context.course.leechThreshold,
   );
@@ -77,7 +77,10 @@ export function assessmentPracticePool(
     context.cards,
     context.links,
     context.exposures,
-    { reachedLessonIds: context.reachedLessonIds },
+    {
+      reachedLessonIds: context.reachedLessonIds,
+      requireExposure: context.course.learnFirst !== false,
+    },
     now,
     context.course.leechThreshold,
   );

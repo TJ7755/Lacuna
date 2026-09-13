@@ -170,10 +170,10 @@ describe('LearnMode course/lesson scope', () => {
     }
   });
 
-  it('teaches a lesson in Simple mode and records only lesson-scoped exposure', async () => {
+  it('teaches a lesson in Simple mode and records its lesson-scoped FSRS review', async () => {
     const course = await createCourse('Chemistry');
     const lesson = await createLesson(course.id, 'Atomic structure');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
 
     render(
       <ThemeProvider>
@@ -200,14 +200,27 @@ describe('LearnMode course/lesson scope', () => {
     await act(async () => {
       fireEvent.click(yes);
       for (let attempt = 0; attempt < 50; attempt += 1) {
-        if ((await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()) === 1)
+        if (
+          (await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()) === 1 &&
+          (await db.reviewHistory.where('cardId').equals(card.id).count()) === 1
+        )
           return;
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
     });
     expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
-    expect(await db.sessionHistory.count()).toBe(0);
-    expect((await db.cards.toArray())[0].state).toBe(0);
+    const reviews = await storedReviewsForCard(card.id);
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toMatchObject({
+      cardId: card.id,
+      courseId: course.id,
+      primaryLessonId: lesson.id,
+      sessionKind: 'lesson',
+      correct: true,
+    });
+    await waitFor(async () => expect(await db.sessionHistory.count()).toBe(1));
+    expect(await db.cards.get(card.id)).toMatchObject({ reps: 1 });
+    expect((await db.cards.get(card.id))?.state).not.toBe(0);
   });
 
   it('ratchets the next lesson unlock under semi-linear mode once the studied lesson is taught', async () => {

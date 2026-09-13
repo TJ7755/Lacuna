@@ -833,6 +833,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
       createdAt: payload.course.c,
       examDate: payload.course.e,
       unlockMode: payload.course.um,
+      ...(payload.course.lf === 0 ? { learnFirst: false } : {}),
       lessonViewMode: 'study',
       ...(payload.course.l ? { colour: payload.course.l } : {}),
       distributedCopy: {

@@ -136,7 +136,7 @@ export function buildCourseStudyFlowSnapshot({
     cards,
     links,
     exposures,
-    { reachedLessonIds },
+    { reachedLessonIds, requireExposure: course.learnFirst !== false },
     now,
     course.leechThreshold,
   );
@@ -152,7 +152,11 @@ export function buildCourseStudyFlowSnapshot({
       cards,
       links,
       exposures,
-      { reachedLessonIds: scopeLessonIds, practiceNode: node.practiceNode },
+      {
+        reachedLessonIds: scopeLessonIds,
+        practiceNode: node.practiceNode,
+        requireExposure: course.learnFirst !== false,
+      },
       now,
       course.leechThreshold,
     );
@@ -168,7 +172,11 @@ export function buildCourseStudyFlowSnapshot({
             cards,
             links,
             exposures,
-            { reachedLessonIds, practiceNode: node.practiceNode },
+            {
+              reachedLessonIds,
+              practiceNode: node.practiceNode,
+              requireExposure: course.learnFirst !== false,
+            },
             now,
             course.leechThreshold,
           );

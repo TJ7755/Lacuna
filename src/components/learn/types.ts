@@ -22,7 +22,7 @@ export interface SessionSummary {
   limitReached: boolean;
   /** True when the session ended because the session time limit was reached. */
   timeLimitReached?: boolean;
-  /** True when this session was a simple mode (no algorithms, YES/NO only). */
+  /** True for the first-pass YES/NO loop, whose answers also update FSRS. */
   simpleMode?: boolean;
   /** Visual mode identifier for the session report UI. */
   mode?:

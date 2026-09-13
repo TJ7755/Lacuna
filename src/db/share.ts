@@ -253,6 +253,7 @@ const ShareCourseSchema = z
     sm: z.literal(1).optional(), // steady retention; absent means exam-targeted
     r: z.number().optional(), // requestRetention
     p: z.number().optional(), // newCardsPerDay
+    lf: z.literal(0).optional(), // skip lesson introductions; absent means learn first
     l: z.string().optional(), // colour
     um: z.union([z.literal('linear'), z.literal('semi-linear'), z.literal('open')]),
   })
@@ -478,6 +479,7 @@ interface ShareDeck {
   e: number; // examDate (date due)
   r?: number; // requestRetention
   p?: number; // newCardsPerDay
+  lf?: 0; // skip lesson introductions; absent means learn first
   l?: string; // colour
   cards: ShareCard[];
 }
@@ -514,6 +516,7 @@ interface ShareCourse {
   sm?: 1; // steady retention; absent means exam-targeted
   r?: number; // requestRetention
   p?: number; // newCardsPerDay
+  lf?: 0; // skip lesson introductions; absent means learn first
   l?: string; // colour
   um: UnlockMode;
 }
@@ -1134,6 +1137,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
     ...(finalAssessment.schedulingMode === 'steady' ? { sm: 1 as const } : {}),
     r: course.fsrsParameters.requestRetention,
     ...(course.newCardsPerDay ? { p: course.newCardsPerDay } : {}),
+    ...(course.learnFirst === false ? { lf: 0 as const } : {}),
     ...(course.colour ? { l: course.colour } : {}),
     um: course.unlockMode,
   };
@@ -1383,6 +1387,7 @@ async function importCourseSharePayload(
             : {}),
         },
         ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
+        ...(payload.course.lf === 0 ? { learnFirst: false } : {}),
         ...(payload.course.l ? { colour: payload.course.l } : {}),
         unlockMode: payload.course.um,
         // Imported courses default to study (read-only) mode regardless of the

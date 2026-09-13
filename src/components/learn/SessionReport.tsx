@@ -271,7 +271,7 @@ export function SessionReport({
           />
         </div>
 
-        {/* Grade distribution — hidden in simple mode (no meaningful grades). */}
+        {/* Keep the first-pass report focused on correct and remaining cards. */}
         {!summary.simpleMode && (
           <div className="mb-6 rounded-2xl border border-line bg-surface p-6">
             <h3 className="mb-4 font-display text-xl">How you rated</h3>

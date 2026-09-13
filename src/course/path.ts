@@ -249,6 +249,7 @@ export function lessonStatus(
   lessonCards: Card[],
   exposures: LessonCardExposure[],
   completions: LessonCompletion[],
+  learnFirst = true,
 ): LessonStatus {
   if (!unlocked) return 'locked';
   if (lessonCards.length === 0) {
@@ -256,6 +257,7 @@ export function lessonStatus(
       ? 'completed'
       : 'available';
   }
+  if (!learnFirst) return lessonCards.every((card) => card.state !== 0) ? 'completed' : 'available';
   const exposedIds = new Set(
     exposures
       .filter((exposure) => exposure.lessonId === lessonId)
@@ -369,7 +371,6 @@ export function buildPath(
   const completedLessonIds = new Set(
     progress.lessonCompletions.map((completion) => completion.lessonId),
   );
-
   // Build lesson nodes in path order.
   const lessonNodes: LessonPathNode[] = sorted.map((lesson) => {
     const unlocked = isLessonUnlockedWithFirstCore(
@@ -387,7 +388,9 @@ export function buildPath(
         ? completedLessonIds.has(lesson.id)
           ? 'completed'
           : 'available'
-        : cards.every((card) => exposedCardIds?.has(card.id))
+        : cards.every((card) =>
+              course.learnFirst === false ? card.state !== 0 : exposedCardIds?.has(card.id),
+            )
           ? 'completed'
           : 'available';
     return {

@@ -333,6 +333,13 @@ describe('lessonStatus', () => {
       ),
     ).toBe('available');
   });
+
+  it('uses real scheduling state for a course that skips introductions', () => {
+    const newCard = makeCard({ id: 'new', deckId: 'd', state: 0 });
+    const scheduledCard = makeCard({ id: 'scheduled', deckId: 'd', state: 1 });
+    expect(lessonStatus(true, 'l1', [newCard, scheduledCard], [], [], false)).toBe('available');
+    expect(lessonStatus(true, 'l1', [scheduledCard], [], [], false)).toBe('completed');
+  });
 });
 
 // ---------------------------------------------------------------------------

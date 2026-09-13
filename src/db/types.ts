@@ -65,11 +65,7 @@ export type ExamObjective = 'expectedMarks' | 'securedTopics';
 
 /** The study context that produced a review event. */
 export type ReviewSessionKind =
-  | 'deck'
-  | 'lesson'
-  | 'practice'
-  | 'assessment-revision'
-  | 'revision-plan';
+  'deck' | 'lesson' | 'practice' | 'assessment-revision' | 'revision-plan';
 
 /** A single review event appended to a card's history. */
 export interface ReviewLog {
@@ -340,6 +336,8 @@ export interface CourseRecord {
   fsrsParameters: FsrsParameters;
   examObjective: ExamObjective;
   newCardsPerDay?: number;
+  /** Whether lesson sessions introduce cards before scheduling them. Undefined defaults to true. */
+  learnFirst?: boolean;
   maxReviewsPerDay?: number;
   archived?: boolean;
   autoOptimise?: boolean;
@@ -1054,12 +1052,7 @@ export interface Tombstone {
 }
 
 export type AgentMemoryTag =
-  | 'misconception'
-  | 'plateau'
-  | 'preference'
-  | 'session'
-  | 'strength'
-  | 'context';
+  'misconception' | 'plateau' | 'preference' | 'session' | 'strength' | 'context';
 
 export type AgentMemoryStatus = 'active' | 'uncertain' | 'resolved';
 export type AgentMemoryBasis = 'learner-stated' | 'agent-inferred' | 'observed-performance';

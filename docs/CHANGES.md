@@ -2,6 +2,13 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Added a per-course **Learn first** setting, enabled by default. Turning it off lets
+  new cards enter spaced repetition without a separate introduction pass, while
+  retaining lesson locks and daily new-card pacing. Shared courses retain the preference.
+- Simple Learn now records real FSRS reviews using Practice's timing-based grading,
+  calibration and hint handling. Its Yes/No queue still repeats missed cards and
+  finishes when every card is correct; later Practice uses the resulting memory state.
+  Existing introduction records are preserved without inventing historical reviews.
 - Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3 and the Prettier
   ESLint configuration to 10.1.8. Retained Zod's existing MCP wire schema and the
   application frameworks and compiler, lint and test majors.

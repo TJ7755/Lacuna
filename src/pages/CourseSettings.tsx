@@ -73,6 +73,7 @@ export function CourseSettings() {
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [objective, setObjective] = useState<ExamObjective>('expectedMarks');
   const [newPerDay, setNewPerDay] = useState('');
+  const [learnFirst, setLearnFirst] = useState(true);
   const [maxReviewsPerDay, setMaxReviewsPerDay] = useState('');
   const [retention, setRetention] = useState(DEFAULT_REQUEST_RETENTION);
   const [enableFuzz, setEnableFuzz] = useState(true);
@@ -113,6 +114,7 @@ export function CourseSettings() {
     setTimeZone(course.timeZone);
     setObjective(course.examObjective);
     setNewPerDay(course.newCardsPerDay ? String(course.newCardsPerDay) : '');
+    setLearnFirst(course.learnFirst !== false);
     setMaxReviewsPerDay(course.maxReviewsPerDay ? String(course.maxReviewsPerDay) : '');
     setRetention(clampRequestRetention(course.fsrsParameters.requestRetention));
     setEnableFuzz(course.fsrsParameters.enable_fuzz ?? true);
@@ -363,6 +365,22 @@ export function CourseSettings() {
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Scheduling</h3>
                 <div className="flex flex-col gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-ink-soft">Learn first</p>
+                      <p className="mt-1 text-xs text-ink-faint">
+                        Turn this off to start new cards directly in spaced repetition.
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={learnFirst}
+                      onChange={(checked) => {
+                        setLearnFirst(checked);
+                        commitCourse({ learnFirst: checked });
+                      }}
+                      ariaLabel="Learn first"
+                    />
+                  </div>
                   <SchedulingFieldsSection
                     newCardsPerDay={newPerDay}
                     onNewCardsPerDayChange={setNewPerDay}
