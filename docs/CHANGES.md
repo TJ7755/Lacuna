@@ -2,6 +2,19 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Report rejected Study/Author mode saves through the existing toast feedback.
+
+- Fixed duplicate navigation and workspace controls in single-lesson courses after
+  moving course navigation into the shell. Archived analytics coverage now renders
+  the shell-owned navigation alongside the page, preserving its read-only assertions.
+
+- Aligned Cards, Questions, Analytics and course Settings with Path's content width,
+  back link and title position, keeping the course scroll gutter stable between tabs.
+  Removed the Questions caption and kept the shared Study/Author control visible
+  across all five course sections, respecting archived and locked courses.
+  Course navigation now stays mounted while the page content slides in and out
+  in the tab direction, with reduced-motion preferences respected.
+
 - Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3 and the Prettier
   ESLint configuration to 10.1.8. Retained Zod's existing MCP wire schema and the
   application frameworks and compiler, lint and test majors.
