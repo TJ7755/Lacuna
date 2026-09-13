@@ -10,6 +10,7 @@ import type {
 import { makeExamDateContext } from '../fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { buildPath } from './path';
+import { planNextStudyStep } from './studyFlowPlanner';
 import {
   buildCourseStudyFlowSnapshot,
   courseMeanReviewSeconds,
@@ -101,6 +102,93 @@ function assessment(id: string, examDate: number, afterLessonId: string): Course
 }
 
 describe('buildCourseStudyFlowSnapshot', () => {
+  it.each([MS_PER_DAY, 0, -MS_PER_DAY])(
+    'only offers final-lesson review when due (%ims)',
+    (dueOffset) => {
+      const c = course();
+      const finalLesson = lesson('final', 0);
+      const futureCard: Card = {
+        ...card('future', 'final'),
+        state: 2,
+        stability: 10,
+        difficulty: 5,
+        reps: 1,
+        lastReviewed: NOW,
+        due: NOW + dueOffset,
+      };
+      const snapshot = buildCourseStudyFlowSnapshot({
+        course: c,
+        nodes: [{ id: 'final', nodeType: 'lesson', lesson: finalLesson, status: 'completed' }],
+        cards: [futureCard],
+        links: [],
+        exposures: [exposure('final', 'future')],
+        examDateContext: makeExamDateContext(c, [finalLesson], []),
+        meanReviewSeconds: 30,
+        now: NOW,
+      });
+
+      expect(snapshot.recurringPracticeEligibleCount).toBe(dueOffset > 0 ? 0 : 1);
+      expect(planNextStudyStep(snapshot)).toEqual(
+        dueOffset > 0
+          ? { kind: 'complete' }
+          : {
+              kind: 'step',
+              step: { kind: 'practice', nodeKey: 'end', mode: 'recurring', label: 'Practice' },
+            },
+      );
+      if (dueOffset > 0) {
+        const nextLesson = lesson('next', 1);
+        snapshot.nodes.push({
+          id: 'next',
+          nodeType: 'lesson',
+          lesson: nextLesson,
+          status: 'available',
+        });
+        expect(planNextStudyStep(snapshot)).toEqual({
+          kind: 'step',
+          step: { kind: 'lesson', lessonId: 'next', label: 'next' },
+        });
+      }
+    },
+  );
+
+  it('keeps exposed introductions and curricular practice available independently of recurring due reviews', () => {
+    const c = course({ newCardsPerDay: 1 });
+    const l = lesson('l1', 0);
+    const cards = [card('new-1', 'l1'), card('new-2', 'l1')];
+    const input = {
+      course: c,
+      nodes: [
+        { id: 'l1', nodeType: 'lesson' as const, lesson: l, status: 'completed' as const },
+        { id: 'auto', nodeType: 'practice-auto' as const, nodeKey: 'auto', afterLessonId: 'l1' },
+      ],
+      cards,
+      links: [],
+      exposures: cards.map((card) => exposure('l1', card.id)),
+      examDateContext: makeExamDateContext(c, [l], []),
+      meanReviewSeconds: 30,
+      now: NOW,
+    };
+    expect(buildCourseStudyFlowSnapshot(input).recurringPracticeEligibleCount).toBe(2);
+
+    const snapshot = buildCourseStudyFlowSnapshot({
+      ...input,
+      cards: cards.map((card) => ({
+        ...card,
+        state: 2,
+        stability: 10,
+        lastReviewed: NOW,
+        due: NOW + MS_PER_DAY,
+      })),
+    });
+    expect(snapshot.recurringPracticeEligibleCount).toBe(0);
+    expect(snapshot.practiceByKey.get('auto')?.active).toBe(true);
+    expect(planNextStudyStep(snapshot)).toEqual({
+      kind: 'step',
+      step: { kind: 'practice', nodeKey: 'auto', mode: 'curricular', label: 'Practice' },
+    });
+  });
+
   it('averages review time once per backing deck', () => {
     const cards = [
       card('c1', 'l1'),

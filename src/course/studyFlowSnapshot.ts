@@ -10,6 +10,7 @@ import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
+  dueStudyPool,
   eligiblePracticePool,
   practiceCardScope,
   practiceReadiness,
@@ -239,9 +240,11 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey.set(practice.nodeKey, state);
   }
 
-  const recurringPracticeEligibleCount = eligiblePracticePool(
+  // Recurring review must have work now; future weak cards still belong to
+  // curricular Practice. Course Practice does not cap already exposed introductions.
+  const recurringPracticeEligibleCount = dueStudyPool(
     recurringScope,
-    course,
+    { ...course, newCardsPerDay: undefined },
     examDateContext,
     now,
   ).length;

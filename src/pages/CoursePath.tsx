@@ -345,7 +345,7 @@ export function CoursePath() {
           <LazyLessonView
             courseId={courseId}
             lessonId={lessons[0].id}
-            showStudyNow={!archived}
+            showStudyNow={!archived && studyTarget !== null}
             practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
@@ -493,7 +493,7 @@ export function CoursePath() {
                 <p className="text-sm text-ink-faint">
                   {courseCards.length === 0
                     ? 'Add cards to begin studying.'
-                    : 'Nothing due — next lesson available.'}
+                    : 'Nothing due right now.'}
                 </p>
               )}
             </div>

@@ -27,6 +27,12 @@
   topic instead of nested prose cards. Question analytics now uses a compact performance
   table, with sample counts and exclusions in an expandable details row.
 
+- Stop offering another recurring Practice session or due-card review after the final
+  lesson when the remaining cards are scheduled for later. Recurring actions now use
+  the existing due-and-mastery filter; curricular Practice and exposed introductions
+  retain their existing rules. Single-lesson courses hide empty study actions, and
+  course/lesson headers no longer promise an available next lesson unconditionally.
+
 - Wait for persisted workspace mode before reloading in browser tests, and for the
   initial page transition to finish before measuring course-section slides.
 

@@ -187,6 +187,21 @@ beforeEach(() => {
 });
 
 describe('LessonView Study mode', () => {
+  it('does not promise another lesson when the displayed lesson has nothing due', () => {
+    mockLessonCards = [
+      {
+        ...makeCard('future'),
+        state: 2,
+        stability: 1,
+        lastReviewed: Date.now(),
+        due: Date.now() + MS_PER_DAY,
+      },
+    ];
+    renderInline(true);
+    expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
+    expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
+  });
+
   it('keeps an archived single-lesson course read-only', () => {
     mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
 
