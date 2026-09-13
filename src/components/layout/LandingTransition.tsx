@@ -8,7 +8,7 @@ const BEGIN_EVENT = 'lacuna:landing-transition';
 export const COVERED_EVENT = 'lacuna:landing-covered';
 const ARRIVAL_KEY = 'lacuna.landingArrival';
 
-const SWEEP_EASE = [0.65, 0, 0.25, 1] as const;
+const SWEEP_EASE = [0.16, 1, 0.3, 1] as const;
 const REVEAL_EASE = [0.22, 1, 0.36, 1] as const;
 
 interface Appearance {
@@ -83,10 +83,10 @@ export function LandingTransition() {
         }
         transition={
           covered
-            ? { duration: 0.65 * multiplier, ease: REVEAL_EASE }
+            ? { duration: 0.36 * multiplier, ease: REVEAL_EASE }
             : {
-                transform: { duration: 0.65 * multiplier, ease: SWEEP_EASE },
-                borderRadius: { duration: 0.1 * multiplier, ease: SWEEP_EASE },
+                transform: { duration: 0.38 * multiplier, ease: SWEEP_EASE },
+                borderRadius: { duration: 0.08 * multiplier, ease: SWEEP_EASE },
               }
         }
         onAnimationComplete={() => {

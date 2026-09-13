@@ -219,9 +219,9 @@ function AppShellLayout() {
     // Skip the scale entirely otherwise — a standing transform here would pin
     // every `position: fixed` descendant to this wrapper.
     <motion.div
-      initial={arrivedFromLanding && motionEnabled ? { scale: 0.96 } : false}
+      initial={arrivedFromLanding && motionEnabled ? { scale: 0.975 } : false}
       animate={arrivedFromLanding && motionEnabled ? { scale: 1 } : undefined}
-      transition={{ duration: 0.7 * m, delay: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ type: 'spring', duration: 0.46 * m, bounce: 0 }}
       className="flex h-screen overflow-hidden flex-col"
     >
       <div ref={titlebarRef} className="shrink-0">

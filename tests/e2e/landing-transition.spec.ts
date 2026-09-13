@@ -73,3 +73,46 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
     Math.max(0, ...[...rasterFrames.values()].map((frames) => frames.size)),
   ).toBeLessThanOrEqual(2);
 });
+
+for (const label of ['Start revising', 'Open Lacuna']) {
+  test(`${label} launches promptly while preserving the continuous cover`, async ({ page }) => {
+    await page.goto('/#/welcome');
+    await page.evaluate(() => {
+      const samples: { phase: string; duration: number; quarterWidth: number; viewport: number }[] = [];
+      Object.assign(window, { launchSamples: samples });
+      let covered = false;
+      window.addEventListener('lacuna:landing-covered', () => { covered = true; });
+      window.addEventListener('lacuna:landing-transition', () => {
+        const sample = () => {
+          const surface = document.querySelector('[data-landing-transition] > div');
+          const animation = surface?.getAnimations().find((entry) =>
+            (entry.effect as KeyframeEffect).getKeyframes().some((frame) => frame.transform),
+          );
+          const phase = covered ? 'reveal' : 'cover';
+          if (animation && !samples.some((entry) => entry.phase === phase)) {
+            const duration = Number(animation.effect!.getTiming().duration);
+            const previous = animation.currentTime;
+            animation.currentTime = duration / 4;
+            const quarterWidth = surface!.getBoundingClientRect().width;
+            animation.currentTime = previous;
+            samples.push({ phase, duration, quarterWidth, viewport: innerWidth });
+          }
+          if (samples.length < 2) requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }, { once: true });
+    });
+    await page.getByRole('link', { name: label, exact: true }).first().click();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
+    const samples = await page.evaluate(() => (window as unknown as {
+      launchSamples: { phase: string; duration: number; quarterWidth: number; viewport: number }[];
+    }).launchSamples);
+    expect(samples.map((sample) => sample.phase)).toEqual(['cover', 'reveal']);
+    expect(samples[0].duration).toBeLessThanOrEqual(420);
+    expect(samples[1].duration).toBeLessThanOrEqual(400);
+    // The expansion has already covered most of the width at its first quarter,
+    // rather than spending the first half of the transition winding up.
+    expect(samples[0].quarterWidth / samples[0].viewport).toBeGreaterThan(0.6);
+  });
+}

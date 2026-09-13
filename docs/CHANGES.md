@@ -2,6 +2,11 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Made landing-page app entry respond immediately and reveal the dashboard sooner.
+  The existing solid expansion now accelerates quickly, and the dashboard settles
+  with an undelayed, non-bouncing spring. Motion-speed settings and reduced motion
+  retain their existing behaviour.
+
 - Simplified the landing page's recall scene to one heading, a quieter graph and a
   compact review-timing control. Removed the oversized orange sentence, repeated
   graph annotations and bottom footnote; kept the illustrative/successful-review
