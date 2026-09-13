@@ -2,6 +2,11 @@
 
 ## 0.2.7 beta — study interactions and navigation polish
 
+- Corrected the calendar interaction: the exam stays fixed while visitors toggle free
+  days and times. A small illustrative planner chooses only available slots, with a
+  linked FSRS forgetting curve beside the calendar. Removed the later standalone curve
+  from the motion variant; narrow screens stack the combined scene without pinning it.
+
 - Replaced the abstract recall-points example with a large interactive weekly calendar.
   Selecting an exam date moves illustrative revision sessions and slides to that week;
   week navigation, touch scrolling and reduced motion are supported.

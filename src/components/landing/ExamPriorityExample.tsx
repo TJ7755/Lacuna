@@ -1,129 +1,84 @@
 import { useMemo, useState } from 'react';
+import { CalendarRecall } from './CalendarRecall';
+import { EXAM_DAY, planCalendar, SLOT_HOURS } from './calendarProjection';
 import './ExamPriorityExample.css';
 
-const dateKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const addDays = (date: Date, days: number) => {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-};
 const label = (date: Date) => date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-const topics = ['Cell division', 'Chemical bonds', 'Quick recap'];
 
 export function ExamPriorityExample() {
-  const start = useMemo(() => {
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    return today;
-  }, []);
-  const [exam, setExam] = useState(13);
-  const [week, setWeek] = useState(1);
-  const dates = Array.from({ length: 28 }, (_, day) => addDays(start, day));
-  const select = (day: number) => {
-    setExam(day);
-    setWeek(Math.floor(day / 7));
-  };
-  // An illustrative sequence shows the interaction, not a generated learner forecast.
-  const sessions = [6, 3, 1].map((offset, index) => ({
-    day: Math.max(0, exam - offset),
-    topic: topics[index],
-    minutes: [15, 10, 5][index],
-  }));
+  const dates = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, day) => {
+        const date = new Date();
+        date.setHours(12, 0, 0, 0);
+        date.setDate(date.getDate() + day);
+        return date;
+      }),
+    [],
+  );
+  const [available, setAvailable] = useState<number[]>([4, 9, 17]);
+  const sessions = useMemo(() => planCalendar(available), [available]);
+  const toggle = (slot: number) =>
+    setAvailable((current) =>
+      current.includes(slot) ? current.filter((item) => item !== slot) : [...current, slot],
+    );
 
   return (
-    <div className="exam-calendar">
-      <div className="exam-calendar-toolbar">
-        <label>
-          Exam day
-          <input
-            type="date"
-            aria-label="Exam day"
-            min={dateKey(dates[1])}
-            max={dateKey(dates[27])}
-            value={dateKey(dates[exam])}
-            onChange={(event) => {
-              const day = dates.findIndex((date) => dateKey(date) === event.target.value);
-              if (day > 0) select(day);
-            }}
-          />
-        </label>
-        <div className="exam-calendar-navigation">
-          <button
-            type="button"
-            aria-label="Previous week"
-            disabled={week === 0}
-            onClick={() => setWeek(week - 1)}
-          >
-            ←
-          </button>
-          <span>
-            {label(dates[week * 7])} – {label(dates[week * 7 + 6])}
-          </span>
-          <button
-            type="button"
-            aria-label="Next week"
-            disabled={week === 3}
-            onClick={() => setWeek(week + 1)}
-          >
-            →
-          </button>
+    <div className="calendar-and-recall">
+      <div className="exam-calendar">
+        <div className="exam-calendar-toolbar">
+          <span>When are you free?</span>
+          <strong className="exam-fixed-date">Exam · {label(dates[EXAM_DAY])}</strong>
         </div>
-      </div>
-      <div
-        className="exam-calendar-window"
-        tabIndex={0}
-        role="region"
-        aria-label="Example revision calendar"
-      >
-        <div className="exam-calendar-canvas">
-          <div className="exam-calendar-track" style={{ transform: `translateX(-${week * 25}%)` }}>
-            {[0, 1, 2, 3].map((weekIndex) => (
-              <div
-                className="exam-calendar-week"
-                key={weekIndex}
-                ref={(element) => {
-                  if (element) element.inert = weekIndex !== week;
-                }}
-                aria-hidden={weekIndex !== week}
-              >
-                {dates.slice(weekIndex * 7, weekIndex * 7 + 7).map((date, index) => {
-                  const day = weekIndex * 7 + index;
-                  return (
-                    <div className="exam-calendar-day" key={day} data-exam={exam === day}>
+        <div
+          className="exam-calendar-window"
+          tabIndex={0}
+          role="region"
+          aria-label="Choose available days and times"
+        >
+          <div className="exam-calendar-week">
+            {dates.map((date, day) => (
+              <div className="exam-calendar-day" key={day} data-exam={day === EXAM_DAY}>
+                <div className="exam-calendar-date">
+                  <span>{date.toLocaleDateString('en-GB', { weekday: 'short' })}</span>
+                  <strong>{date.getDate()}</strong>
+                </div>
+                {day === EXAM_DAY ? (
+                  <div className="exam-calendar-deadline">Exam day</div>
+                ) : (
+                  SLOT_HOURS.map((hour, time) => {
+                    const slot = day * 3 + time;
+                    const selected = available.includes(slot);
+                    const planned = sessions.includes(slot);
+                    return (
                       <button
                         type="button"
-                        disabled={day === 0}
-                        aria-label={`Set exam for ${label(date)}`}
-                        aria-pressed={exam === day}
-                        onClick={() => select(day)}
+                        className="exam-calendar-slot"
+                        key={hour}
+                        aria-label={`${label(date)} at ${hour}:00`}
+                        aria-pressed={selected}
+                        data-planned={planned}
+                        onClick={() => toggle(slot)}
                       >
-                        <span>{date.toLocaleDateString('en-GB', { weekday: 'short' })}</span>
-                        <strong>{date.getDate()}</strong>
+                        <span>{String(hour).padStart(2, '0')}:00</span>
+                        <strong>{planned ? 'Review' : selected ? 'Free' : '+'}</strong>
+                        {planned && <small>10 min</small>}
                       </button>
-                      {exam === day && <div className="exam-calendar-deadline">Exam day</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {sessions.map((session, index) => (
-              <div
-                key={session.topic}
-                className={`exam-calendar-session exam-calendar-session-${index}`}
-                style={{ left: `${(session.day / 28) * 100}%`, top: `${138 + index * 66}px` }}
-              >
-                <strong>{session.topic}</strong>
-                <span>{session.minutes} min</span>
+                    );
+                  })
+                )}
               </div>
             ))}
           </div>
         </div>
+        <div className="exam-calendar-footer">
+          <span>Example week</span>
+          <output aria-live="polite">
+            {sessions.length ? `${sessions.length} reviews scheduled` : 'Choose a free slot'}
+          </output>
+        </div>
       </div>
-      <div className="exam-calendar-footer">
-        <span>Example schedule</span>
-        <output aria-live="polite">Exam on {label(dates[exam])}</output>
-      </div>
+      <CalendarRecall slots={sessions} />
     </div>
   );
 }

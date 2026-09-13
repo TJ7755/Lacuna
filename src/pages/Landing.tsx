@@ -77,7 +77,7 @@ export function Landing() {
           </section>
         )}
         <ProductWalkthrough />
-        <ExamProjection />
+        {!motionPrototype && <ExamProjection />}
         <CoursePathIllustration />
         <MemoryScene />
         <section className="landing-bridge">

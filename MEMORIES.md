@@ -29,7 +29,8 @@ the opening headline. Explain the product progressively through the existing sce
 For the exam introduction, separate ideas in time. A headline and symbol alone were too
 abstract; use a compact interactive example to demonstrate cause and effect, with brief
 explanation. Prefer concrete calendar days and revision sessions over abstract recall-point
-tables. Avoid stacking subtitles and diagram captions around the interaction.
+tables. The exam date stays fixed; visitors control available days and times, with the
+forgetting curve beside the calendar. Avoid stacking subtitles around the interaction.
 The download choice needs only a compatibility line; omit version labels, slogans
 and installation instructions from the initial view. Keep help available on request.
 

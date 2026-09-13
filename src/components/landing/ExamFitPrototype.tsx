@@ -15,15 +15,16 @@ export function ExamFitPrototype() {
     const clamp = (value: number) => Math.max(0, Math.min(1, value));
     const paint = () => {
       frame = 0;
+      const staticLayout = media.matches || innerWidth <= 1000;
       const rect = section.getBoundingClientRect();
       const progress = clamp(-rect.top / Math.max(1, rect.height - innerHeight));
       section.style.setProperty('--fit', String(progress));
       // Leave a short empty beat between ideas; never crossfade competing headlines.
       section.style.setProperty('--time-opacity', String(1 - clamp((progress - 0.36) / 0.1)));
       section.style.setProperty('--exam-opacity', String(clamp((progress - 0.56) / 0.1)));
-      if (examRef.current) examRef.current.inert = !media.matches && progress <= 0.56;
-      timeRef.current?.setAttribute('aria-hidden', String(!media.matches && progress >= 0.46));
-      examRef.current?.setAttribute('aria-hidden', String(!media.matches && progress <= 0.56));
+      if (examRef.current) examRef.current.inert = !staticLayout && progress <= 0.56;
+      timeRef.current?.setAttribute('aria-hidden', String(!staticLayout && progress >= 0.46));
+      examRef.current?.setAttribute('aria-hidden', String(!staticLayout && progress <= 0.56));
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(paint);
@@ -57,7 +58,7 @@ export function ExamFitPrototype() {
           <RevisionGlyph kind="clock" />
         </div>
         <div className="exam-fit-beat exam-fit-exam-beat" ref={examRef} aria-hidden="true">
-          <h2>Pick your exam day.</h2>
+          <h2>Your exam. Your availability.</h2>
           <ExamPriorityExample />
         </div>
       </div>

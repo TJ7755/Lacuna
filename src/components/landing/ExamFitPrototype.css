@@ -60,7 +60,7 @@
     font-size: clamp(46px, 12vw, 66px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce), (max-width: 1000px) {
   .exam-fit-prototype {
     height: auto;
   }

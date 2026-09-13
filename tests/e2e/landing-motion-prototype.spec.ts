@@ -59,7 +59,8 @@ test('motion prototype keeps a stable promise, accessible motion control and dir
 test('exam introduction explains one idea at a time', async ({ page }) => {
   await page.goto('/#/landing?variant=motion');
   const scene = page.locator('#landing-product');
-  await expect(scene.locator('svg text')).toHaveCount(0);
+  await expect(scene.locator('.calendar-recall')).toHaveCount(1);
+  await expect(page.locator('.exam-projection')).toHaveCount(0);
   await expect(scene.locator('p')).toHaveCount(1);
   await expect(scene.locator('.exam-fit-time-beat p')).toHaveText('Set a session time limit.');
   await expect(scene.locator('.exam-fit-exam-beat p')).toHaveCount(0);
@@ -132,33 +133,33 @@ test('prototype ends with a clear choice to start or download', async ({ page })
   await expect(page).toHaveURL(/#\/$/);
 });
 
-test('calendar dates move the example sessions and support week navigation', async ({ page }) => {
+test('availability controls the schedule and curve while the exam stays fixed', async ({
+  page,
+}) => {
   await page.goto('/#/landing?variant=motion');
   const scene = page.locator('#landing-product');
   await expect(scene.locator('.exam-fit-exam-beat')).toHaveAttribute('inert', '');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  const date = scene.getByLabel('Exam day', { exact: true });
-  await date.scrollIntoViewIfNeeded();
-  const before = await scene.locator('.exam-calendar-session').first().getAttribute('style');
-  const initial = await date.inputValue();
-  const later = new Date(initial + 'T12:00:00');
-  later.setDate(later.getDate() + 7);
-  const next = `${later.getFullYear()}-${String(later.getMonth() + 1).padStart(2, '0')}-${String(later.getDate()).padStart(2, '0')}`;
-  await date.fill(next);
-  await expect(date).toHaveValue(next);
-  await expect(scene.locator('.exam-calendar-session').first()).not.toHaveAttribute(
-    'style',
-    before!,
-  );
-  await expect(scene.locator('.exam-calendar-week').nth(2)).toHaveAttribute('aria-hidden', 'false');
-  await scene.getByRole('button', { name: 'Previous week' }).click();
-  const day = scene.getByRole('button', { name: /Set exam for/ }).first();
-  await day.click();
-  await expect(day).toHaveAttribute('aria-pressed', 'true');
-  await expect(date).not.toHaveValue(next);
+  const calendar = scene.getByRole('region', { name: 'Choose available days and times' });
+  await calendar.scrollIntoViewIfNeeded();
+  const examDate = await scene.locator('.exam-fixed-date').innerText();
+  const curve = scene.locator('.calendar-curve-line');
+  const initial = await curve.getAttribute('d');
+  const selected = calendar.getByRole('button', { pressed: true });
+  while (await selected.count()) await selected.first().click();
+  await expect(scene.locator('.exam-calendar-slot[data-planned="true"]')).toHaveCount(0);
+  await expect(curve).not.toHaveAttribute('d', initial!);
+  await expect(scene.getByText('Choose a free slot', { exact: true })).toBeVisible();
+  const free = calendar.getByRole('button').nth(4);
+  await free.focus();
+  await page.keyboard.press('Space');
+  await expect(free).toHaveAttribute('aria-pressed', 'true');
+  await expect(free).toHaveAttribute('data-planned', 'true');
+  await expect(scene.locator('.exam-fixed-date')).toHaveText(examDate);
+  await expect(scene.locator('input[type="date"]')).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
-  await date.scrollIntoViewIfNeeded();
-  await expect(date).toBeInViewport();
+  await scene.locator('.calendar-recall').scrollIntoViewIfNeeded();
+  await expect(scene.locator('.calendar-recall')).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await expect(scene.locator('.exam-calendar-track')).toHaveCSS('transition-property', 'none');
+  await expect(curve).toHaveCSS('animation-name', 'none');
 });
