@@ -4,13 +4,13 @@ import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 async function cardHeight(card: Locator): Promise<number> {
   return card
     .locator('[data-study-face]')
-    .evaluate((face) => face.parentElement!.getBoundingClientRect().height);
+    .evaluate((face) => face.parentElement!.offsetHeight);
 }
 
 async function measuredFaceHeight(card: Locator): Promise<number> {
   return card
     .locator('[data-study-sizing-face]')
-    .evaluateAll((faces) => Math.max(...faces.map((face) => face.getBoundingClientRect().height)));
+    .evaluateAll((faces) => Math.max(...faces.map((face) => (face as HTMLElement).offsetHeight)));
 }
 
 async function centreOffsetFromCard(element: Locator): Promise<number> {

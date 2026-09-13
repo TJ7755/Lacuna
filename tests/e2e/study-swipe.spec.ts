@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-for (const input of ['swipe', 'keyboard'] as const) {
+for (const input of ['swipe', 'keyboard', 'button'] as const) {
   for (const width of [390, 1280]) {
     for (const direction of [-1, 1]) {
       test(`${input} sends ${direction < 0 ? 'No' : 'Yes'} beyond the ${width}px viewport`, async ({
@@ -99,6 +99,13 @@ for (const input of ['swipe', 'keyboard'] as const) {
               send('pointermove', direction * 100);
               await new Promise(requestAnimationFrame);
               send('pointerup', direction * 100);
+            } else if (input === 'button') {
+              const label = direction < 0 ? 'No' : 'Yes';
+              const button = Array.from(document.querySelectorAll('button')).find(
+                (candidate) => candidate.textContent?.trim() === label,
+              );
+              if (!button) throw new Error(`Missing ${label} grading button`);
+              button.click();
             } else {
               const key = direction < 0 ? 'ArrowLeft' : 'ArrowRight';
               window.dispatchEvent(new KeyboardEvent('keydown', { key, code: key, bubbles: true }));

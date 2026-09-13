@@ -2,6 +2,10 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated study browser coverage to verify off-screen button departures and centred
+  incoming cards. Stable-height checks now measure layout height independently of
+  the temporary entrance scale.
+
 - Made study cards follow swipes directly and travel fully off-screen when graded,
   with the same directional departure for keyboard shortcuts and grading buttons.
   Incoming cards now rise gently into place. Replaced the broad drag glow with a compact
