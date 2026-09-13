@@ -7,7 +7,7 @@ import './ExamProjection.css';
 const engine = makeEngine({ ...defaultFsrsParameters(), enable_fuzz: false });
 const EXAM_DAY = 21;
 const x = (day: number) => 64 + day / EXAM_DAY * 772;
-const y = (recall: number) => 336 - recall * 256;
+const y = (recall: number) => 270 - recall * 200;
 
 // A representative card, not an optimiser-generated plan or a learner's forecast.
 function project(nextReview: number) {
@@ -71,30 +71,28 @@ export function ExamProjection() {
       <div className="exam-projection-stage">
         <div className="exam-projection-copy">
           <h2 id="exam-projection-title">Remember it on exam day.</h2>
-          <p>Review whenever you like. Lacuna works around you.</p>
         </div>
         <figure className="exam-projection-figure">
-          <svg viewBox="0 0 940 430" role="img" aria-label={`Illustrative forgetting curve over 21 days. Reviews on days ${nextReview} and 10 project ${(projection.recall * 100).toFixed(1)}% recall on exam day.`}>
-            <line className="exam-curve-axis" x1="64" y1="336" x2="836" y2="336" />
-            <text x="64" y="16">Chance of recall</text>
-            <text x="50" y="86" textAnchor="end">100%</text>
-            <text x="50" y="342" textAnchor="end">0%</text>
+          <figcaption>Illustrative recall, assuming successful reviews.</figcaption>
+          <div className="exam-projection-legend" aria-hidden="true">
+            <span>With reviews</span><span>Without</span>
+          </div>
+          <svg viewBox="0 0 940 330" role="img" aria-label={`Illustrative forgetting curve over 21 days. Reviews on days ${nextReview} and 10 project ${(projection.recall * 100).toFixed(1)}% recall on exam day. The dashed curve shows recall without another review.`}>
+            <line className="exam-curve-axis" x1="64" y1="270" x2="836" y2="270" />
+            <text x="50" y="76" textAnchor="end">100%</text>
+            <text x="50" y="276" textAnchor="end">0%</text>
             <path className="exam-curve-baseline" d={baseline} />
-            <text x="620" y="202" textAnchor="middle">Without another review</text>
             <path className="exam-curve-preview" d={projection.path} />
             <path className="exam-curve-reviewed" d={projection.path} pathLength="1" />
             {[nextReview, 10].map((day) => (
               <g key={day} className="exam-curve-review">
                 <circle cx={x(day)} cy={y(1)} r="5" />
-                <text x={x(day)} y="65" textAnchor="middle">Review</text>
               </g>
             ))}
-            <line className="exam-curve-deadline" x1={x(EXAM_DAY)} y1="60" x2={x(EXAM_DAY)} y2="348" />
+            <line className="exam-curve-deadline" x1={x(EXAM_DAY)} y1="50" x2={x(EXAM_DAY)} y2="278" />
             <circle className="exam-curve-end" cx={x(EXAM_DAY)} cy={y(projection.recall)} r="7" />
-            <text x="64" y="375">Today</text>
-            <text x={x(10)} y="375" textAnchor="middle">Day 10</text>
-            <text className="exam-curve-exam-label" x={x(EXAM_DAY)} y="375" textAnchor="middle">Exam day</text>
-            <text x={x(EXAM_DAY)} y="415" textAnchor="middle">Day 21</text>
+            <text x="64" y="308">Today</text>
+            <text className="exam-curve-exam-label" x={x(EXAM_DAY)} y="308" textAnchor="middle">Exam day</text>
           </svg>
           <div className="exam-projection-controls">
             <label htmlFor="exam-next-review">Next review <span>Day {nextReview}</span>
@@ -104,10 +102,9 @@ export function ExamProjection() {
             </label>
             <div className="exam-projection-result">
               <output htmlFor="exam-next-review">{(projection.recall * 100).toFixed(1)}%</output>
-              <span>projected exam recall</span>
+              <span>on exam day</span>
             </div>
           </div>
-          <figcaption>One illustrative card, assuming successful reviews. Your plan adapts to your answers and available time.</figcaption>
         </figure>
       </div>
     </section>

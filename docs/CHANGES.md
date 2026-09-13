@@ -2,6 +2,19 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Prevented the ordinary welcome-route exit fade from running beneath the app-entry
+  cover, where it briefly exposed the old landing page during the dashboard reveal.
+
+- Made landing-page app entry respond immediately and reveal the dashboard sooner.
+  The solid expansion and reveal each take 240 ms, with immediate acceleration;
+  the dashboard settles with an undelayed, non-bouncing 320 ms spring. Motion-speed
+  settings and reduced motion retain their existing behaviour.
+
+- Simplified the landing page's recall scene to one heading, a quieter graph and a
+  compact review-timing control. Removed the oversized orange sentence, repeated
+  graph annotations and bottom footnote; kept the illustrative/successful-review
+  qualification beside the legend and preserved keyboard and reduced-motion behaviour.
+
 - Simplified Quick search with a short input prompt and a small ink-style search
   drawing. Keyboard hints appear on the first opening per device, then stay hidden
   on later visits; keyboard controls and screen-reader announcements remain available.
