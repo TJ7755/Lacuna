@@ -2,6 +2,9 @@
 
 ## 0.2.6 beta — performance, landing and method redesign
 
+- Updated the Share browser layout check for its open heading, preserving alignment
+  coverage and checking that the removed subtitle stays absent.
+
 - Fixed Undo during a pending study-card departure, including when it restores the
   same card. Cancelling the transition now prevents a stale grade being recorded.
 
