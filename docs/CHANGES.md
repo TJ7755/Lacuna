@@ -9,6 +9,16 @@
   a comparison link. This is a design demonstration, not an approved replacement.
   Its navigation now stays visible while scrolling, with a centred Lacuna mark
   appearing as the larger hero mark leaves view and disappearing on return.
+  The left branding now hides during that handover. An animated introduction before
+  the UI walkthrough explains session time limits and exam-day review priorities.
+  Replaced the three detailed illustrations with twelve flat motifs using the app's
+  brighter accent palette, with 300 ms entrances and a longer cycle before repetition.
+  Raised the inline artwork to align with the headline and grouped footer links on the right.
+
+- Brought the download and method pages into the landing page's dark visual style.
+  Downloads now centre one large platform action with alternative packages disclosed
+  on request. The method page has a clear entry action and keeps coefficient details
+  behind an expandable section while retaining its interactive explanations.
 
 - Prevented the ordinary welcome-route exit fade from running beneath the app-entry
   cover, where it briefly exposed the old landing page during the dashboard reveal.

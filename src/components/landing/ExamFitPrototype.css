@@ -1,0 +1,123 @@
+.exam-fit-prototype {
+  --fit: 0;
+  height: 165svh;
+  background: #1b1915;
+  border-top: 1px solid #b1a89d20;
+}
+.exam-fit-stage {
+  position: sticky;
+  top: 0;
+  min-height: 720px;
+  height: 100svh;
+  padding: 128px var(--landing-gutter) 45px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 42px;
+  overflow: hidden;
+}
+.exam-fit-copy {
+  text-align: center;
+}
+.exam-fit-copy h2 {
+  font-size: clamp(36px, 4.7vw, 66px);
+  letter-spacing: -0.045em;
+  line-height: 1.13;
+  font-weight: 500;
+}
+.exam-fit-copy h2 span {
+  color: var(--amber);
+}
+.exam-fit-copy p {
+  max-width: 57ch;
+  margin: 25px auto 0;
+  color: var(--stone);
+  font-size: clamp(15px, 1.35vw, 18px);
+  line-height: 1.65;
+}
+.exam-fit-drawing {
+  width: 100%;
+  max-width: 1060px;
+  margin: 0 auto;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.exam-fit-session {
+  fill: #ffffff03;
+  stroke: #f6a328;
+  stroke-width: 2;
+  stroke-opacity: calc(0.15 + var(--fit) * 0.55);
+}
+.exam-fit-time {
+  color: var(--amber);
+}
+.exam-fit-label {
+  fill: var(--ivory);
+  font-size: 17px;
+}
+.exam-fit-card {
+  transform: translate(calc(var(--dx) * (1 - var(--fit))), calc(var(--dy) * (1 - var(--fit))))
+    rotate(calc(var(--angle) * (1 - var(--fit))));
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.exam-fit-card-0 > rect {
+  fill: hsl(213 90% 64%);
+}
+.exam-fit-card-1 > rect {
+  fill: var(--amber);
+}
+.exam-fit-card-2 > rect {
+  fill: hsl(150 65% 50%);
+}
+.exam-fit-arrow {
+  color: var(--amber);
+  opacity: calc(0.25 + var(--fit) * 0.75);
+}
+.exam-fit-date text {
+  font-size: 18px;
+  font-weight: 600;
+}
+.exam-fit-caption {
+  fill: var(--stone);
+  font-size: 17px;
+}
+@media (max-width: 700px) {
+  .exam-fit-stage {
+    min-height: 580px;
+    padding: 120px 20px 60px;
+    gap: 45px;
+  }
+  .exam-fit-copy h2 {
+    font-size: clamp(29px, 7.8vw, 46px);
+  }
+  .exam-fit-copy p {
+    max-width: 33ch;
+    font-size: 15px;
+  }
+  .exam-fit-drawing {
+    width: calc(100% + 16px);
+    margin-left: -8px;
+  }
+  .exam-fit-label,
+  .exam-fit-caption {
+    font-size: 32px;
+  }
+  .exam-fit-date text {
+    font-size: 30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .exam-fit-prototype {
+    height: auto;
+  }
+  .exam-fit-stage {
+    position: relative;
+    height: auto;
+    min-height: 0;
+    padding-block: 120px 90px;
+  }
+  .exam-fit-card {
+    transform: none;
+  }
+}

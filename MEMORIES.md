@@ -27,6 +27,10 @@ The landing design deliberately presents only one or two focal points at each sc
 Do not stack category labels, explanatory paragraphs, reassurance and feature controls beneath
 the opening headline. Explain the product progressively through the existing scenes.
 
+Landing illustrations should use simple flat silhouettes and bright colours from the app's
+palette. Detailed paper textures, perspective and muted shading were rejected; match the
+simplicity of the brand mark. Keep inspiration brands out of prototype identifiers and copy.
+
 ## Current Dexie hooks also run during historical upgrades
 
 The v26 Card history guard runs when earlier upgrades rewrite cards. Clearing history

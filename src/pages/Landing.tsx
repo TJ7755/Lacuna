@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
+import { ExamFitPrototype } from '../components/landing/ExamFitPrototype';
 import {
   MotionOpeningPrototype,
   MotionPrototypeNav,
@@ -45,32 +46,36 @@ export function Landing() {
       </a>
       <main>
         {motionPrototype ? <MotionOpeningPrototype /> : <IllustratedOpening />}
-        <section
-          id="landing-product"
-          className="landing-product"
-          tabIndex={-1}
-          aria-labelledby="landing-product-title"
-        >
-          <div className="landing-product-intro">
-            <h2 id="landing-product-title">
-              Make room
-              <br />
-              for remembering.
-            </h2>
-            <p>
-              Lacuna brings your lessons, flashcards and revision together around one fixed point:
-              your exam.
-            </p>
-            <div className="landing-actions">
-              <LandingCta>{motionPrototype ? 'Start revising' : 'Open Lacuna'}</LandingCta>
-              {!window.electronAPI?.isElectron && (
-                <Link className="landing-download" to="/download">
-                  Download for desktop
-                </Link>
-              )}
+        {motionPrototype ? (
+          <ExamFitPrototype />
+        ) : (
+          <section
+            id="landing-product"
+            className="landing-product"
+            tabIndex={-1}
+            aria-labelledby="landing-product-title"
+          >
+            <div className="landing-product-intro">
+              <h2 id="landing-product-title">
+                Make room
+                <br />
+                for remembering.
+              </h2>
+              <p>
+                Lacuna brings your lessons, flashcards and revision together around one fixed point:
+                your exam.
+              </p>
+              <div className="landing-actions">
+                <LandingCta>{motionPrototype ? 'Start revising' : 'Open Lacuna'}</LandingCta>
+                {!window.electronAPI?.isElectron && (
+                  <Link className="landing-download" to="/download">
+                    Download for desktop
+                  </Link>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
         <ProductWalkthrough />
         <ExamProjection />
         <CoursePathIllustration />
@@ -96,12 +101,14 @@ export function Landing() {
             <LandingCta className="landing-button-small">Get started</LandingCta>
           )}
         </div>
-        {motionPrototype && (
-          <a href="https://github.com/TJ7755/Lacuna" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-        )}
-        <Link to="/method">The method</Link>
+        <div className="landing-footer-end">
+          {motionPrototype && (
+            <a href="https://github.com/TJ7755/Lacuna" target="_blank" rel="noreferrer">
+              GitHub
+            </a>
+          )}
+          <Link to="/method">The method</Link>
+        </div>
       </footer>
     </div>
   );

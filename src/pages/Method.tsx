@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LandingNav } from '../components/landing/LandingNav';
 import { LandingCta } from '../components/welcome/LandingCta';
@@ -47,6 +47,7 @@ function Formula({ children, label }: { children: ReactNode; label: string }) {
 
 export function Method() {
   useSmoothScroll(true);
+  const contentRef = useRef<HTMLElement>(null);
   // A fresh page in the same document — start at the top, not wherever the
   // landing page's scroll position happened to be.
   useEffect(() => {
@@ -65,24 +66,23 @@ export function Method() {
             the model’s limits lie.
           </p>
         </div>
-        <svg className="method-sketch" viewBox="0 0 400 300" fill="none" aria-hidden="true">
-          <path
-            className="method-sketch-axis"
-            d="M37 26 C34 100 38 180 35 263 C143 260 252 266 369 260"
-          />
-          <path
-            className="method-sketch-curve"
-            d="M40 243 C98 240 130 231 158 195 S211 67 249 51 S319 37 362 35"
-          />
-          <path className="method-sketch-guide" d="M35 152 L190 152 L190 263" />
-          <circle cx="190" cy="152" r="9" />
-          <path
-            className="method-sketch-axis"
-            d="M303 91 C276 98 251 123 242 149 M239 133 L241 152 L259 145"
-          />
-        </svg>
+        <button
+          type="button"
+          className="method-explore"
+          onClick={() => {
+            contentRef.current?.scrollIntoView({
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'instant'
+                : 'smooth',
+              block: 'start',
+            });
+            contentRef.current?.focus({ preventScroll: true });
+          }}
+        >
+          Explore the method <span aria-hidden="true">↓</span>
+        </button>
       </header>
-      <main className="method-content">
+      <main ref={contentRef} tabIndex={-1} className="method-content">
         <Part n="01" title="First, a naming correction">
           <p className="max-w-2xl leading-relaxed text-ink-soft">
             The model is called <span className="font-mono text-[0.92em]">half-life-logistic</span>,
@@ -116,21 +116,25 @@ export function Method() {
           </p>
           <SigmoidExplorer />
 
-          <h3 className="mt-12 font-body text-lg font-semibold tracking-normal text-ink">
-            The ten weights, exactly as shipped
-          </h3>
-          <p className="mt-3 max-w-2xl leading-relaxed text-ink-soft">
-            These are the fitted coefficients from the model running in the app, not a sketch. Bars
-            to the right push predicted recall up; bars to the left push it down. Select any row for
-            the plain-language reading.
-          </p>
-          <WeightsChart />
-          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-faint">
-            Notice that succeeded and failed are exact mirror images. That is not a coincidence: the
-            two features are perfect complements, so on their own they would have infinitely many
-            equally valid weight pairs. The small ridge penalty described in Part 04 is what forces
-            the fit onto the symmetric, smallest-magnitude pair.
-          </p>
+          <details className="method-details">
+            <summary>
+              The ten weights, exactly as shipped <span aria-hidden="true">+</span>
+            </summary>
+            <div className="method-details-content">
+              <p className="mt-3 max-w-2xl leading-relaxed text-ink-soft">
+                These are the fitted coefficients from the model running in the app, not a sketch.
+                Bars to the right push predicted recall up; bars to the left push it down. Select
+                any row for the plain-language reading.
+              </p>
+              <WeightsChart />
+              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-faint">
+                Notice that succeeded and failed are exact mirror images. That is not a coincidence:
+                the two features are perfect complements, so on their own they would have infinitely
+                many equally valid weight pairs. The small ridge penalty described in Part 04 is
+                what forces the fit onto the symmetric, smallest-magnitude pair.
+              </p>
+            </div>
+          </details>
         </Part>
 
         <Part n="03" title="The scoring rule that decided the contest">
@@ -271,8 +275,8 @@ export function Method() {
               strictly chronological test. If it holds up for you the way it held up on 3.5 million
               reviews, the best way to find out is to study with it.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <LandingCta>Open Lacuna</LandingCta>
+            <div className="method-ending-actions">
+              <LandingCta>Start revising</LandingCta>
               <Link to="/welcome" className="method-text-link">
                 Back to Lacuna
               </Link>

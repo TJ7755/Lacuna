@@ -24,6 +24,29 @@ describe('desktop download selection', () => {
     );
   });
 
+  it('reveals alternative packages only when requested', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Windows NT 10.0' });
+    render(<Download />, { wrapper: MemoryRouter });
+
+    expect(
+      screen.queryByRole('link', { name: 'Download the Windows installer' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
+    expect(screen.getByRole('link', { name: 'Download the Windows installer' })).toHaveAttribute(
+      'href',
+      DOWNLOADS.windowsInstaller,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Linux' }));
+    expect(
+      screen.queryByRole('link', { name: 'Download the DEB package' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
+    expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
+      'href',
+      DOWNLOADS.linuxDeb,
+    );
+  });
+
   it('detects supported desktop platforms without mistaking Android for Linux', () => {
     expect(detectDesktopPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('windows');
     expect(detectDesktopPlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')).toBe('macos');
@@ -67,6 +90,7 @@ describe('desktop download selection', () => {
       DOWNLOADS.windowsPortable,
     );
     expect(screen.getByText('x64 · manual updates')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Other Windows download' }));
     expect(screen.getByRole('link', { name: 'Download the Windows installer' })).toHaveAttribute(
       'href',
       DOWNLOADS.windowsInstaller,
@@ -106,6 +130,7 @@ describe('desktop download selection', () => {
       'href',
       DOWNLOADS.linuxAppImage,
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Other Linux download' }));
     expect(screen.getByRole('link', { name: 'Download the DEB package' })).toHaveAttribute(
       'href',
       DOWNLOADS.linuxDeb,

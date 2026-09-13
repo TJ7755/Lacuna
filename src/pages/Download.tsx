@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { DownloadIcon } from '../components/ui/icons';
-import { PublicHeader } from '../components/welcome/PublicHeader';
+import { DownloadIcon, LacunaIcon } from '../components/ui/icons';
+import './Download.css';
 
 declare const __APP_VERSION__: string;
 
@@ -34,12 +34,21 @@ const platformLabels: Record<DesktopPlatform, string> = {
   linux: 'Linux',
 };
 
+function AlternativeDownload({ platform, children }: { platform: string; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="download-alternative">
+      <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+        Other {platform} download <span aria-hidden="true">{expanded ? '−' : '+'}</span>
+      </button>
+      {expanded && <div className="download-alternative-content">{children}</div>}
+    </div>
+  );
+}
+
 function DownloadButton({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a
-      href={href}
-      className="shadow-paper shadow-paper-hover inline-flex min-h-14 items-center justify-center gap-3 rounded-[10px] border border-accent-ink/40 bg-accent px-6 font-semibold text-accent-fg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-    >
+    <a href={href} className="download-action">
       <DownloadIcon className="size-5" />
       {children}
     </a>
@@ -49,33 +58,26 @@ function DownloadButton({ href, children }: { href: string; children: ReactNode 
 function WindowsDownload() {
   return (
     <div>
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-        Recommended for locked-down computers
-      </p>
-      <h2 className="mt-3 text-3xl text-balance sm:text-4xl">Windows portable</h2>
-      <p className="mt-4 max-w-xl leading-relaxed text-ink-soft">
+      <p className="download-eyebrow">Recommended for locked-down computers</p>
+      <h2 className="download-choice-title">Windows portable</h2>
+      <p className="download-description">
         Best for school and work computers. It needs no installer or administrator account: download
         it, keep it in a folder you can access, then run it.
       </p>
-      <div className="mt-7 flex flex-wrap items-center gap-4">
+      <div className="download-action-group">
         <DownloadButton href={DOWNLOADS.windowsPortable}>Download for Windows</DownloadButton>
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-          x64 · manual updates
-        </span>
+        <span className="download-meta">x64 · manual updates</span>
       </div>
-      <div className="mt-7 border-t border-line pt-5 text-sm leading-relaxed text-ink-soft">
+      <AlternativeDownload platform="Windows">
         <p>
           Want automatic updates?{' '}
-          <a
-            className="font-medium text-accent underline underline-offset-4"
-            href={DOWNLOADS.windowsInstaller}
-          >
+          <a className="download-inline-link" href={DOWNLOADS.windowsInstaller}>
             Download the Windows installer
           </a>
           . A managed computer may block installers even when they do not request administrator
           access.
         </p>
-      </div>
+      </AlternativeDownload>
     </div>
   );
 }
@@ -83,19 +85,15 @@ function WindowsDownload() {
 function MacDownload() {
   return (
     <div>
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-        macOS download
-      </p>
-      <h2 className="mt-3 text-3xl text-balance sm:text-4xl">Apple Silicon Mac</h2>
-      <p className="mt-4 max-w-xl leading-relaxed text-ink-soft">
+      <p className="download-eyebrow">macOS download</p>
+      <h2 className="download-choice-title">Apple Silicon Mac</h2>
+      <p className="download-description">
         Download the disk image, drag Lacuna into Applications, then open it. This build supports
         M-series Macs; Intel Macs are not supported in this beta.
       </p>
-      <div className="mt-7 flex flex-wrap items-center gap-4">
+      <div className="download-action-group">
         <DownloadButton href={DOWNLOADS.macDmg}>Download for macOS</DownloadButton>
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-          Apple Silicon · manual updates
-        </span>
+        <span className="download-meta">Apple Silicon · manual updates</span>
       </div>
     </div>
   );
@@ -104,32 +102,25 @@ function MacDownload() {
 function LinuxDownload() {
   return (
     <div>
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-        Recommended Linux download
-      </p>
-      <h2 className="mt-3 text-3xl text-balance sm:text-4xl">Linux AppImage</h2>
-      <p className="mt-4 max-w-xl leading-relaxed text-ink-soft">
+      <p className="download-eyebrow">Recommended Linux download</p>
+      <h2 className="download-choice-title">Linux AppImage</h2>
+      <p className="download-description">
         No system installation is needed. Download the file, allow it to run as a program in its
         file permissions, then open it.
       </p>
-      <div className="mt-7 flex flex-wrap items-center gap-4">
+      <div className="download-action-group">
         <DownloadButton href={DOWNLOADS.linuxAppImage}>Download for Linux</DownloadButton>
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-          x64 · automatic updates
-        </span>
+        <span className="download-meta">x64 · automatic updates</span>
       </div>
-      <div className="mt-7 border-t border-line pt-5 text-sm leading-relaxed text-ink-soft">
+      <AlternativeDownload platform="Linux">
         <p>
           On Debian or Ubuntu?{' '}
-          <a
-            className="font-medium text-accent underline underline-offset-4"
-            href={DOWNLOADS.linuxDeb}
-          >
+          <a className="download-inline-link" href={DOWNLOADS.linuxDeb}>
             Download the DEB package
           </a>
           . It installs through the system package manager and updates manually.
         </p>
-      </div>
+      </AlternativeDownload>
     </div>
   );
 }
@@ -150,82 +141,63 @@ export function Download() {
   }, []);
 
   return (
-    <div className="min-h-dvh pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <header className="border-b border-line bg-dot-grid">
-        <PublicHeader />
-        <div className="mx-auto max-w-3xl px-6 pb-14 pt-14 sm:px-10 sm:pb-20 sm:pt-20">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-            Desktop beta · version {APP_VERSION}
-          </p>
-          <h1 className="mt-5 text-5xl leading-[1.05] text-balance sm:text-7xl">
-            Download Lacuna.
-          </h1>
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-ink-soft">
-            The same Lacuna as the web app, packaged for your computer. Your courses and review
-            history stay on this device. Existing browser data is not copied into the desktop app
-            automatically.
-          </p>
+    <div className="download-page">
+      <nav className="download-nav" aria-label="Public navigation">
+        <Link to="/landing?variant=motion" className="download-brand">
+          <LacunaIcon className="size-7" /> Lacuna
+        </Link>
+        <Link to="/" className="download-browser-link">
+          Open Lacuna <span aria-hidden="true">↗</span>
+        </Link>
+      </nav>
+      <main className="download-main">
+        <header className="download-intro">
+          <p className="download-eyebrow">Desktop beta · version {APP_VERSION}</p>
+          <h1>Download Lacuna.</h1>
+          <p>Your revision. On your computer.</p>
+        </header>
+        <div className="download-platforms" role="group" aria-label="Operating system">
+          {(Object.keys(platformLabels) as DesktopPlatform[]).map((platform) => (
+            <button
+              key={platform}
+              type="button"
+              aria-pressed={selected === platform}
+              onClick={() => setSelected(platform)}
+            >
+              {platformLabels[platform]}
+            </button>
+          ))}
         </div>
-      </header>
-
-      <main className="mx-auto max-w-3xl px-6 py-14 sm:px-10 sm:py-20">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint">
-            Choose your computer
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Operating system">
-            {(Object.keys(platformLabels) as DesktopPlatform[]).map((platform) => (
-              <button
-                key={platform}
-                type="button"
-                aria-pressed={selected === platform}
-                onClick={() => setSelected(platform)}
-                className={
-                  'min-h-11 rounded-lg border px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent/60 ' +
-                  (selected === platform
-                    ? 'border-accent bg-accent-soft text-accent-ink'
-                    : 'border-line-strong bg-surface-raised text-ink-soft hover:border-accent/60 hover:text-ink')
-                }
-              >
-                {platformLabels[platform]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <section className="shadow-paper mt-8 rounded-[14px] border border-line-strong bg-surface-raised p-7 sm:p-10">
+        <section className="download-selection" aria-live="polite" aria-atomic="true">
           {SelectedDownload ? (
             <SelectedDownload />
           ) : (
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-                Desktop download
-              </p>
-              <h2 className="mt-3 text-3xl text-balance sm:text-4xl">Choose your computer</h2>
-              <p className="mt-4 max-w-xl leading-relaxed text-ink-soft">
-                Lacuna’s desktop app runs on Windows, macOS and Linux. Choose the computer where
-                you plan to use it to see the correct download and setup guidance.
+              <h2 className="download-choice-title">Choose your computer</h2>
+              <p className="download-description">
+                Select Windows, macOS or Linux to find your download.
               </p>
             </div>
           )}
         </section>
 
-        <section className="mt-10 rounded-[10px] border border-warning/40 bg-warning/10 p-5 sm:p-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-warning-fg">
-            Before you open the beta
-          </p>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft">
+        <section className="download-guidance">
+          <p className="download-guidance-title">Before you open the beta</p>
+          <div className="download-guidance-copy">
             {selected === 'windows' && (
               <p>
                 Lacuna is not yet code-signed. Windows may show “Windows protected your PC”; use
-                <span className="font-medium text-ink"> More info → Run anyway</span>{' '}
-                only when you downloaded Lacuna from this page.
+                <span className="download-emphasis"> More info → Run anyway</span> only when you
+                downloaded Lacuna from this page.
               </p>
             )}
             {selected === 'macos' && (
               <p>
                 Lacuna is not yet code-signed. macOS will block the first launch; use
-                <span className="font-medium text-ink"> Privacy &amp; Security → Open Anyway</span>{' '}
+                <span className="download-emphasis">
+                  {' '}
+                  Privacy &amp; Security → Open Anyway
+                </span>{' '}
                 only when you downloaded Lacuna from this page.
               </p>
             )}
@@ -239,21 +211,25 @@ export function Download() {
           </div>
         </section>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-8 text-sm text-ink-faint">
+        <section className="download-data">
+          <h2>Your data stays yours.</h2>
+          <p>
+            Your courses and review history stay on this device. Existing browser data is not copied
+            into the desktop app automatically.
+          </p>
+        </section>
+        <footer className="download-footer">
           <p>
             No download needed?{' '}
-            <Link to="/" className="text-accent underline underline-offset-4">
+            <Link to="/" className="download-inline-link">
               Use Lacuna in your browser
             </Link>
             .
           </p>
-          <a
-            href={DOWNLOADS.release}
-            className="underline underline-offset-4 hover:text-ink-soft"
-          >
+          <a href={DOWNLOADS.release} className="download-inline-link">
             View checksums and release files
           </a>
-        </div>
+        </footer>
       </main>
     </div>
   );
