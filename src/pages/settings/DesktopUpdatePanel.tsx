@@ -23,7 +23,6 @@ export function DesktopUpdatePanel() {
     return (
       <div className="border-t border-line pt-5">
         <div className="text-sm font-medium text-ink">Desktop updates</div>
-        <p className="mt-1 text-sm text-ink-soft">Version {state.currentVersion}</p>
         <p className="mt-3 text-sm leading-6 text-ink-soft">
           {MANUAL_UPDATE_COPY[state.manualReason ?? 'development']}{' '}
           <a
@@ -45,7 +44,6 @@ export function DesktopUpdatePanel() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="text-sm font-medium text-ink">Desktop updates</div>
-          <p className="mt-1 text-sm text-ink-soft">Version {state.currentVersion}</p>
         </div>
         {state.phase === 'downloaded' ? (
           <Button size="sm" variant="primary" onClick={() => void restartAndInstall()}>
