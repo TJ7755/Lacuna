@@ -421,7 +421,7 @@ describe('mergeImport: merge apply', () => {
   it('preserves the learner\'s introduction preference when the teacher publishes an update', async () => {
     await db.courses.update(courseId, { learnFirst: false });
     const payload = coursePayload({ rv: 2, lessons: [lessonOne()] });
-    payload.course.lf = 1;
+    expect(payload.course.lf).toBeUndefined();
     await mergeLineageUpdate(courseId, payload);
     expect((await db.courses.get(courseId))?.learnFirst).toBe(false);
   });
