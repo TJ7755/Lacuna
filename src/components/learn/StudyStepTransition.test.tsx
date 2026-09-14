@@ -49,7 +49,7 @@ describe('StudyStepTransition', () => {
 
     expect(screen.getByText('Step complete')).toBeInTheDocument();
     expect(screen.getByText('Checkpoint')).toBeInTheDocument();
-    expect(screen.getByText('2 cards reviewed · 50% correct')).toBeInTheDocument();
+    expect(screen.queryByText('2 cards reviewed · 50% correct')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Take a break' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue without break' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss break' }));

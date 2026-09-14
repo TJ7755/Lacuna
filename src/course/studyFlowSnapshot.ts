@@ -10,7 +10,7 @@ import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
-  dueStudyPool,
+  dueReviewPool,
   eligiblePracticePool,
   practiceCardScope,
   practiceReadiness,
@@ -248,11 +248,11 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey.set(practice.nodeKey, state);
   }
 
-  // Recurring review must have work now; future weak cards still belong to
-  // curricular Practice. Course Practice does not cap already exposed introductions.
-  const recurringPracticeEligibleCount = dueStudyPool(
+  // Recurring review contains scheduled reviews due now; unseen and future weak
+  // cards still belong to curricular Practice.
+  const recurringPracticeEligibleCount = dueReviewPool(
     recurringScope,
-    { ...course, newCardsPerDay: undefined },
+    course,
     examDateContext,
     now,
   ).length;
