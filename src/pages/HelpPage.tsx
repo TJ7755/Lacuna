@@ -225,9 +225,9 @@ export function HelpPage() {
               />
               <ModeCard
                 title="Simple learn"
-                description="A stripped-back mode with no algorithm. You simply mark each card as correct or incorrect, and it loops until you have answered every card correctly."
+                description="A first pass through your cards. Mark each answer correct or incorrect; your answers also start spaced-repetition scheduling."
                 whatItDoes="Shows every card in the course. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
-                whenToUse="Use this when you want to learn a set of cards for the first time, or when you want to drill through every card without any algorithmic scheduling."
+                whenToUse="Use this when learning material for the first time. Turn off Learn first in course settings to start directly with spaced repetition."
                 tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
               />
               <ModeCard

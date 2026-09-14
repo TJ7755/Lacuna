@@ -45,10 +45,6 @@ export async function reviewOnlyCard(page: Page, courseId: string): Promise<stri
   return cardId;
 }
 
-export async function exposeOnlyCard(page: Page, courseId: string): Promise<string> {
-  return completeOnlyCard(page, courseId);
-}
-
 export async function suppressStudyEndSync(page: Page): Promise<void> {
   // This scenario drives a deliberate manual write collision; automatic
   // study-end sync has separate trigger coverage and would race that barrier.

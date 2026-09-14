@@ -174,6 +174,13 @@ describe('CourseSettings', () => {
   it('populates fields from the course', () => {
     renderPage();
     expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Learn first' })).toBeChecked();
+  });
+
+  it('can start new cards directly in spaced repetition', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('switch', { name: 'Learn first' }));
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { learnFirst: false });
   });
 
   it('does not repeat the course name beneath the settings title', () => {

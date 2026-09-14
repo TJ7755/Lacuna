@@ -63,6 +63,8 @@ it.each(['replace', 'merge'] as const)(
   },
 );
 
+// Rolling back 2,000 fake IndexedDB writes can exceed the default five seconds
+// on a contended runner; the assertions verify atomicity, not elapsed time.
 it('rolls back the whole replacement when a later review batch fails', async () => {
   const backup = await largeBackup();
   const previous = await createCourse('Existing local data');
@@ -74,6 +76,7 @@ it('rolls back the whole replacement when a later review batch fails', async () 
   }) as typeof db.reviewHistory.bulkAdd);
 
   await expect(importBackup(backup, 'replace')).rejects.toThrow('Storage write failed');
+  expect(batches).toBe(2);
   expect(await db.courses.get(previous.id)).toBeDefined();
   expect(await db.reviewHistory.count()).toBe(0);
-});
+}, 15_000);

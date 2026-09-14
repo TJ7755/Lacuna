@@ -17,7 +17,8 @@ import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */
 export function isAvailable(card: Card, now: number = Date.now()): boolean {
   if (card.suspended) return false;
-  if (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now) return false;
+  if (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now)
+    return false;
   return true;
 }
 
@@ -66,6 +67,7 @@ export function studyPool(
   deck: SchedulerConfig,
   now: number = Date.now(),
   activity?: ReviewActivity,
+  budgetCards: Card[] = cards,
 ): Card[] {
   // Archived decks are withdrawn from all study, but their cards are retained and
   // still counted in progress/objective denominators (which use availableCards).
@@ -74,7 +76,7 @@ export function studyPool(
   const cap = Math.floor(deck.newCardsPerDay ?? 0);
   if (cap <= 0) return available; // unlimited
 
-  const budget = Math.max(cap - newCardsIntroducedRecently(available, now, activity), 0);
+  const budget = Math.max(cap - newCardsIntroducedRecently(budgetCards, now, activity), 0);
   const newAllowed = new Set(
     available
       .filter((c) => c.state === 0)

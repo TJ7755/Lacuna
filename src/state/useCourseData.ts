@@ -65,6 +65,20 @@ export function useCourse(courseId: string | undefined): Course | null | undefin
   }, [courseId]);
 }
 
+/** Resolve a lesson's course in one query so loading and missing records stay distinct. */
+export function useLessonCourse(lessonId: string | undefined): Course | null | undefined {
+  return useLiveQuery<Course | null>(async () => {
+    if (!lessonId) return null;
+    const lesson = await db.lessons.get(lessonId);
+    if (!lesson) return null;
+    const [record, assessments] = await Promise.all([
+      db.courses.get(lesson.courseId),
+      db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+    ]);
+    return record ? hydrateCourse(record, finalAssessmentForCourse(lesson.courseId, assessments)) : null;
+  }, [lessonId]);
+}
+
 export function useLessons(courseId: string | undefined): Lesson[] | undefined {
   return useLiveQuery(
     () => (courseId ? db.lessons.where('courseId').equals(courseId).sortBy('orderIndex') : []),

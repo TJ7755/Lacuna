@@ -86,6 +86,7 @@ beforeEach(async () => {
     db.courses.clear(),
     db.lessons.clear(),
     db.lessonCards.clear(),
+    db.lessonCardExposures.clear(),
     db.courseAssessments.clear(),
   ]);
 });
@@ -285,6 +286,124 @@ describe('useLearnSession answer boundary', () => {
       unmount?.();
       nowSpy.mockRestore();
     }
+  });
+
+  it('records a Simple Learn answer as a timing-graded canonical FSRS review', async () => {
+    const course = await createCourse('Simple scheduling');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Nucleus', 'DNA');
+    const slowCard = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Mitochondrion',
+      'Respiration',
+    );
+    await Promise.all([
+      upsertLessonCardExposure(lesson.id, card.id),
+      upsertLessonCardExposure(lesson.id, slowCard.id),
+    ]);
+    await db.coursePerformance.put({
+      courseId: course.id,
+      runningMeanResponseTime: 20,
+      runningStdDevResponseTime: 1,
+      m2: 0,
+      totalCorrectReviews: 20,
+      updatedAt: 0,
+    });
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const params = sessionParams({
+      courseId: course.id,
+      sessionId: 'simple-session',
+      reviewSessionKind: 'practice',
+      isSimpleMode: true,
+      mode: 'simple',
+    });
+    const rendered = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(rendered.result.current.current).not.toBeNull());
+      const fastCardId = rendered.result.current.current!.id;
+      const slowCardId = fastCardId === card.id ? slowCard.id : card.id;
+      nowSpy.mockReturnValue(10_000);
+      act(() => rendered.result.current.reveal());
+      await waitFor(() => expect(rendered.result.current.phase).toBe('answer'));
+      await act(async () => {
+        await rendered.result.current.answer(true);
+      });
+
+      const reviews = await db.reviewHistory.where('cardId').equals(fastCardId).toArray();
+      expect(reviews).toHaveLength(1);
+      expect(reviews[0]).toMatchObject({
+        sessionId: 'simple-session',
+        sessionKind: 'practice',
+        grade: 4,
+        correct: true,
+        responseTimeSec: 10,
+      });
+      expect(rendered.result.current.events.current[0]?.grade).toBe(4);
+      expect((await db.cards.get(fastCardId))?.reps).toBe(1);
+
+      await waitFor(() => expect(rendered.result.current.current?.id).toBe(slowCardId));
+      nowSpy.mockReturnValue(60_000);
+      act(() => rendered.result.current.reveal());
+      await waitFor(() => expect(rendered.result.current.phase).toBe('answer'));
+      await act(async () => {
+        await rendered.result.current.answer(true);
+      });
+      expect((await db.reviewHistory.where('cardId').equals(slowCardId).first())?.grade).toBe(2);
+      expect((await db.cards.get(slowCardId))?.reps).toBe(1);
+    } finally {
+      rendered.unmount();
+      nowSpy.mockRestore();
+    }
+  });
+
+  it('records No in Simple Learn as Again and keeps the card in its learning queue', async () => {
+    const course = await createCourse('Simple retry');
+    const lesson = await createLesson(course.id, 'Cells');
+    const first = await createLessonCard(course.id, lesson.id, 'front_back', 'First', 'Answer');
+    const second = await createLessonCard(course.id, lesson.id, 'front_back', 'Second', 'Answer');
+    await Promise.all([
+      upsertLessonCardExposure(lesson.id, first.id),
+      upsertLessonCardExposure(lesson.id, second.id),
+    ]);
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, mode: 'simple' });
+    const { result } = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(result.current.current).not.toBeNull());
+    const answeredId = result.current.current!.id;
+    act(() => result.current.reveal());
+    await waitFor(() => expect(result.current.phase).toBe('answer'));
+    await act(async () => {
+      await result.current.answer(false);
+    });
+
+    const reviews = await db.reviewHistory.where('cardId').equals(answeredId).toArray();
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toMatchObject({ grade: 1, correct: false });
+    expect(result.current.simpleWrong.current.has(answeredId)).toBe(true);
+    expect(result.current.simpleMastered.current.has(answeredId)).toBe(false);
+    expect(result.current.simpleQueue.current.find((card) => card.id === answeredId)?.reps).toBe(1);
+  });
+
+  it('removes an automatically suspended card from the Simple Learn queue and progress', async () => {
+    const course = await createCourse('Simple leech', { leechThreshold: 1, leechAction: 'suspend' });
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+    await db.cards.update(card.id, {
+      state: 2, stability: 1, difficulty: 5, reps: 1, lapses: 0,
+      lastReviewed: Date.now() - 86_400_000, due: Date.now() - 1,
+    });
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, mode: 'simple' });
+    const { result } = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+    act(() => result.current.reveal());
+    await act(async () => { await result.current.answer(false); });
+    expect((await db.cards.get(card.id))?.suspended).toBe(true);
+    expect(result.current.simpleQueue.current).toEqual([]);
+    expect(result.current.sessionCardIds).not.toContain(card.id);
+    expect(result.current.sessionCardOutcomes.has(card.id)).toBe(false);
+    expect(result.current.phase).toBe('finished');
   });
 
   it('grades a card with a null payload like an ordinary card', async () => {

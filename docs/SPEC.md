@@ -412,8 +412,8 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/course/:courseId/learn`                               | Learn session (practice over every due card in the course)              | **no**    | lazy    |
 | `/lesson/:lessonId/learn`                               | Learn session (new cards for one lesson)                                | **no**    | lazy    |
 | `/learn`                                                | Review today session across every course                                | **no**    | lazy    |
-| `/welcome`                                              | Cinematic first-run landing page                                                  | **no**    | lazy    |
-| `/landing`                                              | Alias of the main cinematic landing               | **no**    | lazy    |
+| `/welcome`                                              | Cinematic first-run landing page                                        | **no**    | lazy    |
+| `/landing`                                              | Alias of the main cinematic landing                                     | **no**    | lazy    |
 | `/download`                                             | OS-aware desktop beta download page                                     | **no**    | lazy    |
 | `/method`                                               | Technical method page                                                   | **no**    | lazy    |
 | `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |
@@ -784,8 +784,8 @@ is no existing filter builder to reuse.
 
 `LessonCardExposure { lessonId, cardId, taughtAt }` records that one card has been
 introduced successfully in one lesson. The `(lessonId, cardId)` pair is unique. This is
-separate from FSRS memory state because Simple mode is teaching, not a scheduled review, and
-because a linked card may be introduced independently in several lessons. Lesson completion
+separate from FSRS memory state because a linked card may be introduced independently in
+several lessons. Simple answers also update the card's shared FSRS state. Lesson completion
 and semi-linear unlocking require exposure records for every primary and linked card currently
 included in the lesson. Exposure rows are included in backups and restore points, excluded
 from course share codes, and cascade with their lesson, card or link.
@@ -1420,7 +1420,7 @@ Course-path study applies two additional, explicit pools:
   unseen in this lesson.
 - **Practice pool:** available cards belonging to at least one reached (`available` or
   `completed`) lesson, again including links and deduplicating by card id, which have been
-  exposed in at least one lesson and whose predicted retrievability at their per-card
+  exposed in at least one lesson (unless **Learn first** is disabled) and whose predicted retrievability at their per-card
   scheduling horizon is below `MASTERY_R`. The exposure requirement prevents Practice from
   leaking unseen material. A link affects reachability but not horizon resolution, which
   remains anchored to the card's primary lesson and single shared FSRS memory state.
@@ -1707,18 +1707,20 @@ checker-withheld and unscored Attempts are explicit exclusions rather than fabri
 
 ### Study mode (`src/state/studyMode.ts`)
 
-Two modes reach Learn mode (ordinary sessions default to **FSRS**; lesson sessions always use
-Simple mode):
+Two modes reach Learn mode (ordinary sessions default to **FSRS**; lessons default to
+Simple mode). Course settings expose **Learn first**, enabled by default. Turning it off admits new cards from unlocked lessons directly into FSRS, with daily new-card pacing and no fabricated exposure or review records:
 
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
-- **Simple:** an algorithm-free study loop with no FSRS scheduling or memory-state write,
-  and only YES/NO grading. Wrong cards are re-queued at the end of the pool; the session
+- **Simple:** a first-pass study loop with YES/NO controls and the same timing-based grading,
+  calibration and hint handling as Practice. Wrong cards are re-queued at the end of the pool; the session
   loops until every card has been marked correct. In a lesson-scoped session, the first
-  correct answer upserts that lesson's `LessonCardExposure`; it writes no `ReviewLog`,
-  `SessionHistoryEntry`, stability, difficulty, due date or FSRS state. A live pill UI
+  correct answer upserts that lesson's `LessonCardExposure`. Every answer uses the normal
+  review repository to persist review history and update FSRS memory state and due dates;
+  repeated attempts use the updated card state. Existing exposures are not converted into
+  invented reviews. A live pill UI
   (Wrong / Remaining / Right) updates on every answer. The SessionReport omits the
-  grade-distribution chart since grades are not meaningful in this mode. A versioned local recovery
+  grade-distribution chart to keep attention on first-pass progress. A versioned local recovery
   record stores only the scoped Card-id queue, mastered ids, outcomes and small session events. On
   restart it discards ineligible ids and appends newly eligible Cards. Completion or a deliberate
   confirmed exit clears the record; an unexpected refresh or termination leaves it resumable.
@@ -2335,6 +2337,7 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      packed copy under its originating id and regenerated the same card, leaving two cards
      per item with the adopted one frozen at the publishing revision.
   6. On completion, `distributedCopy.revision` is set to the incoming revision and
+     learner-owned scheduling preferences, including **Learn first**, are preserved.
      `lineageIdMappings` is updated with any newly adopted ids and refreshed content
      snapshots for every entity actually applied (auto-accepted updates and creates); an
      entity left queued or in conflict keeps its old snapshot, since nothing changed for it

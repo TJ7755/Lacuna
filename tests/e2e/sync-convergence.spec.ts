@@ -9,7 +9,6 @@ import {
   addLessonCard,
   deleteOnlyCard,
   editOnlyCard,
-  exposeOnlyCard,
   readAll,
   reviewOnlyCard,
   suppressStudyEndSync,
@@ -32,7 +31,6 @@ async function preparePeers(
   browser: Browser,
   page: Page,
   initialFront?: string,
-  exposeBeforePairing = false,
 ) {
   test.setTimeout(120_000);
   await enterFreshLacuna(page);
@@ -40,12 +38,6 @@ async function preparePeers(
   const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
   if (initialFront) {
     await addLessonCard(page, courseId, initialFront);
-    if (exposeBeforePairing) {
-      await exposeOnlyCard(page, courseId);
-      // A fresh document cancels the unpaired study-end timer while retaining
-      // the lesson exposure in IndexedDB for both paired devices.
-      await page.reload();
-    }
   }
 
   const relay = await installStatefulSyncRelay(page);
@@ -231,7 +223,6 @@ test('two browser profiles preserve concurrent reviews of the same card', async 
     browser,
     page,
     'Reviewed twice',
-    true,
   );
   try {
     relay.holdStatePulls();

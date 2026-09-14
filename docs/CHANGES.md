@@ -1,6 +1,28 @@
-# Lacuna — version 0.2.7
+# Lacuna — version 0.2.8
 
-## 0.2.7 beta — study interactions and navigation polish
+## 0.2.8 beta — optional introductions and FSRS learning
+
+- Added a per-course **Learn first** setting, enabled by default. Turning it off lets
+  new cards enter spaced repetition without a separate introduction pass, while
+  retaining lesson locks and daily new-card pacing. Shared courses retain the preference.
+- Simple Learn now records real FSRS reviews using Practice's timing-based grading,
+  calibration and hint handling. Its Yes/No queue still repeats missed cards and
+  finishes when every card is correct; later Practice uses the resulting memory state.
+  Existing introduction records are preserved without inventing historical reviews.
+
+- Windows and Linux packages are published through the native release workflow.
+  macOS packages are deferred and will be added separately.
+- Removed automatically suspended cards from Simple Learn's queue and progress,
+  retaining their recorded review without serving them again or completing the lesson.
+- Wait for the lesson's course setting before starting its study session, preventing
+  a temporary introduction session when Learn first is disabled.
+- Made the review-activity subscription test wait for each observed value rather than
+  assuming one event-loop turn completes IndexedDB notifications on every platform.
+- Updated packaged-application verification to enter through the current landing action.
+- Updated browser analytics and concurrent-review fixtures for graded introductions;
+  the sync scenario still requires exactly two distinct, converged review events.
+- Gave the large-transaction rollback test a bounded timeout suitable for contended
+  runners, retaining its atomicity checks and verifying failure in the second batch.
 
 - Updated the public landing page with a spacious exam-focused hero, twelve flat animated
   illustrations, a centred logo on scroll and a clear closing action. The approved design
@@ -11,6 +33,8 @@
 - Updated Download and Method to the same dark visual style. Download presents one
   platform action and compatibility line, with installation guidance on request. Method
   retains its interactive explanations and discloses coefficient details on request.
+
+## 0.2.7 beta — study interactions and navigation polish
 
 - Prevented the ordinary welcome-route exit fade from running beneath the app-entry
   cover, where it briefly exposed the old landing page during the dashboard reveal.

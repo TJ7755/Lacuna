@@ -16,6 +16,7 @@ import { useGradingMode } from '../state/gradingMode';
 import { useTypingSetting } from '../state/typingSetting';
 import { useAnswerStrictness } from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
+import { useLessonCourse } from '../state/useCourseData';
 import { useStartInFocusMode } from '../state/focusModePreference';
 import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -99,10 +100,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
   const [studyMode] = useStudyMode();
+  const lessonCourse = useLessonCourse(lessonId);
+  const sessionReady = !lessonId || lessonCourse !== undefined;
   const [startInFocusMode] = useStartInFocusMode();
-  // Course lessons always use the teaching loop; the global preference remains
+  // Course lessons follow their introduction setting; the global preference remains
   // available for ad-hoc deck/global sessions.
-  const isSimpleMode = !!lessonId || studyMode === 'simple' || simpleModeParam;
+  const isSimpleMode =
+    lessonId ? lessonCourse?.learnFirst !== false : studyMode === 'simple' || simpleModeParam;
 
   const mode: LearnModeType = useMemo(() => {
     if (isSimpleMode) return 'simple';
@@ -193,6 +197,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     clearSimpleSessionResume,
     resetSimpleSessionOutcomes,
   } = useLearnSession({
+    enabled: sessionReady,
     courseId,
     lessonId,
     sessionId,
@@ -293,7 +298,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     }
   }, [phase, summary]);
 
-  if (phase === 'loading') {
+  if (!sessionReady || phase === 'loading') {
     return (
       <DelayedFallback>
         <LearnSkeleton mode={mode} />

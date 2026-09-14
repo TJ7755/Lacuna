@@ -33,6 +33,10 @@ test('makes the revealed answer readable during the deliberate card flip', async
 
   const courseId = /#\/course\/([^/]+)/.exec(page.url())?.[1];
   expect(courseId).toBeTruthy();
+  const reviewedId = await page
+    .locator('[data-study-face="front"]')
+    .first()
+    .evaluate((face) => face.closest('[data-study-card-id]')?.getAttribute('data-study-card-id'));
   const elapsed = await reveal.evaluate((button) => {
     const front = document.querySelector('[data-study-face] .prose-lacuna')?.textContent;
     if (!front) throw new Error('The front of the study Card is missing.');
@@ -58,25 +62,12 @@ test('makes the revealed answer readable during the deliberate card flip', async
   expect(elapsed).toBeLessThan(650);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.locator('[data-study-face="back"]')).toHaveCount(0);
-  // Lesson introduction is deliberately ungraded. Enter scheduled course review
-  // before asserting that canonical review analytics exist.
-  await page.goto(`/#/course/${courseId}/learn`);
-  await page.reload();
-  await expect(page.locator('[data-study-face="front"]').first()).toBeVisible();
-  const reviewedId = await page
-    .locator('[data-study-face="front"]')
-    .first()
-    .evaluate((face) => face.closest('[data-study-card-id]')?.getAttribute('data-study-card-id'));
-  await page
-    .getByRole('button', { name: /Show answer/i })
-    .last()
-    .click();
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  // The introduction itself now records one canonical FSRS review.
   await expect
     .poll(() =>
       page.evaluate(
         (cardId) =>
-          new Promise<boolean>((resolve, reject) => {
+          new Promise<number>((resolve, reject) => {
             const request = indexedDB.open('lacuna');
             request.onerror = () => reject(request.error);
             request.onsuccess = () => {
@@ -88,7 +79,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
                 .count(cardId!);
               count.onsuccess = () => {
                 database.close();
-                resolve(count.result > 0);
+                resolve(count.result);
               };
               count.onerror = () => {
                 database.close();
@@ -99,7 +90,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
         reviewedId,
       ),
     )
-    .toBe(true);
+    .toBe(1);
   await page.goto(`/#/course/${courseId}/cards`);
   const frontPrefix = frontText.trim().split(/\s+/).slice(0, 4).join(' ');
   await page.getByPlaceholder('Search all cards…').fill(frontPrefix);

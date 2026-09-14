@@ -36,6 +36,7 @@ import {
   buildPath,
   isLessonUnlocked,
   lessonEffectiveReleaseDates,
+  manualPracticeGateKeysAfterLesson,
   manualPracticeGateOutcomeAfterLesson,
 } from '../../course/path';
 import {
@@ -44,6 +45,7 @@ import {
 } from '../../course/studyFlowSnapshot';
 import {
   eligiblePracticePool,
+  directLessonStudyPool,
   lessonCardMembership,
   lessonStudyPool,
   practiceCardScope,
@@ -76,7 +78,7 @@ import {
   sessionServePool,
 } from '../../fsrs/session';
 import type { SessionContext, SessionUnit } from '../../fsrs/session';
-import { availableCards, dueCards } from '../../fsrs/eligibility';
+import { availableCards, dueCards, studyPool } from '../../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../../fsrs/stats';
 import { startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
@@ -144,6 +146,7 @@ type SessionSchedulingConfig = SchedulerConfig & {
 };
 
 export interface UseLearnSessionParams {
+  enabled?: boolean;
   courseId: string | undefined;
   lessonId: string | undefined;
   sessionId: string | undefined;
@@ -175,6 +178,7 @@ export interface UseLearnSessionParams {
  * extraction — no logic changed, only relocated.
  */
 export function useLearnSession({
+  enabled = true,
   courseId,
   lessonId,
   sessionId,
@@ -588,22 +592,41 @@ export function useLearnSession({
       if (lessonN1.unlockedAt !== undefined) continue;
       if (lId && lessonN.id !== lId) continue;
       const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
-      const practiceGoalReached = manualPracticeGateOutcomeAfterLesson(
+      const currentPracticeGoalReached = manualPracticeGateOutcomeAfterLesson(
         coreLessons,
         practiceNodes,
         lessonN.id,
         snapshot.activeManualNodeKeys,
         snapshot.completedManualNodeKeys,
       );
-      if (
-        nextLessonUnlockCondition(
-          lessonN.id,
-          lessonNCards,
-          exposures,
-          completions,
-          practiceGoalReached,
-        )
-      ) {
+      // Recording the final Simple answer can make a manual checkpoint disappear
+      // from the freshly rebuilt active path before this completion ratchet runs.
+      // Its teacher-authored placement still gates the lesson just completed.
+      const practiceGoalReached =
+        currentPracticeGoalReached === undefined &&
+        lId === lessonN.id &&
+        manualPracticeGateKeysAfterLesson(coreLessons, practiceNodes, lessonN.id).length > 0
+          ? false
+          : currentPracticeGoalReached;
+      const lessonComplete =
+        course.learnFirst === false
+          ? lessonNCards.length === 0
+            ? nextLessonUnlockCondition(
+                lessonN.id,
+                lessonNCards,
+                exposures,
+                completions,
+                practiceGoalReached,
+              )
+            : lessonNCards.every((card) => card.state !== 0) && practiceGoalReached !== false
+          : nextLessonUnlockCondition(
+              lessonN.id,
+              lessonNCards,
+              exposures,
+              completions,
+              practiceGoalReached,
+            );
+      if (lessonComplete) {
         await ratchetLessonUnlock(lessonN1.id, now);
       }
     }
@@ -977,6 +1000,7 @@ export function useLearnSession({
     setUnitDisplayName(null);
     setResolvedCourseId(null);
     setLessonNotesScreen(null);
+    if (!enabled) return;
     void (async () => {
       let units: StudyUnit[];
       let sessionUnits: SchedulingUnitRecord[] | SessionUnit[];
@@ -1010,10 +1034,13 @@ export function useLearnSession({
         const allCourseCards = await hydrateCardsWithHistory(rawAllCourseCards);
         const linkedCardIds = new Set(links.map((link) => link.cardId));
         const membership = lessonCardMembership(lessonId, allCourseCards, links);
-        cards = lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
         lessonHasMembersRef.current = membership.length > 0;
         const examDateContext = makeExamDateContext(course, courseLessons, examDates);
         const schedulingUnit = (await getSchedulingUnit(course.id, lessonId)) ?? course;
+        cards =
+          course.learnFirst === false
+            ? directLessonStudyPool(lessonId, allCourseCards, links, schedulingUnit)
+            : lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
         units = [course];
         sessionUnits = [
           {
@@ -1106,7 +1133,11 @@ export function useLearnSession({
               allCards,
               courseLinks,
               courseExposures,
-              { reachedLessonIds, practiceNode },
+              {
+                reachedLessonIds,
+                practiceNode,
+                requireExposure: course.learnFirst !== false,
+              },
               Date.now(),
               course.leechThreshold,
             );
@@ -1132,8 +1163,13 @@ export function useLearnSession({
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
         const practiceConfig: SessionSchedulingConfig = {
           ...schedulingUnit,
-          newCardsPerDay: undefined,
+          // Introductions have already rationed new cards for traditional courses.
+          // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
+          newCardsPerDay: course.learnFirst === false ? schedulingUnit.newCardsPerDay : undefined,
         };
+        if (course.learnFirst === false && !plannedRevision) {
+          cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
+        }
         units = [course];
         sessionUnits = [
           {
@@ -1319,6 +1355,7 @@ export function useLearnSession({
     // cannot go stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    enabled,
     courseId,
     lessonId,
     tagFilter,
@@ -1384,16 +1421,61 @@ export function useLearnSession({
         const distracted = distraction.wasDistracted();
 
         if (isSimpleMode) {
+          const deck = isGlobal
+            ? cardNow.schedulingUnitId
+              ? schedulingUnitsRef.current.get(cardNow.schedulingUnitId)
+              : undefined
+            : schedulingUnitsRef.current.values().next().value;
+          if (!deck) return { undoAvailable: false };
+          const perf = perfRef.current.get(deck.id);
+          const hintUsed = hintStepRef.current > 0;
+          // The controls stay binary, while the invisible grade uses the same
+          // timing, calibration and hint rules as Practice. Machine-marked cards
+          // retain their mark-aware grade.
           const grade: Grade = machineMarked
             ? gradeFromMarks(machineMarked.marksEarned, machineMarked.marksAvailable, t, false)
-            : correct
-              ? 3
-              : 1;
+            : gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf);
+
+          const eventId = pendingReviewEventId.current ?? makeId();
+          pendingReviewEventId.current = eventId;
+          const {
+            card: updated,
+            recorded,
+            kind,
+          } = await recordReview({
+            card: cardNow,
+            eventId,
+            sessionId: reviewSessionIdRef.current,
+            sessionKind: reviewSessionKind,
+            deck,
+            kind: reviewKindRef.current,
+            grade,
+            responseTimeSec: t,
+            distracted,
+            hintUsed,
+            correct,
+            marksEarned: machineMarked?.marksEarned,
+            marksAvailable: machineMarked?.marksAvailable,
+            lineVerdicts: machineMarked?.lineVerdicts,
+            checkerDisputes: machineMarked?.checkerDisputes,
+          });
+          if (correct && perf) {
+            const nextPerf = recorded
+              ? updatePerformance(perf, t)
+              : await performanceForReviewUnit(deck.id, kind);
+            if (nextPerf) perfRef.current.set(deck.id, nextPerf);
+          }
+          cardsRef.current = cardsRef.current.map((card) =>
+            card.id === updated.id ? updated : card,
+          );
+          simpleQueue.current = simpleQueue.current.map((card) =>
+            card.id === updated.id ? updated : card,
+          );
           events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
 
           if (correct) {
             if (lessonExposureIdRef.current) {
-              await upsertLessonCardExposure(lessonExposureIdRef.current, cardNow.id);
+              await upsertLessonCardExposure(lessonExposureIdRef.current, updated.id);
             }
           }
           const nextSimple = transitionSimpleAnswer(
@@ -1403,21 +1485,25 @@ export function useLearnSession({
               wrong: simpleWrong.current,
               outcomes: sessionCardOutcomesRef.current,
             },
-            cardNow,
+            updated,
             correct,
           );
           simpleQueue.current = nextSimple.queue;
           simpleMastered.current = nextSimple.mastered;
           simpleWrong.current = nextSimple.wrong;
+          if (updated.suspended) {
+            setSessionCardIds((previous) => previous.filter((id) => id !== updated.id));
+          }
           sessionCardOutcomesRef.current = nextSimple.outcomes;
           setSessionCardOutcomes(nextSimple.outcomes);
           persistSimpleResume(nextSimple.outcomes);
+          pendingReviewEventId.current = null;
 
           const remaining = simpleQueue.current.filter(
             (c) => !simpleMastered.current.has(c.id),
           ).length;
           if (remaining === 0) {
-            finish(true);
+            finish(!updated.suspended);
           } else {
             serveNext();
           }

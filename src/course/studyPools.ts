@@ -3,7 +3,14 @@
 // Lesson links affect where a card can be taught and when it becomes reachable,
 // but never mutate the card's primary lesson or its single FSRS memory state.
 
-import type { Card, Course, LessonCardExposure, LessonCardLink, PracticeNode } from '../db/types';
+import type {
+  Card,
+  Course,
+  LessonCardExposure,
+  LessonCardLink,
+  PracticeNode,
+  SchedulerConfig,
+} from '../db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
@@ -55,11 +62,26 @@ export function lessonStudyPool(
   return lessonCardMembership(lessonId, cards, links).filter((card) => !exposedIds.has(card.id));
 }
 
+/** Lesson members eligible to enter FSRS directly, including the shared daily new-card cap. */
+export function directLessonStudyPool(
+  lessonId: string,
+  cards: Card[],
+  links: LessonCardLink[],
+  course: SchedulerConfig,
+  now: number = Date.now(),
+  activity?: ReviewActivity,
+): Card[] {
+  const members = lessonCardMembership(lessonId, cards, links);
+  return studyPool(members, course, now, activity, cards);
+}
+
 export interface PracticeScopeOptions {
   /** Reached lessons only. An open but untouched lesson must not leak unseen cards. */
   reachedLessonIds: ReadonlySet<string>;
   /** Optional authored configuration. Auto practice omits this. */
   practiceNode?: PracticeNode;
+  /** Whether cards need a lesson introduction before entering Practice. Defaults to true. */
+  requireExposure?: boolean;
 }
 
 function cardMatchesFilter(
@@ -129,7 +151,7 @@ export function practiceCardScope(
   }
 
   let scope = cards.filter((card) => {
-    if (!exposedIds.has(card.id)) return false;
+    if (options.requireExposure !== false && !exposedIds.has(card.id)) return false;
     if (card.primaryLessonId && selectedLessonIds.has(card.primaryLessonId)) return true;
     const linkedLessonIds = linkedLessonsByCard.get(card.id);
     return linkedLessonIds
