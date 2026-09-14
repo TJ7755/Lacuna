@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { liveQuery, type DBCore, type Middleware } from 'dexie';
 import { db } from './schema';
 import type { ReviewHistoryEntry } from './reviewHistory';
@@ -172,11 +172,12 @@ describe('review activity projection middleware', () => {
     const subscription = liveQuery(() => db.reviewActivity.count()).subscribe((count) =>
       values.push(count),
     );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await db.reviewHistory.add(entry('one', 'card-1', 100));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    subscription.unsubscribe();
-
-    expect(values).toEqual([0, 1]);
+    try {
+      await vi.waitFor(() => expect(values).toEqual([0]));
+      await db.reviewHistory.add(entry('one', 'card-1', 100));
+      await vi.waitFor(() => expect(values).toEqual([0, 1]));
+    } finally {
+      subscription.unsubscribe();
+    }
   });
 });
