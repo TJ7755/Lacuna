@@ -63,6 +63,7 @@ export function ShellCourseDataProvider({
     const activeCourseIds = new Set(
       courses.filter((course) => !course.archived).map((course) => course.id),
     );
+    const schedulingByCourse = new Map(courses.map((course) => [course.id, course]));
     const sidebar: SidebarData = {
       courses,
       lessons,
@@ -81,6 +82,7 @@ export function ShellCourseDataProvider({
         now,
         activeCourseIds,
         activity,
+        schedulingByCourse,
       ),
     };
 
@@ -117,7 +119,14 @@ export function ShellCourseDataProvider({
         ),
         // Dashboard response-time calibration is course-based; navigation keeps
         // scheduling-unit pacing. Sharing the records must not conflate the two.
-        stats: computeStudyStats(cards, courseSeconds, now, activeCourseIds, activity),
+        stats: computeStudyStats(
+          cards,
+          courseSeconds,
+          now,
+          activeCourseIds,
+          activity,
+          schedulingByCourse,
+        ),
       },
     };
   }, [includeDashboard]);

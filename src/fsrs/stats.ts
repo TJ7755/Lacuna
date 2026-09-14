@@ -4,10 +4,11 @@
 // (review history, card due dates, per-deck response-time calibration), so they need no
 // new tables. Every function is pure and works in local time.
 
-import type { Card, UserPerformance } from '../db/types';
+import type { Card, SchedulerConfig, UserPerformance } from '../db/types';
 import { MS_PER_DAY } from './params';
 import { startOfDay } from '../utils/datetime';
 import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
+import { studyPool } from './eligibility';
 
 /** Fallback per-review time (seconds) for a deck with no calibration yet. */
 export const DEFAULT_REVIEW_SECONDS = 8;
@@ -99,6 +100,7 @@ export function computeStudyStats(
   now: number = Date.now(),
   forecastSourceIds?: ReadonlySet<string>,
   activity?: ReviewActivity,
+  schedulingBySource?: ReadonlyMap<string, SchedulerConfig>,
 ): StudyStats {
   const today = startOfDay(now);
 
@@ -110,6 +112,18 @@ export function computeStudyStats(
       const day = startOfDay(timestamp);
       studiedDays.add(day);
       if (day === today) reviewedToday += 1;
+    }
+  }
+
+  const newCardsAllowed = new Set<string>();
+  if (schedulingBySource) {
+    for (const [sourceId, config] of schedulingBySource) {
+      const sourceCards = cards.filter(
+        (card) => (card.courseId ?? card.schedulingUnitId) === sourceId,
+      );
+      for (const card of studyPool(sourceCards, config, now, activity, sourceCards)) {
+        if (card.state === 0) newCardsAllowed.add(card.id);
+      }
     }
   }
 
@@ -139,7 +153,11 @@ export function computeStudyStats(
     return slice;
   }
 
-  for (const card of cards) {
+  // Reviews take precedence when a daily review limit is shared with new cards.
+  const forecastCards = [...cards].sort(
+    (left, right) => Number(left.state === 0) - Number(right.state === 0),
+  );
+  for (const card of forecastCards) {
     if (card.suspended) continue;
     const sourceId = card.courseId ?? card.schedulingUnitId!;
     if (forecastSourceIds && !forecastSourceIds.has(sourceId)) continue;
@@ -148,16 +166,19 @@ export function computeStudyStats(
       (card.schedulingUnitId ? deckSeconds.get(card.schedulingUnitId) : undefined) ??
       DEFAULT_REVIEW_SECONDS;
     const minutes = secondsPerReview / 60;
+    const dailyLimit = Math.floor(schedulingBySource?.get(sourceId)?.maxReviewsPerDay ?? 0);
 
     if (card.due === null || card.due === undefined) {
       // Never-reviewed card: count as new today only if not buried.
       if (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now) continue;
+      if (schedulingBySource && !newCardsAllowed.has(card.id)) continue;
+      const existing = getDeckSlice(0, sourceId);
+      if (dailyLimit > 0 && existing.dueCount + existing.newCount >= dailyLimit) continue;
       const slot = forecast[0];
       slot.newCount += 1;
       slot.minutes += minutes;
-      const slice = getDeckSlice(0, sourceId);
-      slice.newCount += 1;
-      slice.minutes += minutes;
+      existing.newCount += 1;
+      existing.minutes += minutes;
       continue;
     }
 
@@ -168,9 +189,10 @@ export function computeStudyStats(
     const index = Math.round((bucketDay - today) / MS_PER_DAY);
     const slot = forecast[index];
     if (!slot) continue;
+    const slice = getDeckSlice(index, sourceId);
+    if (dailyLimit > 0 && slice.dueCount + slice.newCount >= dailyLimit) continue;
     slot.dueCount += 1;
     slot.minutes += minutes;
-    const slice = getDeckSlice(index, sourceId);
     slice.dueCount += 1;
     slice.minutes += minutes;
   }
