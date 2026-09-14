@@ -418,6 +418,14 @@ describe('mergeImport: merge apply', () => {
     expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
   });
 
+  it('preserves the learner\'s introduction preference when the teacher publishes an update', async () => {
+    await db.courses.update(courseId, { learnFirst: false });
+    const payload = coursePayload({ rv: 2, lessons: [lessonOne()] });
+    payload.course.lf = 1;
+    await mergeLineageUpdate(courseId, payload);
+    expect((await db.courses.get(courseId))?.learnFirst).toBe(false);
+  });
+
   it('creates new lessons/notes/cards immediately, unconditionally', async () => {
     const payload = coursePayload({
       rv: 2,

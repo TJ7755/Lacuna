@@ -2337,6 +2337,7 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      packed copy under its originating id and regenerated the same card, leaving two cards
      per item with the adopted one frozen at the publishing revision.
   6. On completion, `distributedCopy.revision` is set to the incoming revision and
+     learner-owned scheduling preferences, including **Learn first**, are preserved.
      `lineageIdMappings` is updated with any newly adopted ids and refreshed content
      snapshots for every entity actually applied (auto-accepted updates and creates); an
      entity left queued or in conflict keeps its old snapshot, since nothing changed for it
