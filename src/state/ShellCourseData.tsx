@@ -37,20 +37,34 @@ export function ShellCourseDataProvider({
   children: ReactNode;
 }) {
   const data = useLiveQuery(async (): Promise<ShellCourseData> => {
-    const [records, lessons, cards, assessments, dashboardRows] = await Promise.all([
-      db.courses.toArray(),
-      db.lessons.toArray(),
-      db.cards.toArray(),
-      db.courseAssessments.toArray(),
-      includeDashboard
-        ? Promise.all([
-            db.lessonCards.toArray(),
-            db.lessonCardExposures.toArray(),
-            db.lessonCompletions.toArray(),
-            db.coursePerformance.toArray(),
-          ])
-        : undefined,
-    ]);
+    const [records, lessons, cards, assessments, dashboardRows] = await db.transaction(
+      'r',
+      [
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.courseAssessments,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
+        db.coursePerformance,
+      ],
+      () =>
+        Promise.all([
+          db.courses.toArray(),
+          db.lessons.toArray(),
+          db.cards.toArray(),
+          db.courseAssessments.toArray(),
+          includeDashboard
+            ? Promise.all([
+                db.lessonCards.toArray(),
+                db.lessonCardExposures.toArray(),
+                db.lessonCompletions.toArray(),
+                db.coursePerformance.toArray(),
+              ])
+            : undefined,
+        ]),
+    );
     const courses = records.map((record) =>
       hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
     );

@@ -1,5 +1,11 @@
 # Lacuna — version 0.2.8
 
+## Unreleased
+
+- Read courses and their final assessments in one database transaction across navigation,
+  search, course views and plain queries. Concurrent imports, deletions and replacements
+  can no longer mix course and assessment snapshots and trigger a false missing-final error.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
