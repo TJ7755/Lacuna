@@ -7,6 +7,7 @@
   can no longer mix course and assessment snapshots and trigger a false missing-final error.
 - Fixed course settings section highlighting after asynchronous course loading;
   the desktop rail and mobile jumper now follow scrolling.
+- Kept assessment card exclusions within the settings editor when card text is long.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 
