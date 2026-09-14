@@ -332,7 +332,8 @@ describe('CoursePath Study mode', () => {
   });
 
   it('starts course-wide practice from the header', () => {
-    const card = makeCard('card-1', 'lesson-1');
+    // Header practice serves scheduled reviews; unseen cards no longer count as due.
+    const card: Card = { ...makeCard('card-1', 'lesson-1'), state: 2, due: Date.now() - 1 };
     mockCourseCards = [card];
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
 
@@ -348,7 +349,8 @@ describe('CoursePath Study mode', () => {
   });
 
   it('exposes course-wide practice in a single-lesson course header', async () => {
-    const card = makeCard('card-1', 'lesson-1');
+    // Header practice serves scheduled reviews; unseen cards no longer count as due.
+    const card: Card = { ...makeCard('card-1', 'lesson-1'), state: 2, due: Date.now() - 1 };
     mockLessons = [lesson1];
     mockCourseCards = [card];
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];

@@ -15,7 +15,7 @@ import type { ExamDateContext } from '../fsrs/examDate';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { cardSchedulingHorizon } from '../fsrs/horizon';
-import { isAvailable, studyPool } from '../fsrs/eligibility';
+import { dueCards, isAvailable, studyPool } from '../fsrs/eligibility';
 import type { ReviewActivity } from '../fsrs/heatmap';
 import { isLeech } from '../fsrs/leech';
 import { MASTERY_R } from '../fsrs/params';
@@ -210,6 +210,16 @@ export function dueStudyPool(
   // A scheduled review can already be secured at a nearby exam horizon.
   // Use Practice's mastery rule so the count does not promise that review.
   return eligiblePracticePool(due, course, examDateContext, now);
+}
+
+/** Scheduled reviews due now and still below Practice mastery. */
+export function dueReviewPool(
+  cards: Card[],
+  course: Course,
+  examDateContext: ExamDateContext,
+  now: number = Date.now(),
+): Card[] {
+  return eligiblePracticePool(dueCards(cards, now), course, examDateContext, now);
 }
 
 /**

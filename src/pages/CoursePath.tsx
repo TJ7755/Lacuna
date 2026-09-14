@@ -370,8 +370,8 @@ export function CoursePath() {
   const { reached, total } = pathPosition(visibleNodes);
 
   // Header stats: nearest exam + urgency + dueCardCount use the same maths as
-  // LessonView's (see courseHeaderStats — due here means overdue reviews plus
-  // admissible new cards, matching what Study serves); mastery is passed in
+  // LessonView's (see courseHeaderStats — due here means scheduled reviews
+  // due now); mastery is passed in
   // from the course-level summary (extension-lesson cards already excluded
   // there).
   const { nearestExam, examUrgent, mastery, dueCardCount } = courseHeaderStats(

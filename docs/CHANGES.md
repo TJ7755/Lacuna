@@ -1,5 +1,11 @@
 # Lacuna — version 0.2.8
 
+## Unreleased
+
+- Counted only scheduled reviews in “Due” totals and the recurring review step,
+  while retaining new cards in “Ready” totals and curricular Practice.
+- Removed the redundant reviewed-count and accuracy subtitle between study steps.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets

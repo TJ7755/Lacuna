@@ -14,7 +14,7 @@
 
 import type { Card, Course, CourseAssessment, Lesson } from '../db/types';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { dueStudyPool } from './studyPools';
+import { dueReviewPool } from './studyPools';
 import { nearestExamDate, examIsUrgent } from './path';
 
 export interface CourseHeaderStats {
@@ -38,13 +38,13 @@ export function courseHeaderStats(
   lessons: Lesson[] = [],
 ): CourseHeaderStats {
   const nearestExam = nearestExamDate(course, assessments, now);
-  // Count due reviews below Practice mastery and capped introductions using
-  // the same lesson/assessment horizons as the session.
+  // Count scheduled reviews below Practice mastery using the same
+  // lesson/assessment horizons as the session.
   const context = makeExamDateContext(course, lessons, assessments);
   return {
     nearestExam,
     examUrgent: examIsUrgent(nearestExam, now),
     mastery,
-    dueCardCount: dueStudyPool(cards, course, context, now).length,
+    dueCardCount: dueReviewPool(cards, course, context, now).length,
   };
 }
