@@ -21,6 +21,8 @@
 - Updated packaged-application verification to enter through the current landing action.
 - Updated browser analytics and concurrent-review fixtures for graded introductions;
   the sync scenario still requires exactly two distinct, converged review events.
+- Gave the large-transaction rollback test a bounded timeout suitable for contended
+  runners, retaining its atomicity checks and verifying failure in the second batch.
 
 - Updated the public landing page with a spacious exam-focused hero, twelve flat animated
   illustrations, a centred logo on scroll and a clear closing action. The approved design
