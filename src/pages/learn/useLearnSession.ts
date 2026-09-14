@@ -146,6 +146,7 @@ type SessionSchedulingConfig = SchedulerConfig & {
 };
 
 export interface UseLearnSessionParams {
+  enabled?: boolean;
   courseId: string | undefined;
   lessonId: string | undefined;
   sessionId: string | undefined;
@@ -177,6 +178,7 @@ export interface UseLearnSessionParams {
  * extraction — no logic changed, only relocated.
  */
 export function useLearnSession({
+  enabled = true,
   courseId,
   lessonId,
   sessionId,
@@ -998,6 +1000,7 @@ export function useLearnSession({
     setUnitDisplayName(null);
     setResolvedCourseId(null);
     setLessonNotesScreen(null);
+    if (!enabled) return;
     void (async () => {
       let units: StudyUnit[];
       let sessionUnits: SchedulingUnitRecord[] | SessionUnit[];
@@ -1352,6 +1355,7 @@ export function useLearnSession({
     // cannot go stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    enabled,
     courseId,
     lessonId,
     tagFilter,

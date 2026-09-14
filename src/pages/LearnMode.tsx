@@ -102,6 +102,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const [studyMode] = useStudyMode();
   const lesson = useLesson(lessonId);
   const lessonCourse = useCourse(lesson?.courseId);
+  const sessionReady = !lessonId || lesson === null || (!!lesson && lessonCourse?.id === lesson.courseId);
   const [startInFocusMode] = useStartInFocusMode();
   // Course lessons follow their introduction setting; the global preference remains
   // available for ad-hoc deck/global sessions.
@@ -197,6 +198,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     clearSimpleSessionResume,
     resetSimpleSessionOutcomes,
   } = useLearnSession({
+    enabled: sessionReady,
     courseId,
     lessonId,
     sessionId,
@@ -297,7 +299,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     }
   }, [phase, summary]);
 
-  if (phase === 'loading') {
+  if (!sessionReady || phase === 'loading') {
     return (
       <DelayedFallback>
         <LearnSkeleton mode={mode} />

@@ -14,6 +14,8 @@
   macOS packages are deferred and will be added separately.
 - Removed automatically suspended cards from Simple Learn's queue and progress,
   retaining their recorded review without serving them again or completing the lesson.
+- Wait for the lesson's course setting before starting its study session, preventing
+  a temporary introduction session when Learn first is disabled.
 
 - Updated the public landing page with a spacious exam-focused hero, twelve flat animated
   illustrations, a centred logo on scroll and a clear closing action. The approved design
