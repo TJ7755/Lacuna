@@ -16,7 +16,7 @@ import { useGradingMode } from '../state/gradingMode';
 import { useTypingSetting } from '../state/typingSetting';
 import { useAnswerStrictness } from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
-import { useCourse, useLesson } from '../state/useCourseData';
+import { useLessonCourse } from '../state/useCourseData';
 import { useStartInFocusMode } from '../state/focusModePreference';
 import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -100,9 +100,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
   const [studyMode] = useStudyMode();
-  const lesson = useLesson(lessonId);
-  const lessonCourse = useCourse(lesson?.courseId);
-  const sessionReady = !lessonId || lesson === null || (!!lesson && lessonCourse?.id === lesson.courseId);
+  const lessonCourse = useLessonCourse(lessonId);
+  const sessionReady = !lessonId || lessonCourse !== undefined;
   const [startInFocusMode] = useStartInFocusMode();
   // Course lessons follow their introduction setting; the global preference remains
   // available for ad-hoc deck/global sessions.

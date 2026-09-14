@@ -12,10 +12,10 @@ it('waits for the lesson course before initialising the study session', async ()
   const course = await createCourse('Direct study', { learnFirst: false });
   const lesson = await createLesson(course.id, 'Delayed lesson');
   await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
-  const originalUseCourse = courseData.useCourse;
+  const originalUseCourse = courseData.useLessonCourse;
   let held = true;
   let courseLoaded = false;
-  const courseSpy = vi.spyOn(courseData, 'useCourse').mockImplementation((id) => {
+  const courseSpy = vi.spyOn(courseData, 'useLessonCourse').mockImplementation((id) => {
     const result = originalUseCourse(id);
     courseLoaded = result?.id === course.id;
     return held ? undefined : result;
