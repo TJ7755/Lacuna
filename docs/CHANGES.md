@@ -18,6 +18,7 @@
   a temporary introduction session when Learn first is disabled.
 - Made the review-activity subscription test wait for each observed value rather than
   assuming one event-loop turn completes IndexedDB notifications on every platform.
+- Updated packaged-application verification to enter through the current landing action.
 
 - Updated the public landing page with a spacious exam-focused hero, twelve flat animated
   illustrations, a centred logo on scroll and a clear closing action. The approved design
