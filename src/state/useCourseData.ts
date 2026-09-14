@@ -46,10 +46,12 @@ function hydrateCourses(records: CourseRecord[], assessments: CourseAssessment[]
 
 export function useCourses(): Course[] | undefined {
   return useLiveQuery(async () => {
-    const [records, assessments] = await Promise.all([
-      db.courses.orderBy('createdAt').toArray(),
-      db.courseAssessments.toArray(),
-    ]);
+    const [records, assessments] = await db.transaction(
+      'r',
+      [db.courses, db.courseAssessments],
+      () =>
+        Promise.all([db.courses.orderBy('createdAt').toArray(), db.courseAssessments.toArray()]),
+    );
     return hydrateCourses(records, assessments);
   }, []);
 }
@@ -57,10 +59,15 @@ export function useCourses(): Course[] | undefined {
 export function useCourse(courseId: string | undefined): Course | null | undefined {
   return useLiveQuery<Course | null>(async () => {
     if (!courseId) return null;
-    const [record, assessments] = await Promise.all([
-      db.courses.get(courseId),
-      db.courseAssessments.where('courseId').equals(courseId).toArray(),
-    ]);
+    const [record, assessments] = await db.transaction(
+      'r',
+      [db.courses, db.courseAssessments],
+      () =>
+        Promise.all([
+          db.courses.get(courseId),
+          db.courseAssessments.where('courseId').equals(courseId).toArray(),
+        ]),
+    );
     return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
   }, [courseId]);
 }
@@ -71,11 +78,18 @@ export function useLessonCourse(lessonId: string | undefined): Course | null | u
     if (!lessonId) return null;
     const lesson = await db.lessons.get(lessonId);
     if (!lesson) return null;
-    const [record, assessments] = await Promise.all([
-      db.courses.get(lesson.courseId),
-      db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
-    ]);
-    return record ? hydrateCourse(record, finalAssessmentForCourse(lesson.courseId, assessments)) : null;
+    const [record, assessments] = await db.transaction(
+      'r',
+      [db.courses, db.courseAssessments],
+      () =>
+        Promise.all([
+          db.courses.get(lesson.courseId),
+          db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+        ]),
+    );
+    return record
+      ? hydrateCourse(record, finalAssessmentForCourse(lesson.courseId, assessments))
+      : null;
   }, [lessonId]);
 }
 
@@ -293,12 +307,17 @@ export function useCourseSessionHistory(
  */
 export function useCourseSummaries(): Record<string, CourseSummary> | undefined {
   return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments] = await Promise.all([
-      db.courses.toArray(),
-      db.lessons.toArray(),
-      db.cards.toArray(),
-      db.courseAssessments.toArray(),
-    ]);
+    const [records, lessons, cards, assessments] = await db.transaction(
+      'r',
+      [db.courses, db.lessons, db.cards, db.courseAssessments],
+      () =>
+        Promise.all([
+          db.courses.toArray(),
+          db.lessons.toArray(),
+          db.cards.toArray(),
+          db.courseAssessments.toArray(),
+        ]),
+    );
     return computeCourseSummaries(
       hydrateCourses(records, assessments),
       lessons,

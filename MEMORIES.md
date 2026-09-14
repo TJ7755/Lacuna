@@ -603,3 +603,9 @@ and preserve duplicate timestamps when replacing event reads with activity proje
 Motion retains outgoing Card nodes during exit animations, so the first matching node may be
 the old Card. Playwright visibility also permits zero opacity, and polling adds artificial delay.
 Measure a different readable face on animation frames from the actual click event.
+
+## Live queries do not imply a shared database snapshot
+
+Parallel Dexie reads inside one live query can use separate transactions. When one table
+validates another, read both within an explicit read transaction; otherwise a concurrent
+atomic write can still appear partially applied to the reader.
