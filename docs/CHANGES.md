@@ -9,6 +9,8 @@
   the desktop rail and mobile jumper now follow scrolling.
 - Kept assessment card exclusions within the settings editor when card text is long.
 - Centred sidebar hover details on their course row while keeping the popup inside the viewport.
+- Enabled internal FSRS interval fuzz for new scheduling configurations by default;
+  existing saved preferences are retained.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 
