@@ -1,5 +1,9 @@
 # Lacuna — version 0.2.8
 
+## Unreleased
+
+- Centred sidebar hover details on their course row while keeping the popup inside the viewport.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
