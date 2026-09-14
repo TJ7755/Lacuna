@@ -1,5 +1,10 @@
 # Lacuna — version 0.2.8
 
+## Unreleased
+
+- Enabled internal FSRS interval fuzz for new scheduling configurations by default;
+  existing saved preferences are retained.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
