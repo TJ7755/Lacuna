@@ -18,6 +18,14 @@ export function transitionSimpleAnswer(
   const outcomes = new Map(state.outcomes);
   let queue = state.queue;
 
+  if (card.suspended) {
+    mastered.delete(card.id);
+    wrong.delete(card.id);
+    outcomes.delete(card.id);
+    queue = queue.filter((candidate) => candidate.id !== card.id);
+    return { queue, mastered, wrong, outcomes };
+  }
+
   if (correct) {
     mastered.add(card.id);
     wrong.delete(card.id);

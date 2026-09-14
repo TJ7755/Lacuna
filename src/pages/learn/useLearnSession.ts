@@ -1487,6 +1487,9 @@ export function useLearnSession({
           simpleQueue.current = nextSimple.queue;
           simpleMastered.current = nextSimple.mastered;
           simpleWrong.current = nextSimple.wrong;
+          if (updated.suspended) {
+            setSessionCardIds((previous) => previous.filter((id) => id !== updated.id));
+          }
           sessionCardOutcomesRef.current = nextSimple.outcomes;
           setSessionCardOutcomes(nextSimple.outcomes);
           persistSimpleResume(nextSimple.outcomes);
@@ -1496,7 +1499,7 @@ export function useLearnSession({
             (c) => !simpleMastered.current.has(c.id),
           ).length;
           if (remaining === 0) {
-            finish(true);
+            finish(!updated.suspended);
           } else {
             serveNext();
           }

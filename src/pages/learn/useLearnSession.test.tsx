@@ -385,6 +385,27 @@ describe('useLearnSession answer boundary', () => {
     expect(result.current.simpleQueue.current.find((card) => card.id === answeredId)?.reps).toBe(1);
   });
 
+  it('removes an automatically suspended card from the Simple Learn queue and progress', async () => {
+    const course = await createCourse('Simple leech', { leechThreshold: 1, leechAction: 'suspend' });
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+    await db.cards.update(card.id, {
+      state: 2, stability: 1, difficulty: 5, reps: 1, lapses: 0,
+      lastReviewed: Date.now() - 86_400_000, due: Date.now() - 1,
+    });
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, mode: 'simple' });
+    const { result } = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+    act(() => result.current.reveal());
+    await act(async () => { await result.current.answer(false); });
+    expect((await db.cards.get(card.id))?.suspended).toBe(true);
+    expect(result.current.simpleQueue.current).toEqual([]);
+    expect(result.current.sessionCardIds).not.toContain(card.id);
+    expect(result.current.sessionCardOutcomes.has(card.id)).toBe(false);
+    expect(result.current.phase).toBe('finished');
+  });
+
   it('grades a card with a null payload like an ordinary card', async () => {
     const deck = await createCourse('Null payload', { newCardsPerDay: 2 });
     await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {

@@ -12,6 +12,8 @@
 
 - Windows and Linux packages are published through the native release workflow.
   macOS packages are deferred and will be added separately.
+- Removed automatically suspended cards from Simple Learn's queue and progress,
+  retaining their recorded review without serving them again or completing the lesson.
 
 - Updated the public landing page with a spacious exam-focused hero, twelve flat animated
   illustrations, a centred logo on scroll and a clear closing action. The approved design
