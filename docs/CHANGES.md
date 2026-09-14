@@ -1,5 +1,9 @@
 # Lacuna — version 0.2.8
 
+## Unreleased
+
+- Kept assessment card exclusions within the settings editor when card text is long.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
