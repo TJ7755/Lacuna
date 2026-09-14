@@ -74,11 +74,8 @@ export function Settings() {
   return (
     <div className="mx-auto flex max-w-6xl gap-6 px-6 pb-10 pt-12 md:px-10 md:py-10">
       <div className="min-w-0 flex-1">
-        <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-7 md:p-9">
-          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-          <div className="relative">
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
-          </div>
+        <header className="mb-12 pt-2 md:pt-4">
+          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
         </header>
 
         <SectionRailMobileJumper
@@ -91,7 +88,6 @@ export function Settings() {
         <SettingsGroup
           id="settings-group-appearance"
           title="Appearance & access"
-          description="Make Lacuna comfortable to read, navigate and control on this device."
         >
           <AppearanceSection />
           <InputModeSection />
@@ -104,7 +100,6 @@ export function Settings() {
         <SettingsGroup
           id="settings-group-study"
           title="Study behaviour"
-          description="Choose how study sessions, answers and focus time work."
         >
           <StudySection />
           <PomodoroSection />
@@ -113,7 +108,6 @@ export function Settings() {
         <SettingsGroup
           id="settings-group-course-defaults"
           title="Course defaults"
-          description="Set shared course behaviour that an individual course can override."
         >
           <CourseDefaultsSection />
         </SettingsGroup>
@@ -121,7 +115,6 @@ export function Settings() {
         <SettingsGroup
           id="settings-group-data"
           title="Data safety"
-          description="Keep local study data recoverable and consistent across your devices."
         >
           <SyncSection />
           <DataPortabilitySection motionMultiplier={motionMultiplier} />
@@ -131,7 +124,6 @@ export function Settings() {
         <SettingsGroup
           id="settings-group-integrations"
           title="Integrations"
-          description="Install Lacuna and control the external tools allowed to connect to it."
         >
           <InstallSection />
           <AiSection />
@@ -144,7 +136,6 @@ export function Settings() {
         activeSection={activeSection}
         onNavigate={goToSection}
         motionMultiplier={motionMultiplier}
-        title="Settings groups"
       />
     </div>
   );
@@ -153,12 +144,10 @@ export function Settings() {
 function SettingsGroup({
   id,
   title,
-  description,
   children,
 }: {
   id: string;
   title: string;
-  description: string;
   children: ReactNode;
 }) {
   const headingId = `${id}-heading`;
@@ -173,7 +162,6 @@ function SettingsGroup({
         <h2 id={headingId} className="font-display text-2xl tracking-tight">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-ink-soft">{description}</p>
       </div>
       <SettingsHeadingLevelProvider level={3}>{children}</SettingsHeadingLevelProvider>
     </section>

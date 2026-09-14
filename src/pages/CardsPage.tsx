@@ -16,7 +16,6 @@ import {
 } from '../state/useCourseData';
 import { CardList } from '../components/cards/CardList';
 import { courseCardListContext } from '../components/cards/cardListContext';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { PlusIcon, SearchIcon } from '../components/ui/icons';
@@ -106,16 +105,10 @@ export function CardsPage() {
   const noMatches = !isEmpty && lessonsWithCards.length === 0 && unassigned.length === 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
-        courseId={courseId ?? ''}
-        backTo="/"
-        backLabel="All courses"
-        className="mb-6"
-      />
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
 
       {/* Header */}
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <div>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Cards</h1>
           <p className="mt-2 text-sm text-ink-soft">
@@ -343,7 +336,7 @@ function UnassignedBucket({
 
 function CardsPageSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
       <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
       <div className="mb-8 flex items-center justify-between">
         <div className="h-10 w-64 animate-pulse rounded bg-ink/10" />

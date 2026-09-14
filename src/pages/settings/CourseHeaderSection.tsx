@@ -16,15 +16,10 @@ export function CourseHeaderSection() {
       id="settings-course-header"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <GaugeIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Course header</SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Choose which figures appear beside a course title. Cards due and mastery are shown by
-        default; add the others if you act on them.
-      </p>
-
       <div className="flex flex-col gap-2">
         {settings.statPills.map((pill) => (
           <div

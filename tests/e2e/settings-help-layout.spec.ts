@@ -3,14 +3,16 @@ import { expect, test, type Page } from '@playwright/test';
 async function openSeededDashboard(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
 }
 
-async function expectBalancedDesktopColumns(page: Page, headingName: string, railTitle: string) {
+async function expectBalancedDesktopColumns(page: Page, headingName: string) {
   const heading = page.getByRole('heading', { level: 1, name: headingName });
   const header = heading.locator('xpath=ancestor::header');
-  const rail = page.getByText(railTitle, { exact: true }).locator('xpath=ancestor::aside');
+  const rail = page.getByRole('complementary', { name: 'Page sections' });
+  await expect(heading).toHaveCount(1);
+  await expect(rail).toHaveCount(1);
   const [headerBounds, railBounds] = await Promise.all([header.boundingBox(), rail.boundingBox()]);
 
   expect(headerBounds).not.toBeNull();
@@ -25,12 +27,12 @@ test('Settings and Help use balanced desktop rails and responsive content', asyn
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await expect(page.getByText('Preferences', { exact: true })).toHaveCount(0);
-  await expectBalancedDesktopColumns(page, 'Settings', 'Settings groups');
+  await expectBalancedDesktopColumns(page, 'Settings');
 
   await page.goto('/#/help');
   await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
   await expect(page.getByText('Documentation', { exact: true })).toHaveCount(0);
-  await expectBalancedDesktopColumns(page, 'Help', 'On this page');
+  await expectBalancedDesktopColumns(page, 'Help');
 
   await page.setViewportSize({ width: 900, height: 900 });
   await page.goto('/#/settings');

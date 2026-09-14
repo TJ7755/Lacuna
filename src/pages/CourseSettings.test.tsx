@@ -183,6 +183,20 @@ describe('CourseSettings', () => {
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { learnFirst: false });
   });
 
+  it('does not repeat the course name beneath the settings title', () => {
+    renderPage();
+
+    expect(screen.queryByText('Original course')).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
+  });
+
+  it('uses cards to group related course settings', () => {
+    renderPage();
+
+    const basics = screen.getByLabelText('Course name').closest('section');
+    expect(basics).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+  });
+
   it('does not reset the optimiser when the same course rerenders', () => {
     const view = renderPage();
     mockOptimiserReset.mockClear();

@@ -1,5 +1,17 @@
 # Lacuna MEMORIES.md
 
+## Await browser storage checks before polling their result
+
+Use `expect.poll(() => page.evaluate(...))` for asynchronous IndexedDB assertions.
+The installed browser runner can treat a Promise returned to `waitForFunction` as
+truthy before it resolves, allowing navigation to cancel a pending study grade.
+
+## Less card-heavy does not mean flat pages
+
+Keep cards around related content, charts and settings. The prompter wants fewer
+nested boxes, open page headings and less redundant copy, not every surface removed.
+The landing page is a reference for restraint and spacing, not a template for app pages.
+
 ## Missing installed package files can come from Bun's cache
 
 On this Windows checkout, reinstalling with `--force --no-cache` still left packages
@@ -14,6 +26,17 @@ Durable facts about how to work in this repository, for every agent regardless o
 The landing design deliberately presents only one or two focal points at each scroll position.
 Do not stack category labels, explanatory paragraphs, reassurance and feature controls beneath
 the opening headline. Explain the product progressively through the existing scenes.
+For the exam introduction, separate ideas in time. A headline and symbol alone were too
+abstract; use a compact interactive example to demonstrate cause and effect, with brief
+explanation. Prefer concrete calendar days and revision sessions over abstract recall-point
+tables. The exam date stays fixed; visitors control available days and times, with the
+forgetting curve beside the calendar. Avoid stacking subtitles around the interaction.
+The download choice needs only a compatibility line; omit version labels, slogans
+and installation instructions from the initial view. Keep help available on request.
+
+Landing illustrations should use simple flat silhouettes and bright colours from the app's
+palette. Detailed paper textures, perspective and muted shading were rejected; match the
+simplicity of the brand mark. Keep inspiration brands out of landing identifiers and copy.
 
 ## Current Dexie hooks also run during historical upgrades
 
@@ -380,17 +403,11 @@ When adapting legacy inline history, derive canonical rows before writing the Ca
 hook may clear the supplied object's array. Projection code must also treat a missing or non-array
 legacy `history` value as empty rather than dereferencing it.
 
-## Lacuna is not yet in real use, and goes live in September 2026
+## Lacuna has live beta users
 
-The prompter revises with other tools. Lacuna currently holds no irreplaceable study data, and
-the summer's work is to polish it for genuine use from the start of the 2026–27 academic year.
-
-This governs the order of work, so do not plan around it being in daily use today. Two
-consequences follow. Anything touching data integrity — destructive schema migrations, storage
-cutovers, backup and restore changes — is far safer now than it will ever be again, and that
-window closes permanently once real revision history exists. Conversely, any plan whose payoff
-is measured in observed usage, such as return-rate or retention experiments, cannot produce an
-answer before September 2026 and should not be scheduled as though it can.
+Confirmed by the prompter on 13 September 2026: real beta users now depend on Lacuna.
+Treat existing study data and desktop upgrades as live-user concerns. The earlier
+assumption that no irreplaceable revision history exists is obsolete.
 
 ## Verify a plan's follow-up list against the code before working it
 
@@ -525,6 +542,10 @@ Happy DOM rejects an active Web Animation's completion promise when Testing Libr
 cancels it. On hosted Linux runners, Vitest reports that rejection as an `AbortError` after every
 assertion has passed. Component tests should use reduced motion unless animation is their subject;
 tests that enable motion and advance a transition must finish its relevant lifecycle before teardown.
+Tests that freeze `performance.now()` for grading must use reduced motion: imperative Motion
+transitions use that clock to finish, so a frozen clock also prevents their completion callbacks.
+An entrance guard must also reset during effect cleanup: StrictMode stops the first animation
+and replays setup, and retaining the guard can strand the card at its initial zero opacity.
 Reduced motion must omit `animate` as well as initial and exit states; a zero-duration target can
 still create a cancellable Web Animation. In Happy DOM, allow Motion two animation frames to create
 WAAPI objects before collecting, finishing and settling them; an immediate collection can miss work

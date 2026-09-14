@@ -167,8 +167,6 @@ export interface UseLearnSessionParams {
   distraction: DistractionTracker;
   typingSetting: TypingSetting;
   startInFocusMode: boolean;
-  /** Motion-speed multiplier (see src/state/motionSpeed.ts), applied to the answer-feedback timer. */
-  m: number;
 }
 
 /**
@@ -200,7 +198,6 @@ export function useLearnSession({
   distraction,
   typingSetting,
   startInFocusMode,
-  m,
 }: UseLearnSessionParams) {
   const reviewSessionIdRef = useRef(sessionId ?? makeId());
 
@@ -326,12 +323,6 @@ export function useLearnSession({
   // Navigation drawer — closed by default to keep Learn mode distraction-free,
   // opened on demand for quick navigation away without leaving the session UI.
   const [navOpen, setNavOpen] = useState(false);
-  // A brief, non-blocking flash of colour the instant a card is graded — the small
-  // tactile reward that makes answering feel responsive. Cleared on a short timer and
-  // never delays the next card.
-  const [feedback, setFeedback] = useState<'left' | 'right' | null>(null);
-  const [feedbackSource, setFeedbackSource] = useState<'touch' | 'keyboard' | null>(null);
-  const feedbackTimer = useRef<number | null>(null);
   // Simple mode: queue of cards that are still unlearned (wrong or unseen).
   const simpleQueue = useRef<Card[]>([]);
   const simpleMastered = useRef<Set<string>>(new Set());
@@ -958,10 +949,6 @@ export function useLearnSession({
     cooldowns.current = new Map();
     events.current = [];
     lastAnswer.current = null;
-    if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
-    feedbackTimer.current = null;
-    setFeedback(null);
-    setFeedbackSource(null);
     submitting.current = false;
     finalising.current = false;
     progressBefore.current = 0;
@@ -1358,8 +1345,6 @@ export function useLearnSession({
     })();
     return () => {
       cancelled = true;
-      if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current);
-      feedbackTimer.current = null;
     };
     // The effect depends on session identity, not object identity, so the
     // serialised keys are the triggers. The arrays are read for their values
@@ -1403,10 +1388,7 @@ export function useLearnSession({
   }, [distraction]);
 
   const answer = useCallback(
-    async (
-      input: boolean | Grade | MachineMarkedAnswer,
-      source: 'touch' | 'keyboard' = 'keyboard',
-    ) => {
+    async (input: boolean | Grade | MachineMarkedAnswer) => {
       if (submitting.current) return { undoAvailable: false };
       submitting.current = true;
       const phaseNow = phaseRef.current;
@@ -1428,17 +1410,6 @@ export function useLearnSession({
           : typeof input === 'number'
             ? input > 1
             : input === true;
-
-        if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
-        setFeedbackSource(source);
-        setFeedback(correct ? 'right' : 'left');
-        feedbackTimer.current = window.setTimeout(
-          () => {
-            setFeedback(null);
-            setFeedbackSource(null);
-          },
-          Math.round(400 * m),
-        );
 
         const t = machineMarked
           ? (performance.now() - timerStart.current) / 1000
@@ -1765,7 +1736,6 @@ export function useLearnSession({
       serveNext,
       limitOverride,
       timeLimitOverride,
-      m,
       isSimpleMode,
       isGlobal,
       persistPracticeMilestone,
@@ -1965,8 +1935,6 @@ export function useLearnSession({
     setHintsOpen,
     navOpen,
     setNavOpen,
-    feedback,
-    feedbackSource,
     typedAnswer,
     setTypedAnswer,
     typingInputRef,

@@ -49,7 +49,6 @@ function sessionParams(overrides: Partial<UseLearnSessionParams> = {}): UseLearn
     distraction,
     typingSetting: 'reveal',
     startInFocusMode: false,
-    m: 1,
     ...overrides,
   };
 }
@@ -93,40 +92,6 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
-  it('cancels answer feedback when the session unmounts', async () => {
-    const course = await createCourse('Feedback cleanup');
-    const lesson = await createLesson(course.id, 'Feedback');
-    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
-    await upsertLessonCardExposure(lesson.id, card.id);
-    const params = sessionParams({ courseId: course.id, m: 100 });
-    const { result, unmount } = renderHook(() => useLearnSession(params));
-    await waitFor(() => expect(result.current.phase).toBe('question'));
-    act(() => result.current.reveal());
-    await waitFor(() => expect(result.current.phase).toBe('answer'));
-
-    const timeoutSpy = vi.spyOn(window, 'setTimeout');
-    const clearSpy = vi.spyOn(window, 'clearTimeout');
-    try {
-      await act(async () => {
-        await result.current.answer(true);
-      });
-      const feedbackCall = timeoutSpy.mock.calls.findIndex(([, delay]) => delay === 40_000);
-      expect(feedbackCall).toBeGreaterThanOrEqual(0);
-      const timer = timeoutSpy.mock.results[feedbackCall].value as number;
-      unmount();
-      expect(clearSpy).toHaveBeenCalledWith(timer);
-    } finally {
-      unmount();
-      for (let index = 0; index < timeoutSpy.mock.calls.length; index += 1) {
-        if (timeoutSpy.mock.calls[index][1] === 40_000) {
-          window.clearTimeout(timeoutSpy.mock.results[index].value as number);
-        }
-      }
-      timeoutSpy.mockRestore();
-      clearSpy.mockRestore();
-    }
-  });
-
   it('orders global Course cards by scheduling urgency and enforces each inherited new-card limit', async () => {
     const nearCourse = await createCourse('Near course');
     const farCourse = await createCourse('Far course');
@@ -209,7 +174,6 @@ describe('useLearnSession answer boundary', () => {
       distraction,
       typingSetting: 'reveal' as const,
       startInFocusMode: false,
-      m: 1,
     };
     const { result } = renderHook(() => useLearnSession(params));
 
@@ -247,7 +211,6 @@ describe('useLearnSession answer boundary', () => {
       distraction,
       typingSetting: 'reveal' as const,
       startInFocusMode: false,
-      m: 1,
     };
     const { result } = renderHook(() => useLearnSession(params));
 
@@ -304,7 +267,6 @@ describe('useLearnSession answer boundary', () => {
       distraction,
       typingSetting: 'reveal' as const,
       startInFocusMode: false,
-      m: 1,
     };
     const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(0);
     let unmount: (() => void) | undefined;
@@ -451,7 +413,6 @@ describe('useLearnSession answer boundary', () => {
       distraction,
       typingSetting: 'reveal' as const,
       startInFocusMode: false,
-      m: 1,
     };
     const { result } = renderHook(() => useLearnSession(params));
 

@@ -1,9 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-test('makes the revealed answer readable within a short interaction transition', async ({
-  page,
-}) => {
+test('makes the revealed answer readable during the deliberate card flip', async ({ page }) => {
   const frontText = 'Which value is the response marker?';
   await enterFreshLacuna(page);
   await createCourse(page, 'Study response regression');
@@ -13,7 +11,7 @@ test('makes the revealed answer readable within a short interaction transition',
   await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await expect(page.getByText(frontText, { exact: true })).toBeVisible();
+  await expect(page.locator('[data-card-id]').getByText(frontText, { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -56,8 +54,10 @@ test('makes the revealed answer readable within a short interaction transition',
       requestAnimationFrame(sample);
     });
   });
-  expect(elapsed).toBeLessThan(250);
+  expect(elapsed).toBeGreaterThan(300);
+  expect(elapsed).toBeLessThan(650);
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page.locator('[data-study-face="back"]')).toHaveCount(0);
   // Lesson introduction is deliberately ungraded. Enter scheduled course review
   // before asserting that canonical review analytics exist.
   await page.goto(`/#/course/${courseId}/learn`);
@@ -72,30 +72,34 @@ test('makes the revealed answer readable within a short interaction transition',
     .last()
     .click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
-  await page.waitForFunction(
-    (cardId) =>
-      new Promise<boolean>((resolve, reject) => {
-        const request = indexedDB.open('lacuna');
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          const database = request.result;
-          const count = database
-            .transaction('reviewHistory')
-            .objectStore('reviewHistory')
-            .index('cardId')
-            .count(cardId!);
-          count.onsuccess = () => {
-            database.close();
-            resolve(count.result > 0);
-          };
-          count.onerror = () => {
-            database.close();
-            reject(count.error);
-          };
-        };
-      }),
-    reviewedId,
-  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (cardId) =>
+          new Promise<boolean>((resolve, reject) => {
+            const request = indexedDB.open('lacuna');
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+              const database = request.result;
+              const count = database
+                .transaction('reviewHistory')
+                .objectStore('reviewHistory')
+                .index('cardId')
+                .count(cardId!);
+              count.onsuccess = () => {
+                database.close();
+                resolve(count.result > 0);
+              };
+              count.onerror = () => {
+                database.close();
+                reject(count.error);
+              };
+            };
+          }),
+        reviewedId,
+      ),
+    )
+    .toBe(true);
   await page.goto(`/#/course/${courseId}/cards`);
   const frontPrefix = frontText.trim().split(/\s+/).slice(0, 4).join(' ');
   await page.getByPlaceholder('Search all cards…').fill(frontPrefix);

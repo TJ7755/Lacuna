@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
 import { CourseAnalytics } from './CourseAnalytics';
+import { ToastProvider } from '../components/ui/Toast';
+import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 
 const mocks = vi.hoisted(() => ({
   questionData: undefined as CourseQuestionData | undefined,
@@ -114,9 +116,9 @@ describe('CourseAnalytics', () => {
     };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <Routes>
-          <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
-        </Routes>
+        <ToastProvider><Routes>
+          <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
+        </Routes></ToastProvider>
       </MemoryRouter>,
     );
 
@@ -124,7 +126,10 @@ describe('CourseAnalytics', () => {
     const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
     expect(generatedHeadline).not.toBeNull();
     expect(within(generatedHeadline!).getByText('100%')).toBeInTheDocument();
-    expect(screen.getByText(/not included in Card readiness/)).toBeInTheDocument();
+    expect(screen.queryByText(/not included in Card readiness/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Separate evidence')).not.toBeInTheDocument();
+    expect(screen.queryByText('Memory evidence')).not.toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Cards' })).toBeInTheDocument();
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
   });
@@ -135,9 +140,9 @@ describe('CourseAnalytics', () => {
 
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <Routes>
-          <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
-        </Routes>
+        <ToastProvider><Routes>
+          <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
+        </Routes></ToastProvider>
       </MemoryRouter>,
     );
 

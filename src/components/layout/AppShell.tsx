@@ -4,6 +4,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
 import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
+import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { StudySheet } from '../learn/StudySheet';
@@ -13,7 +14,7 @@ import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
 import { KeyHints } from '../ui/KeyHints';
-import { CloseIcon, LacunaIcon } from '../ui/icons';
+import { CloseIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -31,16 +32,6 @@ const AiPanel = lazy(loadAiPanel);
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 const AI_DESKTOP_QUERY = '(min-width: 1024px)';
-
-/** Sideways for a move between course sections, a crossfade otherwise.
- *  Fade must not write a transform, or `position: fixed` descendants pin to this wrapper. */
-const ROUTE_VARIANTS = {
-  enter: (direction: number) =>
-    direction === 0 ? { opacity: 0 } : { opacity: 0, x: 24 * direction },
-  center: (direction: number) => (direction === 0 ? { opacity: 1 } : { opacity: 1, x: 0 }),
-  exit: (direction: number) =>
-    direction === 0 ? { opacity: 0 } : { opacity: 0, x: -24 * direction },
-};
 
 export function AppShell() {
   const { pathname } = useLocation();
@@ -228,9 +219,9 @@ function AppShellLayout() {
     // Skip the scale entirely otherwise — a standing transform here would pin
     // every `position: fixed` descendant to this wrapper.
     <motion.div
-      initial={arrivedFromLanding && motionEnabled ? { scale: 0.96 } : false}
+      initial={arrivedFromLanding && motionEnabled ? { scale: 0.975 } : false}
       animate={arrivedFromLanding && motionEnabled ? { scale: 1 } : undefined}
-      transition={{ duration: 0.7 * m, delay: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ type: 'spring', duration: 0.32 * m, bounce: 0 }}
       className="flex h-screen overflow-hidden flex-col"
     >
       <div ref={titlebarRef} className="shrink-0">
@@ -385,9 +376,15 @@ function AppShellLayout() {
                 <span className="block h-0.5 w-5 bg-current" />
               </span>
             </button>
-            <span className="flex items-center gap-2 font-brand text-lg">
-              <LacunaIcon width={18} height={18} className="text-accent" />
-              Lacuna
+            <span className="flex items-center gap-2 font-brand text-lg font-medium leading-none tracking-tight">
+              <img
+                data-testid="mobile-brand-mark"
+                src={`${import.meta.env.BASE_URL}icon.svg`}
+                alt=""
+                aria-hidden="true"
+                className="h-[18px] w-[18px] shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-0.5"
+              />
+              <span>Lacuna</span>
             </span>
           </div>
 
@@ -398,7 +395,7 @@ function AppShellLayout() {
             className={cn(
               'min-w-0 flex-1 overflow-y-auto overscroll-y-none',
               'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pl-0',
-              inCourse && 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
+              inCourse && '[scrollbar-gutter:stable] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
             )}
             style={{ touchAction: 'pan-y' }}
             onPointerDown={onPointerDown}
@@ -407,34 +404,11 @@ function AppShellLayout() {
             onPointerCancel={onPointerCancel}
           >
             <ErrorBoundary label="this page">
-              {/* Ordinary navigation crossfades in place. Moving between a course's
-                  sections slides sideways instead, in the direction of travel through
-                  the tab order, so the sections read as one surface rather than as
-                  unrelated pages.
-
-                  popLayout takes the outgoing page out of flow so the two do not stack
-                  in the scroll area — that was the jarring jump. Incoming still mounts
-                  immediately, so lazy imports are not held behind an exit.
-
-                  The direction goes through AnimatePresence's `custom` rather than being
-                  baked into the props, because an exiting element otherwise keeps the props
-                  it last rendered with and would leave towards the wrong side. */}
-              <div className="relative min-h-full">
-                <AnimatePresence initial={false} custom={sectionDirection} mode="popLayout">
-                  <motion.div
-                    key={location.pathname}
-                    custom={sectionDirection}
-                    variants={ROUTE_VARIANTS}
-                    initial={motionEnabled ? 'enter' : false}
-                    animate="center"
-                    exit={motionEnabled ? 'exit' : undefined}
-                    transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                    className="min-h-full w-full"
-                  >
-                    <StudySheetProvider value={studySheet.value}>{outlet}</StudySheetProvider>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
+              <StudySheetProvider value={studySheet.value}>
+                <RouteTransitions pathname={location.pathname} direction={sectionDirection} multiplier={m}>
+                  {outlet}
+                </RouteTransitions>
+              </StudySheetProvider>
             </ErrorBoundary>
           </main>
         </div>

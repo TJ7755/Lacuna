@@ -53,7 +53,7 @@ export async function installVideoEmbedFixtures(page: Page): Promise<VideoEmbedF
 export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Promise<void> {
   if (navigateToApp) await page.goto('/');
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
-  await page.getByRole('link', { name: 'Open Lacuna', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();

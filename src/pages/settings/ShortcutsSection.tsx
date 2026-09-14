@@ -16,13 +16,10 @@ export function ShortcutsSection() {
       id="settings-shortcuts"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <KeyboardIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Keyboard shortcuts</SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Customise the keys used while studying. Click any row then press the key you want to assign. Changes are remembered on this device.
-      </p>
       <div className="flex flex-col gap-2">
         {(Object.keys(ACTION_LABELS) as LearnAction[]).map((action) => (
           <button

@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.6
+# Lacuna — version 0.2.8
 
-## 0.2.6 beta — performance, landing and method redesign
+## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
   new cards enter spaced repetition without a separate introduction pass, while
@@ -9,6 +9,108 @@
   calibration and hint handling. Its Yes/No queue still repeats missed cards and
   finishes when every card is correct; later Practice uses the resulting memory state.
   Existing introduction records are preserved without inventing historical reviews.
+
+- Windows and Linux packages are published through the native release workflow.
+  macOS packages are deferred and will be added separately.
+
+- Updated the public landing page with a spacious exam-focused hero, twelve flat animated
+  illustrations, a centred logo on scroll and a clear closing action. The approved design
+  is served directly at `/welcome` and `/landing`, without variant or comparison controls.
+  The availability calendar keeps the exam fixed and links selected free slots to an
+  illustrative FSRS recall curve with a labelled 80–100% axis. Keyboard access, reduced
+  motion and narrow-screen layouts are supported; the superseded hero and chart are removed.
+- Updated Download and Method to the same dark visual style. Download presents one
+  platform action and compatibility line, with installation guidance on request. Method
+  retains its interactive explanations and discloses coefficient details on request.
+
+## 0.2.7 beta — study interactions and navigation polish
+
+- Prevented the ordinary welcome-route exit fade from running beneath the app-entry
+  cover, where it briefly exposed the old landing page during the dashboard reveal.
+
+- Made landing-page app entry respond immediately and reveal the dashboard sooner.
+  The solid expansion and reveal each take 240 ms, with immediate acceleration;
+  the dashboard settles with an undelayed, non-bouncing 320 ms spring. Motion-speed
+  settings and reduced motion retain their existing behaviour.
+
+- Simplified the landing page's recall scene to one heading, a quieter graph and a
+  compact review-timing control. Removed the oversized orange sentence, repeated
+  graph annotations and bottom footnote; kept the illustrative/successful-review
+  qualification beside the legend and preserved keyboard and reduced-motion behaviour.
+
+- Simplified Quick search with a short input prompt and a small ink-style search
+  drawing. Keyboard hints appear on the first opening per device, then stay hidden
+  on later visits; keyboard controls and screen-reader announcements remain available.
+
+- Removed the sidebar shortcut badge and persistent study counts. Course rows reveal
+  ready/new card counts and their exam date in a small hover card; Dashboard reveals
+  the streak and reviews completed today. Details also open on keyboard focus, respect
+  reduced motion and leave touch navigation unchanged.
+
+- Block new grades while Undo is restoring the previous answer, including after
+  cancelling a card departure. Grading resumes when Undo succeeds or reports a failure.
+
+- Updated the Share browser layout check for its open heading, preserving alignment
+  coverage and checking that the removed subtitle stays absent.
+
+- Fixed Undo during a pending study-card departure, including when it restores the
+  same card. Cancelling the transition now prevents a stale grade being recorded.
+
+- Fixed navigation branding to the original black-and-orange artwork, with extra
+  internal padding and a centred wordmark. Retained the previous proportions: a 36px
+  desktop mark (32px compact) and 18px mobile mark, with 20px, 18px and 18px wordmarks
+  respectively.
+- Slowed the card flip from 180 ms to 560 ms at normal speed. Both halves of the flip
+  follow the animation speed setting, with an immediate reveal for reduced motion.
+- Added a 180 ms pause after study cards leave and slowed the next card's entrance
+  from 280 ms to 360 ms at normal animation speed. Reduced motion remains immediate;
+  leaving a session cancels the pending grade. Red/green feedback now plays during
+  dismissal and finishes before the next card appears; removed the expanding circular
+  flash and the separate session feedback timer.
+
+- Removed redundant subtitles and category captions across Settings, Help, Search,
+  Question editing and Analytics, including the sidebar brand tagline and section-rail
+  headings. Navigation, field labels and consequential settings guidance remain.
+  Opened page headers across Settings, Help, Analytics, Search, Share and Archived
+  courses, while retaining cards around related content. Help now uses one card per
+  topic instead of nested prose cards. Question analytics now uses a compact performance
+  table, with sample counts and exclusions in an expandable details row.
+
+- Stop offering another recurring Practice session or due-card review after the final
+  lesson when the remaining cards are scheduled for later. Recurring actions now use
+  the existing due-and-mastery filter; curricular Practice and exposed introductions
+  retain their existing rules. Single-lesson courses hide empty study actions, and
+  course/lesson headers no longer promise an available next lesson unconditionally.
+
+- Wait for persisted workspace mode before reloading in browser tests, and for the
+  initial page transition to finish before measuring course-section slides.
+
+- Updated study browser coverage to verify off-screen button departures and centred
+  incoming cards. Stable-height checks now measure layout height independently of
+  the temporary entrance scale.
+
+- Made study cards follow swipes directly and travel fully off-screen when graded,
+  with the same directional departure for keyboard shortcuts and grading buttons.
+  Incoming cards now rise gently into place. Replaced the broad drag glow with a compact
+  Yes/No cue while retaining the full colour pulse after grading. Reduced motion skips
+  the travel, repeated grades are guarded, and leaving study cancels a pending departure.
+  Card height measurements now ignore entrance scaling, keeping long fronts and backs
+  aligned. Study browser checks also wait for completed grading and tolerate either
+  sequence starting card without confusing outgoing editors with saved card rows.
+
+- Report rejected Study/Author mode saves through the existing toast feedback.
+
+- Fixed duplicate navigation and workspace controls in single-lesson courses after
+  moving course navigation into the shell. Archived analytics coverage now renders
+  the shell-owned navigation alongside the page, preserving its read-only assertions.
+
+- Aligned Cards, Questions, Analytics and course Settings with Path's content width,
+  back link and title position, keeping the course scroll gutter stable between tabs.
+  Removed the Questions caption and kept the shared Study/Author control visible
+  across all five course sections, respecting archived and locked courses.
+  Course navigation now stays mounted while the page content slides in and out
+  in the tab direction, with reduced-motion preferences respected.
+
 - Updated Tailwind and its Vite plugin to 4.3.3, Happy DOM to 20.14.3 and the Prettier
   ESLint configuration to 10.1.8. Retained Zod's existing MCP wire schema and the
   application frameworks and compiler, lint and test majors.
@@ -36,6 +138,8 @@
 
 - Made release and companion tests portable to Windows checkouts by normalising YAML line
   endings, using native path expectations and checking Unix permission bits only on Unix.
+
+## 0.2.6 beta — performance, landing and method redesign
 
 - Reused successful CI and Security checks for the exact release commit instead of repeating
   those suites in the release workflow. Native Windows/Linux builds remain in Actions;

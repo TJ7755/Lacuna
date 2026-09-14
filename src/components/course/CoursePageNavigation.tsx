@@ -4,9 +4,15 @@ import { ChevronLeftIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { ArchivedCourseBadge } from './ArchivedCourseState';
 import { CourseTabs } from './CourseTabs';
+import type { CourseRecord } from '../../db/types';
+import { updateCourse } from '../../db/courseRepository';
+import { canEditLessons, resolveLessonViewMode } from '../../course/lessonViewMode';
+import { LessonViewModeToggle } from './LessonViewModeToggle';
+import { useToast } from '../ui/Toast';
 
 interface CoursePageNavigationProps {
   courseId: string;
+  course?: CourseRecord;
   backTo: string;
   backLabel: string;
   archived?: boolean;
@@ -21,12 +27,35 @@ interface CoursePageNavigationProps {
  */
 export function CoursePageNavigation({
   courseId,
+  course,
   backTo,
   backLabel,
   archived = false,
   trailing,
   className,
 }: CoursePageNavigationProps) {
+  const { notify } = useToast();
+  const controls =
+    trailing ??
+    (course && !archived && !course.archived ? (
+      canEditLessons(course) ? (
+        <LessonViewModeToggle
+          mode={resolveLessonViewMode(course)}
+          onChange={(mode) => {
+            void updateCourse(course.id, { lessonViewMode: mode }).catch(() => {
+              notify('Could not save workspace mode. Try again.', 'negative');
+            });
+          }}
+        />
+      ) : (
+        <Link
+          to={`/course/${course.id}/settings`}
+          className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
+        >
+          Authoring is locked for shared courses
+        </Link>
+      )
+    ) : undefined);
   return (
     <div
       data-course-page-navigation=""
@@ -47,10 +76,10 @@ export function CoursePageNavigation({
         {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId} />}
       </div>
 
-      {trailing === undefined ? (
+      {controls === undefined ? (
         <span aria-hidden="true" className="hidden sm:block" />
       ) : (
-        <div className="min-w-0 justify-self-end">{trailing}</div>
+        <div className="min-w-0 justify-self-end">{controls}</div>
       )}
     </div>
   );

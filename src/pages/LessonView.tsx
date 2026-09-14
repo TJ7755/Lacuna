@@ -159,8 +159,8 @@ export function LessonView({
   const authoring = !archived && isLessonAuthoringMode(course);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <CoursePageNavigation
+    <div className={`mx-auto max-w-3xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
+      {!isInline && <CoursePageNavigation
         courseId={courseId ?? ''}
         backTo={backTo}
         backLabel={backLabel}
@@ -181,7 +181,7 @@ export function LessonView({
             />
           )
         }
-      />
+      />}
       {isInline && courseId && authoring && (
         <div
           role="group"
@@ -276,7 +276,7 @@ export function LessonView({
                 <p className="text-sm text-ink-faint">
                   {lessonCards.length === 0
                     ? 'Add cards to begin studying.'
-                    : 'Nothing due — next lesson available.'}
+                    : 'Nothing due right now.'}
                 </p>
               )}
             </div>

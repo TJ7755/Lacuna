@@ -1,11 +1,4 @@
-import {
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
@@ -23,6 +16,7 @@ import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
 import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { StudyDrawing } from '../ui/StudyDrawing';
 
 /** A single ordered list of navigation, Card and Question hits. */
 type PaletteHit = ScopedSearchResult | CourseContentHit;
@@ -59,6 +53,7 @@ function courseHitMeta(hit: CourseContentHit) {
 }
 
 const MAX_RESULTS = 40;
+const HINTS_SEEN_KEY = 'lacuna.quickSearchHintsSeen';
 
 /** Highlight every substring in `text` that matches `query` (case-insensitive). */
 function HighlightedText({ text, query }: { text: string; query: string }) {
@@ -123,6 +118,21 @@ function CommandPaletteDialog({
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [active, setActive] = useState(0);
+  const [showHints] = useState(() => {
+    try {
+      return localStorage.getItem(HINTS_SEEN_KEY) !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HINTS_SEEN_KEY, 'true');
+    } catch {
+      // Storage restrictions must not prevent search from opening.
+    }
+  }, []);
 
   // Course/lesson/note hits are listed ahead of card hits, then both are capped
   // together so the palette never grows unbounded on a broad query. Deferring
@@ -216,6 +226,7 @@ function CommandPaletteDialog({
               <input
                 ref={inputRef}
                 role="combobox"
+                aria-label="Search all content"
                 aria-controls="palette-listbox"
                 aria-expanded={hasVisibleResults}
                 aria-autocomplete="list"
@@ -224,12 +235,14 @@ function CommandPaletteDialog({
                 }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search courses, lessons, notes, cards and questions…"
+                placeholder="Search…"
                 className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
               />
-              <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
-                Esc
-              </kbd>
+              {showHints && (
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+                  Esc
+                </kbd>
+              )}
             </div>
             <div aria-live="polite" aria-atomic="true" className="sr-only">
               {query.trim() === ''
@@ -242,16 +255,16 @@ function CommandPaletteDialog({
             <div className="max-h-[50vh] overflow-y-auto">
               <AnimatePresence mode="wait">
                 {query.trim() === '' ? (
-                  <motion.p
+                  <motion.div
                     key="empty"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.12 * m }}
-                    className="px-4 py-6 text-center text-sm text-ink-faint"
+                    className="flex justify-center px-4 py-5"
                   >
-                    Type to search across every course.
-                  </motion.p>
+                    <StudyDrawing kind="search" className="h-14 w-14 opacity-60" />
+                  </motion.div>
                 ) : results.length === 0 ? (
                   <motion.p
                     key="none"
@@ -384,17 +397,19 @@ function CommandPaletteDialog({
             </div>
 
             {/* Footer shortcuts */}
-            <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
-              <span className="flex items-center gap-1">
-                <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
-                <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
-                Navigate
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
-                Open
-              </span>
-            </div>
+            {showHints && (
+              <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
+                  <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
+                  Navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
+                  Open
+                </span>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       }

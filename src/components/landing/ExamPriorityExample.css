@@ -1,0 +1,206 @@
+.calendar-and-recall {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr);
+  gap: 36px;
+  align-items: center;
+  width: min(1280px, 100%);
+  text-align: left;
+}
+.exam-calendar {
+  min-width: 0;
+}
+.exam-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.exam-calendar-toolbar {
+  margin-bottom: 24px;
+  font-size: 18px;
+}
+.exam-calendar-window {
+  overflow-x: auto;
+  border: 1px solid #ffffff18;
+  border-radius: 20px;
+  background: #ffffff03;
+}
+.exam-calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(92px, 1fr));
+  min-width: 650px;
+}
+.exam-calendar-day {
+  border-right: 1px solid #ffffff10;
+  padding-bottom: 16px;
+}
+.exam-calendar-day[data-exam='true'] {
+  background: #f7a51d0a;
+}
+.exam-calendar-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 0;
+}
+.exam-calendar-date span {
+  color: var(--stone);
+  font-size: 14px;
+}
+.exam-calendar-date strong {
+  font-size: 30px;
+  font-weight: 500;
+}
+.exam-calendar-day[data-exam='true'] .exam-calendar-date {
+  color: var(--amber);
+}
+.exam-calendar-deadline {
+  margin: 8px 6px;
+  border-radius: 10px;
+  background: var(--amber);
+  padding: 22px 4px;
+  color: var(--cinema);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+.exam-calendar-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: calc(100% - 12px);
+  height: 86px;
+  margin: 8px 6px;
+  padding: 10px;
+  border: 1px solid #ffffff28;
+  border-radius: 10px;
+  background: #ffffff08;
+  color: var(--stone);
+  cursor: pointer;
+  transition:
+    background 220ms,
+    color 220ms,
+    transform 220ms;
+}
+.exam-calendar-slot:hover {
+  border-color: var(--amber);
+  transform: translateY(-2px);
+}
+.exam-calendar-slot[aria-pressed='false']:hover {
+  background: #f7a51d18;
+  color: var(--amber);
+}
+.exam-calendar-slot:active {
+  transform: scale(0.97);
+}
+.exam-calendar-slot[aria-pressed='false'] strong {
+  align-self: center;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ivory, #f5f2ed);
+}
+.exam-calendar-slot > span,
+.exam-calendar-slot small {
+  font-size: 12px;
+}
+.exam-calendar-slot strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.exam-calendar-slot[aria-pressed='true'] {
+  border-style: solid;
+  border-color: hsl(150 65% 50% / 0.5);
+  color: hsl(150 65% 50%);
+}
+.exam-calendar-slot[data-planned='true'] {
+  background: hsl(150 65% 50%);
+  color: #111;
+  animation: calendar-slot-arrive 280ms ease-out;
+}
+.exam-calendar button:focus-visible,
+.exam-calendar-window:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: -2px;
+}
+.calendar-recall {
+  margin: 0;
+  min-width: 0;
+}
+.calendar-recall figcaption {
+  font-size: 19px;
+}
+.calendar-recall output {
+  display: block;
+  font-size: clamp(48px, 5vw, 72px);
+  letter-spacing: -0.05em;
+  color: var(--amber);
+  margin-top: 12px;
+}
+.calendar-recall svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  margin: 12px 0 24px;
+}
+.calendar-recall path {
+  fill: none;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.calendar-curve-baseline {
+  stroke: var(--stone);
+  stroke-dasharray: 5 5;
+  opacity: 0.4;
+}
+.calendar-curve-line {
+  stroke: var(--amber);
+  stroke-dasharray: 1;
+  animation: calendar-curve-arrive 650ms ease-out;
+}
+.calendar-recall circle {
+  fill: var(--amber);
+}
+.calendar-recall line {
+  stroke: var(--stone);
+  opacity: 0.3;
+}
+.calendar-recall text {
+  fill: var(--stone);
+  font-size: 13px;
+}
+
+@keyframes calendar-slot-arrive {
+  from {
+    transform: scale(0.94);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes calendar-curve-arrive {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (max-width: 1000px) {
+  .calendar-and-recall {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .calendar-recall {
+    width: min(100%, 460px);
+    margin: 0 auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .exam-calendar-slot,
+  .calendar-curve-line {
+    animation: none;
+    transition: none;
+  }
+}

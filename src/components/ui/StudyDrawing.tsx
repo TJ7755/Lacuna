@@ -2,6 +2,8 @@ import { cn } from './cn';
 
 /** Loose ink strokes shared with the landing page's course and recall illustrations. */
 const drawings = {
+  search:
+    'M42 62 L21 65 L15 13 L49 9 L52 30 M24 25 L42 23 M25 34 L38 32 M73 50 A17 17 0 1 1 39 50 A17 17 0 1 1 73 50 Z M68 62 L81 75 M10 45 L5 48 M66 20 L70 14',
   course:
     'M8 9 L39 6 L43 47 L12 50 Z M17 20 L31 18 M18 28 L32 26 M48 30 L77 33 L74 72 L45 69 Z M54 43 L68 44 M53 52 L67 53 M28 57 C27 71 34 76 40 75',
   activity:

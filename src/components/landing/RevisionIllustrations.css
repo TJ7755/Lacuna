@@ -1,0 +1,68 @@
+.revision-glyph {
+  color: var(--amber);
+}
+/* Secondary colours follow the app's selectable dark accent palette. */
+.revision-glyph-book,
+.revision-glyph-flask,
+.revision-glyph-headphones {
+  color: hsl(213 90% 64%);
+}
+.revision-glyph-clock,
+.revision-glyph-bookmark {
+  color: hsl(150 65% 50%);
+}
+.revision-glyph-target {
+  color: hsl(265 85% 70%);
+}
+.revision-reel {
+  display: inline-block;
+  position: relative;
+  width: 1.28em;
+  height: 1.5em;
+  vertical-align: -0.25em;
+  margin: -0.25em 0.035em -0.15em 0.1em;
+  overflow: hidden;
+}
+.revision-reel .revision-object {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  animation: revision-glyph-rise var(--reel-duration, 24s) infinite;
+  animation-delay: calc(var(--reel-duration, 24s) * (var(--object-index) / 12 - 1 - 0.0125));
+}
+.revision-reel .revision-object svg {
+  width: 1.04em;
+  height: 1.04em;
+}
+@keyframes revision-glyph-rise {
+  0% {
+    transform: translateY(110%);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  1.25%,
+  8.3333% {
+    transform: translateY(0);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.7, 0, 0.84, 0);
+  }
+  9.5833%,
+  100% {
+    transform: translateY(-110%);
+    opacity: 0;
+  }
+}
+.motion-opening[data-paused='true'] .revision-reel .revision-object {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .revision-reel .revision-object {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+  .revision-reel .revision-object:not(:first-child) {
+    display: none;
+  }
+}

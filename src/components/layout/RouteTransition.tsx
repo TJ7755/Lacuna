@@ -1,8 +1,14 @@
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useLocation, useOutlet } from 'react-router-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { hasLandingArrival } from './LandingTransition';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+const EXIT = {
+  exit: (covered: boolean) => covered
+    ? { opacity: 1, transition: { duration: 0 } }
+    : { opacity: 0 },
+};
 
 /**
  * Shell pages already transition inside AppShell. Keeping one stable key for
@@ -39,16 +45,18 @@ export function RouteTransition() {
   const outlet = useOutlet();
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
-  const motionEnabled = multiplier > 0;
+  const covered = hasLandingArrival();
+  const motionEnabled = multiplier > 0 && !covered;
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="wait" initial={false} custom={covered}>
       <motion.div
         key={routeTransitionKey(location.pathname)}
         className="min-h-screen"
         initial={motionEnabled ? { opacity: 0 } : false}
         animate={{ opacity: 1 }}
-        exit={motionEnabled ? { opacity: 0 } : undefined}
+        variants={EXIT}
+        exit={multiplier > 0 ? 'exit' : undefined}
         transition={routeTransitionTiming(multiplier)}
       >
         {outlet}

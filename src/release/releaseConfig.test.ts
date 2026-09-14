@@ -111,9 +111,9 @@ function blockScalarValues(block: string, key: string): string[] {
   return values;
 }
 
-describe('v0.2.6 release configuration', () => {
+describe('v0.2.8 release configuration', () => {
   it('identifies the public app repository and release version', () => {
-    expect(packageJson.version).toBe('0.2.6');
+    expect(packageJson.version).toBe('0.2.8');
     expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({

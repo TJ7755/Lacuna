@@ -1,3 +1,4 @@
+import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
@@ -239,7 +240,15 @@ function renderPage() {
     <MemoryRouter initialEntries={['/course/course-1']}>
       <ToastProvider>
         <Routes>
-          <Route path="/course/:courseId" element={<CoursePath />} />
+          <Route
+            path="/course/:courseId"
+            element={
+              <>
+                <CourseSectionNavigation courseId="course-1" />
+                <CoursePath />
+              </>
+            }
+          />
         </Routes>
       </ToastProvider>
     </MemoryRouter>,
@@ -354,6 +363,38 @@ describe('CoursePath Study mode', () => {
         }),
       );
     });
+  });
+
+  it.each([1, 2])('does not offer empty study after all %i lessons are complete', async (count) => {
+    mockLessons = [lesson1, lesson2].slice(0, count);
+    mockCourseCards = mockLessons.map((lesson) => ({
+      ...makeCard(`card-${lesson.id}`, lesson.id),
+      state: 2,
+      stability: 10,
+      lastReviewed: Date.now(),
+      due: Date.now() + MS_PER_DAY,
+    }));
+    live.exposures = mockCourseCards.map((card) => ({
+      lessonId: card.primaryLessonId!,
+      cardId: card.id,
+      taughtAt: 1,
+      updatedAt: 1,
+    }));
+
+    renderPage();
+
+    if (count === 1) {
+      await waitFor(() =>
+        expect(mockLessonViewProps).toHaveBeenCalledWith(
+          expect.objectContaining({ showStudyNow: false, practiceNowEnabled: false }),
+        ),
+      );
+    } else {
+      expect(screen.getByRole('button', { name: 'Study' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+      expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
+      expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
+    }
   });
 
   it('hides start, end and mid-path Manual practice', () => {

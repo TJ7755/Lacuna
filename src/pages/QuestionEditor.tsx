@@ -215,9 +215,6 @@ export function QuestionEditor() {
       </Link>
 
       <header className="mb-8">
-        <p className="mb-2 text-xs uppercase tracking-[0.18em] text-ink-faint">
-          {editing ? 'Edit definition' : 'New definition'}
-        </p>
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">
           {editing ? 'Edit Question' : 'Create a Question'}
         </h1>

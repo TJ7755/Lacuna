@@ -35,26 +35,23 @@ import { CourseComparison } from '../components/analytics/CourseComparison';
 
 function AnalyticsSkeleton() {
   return (
-    <div className="space-y-6 p-6">
-      <div className="space-y-1">
+    <div className="space-y-2 p-6">
+      <div className="py-4">
         <div className="h-9 w-40 animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-5 w-64 animate-pulse rounded-lg bg-ink/5" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="lg:col-span-2">
           <div className="rounded-2xl border border-line bg-surface p-5">
-            <div className="mb-4 space-y-2">
+            <div className="mb-4">
               <div className="h-7 w-32 animate-pulse rounded-lg bg-ink/5" />
-              <div className="h-4 w-72 animate-pulse rounded-lg bg-ink/5" />
             </div>
             <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
           </div>
         </div>
         {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} className="rounded-2xl border border-line bg-surface p-5">
-            <div className="mb-4 space-y-2">
+            <div className="mb-4">
               <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
-              <div className="h-4 w-60 animate-pulse rounded-lg bg-ink/5" />
             </div>
             <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
           </div>
@@ -174,18 +171,14 @@ export function Analytics() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-2 p-6">
       <motion.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 * motionMult, ease: [0.25, 0.1, 0.25, 1] }}
-        className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8"
+        className="py-4"
       >
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-        <div className="relative">
-          <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
-          <p className="mt-1 text-sm text-ink-soft">Insights across every course.</p>
-        </div>
+        <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
       </motion.header>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -201,9 +194,8 @@ export function Analytics() {
           <ChartCard
             title="Forecast"
             emptyDrawing="prediction"
-            description="Cards due and new cards scheduled per day for the next 30 days."
             empty={cards.length === 0}
-            emptyMessage="Add cards to see your forecast."
+            emptyMessage="Add cards to forecast reviews."
             delay={0}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -249,9 +241,8 @@ export function Analytics() {
           <ChartCard
             title="Predicted exam-day score"
             emptyDrawing="prediction"
-            description="Average predicted retrievability across all courses over time."
             empty={trajectory.length < 2}
-            emptyMessage="Study cards to start plotting your trajectory."
+            emptyMessage="Complete reviews to plot a trajectory."
             delay={0.06}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -289,9 +280,9 @@ export function Analytics() {
           <ChartCard
             title="Prediction accuracy"
             emptyDrawing="accuracy"
-            description="Brier score for predicted recall versus actual recall. Lower is better."
+            description="Brier score · lower is better"
             empty={prediction.length === 0}
-            emptyMessage="Review cards with existing memory state to measure prediction accuracy."
+            emptyMessage="Complete reviews to measure accuracy."
             delay={0.12}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -346,9 +337,8 @@ export function Analytics() {
           <ChartCard
             title="Review volume"
             emptyDrawing="activity"
-            description="Reviews completed each day over the past 30 days."
             empty={!hasReviews}
-            emptyMessage="Your daily review counts will appear here."
+            emptyMessage="Complete a review to see activity."
             delay={0.18}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -376,9 +366,8 @@ export function Analytics() {
           <ChartCard
             title="Study time"
             emptyDrawing="time"
-            description="Minutes spent studying each day over the past 30 days."
             empty={!hasReviews}
-            emptyMessage="Study time will appear after your first review sessions."
+            emptyMessage="Complete a review to see study time."
             delay={0.24}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -415,9 +404,8 @@ export function Analytics() {
           <ChartCard
             title="Observed recall by card age"
             emptyDrawing="recall"
-            description="Every review, grouped by time since the card was first reviewed; n is shown in the tooltip."
             empty={!hasReviews}
-            emptyMessage="Retention data will appear after your first reviews."
+            emptyMessage="Complete a review to see recall."
             delay={0.3}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -448,9 +436,8 @@ export function Analytics() {
           <ChartCard
             title="Leech count by course"
             emptyDrawing="leech"
-            description="Number of leech cards in each course."
             empty={leeches.length === 0}
-            emptyMessage="No leeches found — great job keeping up with reviews!"
+            emptyMessage="No leech cards."
             delay={0.36}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -485,9 +472,8 @@ export function Analytics() {
           <ChartCard
             title="Stability profile"
             emptyDrawing="stability"
-            description="How many cards fall into each stability range."
             empty={cards.length === 0}
-            emptyMessage="Add cards to see their stability profile."
+            emptyMessage="Add cards to see stability."
             delay={0.42}
           >
             <ResponsiveContainer width="100%" height="100%">

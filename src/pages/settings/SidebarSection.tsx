@@ -14,23 +14,18 @@ export function SidebarSection() {
       id="settings-sidebar"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-1 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <MenuIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">Sidebar</SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Control what information appears in the sidebar navigation and how compact it is.
-      </p>
       <SettingToggle
-        title="Show ready card counts"
-        description="Display the number of cards ready for review next to each course name in the sidebar, so you can see which courses need attention at a glance."
+        title="Show course hover details"
         checked={sidebarSettings.showDueCounts}
         onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
       />
       <SettingToggle
         bordered
         title="Compact mode"
-        description="Reduce padding and font sizes throughout the sidebar to fit more items on screen at once."
         checked={sidebarSettings.compactMode}
         onChange={(checked) => setSidebarSettings({ compactMode: checked })}
       />
@@ -107,13 +102,11 @@ export function SidebarSection() {
 
 function SettingToggle({
   title,
-  description,
   checked,
   onChange,
   bordered = false,
 }: {
   title: string;
-  description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   bordered?: boolean;
@@ -127,7 +120,6 @@ function SettingToggle({
     >
       <div className="min-w-0">
         <div className="text-sm">{title}</div>
-        <p className="mt-1 text-sm text-ink-soft">{description}</p>
       </div>
       <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
