@@ -5,6 +5,8 @@
 - Read courses and their final assessments in one database transaction across navigation,
   search, course views and plain queries. Concurrent imports, deletions and replacements
   can no longer mix course and assessment snapshots and trigger a false missing-final error.
+- Fixed course settings section highlighting after asynchronous course loading;
+  the desktop rail and mobile jumper now follow scrolling.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 
