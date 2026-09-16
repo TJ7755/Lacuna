@@ -604,6 +604,16 @@ Motion retains outgoing Card nodes during exit animations, so the first matching
 the old Card. Playwright visibility also permits zero opacity, and polling adds artificial delay.
 Measure a different readable face on animation frames from the actual click event.
 
+## Merges leave this checkout through a batch branch, not a local push
+
+`gh` is not installed and unauthenticated GitHub API calls rate-limit quickly, so use
+`git` with `Invoke-RestMethod` for read-only checks. `master` is protected (PR-only with
+required status checks): never merge locally and push. Push the result as a `codex/...`
+branch and let the prompter open the pull request. `node_modules/.bin` shims can be absent
+after a Bun install here; invoke `node node_modules/<package>/bin/...` directly. A full
+`vitest run` and repo-wide `eslint` exceed local timeouts, so validate with focused suites
+plus typecheck and rely on CI for the full matrix.
+
 ## Live queries do not imply a shared database snapshot
 
 Parallel Dexie reads inside one live query can use separate transactions. When one table
