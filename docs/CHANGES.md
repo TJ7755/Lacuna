@@ -1,5 +1,10 @@
 # Lacuna — version 0.2.8
 
+## Unreleased
+
+- Fixed course settings section highlighting after asynchronous course loading;
+  the desktop rail and mobile jumper now follow scrolling.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
