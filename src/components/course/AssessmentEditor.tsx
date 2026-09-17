@@ -271,7 +271,7 @@ export function AssessmentEditor({
       </div>
 
       {candidates.length > 0 && (
-        <fieldset>
+        <fieldset className="min-w-0">
           <legend className="mb-2 text-sm text-ink-soft">Excluded cards</legend>
           <input
             type="search"
