@@ -17,6 +17,10 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   await expect(card.getByText('Ready to study', { exact: true })).toBeVisible();
   await expect(card.getByText('New cards', { exact: true })).toBeVisible();
   await expect(card.getByText('Exam', { exact: true })).toBeVisible();
+  await expect.poll(async () => {
+    const [popup, row] = await Promise.all([card.boundingBox(), course.boundingBox()]);
+    return Math.abs(popup!.y + popup!.height / 2 - row!.y - row!.height / 2);
+  }).toBeLessThan(2);
   expect((await card.boundingBox())!.x).toBeGreaterThanOrEqual(
     (await sidebar.boundingBox())!.x + (await sidebar.boundingBox())!.width,
   );

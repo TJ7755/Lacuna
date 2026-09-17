@@ -5,6 +5,7 @@
 - Fixed course settings section highlighting after asynchronous course loading;
   the desktop rail and mobile jumper now follow scrolling.
 - Kept assessment card exclusions within the settings editor when card text is long.
+- Centred sidebar hover details on their course row while keeping the popup inside the viewport.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 

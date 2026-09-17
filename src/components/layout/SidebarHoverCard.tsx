@@ -2,6 +2,7 @@ import {
   cloneElement,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type HTMLAttributes,
@@ -36,6 +37,7 @@ export function SidebarHoverCard({
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const pointerType = useRef('');
   const anchor = useRef<HTMLElement | null>(null);
+  const popup = useRef<HTMLDivElement | null>(null);
 
   function clearTimer() {
     clearTimeout(timer.current);
@@ -63,6 +65,17 @@ export function SidebarHoverCard({
     if (document.activeElement === anchor.current) return;
     timer.current = setTimeout(() => setPosition(null), 120);
   }
+
+  useLayoutEffect(() => {
+    if (!position || !anchor.current || !popup.current) return;
+    const bounds = anchor.current.getBoundingClientRect();
+    const height = popup.current.offsetHeight;
+    const top = Math.max(8, Math.min(
+      bounds.top + (bounds.height - height) / 2,
+      window.innerHeight - height - 8,
+    ));
+    if (position.top !== top) setPosition({ ...position, top });
+  }, [position]);
 
   useEffect(() => {
     clearTimeout(timer.current);
@@ -129,6 +142,7 @@ export function SidebarHoverCard({
         <AnimatePresence>
           {position && details && (
             <motion.div
+              ref={popup}
               key={id}
               id={id}
               role="tooltip"
