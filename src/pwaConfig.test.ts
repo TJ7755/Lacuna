@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import config, { pwaInjectRegister, workbox } from '../vite.config';
-import { collectAppShellScripts } from '../scripts/app-shell-precache';
+import {
+  collectAppShellScripts,
+  collectOfflineCardsDependencies,
+} from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
@@ -60,6 +63,30 @@ describe('service-worker asset caching', () => {
     ]);
     expect(workbox.globPatterns).not.toContain('assets/*Page-*.js');
     expect(workbox.globPatterns).not.toContain('assets/*.js');
+  });
+
+  it('retains shared Cards imports loaded before worker control without precaching the route', () => {
+    const chunks = [
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
+      {
+        fileName: 'assets/CardsPage-CARDS001.js',
+        isEntry: false,
+        imports: ['assets/shared-SHARED01.js', 'assets/cardCore-CORE0001.js'],
+      },
+      {
+        fileName: 'assets/cardCore-CORE0001.js',
+        isEntry: false,
+        imports: ['assets/validation-VALID001.js'],
+      },
+      { fileName: 'assets/validation-VALID001.js', isEntry: false, imports: [] },
+      { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
+    ];
+
+    expect(collectOfflineCardsDependencies(chunks)).toEqual([
+      'assets/cardCore-CORE0001.js',
+      'assets/validation-VALID001.js',
+    ]);
   });
 
   it('caches visited content-hashed lazy styles without adding them to the install shell', () => {

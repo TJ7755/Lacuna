@@ -13,8 +13,8 @@ const crossOriginIsolationHeaders = {
 };
 
 export const workbox = {
-  // Precache only the application shell. Lazy routes and their large optional
-  // assets are cached when visited instead of all being downloaded on install.
+  // Precache the application shell and the Cards route's shared import spine.
+  // Lazy route entries and large optional assets are cached when visited.
   globPatterns: ['**/*.{html,ico,png,svg}', 'assets/index-*.css'],
   runtimeCaching: [
     {
