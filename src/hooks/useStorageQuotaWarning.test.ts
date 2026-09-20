@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import type * as React from 'react';
 import { useStorageQuotaWarning } from './useStorageQuotaWarning';
 
 const { notify, retainedInterval } = vi.hoisted(() => ({
@@ -8,7 +9,7 @@ const { notify, retainedInterval } = vi.hoisted(() => ({
 }));
 
 vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>();
+  const actual = await importOriginal<typeof React>();
   return {
     ...actual,
     useRef: (initialValue: unknown) =>
