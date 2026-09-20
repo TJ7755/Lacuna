@@ -1,10 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiRendererAvailability, type AiRendererLike } from '../../electron/mcp/rendererAvailability';
 
-function renderer(): AiRendererLike & { startLoading(): void; destroy(): void } {
-  const listeners = new Map<string, Set<() => void>>();
+function renderer(): AiRendererLike & {
+  navigate(isSameDocument: boolean, isMainFrame?: boolean): void;
+  destroy(): void;
+} {
+  const listeners = new Map<
+    string,
+    Set<(details: { isSameDocument: boolean; isMainFrame: boolean }) => void>
+  >();
   let destroyed = false;
-  const emit = (event: string) => listeners.get(event)?.forEach((listener) => listener());
+  const emit = (event: string, isSameDocument = false, isMainFrame = true) =>
+    listeners.get(event)?.forEach((listener) => listener({ isSameDocument, isMainFrame }));
   return {
     isDestroyed: () => destroyed,
     isLoadingMainFrame: () => false,
@@ -14,7 +21,10 @@ function renderer(): AiRendererLike & { startLoading(): void; destroy(): void } 
       listeners.set(event, eventListeners);
     }),
     off: vi.fn((event, listener) => listeners.get(event)?.delete(listener)),
-    startLoading: () => emit('did-start-loading'),
+    navigate: (isSameDocument, isMainFrame = true) => {
+      emit('did-start-loading');
+      emit('did-start-navigation', isSameDocument, isMainFrame);
+    },
     destroy: () => {
       destroyed = true;
       emit('destroyed');
@@ -26,6 +36,22 @@ describe('local AI renderer availability', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it.each([
+    ['same-document course navigation', true, true],
+    ['subframe navigation', false, false],
+  ])('preserves the AI listener across %s', async (_label, isSameDocument, isMainFrame) => {
+    const onUnavailable = vi.fn();
+    const availability = new AiRendererAvailability(onUnavailable);
+    const active = renderer();
+    availability.markReady(active, 1);
+
+    active.navigate(isSameDocument, isMainFrame);
+
+    expect(availability.status(active)).toBe('ready');
+    await expect(availability.waitUntilReady(active, 1_000)).resolves.toBe(true);
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+
   it('fails closed across reload and rebinds readiness to a replacement renderer', () => {
     const onUnavailable = vi.fn();
     const availability = new AiRendererAvailability(onUnavailable);
@@ -35,14 +61,14 @@ describe('local AI renderer availability', () => {
     availability.markReady(first, 1);
     expect(availability.canHandle(first)).toBe(true);
 
-    first.startLoading();
+    first.navigate(false);
     expect(availability.canHandle(first)).toBe(false);
     expect(onUnavailable).toHaveBeenCalledOnce();
 
     availability.markReady(replacement, 1);
     expect(availability.canHandle(first)).toBe(false);
     expect(availability.canHandle(replacement)).toBe(true);
-    expect(first.off).toHaveBeenCalledWith('did-start-loading', expect.any(Function));
+    expect(first.off).toHaveBeenCalledWith('did-start-navigation', expect.any(Function));
 
     availability.markUnavailable(first, 1);
     expect(availability.canHandle(replacement)).toBe(true);

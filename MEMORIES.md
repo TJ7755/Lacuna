@@ -57,6 +57,9 @@ while the picker is open, and test the expanded menu rather than only the closed
 
 ## AI authority and deployment
 
+Electron loading-spinner events can accompany hash navigation. Use main-frame,
+cross-document navigation to invalidate AI readiness; a hash route retains its listener.
+
 Vercel can retain an npm install override despite the Bun manifest and lockfile. Keep the
 install command explicit in `vercel.json`; repository configuration overrides dashboard settings.
 

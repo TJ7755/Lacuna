@@ -1,8 +1,15 @@
+interface AiRendererNavigation {
+  isSameDocument: boolean;
+  isMainFrame: boolean;
+}
+
 export interface AiRendererLike {
   isDestroyed(): boolean;
   isLoadingMainFrame(): boolean;
-  on(event: 'did-start-loading' | 'destroyed', listener: () => void): unknown;
-  off(event: 'did-start-loading' | 'destroyed', listener: () => void): unknown;
+  on(event: 'did-start-navigation', listener: (details: AiRendererNavigation) => void): unknown;
+  on(event: 'destroyed', listener: () => void): unknown;
+  off(event: 'did-start-navigation', listener: (details: AiRendererNavigation) => void): unknown;
+  off(event: 'destroyed', listener: () => void): unknown;
 }
 
 export type AiRendererStatus = 'ready' | 'waiting' | 'unavailable';
@@ -20,8 +27,10 @@ export class AiRendererAvailability {
   private available = false;
   private unavailableTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly readyWaiters = new Set<ReadyWaiter>();
-  private readonly onLoading = () => {
-    this.becomeUnavailable(true);
+  private readonly onNavigation = (details: AiRendererNavigation) => {
+    // Hash routes and subframes keep the main document's AI listener alive.
+    // Loading-spinner events also occur for these navigations, so cannot identify reloads.
+    if (details.isMainFrame && !details.isSameDocument) this.becomeUnavailable(true);
   };
 
   constructor(
@@ -33,9 +42,9 @@ export class AiRendererAvailability {
     if (this.observed !== renderer) {
       this.becomeUnavailable(true);
       this.settleReadyWaiters(false, (waiter) => waiter.renderer !== renderer);
-      this.observed?.off('did-start-loading', this.onLoading);
+      this.observed?.off('did-start-navigation', this.onNavigation);
       this.observed = renderer;
-      renderer.on('did-start-loading', this.onLoading);
+      renderer.on('did-start-navigation', this.onNavigation);
     }
     this.cancelPendingUnavailable();
     this.subscriptionId = subscriptionId;
@@ -90,7 +99,7 @@ export class AiRendererAvailability {
   dispose(): void {
     this.becomeUnavailable(true);
     this.settleReadyWaiters(false);
-    this.observed?.off('did-start-loading', this.onLoading);
+    this.observed?.off('did-start-navigation', this.onNavigation);
     this.observed = null;
     this.subscriptionId = null;
   }

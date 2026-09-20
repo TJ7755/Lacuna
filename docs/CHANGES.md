@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Kept desktop AI connected when navigating between courses, Dashboard and Settings.
+  Only navigation that replaces the main document invalidates its AI listener; hash
+  routes and subframe loads no longer strand the runtime in its starting state.
+
 - Reused date formatters and removed redundant target-time calculations within timezone
   conversion, preserving daylight-saving gap handling and calendar-day grouping.
 - Set Vercel's install command to `bun install --frozen-lockfile`, matching CI and
