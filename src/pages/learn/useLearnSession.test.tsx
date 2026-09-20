@@ -92,6 +92,34 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
+  it('finishes a filtered due session after a slow Yes schedules the card for tomorrow', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Pathogen?', 'Causes disease');
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const now = Date.now();
+    await db.cards.update(card.id, {
+      state: 2, stability: 0.1, difficulty: 5, reps: 5,
+      lastReviewed: now - 10_000, due: now - 1,
+    });
+    const params = sessionParams({ courseId: course.id, filterParams: ['due'], mode: 'filtered-due' });
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const { result, unmount } = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+      clock.mockReturnValue(10_000);
+      act(() => result.current.reveal());
+      await act(async () => { await result.current.answer(true); });
+      expect(result.current.events.current[0]).toMatchObject({ grade: 2, correct: true });
+      expect((await db.cards.get(card.id))!.due).toBeGreaterThan(Date.now());
+      await waitFor(() => expect(result.current.phase).toBe('finished'));
+      expect(result.current.events.current).toHaveLength(1);
+    } finally {
+      unmount();
+      clock.mockRestore();
+    }
+  });
+
   it('orders global Course cards by scheduling urgency and enforces each inherited new-card limit', async () => {
     const nearCourse = await createCourse('Near course');
     const farCourse = await createCourse('Far course');

@@ -11,6 +11,10 @@
 
 - Joined the course-path lamp's shade, arm and base into a continuous illustration.
 
+- Fixed recurring and ad-hoc due-review sessions repeating successfully answered cards
+  immediately, despite scheduling their next review for tomorrow. These entry points now
+  carry the existing due filter into Learn; due sessions recheck each updated due date and
+  finish when no scheduled reviews remain due, independently of predicted exam readiness.
 - Aligned the release configuration test with the v0.2.9 package version.
 - Fixed course settings section highlighting after asynchronous course loading;
   the desktop rail and mobile jumper now follow scrolling.
