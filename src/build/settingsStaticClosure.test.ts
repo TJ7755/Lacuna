@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { OutputBundle, OutputChunk } from 'rollup';
+import type { Rolldown } from 'vite';
+
+type OutputBundle = Rolldown.OutputBundle;
+type OutputChunk = Rolldown.OutputChunk;
 import { inspectSettingsStaticClosure } from '../../scripts/settings-static-closure';
 
 function chunk({

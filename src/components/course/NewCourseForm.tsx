@@ -81,7 +81,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
       );
       await createLesson(course.id, 'Lesson 1');
       onClose();
-      navigate(`/course/${course.id}`);
+      void navigate(`/course/${course.id}`);
     } catch (err) {
       setSaving(false);
       notify(err instanceof Error ? err.message : 'Could not create the course.', 'negative');
@@ -95,7 +95,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
     );
     onClose();
     const courseId = courseIds[0];
-    if (courseId) navigate(`/course/${courseId}`);
+    if (courseId) void navigate(`/course/${courseId}`);
   }
 
   return createPortal(

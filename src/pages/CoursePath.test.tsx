@@ -64,11 +64,6 @@ vi.mock('react-router-dom', async () => {
   function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
     return React.createElement(actual.MemoryRouter, {
       ...props,
-      future: {
-        ...props.future,
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      },
     });
   }
   return {

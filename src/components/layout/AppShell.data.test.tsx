@@ -45,7 +45,7 @@ function DashboardData() {
 
 function renderShell() {
   return render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter>
       <ToastProvider>
         <Routes>
           <Route path="/" element={<AppShell />}>

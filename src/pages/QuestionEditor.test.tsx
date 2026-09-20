@@ -345,6 +345,6 @@ function renderEditor() {
     ],
     { initialEntries: ['/course/course-1/questions/new'] },
   );
-  render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+  render(<RouterProvider router={router} />);
   return router;
 }

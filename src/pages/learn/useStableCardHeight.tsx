@@ -36,8 +36,8 @@ export function CardSizeMeasurements({
   front: ReactNode;
   back: ReactNode;
   surfaceClassName: string;
-  frontRef: React.RefObject<HTMLDivElement>;
-  backRef: React.RefObject<HTMLDivElement>;
+  frontRef: React.RefObject<HTMLDivElement | null>;
+  backRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const makeInert = useCallback((node: HTMLDivElement | null) => {
     node?.setAttribute('inert', '');

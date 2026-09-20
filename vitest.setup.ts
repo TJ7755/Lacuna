@@ -1,40 +1,7 @@
 import { expect, afterEach, vi } from 'vitest';
-import * as React from 'react';
 import { cleanup } from '@testing-library/react';
 import { Storage } from 'happy-dom';
 import '@testing-library/jest-dom/vitest';
-
-const ROUTER_FUTURE_FLAGS = {
-  v7_startTransition: true,
-  v7_relativeSplatPath: true,
-} as const;
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-
-  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
-    return React.createElement(actual.MemoryRouter, {
-      ...props,
-      future: { ...props.future, ...ROUTER_FUTURE_FLAGS },
-    });
-  }
-
-  function createTestMemoryRouter(
-    routes: Parameters<typeof actual.createMemoryRouter>[0],
-    options?: Parameters<typeof actual.createMemoryRouter>[1],
-  ) {
-    return actual.createMemoryRouter(routes, {
-      ...options,
-      future: { ...options?.future, ...ROUTER_FUTURE_FLAGS },
-    });
-  }
-
-  return {
-    ...actual,
-    MemoryRouter: TestMemoryRouter,
-    createMemoryRouter: createTestMemoryRouter,
-  };
-});
 
 // Node 25 can install an unusable localStorage shim before Happy DOM starts.
 Object.defineProperty(globalThis, 'localStorage', {

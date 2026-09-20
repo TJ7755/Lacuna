@@ -97,10 +97,7 @@ function renderShell() {
 
 function shellElement() {
   return (
-    <MemoryRouter
-      initialEntries={['/']}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/" element={<AppShell />}>
           <Route index element={<RouteContent />} />

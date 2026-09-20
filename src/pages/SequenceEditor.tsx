@@ -368,7 +368,7 @@ export function SequenceEditor() {
         await createSequence(courseId, lessonId ?? null, name, items, opts);
         notify('Sequence added.', 'positive');
       }
-      navigate(backPath);
+      void navigate(backPath);
     } finally {
       setSaving(false);
     }

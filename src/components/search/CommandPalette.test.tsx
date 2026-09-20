@@ -379,7 +379,7 @@ describe('CommandPalette', () => {
       [{ path: '*', element: <CommandPalette open onClose={vi.fn()} /> }],
       { initialEntries: ['/'] },
     );
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'final velocity' },

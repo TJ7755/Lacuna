@@ -75,7 +75,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                 if (next === null) return;
                 event.preventDefault();
                 event.currentTarget.closest('nav')?.querySelectorAll('a')[next]?.focus();
-                navigate(`${base}${COURSE_SECTIONS[next].suffix}`);
+                void navigate(`${base}${COURSE_SECTIONS[next].suffix}`);
               }}
               className={cn(
                 'relative flex h-full items-center whitespace-nowrap rounded-lg px-3 font-medium transition-colors',

@@ -464,7 +464,7 @@ export function useLearnSession({
       : '/';
   const backOut = useCallback(() => {
     if (onFlowExit) onFlowExit();
-    else navigate(exitTo);
+    else void navigate(exitTo);
   }, [navigate, exitTo, onFlowExit]);
 
   const persistSimpleResume = useCallback(
@@ -1013,13 +1013,13 @@ export function useLearnSession({
         const lesson: Lesson | undefined = await db.lessons.get(lessonId);
         if (!lesson) {
           if (onFlowExit) onFlowExit();
-          else navigate('/');
+          else void navigate('/');
           return;
         }
         const course = await getCourse(lesson.courseId);
         if (!course) {
           if (onFlowExit) onFlowExit();
-          else navigate('/');
+          else void navigate('/');
           return;
         }
         setResolvedCourseId(course.id);
@@ -1060,7 +1060,7 @@ export function useLearnSession({
         const course = await getCourse(courseId);
         if (!course) {
           if (onFlowExit) onFlowExit();
-          else navigate('/');
+          else void navigate('/');
           return;
         }
         const [rawAllCards, courseLessons, examDates, manualNodes] = await Promise.all([
@@ -1095,7 +1095,7 @@ export function useLearnSession({
           : undefined;
         if (requestAssessmentId && !selectedAssessment) {
           if (onFlowExit) onFlowExit();
-          else navigate(`/course/${courseId}`);
+          else void navigate(`/course/${courseId}`);
           return;
         }
         let activeRevisionPlan: RevisionPlan | null = null;

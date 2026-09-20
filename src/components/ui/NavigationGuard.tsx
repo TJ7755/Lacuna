@@ -1,4 +1,3 @@
-import type { Blocker } from '@remix-run/router';
 import {
   forwardRef,
   useCallback,
@@ -68,7 +67,7 @@ const DataRouterNavigationGuard = forwardRef<NavigationGuardHandle, NavigationGu
 );
 
 interface NavigationGuardCoreProps extends NavigationGuardProps {
-  blocker?: Blocker;
+  blocker?: ReturnType<typeof useBlocker>;
 }
 
 const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCoreProps>(

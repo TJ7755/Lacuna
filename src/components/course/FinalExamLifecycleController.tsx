@@ -78,7 +78,7 @@ export function FinalExamLifecycleController() {
       }}
       onSetNewDate={() => {
         sessionSuppressed.current.add(`${pending.id}:${pending.examDate}`);
-        navigate(`/course/${pending.id}/settings?editFinalExam=1`);
+        void navigate(`/course/${pending.id}/settings?editFinalExam=1`);
         refresh();
       }}
       onKeepRevising={() => {

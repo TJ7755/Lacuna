@@ -19,7 +19,7 @@ interface UseVirtualListResult {
   totalHeight: number;
   virtualItems: VirtualItem[];
   measureRef: (index: number) => (el: HTMLElement | null) => void;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   scrollToIndex: (index: number) => void;
 }
 

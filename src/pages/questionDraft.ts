@@ -121,7 +121,7 @@ export function useQuestionDraft(key: string) {
   const baselineRef = useRef(state);
   const dirtyRef = useRef(false);
   const promptRef = useRef(false);
-  const timerRef = useRef<number>();
+  const timerRef = useRef<number | undefined>(undefined);
   stateRef.current = state;
 
   const persist = useCallback(() => {

@@ -91,7 +91,7 @@ export function CourseAnalytics({
               <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(v: number) => [`${v}%`, 'Predicted']}
+                formatter={(v) => [`${v}%`, 'Predicted']}
                 cursor={{ stroke: c.line }}
               />
               <Area
@@ -133,7 +133,7 @@ export function CourseAnalytics({
               <Tooltip
                 contentStyle={tooltipStyle}
                 cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number, name: string) => {
+                formatter={(v, name) => {
                   if (name === 'cardCount') return [v, 'Cards'];
                   return [`${v}%`, name === 'masteryPct' ? 'Mastery' : 'Completion'];
                 }}
@@ -182,7 +182,7 @@ export function CourseAnalytics({
               <Tooltip
                 contentStyle={tooltipStyle}
                 cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number) => [v, 'Cards']}
+                formatter={(v) => [v, 'Cards']}
               />
               <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
                 {profile.map((entry, i) => (
@@ -210,7 +210,7 @@ export function CourseAnalytics({
               <Tooltip
                 contentStyle={tooltipStyle}
                 cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number) => [v, 'Reviews']}
+                formatter={(v) => [v, 'Reviews']}
               />
               <Bar
                 dataKey="reviews"

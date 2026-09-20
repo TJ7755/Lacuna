@@ -7,11 +7,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'happy-dom',
+    clearMocks: false,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts'],
     setupFiles: ['./vitest.setup.ts'],
     // One worker keeps the suite inside the memory budget of supported developer
     // machines and makes timing-sensitive component tests deterministic.
-    minWorkers: 1,
     maxWorkers: 1,
     coverage: {
       provider: 'v8',

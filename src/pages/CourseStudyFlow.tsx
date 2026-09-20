@@ -83,7 +83,7 @@ function CourseStudyFlowInner() {
 
   const finishFlow = useCallback(() => {
     clearActiveStudyFlow();
-    navigate(courseId ? `/course/${courseId}` : '/');
+    void navigate(courseId ? `/course/${courseId}` : '/');
   }, [courseId, navigate]);
 
   // The URL-seeded step is available on the first paint; the planner's next step

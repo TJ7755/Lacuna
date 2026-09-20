@@ -1,9 +1,12 @@
-import { existsSync, renameSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { buildSync } from 'esbuild';
 
 const commands = [
-  [process.execPath, ['node_modules/typescript/bin/tsc', '-p', 'electron/tsconfig.json']],
-  [process.execPath, ['node_modules/typescript/bin/tsc', '-p', 'electron/tsconfig.preload.json']],
+  [process.execPath, ['node_modules/@typescript/native/bin/tsc', '-p', 'electron/tsconfig.json']],
+  [
+    process.execPath,
+    ['node_modules/@typescript/native/bin/tsc', '-p', 'electron/tsconfig.preload.json'],
+  ],
   [process.execPath, ['electron/mcp/build.mjs']],
 ];
 
@@ -13,8 +16,11 @@ for (const [command, args] of commands) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-const source = 'electron/dist-electron/preload.js';
-const destination = 'electron/dist-electron/preload.cjs';
-if (!existsSync(source)) throw new Error(`Electron preload build did not produce ${source}`);
-rmSync(destination, { force: true });
-renameSync(source, destination);
+buildSync({
+  entryPoints: ['electron/preload.ts'],
+  platform: 'node',
+  format: 'cjs',
+  target: 'node22',
+  outfile: 'electron/dist-electron/preload.cjs',
+  sourcemap: true,
+});
