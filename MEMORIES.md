@@ -57,6 +57,9 @@ while the picker is open, and test the expanded menu rather than only the closed
 
 ## AI authority and deployment
 
+Vercel can retain an npm install override despite the Bun manifest and lockfile. Keep the
+install command explicit in `vercel.json`; repository configuration overrides dashboard settings.
+
 AI and data MCP companions share transport but have different grants. Preserve every generated
 profile argument and verify the client's active tools, not just saved registration. A transport
 harness does not prove model-authored chat. Web AI currently has no cross-tab ownership lease.
