@@ -16,6 +16,8 @@ interface Props {
   label?: string;
   /** Optional reset handler, e.g. to navigate away from a broken route. */
   onReset?: () => void;
+  /** A local fallback for surfaces that must not replace the current page. */
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -133,6 +135,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     const m = getMotionMultiplier();
     if (this.state.error) {
+      if (this.props.fallback !== undefined) return this.props.fallback;
       return (
         <motion.div
           initial={{ opacity: 0 }}

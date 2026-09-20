@@ -67,10 +67,10 @@ British English throughout. No emojis anywhere in the product or its copy.
 
 ## 2. Technology stack
 
-- **Build / framework:** Vite 6 + React 18 + TypeScript (strict). SWC React plugin.
+- **Build / framework:** Vite 8 + React 19 + TypeScript 7 (strict). SWC React plugin.
 - **Styling:** Tailwind CSS v4 (class-based dark mode via `@custom-variant dark`), CSS custom
   properties for the palette, surfaced to Tailwind through `@theme inline`.
-- **Routing:** React Router v6, **hash** history (`createHashRouter`) so the app deploys as
+- **Routing:** React Router v7, **hash** history (`createHashRouter`) so the app deploys as
   plain static files with no server rewrites.
 - **Persistence:** Dexie (IndexedDB) with `dexie-react-hooks` (`useLiveQuery`) for reactive
   reads.
@@ -85,18 +85,17 @@ British English throughout. No emojis anywhere in the product or its copy.
 - **Fonts:** locally bundled Instrument Sans (body and headings), Fraunces (brand),
   JetBrains Mono (code and the timer/tabular figures). `webBootstrap.ts` adds hosted
   Fraunces and JetBrains Mono stylesheets on HTTP(S).
-- **Testing:** Vitest 3 with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
+- **Testing:** Vitest 5 with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
   and `happy-dom` for UI component and hook tests. `test:coverage` retains the critical-domain
   gate; `test:coverage:recovery` separately measures persistence, sync merge, quota warnings,
   backups, portability and assets with explicit per-file floors rather than a global average. Both
   coverage gates run in pull-request CI and exact-release verification. Exact-release verification
   also requires the relay typecheck, lint and tests and the standalone AI MCP typecheck, lint, tests
-  and build before native packaging starts.
+  and build before native packaging starts. CI uses Node.js 24 and also builds and tests the
+  isolated handwriting prototype before the aggregate test check can pass.
 - **Security checks:** Pull requests and pushes to `master`/`main` run frozen Bun installs and
   high-severity-or-worse audits for the root app, relay and handwriting tool. A weekly scheduled
-  workflow also runs CodeQL v4 for JavaScript/TypeScript and GitHub Actions. The audit threshold
-  intentionally leaves the two known moderate React Router 6 findings visible for a separately
-  owned major-version decision; it does not ignore them permanently.
+  workflow also runs CodeQL v4 for JavaScript/TypeScript and GitHub Actions.
 
 Scripts: `dev`/`start` (Vite), `build` (`bun run typecheck && vite build`), `preview`, `typecheck`,
 `test`, `test:coverage`, `test:coverage:recovery`, `test:e2e:web`, `test:watch`, and `lint`. The Dashboard is the only eager page;

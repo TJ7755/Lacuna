@@ -121,35 +121,50 @@ describe('single and multi-unit completion paths', () => {
 });
 
 describe('due review sessions', () => {
-  it.each([1, 2])('rechecks due dates across %i units and completes below the exam target', (unitCount) => {
-    const units = Array.from({ length: unitCount }, (_, index) => deck(`unit-${index}`, 30));
-    const ctx = makeSessionContext(units, 'due');
-    const cards = units.map((unit) => card(unit.id, unit.id, {
-      state: 2, stability: 0.1, difficulty: 5, reps: 5,
-      lastReviewed: NOW - 10_000, due: NOW - 1,
-    }));
-    const future = card('future', units[0].id, { due: NOW + MS_PER_DAY });
-    const unseen = card('unseen', units[0].id);
-    const pool = [...cards, future, unseen];
-    expect(sessionServePool(pool, ctx, NOW).map((entry) => entry.id)).toEqual(cards.map((entry) => entry.id));
-    expect(sessionComplete(pool, ctx, NOW)).toBe(false);
-    for (let index = 0; index < unitCount; index += 1) {
-      const next = selectNext(pool, ctx, new Map(), NOW)!;
-      expect(next.due).toBeLessThanOrEqual(NOW);
-      Object.assign(next, applyReview(makeEngine(units[index].fsrsParameters), next, 2, NOW).memory);
-      expect(next.due).toBeGreaterThan(NOW);
-      expect(sessionServePool(pool, ctx, NOW).some((entry) => entry.id === next.id)).toBe(false);
-    }
-    expect(sessionProgress(pool, ctx, NOW)).toBeLessThan(0.9);
-    expect(sessionComplete(pool, ctx, NOW)).toBe(true);
-    expect(selectNext(pool, ctx, new Map(), NOW)).toBeNull();
-  });
+  it.each([1, 2])(
+    'rechecks due dates across %i units and completes below the exam target',
+    (unitCount) => {
+      const units = Array.from({ length: unitCount }, (_, index) => deck(`unit-${index}`, 30));
+      const ctx = makeSessionContext(units, 'due');
+      const cards = units.map((unit) =>
+        card(unit.id, unit.id, {
+          state: 2,
+          stability: 0.1,
+          difficulty: 5,
+          reps: 5,
+          lastReviewed: NOW - 10_000,
+          due: NOW - 1,
+        }),
+      );
+      const future = card('future', units[0].id, { due: NOW + MS_PER_DAY });
+      const unseen = card('unseen', units[0].id);
+      const pool = [...cards, future, unseen];
+      expect(sessionServePool(pool, ctx, NOW).map((entry) => entry.id)).toEqual(
+        cards.map((entry) => entry.id),
+      );
+      expect(sessionComplete(pool, ctx, NOW)).toBe(false);
+      for (let index = 0; index < unitCount; index += 1) {
+        const next = selectNext(pool, ctx, new Map(), NOW)!;
+        expect(next.due).toBeLessThanOrEqual(NOW);
+        Object.assign(
+          next,
+          applyReview(makeEngine(units[index].fsrsParameters), next, 2, NOW).memory,
+        );
+        expect(next.due).toBeGreaterThan(NOW);
+        expect(sessionServePool(pool, ctx, NOW).some((entry) => entry.id === next.id)).toBe(false);
+      }
+      expect(sessionProgress(pool, ctx, NOW)).toBeLessThan(0.9);
+      expect(sessionComplete(pool, ctx, NOW)).toBe(true);
+      expect(selectNext(pool, ctx, new Map(), NOW)).toBeNull();
+    },
+  );
 
   it('waits for failed learning cards to become due and keeps suspension and burial exclusions', () => {
     const unit = deck('unit', 30);
     const ctx = makeSessionContext([unit], 'due');
     const learning = card('learning', unit.id, { state: 1, due: NOW + 60_000 });
-    const pool = [learning,
+    const pool = [
+      learning,
       card('suspended', unit.id, { due: NOW, suspended: true }),
       card('buried', unit.id, { due: NOW, buriedUntil: NOW + MS_PER_DAY }),
     ];
@@ -532,5 +547,60 @@ describe('course/lesson-scoped sessions', () => {
     };
 
     expect(serveOrder([lessonA, lessonB])).toEqual(serveOrder([lessonB, lessonA]));
+  });
+});
+
+describe('shared cards without a lesson owner', () => {
+  const sharedUnits: SessionUnit[] = [
+    {
+      config: course('course-1', 3),
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'lesson-a',
+        linkedCardIds: new Set(['shared']),
+      },
+    },
+    {
+      config: course('course-1', 30),
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'lesson-b',
+        linkedCardIds: new Set(['shared']),
+      },
+    },
+  ];
+
+  it('scores a shared linked card by its most urgent unit in cram mode', () => {
+    const shared = card('shared', 'shadow-deck', {
+      courseId: 'course-1',
+      primaryLessonId: 'another-lesson',
+      stability: 1,
+      difficulty: 5,
+      lastReviewed: NOW,
+      reps: 1,
+      state: 2,
+    });
+
+    expect(selectNext([shared], makeSessionContext(sharedUnits, 'cram'), new Map(), NOW)?.id).toBe(
+      shared.id,
+    );
+  });
+
+  it('chooses the shortest cooldown for a shared card with no owning lesson unit', () => {
+    const shared = card('shared', 'shadow-deck', {
+      courseId: 'course-1',
+      primaryLessonId: 'another-lesson',
+      stability: 1,
+      difficulty: 5,
+      lastReviewed: NOW,
+      reps: 1,
+      state: 2,
+    });
+
+    expect(
+      selectNext([shared], makeSessionContext(sharedUnits), new Map([[shared.id, 2]]), NOW)?.id,
+    ).toBe(shared.id);
   });
 });

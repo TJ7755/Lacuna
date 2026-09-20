@@ -2,8 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { version } from './package.json';
+import { version } from './package.json' with { type: 'json' };
 import { settingsStaticClosurePlugin } from './scripts/settings-static-closure';
+import { appShellPrecachePlugin } from './scripts/app-shell-precache';
 
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
 const crossOriginIsolationHeaders = {
@@ -12,17 +13,9 @@ const crossOriginIsolationHeaders = {
 };
 
 export const workbox = {
-  // Precache only the application shell. Lazy routes and their large optional
-  // assets are cached when visited instead of all being downloaded on install.
-  globPatterns: [
-    '**/*.{html,ico,png,svg}',
-    'assets/index-*.css',
-    'assets/{app,vendor}-*.js',
-    // These shared modules load during the first launch before the newly
-    // installed worker controls the page, but the Cards route imports them too.
-    // Precache that core closure; unrelated lazy pages remain runtime-only.
-    'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan,sequenceGeneration}-*.js',
-  ],
+  // Precache the application shell and the Cards route's shared import spine.
+  // Lazy route entries and large optional assets are cached when visited.
+  globPatterns: ['**/*.{html,ico,png,svg}', 'assets/index-*.css'],
   runtimeCaching: [
     {
       urlPattern: ({ request, url }: { request: Request; url: URL }) =>
@@ -94,6 +87,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     settingsStaticClosurePlugin(),
+    appShellPrecachePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: pwaInjectRegister,
@@ -152,43 +146,12 @@ export default defineConfig({
     format: 'es',
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         // Give the eager application entry a distinct name so Workbox can precache
         // it and its vendor dependency without downloading every lazy JavaScript chunk.
         entryFileNames: 'assets/app-[hash].js',
-        // Keep production chunks sensible: framework, charts and the markdown/maths
-        // stack each get their own chunk so a page that needs none of them stays light.
-        // A package-list object manual chunk also captures Rollup helpers generated for
-        // the eager entry. In this project that placed Object.assign beside recharts,
-        // making the chart chunk an eager dependency. Package-based routing keeps the
-        // helper with the entry while the actual chart library remains lazy.
-        manualChunks(id) {
-          if (id.includes('/node_modules/recharts/')) return 'charts';
-          if (
-            [
-              'react-markdown',
-              'remark-gfm',
-              'remark-math',
-              'rehype-katex',
-              'rehype-highlight',
-              'rehype-raw',
-              'katex',
-              'highlight.js',
-            ].some((packageName) => id.includes(`/node_modules/${packageName}/`))
-          ) {
-            return 'markdown';
-          }
-          if (
-            ['react', 'react-dom', 'react-router-dom', 'motion', '@babel/runtime'].some(
-              (packageName) => id.includes(`/node_modules/${packageName}/`),
-            )
-          ) {
-            return 'vendor';
-          }
-          return undefined;
-        },
       },
     },
   },

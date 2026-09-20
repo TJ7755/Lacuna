@@ -13,7 +13,7 @@ import {
   loadSharePage,
 } from './loaders';
 
-type RouteLoader = () => Promise<unknown>;
+import { loadRouteModule, type RouteLoader } from './routeModule';
 
 const PREFETCH_LOADERS: Partial<Record<string, RouteLoader>> = {
   '/analytics': loadAnalytics,
@@ -61,7 +61,9 @@ function prefetchTarget(path: string): { key: string; loader: RouteLoader } | un
     const match = COURSE_PREFETCH_LOADERS.find(({ pattern }) => pattern.test(normalised));
     return match ? { key: match.key, loader: match.loader } : undefined;
   }
-  const loader = PREFETCH_LOADERS[normalised];
+  const loader = Object.hasOwn(PREFETCH_LOADERS, normalised)
+    ? PREFETCH_LOADERS[normalised]
+    : undefined;
   return loader ? { key: normalised, loader } : undefined;
 }
 
@@ -71,7 +73,7 @@ export function prefetchRoute(path: string): void {
   if (!target || prefetchedRoutes.has(target.key)) return;
   const { key, loader } = target;
   prefetchedRoutes.add(key);
-  void loader().catch(() => {
+  void loadRouteModule(loader).catch(() => {
     // A later navigation should be allowed to retry a failed prefetch.
     prefetchedRoutes.delete(key);
   });

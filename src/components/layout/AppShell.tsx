@@ -6,14 +6,13 @@ import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
+import { OverlayLoadBoundary } from './OverlayLoadBoundary';
 import { CommandPalette } from '../search/CommandPalette';
-import { StudySheet } from '../learn/StudySheet';
 import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
 import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
-import { KeyHints } from '../ui/KeyHints';
 import { CloseIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
@@ -28,6 +27,12 @@ import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 
 const AiPanel = lazy(loadAiPanel);
+const StudySheet = lazy(() =>
+  import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet })),
+);
+const KeyHints = lazy(() =>
+  import('../ui/KeyHints').then(({ KeyHints }) => ({ default: KeyHints })),
+);
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
@@ -65,6 +70,7 @@ function AppShellLayout() {
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
+  const [hintsLoaded, setHintsLoaded] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const outlet = useOutlet();
@@ -203,10 +209,11 @@ function AppShellLayout() {
         return;
       if (e.key === '?') {
         e.preventDefault();
+        setHintsLoaded(true);
         setHintsOpen((v) => !v);
       } else if (e.key === '/') {
         e.preventDefault();
-        navigate('/search');
+        void navigate('/search');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -395,7 +402,8 @@ function AppShellLayout() {
             className={cn(
               'min-w-0 flex-1 overflow-y-auto overscroll-y-none',
               'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pl-0',
-              inCourse && '[scrollbar-gutter:stable] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
+              inCourse &&
+                '[scrollbar-gutter:stable] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
             )}
             style={{ touchAction: 'pan-y' }}
             onPointerDown={onPointerDown}
@@ -405,7 +413,11 @@ function AppShellLayout() {
           >
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
-                <RouteTransitions pathname={location.pathname} direction={sectionDirection} multiplier={m}>
+                <RouteTransitions
+                  pathname={location.pathname}
+                  direction={sectionDirection}
+                  multiplier={m}
+                >
                   {outlet}
                 </RouteTransitions>
               </StudySheetProvider>
@@ -417,7 +429,11 @@ function AppShellLayout() {
         <CourseSectionBar />
         <AnimatePresence>
           {studySheet.open && (
-            <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
+            <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
+              <Suspense fallback={null}>
+                <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
+              </Suspense>
+            </OverlayLoadBoundary>
           )}
         </AnimatePresence>
       </div>
@@ -427,7 +443,13 @@ function AppShellLayout() {
         returnFocusTarget={paletteReturnFocusRef}
       />
       <FinalExamLifecycleController />
-      <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
+      {hintsLoaded && (
+        <OverlayLoadBoundary label="Keyboard shortcuts" open={hintsOpen} onClose={() => setHintsOpen(false)}>
+          <Suspense fallback={null}>
+            <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
+          </Suspense>
+        </OverlayLoadBoundary>
+      )}
     </motion.div>
   );
 }

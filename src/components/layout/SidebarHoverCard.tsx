@@ -34,7 +34,7 @@ export function SidebarHoverCard({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pointerType = useRef('');
   const anchor = useRef<HTMLElement | null>(null);
   const popup = useRef<HTMLDivElement | null>(null);

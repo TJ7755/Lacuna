@@ -320,7 +320,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           response,
         ].slice(-MAX_AI_RELAY_MAILBOX_ENTRIES);
         nextSnapshot = applyToolEffects(nextSnapshot, event, outcome);
-        mailboxChanged = true;
       } else {
         ({ snapshot: nextSnapshot, messages } = applyTerminalEvent(nextSnapshot, messages, event));
       }

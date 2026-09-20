@@ -112,7 +112,7 @@ export function CardEditor() {
   const [draftPrompt, setDraftPrompt] = useState(false);
   const currentDraftKey = draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new');
   const draftKeyRef = useRef(currentDraftKey);
-  const draftTimer = useRef<number>();
+  const draftTimer = useRef<number | undefined>(undefined);
 
   // Persist the current form state under the key in draftKeyRef. Shared by the
   // debounced autosave and the route-change flush below.
@@ -179,12 +179,12 @@ export function CardEditor() {
 
   // Brief "Saved" flourish shown in the action bar after each quick-capture save.
   const [showSaved, setShowSaved] = useState(false);
-  const savedTimer = useRef<number>();
+  const savedTimer = useRef<number | undefined>(undefined);
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [shakeNonce, setShakeNonce] = useState(0);
-  const shakeTimer = useRef<number>();
+  const shakeTimer = useRef<number | undefined>(undefined);
   const [duplicateWarning, setDuplicateWarning] = useState<Card | null>(null);
-  const duplicateTimer = useRef<number>();
+  const duplicateTimer = useRef<number | undefined>(undefined);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const isTouchMode = useIsTouchMode();
@@ -581,7 +581,7 @@ export function CardEditor() {
       // Let the confirmation flourish play briefly before leaving the page.
       window.setTimeout(() => {
         notify('Card updated.', 'positive');
-        navigate(backPath);
+        void navigate(backPath);
       }, 450);
       return;
     }
@@ -619,7 +619,7 @@ export function CardEditor() {
       flashSaved();
       window.setTimeout(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
-        navigate(backPath);
+        void navigate(backPath);
       }, 450);
     }
   }

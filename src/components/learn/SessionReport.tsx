@@ -300,7 +300,7 @@ export function SessionReport({
                       color: c.ink,
                       fontSize: 13,
                     }}
-                    formatter={(v: number) => [v, 'Cards']}
+                    formatter={(v) => [v, 'Cards']}
                   />
                   <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
                     {gradeData.map((d) => (

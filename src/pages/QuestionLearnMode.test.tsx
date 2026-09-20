@@ -193,7 +193,7 @@ describe('QuestionLearnMode', () => {
       ],
       { initialEntries: ['/course/course-1/questions/learn'] },
     );
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
     const unload = new Event('beforeunload', { cancelable: true });
@@ -219,7 +219,7 @@ describe('QuestionLearnMode', () => {
       ],
       { initialEntries: ['/course/course-1/questions/learn'] },
     );
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
@@ -250,7 +250,7 @@ describe('QuestionLearnMode', () => {
       ],
       { initialEntries: ['/course/course-1/questions/learn'] },
     );
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
@@ -310,7 +310,7 @@ describe('QuestionLearnMode', () => {
         initialIndex: 1,
       },
     );
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });

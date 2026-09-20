@@ -930,3 +930,82 @@ describe('examIsUrgent', () => {
     expect(examIsUrgent(nearestExam, now)).toBe(true);
   });
 });
+
+describe('buildPath progress and manual-node edge cases', () => {
+  it('uses course completion records and scheduling state when introductions are skipped', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open', learnFirst: false });
+    const lessons = [
+      makeLesson({ id: 'cardless', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'reviewed', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const nodes = buildPath(
+      course,
+      lessons,
+      [],
+      new Map([['reviewed', [makeCard({ id: 'reviewed-card', deckId: 'd1', state: 2 })]]]),
+      [],
+      0,
+      0,
+      0,
+      {
+        exposures: [],
+        lessonCompletions: [{ lessonId: 'cardless', completedAt: 1, updatedAt: 1 }],
+        practiceMilestones: [],
+      },
+    );
+
+    expect(
+      nodes
+        .filter(
+          (node): node is Extract<PathNode, { nodeType: 'lesson' }> => node.nodeType === 'lesson',
+        )
+        .map((node) => [node.id, node.status]),
+    ).toEqual([
+      ['cardless', 'completed'],
+      ['reviewed', 'completed'],
+    ]);
+  });
+
+  it('orders simultaneous manual nodes by id and restores their milestones', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 })];
+    const first = makePracticeNode({
+      id: 'a',
+      courseId: 'c1',
+      type: 'manual',
+      position: 0,
+      createdAt: 1,
+    });
+    const second = makePracticeNode({
+      id: 'b',
+      courseId: 'c1',
+      type: 'manual',
+      position: 0,
+      createdAt: 1,
+    });
+    const initial = buildPath(course, lessons, [], new Map(), [second, first]);
+    const manual = initial.filter(
+      (node): node is PracticePathNode => node.nodeType === 'practice-manual',
+    );
+    const milestone = {
+      nodeKey: manual[0].nodeKey,
+      courseId: course.id,
+      scopeVersion: 'v1',
+      securedCardCount: 1,
+      totalCardCount: 1,
+      updatedAt: 2,
+    };
+
+    const restored = buildPath(course, lessons, [], new Map(), [second, first], 0, 0, 0, {
+      exposures: [],
+      lessonCompletions: [],
+      practiceMilestones: [milestone],
+    });
+    const restoredManual = restored.filter(
+      (node): node is PracticePathNode => node.nodeType === 'practice-manual',
+    );
+
+    expect(manual.map((node) => node.id)).toEqual(['a', 'b']);
+    expect(restoredManual[0].milestone).toEqual(milestone);
+  });
+});

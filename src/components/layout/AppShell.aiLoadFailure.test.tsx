@@ -86,7 +86,7 @@ it('contains a rejected AI panel import and lets the learner close it', async ()
 
   try {
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <Routes>
           <Route path="/" element={<AppShell />}>
             <Route index element={<h1>Dashboard</h1>} />

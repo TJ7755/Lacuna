@@ -95,6 +95,13 @@ Node 22 on Windows rejects `spawnSync('tool.cmd', ..., { shell: false })` with `
 JavaScript tools through `process.execPath` and their real entry files; do not add `shell: true` merely
 to make a package-manager shim executable.
 
+## TypeScript 7 and ESLint use different compiler packages
+
+The native TypeScript 7 compiler does not provide the legacy JavaScript compiler API
+used by typescript-eslint. Keep the TypeScript 6 compatibility package under the
+`typescript` name and the native compiler under `@typescript/native`; their command
+names are `tsc6` and `tsc` respectively. Explicit compiler paths must select the native package.
+
 ## Release artefact names must already be URL-safe
 
 GitHub normalises spaces in uploaded filenames, while electron-builder writes a separately
@@ -112,8 +119,8 @@ and stale-chunk recovery must retain its one-reload guard.
 
 A shared dependency fetched before service-worker control is not in the runtime cache, even if a
 visited lazy route later imports it. After changing the bundle graph, run the cold offline Cards
-reload test and keep Workbox's exact eager precache list aligned with emitted dependencies.
-The persistence split exposed this for `sequenceGeneration`; precaching every lazy page is unnecessary.
+reload test. Derive Workbox's eager precache from emitted static imports; hard-coded chunk names
+drift when the bundler changes its splitting. Lazy pages should still be cached only when visited.
 
 ## AI and data MCP companions have different authority
 

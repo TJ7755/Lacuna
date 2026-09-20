@@ -19,7 +19,7 @@ export function LandingCta({
 
   useEffect(() => {
     const onCovered = () => {
-      if (started.current) navigate('/');
+      if (started.current) void navigate('/');
     };
     window.addEventListener(COVERED_EVENT, onCovered);
     return () => window.removeEventListener(COVERED_EVENT, onCovered);

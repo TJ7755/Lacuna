@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
 import type * as RepositoryModule from './db/courseRepository';
 import type * as SchemaModule from './db/schema';
@@ -17,7 +17,7 @@ const dependencies = vi.hoisted(() => ({
 }));
 interface TestAiSession extends AiSession {
   testId: string;
-  dispose: ReturnType<typeof vi.fn>;
+  dispose: Mock<() => void>;
 }
 const runtime = vi.hoisted(() => ({
   createdSessions: [] as TestAiSession[],
@@ -31,7 +31,7 @@ const AI_RUNTIME_TEST_TIMEOUT_MS = 10_000;
 function createTestSession(): TestAiSession {
   const session = {
     testId: crypto.randomUUID(),
-    dispose: vi.fn(),
+    dispose: vi.fn<() => void>(),
   } as unknown as TestAiSession;
   runtime.createdSessions.push(session);
   return session;
@@ -149,7 +149,12 @@ describe('optional AI runtime', () => {
     await waitFor(() => expect(screen.getByTestId('router-surface')).toBe(originalSurface));
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
     expect(screen.getByTestId('router-surface')).not.toHaveAttribute('data-ai-session', 'none');
-    const activeSession = runtime.createdSessions[0];
+    // React may abandon a speculative render while the lazy runtime resolves.
+    // Assert disposal of the session actually committed to the routed app.
+    const activeSession = runtime.mountedSessions.find(
+      (session) => session.testId === originalSurface.getAttribute('data-ai-session'),
+    );
+    if (!activeSession) throw new Error('The routed AI session must have mounted.');
 
     act(() => writeAiSettings({ enabled: false }));
 
@@ -158,7 +163,7 @@ describe('optional AI runtime', () => {
     );
     expect(screen.getByTestId('router-surface')).toBe(originalSurface);
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
-    expect(activeSession.dispose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(activeSession.dispose).toHaveBeenCalledOnce());
   }, AI_RUNTIME_TEST_TIMEOUT_MS);
 
   it('remounts only the enabled AI runtime when Electron requests recovery', async () => {

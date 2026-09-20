@@ -1,4 +1,5 @@
-import { lazy, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react';
+import { type ComponentType, type ReactNode } from 'react';
+import { lazyRouteModule as lazy } from './routeModule';
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
@@ -61,7 +62,7 @@ const Landing = lazy(loadLanding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 
-function lazyRoute(Component: LazyExoticComponent<ComponentType>) {
+function lazyRoute(Component: ComponentType) {
   return (
     <LazyRoute>
       <Component />

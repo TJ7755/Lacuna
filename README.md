@@ -84,7 +84,8 @@ recovery** to back up or move your data as a single JSON file.
 ## Getting started
 
 Lacuna uses [Bun](https://bun.sh/) for its JavaScript runtime, package manager, and
-project scripts. The checked-in `bun.lock` is authoritative; use Bun 1.4.0 or newer.
+project scripts. The checked-in `bun.lock` is authoritative; use Bun 1.4.0 or newer
+and Node.js 24, which CI also uses for the build and test tools.
 
 ```
 git clone https://github.com/TJ7755/Lacuna.git
@@ -293,7 +294,7 @@ browser release-verification pass.
 
 ## Tech
 
-React 18, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Motion, Recharts, mathjs,
+React 19, TypeScript 7, Vite 8, Tailwind CSS v4, Dexie (IndexedDB), Motion, Recharts, mathjs,
 react-markdown with remark-gfm / remark-math / rehype-katex / rehype-highlight.
 
 ### Testing

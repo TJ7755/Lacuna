@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import config, { pwaInjectRegister, workbox } from '../vite.config';
+import {
+  collectAppShellScripts,
+  collectOfflineCardsDependencies,
+} from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
@@ -36,12 +40,53 @@ describe('service-worker asset caching', () => {
     ).toBe(false);
   });
 
-  it('precaches only the shared modules required by the controlled offline Cards spine', () => {
-    expect(workbox.globPatterns).toContain(
-      'assets/{types,payloadValidation,numericAnswerSpec,verify,domain,scheduler,revisionPlan,sequenceGeneration}-*.js',
-    );
+  it('precaches the eager application closure without downloading lazy routes on install', () => {
+    const scripts = collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      {
+        fileName: 'assets/shared-SHARED01.js',
+        isEntry: false,
+        imports: ['assets/helper-HELPER01.js'],
+      },
+      { fileName: 'assets/helper-HELPER01.js', isEntry: false, imports: [] },
+      {
+        fileName: 'assets/CardsPage-CARDS001.js',
+        isEntry: false,
+        imports: ['assets/shared-SHARED01.js'],
+      },
+    ]);
+
+    expect(scripts).toEqual([
+      'assets/app-ENTRY001.js',
+      'assets/shared-SHARED01.js',
+      'assets/helper-HELPER01.js',
+    ]);
     expect(workbox.globPatterns).not.toContain('assets/*Page-*.js');
     expect(workbox.globPatterns).not.toContain('assets/*.js');
+  });
+
+  it('retains shared Cards imports loaded before worker control without precaching the route', () => {
+    const chunks = [
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
+      {
+        fileName: 'assets/CardsPage-CARDS001.js',
+        isEntry: false,
+        imports: ['assets/shared-SHARED01.js', 'assets/cardCore-CORE0001.js'],
+      },
+      {
+        fileName: 'assets/cardCore-CORE0001.js',
+        isEntry: false,
+        imports: ['assets/validation-VALID001.js'],
+      },
+      { fileName: 'assets/validation-VALID001.js', isEntry: false, imports: [] },
+      { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
+    ];
+
+    expect(collectOfflineCardsDependencies(chunks)).toEqual([
+      'assets/cardCore-CORE0001.js',
+      'assets/validation-VALID001.js',
+    ]);
   });
 
   it('caches visited content-hashed lazy styles without adding them to the install shell', () => {
@@ -92,25 +137,11 @@ describe('service-worker asset caching', () => {
 
   it('emits imported assets with content hashes in their filenames', () => {
     const generatedConfig = config as {
-      build?: { rollupOptions?: { output?: { assetFileNames?: string } } };
+      build?: { rolldownOptions?: { output?: { assetFileNames?: string } } };
     };
 
-    expect(generatedConfig.build?.rollupOptions?.output?.assetFileNames).toBe(
+    expect(generatedConfig.build?.rolldownOptions?.output?.assetFileNames).toBe(
       'assets/[name]-[hash][extname]',
     );
-  });
-
-  it('keeps shared Babel helpers out of the optional charts chunk', () => {
-    const generatedConfig = config as {
-      build?: {
-        rollupOptions?: { output?: { manualChunks?: (id: string) => string | undefined } };
-      };
-    };
-
-    expect(
-      generatedConfig.build?.rollupOptions?.output?.manualChunks?.(
-        '/node_modules/@babel/runtime/helpers/extends.js',
-      ),
-    ).toBe('vendor');
   });
 });

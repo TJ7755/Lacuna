@@ -20,6 +20,10 @@ vi.mock('./loaders', () => loaders);
 import { prefetchRoute } from './prefetch';
 
 describe('prefetchRoute', () => {
+  it.each(['__proto__', 'constructor', 'toString'])('ignores inherited route names: %s', (path) => {
+    expect(() => prefetchRoute(path)).not.toThrow();
+  });
+
   it('loads each route chunk once and distinguishes course route families', () => {
     prefetchRoute('/analytics');
     prefetchRoute('/analytics');

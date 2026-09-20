@@ -8,6 +8,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'happy-dom',
+    clearMocks: false,
     include: [
       'src/db/persistence.test.ts',
       'src/sync/manualMerge.test.ts',
@@ -17,7 +18,6 @@ export default defineConfig({
       'src/db/assets.test.ts',
     ],
     setupFiles: ['./vitest.setup.ts'],
-    minWorkers: 1,
     maxWorkers: 1,
     coverage: {
       provider: 'v8',
