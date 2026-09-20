@@ -62,7 +62,7 @@ and review date.
 
 ### 2. Data durability and desktop evidence
 
-**Status:** in progress; schema frozen at v26 unless a data-integrity defect forces a migration.
+**Status:** in progress; current schema v27. Further migrations require an evidenced data-integrity need.
 
 Media-bearing full-backup round trips, replace and merge restore points, and quota/persistence-denial
 recovery are delivered. v1/v8 migration, JSON export, clean restore and reopen now preserve reviews,

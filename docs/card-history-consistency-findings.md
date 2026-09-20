@@ -2,7 +2,7 @@
 
 > **Historical assessment of mirrored storage.** Schema v26 subsequently ended the dual write:
 > `reviewHistory` is canonical and stored `Card.history` is empty. The findings and line references
-> below describe the 12 August checkpoint. See [the specification](SPEC.md#review-history-schemas-v20-and-v26)
+> below describe the 12 August checkpoint. See [the specification](spec/data-model.md#review-history-schemas-v20-v26-and-v27)
 > for current persistence behaviour and [the roadmap](next_plan.md) for remaining work.
 
 **Date:** 12 August 2026
