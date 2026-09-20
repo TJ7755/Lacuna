@@ -114,7 +114,9 @@ describe('diffLineage', () => {
       studentEdits: new Set(['lesson-1']),
     };
     const result = diffLineage(input);
-    expect(result.conflicts).toEqual([{ entityId: 'lesson-1', kind: 'lesson', incoming: incomingLesson }]);
+    expect(result.conflicts).toEqual([
+      { entityId: 'lesson-1', kind: 'lesson', incoming: incomingLesson },
+    ]);
     expect(result.updates.lessons).toEqual([]);
   });
 
@@ -135,10 +137,16 @@ describe('diffLineage', () => {
   it('classifies a pure reorder as an orderIndex-only update', () => {
     const input: LineageDiffInput = {
       incoming: {
-        lessons: [baseLesson({ i: 'lesson-2', n: 'Lesson Two' }), baseLesson({ i: 'lesson-1', n: 'Lesson One' })],
+        lessons: [
+          baseLesson({ i: 'lesson-2', n: 'Lesson Two' }),
+          baseLesson({ i: 'lesson-1', n: 'Lesson One' }),
+        ],
       },
       existing: {
-        lessons: [existingLesson({ id: 'lesson-1', orderIndex: 0 }), existingLesson({ id: 'lesson-2', name: 'Lesson Two', orderIndex: 1 })],
+        lessons: [
+          existingLesson({ id: 'lesson-1', orderIndex: 0 }),
+          existingLesson({ id: 'lesson-2', name: 'Lesson Two', orderIndex: 1 }),
+        ],
         notes: [],
         cards: [],
       },
@@ -165,7 +173,9 @@ describe('diffLineage', () => {
       incoming: { lessons: [lesson] },
       existing: {
         lessons: [existingLesson()],
-        notes: [{ id: 'note-1', lessonId: 'lesson-1', name: 'Note', content: 'content', orderIndex: 0 }],
+        notes: [
+          { id: 'note-1', lessonId: 'lesson-1', name: 'Note', content: 'content', orderIndex: 0 },
+        ],
         cards: [{ id: 'card-1', type: 'front_back', front: 'front', back: 'back' }],
       },
       mapping: mapping({ lessonIds: ['lesson-1'], noteIds: ['note-1'], cardIds: ['card-1'] }),
@@ -190,14 +200,30 @@ describe('diffLineage', () => {
       },
       existing: {
         lessons: [existingLesson()],
-        notes: [{ id: 'note-1', lessonId: 'lesson-1', name: 'Old Note', content: 'old content', orderIndex: 0 }],
+        notes: [
+          {
+            id: 'note-1',
+            lessonId: 'lesson-1',
+            name: 'Old Note',
+            content: 'old content',
+            orderIndex: 0,
+          },
+        ],
         cards: [{ id: 'card-1', type: 'front_back', front: 'front', back: 'back' }],
       },
       mapping: mapping({ lessonIds: ['lesson-1'], noteIds: ['note-1'], cardIds: ['card-1'] }),
       studentEdits: new Set(),
     };
     const result = diffLineage(input);
-    expect(result.creates.notes).toEqual([{ id: 'note-2', lessonId: 'lesson-1', name: 'New Note', content: 'new content', orderIndex: 0 }]);
+    expect(result.creates.notes).toEqual([
+      {
+        id: 'note-2',
+        lessonId: 'lesson-1',
+        name: 'New Note',
+        content: 'new content',
+        orderIndex: 0,
+      },
+    ]);
     expect(result.removals.noteIds).toEqual(['note-1']);
     expect(result.updates.cards).toEqual([{ id: 'card-1', front: 'front changed' }]);
   });
@@ -215,7 +241,9 @@ describe('diffLineage', () => {
       studentEdits: new Set(['card-1']),
     };
     const result = diffLineage(input);
-    expect(result.conflicts).toEqual([{ entityId: 'card-1', kind: 'card', incoming: incomingCard }]);
+    expect(result.conflicts).toEqual([
+      { entityId: 'card-1', kind: 'card', incoming: incomingCard },
+    ]);
     expect(result.updates.cards).toEqual([]);
   });
 
@@ -224,9 +252,7 @@ describe('diffLineage', () => {
       incoming: {
         lessons: [
           baseLesson({
-            cards: [
-              { i: 'card-1', k: 0, f: 'front', b: 'back', p: REVISED_PAYLOAD },
-            ],
+            cards: [{ i: 'card-1', k: 0, f: 'front', b: 'back', p: REVISED_PAYLOAD }],
           }),
         ],
       },
@@ -247,9 +273,7 @@ describe('diffLineage', () => {
       studentEdits: new Set(),
     };
 
-    expect(diffLineage(input).updates.cards).toEqual([
-      { id: 'card-1', payload: REVISED_PAYLOAD },
-    ]);
+    expect(diffLineage(input).updates.cards).toEqual([{ id: 'card-1', payload: REVISED_PAYLOAD }]);
   });
 
   it('classifies a teacher payload edit as a conflict when the student edited the card', () => {
@@ -286,7 +310,9 @@ describe('diffLineage', () => {
 
   it('treats a card unknown to the mapping as a create even if a same-id local card exists (mapping is the source of truth)', () => {
     const input: LineageDiffInput = {
-      incoming: { lessons: [baseLesson({ cards: [{ i: 'card-1', k: 0, f: 'front', b: 'back' }] })] },
+      incoming: {
+        lessons: [baseLesson({ cards: [{ i: 'card-1', k: 0, f: 'front', b: 'back' }] })],
+      },
       existing: {
         lessons: [existingLesson()],
         notes: [],
@@ -296,7 +322,16 @@ describe('diffLineage', () => {
       studentEdits: new Set(),
     };
     const result = diffLineage(input);
-    expect(result.creates.cards).toEqual([{ id: 'card-1', lessonId: 'lesson-1', type: 'front_back', front: 'front', back: 'back', tags: undefined }]);
+    expect(result.creates.cards).toEqual([
+      {
+        id: 'card-1',
+        lessonId: 'lesson-1',
+        type: 'front_back',
+        front: 'front',
+        back: 'back',
+        tags: undefined,
+      },
+    ]);
   });
 
   it('never produces sequence-shaped output — result has no sequence field', () => {
@@ -313,7 +348,9 @@ describe('diffLineage', () => {
 
   it('maps a retired typing card kind (k=3) to front_back on create', () => {
     const input: LineageDiffInput = {
-      incoming: { lessons: [baseLesson({ cards: [{ i: 'card-1', k: 3, f: 'front', b: 'back' }] })] },
+      incoming: {
+        lessons: [baseLesson({ cards: [{ i: 'card-1', k: 3, f: 'front', b: 'back' }] })],
+      },
       existing: { lessons: [existingLesson()], notes: [], cards: [] },
       mapping: mapping({ lessonIds: ['lesson-1'] }),
       studentEdits: new Set(),
@@ -335,5 +372,59 @@ describe('diffLineage', () => {
     };
     const result = diffLineage(input);
     expect(result.updates.cards).toEqual([]);
+  });
+});
+
+describe('nested lineage updates', () => {
+  it('updates mapped note content and card tags without touching scheduling fields', () => {
+    const result = diffLineage({
+      incoming: {
+        lessons: [
+          baseLesson({
+            notes: [{ i: 'note-1', n: 'Note', c: 'revised' }],
+            cards: [{ i: 'card-1', k: 0, f: 'front', b: 'back', g: ['exam'] }],
+          }),
+        ],
+      },
+      existing: {
+        lessons: [existingLesson()],
+        notes: [
+          { id: 'note-1', lessonId: 'lesson-1', name: 'Note', content: 'original', orderIndex: 0 },
+        ],
+        cards: [{ id: 'card-1', type: 'front_back', front: 'front', back: 'back', tags: [] }],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'], noteIds: ['note-1'], cardIds: ['card-1'] }),
+      studentEdits: new Set(),
+    });
+
+    expect(result.updates.notes).toEqual([{ id: 'note-1', content: 'revised' }]);
+    expect(result.updates.cards).toEqual([{ id: 'card-1', tags: ['exam'] }]);
+  });
+
+  it('queues a teacher note edit for review when the student changed that note', () => {
+    const incomingNote = { i: 'note-1', n: 'Note', c: 'teacher revision' };
+    const result = diffLineage({
+      incoming: { lessons: [baseLesson({ notes: [incomingNote] })] },
+      existing: {
+        lessons: [existingLesson()],
+        notes: [
+          {
+            id: 'note-1',
+            lessonId: 'lesson-1',
+            name: 'Note',
+            content: 'student revision',
+            orderIndex: 0,
+          },
+        ],
+        cards: [],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'], noteIds: ['note-1'] }),
+      studentEdits: new Set(['note-1']),
+    });
+
+    expect(result.updates.notes).toEqual([]);
+    expect(result.conflicts).toEqual([
+      { entityId: 'note-1', kind: 'note', incoming: incomingNote },
+    ]);
   });
 });
