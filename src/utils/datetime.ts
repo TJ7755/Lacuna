@@ -144,16 +144,17 @@ export function fromDateTimeLocalValue(value: string, timeZone?: string): number
 
   // Find the UTC ms such that the target time zone shows the given wall-clock time.
   // We start with a naive UTC candidate and iteratively refine.
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
   const getComponents = (ms: number) => {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(new Date(ms));
+    const parts = formatter.formatToParts(new Date(ms));
     const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? '0', 10);
     return {
       year: get('year'),
@@ -164,27 +165,20 @@ export function fromDateTimeLocalValue(value: string, timeZone?: string): number
     };
   };
 
-  let candidate = Date.UTC(year, month - 1, day, hours, minutes);
-  const target = { year, month, day, hour: hours, minute: minutes };
+  const targetAsUtc = Date.UTC(year, month - 1, day, hours, minutes);
+  let candidate = targetAsUtc;
 
   for (let i = 0; i < 5; i++) {
     const c = getComponents(candidate);
     if (
-      c.year === target.year &&
-      c.month === target.month &&
-      c.day === target.day &&
-      c.hour === target.hour &&
-      c.minute === target.minute
+      c.year === year &&
+      c.month === month &&
+      c.day === day &&
+      c.hour === hours &&
+      c.minute === minutes
     ) {
       return candidate;
     }
-    const targetAsUtc = Date.UTC(
-      target.year,
-      target.month - 1,
-      target.day,
-      target.hour,
-      target.minute,
-    );
     const candidateAsUtc = Date.UTC(c.year, c.month - 1, c.day, c.hour, c.minute);
     candidate += targetAsUtc - candidateAsUtc;
   }
@@ -227,31 +221,26 @@ export function getComponentsInZone(ms: number, timeZone?: string) {
 export function startOfDay(ms: number, timeZone?: string): number {
   const d = new Date(ms);
   if (timeZone) {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      timeZone,
-    }).formatToParts(d);
-    const getPart = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const year = getPart('year');
-    const month = getPart('month');
-    const day = getPart('day');
-    const midnight = fromDateTimeLocalValue(
-      `${getPart('year')}-${pad(getPart('month'))}-${pad(getPart('day'))}T00:00`,
-      timeZone,
-    );
-    if (Number.isFinite(midnight)) return midnight;
-
-    // Some zones advance their clocks at midnight, so 00:00 is not a valid
-    // wall-clock time. Find the first instant whose zoned date is this day.
     const dateFormatter = new Intl.DateTimeFormat('en-GB', {
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
       timeZone,
     });
+    const parts = dateFormatter.formatToParts(d);
+    const getPart = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const midnight = fromDateTimeLocalValue(
+      `${year}-${pad(month)}-${pad(day)}T00:00`,
+      timeZone,
+    );
+    if (Number.isFinite(midnight)) return midnight;
+
+    // Some zones advance their clocks at midnight, so 00:00 is not a valid
+    // wall-clock time. Find the first instant whose zoned date is this day.
     const targetDay = year * 10_000 + month * 100 + day;
     const zonedDay = (instant: number) => {
       const dateParts = dateFormatter.formatToParts(new Date(instant));

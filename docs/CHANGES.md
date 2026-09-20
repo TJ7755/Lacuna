@@ -2,10 +2,14 @@
 
 ## Unreleased
 
+- Reused date formatters and removed redundant target-time calculations within timezone
+  conversion, preserving daylight-saving gap handling and calendar-day grouping.
 - Kept restarted Pomodoro focus sessions counting down while already running.
 - Ignored storage quota estimates after their hook is cleaned up, and simplified polling
   ownership so unmounting always stops its interval without retaining a timer ref.
 
+- Kept resized card images and occlusion diagrams at least one pixel wide and tall,
+  preventing very thin uploads from failing when their shorter edge rounds to zero.
 - Added maintainer commands to wait for exact-commit checks, create a release draft, verify
   downloaded artefacts and updater metadata, and explicitly publish a Windows/Linux beta.
   Publication verifies provenance and checksums afresh and documents the platform scope.

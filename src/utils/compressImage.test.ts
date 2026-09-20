@@ -66,4 +66,19 @@ describe('compressImageBlob', () => {
     expect(result.width).toBe(800);
     expect(result.height).toBe(600);
   });
+
+  it.each([
+    { width: 6000, height: 1, maxDimension: undefined, expectedWidth: 1280, expectedHeight: 1 },
+    { width: 1, height: 6000, maxDimension: undefined, expectedWidth: 1, expectedHeight: 1280 },
+    { width: 6000, height: 1, maxDimension: 2560, expectedWidth: 2560, expectedHeight: 1 },
+    { width: 1, height: 6000, maxDimension: 2560, expectedWidth: 1, expectedHeight: 2560 },
+  ])('keeps both dimensions positive when resizing $width × $height to $maxDimension', async ({
+    width, height, maxDimension, expectedWidth, expectedHeight,
+  }) => {
+    setSourceDimensions(width, height);
+    const result = await compressImageBlob(new Blob(['x'], { type: 'image/png' }), { maxDimension });
+    expect(result.width).toBe(expectedWidth);
+    expect(result.height).toBe(expectedHeight);
+    expect(canvasDims).toEqual({ width: expectedWidth, height: expectedHeight });
+  });
 });

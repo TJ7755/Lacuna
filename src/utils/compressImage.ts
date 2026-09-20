@@ -26,7 +26,8 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
 function scaleToFit(w: number, h: number, max: number) {
   if (w <= max && h <= max) return { width: w, height: h };
   const ratio = Math.min(max / w, max / h);
-  return { width: Math.round(w * ratio), height: Math.round(h * ratio) };
+  // Extreme aspect ratios must still leave a drawable pixel on the shorter edge.
+  return { width: Math.max(1, Math.round(w * ratio)), height: Math.max(1, Math.round(h * ratio)) };
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob> {
