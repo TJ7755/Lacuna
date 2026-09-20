@@ -9,6 +9,8 @@
 
 ## 0.2.9 beta — reliable course reads and study counts
 
+- Joined the course-path lamp's shade, arm and base into a continuous illustration.
+
 - Aligned the release configuration test with the v0.2.9 package version.
 - Fixed course settings section highlighting after asynchronous course loading;
   the desktop rail and mobile jumper now follow scrolling.
