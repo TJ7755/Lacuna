@@ -9,6 +9,10 @@ Real beta users depend on Lacuna (confirmed 13 September 2026). Preserve their s
 and upgrade paths. Limited beta releases may be unsigned; wider school rollout requires
 Windows signing and macOS signing/notarisation. See [release policy](docs/maintenance/release.md).
 
+Release tags must be pushed with maintainer credentials: a tag created using Actions'
+`GITHUB_TOKEN` does not trigger the tag build. Use the release helper and exact-commit push
+workflow evidence; successful PR checks alone do not prove the merged release commit.
+
 ## Protect unrelated work
 
 The prompter keeps long-lived stashes: use a disposable worktree for baseline tests, never

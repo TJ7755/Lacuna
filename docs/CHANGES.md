@@ -1,5 +1,16 @@
 # Lacuna — version 0.2.10
 
+## Unreleased
+
+- Added maintainer commands to wait for exact-commit checks, create a release draft, verify
+  downloaded artefacts and updater metadata, and explicitly publish a Windows/Linux beta.
+  Publication verifies provenance and checksums afresh and documents the platform scope.
+- Reused the existing CI asset budget instead of installing dependencies and rebuilding assets
+  in the release verifier. Windows release builds now run the existing packaged interaction
+  smoke test before uploading; release configuration tests no longer hard-code the app version.
+- Split the full browser CI suite across two shards, preserving the required `browser-smoke`
+  aggregate check and uploading each shard's reports for failure diagnosis.
+
 ## 0.2.10 beta — on-demand learning and maintenance
 
 - Added optional Simple Learn passes for whole courses or individual lessons inside the Study

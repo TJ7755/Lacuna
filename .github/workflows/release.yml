@@ -9,6 +9,10 @@ permissions:
   actions: read
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -22,12 +26,6 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.0
-
-      - run: bun install --frozen-lockfile
-
       - name: Validate release tag
         shell: bash
         run: |
@@ -67,10 +65,8 @@ jobs:
             fi
           done
 
-      # CI and Security above already verify this exact commit. Only the asset
-      # budget is not covered by ordinary CI; do not repeat its complete suites.
-      - run: bun run build:assets
-      - run: bun run perf:check
+      # The exact-commit production job also checks the asset budget. Native
+      # packages below still need their own package and interaction checks.
 
   build-win:
     needs: verify
@@ -97,6 +93,17 @@ jobs:
       - run: bun run test:e2e:electron-ai
       - run: bun run electron:build:win
       - run: bun run perf:check:electron-package
+      - run: bun run test:e2e:electron-package
+        env:
+          LACUNA_ELECTRON_APP_DIR: release/win-unpacked
+
+      - name: Preserve Windows package test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-package-test-results
+          path: test-results/
+          if-no-files-found: ignore
 
       - name: Verify Windows artefact allowlist
         shell: pwsh
