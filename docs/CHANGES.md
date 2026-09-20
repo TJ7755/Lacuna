@@ -14,6 +14,12 @@
   mailbox processing and cancellation behaviour are unchanged.
 - Reused completed route prefetches directly so React 19 does not delay the first
   navigation behind a Suspense fallback; cold loads retain their existing loading UI.
+- Restricted route prefetch lookups to registered own properties and covered inherited
+  property names with regression tests.
+- Contained failed downloads of study options and keyboard shortcuts within dismissible
+  overlays, preserving the current page and its state.
+- Verified the upgraded Zod emitter accepts valid checkpoint assessments in its JSON
+  Schema while retaining the existing runtime tool contract and permission scopes.
 - Updated Electron to 44.4.1 and Electron Builder to 26.16.1, retaining the release
   configuration checks for vulnerable transitive dependencies.
 - Displayed the app version beside the Settings heading on web and desktop.
