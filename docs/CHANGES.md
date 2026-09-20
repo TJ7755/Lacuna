@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reused completed route prefetches directly so React 19 does not delay the first
+  navigation behind a Suspense fallback; cold loads retain their existing loading UI.
 - Updated Electron to 44.4.1 and Electron Builder to 26.16.1, retaining the release
   configuration checks for vulnerable transitive dependencies.
 - Displayed the app version beside the Settings heading on web and desktop.
