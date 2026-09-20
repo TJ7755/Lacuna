@@ -1058,7 +1058,7 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   compression legibly. Otherwise identical to the ordinary image path.
 - **Study** (`src/components/occlusion/OcclusionStudyFace.tsx`): masked labels, ringed target,
   ordinary reveal and grade row. Hidden labels use opaque neutral masks; the active label
-  uses an opaque accent-soft fill and a contrasting question mark. Revealed labels retain
+  uses an opaque accent-soft fill and a contrasting Fraunces question mark. Revealed labels retain
   one solid outline. Colours follow the selected accent and theme without changing diagram
   or card sizing. `occlusionDataByCard` (`src/db/occlusionStudy.ts`) resolves
   each pool card's owning occlusion once per session, batching one `listOcclusions` per

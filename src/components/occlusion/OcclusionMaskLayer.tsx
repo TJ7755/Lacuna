@@ -119,7 +119,7 @@ export function OcclusionMaskLayer({
           }}
         >
           {QUESTION_MARK_VISUALS.has(region.visual) && (
-            <span aria-hidden className="grid h-full place-items-center text-base font-semibold leading-none text-accent-ink">
+            <span aria-hidden className="grid h-full place-items-center font-brand text-base font-semibold leading-none text-accent-ink">
               ?
             </span>
           )}

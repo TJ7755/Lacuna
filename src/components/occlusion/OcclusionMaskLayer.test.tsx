@@ -19,7 +19,7 @@ describe('OcclusionMaskLayer', () => {
       // Alpha fills can leak the printed answer, especially on high-contrast diagrams.
       expect(overlay.className).not.toMatch(/(?:bg-[\w-]+\/|opacity-)/);
     }
-    expect(target.firstElementChild).toHaveClass('text-accent-ink', 'text-base');
+    expect(target.firstElementChild).toHaveClass('font-brand', 'text-accent-ink', 'text-base');
   });
 
   it('reveals an answer with one clear outline and no question mark', () => {
