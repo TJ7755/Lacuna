@@ -149,7 +149,12 @@ describe('optional AI runtime', () => {
     await waitFor(() => expect(screen.getByTestId('router-surface')).toBe(originalSurface));
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
     expect(screen.getByTestId('router-surface')).not.toHaveAttribute('data-ai-session', 'none');
-    const activeSession = runtime.createdSessions[0];
+    // React may abandon a speculative render while the lazy runtime resolves.
+    // Assert disposal of the session actually committed to the routed app.
+    const activeSession = runtime.mountedSessions.find(
+      (session) => session.testId === originalSurface.getAttribute('data-ai-session'),
+    );
+    if (!activeSession) throw new Error('The routed AI session must have mounted.');
 
     act(() => writeAiSettings({ enabled: false }));
 
