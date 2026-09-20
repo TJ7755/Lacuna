@@ -11,7 +11,7 @@
   },
   "include": [
     "./*.ts",
-    "../../playwright.electron-performance.config.ts",
+    "../../tests/config/playwright.electron-performance.config.ts",
     "../../tests/e2e-electron/packaged-interactions.spec.ts"
   ]
 }

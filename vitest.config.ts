@@ -2,13 +2,13 @@ import { defineConfig } from 'vitest/config';
 
 // Unit tests for the FSRS-6 engine, forward simulation, IndexedDB migrations,
 // components, hooks and state management. Happy DOM supplies browser globals;
-// vitest.setup.ts supplies fake IndexedDB for persistence tests.
+// tests/setup.ts supplies fake IndexedDB for persistence tests.
 export default defineConfig({
   test: {
     environment: 'happy-dom',
     clearMocks: false,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts'],
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: ['./tests/setup.ts'],
     // One worker keeps the suite inside the memory budget of supported developer
     // machines and makes timing-sensitive component tests deterministic.
     maxWorkers: 1,

@@ -1,7 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  outputDir: '../../test-results',
+  testDir: '../e2e',
   // Each spec provisions its own page/context and intercepts relay traffic on
   // that page. Keep local runs serial and use two isolated workers in CI.
   fullyParallel: process.env.CI === 'true',
@@ -16,6 +18,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
     command: 'bun run build:assets && bunx vite preview --host 127.0.0.1',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
