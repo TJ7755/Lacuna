@@ -1,13 +1,23 @@
-# Lacuna — version 0.2.8
+# Lacuna — version 0.2.9
 
-## Unreleased
+## 0.2.9 beta — reliable course reads and study counts
 
+- Aligned the release configuration test with the v0.2.9 package version.
 - Fixed course settings section highlighting after asynchronous course loading;
   the desktop rail and mobile jumper now follow scrolling.
 - Kept assessment card exclusions within the settings editor when card text is long.
 - Centred sidebar hover details on their course row while keeping the popup inside the viewport.
 - Enabled internal FSRS interval fuzz for new scheduling configurations by default;
   existing saved preferences are retained.
+- Read courses and their final assessments in one database transaction across navigation,
+  search, course views and plain queries. Concurrent imports, deletions and replacements
+  can no longer mix course and assessment snapshots and trigger a false missing-final error.
+- Applied course daily new-card and maximum-review limits to the dashboard forecast.
+- Counted only scheduled reviews in “Due” totals and the recurring review step,
+  while retaining new cards in “Ready” totals and curricular Practice.
+- Removed the redundant reviewed-count and accuracy subtitle between study steps.
+- Verified keyboard grading against persisted review history in the browser smoke test,
+  replacing its assertion on the removed step subtitle.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 

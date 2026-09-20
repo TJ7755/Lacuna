@@ -149,7 +149,7 @@ describe('courseHeaderStats', () => {
     });
   });
 
-  it('counts overdue reviews and only the new cards admitted by the daily cap', () => {
+  it('counts overdue reviews without presenting unseen cards as due', () => {
     const cards = [
       makeCard('due', { state: 2, due: NOW - 1 }),
       makeCard('future', { state: 2, due: NOW + MS_PER_DAY }),
@@ -160,10 +160,10 @@ describe('courseHeaderStats', () => {
 
     expect(
       courseHeaderStats(makeCourse({ newCardsPerDay: 2 }), [], cards, 0, NOW).dueCardCount,
-    ).toBe(3);
+    ).toBe(1);
   });
 
-  it('subtracts cards introduced recently from the remaining new-card budget', () => {
+  it('does not turn the remaining new-card budget into a due count', () => {
     const cards = [
       makeCard('introduced', {
         state: 2,
@@ -176,7 +176,7 @@ describe('courseHeaderStats', () => {
 
     expect(
       courseHeaderStats(makeCourse({ newCardsPerDay: 2 }), [], cards, 0, NOW).dueCardCount,
-    ).toBe(1);
+    ).toBe(0);
   });
 
   it('excludes suspended, future-buried and future review cards', () => {
