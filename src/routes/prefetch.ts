@@ -61,7 +61,9 @@ function prefetchTarget(path: string): { key: string; loader: RouteLoader } | un
     const match = COURSE_PREFETCH_LOADERS.find(({ pattern }) => pattern.test(normalised));
     return match ? { key: match.key, loader: match.loader } : undefined;
   }
-  const loader = PREFETCH_LOADERS[normalised];
+  const loader = Object.hasOwn(PREFETCH_LOADERS, normalised)
+    ? PREFETCH_LOADERS[normalised]
+    : undefined;
   return loader ? { key: normalised, loader } : undefined;
 }
 
