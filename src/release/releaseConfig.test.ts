@@ -111,9 +111,9 @@ function blockScalarValues(block: string, key: string): string[] {
   return values;
 }
 
-describe('v0.2.8 release configuration', () => {
+describe('v0.2.9 release configuration', () => {
   it('identifies the public app repository and release version', () => {
-    expect(packageJson.version).toBe('0.2.8');
+    expect(packageJson.version).toBe('0.2.9');
     expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({
@@ -138,8 +138,8 @@ describe('v0.2.8 release configuration', () => {
   });
 
   it('uses the maintained Electron Builder 26 toolchain without vulnerable transitive versions', () => {
-    expect(packageJson.devDependencies?.['electron-builder']).toBe('^26.16.0');
-    expect(resolvedVersions('electron-builder')).toEqual(['26.16.0']);
+    expect(packageJson.devDependencies?.['electron-builder']).toBe('^26.16.1');
+    expect(resolvedVersions('electron-builder')).toEqual(['26.16.1']);
     expectResolvedAtLeast('app-builder-lib', [26, 15, 0]);
     expectResolvedAtLeast('builder-util-runtime', [9, 7, 0]);
     expectResolvedAtLeast('tar', [7, 5, 21]);

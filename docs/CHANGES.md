@@ -1,4 +1,39 @@
-# Lacuna — version 0.2.8
+# Lacuna — version 0.2.9
+
+## Unreleased
+
+- Updated Electron to 44.4.1 and Electron Builder to 26.16.1, retaining the release
+  configuration checks for vulnerable transitive dependencies.
+- Displayed the app version beside the Settings heading on web and desktop.
+- Removed duplicated update-version and scheduling-card subtitles.
+- Joined the course-path lamp's shade, arm and base into a continuous illustration.
+- Fixed recurring and ad-hoc due-review sessions repeating successfully answered cards
+  immediately, despite scheduling their next review for tomorrow. These entry points now
+  carry the existing due filter into Learn; due sessions recheck each updated due date and
+  finish when no scheduled reviews remain due, independently of predicted exam readiness.
+- Softened image-occlusion masks with opaque neutral fills, keeping passive masks light
+  in both themes, and a distinct accent-coloured
+  target with a clearer Fraunces question mark. Revealed labels use a single outline; card and
+  diagram sizing, masking rules and scheduling remain unchanged.
+
+## 0.2.9 beta — reliable course reads and study counts
+
+- Aligned the release configuration test with the v0.2.9 package version.
+- Fixed course settings section highlighting after asynchronous course loading;
+  the desktop rail and mobile jumper now follow scrolling.
+- Kept assessment card exclusions within the settings editor when card text is long.
+- Centred sidebar hover details on their course row while keeping the popup inside the viewport.
+- Enabled internal FSRS interval fuzz for new scheduling configurations by default;
+  existing saved preferences are retained.
+- Read courses and their final assessments in one database transaction across navigation,
+  search, course views and plain queries. Concurrent imports, deletions and replacements
+  can no longer mix course and assessment snapshots and trigger a false missing-final error.
+- Applied course daily new-card and maximum-review limits to the dashboard forecast.
+- Counted only scheduled reviews in “Due” totals and the recurring review step,
+  while retaining new cards in “Ready” totals and curricular Practice.
+- Removed the redundant reviewed-count and accuracy subtitle between study steps.
+- Verified keyboard grading against persisted review history in the browser smoke test,
+  replacing its assertion on the removed step subtitle.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 

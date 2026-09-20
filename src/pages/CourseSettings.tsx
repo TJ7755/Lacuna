@@ -57,12 +57,13 @@ export function CourseSettings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { notify } = useToast();
-  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found"
   // (null), matching CoursePath's pattern — Dexie's .get() resolves to
   // undefined for a missing row, so useCourse alone cannot signal not-found.
   const course = useCourse(courseId);
+  // The sections do not exist while the course query is loading.
+  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m, !!course);
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
 

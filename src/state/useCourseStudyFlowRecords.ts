@@ -46,10 +46,15 @@ export function useCourseStudyFlowRecords(courseId: string | undefined, refreshK
         performance: [],
       };
     }
-    const [courseRecord, assessments] = await Promise.all([
-      db.courses.get(courseId),
-      db.courseAssessments.where('courseId').equals(courseId).toArray(),
-    ]);
+    const [courseRecord, assessments] = await db.transaction(
+      'r',
+      [db.courses, db.courseAssessments],
+      () =>
+        Promise.all([
+          db.courses.get(courseId),
+          db.courseAssessments.where('courseId').equals(courseId).toArray(),
+        ]),
+    );
     if (!courseRecord) {
       return {
         course: null,
