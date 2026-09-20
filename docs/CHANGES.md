@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reused date formatters and removed redundant target-time calculations within timezone
+  conversion, preserving daylight-saving gap handling and calendar-day grouping.
 - Kept restarted Pomodoro focus sessions counting down while already running.
 - Ignored storage quota estimates after their hook is cleaned up, and simplified polling
   ownership so unmounting always stops its interval without retaining a timer ref.
