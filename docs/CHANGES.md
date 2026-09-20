@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Aligned browser TypeScript library declarations with the ES2022 built-ins already used
+  by the application and tests, restoring typechecking after dependency installation.
 - Kept virtual-list rendering bounded when the viewport moves below the last row,
   including after a list shrinks, rather than mounting every off-screen row.
 - Migrated the application and companion tooling to React 19, TypeScript 7, Vite 8,

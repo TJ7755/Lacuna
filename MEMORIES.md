@@ -321,11 +321,11 @@ uses `updatedAt`. Settings copy and `docs/APP-FLOWS.md` both claimed recency win
 wrong; a regression test now asserts that wording is absent. Do not reintroduce the claim, and do
 not assume the two merge paths behave alike — they answer different questions.
 
-## `new Error(message, { cause })` does not typecheck
+## Browser library declarations include ES2022
 
-The project TypeScript lib only accepts the single-argument `Error` constructor. Pass the
-message through and, if you need a flag, put it on a subclass. `{ cause }` fails `typecheck:web`.
-`relay/` is a separate TypeScript project with `lib: ES2022`, so `{ cause }` is valid there.
+The browser project declares ES2022 library APIs, matching its existing `Array.at` and
+`Object.hasOwn` calls. Its emitted syntax target remains ES2021; that target does not
+polyfill built-ins. Error causes now typecheck in both the browser and relay projects.
 
 ## Vercel Other-framework `api/` is not Next.js routing
 
