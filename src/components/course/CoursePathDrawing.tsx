@@ -7,7 +7,7 @@ const scenes = [
   // Recall cards and a pencil, drawn as one small study scene.
   'M27 22 L93 16 L101 88 L33 94 Z M41 39 L78 35 M42 51 L70 48 M46 78 L54 84 L70 64 M88 105 L129 46 L137 53 L98 112 L86 118 Z M122 55 L131 62 M15 123 Q78 127 142 116',
   // A reading lamp over a book: the pool of light is left open rather than filled.
-  'M31 97 L48 55 L74 28 M63 17 L87 33 L99 20 Q81 1 63 17 Z M25 99 L48 98 M17 107 L60 105 M70 88 Q85 80 101 87 Q115 77 134 82 L135 110 Q118 105 103 117 Q86 108 69 116 Z M101 87 L103 117 M82 52 L89 67 M103 40 L116 56',
+  'M31 99 L48 55 L75 25 M63 17 L87 33 L99 20 Q81 1 63 17 Z M17 107 Q17 99 31 99 L46 99 Q60 99 60 107 Z M70 88 Q85 80 101 87 Q115 77 134 82 L135 110 Q118 105 103 117 Q86 108 69 116 Z M101 87 L103 117 M82 52 L89 67 M103 40 L116 56',
 ] as const;
 
 export function CoursePathDrawing({ node, index }: { node: PathNode; index: number }) {

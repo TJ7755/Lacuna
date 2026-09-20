@@ -88,7 +88,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       : courseId
         ? 'practice'
         : 'deck';
-  const filterParams = useMemo(() => searchParams.getAll('filter') as CardFilter[], [searchParams]);
+  const dueReviewRequest = request?.kind === 'practice' &&
+    (request.mode === 'recurring' || request.mode === 'ad-hoc');
+  const filterParams = useMemo(() => {
+    const filters = searchParams.getAll('filter') as CardFilter[];
+    return dueReviewRequest && !filters.includes('due') ? [...filters, 'due' as const] : filters;
+  }, [searchParams, dueReviewRequest]);
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();

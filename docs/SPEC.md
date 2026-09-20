@@ -1057,7 +1057,10 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   rather than `compressImage.ts`'s 1280px default, so small printed labels survive
   compression legibly. Otherwise identical to the ordinary image path.
 - **Study** (`src/components/occlusion/OcclusionStudyFace.tsx`): masked labels, ringed target,
-  ordinary reveal and grade row. `occlusionDataByCard` (`src/db/occlusionStudy.ts`) resolves
+  ordinary reveal and grade row. Hidden labels use opaque neutral masks; the active label
+  uses an opaque accent-soft fill and a contrasting Fraunces question mark. Revealed labels retain
+  one solid outline. Colours follow the selected accent and theme without changing diagram
+  or card sizing. `occlusionDataByCard` (`src/db/occlusionStudy.ts`) resolves
   each pool card's owning occlusion once per session, batching one `listOcclusions` per
   distinct courseId — the same approach `linesModeCards.ts` uses. Typed mode is offered only
   where the target region resolves an `answerText`. **A missing asset degrades to the card's
@@ -1518,6 +1521,15 @@ these are predictions, not promised marks. The retired `?mode=cram` query has no
 behaviour.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
+
+Recurring and ad-hoc **Review due cards** requests use the existing `due` filter, as do
+explicit due-filtered sessions. In FSRS mode their session context uses due-review
+eligibility: selection rechecks the updated due dates after every answer, including
+learning and relearning steps. Once no cards in the captured scope are due, the session
+finishes even if predicted exam readiness remains below target. Future-due cards and new
+cards without a due date cannot enter that queue. Exam-objective ordering and readiness
+reporting remain in use; ordinary curricular Practice and planned assessment revision
+retain their existing completion rules.
 
 In-memory, per session, to stop a just-failed card being shown again immediately:
 

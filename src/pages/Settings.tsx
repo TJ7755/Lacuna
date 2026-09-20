@@ -17,6 +17,12 @@ import { SyncSection } from './settings/SyncSection';
 import { AiSection } from './settings/AiSection';
 import { SettingsHeadingLevelProvider } from './settings/SettingsSectionHeading';
 
+declare const __APP_VERSION__: string;
+
+function appVersion(): string {
+  return typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0-dev';
+}
+
 const SETTINGS_SECTIONS = [
   { id: 'settings-group-appearance', label: 'Appearance & access' },
   { id: 'settings-group-study', label: 'Study behaviour' },
@@ -74,8 +80,9 @@ export function Settings() {
   return (
     <div className="mx-auto flex max-w-6xl gap-6 px-6 pb-10 pt-12 md:px-10 md:py-10">
       <div className="min-w-0 flex-1">
-        <header className="mb-12 pt-2 md:pt-4">
+        <header className="mb-12 flex items-baseline justify-between gap-4 pt-2 md:pt-4">
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
+          <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
         </header>
 
         <SectionRailMobileJumper

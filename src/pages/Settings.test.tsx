@@ -118,6 +118,7 @@ Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
 
 describe('Settings', () => {
   beforeEach(() => {
+    vi.stubGlobal('__APP_VERSION__', '0.2.8');
     setStartInFocusMode.mockClear();
     setCourseCardMetric.mockClear();
     setMotionSpeed.mockClear();
@@ -273,6 +274,7 @@ describe('Settings', () => {
     expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
     expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
     expect(contentColumn).not.toHaveClass('max-w-2xl');
+    expect(screen.getByText('Version 0.2.8')).toBeInTheDocument();
   });
 
   it('keeps cards where they group related settings', () => {

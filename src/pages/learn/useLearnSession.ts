@@ -1219,7 +1219,10 @@ export function useLearnSession({
       schedulingUnitsRef.current = new Map(units.map((u) => [u.id, u]));
       schedulingConfigRef.current =
         sessionUnits.length === 1 && 'config' in sessionUnits[0] ? sessionUnits[0].config : null;
-      const ctx = makeSessionContext(sessionUnits, 'objective');
+      const ctx = makeSessionContext(
+        sessionUnits,
+        !plannedRevision && !isSimpleMode && filterParams.includes('due') ? 'due' : 'objective',
+      );
       ctxRef.current = ctx;
       cardsRef.current = cards;
       try {

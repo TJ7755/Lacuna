@@ -144,13 +144,12 @@ export function CourseDefaultsSection() {
       id="settings-course-defaults"
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
-      <div className="mb-2 flex items-center gap-2 text-accent">
+      <div className="mb-5 flex items-center gap-2 text-accent">
         <FlameIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">
           Scheduling &amp; practice
         </SettingsSectionHeading>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">Applies unless overridden per course.</p>
       <SettingToggle
         title="Auto-insert practice nodes"
         checked={practiceDefaults.autoPractice}

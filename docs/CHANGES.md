@@ -1,5 +1,21 @@
 # Lacuna — version 0.2.9
 
+## Unreleased
+
+- Updated Electron to 44.4.1 and Electron Builder to 26.16.1, retaining the release
+  configuration checks for vulnerable transitive dependencies.
+- Displayed the app version beside the Settings heading on web and desktop.
+- Removed duplicated update-version and scheduling-card subtitles.
+- Joined the course-path lamp's shade, arm and base into a continuous illustration.
+- Fixed recurring and ad-hoc due-review sessions repeating successfully answered cards
+  immediately, despite scheduling their next review for tomorrow. These entry points now
+  carry the existing due filter into Learn; due sessions recheck each updated due date and
+  finish when no scheduled reviews remain due, independently of predicted exam readiness.
+- Softened image-occlusion masks with opaque neutral fills, keeping passive masks light
+  in both themes, and a distinct accent-coloured
+  target with a clearer Fraunces question mark. Revealed labels use a single outline; card and
+  diagram sizing, masking rules and scheduling remain unchanged.
+
 ## 0.2.9 beta — reliable course reads and study counts
 
 - Aligned the release configuration test with the v0.2.9 package version.

@@ -28,6 +28,8 @@ test('Settings and Help use balanced desktop rails and responsive content', asyn
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await expect(page.getByText('Preferences', { exact: true })).toHaveCount(0);
   await expectBalancedDesktopColumns(page, 'Settings');
+  await expect(page.locator('main header').getByText(/^Version /)).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('settings-version.png'), animations: 'disabled' });
 
   await page.goto('/#/help');
   await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
