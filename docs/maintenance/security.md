@@ -8,10 +8,10 @@ pushes to `master`/`main`, with an additional weekly scheduled run. Every audit 
 - `relay/`; and
 - `tooling/handwriting-maths/`.
 
-The `high` threshold is deliberate. The current root audit has two moderate React Router 6
-advisories. They remain visible in audit output and are not suppressed with a package-manager
-ignore; migrating Router is a separate major-version change that requires application routing
-review. A new high or critical advisory fails the relevant job.
+The `high` threshold is deliberate: moderate findings remain visible without being suppressed
+with a package-manager ignore, while a high or critical advisory fails the relevant job.
+The previous React Router 6 deferral is obsolete following the Router 7 migration. Use the
+audit output for the exact commit under review to establish the current advisory status.
 
 The same workflow runs CodeQL v4 for `javascript-typescript` and `actions` with `build-mode: none`.
 The jobs use read-only repository permissions except for the CodeQL analysis job's required

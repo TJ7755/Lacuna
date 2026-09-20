@@ -1,7 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/e2e-electron',
+  outputDir: '../../test-results',
+  testDir: '../e2e-electron',
   testIgnore: 'packaged-interactions.spec.ts',
   fullyParallel: false,
   workers: 1,
@@ -13,6 +15,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
     command: 'bunx vite --host localhost',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,

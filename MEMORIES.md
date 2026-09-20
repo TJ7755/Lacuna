@@ -1,618 +1,71 @@
-# Lacuna MEMORIES.md
+# Lacuna memories
 
-## Await browser storage checks before polling their result
+Read [AGENTS.md](AGENTS.md) for working rules. Keep this file to facts an agent would
+otherwise get wrong; specialist detail belongs in [engineering notes](docs/maintenance/engineering-notes.md).
+
+## Live users and rollout
+
+Real beta users depend on Lacuna (confirmed 13 September 2026). Preserve their study data
+and upgrade paths. Limited beta releases may be unsigned; wider school rollout requires
+Windows signing and macOS signing/notarisation. See [release policy](docs/maintenance/release.md).
+
+## Protect unrelated work
+
+The prompter keeps long-lived stashes: use a disposable worktree for baseline tests, never
+stash/pop. Start it at the intended revision. Component tests need their own physical
+`node_modules` (a hardlink copy is suitable); symlinks can create two Vitest instances.
+
+## Windows dependency installation
+
+Missing package entry points can be Bun cache corruption, not incompatible dependencies.
+A fresh `BUN_INSTALL_CACHE_DIR` with `--force --backend copyfile` has repaired this checkout.
+Do not regenerate lockfiles to compensate for an incomplete local installation.
+
+## Database history and transactions
+
+Current Dexie hooks run during old upgrades: preserve inline Card history until the canonical
+migration copies it. Runtime Cards hydrate `reviewHistory`; an explicitly supplied empty
+history is authoritative. Legacy Deck/Folder types still serve historical upgrades even though
+the live stores are gone. Do not collapse the migration chain.
+
+Nested projection helpers inherit the caller's transaction: include every table they touch.
+Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
+
+## Recovery is not peer sync
+
+Replace-import deliberately preserves `db.backups`; exports deliberately omit it, so a
+pre-replacement restore point survives. Recovery merge and peer merge use different conflict
+rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
+must cover candidate snapshotting and merging as well as import.
+
+## Browser evidence matters
 
 Use `expect.poll(() => page.evaluate(...))` for asynchronous IndexedDB assertions.
-The installed browser runner can treat a Promise returned to `waitForFunction` as
-truthy before it resolves, allowing navigation to cancel a pending study grade.
+Keep accelerated relay fixtures on a real wall clock. Browser fetch references must be
+bound to `globalThis`; Node and ordinary mocks cannot catch a detached-fetch invocation.
 
-## Less card-heavy does not mean flat pages
+Happy DOM animation cleanup can reject unfinished animations. Prefer reduced motion unless
+motion is under test; otherwise finish transitions before teardown. Measure readable study
+content from the input event, excluding retained outgoing nodes and zero-opacity faces.
 
-Keep cards around related content, charts and settings. The prompter wants fewer
-nested boxes, open page headings and less redundant copy, not every surface removed.
-The landing page is a reference for restraint and spacing, not a template for app pages.
+## AI authority and deployment
 
-## Missing installed package files can come from Bun's cache
+AI and data MCP companions share transport but have different grants. Preserve every generated
+profile argument and verify the client's active tools, not just saved registration. A transport
+harness does not prove model-authored chat. Web AI currently has no cross-tab ownership lease.
 
-On this Windows checkout, reinstalling with `--force --no-cache` still left packages
-without their declared ESM entry points. A fresh `BUN_INSTALL_CACHE_DIR` with
-`--force --backend copyfile` restored the files and tests passed. Rule out the cache
-before treating missing package files as dependency incompatibilities.
+Managed-device redirects to `https://localhost:6543/block?...` are network filtering, not a
+Lacuna endpoint: never add that origin to CSP. Device sync still needs the relay even when
+desktop AI uses local IPC. See [engineering notes](docs/maintenance/engineering-notes.md).
 
-Durable facts about how to work in this repository, for every agent regardless of harness.
+## Bundle changes can break offline use
 
-## Landing copy must preserve the scroll's attention budget
+Hash routing needs no server catch-all: missing hashed assets must remain 404. Derive the
+app-shell precache from emitted imports and rerun cold offline Cards reload after bundle changes.
+Workers must use the ID and share-codec utilities without importing database initialisation.
 
-The landing design deliberately presents only one or two focal points at each scroll position.
-Do not stack category labels, explanatory paragraphs, reassurance and feature controls beneath
-the opening headline. Explain the product progressively through the existing scenes.
-For the exam introduction, separate ideas in time. A headline and symbol alone were too
-abstract; use a compact interactive example to demonstrate cause and effect, with brief
-explanation. Prefer concrete calendar days and revision sessions over abstract recall-point
-tables. The exam date stays fixed; visitors control available days and times, with the
-forgetting curve beside the calendar. Avoid stacking subtitles around the interaction.
-The download choice needs only a compatibility line; omit version labels, slogans
-and installation instructions from the initial view. Keep help available on request.
+## Product restraint
 
-Landing illustrations should use simple flat silhouettes and bright colours from the app's
-palette. Detailed paper textures, perspective and muted shading were rejected; match the
-simplicity of the brand mark. Keep inspiration brands out of landing identifiers and copy.
-
-## Current Dexie hooks also run during historical upgrades
-
-The v26 Card history guard runs when earlier upgrades rewrite cards. Clearing history
-there destroys events before v20 can copy them. Exempt version-change transactions;
-the v26 migration explicitly copies, verifies and clears the projection itself.
-
-## The desktop release channel is an unsigned beta
-
-GitHub marks desktop beta releases as pre-releases and the application deliberately follows them.
-Windows NSIS and Linux AppImage auto-update; Windows portable, Linux DEB and unsigned macOS builds
-update manually. Disable `allowPrerelease` when a future stable channel is introduced, and do not
-claim macOS auto-update until the application is signed.
-The maintainer permits unsigned limited beta releases but requires signing, including macOS
-notarisation, before wider school rollout (6 September 2026).
-
-## Desktop packages share one generated icon source
-
-Windows, Linux and macOS packaging all consume `electron/assets/icon.png`; Electron Builder performs
-the platform conversion. Do not restore a separately maintained `icon.ico`: the old binary drifted
-from the source artwork and silently shipped incomplete frames because nothing regenerated it.
-
-## Electron 42 installs its runtime lazily
-
-Electron 42 removed the npm postinstall download and resolves the platform runtime through its
-package entry point on first use. Native tooling must resolve `require('electron')` rather than
-constructing a path under `node_modules/electron/dist`, which is absent after a clean install.
-
-## Windows portable startup begins before Electron exists
-
-electron-builder's portable target runs a silent NSIS extraction before launching Lacuna's
-Electron process. Keep the configured branded BMP for honest extraction feedback; renderer code
-cannot cover this phase, and the BMP cannot appear during an earlier Defender or SmartScreen scan.
-
-## Electron Builder's NSIS process hook owns prerequisite initialisation
-
-Defining `customCheckAppRunning` replaces Electron Builder 26's complete default branch, including
-its `IS_POWERSHELL_AVAILABLE` call. A custom hook that delegates to `_CHECK_APP_RUNNING` must invoke
-that initialiser first or Windows packaging fails because `IsPowerShellAvailable` is undefined.
-
-## Electron Builder 26 embeds the AppImage block map
-
-The Linux AppImage build logs `building embedded block map` and does not emit a separate
-`*.AppImage.blockmap` file. Release allowlists must require the AppImage, DEB and
-`latest-linux.yml`; requiring a sidecar rejects a complete Electron Builder 26 package set.
-
-## Accelerated E2E polling must retain wall-clock deadlines
-
-The AI relay fixture may cap each polling sleep to keep successful tests fast, but its client clock
-must remain `Date.now`. Advancing a synthetic clock by the uncapped sleep compresses the client's
-25-second deadline to about 2.5 real seconds and flakes under hosted-runner contention.
-
-## Cross-platform build scripts must execute JavaScript entry points
-
-Node 22 on Windows rejects `spawnSync('tool.cmd', ..., { shell: false })` with `EINVAL`. Invoke local
-JavaScript tools through `process.execPath` and their real entry files; do not add `shell: true` merely
-to make a package-manager shim executable.
-
-## TypeScript 7 and ESLint use different compiler packages
-
-The native TypeScript 7 compiler does not provide the legacy JavaScript compiler API
-used by typescript-eslint. Keep the TypeScript 6 compatibility package under the
-`typescript` name and the native compiler under `@typescript/native`; their command
-names are `tsc6` and `tsc` respectively. Explicit compiler paths must select the native package.
-
-## Release artefact names must already be URL-safe
-
-GitHub normalises spaces in uploaded filenames, while electron-builder writes a separately
-normalised safe name into updater metadata. Set explicit hyphenated `artifactName` values for every
-Windows target so `latest.yml`, the hosted asset and `SHA256SUMS-github.txt` name the same file.
-
-## Hash routing needs no SPA catch-all
-
-Lacuna uses `createHashRouter`, so route paths never reach Vercel. A catch-all rewrite to
-`index.html` turns a missing content-hashed asset into cacheable `200 text/html`; Workbox can then
-preserve the broken response under the JavaScript URL. Missing `/assets/*` requests must stay 404,
-and stale-chunk recovery must retain its one-reload guard.
-
-## Repository splits can change the offline shell's shared chunks
-
-A shared dependency fetched before service-worker control is not in the runtime cache, even if a
-visited lazy route later imports it. After changing the bundle graph, run the cold offline Cards
-reload test. Derive Workbox's eager precache from emitted static imports; hard-coded chunk names
-drift when the bundler changes its splitting. Lazy pages should still be cached only when visited.
-
-## AI and data MCP companions have different authority
-
-The web AI panel uses short-lived codes and encrypted relay mailboxes; packaged Electron AI uses a
-purpose-bound local token and `--ai-companion`. Both expose only the five conversation tools and
-leave Stop, call ledgers and exact approvals in the renderer. Electron's separate
-`--mcp-companion` exposes the broader data surface with connection-scoped grants. Never merge those
-tool surfaces merely because they share the authenticated native broker.
-
-## Companion commands must preserve Electron's active profile
-
-The authenticated connection file lives beneath Electron's resolved user-data directory. Generated
-`--ai-companion` and `--mcp-companion` commands must therefore carry that exact directory; otherwise
-an isolated or custom-profile client starts successfully over stdio but searches the wrong profile
-for the native endpoint and falsely reports that Lacuna is not running.
-
-## Native AI validation must identify the real author
-
-A successful native claim and reply proves the transport, not that a terminal model authored the
-reply. A helper can label itself as any MCP client and return hard-coded text. For an end-to-end chat
-check, verify that the live model task itself owns the companion and calls the Lacuna tools; record a
-deterministic wire harness only as transport evidence.
-
-## MCP registration and active tools are different states
-
-Saving a local MCP server does not prove the running client loaded its tools. Codex desktop and the
-IDE extension require their documented restart action; CLI users must verify the active TUI with
-`/mcp`. Setup guidance must preserve every companion argument, then verify `lacuna.connect` and
-`lacuna.wait_for_message` before diagnosing Lacuna. Never test registration by launching another
-normal Lacuna instance directly.
-
-## AI tool results need a real JSON wire projection
-
-Repository records may contain own optional properties whose value is `undefined`; Cards do this
-for payloads. The browser tool handler has already committed a write before the AI ledger validates
-its result, so rejecting that raw record can report failure after success and make a retry duplicate
-data. Keep the AI result normalisation that omits optional object fields before receipt and ledger
-storage; do not weaken the validator or move validation after a reported failure.
-
-## Relay URLs must be HTTPS outside loopback
-
-`normaliseRelayUrl` in `src/sync/relay.ts` rejects plain HTTP for any host that is not a loopback
-address (localhost, 127.0.0.0/8, ::1) because the write token travels in the Authorization header.
-P6's relay-URL entry UI must explain this rule to the user rather than echoing a generic URL
-error, and any fixture pointing at `http://...` for a remote relay is wrong by construction.
-
-## Sync P2 keybags follow the relay's canonical bearer formats
-
-The v1 crypto boundary accepts only 32 lowercase-hex channel IDs and 64 lowercase-hex characters for the relay's 32-byte write token, matching `relay/src/relay.ts`. Keybags are therefore fixed at 162 bytes, and malformed lengths must be rejected before PBKDF2; loosening either format requires an explicit wire-format decision.
-
-## P5 relay generations are CAS, not freshness
-
-The relay's ETag is an opaque compare-and-swap generation. `src/sync/cycle.ts` retries one stale generation but deliberately does not treat it as an authenticated monotonic clock, so P5 provides no rollback protection against replay of an older valid ciphertext. Do not present the relay as a freshness authority until a high-water-mark design is explicitly approved.
-
-## Forced sync collisions must fence pulls before divergent edits
-
-A two-upload test barrier can hang if automatic sync consumes an edit first: an already-converged
-device correctly skips its upload. Hold relay state pulls before local edits and release them only
-after both cycles arrive, so both writers still compare against the intended shared generation.
-
-## P6 pairing QR is a short-lived display of bearer capability
-
-`src/sync/pairing.ts` encodes the relay URL, channel id, write token and channel key in the QR; the relay mint secret is intentionally absent and is never persisted by the app. Settings reveals the QR only after an explicit action and hides it on blur or visibility loss. Do not turn the QR into a background-rendered status decoration or add the mint secret to its payload.
-
-## Sync relay origins must be listed in the renderer CSP
-
-Both `index.html` (web) and the `electron/main.ts` production header ship `connect-src 'self'`,
-and the relay is a separate origin, so every relay fetch is refused until its origin is allowed.
-The web meta policy is extended at runtime by `allowRelayConnect` (`src/sync/csp.ts`) from the
-Settings sync flow; Electron's injected header is static and lists only the default relay. Do not
-tighten `connect-src` back to `'self'` without restoring these origins, and keep the two static
-policies in step with `DEFAULT_RELAY_URL` in `src/sync/pairing.ts`. Managed-device intermediaries
-can strip the unusual `app://.` CORS value even when the live relay emits it correctly, so Electron
-also repairs response CORS for that exact relay and exact renderer origin; do not broaden that
-exception to arbitrary origins or disable `webSecurity`.
-
-On the managed Windows Enterprise test device, blocked outbound requests are redirected to
-`https://localhost:6543/block?...`. That address is the organisation's filtering software, not a
-Lacuna bridge. A CSP error naming it means the original relay request was intercepted; do not add
-localhost to `connect-src`, because doing so would weaken the boundary without making the relay
-reachable.
-
-## Video frames cross both CSP and cross-origin isolation boundaries
-
-Allowing a provider in `frame-src` is necessary but does not bypass the renderer's COEP. Hermetic
-cross-origin iframe fixtures served beneath Vite's `require-corp` policy need a compatible COEP and
-`Cross-Origin-Resource-Policy: cross-origin`; otherwise Chromium creates the iframe shell but blocks
-its document with `ERR_BLOCKED_BY_RESPONSE`. Electron's response-header hook must remain scoped to
-the trusted renderer URL so it does not replace the provider document's own CSP or isolation
-headers.
-
-## Sync credentials are remembered on device by design
-
-`SyncState.remembered` stores the unwrapped channel key and write token, restored at trigger
-install. While that copy exists, an IndexedDB reader can decrypt newer peer data and write or purge
-the relay channel; this is accepted for the convenience default on a trusted personal device because
-the local study database is already plaintext. Lock removes the remembered copy, after which the
-wrapped keybag again protects the channel key and write token without the passphrase. Do not revert
-this to memory-only unlock without a product decision.
-
-This file is not a changelog. `docs/CHANGES.md` records **what changed and why**, in chronological order, and grows forever. This file records **what is true now**, and is edited in place: when a fact stops being true, correct or delete the entry rather than appending a newer one below it. If something belongs in both, it goes in `docs/CHANGES.md` and is summarised here only if a future agent would get it wrong without being told.
-
-Do not record what the codebase already states. Architecture, file layout, past fixes and commit history are discoverable by reading; the rules in `AGENTS.md` and `CLAUDE.md` are already injected. What belongs here is the non-obvious: things that have caught agents out before, constraints not visible from the code, and decisions whose reasoning would otherwise be lost.
-
-Keep each entry to a heading and a few lines. State the fact, then why it matters.
-
-## `AnimatePresence` pop-layout children must forward their DOM ref
-
-Outgoing route outlets retain old route parameters while `useLocation` observes the new
-destination. Redirect guards inside animated outlets must check `useIsPresent` before
-navigating, or an exiting page can repeatedly pull navigation back to its old route.
-
-A custom component directly beneath `AnimatePresence mode="popLayout"` must forward the supplied
-ref to its DOM root. Drive discrete exit state such as `pointer-events: none` from `useIsPresent`
-rather than a motion variant, or Motion attempts an invalid interpolation and emits warnings.
-
----
-
-## Vercel may omit Content-Length from browser requests
-
-Observed on the live AI relay on 27 August 2026: a browser pairing POST reached the Vercel function
-without `Content-Length`, returning 400 before pairing. The intercepted Playwright relay had hidden
-this by inserting the header itself. Enforce relay body ceilings while reading the stream and treat
-a declared length as an additional integrity check, not as a prerequisite for accepting a body.
-
-## A successful Vercel mailbox write can still be ambiguous in the browser
-
-Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the relay's `ETag` on a
-`204` mailbox write, and a later browser run recorded a committed `200` whose JSON generation was
-not retained by the app. A server-side `200` proves the write committed; it does not prove the
-browser accepted the response. Modern `200` clients derive a synthetic SHA-256 generation from the
-exact attempted ciphertext instead of trusting response metadata; Vercel's ordinary `ETag` is
-trusted only for legacy `204` responses.
-Observed again on 28 August: the first browser PUT was acknowledged, the second committed with `200`,
-but its response was unusable and no `412` occurred. A transport-rejected, unreadable or `5xx` PUT
-may have committed. Never retry it. A single immediate read-back can still return non-verifying
-state after a successful `200`, even when Vercel Blob is read with `useCache: false`. Use a short,
-bounded series of authenticated digest-receipt GETs and never retry the PUT. A browser-visible `200`
-derives a synthetic `"sha256:<lowercase ciphertext digest>"` generation from the exact attempted
-bytes. For an ambiguous write, the relay confirms only whether its current stored bytes match that
-digest; the client derives the same generation without trusting response metadata. The relay
-validates a later synthetic `If-Match` against current bytes and uses the store's current ETag for
-the atomic write, so competing successors still fail closed. Browser receipt timing must accommodate
-Vercel's cross-origin authorisation preflight; its recovery window is deliberately longer than the
-terminal client's. Both writers need this rule.
-
-## Monorepo preview deployments need the relay branch alias
-
-Every push to a Lacuna branch creates a new immutable web preview and a new immutable relay preview.
-A verification-only web build must target the relay's stable branch alias, not the immutable relay
-URL from an earlier commit, or the next push quietly tests mismatched revisions. Keep production
-configuration on the normal relay URL; this applies only to the live-verification branch.
-
-## Web AI relay sessions currently support one browser tab
-
-Same-tab session lifecycles are fenced: restored polling starts only after the owning React tree
-commits, and disposal invalidates delayed poll work before it can push or persist. The persisted AI
-session still has no cross-tab ownership lease, so two simultaneous Lacuna tabs can write from the
-same browser-mailbox generation and one will fail closed with 412. Keep live testing to one tab until
-a browser-ownership lease is added.
-
-## The Vercel Functions body ceiling measures below 4.5 MB
-
-The nominal request-body limit for Vercel Functions is 4,500,000 bytes, but
-measured against the live relay on 18 August 2026: browser PUTs passed at
-4,490,000 bytes and died at 4,495,000. The platform's rejection carries no
-CORS headers, so the browser sees "Failed to fetch" and cannot read the
-status; a body the platform truncates mid-flight can still reach the relay
-short, which then answers 400 "length mismatch" with CORS headers — that is
-the "Relay push failed with HTTP 400" the sync UI showed. Keep
-`SYNC_PLATFORM_BODY_LIMIT_BYTES` below the measured boundary, not at the
-nominal one.
-
-## Browser fetch rejects a detached `this`; Node and `vi.fn` mocks cannot catch it
-
-The WebIDL `fetch` operation throws "Failed to execute 'fetch' on 'Window':
-Illegal invocation" when called with a `this` that is not the Window or
-WorkerGlobalScope — for example a stored reference invoked as an object method
-(`provider.fetchImpl(url)`). Node's undici `fetch` and `vi.fn<typeof fetch>()`
-mocks never enforce the brand check, so such a bug passes unit tests and blows
-up only in a real browser. Capture `fetch` with `.bind(globalThis)` at the
-point of storing it. This shipped in P5/P6 and was only found by running the
-app; the relay and sync tests cannot substitute for a browser pass.
-
-## Replace-import does not clear `db.backups`, and that is load-bearing
-
-`importBackup(payload, 'replace')` clears the content tables but leaves `backups` alone, and
-`exportDatabase` does not serialise that table either. This is what makes the restore point taken
-before a manual two-device combine survive the very replace it protects against. Do not "tidy" the
-replace list by adding `backups` to it, and do not start exporting the table: either change would
-silently turn the safety net into decoration.
-
-## Recover-merge does not resolve conflicts on `updatedAt`
-
-`importBackup(payload, 'merge')` predates schema v23 and still compares `lastReviewed ?? createdAt`
-for cards and `createdAt` for most course tables. Only the peer merge in `src/sync/mergeSnapshots.ts`
-uses `updatedAt`. Settings copy and `docs/APP-FLOWS.md` both claimed recency wins here and both were
-wrong; a regression test now asserts that wording is absent. Do not reintroduce the claim, and do
-not assume the two merge paths behave alike — they answer different questions.
-
-## `new Error(message, { cause })` does not typecheck
-
-The project TypeScript lib only accepts the single-argument `Error` constructor. Pass the
-message through and, if you need a flag, put it on a subclass. `{ cause }` fails `typecheck:web`.
-`relay/` is a separate TypeScript project with `lib: ES2022`, so `{ cause }` is valid there.
-
-## Vercel Other-framework `api/` is not Next.js routing
-
-A file named `api/[...path].ts` matches one path segment, not a catch-all.
-`/api/foo` reaches the function; `/api/foo/bar` 404s at the platform. Catch-all
-`[...slug]` is a Next.js convention. For this non-framework project, send every
-public path to `api/index.ts` with rewrites, or add one file per path depth.
-Do not restore a bracketed catch-all filename.
-
-## Relay ESM imports need a `.js` specifier
-
-`relay/package.json` has `"type": "module"`. Vercel compiles each `.ts` file in
-place and Node's ESM resolver requires an extension on relative imports.
-`'../src/relay'` fails at module load; `'../src/relay.js'` is the specifier
-TypeScript expects to emit. Vitest resolves the extensionless form, so tests
-cannot catch this unless `relay/tsconfig.json` stays on `NodeNext`.
-
-## Vercel Blob can hold a blob with no ETag; never serve or accept an empty generation
-
-Observed live on 18 August 2026: a channel's state blob had real content but
-no etag in its Vercel Blob metadata, so the relay served `ETag: ""`. The app
-stored that quoted-empty `""` as its generation (a naive `trim() === ''` guard
-misses it) and the next push sent `If-Match: ""`, which the relay rejects as
-"invalid if-match" — "Relay push failed with HTTP 400" on every sync after the
-first. The relay must not hand out an empty ETag. On an ETag-less read it fails
-closed; an unconditional rewrite could overwrite a concurrent successor. If
-only a successful write response omitted its ETag, the relay re-reads and
-accepts the generation when the stored bytes still match exactly. Keep the
-app's generation guard treating `""` as absent.
-
-## Prefer the relay's real generation over a synthetic digest after a successful write
-
-Observed live on 28 August 2026: deriving a digest generation after every successful mailbox write
-made the next write perform a Vercel Blob read-after-write check. That read can return stale bytes,
-causing a false `412` against the same writer. Use the generation returned in the successful JSON
-body or exposed header first. Synthetic digest generations are recovery for damaged or ambiguous
-acknowledgements, not the normal path.
-
-## Live Blob `allowOverwrite: false` was measured, not guaranteed
-
-On 15 August 2026, 25 concurrent first-write rounds against production
-(`lacuna-relay.vercel.app`, store `lacuna-sync`, region `lhr1`) produced
-exactly one 204 per round and no silent clobber. Pairing (P6) is not
-blocked on pre-creating zero-byte slots at mint. The evidence is
-empirical, not a platform guarantee: re-measure if Blob behaviour
-changes, or if a multi-writer scenario beyond two devices is ever
-contemplated. Do not reopen that hole from first principles, and do not
-implement pre-create-at-mint to close it.
-
-## Root CI covers `relay/` only via the `relay` job
-
-Root `typecheck` / `lint` / `test` still ignore `relay/`. The `relay` job
-in `.github/workflows/ci.yml` runs those scripts inside `relay/` against
-its own lockfile. A green root check on a relay change is not a relay
-pass. That job catches a missing `.js` import specifier; it does not
-catch Vercel Other-framework routing.
-
-## Active Course/Lesson sessions read scheduling config through the target projection
-
-`useLearnSession` must feed Course/Lesson FSRS contexts from `schedulingUnits`, including inherited
-limits and goals; `Course` remains the source for path and assessment semantics. Keep a read-side
-fallback for databases whose projection is absent, and do not apply this cutover to legacy global
-Deck sessions.
-
-## The Deck/Folder stores are gone; the legacy types are not
-
-Schema v22 set `decks` and `folders` to `null`, and no production code reads them. Global Today now
-reads `db.schedulingUnits`. Pre-v22 backup files and v1 share codes are refused. `LegacyDeckRecord`
-and `LegacyFolder` remain solely for the Dexie `version(1)`–`version(21)` chain (Dexie replays it
-for every existing database), the snapshot builder in `schema.ts`, and test fixtures. Do not delete
-those types, and do not collapse or edit that chain.
-
-Much of what still reads as Deck is a name rather than a mechanism: `backingDecks.ts` no longer
-talks to a store, and `findBackingDeck` is an alias of `getSchedulingUnit`. Do not add new `Deck`
-names; do not spend a day renaming the old ones.
-
-## Card history is hydrated, never persisted
-
-Schema v26 stores Cards with `history: []`; the Card-table hooks enforce this even for direct
-writes. Canonical `reviewHistory` rows are the evidence, and read interfaces hydrate runtime Cards.
-When adapting legacy inline history, derive canonical rows before writing the Card because a write
-hook may clear the supplied object's array. Projection code must also treat a missing or non-array
-legacy `history` value as empty rather than dereferencing it.
-
-## Lacuna has live beta users
-
-Confirmed by the prompter on 13 September 2026: real beta users now depend on Lacuna.
-Treat existing study data and desktop upgrades as live-user concerns. The earlier
-assumption that no irreplaceable revision history exists is obsolete.
-
-## Verify a plan's follow-up list against the code before working it
-
-Follow-up lists in `docs/plans/` go stale quietly. They are written at the end of one arc and then
-delivered incidentally by the next, so the document keeps describing work that no longer exists.
-On 12 August 2026 all three follow-ups at the end of `plans/learn-screen-redesign.md` turned out to
-be already done — the study interstitial had been replaced by a bottom sheet, the landing-page pill
-overlap had been fixed by gating the pill behind a wheel event, and the dashboard study control had
-moved above the fold — while `next_plan.md` still recorded the plan itself as _ready_.
-
-The same plan already carried two findings that were wrong because they were written from a browser
-session without reading the handler underneath. The rule that covers both: confirm against the
-source before acting, and treat a plan as a record of intent at a past date rather than as current
-state.
-
-## Delegation goes through Freebuff first
-
-The preferred route for delegable work is a prompt written for the prompter to run in Freebuff, not a worker spawned directly. Freebuff is a TUI with no headless mode, so no agent can drive it — only the prompter can. Codex and DeepSeek are for when the prompter has explicitly asked for autonomy. Full rules in `CLAUDE.md`.
-
-## Worktree agents start from master
-
-Agents given their own Git worktree branch from `master` by default, so they begin on stale code whenever the real work is on a feature branch. Brief every worktree agent to reset to the correct feature branch before it starts, or it will silently reimplement against an old tree.
-
-## Subagents must not spawn subagents
-
-Only the orchestrator delegates. Every subagent brief must forbid nested spawning and forbid the subagent-orchestration skill. Nested fan-out multiplies spend invisibly and produces work nobody reviews.
-
-## Review once, at the end
-
-Batch code review to the end of a task list rather than reviewing after each individual task. Per-task review on a multi-task run burns budget re-reading the same files and fragments the reviewer's picture of the change.
-
-This does not apply to Freebuff, which is deliberately told to spawn a reviewer on every commit — on free inference that cadence is what keeps the output honest.
-
-## Review predictions are already recorded honestly
-
-`ReviewLog.retrievabilityAtReview` is a genuine ex-ante prediction: `applyReview` in `src/fsrs/fsrs.ts`
-computes it from the pre-grade card state, and `src/db/repository.ts` persists it in the same
-transaction as the grade. It is null only for a card's first review and for Anki-imported history,
-which carries no FSRS equivalent. Full JSON backups include it.
-
-This matters because it means calibration analysis can be done at any point in the future against
-data recorded today. There is no closing window and no reason to rush a harness to "capture" data.
-
-## The FSRS weight set behind a prediction is recorded from this change onward
-
-Reviews written by the repository now carry a short fingerprint of the FSRS `w` array that
-produced the prediction. Earlier reviews and imported history carry no fingerprint. The actual
-weight vectors are not stored: the current set is recoverable from the course row and the defaults
-from Git history.
-
-## The short-term-memory harness is not a precedent for Lacuna-data analysis
-
-`tooling/short-term-memory/` is a standalone Python project over an external Anki corpus
-(`anki-revlogs-10k`) that ships a frozen coefficient JSON into the runtime. It never touches Lacuna's
-own review data. Any harness analysing Lacuna's own history is a different shape entirely —
-TypeScript reading a backup file — so do not model one on the other.
-
-## Canonical review history is authoritative when supplied
-
-Consumers that receive an explicit `reviewHistory` result must use an empty sequence for cards
-with no matching event rows. Falling back per card to `Card.history` resurrects stale projection
-events; the card projection is only a compatibility fallback when no canonical result was supplied.
-
-## Trajectory history is sampled daily after review commit
-
-`SessionHistoryEntry.averagePredictedRetrievability` is historical chart data, not a scheduler or
-unlock input. New points are sampled asynchronously at most once per local calendar day per unit;
-do not put that aggregate back into the `recordReview` transaction or replace it with a cache/table.
-
-## Share workers use a transport-only codec
-
-`src/workers/share.worker.ts` must import `src/db/shareCodec.ts`, not `src/db/share.ts`.
-The worker handles compression and encoding only; the main thread validates decoded payloads with
-the share schema. Importing the database module into the worker recreates the application's
-repository, validation and maths bundle for no useful reason.
-
-## Dexie projection helpers must inherit the caller's complete transaction scope
-
-A helper that reads or writes several Dexie tables can be called inside an existing transaction,
-but every table it touches must be listed by that caller. Omitting one does not always surface as
-Dexie's clearer transaction-scope error; fake-indexeddb can report a misleading missing object-store
-`NotFoundError`. Keep projection helpers free of nested transactions and expand the outer table list
-when their dependencies change.
-
-## Review-event identity excludes compatibility ownership metadata
-
-Canonical review rows and Card projections may disagree temporarily on `deckId`, `courseId`,
-`primaryLessonId` or `schedulingUnitId` while a storage projection is being backfilled. Those fields
-must not distinguish duplicate copies of one event during portability; event content and event/card
-ownership still determine genuine duplicates and cross-card collisions.
-
-## Target pacing projections must combine duplicate legacy sources
-
-A migrated Course/Lesson scheduling unit can temporarily be represented by more than one legacy
-backing Deck. When rebuilding its target pacing row, combine the Welford summaries rather than
-selecting the first Deck, and preserve an existing legacy profile if the target row is missing.
-
-## Stable AI call retries must fence stale same-call responses
-
-The browser mailbox can still contain the pre-approval response when the terminal republishes an
-approved tool call with the same `callId`. Accept a matching response only after the browser's
-`terminalRevisionSeen` reaches the revision containing that retry, or the stale approval response
-will win immediately.
-
-## Replacement exclusion covers snapshot, merge and import
-
-AI writes enter through `ReplacementLifecycle.admitWrite`. Peer and recovery operations must hold
-the exclusive lifecycle across candidate snapshotting and merging as well as the final import;
-fencing only `importBackup()` leaves a race where a write can land after the candidate snapshot.
-Manual replacement invalidates the AI session before draining work, while peer and recovery
-application preserve it.
-
-## Worktree component tests need a real node_modules, not a symlink
-
-A Git worktree whose `node_modules` is a symlink into the main checkout resolves two
-copies of the `vitest` module, so `@testing-library/jest-dom` extends one `expect`
-while tests use the other and every `toBeInTheDocument` fails with "Invalid Chai
-property". Non-DOM suites are unaffected, which makes the failure look test-specific.
-For component suites, populate the worktree with `cp -al` (hardlink copy) instead.
-
-## Use a throwaway worktree, never stashes, to test a baseline
-
-The prompter keeps long-lived stashes from unrelated branches in this repository, so `git stash`
-runs can pop or conflict with stashes that are not the agent's own, and an interrupted run leaves
-the working tree half-stashed. To compare behaviour against a merge-base, use
-`git worktree add /tmp/<name> <ref>` with a symlinked `node_modules` instead, then
-`git worktree remove`. Verify `git status` after any stash-like operation before continuing.
-
-## Animated component tests must finish exit transitions before teardown
-
-Happy DOM rejects an active Web Animation's completion promise when Testing Library cleanup
-cancels it. On hosted Linux runners, Vitest reports that rejection as an `AbortError` after every
-assertion has passed. Component tests should use reduced motion unless animation is their subject;
-tests that enable motion and advance a transition must finish its relevant lifecycle before teardown.
-Tests that freeze `performance.now()` for grading must use reduced motion: imperative Motion
-transitions use that clock to finish, so a frozen clock also prevents their completion callbacks.
-An entrance guard must also reset during effect cleanup: StrictMode stops the first animation
-and replays setup, and retaining the guard can strand the card at its initial zero opacity.
-Reduced motion must omit `animate` as well as initial and exit states; a zero-duration target can
-still create a cancellable Web Animation. In Happy DOM, allow Motion two animation frames to create
-WAAPI objects before collecting, finishing and settling them; an immediate collection can miss work
-that the frame scheduler has not started yet.
-
-## Mobile Safari owns its native history edge gesture
-
-The application shell uses `overscroll-behavior-x: none` and a left-edge pointer gesture to open
-mobile navigation where the browser permits it. Chromium and Firefox can suppress horizontal
-history overscroll, but iOS Safari may intercept its native edge-back gesture before page pointer
-events arrive. Do not claim that a web page can reliably override that operating-system gesture.
-
-## The AI companion is a Node process, not a second browser
-
-Direct `--ai-companion` configurations run `aiCompanionEntry.js` through the shipped Electron
-binary with `ELECTRON_RUN_AS_NODE=1`. The host app profile is passed separately through
-`--lacuna-host-user-data-dir`. Launching the full Electron app for this headless stdio bridge can
-exit cleanly before JavaScript starts on Windows.
-
-## Windows upgrades must suppress companion relaunches
-
-Registered MCP hosts can restart a companion after NSIS kills its installed `Lacuna.exe`, keeping
-the installation directory locked and making the old uninstaller fail. The installer writes live
-PIDs to the per-user Local AppData `Lacuna/installation-in-progress` marker; every Electron and
-direct Node companion entry must honour it regardless of its selected profile, while stale markers
-must never block ordinary application startup.
-
-## Native animation does not guarantee compositor-only rendering
-
-Motion hands `clipPath` to WAAPI, but Chromium still repaints and rasterises an animated inset
-mask each frame. Verify raster work, not just the presence of a native Animation. Explicit
-`transform` keyframes use Motion's native path; separate `x`/`y` aliases use its JavaScript path.
-
-## Motion drag callbacks do not cancel native link dragging
-
-On a Motion element, `onDragStart` belongs to Motion's gesture API, not the browser's
-native `dragstart` event. A custom pointer slider containing links must disable native
-link dragging on the links themselves; otherwise Chromium starts a drag and stops
-sending the pointer moves and release that the slider needs.
-
-## Worker ID generation must not import the database schema
-
-`makeId` remains re-exported from `schema.ts` for database callers, but workers must import it
-from `utils/id.ts`. Importing the schema solely to generate IDs executes database initialisation
-and pulls migrations and storage dependencies into an otherwise isolated parser.
-
-## IndexedDB key-only reads can still scan every event
-
-Dexie 4 compound-index `.keys()` uses a key cursor, not a bulk index-key read.
-Avoid equating smaller payloads with constant-time queries: measure large histories,
-and preserve duplicate timestamps when replacing event reads with activity projections.
-
-## Measure study readability from the actual browser input
-
-Motion retains outgoing Card nodes during exit animations, so the first matching node may be
-the old Card. Playwright visibility also permits zero opacity, and polling adds artificial delay.
-Measure a different readable face on animation frames from the actual click event.
-
-## Live queries do not imply a shared database snapshot
-
-Parallel Dexie reads inside one live query can use separate transactions. When one table
-validates another, read both within an explicit read transaction; otherwise a concurrent
-atomic write can still appear partially applied to the reader.
+Keep cards around related content; fewer nested boxes does not mean flat pages. Landing scenes
+should have one or two focal points, brief copy, flat bright illustrations and concrete calendar
+examples. Historical plans are evidence of past intent, not an active implementation queue.

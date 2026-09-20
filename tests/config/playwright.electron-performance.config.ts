@@ -1,7 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/e2e-electron',
+  outputDir: '../../test-results',
+  testDir: '../e2e-electron',
   testMatch: 'packaged-interactions.spec.ts',
   fullyParallel: false,
   workers: 1,

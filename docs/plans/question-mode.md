@@ -37,7 +37,7 @@ its own evidence semantics and instructional flow.
 
 ## Canonical vocabulary
 
-The root [domain glossary](../../CONTEXT.md) is authoritative. In this feature:
+The [domain glossary](../domain-language.md) is authoritative. In this feature:
 
 | Term                     | Meaning                                                                                                                               |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |

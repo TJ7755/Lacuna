@@ -21,8 +21,8 @@ Yes: the substantive product work already in progress is the AI sidebar plan, an
 finish it. PR #101 closed the live relay reliability and dead-terminal recovery slice. The current
 product remains an encrypted chat transport which cannot read or mutate Lacuna learning data, use
 the misconception-first preference as an instruction, or maintain learner memories
-([`HANDOFF.md:16-25`](../HANDOFF.md#current-product-boundary),
-[`docs/plans/ai-sidebar.md:18-21`](plans/ai-sidebar.md#outcome)).
+([`HANDOFF.md:16-25`](https://github.com/TJ7755/Lacuna/blob/9aa8a8196cf8dd43ae69fad189e2a46007a995ac/HANDOFF.md#current-product-boundary),
+[`docs/plans/ai-sidebar.md:18-21`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#outcome)).
 
 The short close-out identified by this review was completed on 28 August 2026:
 
@@ -50,20 +50,20 @@ live AI relay verification`). Its diff is confined to relay acknowledgement/reco
 reset behaviour, dead-terminal disconnection, tests and supporting documentation; it does not add
 domain actions, instructions or memory persistence. The recorded live gate passed two browser
 exchange cycles, terminal replacement and the automated relay/companion/Playwright checks
-([`HANDOFF.md:194-221`](../HANDOFF.md#final-live-verification-on-28-august-2026)).
+([`HANDOFF.md:194-221`](https://github.com/TJ7755/Lacuna/blob/9aa8a8196cf8dd43ae69fad189e2a46007a995ac/HANDOFF.md#final-live-verification-on-28-august-2026)).
 
 The handoff's remaining instruction was only review/CI and merge, which the prompter says has now
-happened ([`HANDOFF.md:223-237`](../HANDOFF.md#completion-criteria)). There is therefore no remaining
+happened ([`HANDOFF.md:223-237`](https://github.com/TJ7755/Lacuna/blob/9aa8a8196cf8dd43ae69fad189e2a46007a995ac/HANDOFF.md#completion-criteria)). There is therefore no remaining
 PR #101 implementation slice.
 
 ### The broader AI plan is explicitly unfinished
 
 The newer plan, written on 27 August, marks itself **in progress** and says encrypted pairing/chat is
 delivered while domain actions, teaching instructions and durable memories remain future work
-([`docs/plans/ai-sidebar.md:1-4`](plans/ai-sidebar.md#ai-sidebar--one-week-usable-prototype)). Its
+([`docs/plans/ai-sidebar.md:1-4`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#ai-sidebar--one-week-usable-prototype)). Its
 acceptance target still lacks scenarios 3, 4 and 6: real repository actions with approval/receipts,
 misconception-first teaching with memories, and sync-safe durable memory behaviour
-([`docs/plans/ai-sidebar.md:43-60`](plans/ai-sidebar.md#remaining-prototype-acceptance-target)).
+([`docs/plans/ai-sidebar.md:43-60`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#remaining-prototype-acceptance-target)).
 
 This is not merely stale prose. The terminal companion currently registers exactly four chat
 transport tools — `connect`, `wait_for_message`, `reply` and `disconnect`
@@ -71,14 +71,14 @@ transport tools — `connect`, `wait_for_message`, `reply` and `disconnect`
 domain `TOOL_REGISTRY` is substantial but separate
 ([`src/mcp/registry.ts:41-52`](../src/mcp/registry.ts)); the plan explicitly says the delivered
 companion does not call it and requires one shared, transport-neutral executor for the future web
-path ([`docs/plans/ai-sidebar.md:221-240`](plans/ai-sidebar.md#planned-shared-tool-execution)).
+path ([`docs/plans/ai-sidebar.md:221-240`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#planned-shared-tool-execution)).
 
 The protocol already contains forward-looking action receipt and approval shapes
 ([`src/ai/protocol.ts:318-375`](../src/ai/protocol.ts)), but the plan correctly labels current approval
 rendering as fixture-only and the activity capsule as undelivered
-([`docs/plans/ai-sidebar.md:378-405`](plans/ai-sidebar.md#ui-and-interaction-specification)). No
+([`docs/plans/ai-sidebar.md:378-405`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#ui-and-interaction-specification)). No
 `AgentMemory` store, memory tools or schema-v25 implementation exists; the plan lists those modules
-under **Planned modules** ([`docs/plans/ai-sidebar.md:429-465`](plans/ai-sidebar.md#implementation-surfaces)).
+under **Planned modules** ([`docs/plans/ai-sidebar.md:429-465`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#implementation-surfaces)).
 
 ### The roadmap contradiction was reconciled
 
@@ -97,15 +97,15 @@ claiming PR #101 remains open.
 1. **Domain actions and trust:** extract the shared executor, extend the relay/session protocol for
    tool calls, enforce scope/write grants and one-shot destructive approval, render genuine action
    receipts, and prove Stop/replay boundaries. This corresponds to the plan's Day 4–5 work
-   ([`docs/plans/ai-sidebar.md:533-561`](plans/ai-sidebar.md#day-4--integration-and-high-value-actions)).
+   ([`docs/plans/ai-sidebar.md:533-561`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#day-4--integration-and-high-value-actions)).
 2. **Teaching and memory:** add the versioned instruction bundle, misconception-first routing,
    `AgentMemory` schema/repository/tools/inspector, backup, merge, tombstones and sync. This is the
    plan's Day 6 work and planned memory model
-   ([`docs/plans/ai-sidebar.md:244-340`](plans/ai-sidebar.md#planned-memory-model--not-implemented),
-   [`docs/plans/ai-sidebar.md:563-572`](plans/ai-sidebar.md#day-6--teaching-and-memory)).
+   ([`docs/plans/ai-sidebar.md:244-340`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#planned-memory-model--not-implemented),
+   [`docs/plans/ai-sidebar.md:563-572`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#day-6--teaching-and-memory)).
 3. **Continuity and final acceptance:** activity/Stop capsule, narrow-screen active-run continuity,
    disable/replacement/sync lifecycle, scenarios 3/4/6, full browser matrix and final reviews
-   ([`docs/plans/ai-sidebar.md:574-640`](plans/ai-sidebar.md#day-7--browser-quality-gate-and-review)).
+   ([`docs/plans/ai-sidebar.md:574-640`](https://github.com/TJ7755/Lacuna/blob/5275266323b8cd16df68202bc3ef7dbda13fb1e6/docs/plans/ai-sidebar.md#day-7--browser-quality-gate-and-review)).
 
 Do not call this “just finishing the LLM integration”. The transport is done; the remaining work is
 the dangerous half: repository writes, consent, durable learner state and cross-device convergence.

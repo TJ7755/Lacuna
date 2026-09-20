@@ -1589,7 +1589,6 @@ export async function ensurePreMigrationSnapshot(
     try {
       await capturePreMigrationSnapshot(dbName, targetVersion, saveSnapshot);
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('Pre-migration snapshot failed:', e);
       // Remove from cache so a future call can retry. Destructive upgrades
       // propagate the failure to every caller sharing this promise.

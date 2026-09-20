@@ -90,19 +90,21 @@ bun install --frozen-lockfile
 bun run test:e2e:electron-ai
 CSC_IDENTITY_AUTO_DISCOVERY=false bun run electron:build:mac
 bun run test:e2e:electron-package
-unzip -t release/Lacuna-0.2.7-arm64-mac.zip
-hdiutil verify release/Lacuna-0.2.7-arm64.dmg
+release_version=$(node -p "require('./package.json').version")
+unzip -t "release/Lacuna-${release_version}-arm64-mac.zip"
+hdiutil verify "release/Lacuna-${release_version}-arm64.dmg"
 shasum -a 256 \
-  release/Lacuna-0.2.7-arm64.dmg \
-  release/Lacuna-0.2.7-arm64.dmg.blockmap \
-  release/Lacuna-0.2.7-arm64-mac.zip \
-  release/Lacuna-0.2.7-arm64-mac.zip.blockmap \
+  "release/Lacuna-${release_version}-arm64.dmg" \
+  "release/Lacuna-${release_version}-arm64.dmg.blockmap" \
+  "release/Lacuna-${release_version}-arm64-mac.zip" \
+  "release/Lacuna-${release_version}-arm64-mac.zip.blockmap" \
   release/latest-mac.yml \
   > release/SHA256SUMS-macos.txt
 ```
 
-After the Actions workflow has created the draft, upload those six local files with `gh release
-upload v0.2.7 ... --clobber`. The workflow deliberately preserves draft assets it does not own, so
+After the Actions workflow has created the draft, upload those six local files to the matching
+`v${release_version}` tag with `gh release upload`, listing each file explicitly. The workflow
+deliberately preserves draft assets it does not own, so
 a rerun does not delete the local macOS files. `SHA256SUMS-macos.txt` provides an integrity check,
 not provenance: neither it nor the macOS artefacts can pass `gh attestation verify`.
 

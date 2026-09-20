@@ -59,7 +59,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.error('Lacuna error boundary caught an error:', error, info);
     }
     this.setState({ componentStack: info.componentStack ?? null });

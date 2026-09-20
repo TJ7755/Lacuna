@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -6,6 +7,7 @@ import { defineConfig } from 'vitest/config';
  * combined average would hide weak portability or asset branches.
  */
 export default defineConfig({
+  root: fileURLToPath(new URL('../..', import.meta.url)),
   test: {
     environment: 'happy-dom',
     clearMocks: false,
@@ -17,7 +19,7 @@ export default defineConfig({
       'src/db/portability.test.ts',
       'src/db/assets.test.ts',
     ],
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: ['./tests/setup.ts'],
     maxWorkers: 1,
     coverage: {
       provider: 'v8',
