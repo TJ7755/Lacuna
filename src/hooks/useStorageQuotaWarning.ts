@@ -11,7 +11,6 @@ const CHECK_INTERVAL_MS = 60_000;
 export function useStorageQuotaWarning() {
   const { notify } = useToast();
   const warnedRef = useRef(false);
-  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (
@@ -22,9 +21,11 @@ export function useStorageQuotaWarning() {
       return;
     }
 
+    let active = true;
     async function check() {
       try {
         const est = await navigator.storage.estimate();
+        if (!active) return;
         const usage = est.usage ?? 0;
         const quota = est.quota ?? 0;
         if (quota > 0 && usage / quota > WARNING_THRESHOLD && !warnedRef.current) {
@@ -46,21 +47,14 @@ export function useStorageQuotaWarning() {
       }
     }
 
-    // Clear any existing interval before setting a new one
-    if (intervalRef.current !== null) {
-      window.clearInterval(intervalRef.current);
-    }
-
     void check();
-    intervalRef.current = window.setInterval(() => {
+    const interval = window.setInterval(() => {
       void check();
     }, CHECK_INTERVAL_MS);
 
     return () => {
-      if (intervalRef.current !== null) {
-        window.clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      active = false;
+      window.clearInterval(interval);
     };
   }, [notify]);
 }
