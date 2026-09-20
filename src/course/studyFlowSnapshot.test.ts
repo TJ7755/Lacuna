@@ -152,7 +152,7 @@ describe('buildCourseStudyFlowSnapshot', () => {
     },
   );
 
-  it('keeps exposed introductions and curricular practice available independently of recurring due reviews', () => {
+  it('keeps exposed introductions in curricular practice without offering them as recurring reviews', () => {
     const c = course({ newCardsPerDay: 1 });
     const l = lesson('l1', 0);
     const cards = [card('new-1', 'l1'), card('new-2', 'l1')];
@@ -169,7 +169,9 @@ describe('buildCourseStudyFlowSnapshot', () => {
       meanReviewSeconds: 30,
       now: NOW,
     };
-    expect(buildCourseStudyFlowSnapshot(input).recurringPracticeEligibleCount).toBe(2);
+    const unseenSnapshot = buildCourseStudyFlowSnapshot(input);
+    expect(unseenSnapshot.recurringPracticeEligibleCount).toBe(0);
+    expect(unseenSnapshot.practiceByKey.get('auto')?.eligibleCount).toBe(2);
 
     const snapshot = buildCourseStudyFlowSnapshot({
       ...input,

@@ -12,6 +12,9 @@
   search, course views and plain queries. Concurrent imports, deletions and replacements
   can no longer mix course and assessment snapshots and trigger a false missing-final error.
 - Applied course daily new-card and maximum-review limits to the dashboard forecast.
+- Counted only scheduled reviews in “Due” totals and the recurring review step,
+  while retaining new cards in “Ready” totals and curricular Practice.
+- Removed the redundant reviewed-count and accuracy subtitle between study steps.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 
