@@ -1,5 +1,12 @@
 # Lacuna — version 0.2.9
 
+## Unreleased
+
+- Softened image-occlusion masks with opaque neutral fills, keeping passive masks light
+  in both themes, and a distinct accent-coloured
+  target with a clearer Fraunces question mark. Revealed labels use a single outline; card and
+  diagram sizing, masking rules and scheduling remain unchanged.
+
 ## 0.2.9 beta — reliable course reads and study counts
 
 - Aligned the release configuration test with the v0.2.9 package version.
