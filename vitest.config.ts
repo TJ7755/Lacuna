@@ -1,9 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
-// Unit tests for the FSRS-6 engine, forward-simulation layer and IndexedDB
-// migration, plus UI components, hooks, and state management. The forward-sim
-// module is pure, so the default Node environment is sufficient for database
-// tests; component tests rely on happy-dom for browser globals.
+// Unit tests for the FSRS-6 engine, forward simulation, IndexedDB migrations,
+// components, hooks and state management. Happy DOM supplies browser globals;
+// vitest.setup.ts supplies fake IndexedDB for persistence tests.
 export default defineConfig({
   test: {
     environment: 'happy-dom',

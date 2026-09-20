@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 6 September 2026.
+Reviewed 20 September 2026.
 
 This is the current decision surface: what Lacuna is now, what maintenance follows, and what is
 deliberately frozen. Detailed specifications, implementation diaries and completed arcs belong in
@@ -8,26 +8,27 @@ deliberately frozen. Detailed specifications, implementation diaries and complet
 
 ## Current state
 
-### v0.2.5 beta
+### v0.2.9 beta
 
 **Status:** delivered.
 
-The current public release is **v0.2.5**. Lacuna is a local-first web/PWA and
-Electron learning application. Study data remains on-device; optional device sync and browser AI
+The current public release is **v0.2.9**, verified against GitHub on 20 September. Lacuna is a
+local-first web/PWA and Electron learning application. Study data remains on-device; optional device sync and browser AI
 use the hosted relay, while packaged Electron AI uses its separate authenticated local companion.
 Windows, Linux and unsigned macOS desktop packages are beta artefacts with platform-specific update
-behaviour. The published v0.2.5 Windows and Linux artefacts have GitHub build provenance; the locally
-built macOS artefacts have a separate checksum manifest but no hosted provenance. The limited beta
+behaviour. The release workflow attests Windows and Linux artefacts; locally
+built macOS artefacts use a separate checksum manifest without hosted provenance. Verify that
+evidence for the exact release before rollout. The limited beta
 may remain unsigned; signing and macOS notarisation are required before wider school rollout
 (maintainer decision, 6 September). The complete managed-device matrix remains release-readiness work.
 
 The application is usable. It is not declared stable or school-wide ready until the data-durability,
 dependency, release and device checks below have evidence on the exact release commit.
 
-There are currently no active users with active data (maintainer confirmation, 5 September).
-Historical compatibility defects are therefore latent defects, not recovery incidents.
-Prioritise first-use study, authoring, backup and sync on the intended devices over an exhaustive
-historical-profile matrix; retain the small migration regression suite already established.
+Real beta users now depend on Lacuna (maintainer confirmation, 13 September).
+Preserve existing study data and treat desktop upgrades as live-user operations. Prioritise
+study, authoring, backup, restore and sync on the intended devices, retaining the established
+migration regression suite and checking upgrades from the previous published release.
 
 ## Feature freeze
 
@@ -50,9 +51,9 @@ Ideas in old plans, audits or `docs/new_features_list.md` stay parked until a fr
 
 **Status:** in progress.
 
-Dependency refreshes, the supported Electron 42/Electron Builder 26 and Vitest 3 toolchain, root and
-relay audit jobs, and a provenance workflow for releases are delivered. The current v0.2.5 Windows
-and Linux artefacts are attested; the macOS artefacts are locally built and checksummed. Remaining
+The React 19, TypeScript 7, Vite 8, Vitest 5 and ESLint 10 migrations are delivered, alongside
+Electron 44/Electron Builder 26, root and relay audit jobs, and release provenance checks.
+CI uses Node.js 24 and Bun 1.4.0; package manifests and lockfiles define exact dependencies. Remaining
 work is signing/notarisation before wider rollout and the
 complete managed-device matrix; every critical or high finding still needs a fix or a named owner
 and review date.

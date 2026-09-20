@@ -21,7 +21,7 @@ Yes: the substantive product work already in progress is the AI sidebar plan, an
 finish it. PR #101 closed the live relay reliability and dead-terminal recovery slice. The current
 product remains an encrypted chat transport which cannot read or mutate Lacuna learning data, use
 the misconception-first preference as an instruction, or maintain learner memories
-([`HANDOFF.md:16-25`](../HANDOFF.md#current-product-boundary),
+([`HANDOFF.md:16-25`](https://github.com/TJ7755/Lacuna/blob/9aa8a8196cf8dd43ae69fad189e2a46007a995ac/HANDOFF.md#current-product-boundary),
 [`docs/plans/ai-sidebar.md:18-21`](plans/ai-sidebar.md#outcome)).
 
 The short close-out identified by this review was completed on 28 August 2026:
@@ -50,10 +50,10 @@ live AI relay verification`). Its diff is confined to relay acknowledgement/reco
 reset behaviour, dead-terminal disconnection, tests and supporting documentation; it does not add
 domain actions, instructions or memory persistence. The recorded live gate passed two browser
 exchange cycles, terminal replacement and the automated relay/companion/Playwright checks
-([`HANDOFF.md:194-221`](../HANDOFF.md#final-live-verification-on-28-august-2026)).
+([`HANDOFF.md:194-221`](https://github.com/TJ7755/Lacuna/blob/9aa8a8196cf8dd43ae69fad189e2a46007a995ac/HANDOFF.md#final-live-verification-on-28-august-2026)).
 
 The handoff's remaining instruction was only review/CI and merge, which the prompter says has now
-happened ([`HANDOFF.md:223-237`](../HANDOFF.md#completion-criteria)). There is therefore no remaining
+happened ([`HANDOFF.md:223-237`](https://github.com/TJ7755/Lacuna/blob/9aa8a8196cf8dd43ae69fad189e2a46007a995ac/HANDOFF.md#completion-criteria)). There is therefore no remaining
 PR #101 implementation slice.
 
 ### The broader AI plan is explicitly unfinished

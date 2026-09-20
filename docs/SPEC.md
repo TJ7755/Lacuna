@@ -1,4 +1,4 @@
-# Lacuna — Specification (development head after v0.2.5 beta)
+# Lacuna — Specification (development head after v0.2.9 beta)
 
 Lacuna is a local-first, exam-driven spaced-revision application built on FSRS-6. Material is
 organised into **courses**, each made of an ordered path of **lessons** holding **notes** and
@@ -19,8 +19,8 @@ removed the live `decks` and `folders` stores; current scheduling uses `scheduli
 legacy Deck/Folder types remain only for migration, snapshot and rejection fixtures. Where this
 document says "deck" it means an internal scheduling-unit context, not a user-facing concept.
 
-**Published release: v0.2.5 beta.** The product is organised around **courses, lessons, notes and
-cards** end to end, with no user-facing deck or folder surfaces. The earlier v0.1.0 Course
+**Published release: v0.2.9 beta**, verified on 20 September 2026. The product is organised around
+**courses, lessons, notes and cards** end to end, with no user-facing deck or folder surfaces. The earlier v0.1.0 Course
 Architecture milestone and v0.0.3 Simple learn mode, formal card types and touch-first polish are
 included in that release. This specification describes the current development head.
 `docs/next_plan.md` distinguishes published evidence from remaining

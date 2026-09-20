@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refreshed release, toolchain and live-user maintenance guidance; added a documentation
+  index and repaired historical links without turning archived plans into an active backlog.
 - Aligned browser TypeScript library declarations with the ES2022 built-ins already used
   by the application and tests, restoring typechecking after dependency installation.
 - Kept virtual-list rendering bounded when the viewport moves below the last row,
