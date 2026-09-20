@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
+import { OverlayLoadBoundary } from './OverlayLoadBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
 import { CourseSectionBar } from '../course/CourseSectionBar';
@@ -428,9 +429,11 @@ function AppShellLayout() {
         <CourseSectionBar />
         <AnimatePresence>
           {studySheet.open && (
-            <Suspense fallback={null}>
-              <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
-            </Suspense>
+            <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
+              <Suspense fallback={null}>
+                <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
+              </Suspense>
+            </OverlayLoadBoundary>
           )}
         </AnimatePresence>
       </div>
@@ -441,9 +444,11 @@ function AppShellLayout() {
       />
       <FinalExamLifecycleController />
       {hintsLoaded && (
-        <Suspense fallback={null}>
-          <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
-        </Suspense>
+        <OverlayLoadBoundary label="Keyboard shortcuts" open={hintsOpen} onClose={() => setHintsOpen(false)}>
+          <Suspense fallback={null}>
+            <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
+          </Suspense>
+        </OverlayLoadBoundary>
       )}
     </motion.div>
   );
