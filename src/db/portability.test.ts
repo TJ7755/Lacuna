@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import {
   exportDatabase,
+  downloadBackup,
   importBackup,
   readBackupFile,
   validateBackup,
@@ -1297,5 +1298,74 @@ describe('importBackup', () => {
     expect(await db.lessonCompletions.count()).toBe(0);
     expect(await db.practiceMilestones.count()).toBe(0);
     expect(await db.noteAnnotations.count()).toBe(0);
+  });
+
+  it('merges teaching progress by its own timestamps without losing linked cards', async () => {
+    const course = await createCourse('Biology');
+    const taughtLesson = await createLesson(course.id, 'Cells');
+    const linkedLesson = await createLesson(course.id, 'Cell division');
+    const emptyLesson = await createLesson(course.id, 'Revision');
+    const card = await createLessonCard(course.id, taughtLesson.id, 'front_back', 'Q', 'A');
+    await db.lessonCards.put({
+      id: 'linked-card',
+      lessonId: linkedLesson.id,
+      cardId: card.id,
+      createdAt: 100,
+      updatedAt: 100,
+    });
+    await upsertLessonCardExposure(taughtLesson.id, card.id, 100);
+    await markLessonComplete(emptyLesson.id, 100);
+    await savePracticeMilestoneProgress('practice-cells', course.id, 'cells-v1', 2, 3, false, 100);
+
+    const backup = await exportDatabase();
+    const incomingLink = backup.lessonCards?.find((link) => link.id === 'linked-card');
+    const incomingExposure = backup.lessonCardExposures?.find(
+      (exposure) => exposure.lessonId === taughtLesson.id,
+    );
+    const incomingCompletion = backup.lessonCompletions?.find(
+      (completion) => completion.lessonId === emptyLesson.id,
+    );
+    const incomingMilestone = backup.practiceMilestones?.find(
+      (milestone) => milestone.nodeKey === 'practice-cells',
+    );
+    expect(
+      incomingLink && incomingExposure && incomingCompletion && incomingMilestone,
+    ).toBeTruthy();
+
+    await db.lessonCards.update('linked-card', { createdAt: 50, updatedAt: 50 });
+    await db.lessonCardExposures.put({ ...incomingExposure!, taughtAt: 200, updatedAt: 200 });
+    await db.lessonCompletions.put({ ...incomingCompletion!, completedAt: 200, updatedAt: 200 });
+    await db.practiceMilestones.put({ ...incomingMilestone!, securedCardCount: 0, updatedAt: 50 });
+
+    await importBackup(backup, 'merge');
+
+    expect(await db.lessonCards.get('linked-card')).toEqual(incomingLink);
+    expect(await db.lessonCardExposures.get([taughtLesson.id, card.id])).toEqual(incomingExposure);
+    expect(await db.lessonCompletions.get(emptyLesson.id)).toEqual(incomingCompletion);
+    expect(await db.practiceMilestones.get('practice-cells')).toEqual(incomingMilestone);
+  });
+
+  it('downloads a complete JSON backup and releases its object URL', async () => {
+    const course = await createCourse('Exported course');
+    const url = 'blob:backup-test';
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue(url);
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    try {
+      await downloadBackup();
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      const downloaded = JSON.parse(await blob.text()) as BackupFile;
+      expect(downloaded.courses?.map((item) => item.id)).toContain(course.id);
+      expect(click).toHaveBeenCalledOnce();
+      expect(revokeObjectURL).toHaveBeenCalledWith(url);
+      expect(document.querySelector('a[href="blob:backup-test"]')).toBeNull();
+    } finally {
+      createObjectURL.mockRestore();
+      revokeObjectURL.mockRestore();
+      click.mockRestore();
+    }
   });
 });

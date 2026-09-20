@@ -8,9 +8,15 @@ import {
   collectOrphanedAssets,
   extractMarkdownAssets,
   referencedAssetHashes,
+  referencedAssetHashesInCards,
+  referencedAssetHashesInValues,
+  scheduleAssetGc,
   storeAudioBlob,
   storeImageBlob,
+  stripAssetMedia,
+  toBlob,
 } from './assets';
+import { compressImageBlob } from '../utils/compressImage';
 import { createCard, createCourse, createLesson, createNote } from './repository';
 import { exportDatabase, importBackup } from './portability';
 
@@ -33,6 +39,62 @@ async function reset() {
 
 describe('image assets', () => {
   beforeEach(reset);
+
+  it('converts whole and sliced byte buffers without including unrelated bytes', async () => {
+    const original = new Blob(['native'], { type: 'image/png' });
+    expect(toBlob(original)).toBe(original);
+
+    const bytes = new TextEncoder().encode('prefix-image-suffix');
+    const sliced = toBlob(bytes.subarray(7, 12), 'image/png');
+    expect(sliced.type).toBe('image/png');
+    expect(await sliced.text()).toBe('image');
+    expect(await blobToArrayBuffer(bytes.subarray(7, 12))).toEqual(
+      new TextEncoder().encode('image').buffer,
+    );
+
+    const buffer = new TextEncoder().encode('whole').buffer;
+    expect(await toBlob(buffer, 'image/webp').text()).toBe('whole');
+    expect(await blobToArrayBuffer(buffer)).toBe(buffer);
+  });
+
+  it('finds unique asset references in nested and cyclic recovery values', () => {
+    const first = 'a'.repeat(64);
+    const second = 'b'.repeat(64);
+    const nested: Record<string, unknown> = {
+      prompt: `![scan](${assetUrl(first)})`,
+      choices: [null, 42, { explanation: assetUrl(second) }],
+    };
+    nested.self = nested;
+
+    expect(referencedAssetHashesInValues(nested, [assetUrl(first)])).toEqual([first, second]);
+    expect(
+      referencedAssetHashesInCards([
+        { front: assetUrl(first), back: assetUrl(second) },
+        { front: assetUrl(first), back: 'No media' },
+      ]),
+    ).toEqual([first, second]);
+  });
+
+  it('strips inline, reference-style and HTML asset media from a share code', () => {
+    const hash = 'c'.repeat(64);
+    const source = [
+      `![audio](${assetUrl(hash)})`,
+      `![diagram](${assetUrl(hash)})`,
+      `![scan][figure.1]`,
+      `[figure.1]: ${assetUrl(hash)}`,
+      `<img alt="hidden" src="${assetUrl(hash)}">`,
+      '![remote](https://example.com/image.png)',
+    ].join('\r\n');
+
+    const result = stripAssetMedia(source);
+    expect(result.stripped).toBe(true);
+    expect(result.markdown).toContain('[Audio omitted from share code: audio]');
+    expect(result.markdown).toContain('[Image omitted from share code: diagram]');
+    expect(result.markdown).toContain('[Image omitted from share code: scan]');
+    expect(result.markdown).toContain('![remote](https://example.com/image.png)');
+    expect(result.markdown).not.toContain(hash);
+    expect(stripAssetMedia('Plain text')).toEqual({ markdown: 'Plain text', stripped: false });
+  });
 
   it('deduplicates identical blobs by content hash', async () => {
     const first = await storeImageBlob(
@@ -66,6 +128,36 @@ describe('image assets', () => {
     const again = await extractMarkdownAssets(migrated, (asset) => db.assets.put(asset));
     expect(again).toBe(migrated);
     expect(await db.assets.count()).toBe(1);
+  });
+
+  it('deduplicates repeated data URIs and trusts explicitly known asset hashes', async () => {
+    const uri = `data:image/png;base64,${btoa('same-image')}`;
+    const knownHash = 'd'.repeat(64);
+    const putAsset = vi.fn(async () => undefined);
+    const markdown = `![first](${uri}) ![second](${uri}) ![known](${assetUrl(knownHash)})`;
+
+    const migrated = await extractMarkdownAssets(markdown, putAsset, new Set([knownHash]));
+    expect(putAsset).toHaveBeenCalledOnce();
+    expect(migrated).not.toContain(uri);
+    expect(migrated).toContain(assetUrl(knownHash));
+    expect(referencedAssetHashes(migrated)).toHaveLength(2);
+  });
+
+  it('keeps original image bytes when compression and dimension reading fail', async () => {
+    vi.mocked(compressImageBlob).mockRejectedValueOnce(new Error('Canvas unavailable'));
+    vi.stubGlobal('Image', undefined);
+    try {
+      const uri = `data:image/png;base64,${btoa('original-image')}`;
+      const migrated = await extractMarkdownAssets(`![scan](${uri})`, (asset) =>
+        db.assets.put(asset),
+      );
+      const hash = referencedAssetHashes(migrated)[0];
+      const asset = await db.assets.get(hash);
+      expect(asset).toMatchObject({ kind: 'image', width: 0, height: 0 });
+      expect(new TextDecoder().decode(asset?.blob as Uint8Array)).toBe('original-image');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('round-trips referenced assets through backup export and import', async () => {
@@ -175,6 +267,22 @@ describe('image assets', () => {
     expect(await db.assets.get(orphan.hash)).toBeUndefined();
     expect(await db.assets.get(kept.hash)).toBeDefined();
   });
+
+  it('runs one deferred orphan sweep after rapid rescheduling', async () => {
+    const orphan = await storeImageBlob(new Blob(['deferred']), 'image/png', 1, 1);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      scheduleAssetGc(100);
+      await vi.advanceTimersByTimeAsync(50);
+      scheduleAssetGc(100);
+      await vi.advanceTimersByTimeAsync(99);
+      expect(await db.assets.get(orphan.hash)).toBeDefined();
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.waitFor(async () => expect(await db.assets.get(orphan.hash)).toBeUndefined());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('audio assets', () => {
@@ -197,6 +305,10 @@ describe('audio assets', () => {
     await expect(
       storeAudioBlob(new Blob([new Uint8Array(25 * 1024 * 1024 + 1)], { type: 'audio/mpeg' })),
     ).rejects.toThrow(/25 MB/);
+    await expect(storeAudioBlob(new Blob([], { type: 'audio/mpeg' }))).rejects.toThrow(/empty/);
+    expect(
+      await storeAudioBlob(new Blob(['valid'], { type: 'audio/ogg' }), 'AUDIO/OGG; codecs=opus'),
+    ).toMatchObject({ kind: 'audio', mimeType: 'audio/ogg' });
   });
 
   it('round-trips its kind and bytes through backup export and import', async () => {
