@@ -4,7 +4,8 @@
 
 - Migrated the application and companion tooling to React 19, TypeScript 7, Vite 8,
   Vitest 5 and ESLint 10, adapting compiler, lint and test configuration to their supported APIs.
-  CI uses Node.js 24 and now gates the handwriting prototype's build and tests as well as its audit.
+  CI uses Node.js 24 and now gates the initial asset budget and the handwriting prototype's
+  build and tests as well as its audit.
 - Reused completed route prefetches directly so React 19 does not delay the first
   navigation behind a Suspense fallback; cold loads retain their existing loading UI.
 - Updated Electron to 44.4.1 and Electron Builder to 26.16.1, retaining the release
