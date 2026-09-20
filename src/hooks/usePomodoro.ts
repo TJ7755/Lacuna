@@ -227,14 +227,13 @@ export function usePomodoro() {
   }, [secondsLeft, isRunning, phase, sessionsCompleted, clearTick]);
 
   const startFocus = useCallback(() => {
-    clearTick();
     const fresh = loadPomodoroSettings();
     setSettings(fresh);
     setPhase('focus');
     setSecondsLeft(phaseDuration('focus', fresh));
     setPendingBreakPhase(null);
     setIsRunning(true);
-  }, [clearTick]);
+  }, []);
 
   const pause = useCallback(() => {
     clearTick();
