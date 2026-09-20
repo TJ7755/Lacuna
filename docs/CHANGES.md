@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Kept virtual-list rendering bounded when the viewport moves below the last row,
+  including after a list shrinks, rather than mounting every off-screen row.
 - Migrated the application and companion tooling to React 19, TypeScript 7, Vite 8,
   Vitest 5 and ESLint 10, adapting compiler, lint and test configuration to their supported APIs.
   CI uses Node.js 24 and now gates the initial asset budget and the handwriting prototype's

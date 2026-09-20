@@ -65,6 +65,19 @@ describe('useVirtualList', () => {
     await waitFor(() => expect(screen.getByTestId('item-8')).toBeInTheDocument());
   });
 
+  it('keeps only trailing overscan rows when the viewport is below the entire list', async () => {
+    render(<Fixture />);
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '-11000';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('item-99')).toBeInTheDocument());
+    expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3);
+    expect(screen.queryByTestId('item-0')).not.toBeInTheDocument();
+  });
+
   it('recalculates layout when ResizeObserver reports a changed row height', async () => {
     render(<Fixture />);
     const list = await screen.findByTestId('list');

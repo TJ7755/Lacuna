@@ -164,7 +164,9 @@ export function useVirtualList({
     const startOffset = scrollOffset;
     const endOffset = scrollOffset + containerHeight;
 
-    let startIndex = 0;
+    // No matching row means the viewport is below the list. Start after the
+    // last row so overscan stays bounded instead of mounting the entire list.
+    let startIndex = itemCount;
     let endIndex = itemCount - 1;
 
     // Binary search for start
