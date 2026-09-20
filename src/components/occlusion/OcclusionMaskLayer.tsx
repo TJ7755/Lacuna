@@ -26,12 +26,11 @@ export interface OcclusionMaskRegion {
 }
 
 const VISUAL_CLASSES: Record<OcclusionRegionVisual, string> = {
-  masked: 'rounded-[3px] border border-ink/55 bg-ink/88 dark:border-ink-faint/80 dark:bg-ink-faint/62',
-  target:
-    'rounded-[3px] border-2 border-accent bg-ink/88 ring-[3px] ring-accent/22 dark:bg-ink-faint/62',
-  ring: 'rounded-full border-2 border-accent bg-transparent ring-[3px] ring-accent/18',
-  lifted:
-    'rounded-[3px] border border-dashed border-positive bg-transparent ring-[3px] ring-positive/14',
+  // Keep passive masks light on the diagram even in dark mode; solid fills conceal answers.
+  masked: 'rounded-[3px] border border-line-strong bg-paper dark:border-ink-soft dark:bg-ink',
+  target: 'rounded-[3px] border-2 border-accent bg-accent-soft',
+  ring: 'rounded-full border-2 border-accent bg-transparent',
+  lifted: 'rounded-[3px] border border-positive bg-transparent',
   selected: 'rounded-[3px] border-2 border-accent bg-accent/13 ring-[3px] ring-accent/18',
   draft: 'rounded-[3px] border border-dashed border-ink-faint bg-ink-faint/12',
 };
@@ -120,7 +119,7 @@ export function OcclusionMaskLayer({
           }}
         >
           {QUESTION_MARK_VISUALS.has(region.visual) && (
-            <span aria-hidden className="grid h-full place-items-center text-xs font-medium text-accent">
+            <span aria-hidden className="grid h-full place-items-center text-base font-semibold leading-none text-accent-ink">
               ?
             </span>
           )}

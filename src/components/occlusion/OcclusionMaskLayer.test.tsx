@@ -8,6 +8,34 @@ const REGIONS: OcclusionMaskRegion[] = [
 ];
 
 describe('OcclusionMaskLayer', () => {
+  it('conceals labels with opaque theme fills and distinguishes the active target', () => {
+    const { container } = render(
+      <OcclusionMaskLayer assetUrl="blob:diagram" alt="Diagram" regions={REGIONS} />,
+    );
+    const [target, masked] = container.querySelectorAll('.absolute');
+    expect(target).toHaveClass('bg-accent-soft', 'border-accent');
+    expect(masked).toHaveClass('bg-paper', 'border-line-strong', 'dark:bg-ink', 'dark:border-ink-soft');
+    for (const overlay of [target, masked]) {
+      // Alpha fills can leak the printed answer, especially on high-contrast diagrams.
+      expect(overlay.className).not.toMatch(/(?:bg-[\w-]+\/|opacity-)/);
+    }
+    expect(target.firstElementChild).toHaveClass('text-accent-ink', 'text-base');
+  });
+
+  it('reveals an answer with one clear outline and no question mark', () => {
+    const { container } = render(
+      <OcclusionMaskLayer
+        assetUrl="blob:diagram"
+        alt="Diagram"
+        regions={[{ ...REGIONS[0], visual: 'lifted' }]}
+      />,
+    );
+    const revealed = container.querySelector('.absolute')!;
+    expect(revealed).toHaveClass('bg-transparent', 'border-positive');
+    expect(revealed.className).not.toMatch(/border-dashed|ring-/);
+    expect(revealed).toBeEmptyDOMElement();
+  });
+
   it('positions regions in percentages derived from their fractions, never pixels', () => {
     const { container } = render(
       <OcclusionMaskLayer assetUrl="blob:diagram" alt="Diagram" regions={REGIONS} />,
