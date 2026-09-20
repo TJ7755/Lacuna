@@ -141,22 +141,18 @@ export function SessionReport({
             initial={m > 0 ? { scale: 0, rotate: -25 } : false}
             animate={{ scale: 1, rotate: 0 }}
             transition={m > 0 ? { type: 'spring', stiffness: 420, damping: 16, delay: 0.15 * m } : { duration: 0 }}
-            className="mb-5 w-fit"
+            className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-positive/10 text-positive"
           >
-            <StudyDrawing kind="recall" className="h-24 w-24" />
+            <CheckIcon width={28} height={28} />
           </motion.div>
         )}
         {!summary.reachedGoal && <StudyDrawing kind="recall" className="mb-5 h-24 w-24" />}
-        <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
-          {summary.reachedGoal
-            ? 'Goal reached'
-            : summary.timeLimitReached
-              ? 'Time limit reached'
-              : summary.limitReached
-                ? 'Daily limit reached'
-                : 'Session complete'}
-        </p>
-        <h1 className="mb-8 font-display text-4xl tracking-tight md:text-5xl">
+        {!summary.reachedGoal && (
+          <p className="mb-1 text-sm text-ink-soft">
+            {summary.timeLimitReached ? 'Time limit reached' : summary.limitReached ? 'Daily limit reached' : 'Session complete'}
+          </p>
+        )}
+        <h1 className="mb-8 font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl">
           {summary.reachedGoal
             ? 'You’ve reached your goal'
             : summary.timeLimitReached
@@ -179,13 +175,13 @@ export function SessionReport({
         )}
 
         {/* Progress before/after with animated fill */}
-        <div className="mb-6 rounded-2xl border border-line bg-surface p-6">
-          <div className="mb-3 flex items-center justify-between text-sm text-ink-soft">
+        <div className="mb-6 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-ink-soft">
             <span className="flex items-center gap-2">
               <FlagIcon width={16} height={16} />
               {summary.objectiveLabel}
             </span>
-            <span className="tabular text-ink">
+            <span className="shrink-0 tabular-nums text-ink">
               {Math.round(summary.masteryBefore * 100)}% →{' '}
               <motion.span
                 className="font-medium text-accent"
@@ -202,14 +198,14 @@ export function SessionReport({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 * m, duration: 0.24 * m }}
           >
-            <ProgressBar value={animatedProgress} height={12} />
+            <ProgressBar value={animatedProgress} height={8} label={summary.objectiveLabel} />
           </motion.div>
           {/* Delta badge */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1.4 * m, duration: 0.24 * m }}
-            className="mt-3 flex items-center gap-2"
+            className="mt-3 flex flex-wrap items-center gap-2"
           >
             <span
               className={cn(
@@ -222,21 +218,21 @@ export function SessionReport({
               {summary.masteryAfter >= summary.masteryBefore ? (
                 <>
                   <CheckIcon width={12} height={12} />
-                  +{Math.round((summary.masteryAfter - summary.masteryBefore) * 100)}%
+                  +{Math.round((summary.masteryAfter - summary.masteryBefore) * 100)} percentage points
                 </>
               ) : (
                 <>
                   <CloseIcon width={12} height={12} />
-                  {Math.round((summary.masteryAfter - summary.masteryBefore) * 100)}%
+                  {Math.round((summary.masteryAfter - summary.masteryBefore) * 100)} percentage points
                 </>
               )}
             </span>
-            <span className="text-xs text-ink-faint">change this session</span>
+            <span className="text-xs text-ink-soft">this session</span>
           </motion.div>
         </div>
 
         {/* Stat tiles — revealed one after another with icons. */}
-        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat
             index={0}
             label="Cards reviewed"
@@ -273,7 +269,7 @@ export function SessionReport({
 
         {/* Keep the first-pass report focused on correct and remaining cards. */}
         {!summary.simpleMode && (
-          <div className="mb-6 rounded-2xl border border-line bg-surface p-6">
+          <div className="mb-6 rounded-2xl border border-line bg-surface p-5 sm:p-6">
             <h3 className="mb-4 font-display text-xl">How you rated</h3>
             <div className="h-48">
               <ResponsiveContainer width="100%" height={192}>
@@ -321,7 +317,7 @@ export function SessionReport({
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap justify-end gap-3">
           {onContinue && (
             <Button variant="secondary" size="lg" onClick={onContinue}>
               {summary.limitReached || summary.timeLimitReached ? 'Continue anyway' : 'Keep studying'}
@@ -375,7 +371,7 @@ function Stat({
       >
         {value}
       </motion.div>
-      <div className="mt-1 text-xs uppercase tracking-wide text-ink-faint">{label}</div>
+      <div className="mt-1 text-sm text-ink-soft">{label}</div>
     </motion.div>
   );
 }
