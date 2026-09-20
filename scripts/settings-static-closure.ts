@@ -1,6 +1,8 @@
 import { gzipSync } from 'node:zlib';
-import type { OutputBundle, OutputChunk } from 'rollup';
-import type { Plugin } from 'vite';
+import type { Plugin, Rolldown } from 'vite';
+
+type OutputBundle = Rolldown.OutputBundle;
+type OutputChunk = Rolldown.OutputChunk;
 
 const SETTINGS_MODULE = '/src/pages/Settings.tsx';
 

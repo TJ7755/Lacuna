@@ -242,7 +242,7 @@ export function OcclusionEditor() {
         await createOcclusion(courseId, lessonId ?? null, name, assetHash, regions);
         notify('Occlusion added.', 'positive');
       }
-      navigate(backPath);
+      void navigate(backPath);
     } finally {
       setSaving(false);
     }

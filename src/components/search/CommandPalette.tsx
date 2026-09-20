@@ -86,7 +86,7 @@ export function CommandPalette({
 }: {
   open: boolean;
   onClose: () => void;
-  returnFocusTarget?: RefObject<HTMLElement>;
+  returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   if (!open) return null;
   return <CommandPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
@@ -97,7 +97,7 @@ function CommandPaletteDialog({
   returnFocusTarget,
 }: {
   onClose: () => void;
-  returnFocusTarget?: RefObject<HTMLElement>;
+  returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -184,7 +184,7 @@ function CommandPaletteDialog({
     const hit = results[index];
     if (!hit) return;
     onClose();
-    navigate(hitPath(hit));
+    void navigate(hitPath(hit));
   }
 
   function onKeyDown(e: React.KeyboardEvent) {

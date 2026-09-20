@@ -50,7 +50,7 @@ export function CardEditOverlay({
 
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
-  const draftTimer = useRef<number>();
+  const draftTimer = useRef<number | undefined>(undefined);
   const draftKeyRef = useRef(draftKey(draftScope ?? card.schedulingUnitId!, `session:${card.id}`));
 
   // Auto-restore a draft from a previous interrupted session.

@@ -33,7 +33,7 @@ function renderGuarded(options: Parameters<typeof GuardedPage>[0] = {}) {
     ],
     { initialEntries: ['/'] },
   );
-  render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+  render(<RouterProvider router={router} />);
   return router;
 }
 
@@ -113,7 +113,7 @@ describe('NavigationGuard', () => {
         ),
       },
     ]);
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     expect(onAttempt).toHaveBeenCalledTimes(1);

@@ -47,7 +47,7 @@ interface SidebarProps {
   aiAction?: {
     active: boolean;
     onClick: () => void;
-    triggerRef: RefObject<HTMLButtonElement>;
+    triggerRef: RefObject<HTMLButtonElement | null>;
   };
 }
 
@@ -123,7 +123,7 @@ function ActionNavItem({
   collapsed: boolean;
   compact?: boolean;
   active?: boolean;
-  buttonRef?: RefObject<HTMLButtonElement>;
+  buttonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   return (
     <button
@@ -338,7 +338,7 @@ const CourseRow = memo(function CourseRow({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                navigate(`/course/${courseId}`);
+                void navigate(`/course/${courseId}`);
               }
             }}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"

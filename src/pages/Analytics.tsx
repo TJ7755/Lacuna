@@ -258,7 +258,7 @@ export function Analytics() {
                 <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number) => [`${v}%`, 'Predicted']}
+                  formatter={(v) => [`${v}%`, 'Predicted']}
                   cursor={{ stroke: c.line }}
                 />
                 <Area
@@ -294,10 +294,11 @@ export function Analytics() {
                 <Tooltip
                   contentStyle={tooltipStyle}
                   cursor={{ stroke: c.line }}
-                  formatter={(v: number, name: string) => {
-                    if (name === 'brier') return [v.toFixed(3), 'Brier score'];
+                  formatter={(v, name) => {
+                    const value = typeof v === 'number' ? v : Number(v ?? 0);
+                    if (name === 'brier') return [value.toFixed(3), 'Brier score'];
                     return [
-                      `${Math.round(v * 100)}%`,
+                      `${Math.round(value * 100)}%`,
                       name === 'predicted' ? 'Predicted' : 'Actual',
                     ];
                   }}
@@ -349,7 +350,7 @@ export function Analytics() {
                 <Tooltip
                   contentStyle={tooltipStyle}
                   cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(v: number) => [v, 'Reviews']}
+                  formatter={(v) => [v, 'Reviews']}
                 />
                 <Bar
                   dataKey="reviews"
@@ -383,7 +384,7 @@ export function Analytics() {
                 <YAxis allowDecimals={false} {...axisProps} width={40} />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number) => [`${v} min`, 'Time']}
+                  formatter={(v) => [`${v} min`, 'Time']}
                   cursor={{ stroke: c.line }}
                 />
                 <Area
@@ -455,7 +456,7 @@ export function Analytics() {
                 <Tooltip
                   contentStyle={tooltipStyle}
                   cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(v: number) => [v, 'Leeches']}
+                  formatter={(v) => [v, 'Leeches']}
                 />
                 <Bar
                   dataKey="count"
@@ -484,7 +485,7 @@ export function Analytics() {
                 <Tooltip
                   contentStyle={tooltipStyle}
                   cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(v: number) => [v, 'Cards']}
+                  formatter={(v) => [v, 'Cards']}
                 />
                 <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
                   {profile.map((entry, i) => (

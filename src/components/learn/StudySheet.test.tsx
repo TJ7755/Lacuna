@@ -61,7 +61,7 @@ const chemistry: Course = {
 function renderSheet(courseId: string | null = null) {
   return render(
     <LazyMotion features={domAnimation}>
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <StudySheet courseId={courseId} onClose={vi.fn()} />
       </MemoryRouter>
     </LazyMotion>,

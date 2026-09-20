@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
 import type * as RepositoryModule from './db/courseRepository';
 import type * as SchemaModule from './db/schema';
@@ -17,7 +17,7 @@ const dependencies = vi.hoisted(() => ({
 }));
 interface TestAiSession extends AiSession {
   testId: string;
-  dispose: ReturnType<typeof vi.fn>;
+  dispose: Mock<() => void>;
 }
 const runtime = vi.hoisted(() => ({
   createdSessions: [] as TestAiSession[],
@@ -31,7 +31,7 @@ const AI_RUNTIME_TEST_TIMEOUT_MS = 10_000;
 function createTestSession(): TestAiSession {
   const session = {
     testId: crypto.randomUUID(),
-    dispose: vi.fn(),
+    dispose: vi.fn<() => void>(),
   } as unknown as TestAiSession;
   runtime.createdSessions.push(session);
   return session;

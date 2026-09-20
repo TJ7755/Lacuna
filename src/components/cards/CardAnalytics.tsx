@@ -161,7 +161,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                 <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number) => [`${v}%`, 'Retrievability']}
+                  formatter={(v) => [`${v}%`, 'Retrievability']}
                   cursor={{ stroke: c.line }}
                 />
                 <Area

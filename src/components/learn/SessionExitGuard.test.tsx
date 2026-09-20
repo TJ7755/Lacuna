@@ -29,7 +29,7 @@ describe('SessionExitGuard', () => {
         ),
       },
     ]);
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
 
@@ -66,7 +66,7 @@ describe('SessionExitGuard', () => {
         ),
       },
     ]);
-    render(<RouterProvider router={router} future={{ v7_startTransition: true }} />);
+    render(<RouterProvider router={router} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));

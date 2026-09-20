@@ -120,7 +120,7 @@ describe('App initialisation', () => {
     expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
   });
 
-  it('opts into start transitions without emitting the React Router future warning', async () => {
+  it('uses the default start transitions without emitting a future warning', async () => {
     const warn = vi.spyOn(console, 'warn');
     try {
       render(<App />);

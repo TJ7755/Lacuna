@@ -1721,7 +1721,7 @@ describe('LearnMode course/lesson scope', () => {
     render(
       <ThemeProvider>
         <ToastProvider>
-          <RouterProvider router={router} future={{ v7_startTransition: true }} />
+          <RouterProvider router={router} />
         </ToastProvider>
       </ThemeProvider>,
     );

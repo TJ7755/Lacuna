@@ -115,7 +115,7 @@ export function useCourseSectionSwipe(): {
       const current = matchCourseSection(location.pathname);
       if (!current) return;
       const target = courseSectionPath(current.courseId, current.index + direction);
-      if (target) navigate(target);
+      if (target) void navigate(target);
     },
     [location.pathname, navigate, releasePointer, resetDrag],
   );
