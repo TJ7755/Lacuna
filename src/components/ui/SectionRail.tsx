@@ -40,11 +40,12 @@ function scrollToSection(id: string, motionMultiplier: number) {
  * returns the active section id plus a navigate helper. Shared by both the
  * desktop rail and the mobile jumper so they stay in sync off one observer.
  */
-export function useSectionRail(sections: SectionRailItem[], motionMultiplier = 1) {
+export function useSectionRail(sections: SectionRailItem[], motionMultiplier = 1, ready = true) {
   const [activeSection, setActiveSection] = useState(sections[0]?.id ?? '');
   const sectionIds = sections.map((section) => section.id).join('|');
 
   useEffect(() => {
+    if (!ready) return;
     const intersecting = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -63,7 +64,7 @@ export function useSectionRail(sections: SectionRailItem[], motionMultiplier = 1
     });
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionIds]);
+  }, [sectionIds, ready]);
 
   const goToSection = useCallback(
     (id: string) => scrollToSection(id, motionMultiplier),

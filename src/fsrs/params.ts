@@ -8,7 +8,6 @@ import {
   default_w,
   default_request_retention,
   default_maximum_interval,
-  default_enable_fuzz,
   default_learning_steps,
   default_relearning_steps,
 } from 'ts-fsrs';
@@ -35,7 +34,7 @@ export function defaultFsrsParameters(): FsrsParameters {
   return {
     w: [...default_w],
     requestRetention: default_request_retention,
-    enable_fuzz: default_enable_fuzz,
+    enable_fuzz: true,
     maximum_interval: default_maximum_interval,
     learning_steps: [...default_learning_steps],
     relearning_steps: [...default_relearning_steps],

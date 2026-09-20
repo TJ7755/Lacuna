@@ -27,6 +27,10 @@ describe('clampRequestRetention', () => {
 });
 
 describe('defaultFsrsParameters', () => {
+  it('enables interval fuzz for new scheduling configurations', () => {
+    expect(defaultFsrsParameters().enable_fuzz).toBe(true);
+  });
+
   it('returns independent parameter arrays on every call', () => {
     const first = defaultFsrsParameters();
     const second = defaultFsrsParameters();

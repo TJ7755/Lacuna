@@ -17,7 +17,7 @@ it('keeps activity and new-card caps correct without reading full review records
   const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
   try {
     const course = await createCourse('Activity');
-    await db.courses.update(course.id, { newCardsPerDay: 1 });
+    await db.courses.update(course.id, { newCardsPerDay: 1, maxReviewsPerDay: 1 });
     const introduced = await createCourseCard(course.id, 'front_back', 'Introduced', 'Answer');
     const due = await createCourseCard(course.id, 'front_back', 'Due', 'Answer');
     await createCourseCard(course.id, 'front_back', 'New', 'Answer');
@@ -59,6 +59,10 @@ it('keeps activity and new-card caps correct without reading full review records
       );
       await waitFor(() => expect(result.current.dashboard?.stats.reviewedToday).toBe(2));
       expect(result.current.dashboard?.stats.streak).toBe(2);
+      expect(result.current.dashboard?.stats.forecast[0]).toMatchObject({
+        dueCount: 1,
+        newCount: 0,
+      });
       expect(result.current.sidebar?.summaries[course.id].eligible).toBe(1);
       expect(result.current.dashboard?.summaries[course.id].reviewedTodayCount).toBe(2);
       expect(reading).not.toHaveBeenCalled();

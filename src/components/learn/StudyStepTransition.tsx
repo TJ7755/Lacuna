@@ -44,9 +44,6 @@ export function StudyStepTransition({
 }: StudyStepTransitionProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const reviewed = summary.events.length;
-  const correct = summary.events.filter((event) => event.correct).length;
-  const accuracy = reviewed > 0 ? Math.round((correct / reviewed) * 100) : null;
   const incomplete = !summary.reachedGoal;
 
   return (
@@ -84,13 +81,6 @@ export function StudyStepTransition({
         >
           {completedLabel}
         </motion.h1>
-
-        {(reviewed > 0 || accuracy !== null) && (
-          <p className="mt-4 text-sm text-ink-soft">
-            {reviewed} card{reviewed === 1 ? '' : 's'} reviewed
-            {accuracy === null ? '' : ` · ${accuracy}% correct`}
-          </p>
-        )}
 
         {summary.revision && (
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -126,6 +126,50 @@ describe('LearnMode course/lesson scope', () => {
     localStorage.clear();
   });
 
+  it.each(['ad-hoc', 'recurring'] as const)(
+    'finishes %s due review after a slow Yes instead of repeating tomorrow’s card',
+    async (mode) => {
+      const course = await createCourse('Biology');
+      const lesson = await createLesson(course.id, 'Cells');
+      const due = await createLessonCard(course.id, lesson.id, 'front_back', 'Pathogen?', 'Causes disease');
+      const future = await createLessonCard(course.id, lesson.id, 'front_back', 'Future?', 'Later');
+      const unseen = await createLessonCard(course.id, lesson.id, 'front_back', 'Unseen?', 'New');
+      const now = Date.now();
+      for (const card of [due, future, unseen]) await upsertLessonCardExposure(lesson.id, card.id);
+      for (const card of [due, future]) {
+        await db.cards.update(card.id, {
+          state: 2, stability: 0.1, difficulty: 5, reps: 5,
+          lastReviewed: now - 10_000,
+          due: card.id === due.id ? now - 1 : now + 86_400_000,
+        });
+      }
+      const finished = vi.fn();
+      const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+      try {
+        render(
+          <MemoryRouter>
+            <ToastProvider>
+              <LearnMode request={{ kind: 'practice', courseId: course.id, mode }} onStepFinished={finished} />
+            </ToastProvider>
+          </MemoryRouter>,
+        );
+        await findStudyFaceText('Pathogen?');
+        clock.mockReturnValue(10_000);
+        await answerYes();
+        await waitFor(() => expect(finished).toHaveBeenCalledOnce());
+        expect(finished.mock.calls[0][0]).toMatchObject({ reachedGoal: true });
+        const reviews = await storedReviewsForCard(due.id);
+        expect(reviews).toHaveLength(1);
+        expect(reviews[0]).toMatchObject({ grade: 2, correct: true });
+        expect((await db.cards.get(due.id))!.due).toBeGreaterThan(Date.now());
+        expect(await storedReviewsForCard(future.id)).toHaveLength(0);
+        expect(await storedReviewsForCard(unseen.id)).toHaveLength(0);
+      } finally {
+        clock.mockRestore();
+      }
+    },
+  );
+
   it('waits for line-sequence classification before serving a line-specific prompt', async () => {
     const course = await createCourse('Drama');
     const lesson = await createLesson(course.id, 'Scene one');

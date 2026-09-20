@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { computeStudyStats, DEFAULT_REVIEW_SECONDS, FORECAST_DAYS } from './stats';
 import { MS_PER_DAY } from './params';
 import { startOfDay } from '../utils/datetime';
-import type { Card, ReviewLog } from '../db/types';
+import type { Card, ReviewLog, SchedulerConfig } from '../db/types';
 
 // A fixed local-noon reference so day bucketing is unambiguous.
 const NOW = new Date(2026, 5, 4, 12, 0, 0).getTime();
@@ -105,6 +105,43 @@ describe('computeStudyStats — reviewed today', () => {
 });
 
 describe('computeStudyStats — 7-day time forecast', () => {
+  it('respects each course daily new-card and review limits', () => {
+    const cards = [
+      ...Array.from({ length: 4 }, (_, index) =>
+        card({ id: `due-${index}`, courseId: 'french', due: NOW }),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        card({
+          id: `new-${index}`,
+          courseId: 'french',
+          due: null,
+          lastReviewed: null,
+          state: 0,
+          reps: 0,
+          createdAt: NOW + index,
+        }),
+      ),
+    ];
+    const config = {
+      id: 'french',
+      newCardsPerDay: 2,
+      maxReviewsPerDay: 5,
+    } as SchedulerConfig;
+
+    const { forecast } = computeStudyStats(
+      cards,
+      new Map(),
+      NOW,
+      undefined,
+      undefined,
+      new Map([['french', config]]),
+    );
+
+    expect(forecast[0]).toMatchObject({ dueCount: 4, newCount: 1 });
+    expect(forecast[0].byDeck).toEqual([
+      expect.objectContaining({ sourceId: 'french', dueCount: 4, newCount: 1 }),
+    ]);
+  });
   it('produces one bucket per forecast day', () => {
     const { forecast } = computeStudyStats([], new Map(), NOW);
     expect(forecast).toHaveLength(FORECAST_DAYS);
