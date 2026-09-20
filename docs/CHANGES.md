@@ -8,6 +8,9 @@
 - Centred sidebar hover details on their course row while keeping the popup inside the viewport.
 - Enabled internal FSRS interval fuzz for new scheduling configurations by default;
   existing saved preferences are retained.
+- Read courses and their final assessments in one database transaction across navigation,
+  search, course views and plain queries. Concurrent imports, deletions and replacements
+  can no longer mix course and assessment snapshots and trigger a false missing-final error.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 

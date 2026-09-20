@@ -51,10 +51,9 @@ import {
 
 /** Every course, ordered by creation time (mirrors useCourses). */
 export async function listCourses(): Promise<Course[]> {
-  const [records, assessments] = await Promise.all([
-    db.courses.orderBy('createdAt').toArray(),
-    db.courseAssessments.toArray(),
-  ]);
+  const [records, assessments] = await db.transaction('r', [db.courses, db.courseAssessments], () =>
+    Promise.all([db.courses.orderBy('createdAt').toArray(), db.courseAssessments.toArray()]),
+  );
   return records.map((record) =>
     hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
   );
@@ -62,10 +61,12 @@ export async function listCourses(): Promise<Course[]> {
 
 /** A single course, or null if it does not exist. */
 export async function getCourse(courseId: string): Promise<Course | null> {
-  const [record, assessments] = await Promise.all([
-    db.courses.get(courseId),
-    db.courseAssessments.where('courseId').equals(courseId).toArray(),
-  ]);
+  const [record, assessments] = await db.transaction('r', [db.courses, db.courseAssessments], () =>
+    Promise.all([
+      db.courses.get(courseId),
+      db.courseAssessments.where('courseId').equals(courseId).toArray(),
+    ]),
+  );
   return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
 }
 
