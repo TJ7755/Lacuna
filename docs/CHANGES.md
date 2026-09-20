@@ -32,6 +32,11 @@
 - Verified keyboard grading against persisted review history in the browser smoke test,
   replacing its assertion on the removed step subtitle.
 
+## Unreleased
+
+- Displayed the app version beside the Settings heading on web and desktop.
+- Removed duplicated update-version and scheduling-card subtitles.
+
 ## 0.2.8 beta — optional introductions and FSRS learning
 
 - Added a per-course **Learn first** setting, enabled by default. Turning it off lets
