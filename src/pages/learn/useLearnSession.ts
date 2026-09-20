@@ -160,6 +160,8 @@ export interface UseLearnSessionParams {
   plannedRevision: boolean;
   reviewSessionKind: ReviewSessionKind;
   isSimpleMode: boolean;
+  /** An explicitly requested pass, independent of curricular introductions and practice. */
+  standaloneSimple?: boolean;
   mode: LearnModeType;
   navigate: NavigateFunction;
   onFlowExit?: () => void;
@@ -192,6 +194,7 @@ export function useLearnSession({
   plannedRevision,
   reviewSessionKind,
   isSimpleMode,
+  standaloneSimple = false,
   mode,
   navigate,
   onFlowExit,
@@ -250,8 +253,13 @@ export function useLearnSession({
     isGlobal,
     requestScopeLessonIdsKey,
     filterParamsKey,
-    simpleSessionScope,
+    simpleSessionScope: curricularSimpleScope,
   } = sessionScope;
+  const simpleSessionScope = useMemo(
+    () =>
+      standaloneSimple ? { ...curricularSimpleScope, standalone: true } : curricularSimpleScope,
+    [curricularSimpleScope, standaloneSimple],
+  );
 
   const startInFocusModeRef = useRef(startInFocusMode);
   useEffect(() => {
@@ -1037,8 +1045,11 @@ export function useLearnSession({
         lessonHasMembersRef.current = membership.length > 0;
         const examDateContext = makeExamDateContext(course, courseLessons, examDates);
         const schedulingUnit = (await getSchedulingUnit(course.id, lessonId)) ?? course;
-        cards =
-          course.learnFirst === false
+        cards = standaloneSimple
+          ? course.archived
+            ? []
+            : membership
+          : course.learnFirst === false
             ? directLessonStudyPool(lessonId, allCourseCards, links, schedulingUnit)
             : lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
         units = [course];
@@ -1050,11 +1061,13 @@ export function useLearnSession({
           },
         ];
         reviewKindRef.current = 'course';
-        ratchetCourseIdRef.current = course.id;
-        ratchetLessonIdRef.current = lessonId;
-        lessonExposureIdRef.current = lessonId;
+        if (!standaloneSimple) {
+          ratchetCourseIdRef.current = course.id;
+          ratchetLessonIdRef.current = lessonId;
+          lessonExposureIdRef.current = lessonId;
+        }
         setUnitDisplayName(lesson.name);
-        firstStudyLessonId = lessonId;
+        firstStudyLessonId = standaloneSimple ? undefined : lessonId;
         firstStudyLessonName = lesson.name;
       } else if (courseId) {
         const course = await getCourse(courseId);
@@ -1067,20 +1080,22 @@ export function useLearnSession({
           db.cards.where('courseId').equals(courseId).toArray(),
           db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
           listCourseAssessments(courseId),
-          db.practiceNodes.where('courseId').equals(courseId).toArray(),
+          standaloneSimple ? [] : db.practiceNodes.where('courseId').equals(courseId).toArray(),
         ]);
         const allCards = await hydrateCardsWithHistory(rawAllCards);
         const courseLessonIds = courseLessons.map((lesson) => lesson.id);
         const [courseLinks, courseExposures] = await Promise.all([
-          courseLessonIds.length > 0
+          !standaloneSimple && courseLessonIds.length > 0
             ? db.lessonCards.where('lessonId').anyOf(courseLessonIds).toArray()
             : [],
-          courseLessonIds.length > 0
+          !standaloneSimple && courseLessonIds.length > 0
             ? db.lessonCardExposures.where('lessonId').anyOf(courseLessonIds).toArray()
             : [],
         ]);
-        const effectiveDates = lessonEffectiveReleaseDates(course, courseLessons);
-        const reachedLessonIds: Set<string> = requestScopeLessonIds
+        const effectiveDates = standaloneSimple
+          ? new Map<string, number>()
+          : lessonEffectiveReleaseDates(course, courseLessons);
+        const reachedLessonIds: Set<string> = standaloneSimple ? new Set<string>() : requestScopeLessonIds
           ? new Set<string>(requestScopeLessonIds)
           : new Set(
               courseLessons
@@ -1126,7 +1141,8 @@ export function useLearnSession({
             )?.day,
           );
         }
-        const fullScope = selectedAssessment
+        // Optional passes need scheduling context, but no curricular eligibility planning.
+        const fullScope = standaloneSimple ? allCards : selectedAssessment
           ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
               .cards
           : practiceCardScope(
@@ -1148,18 +1164,22 @@ export function useLearnSession({
               courseAssessments: [],
             }
           : makeExamDateContext(course, courseLessons, examDates);
-        cards = selectedAssessment
-          ? activeRevisionPlan
-            ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
-            : assessmentPracticePool(selectedAssessment, {
-                course,
-                lessons: courseLessons,
-                cards: allCards,
-                links: courseLinks,
-                exposures: courseExposures,
-                reachedLessonIds,
-              })
-          : eligiblePracticePool(fullScope, course, examDateContext);
+        cards = standaloneSimple
+          ? course.archived
+            ? []
+            : allCards
+          : selectedAssessment
+            ? activeRevisionPlan
+              ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
+              : assessmentPracticePool(selectedAssessment, {
+                  course,
+                  lessons: courseLessons,
+                  cards: allCards,
+                  links: courseLinks,
+                  exposures: courseExposures,
+                  reachedLessonIds,
+                })
+            : eligiblePracticePool(fullScope, course, examDateContext);
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
         const practiceConfig: SessionSchedulingConfig = {
           ...schedulingUnit,
@@ -1167,7 +1187,7 @@ export function useLearnSession({
           // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
           newCardsPerDay: course.learnFirst === false ? schedulingUnit.newCardsPerDay : undefined,
         };
-        if (course.learnFirst === false && !plannedRevision) {
+        if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
           cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
         }
         units = [course];
@@ -1179,7 +1199,7 @@ export function useLearnSession({
           },
         ];
         reviewKindRef.current = 'course';
-        ratchetCourseIdRef.current = course.id;
+        if (!standaloneSimple) ratchetCourseIdRef.current = course.id;
         setUnitDisplayName(selectedAssessment?.name ?? course.name);
         if (practiceNodeKeyParam) {
           const scopeVersion = practiceScopeVersion(fullScope);
@@ -1368,6 +1388,7 @@ export function useLearnSession({
     isSimpleMode,
     mode,
     isGlobal,
+    standaloneSimple,
     practiceNodeKeyParam,
     requestScopeLessonIdsKey,
     requestAssessmentId,

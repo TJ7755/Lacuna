@@ -25,6 +25,7 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('../../state/useCourseData', () => ({
   useCourses: () => mockCourses,
+  useLessons: () => [{ id: 'l1', name: 'Atomic structure' }],
   useCourse: (courseId: string | undefined) =>
     mockCourses.find((course) => course.id === courseId) ?? null,
 }));
@@ -82,6 +83,17 @@ beforeEach(() => {
 });
 
 describe('StudySheet', () => {
+  it('offers whole-course and lesson Simple Learn without changing the main action', async () => {
+    renderSheet('chem');
+    fireEvent.click(screen.getByText('Simple Learn'));
+    expect(screen.getByRole('button', { name: 'Continue: Atomic structure' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Simple Learn' }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
+    fireEvent.change(screen.getByLabelText('Simple Learn scope'), { target: { value: 'l1' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Simple Learn' }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/lesson/l1/learn?mode=simple');
+  });
+
   it('crossfades from the course picker to that course\'s options', async () => {
     renderSheet();
     expect(screen.getByRole('heading', { name: 'Which course?' })).toBeInTheDocument();

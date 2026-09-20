@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { readAll } from './fixtures/syncConvergence';
 import type { ReviewHistoryEntry } from '../../src/db/reviewHistory';
 
@@ -30,6 +30,7 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
 
   await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
+  await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   const studyCard = page.locator('[data-study-card-id]');

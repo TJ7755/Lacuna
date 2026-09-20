@@ -3,7 +3,7 @@ import type { SessionCardOutcome } from './types';
 
 const STORAGE_PREFIX = 'lacuna.simpleSession.v1:';
 
-export type SimpleSessionScope =
+export type SimpleSessionScope = (
   | { kind: 'lesson'; lessonId: string }
   | { kind: 'course'; courseId: string; filters?: string[]; tag?: string }
   | { kind: 'global'; filters?: string[]; tag?: string }
@@ -16,7 +16,8 @@ export type SimpleSessionScope =
       assessmentId?: string;
       planId?: string;
       windowId?: string;
-    };
+    }
+) & { standalone?: boolean };
 
 interface StoredSimpleSession {
   version: 1;
@@ -76,7 +77,10 @@ function normalisedScope(scope: SimpleSessionScope): unknown {
 }
 
 export function simpleSessionStorageKey(scope: SimpleSessionScope): string {
-  return `${STORAGE_PREFIX}${encodeURIComponent(JSON.stringify(normalisedScope(scope)))}`;
+  const identity = scope.standalone
+    ? { scope: normalisedScope(scope), standalone: true }
+    : normalisedScope(scope);
+  return `${STORAGE_PREFIX}${encodeURIComponent(JSON.stringify(identity))}`;
 }
 
 function isStringArray(value: unknown): value is string[] {

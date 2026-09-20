@@ -47,6 +47,7 @@ import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
 import { StepSwap } from '../components/ui/StepSwap';
+import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 
 interface LessonViewProps {
@@ -60,6 +61,7 @@ interface LessonViewProps {
   lessonId?: string;
   /** The single course-level Study action for the inline one-lesson course. */
   showStudyNow?: boolean;
+  onStudy?: () => void;
   /** Whether the inline one-lesson course has reached cards eligible for immediate practice. */
   practiceNowEnabled?: boolean;
   /** Opens path-native manual-practice creation for an inline one-lesson course. */
@@ -72,6 +74,7 @@ export function LessonView({
   courseId: courseIdProp,
   lessonId: lessonIdProp,
   showStudyNow = false,
+  onStudy,
   practiceNowEnabled = false,
   onAddPractice,
   onAddCheckpoint,
@@ -257,7 +260,7 @@ export function LessonView({
               <Button
                 variant="primary"
                 size="lg"
-                onClick={() => navigate(`/course/${courseId}/study`)}
+                onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
               >
                 <PlayIcon width={18} height={18} />
                 Study
@@ -283,6 +286,11 @@ export function LessonView({
           ) : null}
         </div>
       </CourseHeader>
+      {!archived && !isInline && (
+        <div className="mb-6">
+          <SimpleLearnOptions key={lesson.id} courseId={course.id} initialLessonId={lesson.id} />
+        </div>
+      )}
       {lesson.description && <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>}
 
       {/* ------------------------------------------------------------------ */}

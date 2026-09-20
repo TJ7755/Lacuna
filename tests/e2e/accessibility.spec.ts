@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('opens quick search from the keyboard and restores focus on Escape', async ({ page }) => {
   await enterFreshLacuna(page);
@@ -32,6 +32,7 @@ test('replaces the shell when entering study with reduced motion', async ({ page
   const study = page.getByRole('button', { name: 'Study', exact: true });
   await expect(shell).toBeVisible();
   await study.click();
+  await chooseScheduledStudy(page);
 
   await expect(page).toHaveURL(/#\/course\/[^/]+\/study$/);
   await expect(page.getByRole('heading', { name: 'Lesson 1', level: 1 })).toBeVisible();

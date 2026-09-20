@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function measureFlip(page: Page, destination: 'front' | 'back') {
   return page.evaluate((destination) => {
@@ -53,6 +53,7 @@ test('slows both flip phases, follows live speed changes and skips reduced-motio
   await expect(page).not.toHaveURL(/\/cards\/new$/);
   await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
+  await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('[data-study-face="front"]')).toBeVisible();
 

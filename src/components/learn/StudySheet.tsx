@@ -19,6 +19,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
 import { ChevronLeftIcon } from '../ui/icons';
+import { SimpleLearnOptions } from './SimpleLearnOptions';
 
 export function StudySheet({
   courseId,
@@ -229,6 +230,8 @@ function CourseStudyOptions({
           Revise for {assessment.name}
         </Button>
       ))}
+
+      {course && !course.archived && <SimpleLearnOptions courseId={courseId} />}
 
       <Button variant="ghost" size="lg" onClick={onClose}>
         Done

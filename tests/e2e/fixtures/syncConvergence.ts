@@ -63,6 +63,7 @@ async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
   const studyCard = page.locator('[data-study-card-id]');
   await expect(routeChoice.or(continueButton).or(studyCard)).toBeVisible();
   if (await routeChoice.isVisible()) await routeChoice.click();
+  await expect(continueButton.or(studyCard)).toBeVisible();
   if (await continueButton.isVisible()) await continueButton.click();
   await expect(studyCard).toBeVisible();
   const cardId = await studyCard.getAttribute('data-study-card-id');

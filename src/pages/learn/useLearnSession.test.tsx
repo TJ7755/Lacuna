@@ -92,6 +92,53 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
+  it('does not load curricular practice records for a standalone course pass', async () => {
+    const course = await createCourse('Optional pass');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+    const practiceQuery = vi.spyOn(db.practiceNodes, 'where');
+    const exposureQuery = vi.spyOn(db.lessonCardExposures, 'where');
+    const linkQuery = vi.spyOn(db.lessonCards, 'where');
+    try {
+      const params = sessionParams({
+        courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple',
+      });
+      const { result } = renderHook(() => useLearnSession(params));
+      await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+      expect(practiceQuery).not.toHaveBeenCalled();
+      expect(exposureQuery).not.toHaveBeenCalled();
+      expect(linkQuery).not.toHaveBeenCalled();
+    } finally {
+      practiceQuery.mockRestore();
+      exposureQuery.mockRestore();
+      linkQuery.mockRestore();
+    }
+  });
+
+  it.each(['course', 'lesson'] as const)('runs an anytime Simple pass over %s cards regardless of exposure or due date', async (scope) => {
+    const course = await createCourse('Anytime');
+    const lesson = await createLesson(course.id, 'Completed lesson');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+    if (scope === 'lesson') await upsertLessonCardExposure(lesson.id, card.id);
+    await db.cards.update(card.id, { state: 2, stability: 10000, due: Date.now() + 864000000 });
+    const params = sessionParams({
+      courseId: scope === 'course' ? course.id : undefined,
+      lessonId: scope === 'lesson' ? lesson.id : undefined,
+      isSimpleMode: true,
+      standaloneSimple: true,
+      mode: 'simple',
+    });
+    const { result } = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+    expect(result.current.phase).toBe('question');
+    act(() => result.current.reveal());
+    await act(async () => { await result.current.answer(true); });
+    await waitFor(() => expect(result.current.phase).toBe('finished'));
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
+    expect(await db.lessonCompletions.get(lesson.id)).toBeUndefined();
+    expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(scope === 'lesson' ? 1 : 0);
+  });
+
   it('finishes a filtered due session after a slow Yes schedules the card for tomorrow', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');

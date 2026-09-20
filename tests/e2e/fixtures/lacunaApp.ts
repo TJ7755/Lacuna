@@ -1,5 +1,11 @@
 import { expect, type Page } from '@playwright/test';
 
+export async function chooseScheduledStudy(page: Page) {
+  const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
+  await sheet.getByRole('button', { name: /^(Start|Continue):/ }).first().click();
+  await expect(sheet).toBeHidden();
+}
+
 export async function enterFreshLacuna(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();

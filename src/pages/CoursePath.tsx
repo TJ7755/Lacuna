@@ -22,7 +22,6 @@ import {
 } from '../course/assessmentPractice';
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
-import { planNextStudyStep } from '../course/studyFlowPlanner';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
@@ -236,10 +235,6 @@ export function CoursePath() {
       now,
     ],
   );
-  const studyDecision = useMemo(
-    () => (studyFlowSnapshot ? planNextStudyStep(studyFlowSnapshot) : null),
-    [studyFlowSnapshot],
-  );
   const practiceProgressByKey = useMemo(() => {
     const result = new Map<string, PracticeNodeProgress>();
     for (const practice of studyFlowSnapshot?.practiceByKey.values() ?? []) {
@@ -253,8 +248,6 @@ export function CoursePath() {
     }
     return result;
   }, [studyFlowSnapshot]);
-  const studyTarget =
-    studyDecision?.kind === 'step' || studyDecision?.kind === 'choice' ? studyDecision.step : null;
   const visibleNodes = useMemo(
     () =>
       nodes.filter((node) => {
@@ -345,7 +338,8 @@ export function CoursePath() {
           <LazyLessonView
             courseId={courseId}
             lessonId={lessons[0].id}
-            showStudyNow={!archived && studyTarget !== null}
+            showStudyNow={!archived}
+            onStudy={() => openStudySheet(courseId)}
             practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
@@ -460,9 +454,7 @@ export function CoursePath() {
               <Button
                 variant="primary"
                 size="lg"
-                disabled={!studyTarget}
                 onClick={() => {
-                  if (!studyTarget) return;
                   // Raises the study sheet rather than navigating: the choice is one tap
                   // to open and one to dismiss, and dismissing leaves this page in place.
                   openStudySheet(courseId);

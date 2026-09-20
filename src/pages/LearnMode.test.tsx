@@ -104,6 +104,22 @@ async function storedReviewsForCard(cardId: string) {
 }
 
 describe('LearnMode course/lesson scope', () => {
+  it('honours explicit Simple Learn for a lesson with Learn first disabled', async () => {
+    const course = await createCourse('Optional passes');
+    await db.courses.update(course.id, { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Any time');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Optional question', 'Answer');
+    render(
+      <ThemeProvider><ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+          <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
+        </MemoryRouter>
+      </ToastProvider></ThemeProvider>,
+    );
+    expect(await findStudyFaceText('Optional question')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+  });
+
   beforeEach(async () => {
     await Promise.all([
       db.courses.clear(),

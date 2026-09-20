@@ -13,6 +13,52 @@
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Native keyboard handling and top-layer placement, with Lacuna's colours.
+   Browsers without customisable selects retain their platform picker. */
+@supports (appearance: base-select) {
+  .simple-learn-select,
+  .simple-learn-select::picker(select) {
+    appearance: base-select;
+  }
+
+  .simple-learn-select::picker(select) {
+    background: hsl(var(--surface-raised));
+    color: hsl(var(--ink));
+    border: 1px solid hsl(var(--line-strong));
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+    margin-block: 0.375rem;
+    max-block-size: min(20rem, 50dvh);
+    overflow-y: auto;
+    box-shadow: 0 8px 24px hsl(var(--ink) / 0.12);
+    font: inherit;
+  }
+
+  .simple-learn-select option {
+    min-block-size: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .simple-learn-select option:checked {
+    background: hsl(var(--accent-soft));
+    color: hsl(var(--accent-ink));
+  }
+
+  .simple-learn-select option:hover,
+  .simple-learn-select option:focus-visible {
+    background: hsl(var(--ink) / 0.07);
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: -2px;
+  }
+
+  .simple-learn-select::picker-icon {
+    color: hsl(var(--ink-soft));
+  }
+}
+
 /*
  * "Quiet laboratory" palette. Light = warm off-white paper; dark = near-black charcoal.
  * A single warm amber accent carries every interactive and success state.

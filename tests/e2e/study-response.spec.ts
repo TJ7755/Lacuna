@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('makes the revealed answer readable during the deliberate card flip', async ({ page }) => {
   const frontText = 'Which value is the response marker?';
@@ -14,6 +14,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
   await expect(page.locator('[data-card-id]').getByText(frontText, { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
+  await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const reveal = page.getByRole('button', { name: /Show answer/i }).last();
   await expect(reveal).toBeVisible();
