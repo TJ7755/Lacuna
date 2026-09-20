@@ -89,7 +89,12 @@ describe('Electron MCP contract boundary', () => {
       ...fields,
     };
     const schema = createCourseAssessmentContract.inputSchema;
-    const validate = new AjvJsonSchemaValidator().getValidator(z.toJSONSchema(schema));
+    // Zod and the SDK differ in their $vocabulary typings; validate the emitted
+    // JSON at runtime through the SDK's actual draft-2020-12 implementation.
+    const emitted = z.toJSONSchema(schema) as unknown as Parameters<
+      AjvJsonSchemaValidator['getValidator']
+    >[0];
+    const validate = new AjvJsonSchemaValidator().getValidator(emitted);
     expect(schema.safeParse(payload).success).toBe(accepted);
     expect(validate(payload).valid).toBe(accepted);
   });
