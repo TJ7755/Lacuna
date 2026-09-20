@@ -21,6 +21,14 @@ const events: SessionEvent[] = [
 beforeEach(() => localStorage.clear());
 
 describe('Simple session persistence', () => {
+  it('keeps optional passes separate from introductions and ordinary course sessions', () => {
+    for (const base of [scope, { kind: 'course', courseId: 'course-1' } as const]) {
+      saveSimpleSession(base, { queueCardIds: ['card-1'], masteredCardIds: [], outcomes: [], events: [] });
+      expect(loadSimpleSession({ ...base, standalone: true }, ['card-1'])).toBeNull();
+      expect(loadSimpleSession(base, ['card-1'])).not.toBeNull();
+    }
+  });
+
   it('round-trips a versioned ID-only session snapshot', () => {
     saveSimpleSession(scope, {
       queueCardIds: ['card-2', 'card-1'],

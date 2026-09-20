@@ -64,6 +64,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
   const simpleModeParam = searchParams.get('mode') === 'simple';
+  const standaloneSimple = !request && simpleModeParam;
   const practiceNodeKeyParam =
     request?.kind === 'practice' && request.mode === 'curricular'
       ? (request.nodeKey ?? null)
@@ -111,7 +112,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // Course lessons follow their introduction setting; the global preference remains
   // available for ad-hoc deck/global sessions.
   const isSimpleMode =
-    lessonId ? lessonCourse?.learnFirst !== false : studyMode === 'simple' || simpleModeParam;
+    standaloneSimple || (lessonId ? lessonCourse?.learnFirst !== false : studyMode === 'simple');
 
   const mode: LearnModeType = useMemo(() => {
     if (isSimpleMode) return 'simple';
@@ -216,6 +217,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     plannedRevision,
     reviewSessionKind,
     isSimpleMode,
+    standaloneSimple,
     mode,
     navigate,
     onFlowExit,

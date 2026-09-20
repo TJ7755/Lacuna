@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added optional Simple Learn passes for whole courses or individual lessons inside the Study
+  sheet, with a lesson-scoped entry on lesson pages. Study stays available when nothing is due.
+  These passes include already introduced and not-yet-due cards, retain FSRS review recording,
+  and save progress separately without completing lessons or advancing curricular gates.
+  Styled the scope picker's expanded menu in Chromium/Electron, deferred lesson-list queries
+  until the options are expanded, and skipped unused curricular queries in optional course passes.
+
 - Shortened repository memories and the README, split the specification into focused contracts,
   archived older change history, and moved the root glossary, historical QA report and test
   configuration into their owning directories. Removed five obsolete lint suppressions.

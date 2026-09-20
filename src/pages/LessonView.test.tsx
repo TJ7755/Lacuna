@@ -182,6 +182,14 @@ beforeEach(() => {
 });
 
 describe('LessonView Study mode', () => {
+  it('preselects this lesson for an optional Simple Learn pass', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Simple Learn'));
+    expect(await screen.findByLabelText('Simple Learn scope')).toHaveValue(lesson.id);
+    fireEvent.click(screen.getByRole('button', { name: 'Start Simple Learn' }));
+    expect(mockNavigate).toHaveBeenCalledWith(`/lesson/${lesson.id}/learn?mode=simple`);
+  });
+
   it('does not promise another lesson when the displayed lesson has nothing due', () => {
     mockLessonCards = [
       {

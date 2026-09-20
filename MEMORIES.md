@@ -48,6 +48,9 @@ Happy DOM animation cleanup can reject unfinished animations. Prefer reduced mot
 motion is under test; otherwise finish transitions before teardown. Measure readable study
 content from the input event, excluding retained outgoing nodes and zero-opacity faces.
 
+Customisable native select pickers can bubble Escape to an enclosing sheet. Stop propagation
+while the picker is open, and test the expanded menu rather than only the closed field.
+
 ## AI authority and deployment
 
 AI and data MCP companions share transport but have different grants. Preserve every generated

@@ -362,7 +362,7 @@ describe('CoursePath Study mode', () => {
     });
   });
 
-  it.each([1, 2])('does not offer empty study after all %i lessons are complete', async (count) => {
+  it.each([1, 2])('keeps study options available after all %i lessons are complete', async (count) => {
     mockLessons = [lesson1, lesson2].slice(0, count);
     mockCourseCards = mockLessons.map((lesson) => ({
       ...makeCard(`card-${lesson.id}`, lesson.id),
@@ -383,11 +383,11 @@ describe('CoursePath Study mode', () => {
     if (count === 1) {
       await waitFor(() =>
         expect(mockLessonViewProps).toHaveBeenCalledWith(
-          expect.objectContaining({ showStudyNow: false, practiceNowEnabled: false }),
+          expect.objectContaining({ showStudyNow: true, onStudy: expect.any(Function), practiceNowEnabled: false }),
         ),
       );
     } else {
-      expect(screen.getByRole('button', { name: 'Study' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
       expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
       expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
