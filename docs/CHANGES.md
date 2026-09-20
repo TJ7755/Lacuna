@@ -1,6 +1,6 @@
 # Lacuna — version 0.2.9
 
-## 0.2.9 beta — interface fixes and FSRS interval fuzz
+## 0.2.9 beta — reliable course reads and study counts
 
 - Aligned the release configuration test with the v0.2.9 package version.
 - Fixed course settings section highlighting after asynchronous course loading;
