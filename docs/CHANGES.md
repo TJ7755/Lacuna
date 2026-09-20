@@ -16,6 +16,8 @@
 - Counted only scheduled reviews in “Due” totals and the recurring review step,
   while retaining new cards in “Ready” totals and curricular Practice.
 - Removed the redundant reviewed-count and accuracy subtitle between study steps.
+- Verified keyboard grading against persisted review history in the browser smoke test,
+  replacing its assertion on the removed step subtitle.
 
 ## 0.2.8 beta — optional introductions and FSRS learning
 
