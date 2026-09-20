@@ -4,6 +4,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { build, type Metafile } from 'esbuild';
 import { z } from 'zod';
+import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/ajv';
+import { createCourseAssessmentContract } from './contracts/content';
 import { MCP_TOOL_SURFACE_VERSION, TOOL_CONTRACT_REGISTRY } from './contracts/registry';
 import { TOOL_REGISTRY } from './registry';
 
@@ -24,10 +26,12 @@ const PACKAGED_MCP_ENTRY_POINTS = [
   'electron/mcp/aiCompanion.ts',
   'electron/mcp/aiCompanionEntry.ts',
 ] as const;
-const PRE_REFACTOR_TOOL_SURFACE = {
+// Zod 4.6 repairs closed intersection/union schemas and normalises nullable
+// types and description ordering. Runtime tool inputs and version stay unchanged.
+const REVIEWED_TOOL_SURFACE = {
   version: 3,
   toolCount: 64,
-  sha256: '233b1a80abdda17081c5300208982d852c5b429f0d612cb4e6133a5be3500095',
+  sha256: 'b765634a22cc5ff66be5f6e1d75c3c6dcca11c37989367b2226e9948ec578111',
 } as const;
 
 function normalise(filePath: string): string {
@@ -52,7 +56,7 @@ async function bundleMetafile(entryPoint: string): Promise<Metafile> {
 }
 
 describe('Electron MCP contract boundary', () => {
-  it('preserves the versioned pre-refactor wire surface', () => {
+  it('preserves the reviewed versioned wire surface', () => {
     const serialisedSurface = JSON.stringify(
       TOOL_CONTRACT_REGISTRY.map(({ name, description, requiredScope, inputSchema }) => ({
         name,
@@ -66,7 +70,28 @@ describe('Electron MCP contract boundary', () => {
       version: MCP_TOOL_SURFACE_VERSION,
       toolCount: TOOL_CONTRACT_REGISTRY.length,
       sha256: createHash('sha256').update(serialisedSurface).digest('hex'),
-    }).toEqual(PRE_REFACTOR_TOOL_SURFACE);
+    }).toEqual(REVIEWED_TOOL_SURFACE);
+  });
+
+  it.each([
+    ['prefix with null anchor', { coverageMode: 'prefix', afterLessonId: null }, true],
+    ['prefix with lesson anchor', { coverageMode: 'prefix', afterLessonId: 'lesson-1' }, true],
+    ['custom coverage', { coverageMode: 'custom', lessonIds: ['lesson-1'] }, true],
+    ['missing coverage', {}, false],
+    ['missing custom lessons', { coverageMode: 'custom' }, false],
+    ['empty custom lessons', { coverageMode: 'custom', lessonIds: [] }, false],
+  ])('keeps emitted assessment validation aligned for %s', (_label, fields, accepted) => {
+    const payload = {
+      courseId: 'course-1',
+      name: 'Checkpoint',
+      examDate: 1_800_000_000_000,
+      afterLessonId: null,
+      ...fields,
+    };
+    const schema = createCourseAssessmentContract.inputSchema;
+    const validate = new AjvJsonSchemaValidator().getValidator(z.toJSONSchema(schema));
+    expect(schema.safeParse(payload).success).toBe(accepted);
+    expect(validate(payload).valid).toBe(accepted);
   });
 
   it('keeps executable tools in exact contract order with identical metadata and schemas', () => {
