@@ -40,7 +40,7 @@ async function expectCardsRouteCached(page: Page) {
     .toEqual(
       expect.arrayContaining([
         expect.stringMatching(/^\/assets\/CardsPage-[A-Za-z0-9_-]{8}\.js$/),
-        expect.stringMatching(/^\/assets\/markdown-[A-Za-z0-9_-]{8}\.css$/),
+        expect.stringMatching(/^\/assets\/(?:markdown|MarkdownView)-[A-Za-z0-9_-]{8}\.css$/),
       ]),
     );
 }

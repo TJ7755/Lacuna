@@ -6,6 +6,12 @@
   Vitest 5 and ESLint 10, adapting compiler, lint and test configuration to their supported APIs.
   CI uses Node.js 24 and now gates the initial asset budget and the handwriting prototype's
   build and tests as well as its audit.
+- Kept charts and Markdown lazy under Vite 8 so the launch bundle and visited-page
+  offline cache retain their existing guarantees.
+- Aligned the vendored browser optimiser WebAssembly with binding 0.5, preventing
+  native tests and browser optimisation from silently using different trainer versions.
+- Removed an unused AI mailbox change assignment exposed by the upgraded linter;
+  mailbox processing and cancellation behaviour are unchanged.
 - Reused completed route prefetches directly so React 19 does not delay the first
   navigation behind a Suspense fallback; cold loads retain their existing loading UI.
 - Updated Electron to 44.4.1 and Electron Builder to 26.16.1, retaining the release
