@@ -119,8 +119,8 @@ and stale-chunk recovery must retain its one-reload guard.
 
 A shared dependency fetched before service-worker control is not in the runtime cache, even if a
 visited lazy route later imports it. After changing the bundle graph, run the cold offline Cards
-reload test and keep Workbox's exact eager precache list aligned with emitted dependencies.
-The persistence split exposed this for `sequenceGeneration`; precaching every lazy page is unnecessary.
+reload test. Derive Workbox's eager precache from emitted static imports; hard-coded chunk names
+drift when the bundler changes its splitting. Lazy pages should still be cached only when visited.
 
 ## AI and data MCP companions have different authority
 
