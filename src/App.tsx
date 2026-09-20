@@ -163,7 +163,6 @@ export function App() {
         await seedIfFirstRun();
       } catch (error) {
         if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
           console.error('Failed to initialise Lacuna:', error);
         }
         setInitError({

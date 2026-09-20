@@ -102,7 +102,6 @@ describe('remembered sync trigger credentials', () => {
     ['study session completion', () => window.dispatchEvent(new Event('lacuna:study-session-end'))],
   ])('runs with credentials published by manual sync after %s', async (_name, trigger) => {
     vi.useFakeTimers();
-    // eslint-disable-next-line no-console
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const warn = vi.spyOn(console, 'warn');
     publishUnlockedCredentials(credentials);
@@ -130,7 +129,6 @@ describe('remembered sync trigger credentials', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation((...args) => {
       if (args[0] !== '[sync] auto focus failed' || args[1] !== error) {
         // Preserve unrelated warnings while containing this expected one.
-        // eslint-disable-next-line no-console
         originalWarn(...args);
       }
     });
