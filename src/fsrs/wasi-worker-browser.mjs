@@ -1,4 +1,4 @@
-// Vendored from @open-spaced-repetition/binding-wasm32-wasi@0.4.0
+// Vendored from @open-spaced-repetition/binding-wasm32-wasi@0.5.0
 // because the upstream package incorrectly declares `cpu: wasm32` and
 // fails to install on x64 VMs. Keep this in sync when updating the binding.
 
