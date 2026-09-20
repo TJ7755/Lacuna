@@ -2,7 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useStorageQuotaWarning } from './useStorageQuotaWarning';
 
-const { notify } = vi.hoisted(() => ({ notify: vi.fn() }));
+const { notify, retainedInterval } = vi.hoisted(() => ({
+  notify: vi.fn(),
+  retainedInterval: { current: null as number | null },
+}));
+
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>();
+  return {
+    ...actual,
+    useRef: (initialValue: unknown) =>
+      initialValue === null && retainedInterval.current !== null
+        ? retainedInterval
+        : actual.useRef(initialValue),
+  };
+});
 
 vi.mock('../components/ui/Toast', () => ({
   useToast: () => ({
@@ -13,6 +27,7 @@ vi.mock('../components/ui/Toast', () => ({
 describe('useStorageQuotaWarning', () => {
   beforeEach(() => {
     notify.mockClear();
+    retainedInterval.current = null;
     window.location.hash = '#/';
   });
 
@@ -117,5 +132,28 @@ describe('useStorageQuotaWarning', () => {
       configurable: true,
     });
     vi.useRealTimers();
+  });
+
+  it('clears a retained interval before replacing it', async () => {
+    const originalStorage = navigator.storage;
+    const estimate = vi.fn().mockResolvedValue({ usage: 0, quota: 100 });
+    const clearInterval = vi.spyOn(window, 'clearInterval');
+    retainedInterval.current = 123;
+    Object.defineProperty(navigator, 'storage', {
+      value: { estimate },
+      configurable: true,
+    });
+
+    const { unmount } = renderHook(() => useStorageQuotaWarning());
+
+    await waitFor(() => expect(estimate).toHaveBeenCalledOnce());
+    expect(clearInterval).toHaveBeenCalledWith(123);
+
+    unmount();
+    clearInterval.mockRestore();
+    Object.defineProperty(navigator, 'storage', {
+      value: originalStorage,
+      configurable: true,
+    });
   });
 });

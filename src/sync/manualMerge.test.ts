@@ -182,6 +182,17 @@ describe('manualMerge', () => {
     expect(importBackup).not.toHaveBeenCalled();
   });
 
+  it('reports a non-Error safety-backup failure without writing', async () => {
+    takeAutoBackup.mockRejectedValue('storage quota exhausted');
+
+    await expect(manualMerge(backup())).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: false,
+      message: expect.stringContaining('storage quota exhausted'),
+    });
+    expect(importBackup).not.toHaveBeenCalled();
+  });
+
   it('aborts without writing if the forced restore point is skipped', async () => {
     takeAutoBackup.mockResolvedValue(undefined);
 
