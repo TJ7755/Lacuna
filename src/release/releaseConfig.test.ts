@@ -146,28 +146,28 @@ describe('v0.2.9 release configuration', () => {
     expect(bunLock).not.toContain('["app-builder-bin@');
   });
 
-  it('keeps every test workspace on the patched Vitest 3 toolchain', () => {
-    expect(packageJson.devDependencies?.vitest).toBe('3.2.7');
-    expect(packageJson.devDependencies?.['@vitest/coverage-v8']).toBe('3.2.7');
-    expect(relayPackageJson.devDependencies?.vitest).toBe('3.2.7');
-    expect(relayPackageJson.devDependencies?.vite).toBe('^6.4.3');
-    expect(relayPackageJson.overrides?.vite).toBe('6.4.3');
-    expect(handwritingPackageJson.devDependencies?.vitest).toBe('3.2.7');
-    expect(aiMcpPackageJson.devDependencies?.vitest).toBe('3.2.7');
+  it('keeps every test workspace on the aligned Vitest 5 and Vite 8 toolchain', () => {
+    expect(packageJson.devDependencies?.vitest).toBe('5.0.1');
+    expect(packageJson.devDependencies?.['@vitest/coverage-v8']).toBe('5.0.1');
+    expect(relayPackageJson.devDependencies?.vitest).toBe('5.0.1');
+    expect(relayPackageJson.devDependencies?.vite).toBe('^8.3.0');
+    expect(relayPackageJson.overrides?.vite).toBeUndefined();
+    expect(handwritingPackageJson.devDependencies?.vitest).toBe('5.0.1');
+    expect(aiMcpPackageJson.devDependencies?.vitest).toBe('5.0.1');
 
-    expect(resolvedVersions('vitest')).toEqual(['3.2.7']);
-    expect(resolvedVersions('@vitest/coverage-v8')).toEqual(['3.2.7']);
-    expect(resolvedVersions('vite')).toEqual(['6.4.3']);
-    expect(resolvedVersionsFrom(relayBunLock, 'vitest')).toEqual(['3.2.7']);
-    expect(resolvedVersionsFrom(relayBunLock, 'vite')).toEqual(['6.4.3']);
-    expect(resolvedVersionsFrom(handwritingBunLock, 'vitest')).toEqual(['3.2.7']);
-    expect(resolvedVersionsFrom(handwritingBunLock, 'vite')).toEqual(['6.4.3']);
+    expect(resolvedVersions('vitest')).toEqual(['5.0.1']);
+    expect(resolvedVersions('@vitest/coverage-v8')).toEqual(['5.0.1']);
+    expect(resolvedVersions('vite')).toEqual(['8.3.0']);
+    expect(resolvedVersionsFrom(relayBunLock, 'vitest')).toEqual(['5.0.1']);
+    expect(resolvedVersionsFrom(relayBunLock, 'vite')).toEqual(['8.3.0']);
+    expect(resolvedVersionsFrom(handwritingBunLock, 'vitest')).toEqual(['5.0.1']);
+    expect(resolvedVersionsFrom(handwritingBunLock, 'vite')).toEqual(['8.3.0']);
     expect(existsSync(resolve(root, 'tooling/lacuna-ai-mcp/bun.lock'))).toBe(false);
   });
 
   it('runs Electron build tools without platform shell shims', () => {
     expect(prepareElectronBuild).toContain('process.execPath');
-    expect(prepareElectronBuild).toContain("'node_modules/typescript/bin/tsc'");
+    expect(prepareElectronBuild).toContain("'node_modules/@typescript/native/bin/tsc'");
     expect(prepareElectronBuild).not.toContain('tsc.cmd');
     expect(prepareElectronBuild).not.toContain('shell: true');
   });
