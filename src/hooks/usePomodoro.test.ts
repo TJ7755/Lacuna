@@ -61,10 +61,14 @@ describe('usePomodoro', () => {
   it('continues counting down when focus is restarted while running', () => {
     const { result } = renderHook(() => usePomodoro());
     act(() => result.current.startFocus());
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
     act(() => result.current.startFocus());
     expect(result.current.formattedTime).toBe('25:00');
-    act(() => vi.advanceTimersByTime(1000));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
     expect(result.current.formattedTime).toBe('24:59');
   });
 
