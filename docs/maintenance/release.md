@@ -4,7 +4,71 @@ The tag-triggered workflow in `.github/workflows/release.yml` verifies, builds t
 packages and prepares one GitHub pre-release draft. The unsigned macOS arm64 package is built and
 tested separately on the maintainer's Apple Silicon device, then uploaded to that draft. Neither
 path publishes the draft. Publishing remains a deliberate maintainer action after every artefact
-has been inspected.
+has been inspected. Windows/Linux-only betas are supported; macOS is not an implicit blocker.
+
+## Routine release commands
+
+Use Node 24, the pinned Bun version and an authenticated GitHub CLI (`gh auth login`, or an
+existing `GH_TOKEN`). Set `GH_PATH` to the executable path when `gh` is not on PATH. Git uses
+the maintainer's existing credentials; the helper does not store credentials or change remotes.
+
+1. On a release preparation branch, run
+   `npm version 0.2.11 --no-git-tag-version --ignore-scripts --package-lock=false`, update
+   `docs/CHANGES.md` with the release notes, and merge the PR through normal required checks.
+   Substitute the intended version throughout. `package.json` is the only version to edit;
+   release configuration tests no longer duplicate it.
+2. Run `bun run release draft 0.2.11`. This resolves the canonical repository's default branch,
+   checks its version, waits for successful **exact-commit** CI and Security push runs, pushes
+   the version tag, waits for the native builds, and prints the draft URL. It never publishes.
+   The local checkout may remain on a feature branch; no checkout, reset or stash is performed.
+3. Inspect the notes and platform evidence. For Windows/Linux only, run
+   `bun run release publish 0.2.11 --windows-linux-only --notes path/to/release-notes.md`.
+   This freshly downloads and verifies the eight official assets before publishing the beta,
+   and appends the unsigned/platform/update scope to the notes. It refuses extra assets, so a
+   draft containing macOS packages must follow the manual platform verification below.
+
+For inspection without publication, use `bun run release verify 0.2.11`. This works on drafts
+and published releases. Reports and downloaded assets remain in ignored
+`artifacts/releases/v0.2.11/verification-*` directories. Each report records the commit, SHA-256
+checks, updater sizes and SHA-512 hashes, Windows block-map structure and provenance result.
+Attestations must match this repository's release workflow, exact tag and commit. Publication
+repeats verification rather than trusting an old report, and rejects asset replacements observed
+during verification. No command runs an installer or touches an installed user profile.
+
+The commands stop on failed workflows and wait at most 45 minutes per gate. Fix or rerun the
+failed workflow in Actions, then repeat the command. An existing remote tag is reused only when
+it names the expected commit; tags are never moved. Run `draft` before the default branch moves
+beyond the intended release commit. If a tag push succeeds but Actions never starts, inspect the
+Actions event before retrying; the helper does not bypass missing workflow evidence.
+
+The tag is pushed with maintainer credentials, rather than from a workflow using `GITHUB_TOKEN`:
+[GitHub does not trigger another push workflow from that token](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+No new secret, scheduled watcher or repository permission is needed.
+
+### Evidence that still needs platform testing
+
+Automated asset verification proves that updater metadata identifies the verified installer;
+it does not prove installer execution, old-profile compatibility or the public update feed.
+For changes to persistence, packaging or updates, retain the isolated old-version profile upgrade
+and live updater download checks before considering the release validated. A draft is not visible
+to the normal public updater, so public discovery can only be tested after publication. Never run
+an installer over the maintainer's working installation to obtain this evidence. The existing
+Windows AI companion shutdown issue must also be considered when testing installation.
+
+The release workflow runs the existing normal-motion packaged interaction test on Windows before
+attestation/upload and retains its `test-results` artefact. It checks the real packaged app, clean
+shutdown and renderer errors; it is not an installation or historical-profile upgrade test.
+
+### Why this is faster
+
+The helper removes manual CI polling, tag coordination, individual downloads, provenance commands
+and updater hash comparisons. The release verifier also avoids installing dependencies and
+rebuilding web assets: the exact-commit `production` CI job already enforces that asset budget.
+Required CI and Security gates remain intact. Native build time and platform checks still apply;
+no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
+Browser CI now runs the full suite in two Playwright shards, each preserving its report and failure
+evidence. The existing required `browser-smoke` check aggregates both shards and fails if either
+fails. This shortens the longest observed CI stage without changing the tests or branch protection.
 
 ## Signing policy
 
@@ -36,8 +100,8 @@ The verifier requires successful ordinary CI and Security push workflows for the
 commit on master or main. Those workflows cover root typechecking, lint, all unit shards and
 coverage, the canonical release scenario, browser end-to-end tests, relay checks and standalone
 AI MCP checks. The release verifier reuses that evidence rather than running those suites again.
-It installs only the root dependencies, builds assets and runs the additional performance budget
-before any native package job starts. Windows and Linux still build natively in Actions; macOS
+The ordinary production job also builds assets and enforces the performance budget, so the release
+verifier needs no dependency installation or repeated web build. Windows and Linux still build natively in Actions; macOS
 builds and package checks run locally on Apple Silicon.
 
 Ordinary CI still requires both root and relay installations: the AI MCP test suite imports the

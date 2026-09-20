@@ -21,7 +21,10 @@ const handwritingPackageJson = JSON.parse(
 const aiMcpPackageJson = JSON.parse(
   readFileSync(resolve(root, 'tooling/lacuna-ai-mcp/package.json'), 'utf8'),
 ) as { devDependencies?: Record<string, string> };
-const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8').replace(/\r\n/g, '\n');
+const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8').replace(
+  /\r\n/g,
+  '\n',
+);
 const windowsInstallerInclude = readFileSync(
   resolve(root, 'electron/windows-installer.nsh'),
   'utf8',
@@ -34,9 +37,18 @@ const handwritingBunLock = readFileSync(
 );
 const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
 const updaterServiceSource = readFileSync(resolve(root, 'electron/updaterService.ts'), 'utf8');
-const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8').replace(/\r\n/g, '\n');
-const releaseWorkflow = readFileSync(resolve(root, '.github/workflows/release.yml'), 'utf8').replace(/\r\n/g, '\n');
-const securityWorkflow = readFileSync(resolve(root, '.github/workflows/security.yml'), 'utf8').replace(/\r\n/g, '\n');
+const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8').replace(
+  /\r\n/g,
+  '\n',
+);
+const releaseWorkflow = readFileSync(
+  resolve(root, '.github/workflows/release.yml'),
+  'utf8',
+).replace(/\r\n/g, '\n');
+const securityWorkflow = readFileSync(
+  resolve(root, '.github/workflows/security.yml'),
+  'utf8',
+).replace(/\r\n/g, '\n');
 const prepareElectronBuild = readFileSync(
   resolve(root, 'scripts/prepare-electron-build.mjs'),
   'utf8',
@@ -111,9 +123,9 @@ function blockScalarValues(block: string, key: string): string[] {
   return values;
 }
 
-describe('v0.2.10 release configuration', () => {
+describe('release configuration', () => {
   it('identifies the public app repository and release version', () => {
-    expect(packageJson.version).toBe('0.2.10');
+    expect(packageJson.version).toMatch(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
     expect(packageJson.author).toBe('TJ7755');
     expect(packageJson.homepage).toBe('https://github.com/TJ7755/Lacuna#readme');
     expect(packageJson.repository).toEqual({
@@ -252,12 +264,12 @@ describe('v0.2.10 release configuration', () => {
       'bun run test:coverage:recovery',
       'bun run release:scenario',
       'bun run test:e2e:web',
+      'bun run build:assets',
+      'bun run perf:check',
     ]) {
       expect(ciWorkflow).toContain(command);
       expect(verifyJob).not.toContain(command);
     }
-    expect(verifyJob).toContain('bun run build:assets');
-    expect(verifyJob).toContain('bun run perf:check');
     expect(verifyJob).toContain('fetch-depth: 0');
     expect(verifyJob).toContain('tag_commit="$(git rev-parse --verify "${GITHUB_REF}^{commit}")"');
     expect(verifyJob).toContain('if [[ "$tag_commit" != "$GITHUB_SHA" ]]');
@@ -269,7 +281,7 @@ describe('v0.2.10 release configuration', () => {
     expect(exactCommitChecks).toContain('.head_branch == "master"');
     expect(exactCommitChecks).toContain('.head_branch == "main"');
     expect(exactCommitChecks).toContain('.conclusion == "success"');
-    expect(verifyJob.match(/- run: bun install --frozen-lockfile/g)).toHaveLength(1);
+    expect(verifyJob).not.toContain('bun install');
     for (const workspace of ['relay', 'tooling/lacuna-ai-mcp']) {
       expect(ciWorkflow).toContain(`working-directory: ${workspace}`);
       expect(verifyJob).not.toContain(`working-directory: ${workspace}`);
@@ -339,6 +351,11 @@ describe('v0.2.10 release configuration', () => {
 
     const windowsJob = workflowJob(releaseWorkflow, 'build-win');
     expect(windowsJob).toContain('bun run test:e2e:electron-ai');
+    expect(windowsJob).toContain('bun run test:e2e:electron-package');
+    expect(windowsJob).toContain('LACUNA_ELECTRON_APP_DIR: release/win-unpacked');
+    expect(windowsJob.indexOf('bun run test:e2e:electron-package')).toBeLessThan(
+      windowsJob.indexOf('name: Attest Windows artefacts'),
+    );
     expect(releaseWorkflow).not.toContain('  build-mac:');
     expect(releaseWorkflow).not.toContain('runs-on: macos-15');
     expect(releaseWorkflow).not.toContain('lacuna-macos-arm64');
@@ -391,6 +408,20 @@ describe('v0.2.10 release configuration', () => {
     }
     expect(releaseWorkflow).toContain('actions/upload-artifact@v7');
     expect(releaseWorkflow).toContain('actions/download-artifact@v8');
+  });
+
+  it('keeps the required browser check while sharding the full suite', () => {
+    const tests = workflowJob(ciWorkflow, 'browser-tests');
+    expect(tests).toContain('shard: [1, 2]');
+    expect(tests).toContain('fail-fast: false');
+    expect(tests).toContain('bun run test:e2e:web -- --shard=${{ matrix.shard }}/2');
+    expect(tests).toContain('if: always()');
+    expect(tests).toContain('playwright-report/');
+    const gate = workflowJob(ciWorkflow, 'browser-smoke');
+    expect(gate).toContain('needs: browser-tests');
+    expect(gate).toContain('if: always() && !cancelled()');
+    expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
+    expect(gate).toContain('test "$RESULT" = success');
   });
 
   it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {

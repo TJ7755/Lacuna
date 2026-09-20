@@ -46,6 +46,7 @@
     "build:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp build",
     "ai:mcp": "node tooling/lacuna-ai-mcp/dist/index.js",
     "release:scenario": "node scripts/release-scenario.mjs",
+    "release": "node scripts/release.mjs",
     "icons:generate": "bun scripts/generate-icons.ts",
     "electron:prepare": "node scripts/prepare-electron-build.mjs",
     "electron:dev": "bun run electron:prepare && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
