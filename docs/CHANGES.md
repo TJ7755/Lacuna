@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.9
+# Lacuna — version 0.2.10
 
-## Unreleased
+## 0.2.10 beta — on-demand learning and maintenance
 
 - Added optional Simple Learn passes for whole courses or individual lessons inside the Study
   sheet, with a lesson-scoped entry on lesson pages. Study stays available when nothing is due.
