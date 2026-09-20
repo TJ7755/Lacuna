@@ -95,6 +95,13 @@ Node 22 on Windows rejects `spawnSync('tool.cmd', ..., { shell: false })` with `
 JavaScript tools through `process.execPath` and their real entry files; do not add `shell: true` merely
 to make a package-manager shim executable.
 
+## TypeScript 7 and ESLint use different compiler packages
+
+The native TypeScript 7 compiler does not provide the legacy JavaScript compiler API
+used by typescript-eslint. Keep the TypeScript 6 compatibility package under the
+`typescript` name and the native compiler under `@typescript/native`; their command
+names are `tsc6` and `tsc` respectively. Explicit compiler paths must select the native package.
+
 ## Release artefact names must already be URL-safe
 
 GitHub normalises spaces in uploaded filenames, while electron-builder writes a separately
