@@ -8,6 +8,8 @@
   and save progress separately without completing lessons or advancing curricular gates.
   Styled the scope picker's expanded menu in Chromium/Electron, deferred lesson-list queries
   until the options are expanded, and skipped unused curricular queries in optional course passes.
+- Updated browser regression setup to choose the scheduled lesson from Study before testing
+  grading, motion, keyboard accessibility and sync; retained the existing behavioural assertions.
 
 - Shortened repository memories and the README, split the specification into focused contracts,
   archived older change history, and moved the root glossary, historical QA report and test

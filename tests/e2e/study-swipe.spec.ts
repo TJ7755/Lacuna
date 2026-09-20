@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   for (const input of ['swipe', 'keyboard', 'button'] as const) {
@@ -24,6 +24,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           }
           await page.getByRole('link', { name: 'Course', exact: true }).click();
           await page.getByRole('button', { name: 'Study', exact: true }).click();
+          await chooseScheduledStudy(page);
           await page.getByRole('button', { name: 'Continue', exact: true }).click();
           await page.setViewportSize({ width, height: 900 });
           const front = page.locator('[data-study-face="front"]');
