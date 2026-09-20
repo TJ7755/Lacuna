@@ -1,7 +1,8 @@
-# Lacuna — version 0.2.8
+# Lacuna — version 0.2.9
 
-## Unreleased
+## 0.2.9 beta — interface fixes and FSRS interval fuzz
 
+- Aligned the release configuration test with the v0.2.9 package version.
 - Fixed course settings section highlighting after asynchronous course loading;
   the desktop rail and mobile jumper now follow scrolling.
 - Kept assessment card exclusions within the settings editor when card text is long.
