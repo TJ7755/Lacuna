@@ -326,6 +326,10 @@ describe('importApkgResult', () => {
 });
 
 describe('parseApkg zip bomb guards', () => {
+  beforeEach(() => {
+    vi.mocked(fflate.unzipSync).mockClear();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();

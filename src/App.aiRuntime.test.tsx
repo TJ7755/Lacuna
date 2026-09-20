@@ -158,7 +158,7 @@ describe('optional AI runtime', () => {
     );
     expect(screen.getByTestId('router-surface')).toBe(originalSurface);
     expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
-    expect(activeSession.dispose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(activeSession.dispose).toHaveBeenCalledOnce());
   }, AI_RUNTIME_TEST_TIMEOUT_MS);
 
   it('remounts only the enabled AI runtime when Electron requests recovery', async () => {
