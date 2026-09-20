@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Softened image-occlusion masks with opaque neutral fills and a distinct accent-coloured
+- Softened image-occlusion masks with opaque neutral fills, keeping passive masks light
+  in both themes, and a distinct accent-coloured
   target with a clearer Fraunces question mark. Revealed labels use a single outline; card and
   diagram sizing, masking rules and scheduling remain unchanged.
 

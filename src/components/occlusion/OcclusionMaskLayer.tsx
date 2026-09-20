@@ -27,7 +27,7 @@ export interface OcclusionMaskRegion {
 
 const VISUAL_CLASSES: Record<OcclusionRegionVisual, string> = {
   // Keep passive masks light on the diagram even in dark mode; solid fills conceal answers.
-  masked: 'rounded-[3px] border border-line-strong bg-paper dark:border-ink-soft dark:bg-ink',
+  masked: 'rounded-[3px] border border-line-strong bg-paper dark:border-ink-soft dark:bg-[hsl(38_33%_96%)]',
   target: 'rounded-[3px] border-2 border-accent bg-accent-soft',
   ring: 'rounded-full border-2 border-accent bg-transparent',
   lifted: 'rounded-[3px] border border-positive bg-transparent',

@@ -14,7 +14,8 @@ describe('OcclusionMaskLayer', () => {
     );
     const [target, masked] = container.querySelectorAll('.absolute');
     expect(target).toHaveClass('bg-accent-soft', 'border-accent');
-    expect(masked).toHaveClass('bg-paper', 'border-line-strong', 'dark:bg-ink', 'dark:border-ink-soft');
+    expect(masked).toHaveClass('bg-paper', 'border-line-strong', 'dark:bg-[hsl(38_33%_96%)]', 'dark:border-ink-soft');
+    expect(masked).not.toHaveClass('dark:bg-ink');
     for (const overlay of [target, masked]) {
       // Alpha fills can leak the printed answer, especially on high-contrast diagrams.
       expect(overlay.className).not.toMatch(/(?:bg-[\w-]+\/|opacity-)/);
