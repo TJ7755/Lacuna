@@ -1522,6 +1522,15 @@ behaviour.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
 
+Recurring and ad-hoc **Review due cards** requests use the existing `due` filter, as do
+explicit due-filtered sessions. In FSRS mode their session context uses due-review
+eligibility: selection rechecks the updated due dates after every answer, including
+learning and relearning steps. Once no cards in the captured scope are due, the session
+finishes even if predicted exam readiness remains below target. Future-due cards and new
+cards without a due date cannot enter that queue. Exam-objective ordering and readiness
+reporting remain in use; ordinary curricular Practice and planned assessment revision
+retain their existing completion rules.
+
 In-memory, per session, to stop a just-failed card being shown again immediately:
 
 ```

@@ -24,15 +24,15 @@ import {
   type ObjectiveContext,
 } from './objective';
 import { selectNextCard, type CooldownMap } from './cooldown';
-import { studyPool, availableCards } from './eligibility';
+import { studyPool, availableCards, dueCards } from './eligibility';
 import { schedulingHorizon } from './horizon';
 import { cramScore } from './cram';
 import type { ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
 import type { Card, SchedulerConfig, SchedulingUnitRecord } from '../db/types';
 
-/** How a session orders cards: by the unit objective, or exam-eve cram (weakest first). */
-export type SessionMode = 'objective' | 'cram';
+/** Due review uses objective ordering but finishes when no scheduled reviews are due. */
+export type SessionMode = 'objective' | 'cram' | 'due';
 
 /**
  * Which cards belong to a session unit, and the key under which its context is
@@ -198,6 +198,7 @@ function unitServePool(
   now: number,
 ): Card[] {
   if (deck.archived) return [];
+  if (mode === 'due') return dueCards(cards, now);
   return mode === 'cram' ? availableCards(cards, now) : studyPool(cards, deck, now);
 }
 
@@ -270,7 +271,7 @@ export function selectNext(
   cooldowns: CooldownMap,
   now: number = Date.now(),
 ): Card | null {
-  const singleUnit = ctx.mode === 'objective' && ctx.decks.size === 1
+  const singleUnit = ctx.mode !== 'cram' && ctx.decks.size === 1
     ? (ctx.decks.values().next().value as SessionDeckContext)
     : null;
   const index = singleUnit ? null : indexSessionCards(cards, ctx);
@@ -366,12 +367,13 @@ export function selectNext(
   return best;
 }
 
-/** True when every unit's served pool has met its exam objective. */
+/** Due review ends at an empty due pool; other modes retain their exam objective. */
 export function sessionComplete(
   cards: Card[],
   ctx: SessionContext,
   now: number = Date.now(),
 ): boolean {
+  if (ctx.mode === 'due') return sessionServePool(cards, ctx, now).length === 0;
   if (ctx.decks.size === 1) {
     const unit = ctx.decks.values().next().value as SessionDeckContext;
     const served = unitServePool(cardsForUnit(cards, unit), unit.deck, ctx.mode, now);
