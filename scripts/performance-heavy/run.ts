@@ -1,5 +1,6 @@
 import { chromium, expect as baseExpect } from '@playwright/test';
 import { clickToReadable } from './latency';
+import { installLagProbe, readLagProbe, startDiagnosticTrace, saveDiagnosticTrace } from './diagnostics';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile, stat, readdir, rm, cp } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -13,6 +14,8 @@ const repetitions = Number(process.env.PERF_REPETITIONS ?? 3);
 const burstReviews = Number(process.env.PERF_BURST_REVIEWS ?? 0);
 const smoke = process.env.PERF_SMOKE === '1';
 const quick = process.env.PERF_MODE === 'quick';
+const diagnostics = process.env.PERF_DIAGNOSTICS === '1';
+const traceDirectory = process.env.PERF_TRACE_DIR;
 const profileDir = process.env.PERF_PROFILE_DIR ? resolve(process.env.PERF_PROFILE_DIR) : undefined;
 const port = Number(process.env.PERF_PORT ?? (profileDir ? 4173 : 0));
 const profileSentinel = 'lacuna-heavy-performance-profile-v2-schema27-fixture1';
@@ -96,6 +99,8 @@ const report: Record<string, unknown> = {
   rates,
   smoke,
   mode: quick ? 'quick' : 'full',
+  diagnostics,
+  traced: Boolean(traceDirectory),
   persistentProfile: profileDir ?? null,
   productionIndexBytes: (await stat(resolve(root, 'index.html'))).size,
   timingMethod:
@@ -228,6 +233,7 @@ try {
     activeContext = context;
     report.browser = context.browser()?.version();
     const page = await context.newPage();
+    if (diagnostics) await page.addInitScript(installLagProbe);
     page.on('console', (message) => {
       if (message.type() === 'log') console.log(message.text());
     });
@@ -287,6 +293,12 @@ try {
     runs.push(run);
     await mkdir(resolve(output, '..'), { recursive: true });
     async function measure(name: string, iteration: number, action: () => Promise<unknown>) {
+      const trace = traceDirectory && iteration === 0
+        ? resolve(traceDirectory, `${rate}-${name}.json`) : undefined;
+      if (trace) await startDiagnosticTrace(cdp);
+      if (diagnostics) await page.evaluate(() => {
+        (window as unknown as { __lacunaLag?: { reset(): void } }).__lacunaLag?.reset();
+      });
       const before = await cdp.send('Performance.getMetrics');
       const started = performance.now();
       let result: unknown;
@@ -299,6 +311,7 @@ try {
           failed: true,
           elapsedMs: performance.now() - started,
           error: String(error),
+          ...(diagnostics ? { lag: await readLagProbe(page).catch(() => undefined) } : {}),
         });
         throw error;
       }
@@ -309,6 +322,8 @@ try {
           ),
       );
       const elapsedMs = performance.now() - started;
+      const lag = diagnostics ? await readLagProbe(page) : undefined;
+      if (trace) await saveDiagnosticTrace(cdp, trace);
       const after = await cdp.send('Performance.getMetrics');
       const value = (metrics: typeof after, key: string) =>
         metrics.metrics.find((m) => m.name === key)?.value ?? 0;
@@ -321,13 +336,18 @@ try {
         name,
         iteration,
         elapsedMs,
+        ...(lag ? { lag } : {}),
+        ...(trace ? { traced: true } : {}),
         jsHeapUsedBytes: value(after, 'JSHeapUsedSize'),
         // A document navigation can reset Chromium's cumulative task counter.
         taskDurationMs: taskDelta < 0 ? null : taskDelta * 1000,
         ...(typeof inputToReadableMs === 'number' ? { inputToReadableMs } : {}),
       };
       samples.push(sample);
-      console.log(JSON.stringify({ rate, ...sample }));
+      console.log(JSON.stringify({ rate, ...sample, lag: lag ? {
+        mountedCardRows: lag.mountedCardRows, longTasks: lag.longTasks.length,
+        longestFrameMs: Math.max(0, ...lag.frames),
+      } : undefined }));
       // Save completed operations even if a later memory test kills the runner.
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
     }
@@ -476,7 +496,8 @@ try {
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
       await context.close();
       activeContext = undefined;
-      if (runProfile) await removeOwnedProfile(runProfile);
+      // Keep a failed run's owned copy available for inspecting the actual database.
+      if (runProfile && errors.length === 0) await removeOwnedProfile(runProfile);
       activeRunProfile = undefined;
     }
   }

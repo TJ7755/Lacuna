@@ -34,6 +34,21 @@ Results are written to `artifacts/performance/local.json`. Options:
 | `PERF_BURST_REVIEWS` | `0`                                | Optional consecutive answer-reveal/grading cycles in one study view, recorded as separate burst metrics                                                   |
 
 Backup operations run once per factor. Report their individual timings separately from medians.
+For diagnostic runs, `PERF_DIAGNOSTICS=1` records animation-frame intervals, observed
+long tasks, Event Timing entries, IndexedDB transaction completion/abort timings and
+mounted card-row counts at each operation boundary. `PERF_TRACE_DIR` saves a separate
+Chromium timeline with CPU samples for each operation's first iteration. These options
+do not change application code or deliberate animation timings. Transaction durations
+include scheduling and callback delivery, not just storage I/O; Event Timing omits events
+below its reporting threshold. Frame gaps include navigation and automation activity.
+
+Keep traced timings separate from untraced runs: starting CPU profiling can itself block
+the renderer. Playwright's selector and accessibility work also appears in traces. Inspect
+stacks before attributing a long task to Lacuna. Summarise a local trace with
+`node scripts/performance-heavy/trace-summary.mjs <trace.json>`; inclusive timeline
+durations are displayed individually and must not be summed. Keep traces local because
+they may contain paths and library content.
+
 Generate the comparison table with `node scripts/performance-heavy/summarise.mjs <report.json> ...`.
 Repeated timing cells show median / slowest observed; single measurements are labelled `n=1`.
 The maximum of three samples is an observed maximum, not an estimated worst-case bound or p99.
@@ -64,6 +79,8 @@ The first run still seeds the complete fixture. Later runs reuse the profile and
 base profile, so grading is measured repeatedly without changing the base. The profile directory
 must be dedicated to this harness; the ownership and fixture/schema revision sentinel rejects
 normal browser or Lacuna profiles. Remove the base and copied run profiles when finished.
+Failed run copies are retained for database inspection until the next run replaces them;
+copy a failed profile elsewhere before rerunning if it needs to be preserved longer.
 
 The answer and grading timings assert readable content, including effective ancestor opacity, and
 wait through two animation frames. These measurements are therefore not directly comparable with

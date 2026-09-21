@@ -16,15 +16,34 @@ export function installLagProbe() {
     frames: [] as number[],
     longTasks: [] as { start: number; duration: number }[],
     events: [] as { name: string; inputDelayMs: number; durationMs: number }[],
+    transactions: [] as { stores: string[]; mode: string; start: number; duration: number; outcome: string }[],
     reset() {
       state.start = previous = performance.now();
       state.frames = []; state.longTasks = []; state.events = [];
+      state.transactions = [];
     },
   };
   target.__lacunaLag = state;
+  const originalTransaction = IDBDatabase.prototype.transaction;
+  IDBDatabase.prototype.transaction = function (this: IDBDatabase, ...args) {
+    const transaction = originalTransaction.apply(this, args);
+    const start = performance.now();
+    const finish = (event: Event) => {
+      if (start >= state.start) state.transactions.push({
+        stores: Array.from(transaction.objectStoreNames), mode: transaction.mode,
+        start: start - state.start, duration: performance.now() - start, outcome: event.type,
+      });
+    };
+    transaction.addEventListener('complete', finish, { once: true });
+    transaction.addEventListener('abort', finish, { once: true });
+    return transaction;
+  };
   const frame = (now: number) => {
-    state.frames.push(now - previous);
-    previous = now;
+    // A queued frame timestamp can precede a reset performed later in that frame.
+    if (now >= previous) {
+      state.frames.push(now - previous);
+      previous = now;
+    }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
