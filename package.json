@@ -90,7 +90,7 @@
     "concurrently": "^10.0.5",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
-    "electron": "^44.4.1",
+    "electron": "^44.4.2",
     "electron-builder": "^26.16.1",
     "esbuild": "^0.28.2",
     "eslint": "^10.10.0",
