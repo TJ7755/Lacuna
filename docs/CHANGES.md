@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Refined the session report with a clear completion tick, one heading, readable stat labels,
+  responsive progress spacing and aligned actions. Progress changes use percentage points,
+  and the progress bar announces the study objective.
+
 - Reused date formatters and removed redundant target-time calculations within timezone
   conversion, preserving daylight-saving gap handling and calendar-day grouping.
 - Set Vercel's install command to `bun install --frozen-lockfile`, matching CI and

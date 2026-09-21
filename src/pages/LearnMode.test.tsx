@@ -1422,7 +1422,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(
       await screen.findByText('No eligible cards matching suspended cards to study'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: 'Progress' })).toHaveAttribute(
+    expect(screen.getByRole('progressbar', { name: 'No eligible cards matching suspended cards to study' })).toHaveAttribute(
       'aria-valuenow',
       '0',
     );
@@ -1454,7 +1454,7 @@ describe('LearnMode course/lesson scope', () => {
       fireEvent.click(await screen.findByRole('button', { name: actionLabel }));
 
       expect(await screen.findByText('Session complete')).toBeInTheDocument();
-      expect(screen.queryByText('Goal reached')).not.toBeInTheDocument();
+      expect(screen.queryByText('You’ve reached your goal')).not.toBeInTheDocument();
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
@@ -1482,9 +1482,9 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await answerYes();
 
-    expect(await screen.findByText('Goal reached')).toBeInTheDocument();
+    expect(await screen.findByText('You’ve reached your goal')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('progressbar', { name: 'Progress' })).toHaveAttribute(
+      expect(screen.getByRole('progressbar', { name: 'Cards correct in this pass' })).toHaveAttribute(
         'aria-valuenow',
         '100',
       );

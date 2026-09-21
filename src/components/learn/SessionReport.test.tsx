@@ -49,8 +49,14 @@ describe('SessionReport', () => {
   it('renders the session report with correct title when goal reached', () => {
     const onReturn = vi.fn();
     render(<SessionReport summary={mockSummary} onReturn={onReturn} />);
-    expect(screen.getByText('Goal reached')).toBeInTheDocument();
+    expect(screen.queryByText('Goal reached')).not.toBeInTheDocument();
     expect(screen.getByText('You\u2019ve reached your goal')).toBeInTheDocument();
+  });
+
+  it('reports progress changes in percentage points with a named progress bar', () => {
+    render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
+    expect(screen.getByText('+15 percentage points')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Expected marks' })).toBeInTheDocument();
   });
 
   it('renders correct stat values', () => {
