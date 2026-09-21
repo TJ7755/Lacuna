@@ -44,6 +44,9 @@ must cover candidate snapshotting and merging as well as import.
 
 ## Browser evidence matters
 
+Playwright's relative JSON report path resolves beneath the configuration directory here.
+Use an absolute `PLAYWRIGHT_JSON_OUTPUT_NAME` to keep measurement reports in root artefacts.
+
 Use `expect.poll(() => page.evaluate(...))` for asynchronous IndexedDB assertions.
 Keep accelerated relay fixtures on a real wall clock. Browser fetch references must be
 bound to `globalThis`; Node and ordinary mocks cannot catch a detached-fetch invocation.

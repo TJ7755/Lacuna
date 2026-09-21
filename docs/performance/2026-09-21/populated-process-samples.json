@@ -1,0 +1,114 @@
+[
+  {
+    "at": "2026-09-21T14:43:18.0751782Z",
+    "count": 7,
+    "workingSetBytes": 454692864.0,
+    "privateBytes": 639221760.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:19.2735652Z",
+    "count": 7,
+    "workingSetBytes": 454692864.0,
+    "privateBytes": 639221760.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:20.3053500Z",
+    "count": 7,
+    "workingSetBytes": 454692864.0,
+    "privateBytes": 639221760.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:21.3320832Z",
+    "count": 7,
+    "workingSetBytes": 454680576.0,
+    "privateBytes": 639139840.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:22.3536244Z",
+    "count": 7,
+    "workingSetBytes": 451399680.0,
+    "privateBytes": 635441152.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:23.3684897Z",
+    "count": 7,
+    "workingSetBytes": 314363904.0,
+    "privateBytes": 496685056.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:24.3880457Z",
+    "count": 7,
+    "workingSetBytes": 314363904.0,
+    "privateBytes": 496685056.0,
+    "cpuSeconds": 57.296875
+  },
+  {
+    "at": "2026-09-21T14:43:25.4158369Z",
+    "count": 7,
+    "workingSetBytes": 314380288.0,
+    "privateBytes": 496660480.0,
+    "cpuSeconds": 57.3125
+  },
+  {
+    "at": "2026-09-21T14:43:26.4319096Z",
+    "count": 7,
+    "workingSetBytes": 314380288.0,
+    "privateBytes": 496660480.0,
+    "cpuSeconds": 57.3125
+  },
+  {
+    "at": "2026-09-21T14:43:27.4512178Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  },
+  {
+    "at": "2026-09-21T14:43:28.4633688Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  },
+  {
+    "at": "2026-09-21T14:43:29.4852478Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  },
+  {
+    "at": "2026-09-21T14:43:30.5005297Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  },
+  {
+    "at": "2026-09-21T14:43:31.5180612Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  },
+  {
+    "at": "2026-09-21T14:43:32.5393689Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  },
+  {
+    "at": "2026-09-21T14:43:33.5577829Z",
+    "count": 7,
+    "workingSetBytes": 314372096.0,
+    "privateBytes": 496627712.0,
+    "cpuSeconds": 57.328125
+  }
+]

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added optional desktop startup profiling and recorded repeated launches and dashboard
+  reloads against the populated Windows profile, separating trace overhead from timings.
+
+- Recorded a managed Windows laptop performance baseline, including installed desktop
+  interaction timings, populated-app process samples and the existing heavy-data workload.
+  See [measurement methods and limits](performance/2026-09-21/README.md).
+
 - Kept desktop AI connected when navigating between courses, Dashboard and Settings.
   Only navigation that replaces the main document invalidates its AI listener; hash
   routes and subframe loads no longer strand the runtime in its starting state.

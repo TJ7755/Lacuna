@@ -1,0 +1,15 @@
+{
+  "recordedAt": "2026-09-21T14:44:56.251Z",
+  "cpu": "Intel(R) Core(TM) Ultra 7 266V",
+  "logicalCpus": 8,
+  "totalMemoryBytes": 16881078272,
+  "freeMemoryBytes": 2345738240,
+  "platform": "win32",
+  "release": "10.0.26100",
+  "arch": "x64",
+  "node": "v24.11.1",
+  "sourceCommit": "6f72773e18993e5edf3d2f1570b16598c61a72ca",
+  "installedAppVersion": "0.2.10",
+  "initialFreeMemoryBytes": 2041262080,
+  "conditions": "Existing apps and browser tabs left open. No artificial CPU throttle. Power mode and AC state not recorded."
+}

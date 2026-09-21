@@ -1,0 +1,513 @@
+{
+  "completed": true,
+  "measuredAt": "2026-09-21T14:45:15.301Z",
+  "label": "Windows-Ultra7-266V-16GB-busy",
+  "platform": "win32",
+  "arch": "x64",
+  "totalMemoryBytes": 16881078272,
+  "logicalCpus": 8,
+  "cpu": "Intel(R) Core(TM) Ultra 7 266V",
+  "browser": "153.0.8010.12",
+  "repetitions": 5,
+  "burstReviews": 10,
+  "rates": [
+    1
+  ],
+  "smoke": false,
+  "mode": "full",
+  "persistentProfile": null,
+  "productionIndexBytes": 4274,
+  "timingMethod": "Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.",
+  "limitations": "Headless Chromium; CPU throttling affects renderer execution, not an entire low-end CPU/GPU/storage system. JavaScript heap is not total application RAM. Linux memory includes OS, browser and runner.",
+  "runs": [
+    {
+      "rate": 1,
+      "counts": {
+        "courses": 10,
+        "lessons": 100,
+        "cards": 10000,
+        "reviews": 200000
+      },
+      "samples": [
+        {
+          "name": "dashboard-load",
+          "iteration": 0,
+          "elapsedMs": 4807.287700000001,
+          "jsHeapUsedBytes": 347039100,
+          "taskDurationMs": 3354.609
+        },
+        {
+          "name": "global-search",
+          "iteration": 0,
+          "elapsedMs": 432.15699999999924,
+          "jsHeapUsedBytes": 367693452,
+          "taskDurationMs": 273.58700000000005
+        },
+        {
+          "name": "course-open",
+          "iteration": 0,
+          "elapsedMs": 1208.509100000003,
+          "jsHeapUsedBytes": 404539528,
+          "taskDurationMs": 831.6570000000003
+        },
+        {
+          "name": "cards-open",
+          "iteration": 0,
+          "elapsedMs": 3175.5579999999973,
+          "jsHeapUsedBytes": 465908088,
+          "taskDurationMs": 2958.7150000000006
+        },
+        {
+          "name": "cards-search",
+          "iteration": 0,
+          "elapsedMs": 271.88269999999466,
+          "jsHeapUsedBytes": 473584452,
+          "taskDurationMs": 257.8459999999998
+        },
+        {
+          "name": "study-open",
+          "iteration": 0,
+          "elapsedMs": 1800.2304000000004,
+          "jsHeapUsedBytes": 505654668,
+          "taskDurationMs": 1254.7870000000012
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 579.8373999999967,
+          "jsHeapUsedBytes": 506951100,
+          "taskDurationMs": 120.82799999999949,
+          "inputToReadableMs": 454.8000000002794
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 0,
+          "elapsedMs": 770.9670999999944,
+          "jsHeapUsedBytes": 532599452,
+          "taskDurationMs": 218.62400000000014,
+          "inputToReadableMs": 651.3799999998882
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 1,
+          "elapsedMs": 2124.8673999999955,
+          "jsHeapUsedBytes": 192158292,
+          "taskDurationMs": null
+        },
+        {
+          "name": "global-search",
+          "iteration": 1,
+          "elapsedMs": 419.2820999999967,
+          "jsHeapUsedBytes": 198405976,
+          "taskDurationMs": 259.96200000000005
+        },
+        {
+          "name": "course-open",
+          "iteration": 1,
+          "elapsedMs": 1193.7877999999982,
+          "jsHeapUsedBytes": 232443944,
+          "taskDurationMs": 880.169
+        },
+        {
+          "name": "cards-open",
+          "iteration": 1,
+          "elapsedMs": 2461.072500000002,
+          "jsHeapUsedBytes": 283732348,
+          "taskDurationMs": 2416.938
+        },
+        {
+          "name": "cards-search",
+          "iteration": 1,
+          "elapsedMs": 296.37869999999384,
+          "jsHeapUsedBytes": 288914424,
+          "taskDurationMs": 259.57299999999964
+        },
+        {
+          "name": "study-open",
+          "iteration": 1,
+          "elapsedMs": 2045.394100000005,
+          "jsHeapUsedBytes": 87591596,
+          "taskDurationMs": 1428.2969999999998
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 538.3893000000025,
+          "jsHeapUsedBytes": 88853620,
+          "taskDurationMs": 96.34699999999974,
+          "inputToReadableMs": 422.36499999975786
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 1,
+          "elapsedMs": 741.7237999999998,
+          "jsHeapUsedBytes": 83179200,
+          "taskDurationMs": 184.35500000000005,
+          "inputToReadableMs": 655.6450000000186
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 2,
+          "elapsedMs": 1941.827599999997,
+          "jsHeapUsedBytes": 37702296,
+          "taskDurationMs": null
+        },
+        {
+          "name": "global-search",
+          "iteration": 2,
+          "elapsedMs": 434.7546999999977,
+          "jsHeapUsedBytes": 45664096,
+          "taskDurationMs": 252.8539999999999
+        },
+        {
+          "name": "course-open",
+          "iteration": 2,
+          "elapsedMs": 1860.8685999999943,
+          "jsHeapUsedBytes": 51370516,
+          "taskDurationMs": 1303.2330000000002
+        },
+        {
+          "name": "cards-open",
+          "iteration": 2,
+          "elapsedMs": 2424.5926000000036,
+          "jsHeapUsedBytes": 105157084,
+          "taskDurationMs": 2267.2670000000003
+        },
+        {
+          "name": "cards-search",
+          "iteration": 2,
+          "elapsedMs": 277.93159999999625,
+          "jsHeapUsedBytes": 109767084,
+          "taskDurationMs": 243.85699999999932
+        },
+        {
+          "name": "study-open",
+          "iteration": 2,
+          "elapsedMs": 2148.6468999999925,
+          "jsHeapUsedBytes": 79063516,
+          "taskDurationMs": 1483.9150000000006
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 538.9092999999993,
+          "jsHeapUsedBytes": 80317232,
+          "taskDurationMs": 97.87600000000029,
+          "inputToReadableMs": 432.71999999973923
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 2,
+          "elapsedMs": 726.6699999999983,
+          "jsHeapUsedBytes": 76996148,
+          "taskDurationMs": 177.7160000000002,
+          "inputToReadableMs": 646.7099999999627
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 3,
+          "elapsedMs": 1707.5908999999956,
+          "jsHeapUsedBytes": 143206588,
+          "taskDurationMs": null
+        },
+        {
+          "name": "global-search",
+          "iteration": 3,
+          "elapsedMs": 393.293399999995,
+          "jsHeapUsedBytes": 151058520,
+          "taskDurationMs": 272.52600000000007
+        },
+        {
+          "name": "course-open",
+          "iteration": 3,
+          "elapsedMs": 1762.6563000000024,
+          "jsHeapUsedBytes": 186365672,
+          "taskDurationMs": 947.6359999999997
+        },
+        {
+          "name": "cards-open",
+          "iteration": 3,
+          "elapsedMs": 1404.2195999999967,
+          "jsHeapUsedBytes": 238072296,
+          "taskDurationMs": 1227.6920000000002
+        },
+        {
+          "name": "cards-search",
+          "iteration": 3,
+          "elapsedMs": 207.35310000000754,
+          "jsHeapUsedBytes": 243804920,
+          "taskDurationMs": 169.65699999999995
+        },
+        {
+          "name": "study-open",
+          "iteration": 3,
+          "elapsedMs": 1982.1366000000125,
+          "jsHeapUsedBytes": 275541096,
+          "taskDurationMs": 1244.014
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 3,
+          "elapsedMs": 571.0537999999942,
+          "jsHeapUsedBytes": 276779120,
+          "taskDurationMs": 126.13800000000009,
+          "inputToReadableMs": 439.1899999999441
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 3,
+          "elapsedMs": 873.7716999999975,
+          "jsHeapUsedBytes": 278552320,
+          "taskDurationMs": 318.6050000000007,
+          "inputToReadableMs": 744.5850000004284
+        },
+        {
+          "name": "dashboard-load",
+          "iteration": 4,
+          "elapsedMs": 1765.2189000000071,
+          "jsHeapUsedBytes": 182448092,
+          "taskDurationMs": null
+        },
+        {
+          "name": "global-search",
+          "iteration": 4,
+          "elapsedMs": 604.591499999995,
+          "jsHeapUsedBytes": 192644140,
+          "taskDurationMs": 288.1069999999999
+        },
+        {
+          "name": "course-open",
+          "iteration": 4,
+          "elapsedMs": 1772.5513000000064,
+          "jsHeapUsedBytes": 226145852,
+          "taskDurationMs": 1021.3530000000002
+        },
+        {
+          "name": "cards-open",
+          "iteration": 4,
+          "elapsedMs": 1406.1861000000063,
+          "jsHeapUsedBytes": 258206452,
+          "taskDurationMs": 1375.0389999999998
+        },
+        {
+          "name": "cards-search",
+          "iteration": 4,
+          "elapsedMs": 270.25040000000445,
+          "jsHeapUsedBytes": 270172092,
+          "taskDurationMs": 245.5160000000003
+        },
+        {
+          "name": "study-open",
+          "iteration": 4,
+          "elapsedMs": 1904.720100000006,
+          "jsHeapUsedBytes": 310084956,
+          "taskDurationMs": 1193.1470000000006
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 4,
+          "elapsedMs": 556.0669000000053,
+          "jsHeapUsedBytes": 311323496,
+          "taskDurationMs": 109.45499999999964,
+          "inputToReadableMs": 443.45999999996275
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 4,
+          "elapsedMs": 740.1742000000086,
+          "jsHeapUsedBytes": 313831848,
+          "taskDurationMs": 185.28400000000022,
+          "inputToReadableMs": 653.75
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 593.6741000000038,
+          "jsHeapUsedBytes": 315138216,
+          "taskDurationMs": 161.41499999999985,
+          "inputToReadableMs": 425.0200000000186
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 0,
+          "elapsedMs": 726.9069000000018,
+          "jsHeapUsedBytes": 315192696,
+          "taskDurationMs": 214.31799999999956,
+          "inputToReadableMs": 640.1100000003353
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 526.3801999999996,
+          "jsHeapUsedBytes": 316467016,
+          "taskDurationMs": 119.88999999999983,
+          "inputToReadableMs": 428.84999999962747
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 1,
+          "elapsedMs": 732.3392000000022,
+          "jsHeapUsedBytes": 340686932,
+          "taskDurationMs": 193.27899999999954,
+          "inputToReadableMs": 641.7099999999627
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 549.5804999999964,
+          "jsHeapUsedBytes": 341932860,
+          "taskDurationMs": 153.45600000000024,
+          "inputToReadableMs": 453.26000000024214
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 2,
+          "elapsedMs": 743.3751000000047,
+          "jsHeapUsedBytes": 343330704,
+          "taskDurationMs": 224.24800000000022,
+          "inputToReadableMs": 641.4049999997951
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 3,
+          "elapsedMs": 595.4220000000059,
+          "jsHeapUsedBytes": 344605124,
+          "taskDurationMs": 161.71700000000033,
+          "inputToReadableMs": 439.1150000002235
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 3,
+          "elapsedMs": 725.947800000009,
+          "jsHeapUsedBytes": 346361020,
+          "taskDurationMs": 173.79999999999995,
+          "inputToReadableMs": 640.3950000000186
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 4,
+          "elapsedMs": 543.129700000005,
+          "jsHeapUsedBytes": 347558800,
+          "taskDurationMs": 153.7280000000001,
+          "inputToReadableMs": 441.1699999999255
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 4,
+          "elapsedMs": 746.6499999999942,
+          "jsHeapUsedBytes": 345922676,
+          "taskDurationMs": 227.60300000000024,
+          "inputToReadableMs": 650.6650000000373
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 5,
+          "elapsedMs": 538.7390000000014,
+          "jsHeapUsedBytes": 347108520,
+          "taskDurationMs": 138.65199999999956,
+          "inputToReadableMs": 435.054999999702
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 5,
+          "elapsedMs": 740.6998999999923,
+          "jsHeapUsedBytes": 338149528,
+          "taskDurationMs": 218.04700000000122,
+          "inputToReadableMs": 632.6549999997951
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 6,
+          "elapsedMs": 543.2548999999999,
+          "jsHeapUsedBytes": 339374184,
+          "taskDurationMs": 144.08699999999897,
+          "inputToReadableMs": 439.17499999981374
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 6,
+          "elapsedMs": 718.1889999999985,
+          "jsHeapUsedBytes": 330448720,
+          "taskDurationMs": 156.032999999999,
+          "inputToReadableMs": 620.7199999997392
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 7,
+          "elapsedMs": 634.9573000000091,
+          "jsHeapUsedBytes": 331676620,
+          "taskDurationMs": 91.9509999999999,
+          "inputToReadableMs": 438.8899999996647
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 7,
+          "elapsedMs": 704.6807000000117,
+          "jsHeapUsedBytes": 327528276,
+          "taskDurationMs": 125.4059999999999,
+          "inputToReadableMs": 622.195000000298
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 8,
+          "elapsedMs": 528.4646999999968,
+          "jsHeapUsedBytes": 328660444,
+          "taskDurationMs": 80.96300000000056,
+          "inputToReadableMs": 445.47500000009313
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 8,
+          "elapsedMs": 729.0936000000074,
+          "jsHeapUsedBytes": 352381076,
+          "taskDurationMs": 202.78199999999913,
+          "inputToReadableMs": 648.3950000000186
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 9,
+          "elapsedMs": 570.4627999999939,
+          "jsHeapUsedBytes": 353547592,
+          "taskDurationMs": 153.12099999999873,
+          "inputToReadableMs": 453.6049999999814
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 9,
+          "elapsedMs": 739.0581999999995,
+          "jsHeapUsedBytes": 351592644,
+          "taskDurationMs": 219.38300000000055,
+          "inputToReadableMs": 641.0400000000373
+        },
+        {
+          "name": "backup-size",
+          "bytes": 145882667
+        },
+        {
+          "name": "backup-export",
+          "iteration": 0,
+          "elapsedMs": 7129.8301000000065,
+          "jsHeapUsedBytes": 507941384,
+          "taskDurationMs": 4652.136
+        },
+        {
+          "name": "backup-preview",
+          "iteration": 0,
+          "elapsedMs": 696.6054000000004,
+          "jsHeapUsedBytes": 446392112,
+          "taskDurationMs": 521.3350000000005
+        },
+        {
+          "name": "backup-replace",
+          "iteration": 0,
+          "elapsedMs": 38428.93419999999,
+          "jsHeapUsedBytes": 360251252,
+          "taskDurationMs": 16119.672999999999
+        }
+      ],
+      "errors": [],
+      "memoryBefore": null,
+      "memorySamples": []
+    }
+  ]
+}
