@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Kept desktop AI connected when navigating between courses, Dashboard and Settings.
+  Only navigation that replaces the main document invalidates its AI listener; hash
+  routes and subframe loads no longer strand the runtime in its starting state.
+
 - Refined the session report with a clear completion tick, one heading, readable stat labels,
   responsive progress spacing and aligned actions. Progress changes use percentage points,
   and the progress bar announces the study objective.
