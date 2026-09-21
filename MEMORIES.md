@@ -15,8 +15,8 @@ workflow evidence; successful PR checks alone do not prove the merged release co
 
 ## Protect unrelated work
 
-The prompter keeps long-lived stashes: use a disposable worktree for baseline tests, never
-stash/pop. Start it at the intended revision. Component tests need their own physical
+Use a disposable worktree for baseline tests rather than stashing unrelated work.
+Start it at the intended revision. Component tests need their own physical
 `node_modules` (a hardlink copy is suitable); symlinks can create two Vitest instances.
 
 ## Windows dependency installation
