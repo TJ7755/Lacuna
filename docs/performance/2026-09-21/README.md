@@ -1,5 +1,8 @@
 # Windows laptop baseline: 21 September 2026
 
+Follow-up: [investigation and targeted Cards optimisation](optimisation.md) records
+the startup critical-path analysis, regression proof and comparison measurements.
+
 Follow-up: [populated desktop startup measurements and reproduction](startup/README.md)
 adds three fresh-process samples, twenty untraced reloads and local diagnostic traces.
 
