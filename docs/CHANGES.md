@@ -7,6 +7,9 @@
 - Moved lesson deletion confirmation below its row so its consequences and action labels
   remain readable at narrow widths, including long unbroken lesson names. Cancelling
   returns focus to the delete button.
+- Began the built-in AI Gateway work with a bounded hosted request and streaming-event
+  contract, plus a loopback-only AI SDK harness for testing model text and tool calls.
+  The hosted service and sidebar switch are not enabled.
 
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.

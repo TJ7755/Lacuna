@@ -3,6 +3,13 @@
 Draft implementation plan — 22 September 2026. Planning only; this document does not
 authorise deployment, spending or implementation beyond the separately agreed scope.
 
+Implementation started on `codex/ai-gateway-spike` on 24 September 2026. Phase 1 now has a
+versioned, bounded request/event contract and a loopback-only AI SDK 7 streaming harness.
+The harness requires a Gateway key, a model ID and a separate local bearer token. Its tests
+use an SDK mock model; no live model call or provider selection has yet been evidenced.
+The harness is not deployed under `/api/ai/`, and the sidebar does not use it. Backend
+admission controls and the remaining phase 1 live-model evidence are still outstanding.
+
 ## Outcome
 
 A learner enables built-in AI, opens Lacuna's existing sidebar and talks to an assistant
