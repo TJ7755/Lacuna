@@ -80,6 +80,7 @@ describe('useVirtualList', () => {
 
   it('does not render a viewport of rows for a lesson far below the viewport', async () => {
     render(<Fixture />);
+    await screen.findByTestId('item-5');
     const list = await screen.findByTestId('list');
     list.dataset.top = '5000';
     act(() => {
@@ -97,6 +98,7 @@ describe('useVirtualList', () => {
 
   it('uses the visible part of the viewport when a lesson starts part-way down it', async () => {
     render(<Fixture />);
+    await screen.findByTestId('item-5');
     const list = await screen.findByTestId('list');
     list.dataset.top = '250';
     act(() => {
