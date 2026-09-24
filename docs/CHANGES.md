@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Removed repeated lesson headings from the notes-first study screen, leaving the lesson
+  name in its header and the notes section heading above the content.
+- Moved lesson deletion confirmation below its row so its consequences and action labels
+  remain readable at narrow widths, including long unbroken lesson names. Cancelling
+  returns focus to the delete button.
+
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.
   Study motion and pause timings are unchanged. See the

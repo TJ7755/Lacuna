@@ -39,6 +39,13 @@ describe('ConfirmInline', () => {
     expect(screen.getByText('Not now')).toBeInTheDocument();
   });
 
+  it('lets a long confirmation message wrap within a narrow row', () => {
+    const message = `Delete ${'Immunity'.repeat(20)}?`;
+    render(<ConfirmInline message={message} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getByText(message)).toHaveStyle({ overflowWrap: 'anywhere' });
+  });
+
   it('can announce a replacement prompt and move focus into it', () => {
     render(
       <ConfirmInline
