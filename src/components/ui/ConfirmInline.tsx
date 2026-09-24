@@ -62,7 +62,8 @@ export function ConfirmInline({
       <span
         role={announce ? 'status' : undefined}
         aria-live={announce ? 'polite' : undefined}
-        className="mr-1 text-xs text-ink-soft"
+        className="mr-1 min-w-0 text-xs text-ink-soft"
+        style={{ overflowWrap: 'anywhere' }}
       >
         {message}
       </span>

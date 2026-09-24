@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
+import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
 import { useLessons } from '../../state/useCourseData';
@@ -25,6 +25,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteButtons = useRef(new Map<string, HTMLButtonElement>());
 
   function startEdit(id: string, currentName: string) {
     setEditingId(id);
@@ -66,57 +67,51 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           key={lesson.id}
           layout={multiplier > 0 ? 'position' : undefined}
           transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+          className="rounded-lg border border-line bg-surface"
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex flex-col">
-              <button
-                type="button"
-                onClick={() => void move(index, -1)}
-                disabled={index === 0}
-                aria-label={`Move ${lesson.name} up`}
-                className="text-ink-faint hover:text-ink disabled:opacity-30"
-              >
-                <ChevronDownIcon width={14} height={14} className="rotate-180" />
-              </button>
-              <button
-                type="button"
-                onClick={() => void move(index, 1)}
-                disabled={index === lessons.length - 1}
-                aria-label={`Move ${lesson.name} down`}
-                className="text-ink-faint hover:text-ink disabled:opacity-30"
-              >
-                <ChevronDownIcon width={14} height={14} />
-              </button>
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => void move(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`Move ${lesson.name} up`}
+                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                >
+                  <ChevronDownIcon width={14} height={14} className="rotate-180" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void move(index, 1)}
+                  disabled={index === lessons.length - 1}
+                  aria-label={`Move ${lesson.name} down`}
+                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                >
+                  <ChevronDownIcon width={14} height={14} />
+                </button>
+              </div>
+              {editingId === lesson.id ? (
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={() => void commitRename()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void commitRename();
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                  className="min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                />
+              ) : (
+                <span className="truncate text-sm text-ink">
+                  {lesson.name}
+                  {lesson.isExtension && (
+                    <span className="ml-2 text-xs text-ink-faint">(extension)</span>
+                  )}
+                </span>
+              )}
             </div>
-            {editingId === lesson.id ? (
-              <input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => void commitRename()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void commitRename();
-                  if (e.key === 'Escape') setEditingId(null);
-                }}
-                className="min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
-              />
-            ) : (
-              <span className="truncate text-sm text-ink">
-                {lesson.name}
-                {lesson.isExtension && (
-                  <span className="ml-2 text-xs text-ink-faint">(extension)</span>
-                )}
-              </span>
-            )}
-          </div>
-          <ConfirmInlineSwap
-            active={confirmDeleteId === lesson.id}
-            message="Delete? Notes will be removed and cards unassigned."
-            onConfirm={() => void remove(lesson.id)}
-            onCancel={() => setConfirmDeleteId(null)}
-            swapClassName="shrink-0"
-          >
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -127,6 +122,10 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                 <EditIcon width={16} height={16} />
               </Button>
               <Button
+                ref={(button) => {
+                  if (button) deleteButtons.current.set(lesson.id, button);
+                  else deleteButtons.current.delete(lesson.id);
+                }}
                 variant="ghost"
                 size="sm"
                 onClick={() => setConfirmDeleteId(lesson.id)}
@@ -135,7 +134,26 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                 <TrashIcon width={16} height={16} />
               </Button>
             </div>
-          </ConfirmInlineSwap>
+          </div>
+          {confirmDeleteId === lesson.id && (
+            <div
+              data-lesson-delete-confirmation
+              className="border-t border-line bg-paper/50 px-4 py-3"
+            >
+              <ConfirmInline
+                message={`Delete ${lesson.name}? Notes will be removed and cards unassigned.`}
+                confirmLabel="Delete lesson"
+                onConfirm={() => void remove(lesson.id)}
+                onCancel={() => {
+                  setConfirmDeleteId(null);
+                  deleteButtons.current.get(lesson.id)?.focus();
+                }}
+                announce
+                focusOnMount="cancel"
+                className="w-full flex-wrap gap-x-3 gap-y-2"
+              />
+            </div>
+          )}
         </motion.div>
       ))}
       <AddLessonControl courseId={courseId} lessonCount={lessons?.length ?? 0} />

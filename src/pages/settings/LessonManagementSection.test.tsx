@@ -77,17 +77,31 @@ describe('LessonManagementSection', () => {
     render(<LessonManagementSection courseId="course-1" />);
     fireEvent.click(screen.getByLabelText('Delete Lesson one'));
     expect(deleteLesson).not.toHaveBeenCalled();
+    const prompt = screen.getByRole('status');
+    expect(prompt).toHaveTextContent('Delete Lesson one?');
+    expect(prompt.closest('[data-lesson-delete-confirmation]')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete lesson' })).toBeInTheDocument();
     await act(async () => {
-      fireEvent.click(screen.getByText('Yes'));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete lesson' }));
       await vi.waitFor(() => {
         expect(deleteLesson).toHaveBeenCalledWith('lesson-1');
       });
       await Promise.resolve(deleteLesson.mock.results[0]?.value);
     });
     await vi.waitFor(() => {
-      expect(screen.queryByText('Delete? Notes will be removed and cards unassigned.')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete lesson' })).not.toBeInTheDocument();
       expect(screen.getByLabelText('Delete Lesson one')).toBeInTheDocument();
     });
+  });
+
+  it('returns focus to the lesson delete button when deletion is cancelled', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByLabelText('Delete Lesson one'));
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByLabelText('Delete Lesson one')).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Delete lesson' })).not.toBeInTheDocument();
   });
 
   it('renames a lesson on blur', async () => {
