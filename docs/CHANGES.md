@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Corrected Cards virtualisation for lesson lists below the viewport, retaining only
+  boundary overscan rows instead of rendering a full viewport in every lesson.
+  Study motion and pause timings are unchanged. See the
+  [Windows investigation](performance/2026-09-21/optimisation.md).
+
+- Extended the existing performance harness with optional per-operation traces,
+  frame/input and transaction diagnostics; ignored stale frame timestamps after a
+  diagnostic reset so frame intervals cannot become negative.
+
+- Added optional desktop startup profiling and recorded repeated launches and dashboard
+  reloads against the populated Windows profile, separating trace overhead from timings.
+
+- Recorded a managed Windows laptop performance baseline, including installed desktop
+  interaction timings, populated-app process samples and the existing heavy-data workload.
+  See [measurement methods and limits](performance/2026-09-21/README.md).
+
 - Kept desktop AI connected when navigating between courses, Dashboard and Settings.
   Only navigation that replaces the main document invalidates its AI listener; hash
   routes and subframe loads no longer strand the runtime in its starting state.

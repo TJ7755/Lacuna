@@ -1,0 +1,86 @@
+{
+  "build": "Local unsigned directory package containing the virtual-list correction; not installed or published",
+  "passed": 1,
+  "failed": 0,
+  "samples": [
+    {
+      "scenario": "search",
+      "executablePath": "release/win-unpacked/Lacuna.exe",
+      "appVersion": "0.2.10",
+      "packaged": true,
+      "rendererProtocol": "app:",
+      "rendererUrl": "app://./index.html#/welcome",
+      "viteResourceCount": 0,
+      "reducedMotion": false,
+      "motionSpeed": "normal",
+      "inputToFeedbackMs": 77.54999999981374,
+      "inputToUsableMs": 85.4449999993667,
+      "inputToSettledMs": 275.3300000000745,
+      "finiteAnimationDurationsMs": [
+        120,
+        160
+      ],
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestLongTaskMs": 0,
+      "errors": []
+    },
+    {
+      "scenario": "settings",
+      "executablePath": "release/win-unpacked/Lacuna.exe",
+      "appVersion": "0.2.10",
+      "packaged": true,
+      "rendererProtocol": "app:",
+      "rendererUrl": "app://./index.html#/welcome",
+      "viteResourceCount": 0,
+      "reducedMotion": false,
+      "motionSpeed": "normal",
+      "inputToFeedbackMs": 15.40500000026077,
+      "inputToUsableMs": 244.01500000059605,
+      "inputToSettledMs": 557.9850000003353,
+      "finiteAnimationDurationsMs": [
+        140,
+        150,
+        150,
+        150,
+        150,
+        150,
+        150,
+        160,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestLongTaskMs": 0,
+      "errors": []
+    },
+    {
+      "scenario": "course",
+      "executablePath": "release/win-unpacked/Lacuna.exe",
+      "appVersion": "0.2.10",
+      "packaged": true,
+      "rendererProtocol": "app:",
+      "rendererUrl": "app://./index.html#/welcome",
+      "viteResourceCount": 0,
+      "reducedMotion": false,
+      "motionSpeed": "normal",
+      "inputToFeedbackMs": 10.315000000409782,
+      "inputToUsableMs": 234.5449999999255,
+      "inputToSettledMs": 367.7949999999255,
+      "finiteAnimationDurationsMs": [
+        140
+      ],
+      "longTaskCount": 0,
+      "longTaskTotalMs": 0,
+      "longestLongTaskMs": 0,
+      "errors": []
+    }
+  ]
+}

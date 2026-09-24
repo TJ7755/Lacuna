@@ -1,0 +1,53 @@
+{
+  "launches": [
+    {
+      "completed": true,
+      "connectionReadyMs": 5139.4228,
+      "launchToDashboardObservedMs": 5208.6201,
+      "firstContentfulPaintMs": 2736.3900000001304,
+      "counts": {
+        "courses": 13,
+        "lessons": 67,
+        "cards": 4883,
+        "reviewHistory": 439
+      },
+      "errors": []
+    },
+    {
+      "completed": true,
+      "connectionReadyMs": 4769.0145,
+      "launchToDashboardObservedMs": 4895.3183,
+      "firstContentfulPaintMs": 2548.630000000354,
+      "counts": {
+        "courses": 13,
+        "lessons": 67,
+        "cards": 4883,
+        "reviewHistory": 439
+      },
+      "errors": []
+    },
+    {
+      "completed": true,
+      "connectionReadyMs": 5071.1705,
+      "launchToDashboardObservedMs": 5221.5992,
+      "firstContentfulPaintMs": 2949.6400000001304,
+      "counts": {
+        "courses": 13,
+        "lessons": 67,
+        "cards": 4883,
+        "reviewHistory": 439
+      },
+      "errors": []
+    }
+  ],
+  "untracedReloads": {
+    "n": 20,
+    "medianMs": 422.3814999999995,
+    "minMs": 303.8766999999998,
+    "maxMs": 473.5601999999999,
+    "longTaskCount": 17,
+    "maxLongTaskMs": 80,
+    "maxFrameGapMs": 133.285,
+    "availableMemoryMinBytes": 1918414848
+  }
+}

@@ -77,7 +77,9 @@ export function useVirtualList({
         const rootRect = root instanceof Window
           ? { top: 0, bottom: window.innerHeight, height: window.innerHeight }
           : root.getBoundingClientRect();
-        const offset = Math.max(0, rootRect.top - rect.top);
+        // Keep negative offsets: later lesson lists can sit below the viewport.
+        // Clamping to zero gives every off-screen list a full viewport of rows.
+        const offset = rootRect.top - rect.top;
         setScrollOffset(offset);
         setContainerHeight(rootRect.height);
       });
@@ -188,7 +190,7 @@ export function useVirtualList({
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
       if (starts[mid] > endOffset) {
-        endIndex = mid;
+        endIndex = mid - 1;
         hi = mid - 1;
       } else {
         lo = mid + 1;

@@ -78,6 +78,37 @@ describe('useVirtualList', () => {
     expect(screen.queryByTestId('item-0')).not.toBeInTheDocument();
   });
 
+  it('does not render a viewport of rows for a lesson far below the viewport', async () => {
+    render(<Fixture />);
+    await screen.findByTestId('item-5');
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '5000';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(3));
+    expect(screen.queryByTestId('item-3')).not.toBeInTheDocument();
+    list.dataset.top = '100';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(screen.getByTestId('item-4')).toBeInTheDocument());
+  });
+
+  it('uses the visible part of the viewport when a lesson starts part-way down it', async () => {
+    render(<Fixture />);
+    await screen.findByTestId('item-5');
+    const list = await screen.findByTestId('list');
+    list.dataset.top = '250';
+    act(() => {
+      screen.getByTestId('scroll-root').dispatchEvent(new Event('scroll'));
+    });
+
+    await waitFor(() => expect(screen.queryAllByTestId(/^item-/)).toHaveLength(4));
+    expect(screen.queryByTestId('item-4')).not.toBeInTheDocument();
+  });
+
   it('recalculates layout when ResizeObserver reports a changed row height', async () => {
     render(<Fixture />);
     const list = await screen.findByTestId('list');

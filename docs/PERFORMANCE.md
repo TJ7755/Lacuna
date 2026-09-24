@@ -1,5 +1,9 @@
 # Lacuna performance audit
 
+The [21 September Windows investigation](performance/2026-09-21/optimisation.md)
+records populated desktop startup analysis and a measured correction to Cards
+virtualisation, with normal study animation timings preserved.
+
 The [6 September heavy-data report](performance/2026-09-06/README.md) covers 10,000 Cards,
 200,000 reviews, Mac CPU throttling and disposable 4/8 GiB Linux VMs.
 

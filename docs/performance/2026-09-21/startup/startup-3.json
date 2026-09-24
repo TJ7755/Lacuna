@@ -1,0 +1,5107 @@
+{
+  "completed": true,
+  "recordedAt": "2026-09-21T15:00:41.906Z",
+  "cpu": "Intel(R) Core(TM) Ultra 7 266V",
+  "logicalCpus": 8,
+  "totalMemoryBytes": 16881078272,
+  "windowsRelease": "10.0.26100",
+  "initialAvailableMemoryBytes": 2712096768,
+  "reloads": 6,
+  "samples": [
+    {
+      "iteration": 0,
+      "elapsedMs": 447.5,
+      "traced": false,
+      "document": {
+        "navigation": [
+          {
+            "name": "app://./index.html",
+            "entryType": "navigation",
+            "startTime": 0,
+            "duration": 130.80499999970198,
+            "navigationId": 2807,
+            "initiatorType": "navigation",
+            "deliveryType": "",
+            "nextHopProtocol": "",
+            "renderBlockingStatus": "non-blocking",
+            "contentType": "text/html",
+            "contentEncoding": "",
+            "workerStart": 0,
+            "workerRouterEvaluationStart": 0,
+            "workerCacheLookupStart": 0,
+            "workerMatchedSourceType": "",
+            "workerFinalSourceType": "",
+            "redirectStart": 0,
+            "redirectEnd": 0,
+            "fetchStart": 1.790000000037253,
+            "domainLookupStart": 1.790000000037253,
+            "domainLookupEnd": 1.790000000037253,
+            "connectStart": 1.790000000037253,
+            "secureConnectionStart": 1.790000000037253,
+            "connectEnd": 1.790000000037253,
+            "requestStart": 1.790000000037253,
+            "responseStart": 1.790000000037253,
+            "firstInterimResponseStart": 0,
+            "finalResponseHeadersStart": 0,
+            "responseEnd": 4.774999999906868,
+            "transferSize": 300,
+            "encodedBodySize": 0,
+            "decodedBodySize": 4305,
+            "responseStatus": 200,
+            "serverTiming": [],
+            "unloadEventStart": 43.8249999997206,
+            "unloadEventEnd": 43.8249999997206,
+            "domInteractive": 66.29000000003725,
+            "domContentLoadedEventStart": 129.36499999975786,
+            "domContentLoadedEventEnd": 129.4499999997206,
+            "domComplete": 130.71999999973923,
+            "loadEventStart": 130.72999999998137,
+            "loadEventEnd": 130.80499999970198,
+            "type": "reload",
+            "redirectCount": 0,
+            "activationStart": 0,
+            "criticalCHRestart": 0,
+            "notRestoredReasons": null,
+            "confidence": {
+              "randomizedTriggerRate": 0.4994798,
+              "value": "high"
+            }
+          }
+        ],
+        "paints": [
+          {
+            "name": "first-paint",
+            "entryType": "paint",
+            "startTime": 156.875,
+            "duration": 0,
+            "navigationId": 2807,
+            "paintTime": 131.8699999996461,
+            "presentationTime": 156.875
+          },
+          {
+            "name": "first-contentful-paint",
+            "entryType": "paint",
+            "startTime": 190.20999999996275,
+            "duration": 0,
+            "navigationId": 2807,
+            "paintTime": 161.70499999960884,
+            "presentationTime": 190.20999999996275
+          }
+        ],
+        "observedDashboardReadyMs": 433.59499999973923,
+        "resources": [
+          {
+            "name": "app://./assets/app-DwAKVyVu.js",
+            "startTime": 61.8249999997206,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/rolldown-runtime-hePW80VL.js",
+            "startTime": 62.13499999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-Cvdyeg_0.js",
+            "startTime": 62.389999999664724,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-dom-B-VxWsjA.js",
+            "startTime": 62.544999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/jsx-runtime-NZYk81nU.js",
+            "startTime": 62.639999999664724,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-CLwSN1uG.js",
+            "startTime": 62.764999999664724,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/AnimatePresence-7bAustTT.js",
+            "startTime": 62.88499999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/preload-helper-uBIymjUX.js",
+            "startTime": 63.00499999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cn-hZG6twJP.js",
+            "startTime": 63.14500000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/icons-dCEWnKEz.js",
+            "startTime": 63.359999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/motionSpeed-CL8cBDqn.js",
+            "startTime": 63.46999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/id-Dl3qnUvW.js",
+            "startTime": 63.544999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistory-DP78KiZO.js",
+            "startTime": 63.6199999996461,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/params-Ev6EXQmu.js",
+            "startTime": 63.78499999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/datetime-DSxt28sH.js",
+            "startTime": 64.03499999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/schema-bU5ASnqi.js",
+            "startTime": 64.47499999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistoryRead-tHOyCbK-.js",
+            "startTime": 64.60999999986961,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/concepts-Xx9_tq4f.js",
+            "startTime": 64.77499999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fsrs-DFzh-Bp6.js",
+            "startTime": 64.89500000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/leech-DGkUZQWA.js",
+            "startTime": 65,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/assessmentCoverage-Do7N-Fnx.js",
+            "startTime": 65.1699999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mutationStamp-CMHQrNjj.js",
+            "startTime": 65.2949999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/progress-BUh2PXRU.js",
+            "startTime": 65.50499999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dbErrors-Bm8_oitN.js",
+            "startTime": 65.65999999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cardRepository-CVhX8WwA.js",
+            "startTime": 65.79999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dexie-react-hooks-Kn82kcUr.js",
+            "startTime": 65.89999999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/useFocusTrap-B0tAxwxk.js",
+            "startTime": 66,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/index-BACpj1rV.css",
+            "startTime": 66.20999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "link"
+          },
+          {
+            "name": "app://./fonts/InstrumentSans-Variable.ttf",
+            "startTime": 130,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "css"
+          },
+          {
+            "name": "app://./assets/tombstonePrune-CKRPL35y.js",
+            "startTime": 166.21999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backups-DD5N6sUx.js",
+            "startTime": 169.61499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/portability-C_NFnPgA.js",
+            "startTime": 170.29000000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRecord-SuwWT0TJ.js",
+            "startTime": 170.625,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/revisionPlan-awgIkKNQ.js",
+            "startTime": 170.85499999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/payloadValidation-C_hQjEd3.js",
+            "startTime": 171.09999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/numericAnswerSpec-DtxxWqX6.js",
+            "startTime": 171.23999999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/verify-prx2k4io.js",
+            "startTime": 171.70499999960884,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/domain-CLnfZwpP.js",
+            "startTime": 171.86499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceGeneration-BZLl3iV1.js",
+            "startTime": 171.96999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/scheduler-B2_qnmjJ.js",
+            "startTime": 172.08499999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backupFolder-BGMvPiys.js",
+            "startTime": 172.18999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/McpBridgeController-SmYimAZJ.js",
+            "startTime": 175.81000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/grants-D8tcxPue.js",
+            "startTime": 176.19499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/executor-SVcHTCDF.js",
+            "startTime": 176.57999999960884,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/share-BFrBjd3R.js",
+            "startTime": 176.82999999960884,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequencePresets-DLIy_YE2.js",
+            "startTime": 177.47999999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/generators-C401oRAp.js",
+            "startTime": 177.60499999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fixtureRunner-D3l1ehLz.js",
+            "startTime": 177.71999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-FG_SylJO.js",
+            "startTime": 177.93500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceRepository-B6d7EgI1.js",
+            "startTime": 178.08499999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/practiceNodeRepository-CjmtkWRC.js",
+            "startTime": 178.19499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRepository-DnJtykZQ.js",
+            "startTime": 178.31000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionRepository-C4J9JRO4.js",
+            "startTime": 178.44499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionGeneration-CQSQuZhu.js",
+            "startTime": 178.55499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/read-BXXUqwl2.js",
+            "startTime": 178.6999999997206,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/headerStats-B6B5Zwzs.js",
+            "startTime": 178.80499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/path-10fYVnoF.js",
+            "startTime": 178.91500000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/diffImport-CH40msqB.js",
+            "startTime": 179.02000000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mergeImport-wWjZlF_7.js",
+            "startTime": 179.18500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-CtNL4MIV.js",
+            "startTime": 179.30499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/ConfirmInline-P1Wdg83D.js",
+            "startTime": 179.43999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/EnabledAiRuntime-Bx0Y2QLw.js",
+            "startTime": 180.13999999966472,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/relay-Co1slpFp.js",
+            "startTime": 180.44499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairing-CSl8rOBu.js",
+            "startTime": 180.714999999851,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/manualMerge-D5DCrQct.js",
+            "startTime": 180.8699999996461,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/credentials-Bh1dGDmx.js",
+            "startTime": 181.02000000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairingConfig-CSLmR5D8.js",
+            "startTime": 181.125,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/runtime-DBOHmPzJ.js",
+            "startTime": 181.2949999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./icon.svg",
+            "startTime": 185.39999999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "img"
+          },
+          {
+            "name": "app://./assets/triggers-4y1GBPHD.js",
+            "startTime": 202.88999999966472,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          }
+        ],
+        "visibility": "visible",
+        "timeOrigin": 1790002847192.645,
+        "viewport": {
+          "width": 961,
+          "height": 602,
+          "dpr": 2
+        },
+        "courseButtons": 9
+      },
+      "lag": {
+        "start": 57.454999999608845,
+        "frames": [
+          -0.6599999996088428,
+          66.7,
+          16.639999999999986,
+          16.74000000000001,
+          16.60499999999999,
+          16.730000000000018,
+          16.590000000000003,
+          16.659999999999997,
+          16.694999999999993,
+          16.744999999999976,
+          16.54000000000002,
+          16.69999999999999,
+          25.13499999999999,
+          16.575000000000045,
+          16.745000000000005,
+          66.54999999999995,
+          16.689999999999998,
+          16.67500000000001
+        ],
+        "longTasks": [
+          {
+            "start": 12.005000000353903,
+            "duration": 61
+          },
+          {
+            "start": 294.7350000003353,
+            "duration": 52
+          }
+        ],
+        "events": [],
+        "mountedCardRows": 0,
+        "domElements": 1216,
+        "visibility": "visible",
+        "motionSpeed": "normal",
+        "reducedMotion": false
+      },
+      "metrics": [
+        {
+          "name": "Timestamp",
+          "value": 3072.213562
+        },
+        {
+          "name": "AudioHandlers",
+          "value": 0
+        },
+        {
+          "name": "AudioWorkletProcessors",
+          "value": 0
+        },
+        {
+          "name": "Documents",
+          "value": 4
+        },
+        {
+          "name": "Frames",
+          "value": 5
+        },
+        {
+          "name": "JSEventListeners",
+          "value": 3282
+        },
+        {
+          "name": "LayoutObjects",
+          "value": 3075
+        },
+        {
+          "name": "MediaKeySessions",
+          "value": 0
+        },
+        {
+          "name": "MediaKeys",
+          "value": 0
+        },
+        {
+          "name": "Nodes",
+          "value": 3324
+        },
+        {
+          "name": "Resources",
+          "value": 73
+        },
+        {
+          "name": "ContextLifecycleStateObservers",
+          "value": 11
+        },
+        {
+          "name": "V8PerContextDatas",
+          "value": 6
+        },
+        {
+          "name": "WorkerGlobalScopes",
+          "value": 0
+        },
+        {
+          "name": "UACSSResources",
+          "value": 0
+        },
+        {
+          "name": "RTCPeerConnections",
+          "value": 0
+        },
+        {
+          "name": "ResourceFetchers",
+          "value": 4
+        },
+        {
+          "name": "AdSubframes",
+          "value": 0
+        },
+        {
+          "name": "DetachedScriptStates",
+          "value": 3
+        },
+        {
+          "name": "ArrayBufferContents",
+          "value": 4
+        },
+        {
+          "name": "LayoutCount",
+          "value": 6
+        },
+        {
+          "name": "RecalcStyleCount",
+          "value": 18
+        },
+        {
+          "name": "LayoutDuration",
+          "value": 0.007809
+        },
+        {
+          "name": "RecalcStyleDuration",
+          "value": 0.025686
+        },
+        {
+          "name": "DevToolsCommandDuration",
+          "value": 0.01107
+        },
+        {
+          "name": "ScriptDuration",
+          "value": 0.202496
+        },
+        {
+          "name": "V8CompileDuration",
+          "value": 0.000063
+        },
+        {
+          "name": "TaskDuration",
+          "value": 0.389959
+        },
+        {
+          "name": "TaskOtherDuration",
+          "value": 0.142835
+        },
+        {
+          "name": "ThreadTime",
+          "value": 0.361124
+        },
+        {
+          "name": "ProcessTime",
+          "value": 1.591674
+        },
+        {
+          "name": "JSHeapUsedSize",
+          "value": 42836284
+        },
+        {
+          "name": "JSHeapTotalSize",
+          "value": 62218240
+        },
+        {
+          "name": "FirstMeaningfulPaint",
+          "value": 0
+        },
+        {
+          "name": "DomContentLoaded",
+          "value": 3071.881667
+        },
+        {
+          "name": "NavigationStart",
+          "value": 3071.752303
+        }
+      ],
+      "availableMemoryBytes": 2216554496
+    },
+    {
+      "iteration": 1,
+      "elapsedMs": 354.41520000000037,
+      "traced": false,
+      "document": {
+        "navigation": [
+          {
+            "name": "app://./index.html",
+            "entryType": "navigation",
+            "startTime": 0,
+            "duration": 54.02000000001863,
+            "navigationId": 9998,
+            "initiatorType": "navigation",
+            "deliveryType": "",
+            "nextHopProtocol": "",
+            "renderBlockingStatus": "non-blocking",
+            "contentType": "text/html",
+            "contentEncoding": "",
+            "workerStart": 0,
+            "workerRouterEvaluationStart": 0,
+            "workerCacheLookupStart": 0,
+            "workerMatchedSourceType": "",
+            "workerFinalSourceType": "",
+            "redirectStart": 0,
+            "redirectEnd": 0,
+            "fetchStart": 0.2900000000372529,
+            "domainLookupStart": 0.2900000000372529,
+            "domainLookupEnd": 0.2900000000372529,
+            "connectStart": 0.2900000000372529,
+            "secureConnectionStart": 0.2900000000372529,
+            "connectEnd": 0.2900000000372529,
+            "requestStart": 0.2900000000372529,
+            "responseStart": 0.2900000000372529,
+            "firstInterimResponseStart": 0,
+            "finalResponseHeadersStart": 0,
+            "responseEnd": 3.5,
+            "transferSize": 300,
+            "encodedBodySize": 0,
+            "decodedBodySize": 4305,
+            "responseStatus": 200,
+            "serverTiming": [],
+            "unloadEventStart": 5.949999999720603,
+            "unloadEventEnd": 5.949999999720603,
+            "domInteractive": 17.65999999968335,
+            "domContentLoadedEventStart": 53.22499999962747,
+            "domContentLoadedEventEnd": 53.27499999990687,
+            "domComplete": 53.97499999962747,
+            "loadEventStart": 53.97999999998137,
+            "loadEventEnd": 54.02000000001863,
+            "type": "reload",
+            "redirectCount": 0,
+            "activationStart": 0,
+            "criticalCHRestart": 0,
+            "notRestoredReasons": null,
+            "confidence": {
+              "randomizedTriggerRate": 0.4994798,
+              "value": "low"
+            }
+          }
+        ],
+        "paints": [
+          {
+            "name": "first-paint",
+            "entryType": "paint",
+            "startTime": 73.6199999996461,
+            "duration": 0,
+            "navigationId": 9998,
+            "paintTime": 54.34499999973923,
+            "presentationTime": 73.6199999996461
+          },
+          {
+            "name": "first-contentful-paint",
+            "entryType": "paint",
+            "startTime": 106.96499999985099,
+            "duration": 0,
+            "navigationId": 9998,
+            "paintTime": 76.55499999970198,
+            "presentationTime": 106.96499999985099
+          }
+        ],
+        "observedDashboardReadyMs": 341.3249999997206,
+        "resources": [
+          {
+            "name": "app://./assets/app-DwAKVyVu.js",
+            "startTime": 15.75,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/rolldown-runtime-hePW80VL.js",
+            "startTime": 15.869999999646097,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-Cvdyeg_0.js",
+            "startTime": 15.929999999701977,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-dom-B-VxWsjA.js",
+            "startTime": 16.024999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/jsx-runtime-NZYk81nU.js",
+            "startTime": 16.184999999590218,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-CLwSN1uG.js",
+            "startTime": 16.294999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/AnimatePresence-7bAustTT.js",
+            "startTime": 16.364999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/preload-helper-uBIymjUX.js",
+            "startTime": 16.434999999590218,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cn-hZG6twJP.js",
+            "startTime": 16.47499999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/icons-dCEWnKEz.js",
+            "startTime": 16.514999999664724,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/motionSpeed-CL8cBDqn.js",
+            "startTime": 16.559999999590218,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/id-Dl3qnUvW.js",
+            "startTime": 16.59999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistory-DP78KiZO.js",
+            "startTime": 16.65999999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/params-Ev6EXQmu.js",
+            "startTime": 16.694999999832362,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/datetime-DSxt28sH.js",
+            "startTime": 16.884999999776483,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/schema-bU5ASnqi.js",
+            "startTime": 16.96499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistoryRead-tHOyCbK-.js",
+            "startTime": 17.009999999776483,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/concepts-Xx9_tq4f.js",
+            "startTime": 17.059999999590218,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fsrs-DFzh-Bp6.js",
+            "startTime": 17.104999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/leech-DGkUZQWA.js",
+            "startTime": 17.134999999776483,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/assessmentCoverage-Do7N-Fnx.js",
+            "startTime": 17.194999999832362,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mutationStamp-CMHQrNjj.js",
+            "startTime": 17.239999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/progress-BUh2PXRU.js",
+            "startTime": 17.309999999590218,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dbErrors-Bm8_oitN.js",
+            "startTime": 17.34999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cardRepository-CVhX8WwA.js",
+            "startTime": 17.419999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dexie-react-hooks-Kn82kcUr.js",
+            "startTime": 17.46999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/useFocusTrap-B0tAxwxk.js",
+            "startTime": 17.520000000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/index-BACpj1rV.css",
+            "startTime": 17.619999999646097,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "link"
+          },
+          {
+            "name": "app://./fonts/InstrumentSans-Variable.ttf",
+            "startTime": 53.50999999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "css"
+          },
+          {
+            "name": "app://./assets/tombstonePrune-CKRPL35y.js",
+            "startTime": 75.73999999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backups-DD5N6sUx.js",
+            "startTime": 77.28499999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/portability-C_NFnPgA.js",
+            "startTime": 77.48999999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRecord-SuwWT0TJ.js",
+            "startTime": 77.55499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/revisionPlan-awgIkKNQ.js",
+            "startTime": 77.63499999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/payloadValidation-C_hQjEd3.js",
+            "startTime": 77.71999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/numericAnswerSpec-DtxxWqX6.js",
+            "startTime": 77.79000000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/verify-prx2k4io.js",
+            "startTime": 77.84999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/domain-CLnfZwpP.js",
+            "startTime": 77.90999999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceGeneration-BZLl3iV1.js",
+            "startTime": 77.98999999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/scheduler-B2_qnmjJ.js",
+            "startTime": 78.0749999997206,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backupFolder-BGMvPiys.js",
+            "startTime": 78.13499999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/McpBridgeController-SmYimAZJ.js",
+            "startTime": 79.47499999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/grants-D8tcxPue.js",
+            "startTime": 79.66500000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/executor-SVcHTCDF.js",
+            "startTime": 79.78499999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/share-BFrBjd3R.js",
+            "startTime": 79.86499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequencePresets-DLIy_YE2.js",
+            "startTime": 79.93499999959022,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/generators-C401oRAp.js",
+            "startTime": 79.9949999996461,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fixtureRunner-D3l1ehLz.js",
+            "startTime": 80.04999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-FG_SylJO.js",
+            "startTime": 80.14999999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceRepository-B6d7EgI1.js",
+            "startTime": 80.23999999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/practiceNodeRepository-CjmtkWRC.js",
+            "startTime": 80.30499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRepository-DnJtykZQ.js",
+            "startTime": 80.3699999996461,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionRepository-C4J9JRO4.js",
+            "startTime": 80.45499999960884,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionGeneration-CQSQuZhu.js",
+            "startTime": 80.51499999966472,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/read-BXXUqwl2.js",
+            "startTime": 80.59999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/headerStats-B6B5Zwzs.js",
+            "startTime": 80.65999999968335,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/path-10fYVnoF.js",
+            "startTime": 80.72999999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/diffImport-CH40msqB.js",
+            "startTime": 80.7949999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mergeImport-wWjZlF_7.js",
+            "startTime": 80.88499999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-CtNL4MIV.js",
+            "startTime": 80.97499999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/ConfirmInline-P1Wdg83D.js",
+            "startTime": 81.05999999959022,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/EnabledAiRuntime-Bx0Y2QLw.js",
+            "startTime": 81.4199999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/relay-Co1slpFp.js",
+            "startTime": 81.55499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairing-CSl8rOBu.js",
+            "startTime": 81.70999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/manualMerge-D5DCrQct.js",
+            "startTime": 81.79999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/credentials-Bh1dGDmx.js",
+            "startTime": 81.89500000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairingConfig-CSLmR5D8.js",
+            "startTime": 81.95499999960884,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/runtime-DBOHmPzJ.js",
+            "startTime": 82.06499999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./icon.svg",
+            "startTime": 84,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "img"
+          },
+          {
+            "name": "app://./assets/triggers-4y1GBPHD.js",
+            "startTime": 89.22499999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          }
+        ],
+        "visibility": "visible",
+        "timeOrigin": 1790002847667.54,
+        "viewport": {
+          "width": 961,
+          "height": 602,
+          "dpr": 2
+        },
+        "courseButtons": 9
+      },
+      "lag": {
+        "start": 14.040000000037253,
+        "frames": [
+          -7.040000000037253,
+          33.335,
+          16.604999999999997,
+          16.680000000000007,
+          16.655,
+          16.689999999999998,
+          16.700000000000003,
+          16.635000000000005,
+          16.734999999999985,
+          16.705000000000013,
+          16.629999999999995,
+          16.664999999999992,
+          16.655,
+          16.57499999999999,
+          16.670000000000016,
+          16.67500000000001,
+          50.089999999999975,
+          16.754999999999995
+        ],
+        "longTasks": [],
+        "events": [],
+        "mountedCardRows": 0,
+        "domElements": 1216,
+        "visibility": "visible",
+        "motionSpeed": "normal",
+        "reducedMotion": false
+      },
+      "metrics": [
+        {
+          "name": "Timestamp",
+          "value": 3072.586737
+        },
+        {
+          "name": "AudioHandlers",
+          "value": 0
+        },
+        {
+          "name": "AudioWorkletProcessors",
+          "value": 0
+        },
+        {
+          "name": "Documents",
+          "value": 3
+        },
+        {
+          "name": "Frames",
+          "value": 3
+        },
+        {
+          "name": "JSEventListeners",
+          "value": 1735
+        },
+        {
+          "name": "LayoutObjects",
+          "value": 1538
+        },
+        {
+          "name": "MediaKeySessions",
+          "value": 0
+        },
+        {
+          "name": "MediaKeys",
+          "value": 0
+        },
+        {
+          "name": "Nodes",
+          "value": 3313
+        },
+        {
+          "name": "Resources",
+          "value": 73
+        },
+        {
+          "name": "ContextLifecycleStateObservers",
+          "value": 11
+        },
+        {
+          "name": "V8PerContextDatas",
+          "value": 3
+        },
+        {
+          "name": "WorkerGlobalScopes",
+          "value": 0
+        },
+        {
+          "name": "UACSSResources",
+          "value": 0
+        },
+        {
+          "name": "RTCPeerConnections",
+          "value": 0
+        },
+        {
+          "name": "ResourceFetchers",
+          "value": 3
+        },
+        {
+          "name": "AdSubframes",
+          "value": 0
+        },
+        {
+          "name": "DetachedScriptStates",
+          "value": 6
+        },
+        {
+          "name": "ArrayBufferContents",
+          "value": 2
+        },
+        {
+          "name": "LayoutCount",
+          "value": 5
+        },
+        {
+          "name": "RecalcStyleCount",
+          "value": 11
+        },
+        {
+          "name": "LayoutDuration",
+          "value": 0.007641
+        },
+        {
+          "name": "RecalcStyleDuration",
+          "value": 0.016449
+        },
+        {
+          "name": "DevToolsCommandDuration",
+          "value": 0.013601
+        },
+        {
+          "name": "ScriptDuration",
+          "value": 0.142232
+        },
+        {
+          "name": "V8CompileDuration",
+          "value": 0.000026
+        },
+        {
+          "name": "TaskDuration",
+          "value": 0.281699
+        },
+        {
+          "name": "TaskOtherDuration",
+          "value": 0.10175
+        },
+        {
+          "name": "ThreadTime",
+          "value": 0.261996
+        },
+        {
+          "name": "ProcessTime",
+          "value": 1.999342
+        },
+        {
+          "name": "JSHeapUsedSize",
+          "value": 44352660
+        },
+        {
+          "name": "JSHeapTotalSize",
+          "value": 79249408
+        },
+        {
+          "name": "FirstMeaningfulPaint",
+          "value": 0
+        },
+        {
+          "name": "DomContentLoaded",
+          "value": 3072.280425
+        },
+        {
+          "name": "NavigationStart",
+          "value": 3072.227198
+        }
+      ],
+      "availableMemoryBytes": 2166181888
+    },
+    {
+      "iteration": 2,
+      "elapsedMs": 311.2024000000001,
+      "traced": false,
+      "document": {
+        "navigation": [
+          {
+            "name": "app://./index.html",
+            "entryType": "navigation",
+            "startTime": 0,
+            "duration": 39.53500000014901,
+            "navigationId": 8620,
+            "initiatorType": "navigation",
+            "deliveryType": "",
+            "nextHopProtocol": "",
+            "renderBlockingStatus": "non-blocking",
+            "contentType": "text/html",
+            "contentEncoding": "",
+            "workerStart": 0,
+            "workerRouterEvaluationStart": 0,
+            "workerCacheLookupStart": 0,
+            "workerMatchedSourceType": "",
+            "workerFinalSourceType": "",
+            "redirectStart": 0,
+            "redirectEnd": 0,
+            "fetchStart": 1.165000000037253,
+            "domainLookupStart": 1.165000000037253,
+            "domainLookupEnd": 1.165000000037253,
+            "connectStart": 1.165000000037253,
+            "secureConnectionStart": 1.165000000037253,
+            "connectEnd": 1.165000000037253,
+            "requestStart": 1.165000000037253,
+            "responseStart": 1.165000000037253,
+            "firstInterimResponseStart": 0,
+            "finalResponseHeadersStart": 0,
+            "responseEnd": 5.095000000204891,
+            "transferSize": 300,
+            "encodedBodySize": 0,
+            "decodedBodySize": 4305,
+            "responseStatus": 200,
+            "serverTiming": [],
+            "unloadEventStart": 7.5,
+            "unloadEventEnd": 7.5,
+            "domInteractive": 16.37000000011176,
+            "domContentLoadedEventStart": 38.87999999988824,
+            "domContentLoadedEventEnd": 38.9250000002794,
+            "domComplete": 39.49000000022352,
+            "loadEventStart": 39.5,
+            "loadEventEnd": 39.53500000014901,
+            "type": "reload",
+            "redirectCount": 0,
+            "activationStart": 0,
+            "criticalCHRestart": 0,
+            "notRestoredReasons": null,
+            "confidence": {
+              "randomizedTriggerRate": 0.4994798,
+              "value": "high"
+            }
+          }
+        ],
+        "paints": [
+          {
+            "name": "first-paint",
+            "entryType": "paint",
+            "startTime": 53.18500000005588,
+            "duration": 0,
+            "navigationId": 8620,
+            "paintTime": 39.83999999985099,
+            "presentationTime": 53.18500000005588
+          },
+          {
+            "name": "first-contentful-paint",
+            "entryType": "paint",
+            "startTime": 86.47000000020489,
+            "duration": 0,
+            "navigationId": 8620,
+            "paintTime": 58.18500000005588,
+            "presentationTime": 86.47000000020489
+          }
+        ],
+        "observedDashboardReadyMs": 296.7349999998696,
+        "resources": [
+          {
+            "name": "app://./assets/app-DwAKVyVu.js",
+            "startTime": 14.930000000167638,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/rolldown-runtime-hePW80VL.js",
+            "startTime": 14.995000000111759,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-Cvdyeg_0.js",
+            "startTime": 15.040000000037253,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-dom-B-VxWsjA.js",
+            "startTime": 15.100000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/jsx-runtime-NZYk81nU.js",
+            "startTime": 15.145000000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-CLwSN1uG.js",
+            "startTime": 15.18999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/AnimatePresence-7bAustTT.js",
+            "startTime": 15.234999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/preload-helper-uBIymjUX.js",
+            "startTime": 15.339999999850988,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cn-hZG6twJP.js",
+            "startTime": 15.444999999832362,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/icons-dCEWnKEz.js",
+            "startTime": 15.515000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/motionSpeed-CL8cBDqn.js",
+            "startTime": 15.569999999832362,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/id-Dl3qnUvW.js",
+            "startTime": 15.609999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistory-DP78KiZO.js",
+            "startTime": 15.649999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/params-Ev6EXQmu.js",
+            "startTime": 15.680000000167638,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/datetime-DSxt28sH.js",
+            "startTime": 15.725000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/schema-bU5ASnqi.js",
+            "startTime": 15.794999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistoryRead-tHOyCbK-.js",
+            "startTime": 15.834999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/concepts-Xx9_tq4f.js",
+            "startTime": 15.870000000111759,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fsrs-DFzh-Bp6.js",
+            "startTime": 15.910000000149012,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/leech-DGkUZQWA.js",
+            "startTime": 15.944999999832362,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/assessmentCoverage-Do7N-Fnx.js",
+            "startTime": 16,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mutationStamp-CMHQrNjj.js",
+            "startTime": 16.040000000037253,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/progress-BUh2PXRU.js",
+            "startTime": 16.084999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dbErrors-Bm8_oitN.js",
+            "startTime": 16.115000000223517,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cardRepository-CVhX8WwA.js",
+            "startTime": 16.175000000279397,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dexie-react-hooks-Kn82kcUr.js",
+            "startTime": 16.225000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/useFocusTrap-B0tAxwxk.js",
+            "startTime": 16.265000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/index-BACpj1rV.css",
+            "startTime": 16.33999999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "link"
+          },
+          {
+            "name": "app://./fonts/InstrumentSans-Variable.ttf",
+            "startTime": 39.11500000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "css"
+          },
+          {
+            "name": "app://./assets/tombstonePrune-CKRPL35y.js",
+            "startTime": 60.68500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backups-DD5N6sUx.js",
+            "startTime": 61.70999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/portability-C_NFnPgA.js",
+            "startTime": 62,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRecord-SuwWT0TJ.js",
+            "startTime": 62.135000000242144,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/revisionPlan-awgIkKNQ.js",
+            "startTime": 62.24000000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/payloadValidation-C_hQjEd3.js",
+            "startTime": 62.330000000074506,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/numericAnswerSpec-DtxxWqX6.js",
+            "startTime": 62.419999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/verify-prx2k4io.js",
+            "startTime": 62.47999999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/domain-CLnfZwpP.js",
+            "startTime": 62.5500000002794,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceGeneration-BZLl3iV1.js",
+            "startTime": 62.61500000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/scheduler-B2_qnmjJ.js",
+            "startTime": 62.6750000002794,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backupFolder-BGMvPiys.js",
+            "startTime": 62.734999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/McpBridgeController-SmYimAZJ.js",
+            "startTime": 64.51500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/grants-D8tcxPue.js",
+            "startTime": 64.7949999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/executor-SVcHTCDF.js",
+            "startTime": 64.9199999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/share-BFrBjd3R.js",
+            "startTime": 65.01000000024214,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequencePresets-DLIy_YE2.js",
+            "startTime": 65.10499999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/generators-C401oRAp.js",
+            "startTime": 65.16500000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fixtureRunner-D3l1ehLz.js",
+            "startTime": 65.22500000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-FG_SylJO.js",
+            "startTime": 65.32500000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceRepository-B6d7EgI1.js",
+            "startTime": 65.41500000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/practiceNodeRepository-CjmtkWRC.js",
+            "startTime": 65.47999999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRepository-DnJtykZQ.js",
+            "startTime": 65.54000000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionRepository-C4J9JRO4.js",
+            "startTime": 65.61500000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionGeneration-CQSQuZhu.js",
+            "startTime": 65.6750000002794,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/read-BXXUqwl2.js",
+            "startTime": 65.75499999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/headerStats-B6B5Zwzs.js",
+            "startTime": 65.81499999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/path-10fYVnoF.js",
+            "startTime": 65.87999999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/diffImport-CH40msqB.js",
+            "startTime": 65.94499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mergeImport-wWjZlF_7.js",
+            "startTime": 66.02499999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-CtNL4MIV.js",
+            "startTime": 66.10000000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/ConfirmInline-P1Wdg83D.js",
+            "startTime": 66.18999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/EnabledAiRuntime-Bx0Y2QLw.js",
+            "startTime": 66.5449999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/relay-Co1slpFp.js",
+            "startTime": 66.68999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairing-CSl8rOBu.js",
+            "startTime": 66.85499999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/manualMerge-D5DCrQct.js",
+            "startTime": 66.95000000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/credentials-Bh1dGDmx.js",
+            "startTime": 67.05500000016764,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairingConfig-CSLmR5D8.js",
+            "startTime": 67.10999999986961,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/runtime-DBOHmPzJ.js",
+            "startTime": 67.22999999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./icon.svg",
+            "startTime": 68.95999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "img"
+          },
+          {
+            "name": "app://./assets/triggers-4y1GBPHD.js",
+            "startTime": 81.22500000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          }
+        ],
+        "visibility": "visible",
+        "timeOrigin": 1790002848038.035,
+        "viewport": {
+          "width": 961,
+          "height": 602,
+          "dpr": 2
+        },
+        "courseButtons": 9
+      },
+      "lag": {
+        "start": 13.705000000074506,
+        "frames": [
+          6.009999999925494,
+          16.685,
+          16.785000000000004,
+          16.694999999999993,
+          16.585000000000008,
+          16.735,
+          16.67,
+          16.60499999999999,
+          16.754999999999995,
+          16.64500000000001,
+          16.569999999999993,
+          8.444999999999993,
+          16.650000000000006,
+          16.599999999999994,
+          50,
+          16.77000000000004,
+          16.649999999999977
+        ],
+        "longTasks": [],
+        "events": [],
+        "mountedCardRows": 0,
+        "domElements": 1216,
+        "visibility": "visible",
+        "motionSpeed": "normal",
+        "reducedMotion": false
+      },
+      "metrics": [
+        {
+          "name": "Timestamp",
+          "value": 3072.919594
+        },
+        {
+          "name": "AudioHandlers",
+          "value": 0
+        },
+        {
+          "name": "AudioWorkletProcessors",
+          "value": 0
+        },
+        {
+          "name": "Documents",
+          "value": 5
+        },
+        {
+          "name": "Frames",
+          "value": 6
+        },
+        {
+          "name": "JSEventListeners",
+          "value": 3470
+        },
+        {
+          "name": "LayoutObjects",
+          "value": 3074
+        },
+        {
+          "name": "MediaKeySessions",
+          "value": 0
+        },
+        {
+          "name": "MediaKeys",
+          "value": 0
+        },
+        {
+          "name": "Nodes",
+          "value": 4973
+        },
+        {
+          "name": "Resources",
+          "value": 73
+        },
+        {
+          "name": "ContextLifecycleStateObservers",
+          "value": 17
+        },
+        {
+          "name": "V8PerContextDatas",
+          "value": 6
+        },
+        {
+          "name": "WorkerGlobalScopes",
+          "value": 0
+        },
+        {
+          "name": "UACSSResources",
+          "value": 0
+        },
+        {
+          "name": "RTCPeerConnections",
+          "value": 0
+        },
+        {
+          "name": "ResourceFetchers",
+          "value": 5
+        },
+        {
+          "name": "AdSubframes",
+          "value": 0
+        },
+        {
+          "name": "DetachedScriptStates",
+          "value": 9
+        },
+        {
+          "name": "ArrayBufferContents",
+          "value": 5
+        },
+        {
+          "name": "LayoutCount",
+          "value": 6
+        },
+        {
+          "name": "RecalcStyleCount",
+          "value": 18
+        },
+        {
+          "name": "LayoutDuration",
+          "value": 0.005386
+        },
+        {
+          "name": "RecalcStyleDuration",
+          "value": 0.018125
+        },
+        {
+          "name": "DevToolsCommandDuration",
+          "value": 0.011128
+        },
+        {
+          "name": "ScriptDuration",
+          "value": 0.131977
+        },
+        {
+          "name": "V8CompileDuration",
+          "value": 0.000025
+        },
+        {
+          "name": "TaskDuration",
+          "value": 0.252603
+        },
+        {
+          "name": "TaskOtherDuration",
+          "value": 0.085962
+        },
+        {
+          "name": "ThreadTime",
+          "value": 0.237701
+        },
+        {
+          "name": "ProcessTime",
+          "value": 2.352722
+        },
+        {
+          "name": "JSHeapUsedSize",
+          "value": 57983336
+        },
+        {
+          "name": "JSHeapTotalSize",
+          "value": 105623552
+        },
+        {
+          "name": "FirstMeaningfulPaint",
+          "value": 0
+        },
+        {
+          "name": "DomContentLoaded",
+          "value": 3072.636568
+        },
+        {
+          "name": "NavigationStart",
+          "value": 3072.597692
+        }
+      ],
+      "availableMemoryBytes": 2112290816
+    },
+    {
+      "iteration": 3,
+      "elapsedMs": 341.03380000000016,
+      "traced": false,
+      "document": {
+        "navigation": [
+          {
+            "name": "app://./index.html",
+            "entryType": "navigation",
+            "startTime": 0,
+            "duration": 41,
+            "navigationId": 5940,
+            "initiatorType": "navigation",
+            "deliveryType": "",
+            "nextHopProtocol": "",
+            "renderBlockingStatus": "non-blocking",
+            "contentType": "text/html",
+            "contentEncoding": "",
+            "workerStart": 0,
+            "workerRouterEvaluationStart": 0,
+            "workerCacheLookupStart": 0,
+            "workerMatchedSourceType": "",
+            "workerFinalSourceType": "",
+            "redirectStart": 0,
+            "redirectEnd": 0,
+            "fetchStart": 1.2400000002235174,
+            "domainLookupStart": 1.2400000002235174,
+            "domainLookupEnd": 1.2400000002235174,
+            "connectStart": 1.2400000002235174,
+            "secureConnectionStart": 1.2400000002235174,
+            "connectEnd": 1.2400000002235174,
+            "requestStart": 1.2400000002235174,
+            "responseStart": 1.2400000002235174,
+            "firstInterimResponseStart": 0,
+            "finalResponseHeadersStart": 0,
+            "responseEnd": 4.490000000223517,
+            "transferSize": 300,
+            "encodedBodySize": 0,
+            "decodedBodySize": 4305,
+            "responseStatus": 200,
+            "serverTiming": [],
+            "unloadEventStart": 7.0750000001862645,
+            "unloadEventEnd": 7.0750000001862645,
+            "domInteractive": 16.135000000242144,
+            "domContentLoadedEventStart": 40.325000000186265,
+            "domContentLoadedEventEnd": 40.37999999988824,
+            "domComplete": 40.950000000186265,
+            "loadEventStart": 40.95999999996275,
+            "loadEventEnd": 41,
+            "type": "reload",
+            "redirectCount": 0,
+            "activationStart": 0,
+            "criticalCHRestart": 0,
+            "notRestoredReasons": null,
+            "confidence": {
+              "randomizedTriggerRate": 0.4994798,
+              "value": "high"
+            }
+          }
+        ],
+        "paints": [
+          {
+            "name": "first-paint",
+            "entryType": "paint",
+            "startTime": 47.265000000130385,
+            "duration": 0,
+            "navigationId": 5940,
+            "paintTime": 41.34500000020489,
+            "presentationTime": 47.265000000130385
+          },
+          {
+            "name": "first-contentful-paint",
+            "entryType": "paint",
+            "startTime": 97.14500000001863,
+            "duration": 0,
+            "navigationId": 5940,
+            "paintTime": 64.47500000009313,
+            "presentationTime": 97.14500000001863
+          }
+        ],
+        "observedDashboardReadyMs": 331.9799999999814,
+        "resources": [
+          {
+            "name": "app://./assets/app-DwAKVyVu.js",
+            "startTime": 14.860000000335276,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/rolldown-runtime-hePW80VL.js",
+            "startTime": 14.925000000279397,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-Cvdyeg_0.js",
+            "startTime": 14.970000000204891,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-dom-B-VxWsjA.js",
+            "startTime": 15.020000000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/jsx-runtime-NZYk81nU.js",
+            "startTime": 15.06000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-CLwSN1uG.js",
+            "startTime": 15.104999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/AnimatePresence-7bAustTT.js",
+            "startTime": 15.160000000149012,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/preload-helper-uBIymjUX.js",
+            "startTime": 15.195000000298023,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cn-hZG6twJP.js",
+            "startTime": 15.235000000335276,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/icons-dCEWnKEz.js",
+            "startTime": 15.270000000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/motionSpeed-CL8cBDqn.js",
+            "startTime": 15.31000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/id-Dl3qnUvW.js",
+            "startTime": 15.350000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistory-DP78KiZO.js",
+            "startTime": 15.390000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/params-Ev6EXQmu.js",
+            "startTime": 15.430000000167638,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/datetime-DSxt28sH.js",
+            "startTime": 15.470000000204891,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/schema-bU5ASnqi.js",
+            "startTime": 15.524999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistoryRead-tHOyCbK-.js",
+            "startTime": 15.580000000074506,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/concepts-Xx9_tq4f.js",
+            "startTime": 15.610000000335276,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fsrs-DFzh-Bp6.js",
+            "startTime": 15.65500000026077,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/leech-DGkUZQWA.js",
+            "startTime": 15.68500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/assessmentCoverage-Do7N-Fnx.js",
+            "startTime": 15.735000000335276,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mutationStamp-CMHQrNjj.js",
+            "startTime": 15.774999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/progress-BUh2PXRU.js",
+            "startTime": 15.834999999962747,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dbErrors-Bm8_oitN.js",
+            "startTime": 15.870000000111759,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cardRepository-CVhX8WwA.js",
+            "startTime": 15.930000000167638,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dexie-react-hooks-Kn82kcUr.js",
+            "startTime": 15.975000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/useFocusTrap-B0tAxwxk.js",
+            "startTime": 16.015000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/index-BACpj1rV.css",
+            "startTime": 16.104999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "link"
+          },
+          {
+            "name": "app://./fonts/InstrumentSans-Variable.ttf",
+            "startTime": 40.59000000031665,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "css"
+          },
+          {
+            "name": "app://./assets/tombstonePrune-CKRPL35y.js",
+            "startTime": 63.015000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backups-DD5N6sUx.js",
+            "startTime": 68.61500000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/portability-C_NFnPgA.js",
+            "startTime": 68.82500000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRecord-SuwWT0TJ.js",
+            "startTime": 68.9250000002794,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/revisionPlan-awgIkKNQ.js",
+            "startTime": 69.01000000024214,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/payloadValidation-C_hQjEd3.js",
+            "startTime": 69.11500000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/numericAnswerSpec-DtxxWqX6.js",
+            "startTime": 69.18000000016764,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/verify-prx2k4io.js",
+            "startTime": 69.26500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/domain-CLnfZwpP.js",
+            "startTime": 69.36000000033528,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceGeneration-BZLl3iV1.js",
+            "startTime": 69.43500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/scheduler-B2_qnmjJ.js",
+            "startTime": 69.51500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backupFolder-BGMvPiys.js",
+            "startTime": 69.57500000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/McpBridgeController-SmYimAZJ.js",
+            "startTime": 70.68500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/grants-D8tcxPue.js",
+            "startTime": 70.9199999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/executor-SVcHTCDF.js",
+            "startTime": 71.14000000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/share-BFrBjd3R.js",
+            "startTime": 71.25499999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequencePresets-DLIy_YE2.js",
+            "startTime": 71.38500000024214,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/generators-C401oRAp.js",
+            "startTime": 71.57000000029802,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fixtureRunner-D3l1ehLz.js",
+            "startTime": 71.6699999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-FG_SylJO.js",
+            "startTime": 71.78500000014901,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceRepository-B6d7EgI1.js",
+            "startTime": 71.87999999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/practiceNodeRepository-CjmtkWRC.js",
+            "startTime": 71.95000000018626,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRepository-DnJtykZQ.js",
+            "startTime": 72.01500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionRepository-C4J9JRO4.js",
+            "startTime": 72.09500000020489,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionGeneration-CQSQuZhu.js",
+            "startTime": 72.15500000026077,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/read-BXXUqwl2.js",
+            "startTime": 72.24500000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/headerStats-B6B5Zwzs.js",
+            "startTime": 72.30500000016764,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/path-10fYVnoF.js",
+            "startTime": 72.375,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/diffImport-CH40msqB.js",
+            "startTime": 72.43500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mergeImport-wWjZlF_7.js",
+            "startTime": 72.53000000026077,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-CtNL4MIV.js",
+            "startTime": 72.60499999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/ConfirmInline-P1Wdg83D.js",
+            "startTime": 72.68500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/EnabledAiRuntime-Bx0Y2QLw.js",
+            "startTime": 73.11500000022352,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/relay-Co1slpFp.js",
+            "startTime": 73.2949999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairing-CSl8rOBu.js",
+            "startTime": 73.46500000031665,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/manualMerge-D5DCrQct.js",
+            "startTime": 73.56499999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/credentials-Bh1dGDmx.js",
+            "startTime": 73.65500000026077,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairingConfig-CSLmR5D8.js",
+            "startTime": 73.72500000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/runtime-DBOHmPzJ.js",
+            "startTime": 73.84500000020489,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./icon.svg",
+            "startTime": 75.59500000020489,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "img"
+          },
+          {
+            "name": "app://./assets/triggers-4y1GBPHD.js",
+            "startTime": 79.76500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          }
+        ],
+        "visibility": "visible",
+        "timeOrigin": 1790002848368.975,
+        "viewport": {
+          "width": 961,
+          "height": 602,
+          "dpr": 2
+        },
+        "courseButtons": 9
+      },
+      "lag": {
+        "start": 13.225000000093132,
+        "frames": [
+          0.5699999999068677,
+          16.685000000000002,
+          16.779999999999998,
+          16.550000000000004,
+          16.784999999999997,
+          16.545,
+          16.784999999999997,
+          16.614999999999995,
+          83.315,
+          16.64500000000001,
+          16.659999999999997,
+          16.700000000000017,
+          49.93000000000001,
+          16.72999999999996
+        ],
+        "longTasks": [],
+        "events": [],
+        "mountedCardRows": 0,
+        "domElements": 1219,
+        "visibility": "visible",
+        "motionSpeed": "normal",
+        "reducedMotion": false
+      },
+      "metrics": [
+        {
+          "name": "Timestamp",
+          "value": 3073.280273
+        },
+        {
+          "name": "AudioHandlers",
+          "value": 0
+        },
+        {
+          "name": "AudioWorkletProcessors",
+          "value": 0
+        },
+        {
+          "name": "Documents",
+          "value": 3
+        },
+        {
+          "name": "Frames",
+          "value": 3
+        },
+        {
+          "name": "JSEventListeners",
+          "value": 1680
+        },
+        {
+          "name": "LayoutObjects",
+          "value": 1542
+        },
+        {
+          "name": "MediaKeySessions",
+          "value": 0
+        },
+        {
+          "name": "MediaKeys",
+          "value": 0
+        },
+        {
+          "name": "Nodes",
+          "value": 3317
+        },
+        {
+          "name": "Resources",
+          "value": 73
+        },
+        {
+          "name": "ContextLifecycleStateObservers",
+          "value": 11
+        },
+        {
+          "name": "V8PerContextDatas",
+          "value": 3
+        },
+        {
+          "name": "WorkerGlobalScopes",
+          "value": 0
+        },
+        {
+          "name": "UACSSResources",
+          "value": 0
+        },
+        {
+          "name": "RTCPeerConnections",
+          "value": 0
+        },
+        {
+          "name": "ResourceFetchers",
+          "value": 3
+        },
+        {
+          "name": "AdSubframes",
+          "value": 0
+        },
+        {
+          "name": "DetachedScriptStates",
+          "value": 8
+        },
+        {
+          "name": "ArrayBufferContents",
+          "value": 2
+        },
+        {
+          "name": "LayoutCount",
+          "value": 6
+        },
+        {
+          "name": "RecalcStyleCount",
+          "value": 12
+        },
+        {
+          "name": "LayoutDuration",
+          "value": 0.005785
+        },
+        {
+          "name": "RecalcStyleDuration",
+          "value": 0.01311
+        },
+        {
+          "name": "DevToolsCommandDuration",
+          "value": 0.010396
+        },
+        {
+          "name": "ScriptDuration",
+          "value": 0.118099
+        },
+        {
+          "name": "V8CompileDuration",
+          "value": 0.000028
+        },
+        {
+          "name": "TaskDuration",
+          "value": 0.254837
+        },
+        {
+          "name": "TaskOtherDuration",
+          "value": 0.107419
+        },
+        {
+          "name": "ThreadTime",
+          "value": 0.240205
+        },
+        {
+          "name": "ProcessTime",
+          "value": 2.734818
+        },
+        {
+          "name": "JSHeapUsedSize",
+          "value": 32779608
+        },
+        {
+          "name": "JSHeapTotalSize",
+          "value": 103591936
+        },
+        {
+          "name": "FirstMeaningfulPaint",
+          "value": 0
+        },
+        {
+          "name": "DomContentLoaded",
+          "value": 3072.968956
+        },
+        {
+          "name": "NavigationStart",
+          "value": 3072.928633
+        }
+      ],
+      "availableMemoryBytes": 2083618816
+    },
+    {
+      "iteration": 4,
+      "elapsedMs": 303.8766999999998,
+      "traced": false,
+      "document": {
+        "navigation": [
+          {
+            "name": "app://./index.html",
+            "entryType": "navigation",
+            "startTime": 0,
+            "duration": 35.294999999925494,
+            "navigationId": 502,
+            "initiatorType": "navigation",
+            "deliveryType": "",
+            "nextHopProtocol": "",
+            "renderBlockingStatus": "non-blocking",
+            "contentType": "text/html",
+            "contentEncoding": "",
+            "workerStart": 0,
+            "workerRouterEvaluationStart": 0,
+            "workerCacheLookupStart": 0,
+            "workerMatchedSourceType": "",
+            "workerFinalSourceType": "",
+            "redirectStart": 0,
+            "redirectEnd": 0,
+            "fetchStart": 0.9199999999254942,
+            "domainLookupStart": 0.9199999999254942,
+            "domainLookupEnd": 0.9199999999254942,
+            "connectStart": 0.9199999999254942,
+            "secureConnectionStart": 0.9199999999254942,
+            "connectEnd": 0.9199999999254942,
+            "requestStart": 0.9199999999254942,
+            "responseStart": 0.9199999999254942,
+            "firstInterimResponseStart": 0,
+            "finalResponseHeadersStart": 0,
+            "responseEnd": 6.9249999998137355,
+            "transferSize": 300,
+            "encodedBodySize": 0,
+            "decodedBodySize": 4305,
+            "responseStatus": 200,
+            "serverTiming": [],
+            "unloadEventStart": 10.174999999813735,
+            "unloadEventEnd": 10.174999999813735,
+            "domInteractive": 18.350000000093132,
+            "domContentLoadedEventStart": 34.64999999990687,
+            "domContentLoadedEventEnd": 34.705000000074506,
+            "domComplete": 35.25499999988824,
+            "loadEventStart": 35.265000000130385,
+            "loadEventEnd": 35.294999999925494,
+            "type": "reload",
+            "redirectCount": 0,
+            "activationStart": 0,
+            "criticalCHRestart": 0,
+            "notRestoredReasons": null,
+            "confidence": {
+              "randomizedTriggerRate": 0.4994798,
+              "value": "high"
+            }
+          }
+        ],
+        "paints": [
+          {
+            "name": "first-paint",
+            "entryType": "paint",
+            "startTime": 52.96499999985099,
+            "duration": 0,
+            "navigationId": 502,
+            "paintTime": 35.77999999979511,
+            "presentationTime": 52.96499999985099
+          },
+          {
+            "name": "first-contentful-paint",
+            "entryType": "paint",
+            "startTime": 86.37999999988824,
+            "duration": 0,
+            "navigationId": 502,
+            "paintTime": 57.64500000001863,
+            "presentationTime": 86.37999999988824
+          }
+        ],
+        "observedDashboardReadyMs": 288.4499999997206,
+        "resources": [
+          {
+            "name": "app://./assets/app-DwAKVyVu.js",
+            "startTime": 17.149999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/rolldown-runtime-hePW80VL.js",
+            "startTime": 17.21499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-Cvdyeg_0.js",
+            "startTime": 17.265000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-dom-B-VxWsjA.js",
+            "startTime": 17.31000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/jsx-runtime-NZYk81nU.js",
+            "startTime": 17.350000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-CLwSN1uG.js",
+            "startTime": 17.390000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/AnimatePresence-7bAustTT.js",
+            "startTime": 17.43999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/preload-helper-uBIymjUX.js",
+            "startTime": 17.475000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cn-hZG6twJP.js",
+            "startTime": 17.509999999776483,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/icons-dCEWnKEz.js",
+            "startTime": 17.554999999701977,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/motionSpeed-CL8cBDqn.js",
+            "startTime": 17.58999999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/id-Dl3qnUvW.js",
+            "startTime": 17.62000000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistory-DP78KiZO.js",
+            "startTime": 17.65499999979511,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/params-Ev6EXQmu.js",
+            "startTime": 17.68999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/datetime-DSxt28sH.js",
+            "startTime": 17.729999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/schema-bU5ASnqi.js",
+            "startTime": 17.78500000014901,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistoryRead-tHOyCbK-.js",
+            "startTime": 17.824999999720603,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/concepts-Xx9_tq4f.js",
+            "startTime": 17.859999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fsrs-DFzh-Bp6.js",
+            "startTime": 17.899999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/leech-DGkUZQWA.js",
+            "startTime": 17.929999999701977,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/assessmentCoverage-Do7N-Fnx.js",
+            "startTime": 17.975000000093132,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mutationStamp-CMHQrNjj.js",
+            "startTime": 18.009999999776483,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/progress-BUh2PXRU.js",
+            "startTime": 18.06000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dbErrors-Bm8_oitN.js",
+            "startTime": 18.09499999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cardRepository-CVhX8WwA.js",
+            "startTime": 18.149999999906868,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dexie-react-hooks-Kn82kcUr.js",
+            "startTime": 18.205000000074506,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/useFocusTrap-B0tAxwxk.js",
+            "startTime": 18.239999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/index-BACpj1rV.css",
+            "startTime": 18.31499999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "link"
+          },
+          {
+            "name": "app://./fonts/InstrumentSans-Variable.ttf",
+            "startTime": 34.90499999979511,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "css"
+          },
+          {
+            "name": "app://./assets/tombstonePrune-CKRPL35y.js",
+            "startTime": 54.890000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backups-DD5N6sUx.js",
+            "startTime": 58.42999999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/portability-C_NFnPgA.js",
+            "startTime": 58.64999999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRecord-SuwWT0TJ.js",
+            "startTime": 58.71499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/revisionPlan-awgIkKNQ.js",
+            "startTime": 58.794999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/payloadValidation-C_hQjEd3.js",
+            "startTime": 58.88499999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/numericAnswerSpec-DtxxWqX6.js",
+            "startTime": 58.93999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/verify-prx2k4io.js",
+            "startTime": 59,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/domain-CLnfZwpP.js",
+            "startTime": 59.06499999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceGeneration-BZLl3iV1.js",
+            "startTime": 59.14500000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/scheduler-B2_qnmjJ.js",
+            "startTime": 59.20999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backupFolder-BGMvPiys.js",
+            "startTime": 59.25999999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/McpBridgeController-SmYimAZJ.js",
+            "startTime": 60.46499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/grants-D8tcxPue.js",
+            "startTime": 60.640000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/executor-SVcHTCDF.js",
+            "startTime": 60.74500000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/share-BFrBjd3R.js",
+            "startTime": 60.8249999997206,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequencePresets-DLIy_YE2.js",
+            "startTime": 60.89500000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/generators-C401oRAp.js",
+            "startTime": 60.95999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fixtureRunner-D3l1ehLz.js",
+            "startTime": 61.015000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-FG_SylJO.js",
+            "startTime": 61.12000000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceRepository-B6d7EgI1.js",
+            "startTime": 61.20999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/practiceNodeRepository-CjmtkWRC.js",
+            "startTime": 61.27499999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRepository-DnJtykZQ.js",
+            "startTime": 61.33999999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionRepository-C4J9JRO4.js",
+            "startTime": 61.424999999813735,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionGeneration-CQSQuZhu.js",
+            "startTime": 61.484999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/read-BXXUqwl2.js",
+            "startTime": 61.56999999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/headerStats-B6B5Zwzs.js",
+            "startTime": 61.62999999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/path-10fYVnoF.js",
+            "startTime": 61.69499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/diffImport-CH40msqB.js",
+            "startTime": 61.765000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mergeImport-wWjZlF_7.js",
+            "startTime": 61.85000000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-CtNL4MIV.js",
+            "startTime": 61.924999999813735,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/ConfirmInline-P1Wdg83D.js",
+            "startTime": 62.00999999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/EnabledAiRuntime-Bx0Y2QLw.js",
+            "startTime": 62.33999999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/relay-Co1slpFp.js",
+            "startTime": 62.47999999998137,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairing-CSl8rOBu.js",
+            "startTime": 62.66500000003725,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/manualMerge-D5DCrQct.js",
+            "startTime": 62.77000000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/credentials-Bh1dGDmx.js",
+            "startTime": 62.85000000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairingConfig-CSLmR5D8.js",
+            "startTime": 62.91000000014901,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/runtime-DBOHmPzJ.js",
+            "startTime": 63.02000000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./icon.svg",
+            "startTime": 64.75,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "img"
+          },
+          {
+            "name": "app://./assets/triggers-4y1GBPHD.js",
+            "startTime": 69.17499999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          }
+        ],
+        "visibility": "visible",
+        "timeOrigin": 1790002848729.8,
+        "viewport": {
+          "width": 961,
+          "height": 602,
+          "dpr": 2
+        },
+        "courseButtons": 9
+      },
+      "lag": {
+        "start": 15.604999999981374,
+        "frames": [
+          4.070000000018627,
+          16.81,
+          16.475,
+          16.744999999999997,
+          16.674999999999997,
+          16.66000000000001,
+          16.684999999999988,
+          16.569999999999993,
+          16.66500000000002,
+          16.664999999999992,
+          16.715000000000003,
+          16.629999999999995,
+          16.74000000000001,
+          16.67999999999998,
+          33.315,
+          16.66500000000002,
+          16.605000000000018
+        ],
+        "longTasks": [],
+        "events": [],
+        "mountedCardRows": 0,
+        "domElements": 1219,
+        "visibility": "visible",
+        "motionSpeed": "normal",
+        "reducedMotion": false
+      },
+      "metrics": [
+        {
+          "name": "Timestamp",
+          "value": 3073.601285
+        },
+        {
+          "name": "AudioHandlers",
+          "value": 0
+        },
+        {
+          "name": "AudioWorkletProcessors",
+          "value": 0
+        },
+        {
+          "name": "Documents",
+          "value": 5
+        },
+        {
+          "name": "Frames",
+          "value": 6
+        },
+        {
+          "name": "JSEventListeners",
+          "value": 3415
+        },
+        {
+          "name": "LayoutObjects",
+          "value": 3082
+        },
+        {
+          "name": "MediaKeySessions",
+          "value": 0
+        },
+        {
+          "name": "MediaKeys",
+          "value": 0
+        },
+        {
+          "name": "Nodes",
+          "value": 4981
+        },
+        {
+          "name": "Resources",
+          "value": 73
+        },
+        {
+          "name": "ContextLifecycleStateObservers",
+          "value": 17
+        },
+        {
+          "name": "V8PerContextDatas",
+          "value": 6
+        },
+        {
+          "name": "WorkerGlobalScopes",
+          "value": 0
+        },
+        {
+          "name": "UACSSResources",
+          "value": 0
+        },
+        {
+          "name": "RTCPeerConnections",
+          "value": 0
+        },
+        {
+          "name": "ResourceFetchers",
+          "value": 5
+        },
+        {
+          "name": "AdSubframes",
+          "value": 0
+        },
+        {
+          "name": "DetachedScriptStates",
+          "value": 11
+        },
+        {
+          "name": "ArrayBufferContents",
+          "value": 5
+        },
+        {
+          "name": "LayoutCount",
+          "value": 6
+        },
+        {
+          "name": "RecalcStyleCount",
+          "value": 12
+        },
+        {
+          "name": "LayoutDuration",
+          "value": 0.005523
+        },
+        {
+          "name": "RecalcStyleDuration",
+          "value": 0.013401
+        },
+        {
+          "name": "DevToolsCommandDuration",
+          "value": 0.010017
+        },
+        {
+          "name": "ScriptDuration",
+          "value": 0.110976
+        },
+        {
+          "name": "V8CompileDuration",
+          "value": 0.000029
+        },
+        {
+          "name": "TaskDuration",
+          "value": 0.223108
+        },
+        {
+          "name": "TaskOtherDuration",
+          "value": 0.083162
+        },
+        {
+          "name": "ThreadTime",
+          "value": 0.214065
+        },
+        {
+          "name": "ProcessTime",
+          "value": 3.055846
+        },
+        {
+          "name": "JSHeapUsedSize",
+          "value": 43043644
+        },
+        {
+          "name": "JSHeapTotalSize",
+          "value": 105918464
+        },
+        {
+          "name": "FirstMeaningfulPaint",
+          "value": 0
+        },
+        {
+          "name": "DomContentLoaded",
+          "value": 3073.324108
+        },
+        {
+          "name": "NavigationStart",
+          "value": 3073.289457
+        }
+      ],
+      "availableMemoryBytes": 2080993280
+    },
+    {
+      "iteration": 5,
+      "elapsedMs": 432.9520000000002,
+      "traced": false,
+      "document": {
+        "navigation": [
+          {
+            "name": "app://./index.html",
+            "entryType": "navigation",
+            "startTime": 0,
+            "duration": 56.859999999869615,
+            "navigationId": 8375,
+            "initiatorType": "navigation",
+            "deliveryType": "",
+            "nextHopProtocol": "",
+            "renderBlockingStatus": "non-blocking",
+            "contentType": "text/html",
+            "contentEncoding": "",
+            "workerStart": 0,
+            "workerRouterEvaluationStart": 0,
+            "workerCacheLookupStart": 0,
+            "workerMatchedSourceType": "",
+            "workerFinalSourceType": "",
+            "redirectStart": 0,
+            "redirectEnd": 0,
+            "fetchStart": 4.46999999973923,
+            "domainLookupStart": 4.46999999973923,
+            "domainLookupEnd": 4.46999999973923,
+            "connectStart": 4.46999999973923,
+            "secureConnectionStart": 4.46999999973923,
+            "connectEnd": 4.46999999973923,
+            "requestStart": 4.46999999973923,
+            "responseStart": 4.46999999973923,
+            "firstInterimResponseStart": 0,
+            "finalResponseHeadersStart": 0,
+            "responseEnd": 10.265000000130385,
+            "transferSize": 300,
+            "encodedBodySize": 0,
+            "decodedBodySize": 4305,
+            "responseStatus": 200,
+            "serverTiming": [],
+            "unloadEventStart": 13.93500000005588,
+            "unloadEventEnd": 13.93500000005588,
+            "domInteractive": 27.53500000014901,
+            "domContentLoadedEventStart": 55.955000000074506,
+            "domContentLoadedEventEnd": 56.02499999990687,
+            "domComplete": 56.799999999813735,
+            "loadEventStart": 56.81000000005588,
+            "loadEventEnd": 56.859999999869615,
+            "type": "reload",
+            "redirectCount": 0,
+            "activationStart": 0,
+            "criticalCHRestart": 0,
+            "notRestoredReasons": null,
+            "confidence": {
+              "randomizedTriggerRate": 0.4994798,
+              "value": "high"
+            }
+          }
+        ],
+        "paints": [
+          {
+            "name": "first-paint",
+            "entryType": "paint",
+            "startTime": 65.29999999981374,
+            "duration": 0,
+            "navigationId": 8375,
+            "paintTime": 57.42999999970198,
+            "presentationTime": 65.29999999981374
+          },
+          {
+            "name": "first-contentful-paint",
+            "entryType": "paint",
+            "startTime": 98.73499999986961,
+            "duration": 0,
+            "navigationId": 8375,
+            "paintTime": 80.84499999973923,
+            "presentationTime": 98.73499999986961
+          }
+        ],
+        "observedDashboardReadyMs": 421.14999999990687,
+        "resources": [
+          {
+            "name": "app://./assets/app-DwAKVyVu.js",
+            "startTime": 25.444999999832362,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/rolldown-runtime-hePW80VL.js",
+            "startTime": 25.540000000037253,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-Cvdyeg_0.js",
+            "startTime": 25.614999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-dom-B-VxWsjA.js",
+            "startTime": 25.679999999701977,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/jsx-runtime-NZYk81nU.js",
+            "startTime": 25.739999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/react-CLwSN1uG.js",
+            "startTime": 25.81000000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/AnimatePresence-7bAustTT.js",
+            "startTime": 25.87999999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/preload-helper-uBIymjUX.js",
+            "startTime": 25.93500000005588,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cn-hZG6twJP.js",
+            "startTime": 25.989999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/icons-dCEWnKEz.js",
+            "startTime": 26.044999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/motionSpeed-CL8cBDqn.js",
+            "startTime": 26.104999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/id-Dl3qnUvW.js",
+            "startTime": 26.16000000014901,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistory-DP78KiZO.js",
+            "startTime": 26.28500000014901,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/params-Ev6EXQmu.js",
+            "startTime": 26.34499999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/datetime-DSxt28sH.js",
+            "startTime": 26.41000000014901,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/schema-bU5ASnqi.js",
+            "startTime": 26.489999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/reviewHistoryRead-tHOyCbK-.js",
+            "startTime": 26.554999999701977,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/concepts-Xx9_tq4f.js",
+            "startTime": 26.609999999869615,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fsrs-DFzh-Bp6.js",
+            "startTime": 26.71999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/leech-DGkUZQWA.js",
+            "startTime": 26.864999999757856,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/assessmentCoverage-Do7N-Fnx.js",
+            "startTime": 26.96999999973923,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mutationStamp-CMHQrNjj.js",
+            "startTime": 27.040000000037253,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/progress-BUh2PXRU.js",
+            "startTime": 27.12000000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dbErrors-Bm8_oitN.js",
+            "startTime": 27.174999999813735,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/cardRepository-CVhX8WwA.js",
+            "startTime": 27.259999999776483,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/dexie-react-hooks-Kn82kcUr.js",
+            "startTime": 27.330000000074506,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/useFocusTrap-B0tAxwxk.js",
+            "startTime": 27.390000000130385,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/index-BACpj1rV.css",
+            "startTime": 27.49500000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "link"
+          },
+          {
+            "name": "app://./fonts/InstrumentSans-Variable.ttf",
+            "startTime": 56.294999999925494,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "css"
+          },
+          {
+            "name": "app://./assets/tombstonePrune-CKRPL35y.js",
+            "startTime": 86.85999999986961,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backups-DD5N6sUx.js",
+            "startTime": 101.79999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/portability-C_NFnPgA.js",
+            "startTime": 102.12000000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRecord-SuwWT0TJ.js",
+            "startTime": 102.21499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/revisionPlan-awgIkKNQ.js",
+            "startTime": 102.36499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/payloadValidation-C_hQjEd3.js",
+            "startTime": 102.51500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/numericAnswerSpec-DtxxWqX6.js",
+            "startTime": 102.61499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/verify-prx2k4io.js",
+            "startTime": 102.6999999997206,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/domain-CLnfZwpP.js",
+            "startTime": 102.79999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceGeneration-BZLl3iV1.js",
+            "startTime": 102.96499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/scheduler-B2_qnmjJ.js",
+            "startTime": 103.21499999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/backupFolder-BGMvPiys.js",
+            "startTime": 103.36499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/McpBridgeController-SmYimAZJ.js",
+            "startTime": 105.39999999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/grants-D8tcxPue.js",
+            "startTime": 105.72500000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/executor-SVcHTCDF.js",
+            "startTime": 105.87999999988824,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/share-BFrBjd3R.js",
+            "startTime": 106.00999999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequencePresets-DLIy_YE2.js",
+            "startTime": 106.11499999975786,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/generators-C401oRAp.js",
+            "startTime": 106.20999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/fixtureRunner-D3l1ehLz.js",
+            "startTime": 106.29999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-FG_SylJO.js",
+            "startTime": 106.4550000000745,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/sequenceRepository-B6d7EgI1.js",
+            "startTime": 106.58999999985099,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/practiceNodeRepository-CjmtkWRC.js",
+            "startTime": 106.68999999994412,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/agentMemoryRepository-DnJtykZQ.js",
+            "startTime": 106.79999999981374,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionRepository-C4J9JRO4.js",
+            "startTime": 107.0449999999255,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/occlusionGeneration-CQSQuZhu.js",
+            "startTime": 107.25999999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/read-BXXUqwl2.js",
+            "startTime": 107.52000000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/headerStats-B6B5Zwzs.js",
+            "startTime": 107.75999999977648,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/path-10fYVnoF.js",
+            "startTime": 107.94499999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/diffImport-CH40msqB.js",
+            "startTime": 108.12000000011176,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/mergeImport-wWjZlF_7.js",
+            "startTime": 108.27499999990687,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/repository-CtNL4MIV.js",
+            "startTime": 108.39500000001863,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/ConfirmInline-P1Wdg83D.js",
+            "startTime": 108.51500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/EnabledAiRuntime-Bx0Y2QLw.js",
+            "startTime": 109.27999999979511,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/relay-Co1slpFp.js",
+            "startTime": 109.51500000013039,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairing-CSl8rOBu.js",
+            "startTime": 109.90499999979511,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/manualMerge-D5DCrQct.js",
+            "startTime": 110.06999999983236,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/credentials-Bh1dGDmx.js",
+            "startTime": 110.20999999996275,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/pairingConfig-CSLmR5D8.js",
+            "startTime": 110.30499999970198,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./assets/runtime-DBOHmPzJ.js",
+            "startTime": 110.48499999986961,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          },
+          {
+            "name": "app://./icon.svg",
+            "startTime": 113.10999999986961,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "img"
+          },
+          {
+            "name": "app://./assets/triggers-4y1GBPHD.js",
+            "startTime": 126.47500000009313,
+            "duration": 0,
+            "transferSize": 0,
+            "encodedBodySize": 0,
+            "initiatorType": "script"
+          }
+        ],
+        "visibility": "visible",
+        "timeOrigin": 1790002849050.795,
+        "viewport": {
+          "width": 961,
+          "height": 602,
+          "dpr": 2
+        },
+        "courseButtons": 9
+      },
+      "lag": {
+        "start": 23.479999999981374,
+        "frames": [
+          -7.999999999981373,
+          33.19,
+          16.629999999999995,
+          16.875,
+          16.560000000000002,
+          16.754999999999995,
+          16.49500000000002,
+          16.774999999999977,
+          16.560000000000002,
+          16.730000000000018,
+          16.61499999999998,
+          16.72,
+          16.66500000000002,
+          16.664999999999992,
+          16.76000000000002,
+          16.54499999999996,
+          116.75999999999999,
+          16.625,
+          16.555000000000007
+        ],
+        "longTasks": [
+          {
+            "start": 271.5200000000186,
+            "duration": 66
+          }
+        ],
+        "events": [],
+        "mountedCardRows": 0,
+        "domElements": 1220,
+        "visibility": "visible",
+        "motionSpeed": "normal",
+        "reducedMotion": false
+      },
+      "metrics": [
+        {
+          "name": "Timestamp",
+          "value": 3074.065696
+        },
+        {
+          "name": "AudioHandlers",
+          "value": 0
+        },
+        {
+          "name": "AudioWorkletProcessors",
+          "value": 0
+        },
+        {
+          "name": "Documents",
+          "value": 7
+        },
+        {
+          "name": "Frames",
+          "value": 9
+        },
+        {
+          "name": "JSEventListeners",
+          "value": 5171
+        },
+        {
+          "name": "LayoutObjects",
+          "value": 4623
+        },
+        {
+          "name": "MediaKeySessions",
+          "value": 0
+        },
+        {
+          "name": "MediaKeys",
+          "value": 0
+        },
+        {
+          "name": "Nodes",
+          "value": 6646
+        },
+        {
+          "name": "Resources",
+          "value": 73
+        },
+        {
+          "name": "ContextLifecycleStateObservers",
+          "value": 23
+        },
+        {
+          "name": "V8PerContextDatas",
+          "value": 9
+        },
+        {
+          "name": "WorkerGlobalScopes",
+          "value": 0
+        },
+        {
+          "name": "UACSSResources",
+          "value": 0
+        },
+        {
+          "name": "RTCPeerConnections",
+          "value": 0
+        },
+        {
+          "name": "ResourceFetchers",
+          "value": 7
+        },
+        {
+          "name": "AdSubframes",
+          "value": 0
+        },
+        {
+          "name": "DetachedScriptStates",
+          "value": 14
+        },
+        {
+          "name": "ArrayBufferContents",
+          "value": 8
+        },
+        {
+          "name": "LayoutCount",
+          "value": 7
+        },
+        {
+          "name": "RecalcStyleCount",
+          "value": 20
+        },
+        {
+          "name": "LayoutDuration",
+          "value": 0.011251
+        },
+        {
+          "name": "RecalcStyleDuration",
+          "value": 0.032807
+        },
+        {
+          "name": "DevToolsCommandDuration",
+          "value": 0.016329
+        },
+        {
+          "name": "ScriptDuration",
+          "value": 0.199232
+        },
+        {
+          "name": "V8CompileDuration",
+          "value": 0.000033
+        },
+        {
+          "name": "TaskDuration",
+          "value": 0.414556
+        },
+        {
+          "name": "TaskOtherDuration",
+          "value": 0.154904
+        },
+        {
+          "name": "ThreadTime",
+          "value": 0.361392
+        },
+        {
+          "name": "ProcessTime",
+          "value": 3.586091
+        },
+        {
+          "name": "JSHeapUsedSize",
+          "value": 63050008
+        },
+        {
+          "name": "JSHeapTotalSize",
+          "value": 118267904
+        },
+        {
+          "name": "FirstMeaningfulPaint",
+          "value": 0
+        },
+        {
+          "name": "DomContentLoaded",
+          "value": 3073.666408
+        },
+        {
+          "name": "NavigationStart",
+          "value": 3073.610453
+        }
+      ],
+      "availableMemoryBytes": 2070171648
+    }
+  ],
+  "method": "Existing populated profile; no seeding or review actions. Launch observation includes CDP attachment and the existing 500 ms stabilisation wait. Reload readiness is observed from navigation start.",
+  "launchRequestedAtEpochMs": 1790002841907,
+  "startupTraced": false,
+  "connectionReadyMs": 5071.1705,
+  "appVersion": "0.2.10",
+  "browserVersion": "152.0.7977.78",
+  "launchToDashboardObservedMs": 5221.5992,
+  "initialDocument": {
+    "navigation": [
+      {
+        "name": "app://./index.html",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 2878.0300000002608,
+        "navigationId": 3462,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 17.334999999962747,
+        "domainLookupStart": 17.334999999962747,
+        "domainLookupEnd": 17.334999999962747,
+        "connectStart": 17.334999999962747,
+        "secureConnectionStart": 17.334999999962747,
+        "connectEnd": 17.334999999962747,
+        "requestStart": 17.334999999962747,
+        "responseStart": 17.334999999962747,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 0,
+        "responseEnd": 169.69500000029802,
+        "transferSize": 300,
+        "encodedBodySize": 0,
+        "decodedBodySize": 4305,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 2753.4900000002235,
+        "domContentLoadedEventStart": 2873.3600000003353,
+        "domContentLoadedEventEnd": 2873.3600000003353,
+        "domComplete": 2877.810000000056,
+        "loadEventStart": 2877.8549999999814,
+        "loadEventEnd": 2878.0300000002608,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "entryType": "paint",
+        "startTime": 2949.6400000001304,
+        "duration": 0,
+        "navigationId": 3462,
+        "paintTime": 2876.810000000056,
+        "presentationTime": 2949.6400000001304
+      },
+      {
+        "name": "first-contentful-paint",
+        "entryType": "paint",
+        "startTime": 2949.6400000001304,
+        "duration": 0,
+        "navigationId": 3462,
+        "paintTime": 2921.660000000149,
+        "presentationTime": 2949.6400000001304
+      }
+    ],
+    "observedDashboardReadyMs": 3735.600000000093,
+    "resources": [],
+    "visibility": "visible",
+    "timeOrigin": 1790002843366.47,
+    "viewport": {
+      "width": 961,
+      "height": 602,
+      "dpr": 2
+    },
+    "courseButtons": 9
+  },
+  "counts": {
+    "courses": 13,
+    "lessons": 67,
+    "cards": 4883,
+    "reviewHistory": 439
+  },
+  "errors": [],
+  "processExit": {
+    "pid": 9628,
+    "exitCode": 0,
+    "signalCode": null
+  }
+}

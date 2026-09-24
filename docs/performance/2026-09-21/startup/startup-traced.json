@@ -1,0 +1,117 @@
+{
+  "completed": true,
+  "recordedAt": "2026-09-21T14:59:49.893Z",
+  "cpu": "Intel(R) Core(TM) Ultra 7 266V",
+  "logicalCpus": 8,
+  "totalMemoryBytes": 16881078272,
+  "windowsRelease": "10.0.26100",
+  "initialAvailableMemoryBytes": 1795891200,
+  "reloads": 0,
+  "samples": [],
+  "method": "Existing populated profile; no seeding or review actions. Launch observation includes CDP attachment and the existing 500 ms stabilisation wait. Reload readiness is observed from navigation start.",
+  "launchRequestedAtEpochMs": 1790002789895,
+  "startupTraced": true,
+  "connectionReadyMs": 5375.1872,
+  "appVersion": "0.2.10",
+  "browserVersion": "152.0.7977.78",
+  "launchToDashboardObservedMs": 5464.5923,
+  "initialDocument": {
+    "navigation": [
+      {
+        "name": "app://./index.html",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 2660.9550000000745,
+        "navigationId": 8042,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 29.890000000130385,
+        "domainLookupStart": 29.890000000130385,
+        "domainLookupEnd": 29.890000000130385,
+        "connectStart": 29.890000000130385,
+        "secureConnectionStart": 29.890000000130385,
+        "connectEnd": 29.890000000130385,
+        "requestStart": 29.890000000130385,
+        "responseStart": 29.890000000130385,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 0,
+        "responseEnd": 205.4499999997206,
+        "transferSize": 300,
+        "encodedBodySize": 0,
+        "decodedBodySize": 4305,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 2579.2599999997765,
+        "domContentLoadedEventStart": 2659.0800000000745,
+        "domContentLoadedEventEnd": 2659.0949999997392,
+        "domComplete": 2660.779999999795,
+        "loadEventStart": 2660.804999999702,
+        "loadEventEnd": 2660.9550000000745,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "entryType": "paint",
+        "startTime": 2732.3300000000745,
+        "duration": 0,
+        "navigationId": 8042,
+        "paintTime": 2661.7099999999627,
+        "presentationTime": 2732.3300000000745
+      },
+      {
+        "name": "first-contentful-paint",
+        "entryType": "paint",
+        "startTime": 2749.25,
+        "duration": 0,
+        "navigationId": 8042,
+        "paintTime": 2712.2700000000186,
+        "presentationTime": 2749.25
+      }
+    ],
+    "observedDashboardReadyMs": 3380.8349999999627,
+    "resources": [],
+    "visibility": "visible",
+    "timeOrigin": 1790002791974.12,
+    "viewport": {
+      "width": 961,
+      "height": 602,
+      "dpr": 2
+    },
+    "courseButtons": 9
+  },
+  "counts": {
+    "courses": 13,
+    "lessons": 67,
+    "cards": 4883,
+    "reviewHistory": 439
+  },
+  "errors": [],
+  "processExit": {
+    "pid": 26912,
+    "exitCode": 0,
+    "signalCode": null
+  }
+}
