@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import path from 'node:path';
-import { _electron as electron, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { launchInstalledElectron } from './installed-electron-probe.mjs';
 
 assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows runner.');
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
@@ -42,7 +43,7 @@ async function install(installer) {
 }
 
 async function open(expectedVersion) {
-  application = await electron.launch({ executablePath, args: [`--user-data-dir=${profile}`], timeout: 60_000 });
+  application = await launchInstalledElectron(executablePath, profile);
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
   assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
   if (expectedVersion === '0.2.10') {
@@ -98,13 +99,12 @@ try {
   await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
     { timeout: 180_000 }).toBe('downloaded');
   assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
-  const closed = application.waitForEvent('close', { timeout: 60_000 });
   await application.evaluate(({ app }) => {
     const { createRequire } = process.getBuiltinModule('node:module');
     const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
     updater.quitAndInstall(true, false);
   });
-  await closed; application = undefined;
+  await application.waitForExit(); application = undefined;
   await expect.poll(async () => {
     try {
       const { createRequire } = await import('node:module');
