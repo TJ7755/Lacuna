@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  forbidOnly: Boolean(process.env.CI),
   outputDir: '../../test-results',
   testDir: '../e2e-electron',
   testIgnore: 'packaged-interactions.spec.ts',

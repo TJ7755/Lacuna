@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Made every CI Vitest and Playwright configuration reject focused `.only` tests,
+  while keeping local focused runs available for debugging.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels

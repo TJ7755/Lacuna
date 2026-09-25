@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  forbidOnly: Boolean(process.env.CI),
   outputDir: '../../test-results',
   testDir: '../e2e',
   // Each spec provisions its own page/context and intercepts relay traffic on
