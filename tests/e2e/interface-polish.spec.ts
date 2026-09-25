@@ -37,7 +37,7 @@ for (const width of [390, 1440]) {
     const exportSection = page
       .getByRole('heading', { name: 'Export a course', exact: true })
       .locator('xpath=ancestor::section[1]');
-    const exportCopy = page.getByText(/Select a course, then generate a code/);
+    const exportCopy = page.getByText(/Save a course file to share lessons, cards and media/);
     await expect(exportCopy).toBeVisible();
     expect(
       Math.abs((await heading.boundingBox())!.x - (await exportSection.boundingBox())!.x),
