@@ -54,7 +54,8 @@ drag and drop, automatic format detection and a manual format override.
 - **Undo** on the review step means return to Add content. It preserves the title,
   text/file, manual format and reverse setting. It does not mutate or delete records.
 - **Also create reverse** applies only to non-empty, plain front/back cards without
-  structured item payloads. Each reverse swaps the content, copies tags, shares its
+  structured item payloads. Each reverse swaps the content, copies tags and the
+  authored answer mode, shares its
   original's Concept and starts with independent scheduling. Cloze and Anki package
   cards are not automatically reversed. Duplicate warnings include generated reverses.
 - Previews use the normal card-content renderer, with separate answer reveals and

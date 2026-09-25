@@ -49,6 +49,7 @@ export async function createImportedCards(unitId: string, cards: ParsedCard[], r
             front: card.back,
             back: card.front,
             tags: card.tags,
+            answerMode: card.answerMode,
             conceptId: card.conceptId,
           })),
         )

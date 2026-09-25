@@ -34,6 +34,15 @@ describe('card import destinations', () => {
     expect((await db.courses.get(result.courseId))?.name).toBe('French');
     expect(result.lesson?.name).toBe('Lesson 1');
   });
+  it('preserves authored answer modes on generated reverses', async () => {
+    await importCardsToDestination(
+      { kind: 'course', title: 'French', options: { schedulingMode: 'steady' } },
+      { kind: 'text', cards: [{ ...drafts[0], answerMode: 'type' }], reverse: true },
+    );
+    const cards = await db.cards.toArray();
+    expect(cards).toHaveLength(2);
+    expect(cards.every((card) => card.answerMode === 'type')).toBe(true);
+  });
   it('creates a lesson inside an existing course', async () => {
     const course = await createCourse('Languages', { schedulingMode: 'steady' });
     const result = await importCardsToDestination(

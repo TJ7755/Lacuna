@@ -9,7 +9,8 @@
   chosen study target. Anki packages preserve scheduling and media, and failed imports
   retain their drafts without leaving partially created destinations. Keyboard focus stays
   within the dialogue when tabbing in either direction. Anki images and audio preview
-  directly from the package without saving assets before confirmation.
+  directly from the package without saving assets before confirmation. Generated
+  reverses retain the original card’s authored answer mode.
 
 - Moved typed answers into authoring: choose a lesson default, override individual cards
   in the editor/creator, or change selected cards together. Study sessions use those choices
