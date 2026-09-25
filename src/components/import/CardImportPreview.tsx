@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useImportPreviewMedia } from './useImportPreviewMedia';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { CardContent } from '../cards/CardContent';
 import { StepSwap } from '../ui/StepSwap';
@@ -47,11 +48,20 @@ function PreviewFace({ card, reverse }: { card: ParsedCard; reverse: boolean }) 
   );
 }
 
-export function CardImportPreview({ cards, reverse }: { cards: ParsedCard[]; reverse: boolean }) {
+export function CardImportPreview({
+  cards,
+  reverse,
+  media,
+}: {
+  cards: ParsedCard[];
+  reverse: boolean;
+  media?: Map<string, Uint8Array>;
+}) {
+  const previewCard = useImportPreviewMedia(media);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const currentIndex = Math.min(index, cards.length - 1);
-  const card = cards[currentIndex];
+  const card = cards[currentIndex] ? previewCard(cards[currentIndex]) : undefined;
   if (!card) return null;
   return (
     <div className="card-import-preview">

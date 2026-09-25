@@ -1,5 +1,6 @@
 // APKG worker orchestration and persistence. ZIP/SQLite parsing stays in apkgParser.
 import type { Card } from './types';
+import { guessMimeType, replaceMediaRefs, type ImportedMediaRef } from './apkgMedia';
 import { db } from './schema';
 import { projectCardsForStorage, reviewHistoryEntriesForCard } from './reviewHistory';
 import { assertApkgSize, type ApkgImportResult, type ApkgParseOptions } from './apkgTypes';
@@ -77,47 +78,6 @@ function getImageDimensions(blob: Blob): Promise<{ width: number; height: number
   });
 }
 
-interface ImportedMediaRef {
-  hash: string;
-  kind: 'image' | 'audio';
-}
-
-function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMediaRef>): string {
-  let result = text;
-  // Anki's native audio marker.
-  result = result.replace(/\[sound:([^\]]+)\]/gi, (match, filename) => {
-    const media = mediaMap.get(filename);
-    if (!media || media.kind !== 'audio') return match;
-    return `![audio](lacuna-asset://${media.hash})`;
-  });
-  // HTML img tags: <img src="filename.jpg">
-  const imgRe = /<img\s+[^>]*src=["']([^"']+)["'][^>]*>/gi;
-  result = result.replace(imgRe, (match, src) => {
-    const media = mediaMap.get(src);
-    if (!media || media.kind !== 'image') return match;
-    return `![image](lacuna-asset://${media.hash})`;
-  });
-  // Markdown image syntax: ![alt](filename.jpg)
-  const mdImgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  result = result.replace(mdImgRe, (match, alt, src) => {
-    const media = mediaMap.get(src);
-    if (!media || media.kind !== 'image') return match;
-    return `![${alt}](lacuna-asset://${media.hash})`;
-  });
-  // Plain text references like filename.jpg (fallback for filenames embedded in text)
-  for (const [filename, media] of mediaMap.entries()) {
-    const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const plainRe = new RegExp(escaped, 'g');
-    result = result.replace(
-      plainRe,
-      media.kind === 'audio'
-        ? `![audio](lacuna-asset://${media.hash})`
-        : `lacuna-asset://${media.hash}`,
-    );
-  }
-  return result;
-}
-
 // ---------------------------------------------------------------------------
 // Public helpers
 // ---------------------------------------------------------------------------
@@ -150,11 +110,11 @@ export async function importApkgResult(
       if (mime.startsWith('image/')) {
         const dims = await getImageDimensions(blob);
         const asset = await storeImageBlob(blob, mime, dims?.width ?? 0, dims?.height ?? 0);
-        return [filename, { hash: asset.hash, kind: 'image' as const }] as const;
+        return [filename, { url: `lacuna-asset://${asset.hash}`, kind: 'image' as const }] as const;
       }
       if (mime.startsWith('audio/')) {
         const asset = await storeAudioBlob(blob, mime);
-        return [filename, { hash: asset.hash, kind: 'audio' as const }] as const;
+        return [filename, { url: `lacuna-asset://${asset.hash}`, kind: 'audio' as const }] as const;
       }
       return null;
     }),
@@ -250,24 +210,4 @@ export async function importApkgResult(
   }
 
   return { courseId: courseId!, cards: scheduledCards };
-}
-
-function guessMimeType(filename: string): string {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  const map: Record<string, string> = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    webp: 'image/webp',
-    svg: 'image/svg+xml',
-    bmp: 'image/bmp',
-    mp3: 'audio/mpeg',
-    ogg: 'audio/ogg',
-    wav: 'audio/wav',
-    m4a: 'audio/mp4',
-    mp4: 'audio/mp4',
-    webm: 'audio/webm',
-  };
-  return map[ext] ?? 'application/octet-stream';
 }

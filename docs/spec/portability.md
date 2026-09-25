@@ -59,7 +59,9 @@ drag and drop, automatic format detection and a manual format override.
   cards are not automatically reversed. Duplicate warnings include generated reverses.
 - Previews use the normal card-content renderer, with separate answer reveals and
   previous/next navigation. All originals can be inspected; the reverse preview is
-  shown beside an eligible original when enabled.
+  shown beside an eligible original when enabled. Anki package images and audio use
+  temporary preview URLs, released when review closes or the package changes;
+  reviewing never saves media assets.
 - The 5,000-card limit includes generated reverses. Text over 500,000 characters is
   rejected rather than silently truncated. Anki's existing compressed/uncompressed
   limits remain enforced by its parser. Warnings report skipped rows/cards.

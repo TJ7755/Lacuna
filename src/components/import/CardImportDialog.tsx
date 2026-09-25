@@ -223,7 +223,11 @@ export function CardImportDialog({
                 {step === 'input' ? (
                   <CardImportInput source={source} />
                 ) : (
-                  <CardImportPreview cards={cards} reverse={reverse && !source.apkg} />
+                  <CardImportPreview
+                    cards={cards}
+                    reverse={reverse && !source.apkg}
+                    media={source.apkg?.media}
+                  />
                 )}
               </div>
             </div>
