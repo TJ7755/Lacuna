@@ -1,84 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { m as motion, AnimatePresence } from 'motion/react';
+import { useMemo } from 'react';
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../ui/Button';
-import { StudyDrawing } from '../ui/StudyDrawing';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useChartColours } from '../analytics/useChartColours';
-import {
-  CheckIcon,
-  CardsIcon,
-  CloseIcon,
-  ClockIcon,
-  FlagIcon,
-  InfoIcon,
-} from '../ui/icons';
-import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { cn } from '../ui/cn';
 import type { SessionSummary } from './types';
+import './SessionReport.css';
 
-const GRADE_LABELS: Record<number, string> = {
-  1: 'Again',
-  2: 'Hard',
-  3: 'Good',
-  4: 'Easy',
-};
-
-/** Small burst of confetti particles that celebrate a reached goal. */
-function ConfettiBurst({ multiplier }: { multiplier: number }) {
-  const particles = useMemo(() => {
-    const colours = ['#34d399', '#fbbf24', '#60a5fa', '#f87171', '#a78bfa', '#f472b6'];
-    return Array.from({ length: 30 }).map((_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 500,
-      y: -Math.random() * 300 - 100,
-      rotation: Math.random() * 720 - 360,
-      scale: 0.4 + Math.random() * 0.8,
-      colour: colours[i % colours.length],
-      delay: Math.random() * 0.25,
-      duration: 0.8 + Math.random() * 0.8,
-    }));
-  }, []);
-
-  return (
-    <motion.div
-      className="pointer-events-none fixed inset-0 z-50 overflow-hidden"
-      aria-hidden
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.32 * multiplier }}
-    >
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          className="absolute left-1/2 top-1/3 h-2.5 w-2.5 rounded-sm"
-          style={{ backgroundColor: p.colour }}
-          initial={{ x: 0, y: 0, opacity: 1, scale: 0, rotate: 0 }}
-          animate={{
-            x: p.x,
-            y: p.y,
-            opacity: [1, 1, 0],
-            scale: p.scale,
-            rotate: p.rotation,
-          }}
-          transition={{
-            duration: p.duration * multiplier,
-            delay: p.delay * multiplier,
-            ease: [0.16, 1, 0.3, 1],
-          }}
-        />
-      ))}
-    </motion.div>
-  );
-}
+const GRADE_LABELS: Record<number, string> = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
 
 export function SessionReport({
   summary,
@@ -87,11 +15,9 @@ export function SessionReport({
 }: {
   summary: SessionSummary;
   onReturn: () => void;
-  /** Offered when the user can keep studying (goal not reached or limit was reached). */
+  /** Repeats Simple Learn or continues a session when the caller allows it. */
   onContinue?: () => void;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
   const c = useChartColours();
   const { events } = summary;
 
@@ -103,9 +29,7 @@ export function SessionReport({
   const meanResponse = useMemo(() => {
     const correctEvents = events.filter((e) => e.correct);
     if (correctEvents.length === 0) return 0;
-    return (
-      correctEvents.reduce((s, e) => s + e.responseTimeSec, 0) / correctEvents.length
-    );
+    return correctEvents.reduce((s, e) => s + e.responseTimeSec, 0) / correctEvents.length;
   }, [events]);
 
   const gradeData = useMemo(() => {
@@ -121,257 +45,155 @@ export function SessionReport({
   const gradeColour = (g: number) =>
     g === 1 ? c.inkFaint : g === 2 ? c.inkSoft : g === 3 ? c.accent : c.positive;
 
-  // Animate progress bar from before to after over 1.2 seconds.
-  const [animatedProgress, setAnimatedProgress] = useState(summary.masteryBefore);
-  useEffect(() => {
-    const id = window.setTimeout(() => setAnimatedProgress(summary.masteryAfter), 150);
-    return () => window.clearTimeout(id);
-  }, [summary.masteryAfter]);
+  const delta = Math.round((summary.masteryAfter - summary.masteryBefore) * 100);
 
   return (
-    <div className="mx-auto max-w-3xl pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(3rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
-      <AnimatePresence>
-        {summary.reachedGoal && <ConfettiBurst key="confetti" multiplier={m} />}
-      </AnimatePresence>
+    <main className="session-report" aria-label="Session report">
+      <h1>
+        {summary.reachedGoal
+          ? 'Goal reached.'
+          : summary.timeLimitReached
+            ? 'Time’s up'
+            : summary.limitReached
+              ? 'You’ve hit your daily limit'
+              : 'Nice work'}
+      </h1>
+      {summary.limitReached && (
+        <p className="session-report-notice">You can continue studying or come back tomorrow.</p>
+      )}
+      {summary.timeLimitReached && (
+        <p className="session-report-notice">You can continue studying or take a break.</p>
+      )}
 
-      <div>
-        {/* Reaching the goal earns a badge that springs in — the moment worth savouring. */}
-        {summary.reachedGoal && (
-          <motion.div
-            initial={m > 0 ? { scale: 0, rotate: -25 } : false}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={m > 0 ? { type: 'spring', stiffness: 420, damping: 16, delay: 0.15 * m } : { duration: 0 }}
-            className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-positive/10 text-positive"
-          >
-            <CheckIcon width={28} height={28} />
-          </motion.div>
-        )}
-        {!summary.reachedGoal && <StudyDrawing kind="recall" className="mb-5 h-24 w-24" />}
-        {!summary.reachedGoal && (
-          <p className="mb-1 text-sm text-ink-soft">
-            {summary.timeLimitReached ? 'Time limit reached' : summary.limitReached ? 'Daily limit reached' : 'Session complete'}
-          </p>
-        )}
-        <h1 className="mb-8 font-display text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl">
-          {summary.reachedGoal
-            ? 'You’ve reached your goal'
-            : summary.timeLimitReached
-              ? 'Time’s up'
-              : summary.limitReached
-                ? 'You’ve hit your daily limit'
-                : 'Nice work'}
-        </h1>
-        {summary.limitReached && (
-          <p className="mb-6 text-sm text-ink-soft">
-            You have reached the daily review limit. You can continue
-            studying if you wish, or come back tomorrow.
-          </p>
-        )}
-        {summary.timeLimitReached && (
-          <p className="mb-6 text-sm text-ink-soft">
-            You have reached the session time limit. You can continue
-            studying if you wish, or take a break.
-          </p>
-        )}
-
-        {/* Progress before/after with animated fill */}
-        <div className="mb-6 rounded-2xl border border-line bg-surface p-5 sm:p-6">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-ink-soft">
-            <span className="flex items-center gap-2">
-              <FlagIcon width={16} height={16} />
-              {summary.objectiveLabel}
-            </span>
-            <span className="shrink-0 tabular-nums text-ink">
-              {Math.round(summary.masteryBefore * 100)}% →{' '}
-              <motion.span
-                className="font-medium text-accent"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2 * m, duration: 0.24 * m }}
-              >
-                {Math.round(summary.masteryAfter * 100)}%
-              </motion.span>
-            </span>
-          </div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 * m, duration: 0.24 * m }}
-          >
-            <ProgressBar value={animatedProgress} height={8} label={summary.objectiveLabel} />
-          </motion.div>
-          {/* Delta badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1.4 * m, duration: 0.24 * m }}
-            className="mt-3 flex flex-wrap items-center gap-2"
-          >
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium',
-                summary.masteryAfter >= summary.masteryBefore
-                  ? 'bg-positive/10 text-positive'
-                  : 'bg-negative/10 text-negative',
-              )}
-            >
-              {summary.masteryAfter >= summary.masteryBefore ? (
-                <>
-                  <CheckIcon width={12} height={12} />
-                  +{Math.round((summary.masteryAfter - summary.masteryBefore) * 100)} percentage points
-                </>
-              ) : (
-                <>
-                  <CloseIcon width={12} height={12} />
-                  {Math.round((summary.masteryAfter - summary.masteryBefore) * 100)} percentage points
-                </>
-              )}
-            </span>
-            <span className="text-xs text-ink-soft">this session</span>
-          </motion.div>
+      <dl className="session-report-facts">
+        <div>
+          <dt>{total === 1 ? 'Card reviewed' : 'Cards reviewed'}</dt>
+          <dd>{total}</dd>
         </div>
-
-        {/* Stat tiles — revealed one after another with icons. */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat
-            index={0}
-            label="Cards reviewed"
-            value={String(total)}
-            icon={<CardsIcon width={16} height={16} />}
-            colour="accent"
-            motionMultiplier={m}
-          />
-          <Stat
-            index={1}
-            label="Accuracy"
-            value={`${accuracy}%`}
-            icon={<CheckIcon width={16} height={16} />}
-            colour="positive"
-            motionMultiplier={m}
-          />
-          <Stat
-            index={2}
-            label="Mean time"
-            value={`${meanResponse.toFixed(1)}s`}
-            icon={<ClockIcon width={16} height={16} />}
-            colour="ink"
-            motionMultiplier={m}
-          />
-          <Stat
-            index={3}
-            label="Focus"
-            value={`${Math.round(summary.focusFraction * 100)}%`}
-            icon={<InfoIcon width={16} height={16} />}
-            colour="ink"
-            motionMultiplier={m}
-          />
+        <div>
+          <dt>Accuracy</dt>
+          <dd>
+            {accuracy}
+            <span>%</span>
+          </dd>
         </div>
+      </dl>
 
-        {/* Keep the first-pass report focused on correct and remaining cards. */}
-        {!summary.simpleMode && (
-          <div className="mb-6 rounded-2xl border border-line bg-surface p-5 sm:p-6">
-            <h3 className="mb-4 font-display text-xl">How you rated</h3>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height={192}>
-                <BarChart data={gradeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                  <XAxis
-                    dataKey="grade"
-                    stroke={c.inkFaint}
-                    tick={{ fill: c.inkFaint, fontSize: 12 }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    stroke={c.inkFaint}
-                    tick={{ fill: c.inkFaint, fontSize: 11 }}
-                    tickLine={false}
-                    width={32}
-                  />
-                  <Tooltip
-                    cursor={{ fill: c.line, opacity: 0.4 }}
-                    contentStyle={{
-                      background: c.surface,
-                      border: `1px solid ${c.line}`,
-                      borderRadius: 10,
-                      color: c.ink,
-                      fontSize: 13,
-                    }}
-                    formatter={(v) => [v, 'Cards']}
-                  />
-                  <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
-                    {gradeData.map((d) => (
-                      <Cell key={d.g} fill={gradeColour(d.g)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+      <div className="session-report-progress">
+        <div className="session-report-progress-label">
+          <span>{summary.objectiveLabel}</span>
+          <span className="tabular-nums">
+            {Math.round(summary.masteryBefore * 100)}% →{' '}
+            <strong>{Math.round(summary.masteryAfter * 100)}%</strong>
+          </span>
+        </div>
+        <ProgressBar
+          value={summary.masteryAfter}
+          height={3}
+          label={summary.objectiveLabel}
+          variant={summary.reachedGoal ? 'positive' : 'accent'}
+        />
+      </div>
+
+      <details className="session-report-details">
+        <summary>
+          Session details <span aria-hidden="true">+</span>
+        </summary>
+        <div className="session-report-detail-content">
+          <dl>
+            <div>
+              <dt>Mean time</dt>
+              <dd>{meanResponse.toFixed(1)}s</dd>
             </div>
-          </div>
-        )}
-
-        {distractions > 0 && (
-          <p className="mb-6 text-sm text-ink-soft">
-            You left the page during{' '}
-            <strong className="text-ink">{distractions}</strong> of {total} cards. This
-            did not affect your grades, but staying focused keeps the timing accurate.
-          </p>
-        )}
-
-        <div className="flex flex-wrap justify-end gap-3">
-          {onContinue && (
-            <Button variant="secondary" size="lg" onClick={onContinue}>
-              {summary.limitReached || summary.timeLimitReached ? 'Continue anyway' : 'Keep studying'}
-            </Button>
+            <div>
+              <dt>Focus</dt>
+              <dd>{Math.round(summary.focusFraction * 100)}%</dd>
+            </div>
+            <div>
+              <dt>Progress this session</dt>
+              <dd>
+                {delta >= 0 ? '+' : ''}
+                {delta} percentage points
+              </dd>
+            </div>
+          </dl>
+          {/* Keep the first-pass report focused on correct and remaining cards. */}
+          {!summary.simpleMode && (
+            <div className="mt-6">
+              <h2 className="mb-4 font-display text-xl">How you rated</h2>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height={192}>
+                  <BarChart data={gradeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                    <XAxis
+                      dataKey="grade"
+                      stroke={c.inkFaint}
+                      tick={{ fill: c.inkFaint, fontSize: 12 }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      stroke={c.inkFaint}
+                      tick={{ fill: c.inkFaint, fontSize: 11 }}
+                      tickLine={false}
+                      width={32}
+                    />
+                    <Tooltip
+                      cursor={{ fill: c.line, opacity: 0.4 }}
+                      contentStyle={{
+                        background: c.surface,
+                        border: `1px solid ${c.line}`,
+                        borderRadius: 10,
+                        color: c.ink,
+                        fontSize: 13,
+                      }}
+                      formatter={(v) => [v, 'Cards']}
+                    />
+                    <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
+                      {gradeData.map((d) => (
+                        <Cell key={d.g} fill={gradeColour(d.g)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           )}
-          <Button variant="primary" size="lg" onClick={onReturn}>
-            Done
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function Stat({
-  label,
-  value,
-  index,
-  icon,
-  colour,
-  motionMultiplier,
-}: {
-  label: string;
-  value: string;
-  index: number;
-  icon: React.ReactNode;
-  colour: 'accent' | 'positive' | 'ink';
-  motionMultiplier?: number;
-}) {
-  const m = motionMultiplier ?? 1;
-  const colourMap = {
-    accent: 'text-accent bg-accent/8',
-    positive: 'text-positive bg-positive/8',
-    ink: 'text-ink-soft bg-ink/5',
-  };
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * m, delay: (0.2 + index * 0.07) * m, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-xl border border-line bg-surface p-4"
-    >
-      <div className={cn('mb-2 inline-flex rounded-lg p-1.5', colourMap[colour])}>
-        {icon}
+          {distractions > 0 && (
+            <p className="session-report-distractions">
+              You left the page during {distractions} of {total} cards. Your grades were unaffected;
+              the timing may be less representative.
+            </p>
+          )}
+        </div>
+      </details>
+
+      <div className="session-report-actions">
+        <Button variant="primary" size="lg" onClick={onReturn} className="session-report-done">
+          Done
+          <svg
+            className="session-report-arrow"
+            width="22"
+            height="16"
+            viewBox="0 0 22 16"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M1 8h19M14 2l6 6-6 6"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Button>
+        {onContinue && (
+          <Button variant="ghost" size="lg" onClick={onContinue}>
+            {summary.limitReached || summary.timeLimitReached ? 'Continue anyway' : 'Keep studying'}
+          </Button>
+        )}
       </div>
-      <motion.div
-        className="font-display text-3xl tabular tracking-tight"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {value}
-      </motion.div>
-      <div className="mt-1 text-sm text-ink-soft">{label}</div>
-    </motion.div>
+    </main>
   );
 }
