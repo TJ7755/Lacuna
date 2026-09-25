@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import type { Lesson } from '../../db/types';
@@ -99,10 +100,7 @@ export function BatchAuthoringPromptDialog({
         }
       }}
     >
-      <div
-        data-testid="batch-authoring-backdrop"
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-      />
+      <ModalBackdrop data-testid="batch-authoring-backdrop" />
       <motion.div
         role="dialog"
         aria-modal="true"

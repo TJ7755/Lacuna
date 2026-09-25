@@ -64,6 +64,25 @@ beforeEach(() => {
 });
 
 describe('LinkCardsDialog', () => {
+  it('hides the decorative backdrop from assistive technology and closes on click', () => {
+    const onCancel = vi.fn();
+    const { container } = render(
+      <LinkCardsDialog
+        lessonId="lesson-2"
+        cards={[]}
+        lessons={lessons}
+        onLinked={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    const backdrop = container.querySelector('[data-modal-backdrop]');
+    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByRole('dialog', { name: 'Link existing cards' })).toBeInTheDocument();
+    fireEvent.click(backdrop!);
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
   it('searches card fronts and backs and shows primary lesson context', () => {
     render(
       <LinkCardsDialog

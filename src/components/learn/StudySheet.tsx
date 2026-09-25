@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 // The study decision as a bottom sheet rather than a full-screen route.
 //
 // It used to be a page: tapping Study committed you to a screen that cost two taps to
@@ -95,7 +96,7 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
       aria-label="Choose what to study"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <ModalBackdrop shade={30} />
       <motion.div
         initial={{ y: 120, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

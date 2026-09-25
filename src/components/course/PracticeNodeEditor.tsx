@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 // Modal editor for a manual practice node, opened from the path's Add practice
 // action or an existing node's edit badge. Mirrors the chrome of CardEditOverlay.
 // Settings links back here instead of maintaining a competing management surface.
@@ -103,7 +104,7 @@ export function PracticeNodeEditor({
         }
       }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <ModalBackdrop shade={50} onClick={onCancel} />
 
       <motion.div
         role="dialog"

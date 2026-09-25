@@ -380,11 +380,9 @@ async function readBoundedBody(request: Request, maximum: number): Promise<Bound
 
   const chunks: Uint8Array[] = [];
   let length = 0;
-  let done = false;
-  while (!done) {
+  while (true) {
     const chunk = await reader.read();
-    done = chunk.done;
-    if (done) continue;
+    if (chunk.done) break;
     length += chunk.value.byteLength;
     if (length > maximum) {
       await reader.cancel();

@@ -175,3 +175,7 @@ uv run pytest
 ```
 
 Tests use synthetic Parquet partitions. They do not download or redistribute upstream data.
+CI runs this suite with Python 3.12 and the committed `uv.lock`. The
+`tests/fixtures/model-port-v3.json` cases are checked by both the frozen Python candidate
+and `src/fsrs/halfLifeLogisticModel.test.ts`; update their expected probabilities only with
+an intentional, versioned model change.

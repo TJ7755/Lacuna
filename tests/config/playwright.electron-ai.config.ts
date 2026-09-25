@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  forbidOnly: Boolean(process.env.CI),
   outputDir: '../../test-results',
   testDir: '../e2e-electron',
   testIgnore: 'packaged-interactions.spec.ts',
@@ -16,9 +17,9 @@ export default defineConfig({
   },
   webServer: {
     cwd: fileURLToPath(new URL('../..', import.meta.url)),
-    command: 'bunx vite --host localhost',
+    command: 'bun run build:assets && bunx vite preview --host localhost --port 5173 --strictPort',
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

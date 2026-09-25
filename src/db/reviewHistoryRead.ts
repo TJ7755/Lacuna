@@ -1,4 +1,6 @@
 import { db } from './schema';
+import { addDays } from '../fsrs/heatmap';
+import { startOfDay } from '../utils/datetime';
 import {
   cardsWithReviewHistory,
   resolveReviewHistoryCollisions,
@@ -6,6 +8,24 @@ import {
   type ReviewHistoryEntry,
 } from './reviewHistory';
 import type { Card } from './types';
+
+/** Count every persisted review attempt in the user's current local calendar day. */
+export async function dailyReviewCounts(
+  kind: 'course' | 'scheduling-unit',
+  now: number = Date.now(),
+): Promise<Map<string, number>> {
+  const dayStart = startOfDay(now);
+  const entries = await db.reviewHistory
+    .where('timestamp')
+    .between(dayStart, addDays(dayStart, 1), true, false)
+    .toArray();
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const unitId = kind === 'course' ? entry.courseId : entry.schedulingUnitId;
+    if (unitId) counts.set(unitId, (counts.get(unitId) ?? 0) + 1);
+  }
+  return counts;
+}
 
 function sortReviewHistory(entries: ReviewHistoryEntry[]): ReviewHistoryEntry[] {
   return entries.sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));

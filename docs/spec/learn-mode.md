@@ -15,6 +15,11 @@ available for standalone entry.
    **report**.
 3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
 
+Maximum reviews per day and the daily review goal count persisted review events in the user's
+local calendar day, including repeat reviews and earlier sessions. A new Practice session reports
+an already reached threshold before serving another card. **Continue anyway** still permits
+study after the maximum is reached.
+
 While a Card or Question presentation is outstanding, explicit Exit, application navigation and
 browser back open one modal decision. **Stay** is focused by default and preserves the mounted
 answer. Confirmed departure states the unique answered count, retains already committed evidence

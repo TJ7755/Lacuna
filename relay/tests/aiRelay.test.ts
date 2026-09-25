@@ -720,6 +720,7 @@ function flakyMailboxStore(inner: MemoryStore): {
       },
       del: (keys) => inner.del(keys),
       list: (prefix) => inner.list(prefix),
+      listPage: (prefix, cursor, limit) => inner.listPage(prefix, cursor, limit),
     },
     puts,
     get lost() {
@@ -764,6 +765,7 @@ function racingMailboxStore(inner: MemoryStore): {
       put: (key, body, opts) => inner.put(key, body, opts),
       del: (keys) => inner.del(keys),
       list: (prefix) => inner.list(prefix),
+      listPage: (prefix, cursor, limit) => inner.listPage(prefix, cursor, limit),
     },
     get replaceAfterNextMailboxGet() {
       return replaceAfterNextMailboxGet;

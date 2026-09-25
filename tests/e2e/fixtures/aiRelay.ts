@@ -101,7 +101,7 @@ async function relayRoute(
     new Request(intercepted.url(), {
       method,
       headers,
-      body: method === 'GET' || method === 'HEAD' ? undefined : body,
+      body: method === 'GET' || method === 'HEAD' || !body ? undefined : new Uint8Array(body),
     }),
   );
   const responseHeaders = new Headers(response.headers);
