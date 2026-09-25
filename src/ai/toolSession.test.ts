@@ -195,7 +195,7 @@ describe('AiToolSession', () => {
 
   it('does not reuse a rejected approval', async () => {
     const course = await createCourse('Biology');
-    const { session } = makeSession();
+    const { session, executeToolCall } = makeSession();
     const request = {
       toolName: 'lacuna.create_lesson',
       input: { courseId: course.id, name: 'Cells' },
@@ -205,7 +205,10 @@ describe('AiToolSession', () => {
     await session.decide(pending.effects.approval!.approvalId, false);
     const retry = await invoke(session, request);
 
-    expect(retry.response).toMatchObject({ ok: false, error: { kind: 'conflict' } });
+    expect(retry.response).toMatchObject({
+      ok: false, error: { kind: 'conflict', message: 'You rejected this write. No change was made.' },
+    });
+    expect(executeToolCall).not.toHaveBeenCalled();
   });
 
   it('rejects stopped and disconnected runs before admission', async () => {

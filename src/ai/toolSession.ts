@@ -367,8 +367,11 @@ export class AiToolSession {
   ): AiToolInvokeResult {
     if (pending) {
       if (pending.approval.status === 'pending') return this.approvalPending(pending);
-      if (pending.approval.status === 'rejected' || pending.approval.status === 'expired') {
-        return this.conflict('This write approval cannot be reused.');
+      if (pending.approval.status === 'rejected') {
+        return this.conflict('You rejected this write. No change was made.');
+      }
+      if (pending.approval.status === 'expired') {
+        return this.conflict('This write approval expired. No change was made.');
       }
     }
     const sharedPending = [...this.approvals.values()].find(

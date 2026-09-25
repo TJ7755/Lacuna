@@ -22,6 +22,8 @@
   for each, before the variable free router. Log failed provider routes for diagnosis.
   Tell hosted models the exact local tool wrappers and approval behaviour, and try the next
   verified free route when a provider finishes without usable text or a tool call.
+  Report a rejected write as a rejection with no mutation, so the model does not describe
+  it as an expired or reused approval.
   Made hosted function imports resolvable by Vercel's Node ESM runtime and added a
   compiled-module regression test after the first deployed session request failed at load time.
   Used Lacuna's Electron preload to choose the hosted service URL, so an ordinary browser
