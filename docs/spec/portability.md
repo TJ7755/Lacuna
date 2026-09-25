@@ -46,6 +46,7 @@ A single, reusable export UI offering multiple output formats:
 
 - **Full backup (JSON)** — complete database snapshot including Cards, Card reviews, Concepts,
   Questions, Question relationships and Attempts, plus media assets (`downloadBackup`).
+  Selected backup files over 200 MB are rejected before they are read or parsed.
 - **CSV** — comma-separated values with all card fields.
 - **TSV** — tab-separated values, compatible with Anki import.
 - **Markdown table** (`exportCardsMarkdownTable`) — GFM table with Deck, Front,
