@@ -214,7 +214,7 @@ export function CourseCard({
           </>
         ) : (
           <>
-            <CalendarIcon width={16} height={16} className="shrink-0" />
+            <CalendarIcon width={16} height={16} className="-translate-y-px shrink-0" />
             <span className="sr-only">Exam on </span>
             <time dateTime={new Date(course.examDate).toISOString()}>{examDateLabel}</time>
             {examPassed && <span className="sr-only">Exam date passed.</span>}
