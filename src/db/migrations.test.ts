@@ -434,6 +434,65 @@ describe('pre-migration snapshot ordering', () => {
     await unchanged.delete();
   });
 
+  it('does not open a default-target upgrade across v22 when its snapshot fails, and permits retry', async () => {
+    const dbName = `lacuna-default-snapshot-failure-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({ decks: 'id, createdAt' });
+    await v21.open();
+    await v21.table('decks').add({ id: 'deck-1', name: 'Protected', createdAt: 1 });
+    v21.close();
+
+    const snapshotFailure = new Error('Snapshot storage unavailable');
+    const saveSnapshot = vi.fn().mockRejectedValueOnce(snapshotFailure).mockResolvedValue(undefined);
+    const openUpgradedDatabase = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { ensurePreMigrationSnapshot } = await import('./schema');
+    try {
+      await expect(
+        (async () => {
+          await ensurePreMigrationSnapshot(dbName, undefined, saveSnapshot);
+          openUpgradedDatabase();
+        })(),
+      ).rejects.toBe(snapshotFailure);
+      expect(openUpgradedDatabase).not.toHaveBeenCalled();
+
+      const unchanged = new Dexie(dbName);
+      unchanged.version(21).stores({ decks: 'id, createdAt' });
+      await unchanged.open();
+      expect(await unchanged.table('decks').get('deck-1')).toEqual(
+        expect.objectContaining({ name: 'Protected' }),
+      );
+      unchanged.close();
+
+      await ensurePreMigrationSnapshot(dbName, undefined, saveSnapshot);
+      expect(saveSnapshot).toHaveBeenCalledTimes(2);
+    } finally {
+      consoleError.mockRestore();
+      await new Dexie(dbName).delete();
+    }
+  });
+
+  it('continues a non-destructive v26-to-v27 upgrade when its snapshot fails', async () => {
+    const dbName = `lacuna-v26-snapshot-failure-${Date.now()}`;
+    const v26 = new Dexie(dbName);
+    v26.version(26).stores({ appState: 'key' });
+    await v26.open();
+    v26.close();
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { ensurePreMigrationSnapshot } = await import('./schema');
+    try {
+      await expect(
+        ensurePreMigrationSnapshot(dbName, undefined, async () => {
+          throw new Error('Snapshot storage unavailable');
+        }),
+      ).resolves.toBeUndefined();
+    } finally {
+      consoleError.mockRestore();
+      await new Dexie(dbName).delete();
+    }
+  });
+
   it('does not take a snapshot when the database is already at the target version', async () => {
     const dbName = `lacuna-current-${Date.now()}`;
     const v4 = new Dexie(dbName);
