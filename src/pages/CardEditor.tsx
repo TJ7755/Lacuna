@@ -13,6 +13,7 @@ import {
   useOcclusions,
   useSequences,
 } from '../state/useCourseData';
+import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { CardAnswerModeField } from '../components/cards/AnswerModeControl';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
@@ -563,6 +564,9 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
+    const storedAnswerMode = course && !course.archived && isLessonAuthoringMode(course)
+      ? (isStructured ? undefined : answerMode)
+      : (editing ? card?.answerMode : undefined);
     const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
     const backValue = isCloze || isStructured ? '' : back;
     const payload: ItemPayload | undefined = isNumeric
@@ -578,7 +582,7 @@ export function CardEditor() {
           }
         : undefined;
     if (editing && card) {
-      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload, answerMode: isStructured ? undefined : answerMode });
+      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload, answerMode: storedAnswerMode });
       // If this is a basic_reversed card, update its reverse partner too.
       if (card.type === 'basic_reversed' && card.reverseCardId) {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
@@ -597,18 +601,18 @@ export function CardEditor() {
     const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
-        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags, answerMode);
+        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
       } else if (reversed) {
-        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags, answerMode);
+        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
       } else {
-        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload, isStructured ? undefined : answerMode);
+        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload, storedAnswerMode);
       }
     } else if (isBasicReversed) {
-      await createCourseBasicReversedPair(courseId!, front, backValue, tags, answerMode);
+      await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
     } else if (reversed) {
-      await createCourseCardWithReverse(courseId!, front, backValue, tags, answerMode);
+      await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
     } else {
-      await createCourseCard(courseId!, storedType, front, backValue, tags, payload, isStructured ? undefined : answerMode);
+      await createCourseCard(courseId!, storedType, front, backValue, tags, payload, storedAnswerMode);
     }
     clearDraft(draftKeyRef.current);
     setDraftDirty(false);

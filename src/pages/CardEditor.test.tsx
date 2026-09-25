@@ -733,4 +733,37 @@ describe('CardEditor — authored answer mode', () => {
       expect.objectContaining({ answerMode: undefined }),
     ));
   });
+  it.each([false, true])('ignores a restored answer-mode override in Study mode (editing: %s)', async (editing) => {
+    mockCourse = { ...course, lessonViewMode: 'study' };
+    mockCard = editing ? { ...generatedCard, sequenceItemId: undefined, answerMode: 'reveal' } : undefined;
+    saveDraft(draftKey('bank:course-1', editing ? 'card-1' : 'new'), {
+      type: 'front_back', front: 'Draft question', back: 'Draft answer', tags: [],
+      answerMode: 'type', timestamp: Date.now(),
+    });
+    if (editing) renderEditing();
+    else renderNew();
+    fireEvent.click(await screen.findByRole('button', { name: 'Restore draft' }));
+    expect(screen.queryByRole('combobox', { name: 'Card answer mode' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }));
+    if (editing) {
+      await waitFor(() => expect(updateCard).toHaveBeenCalledWith('card-1', expect.objectContaining({ answerMode: 'reveal' })));
+    } else {
+      await waitFor(() => expect(createCourseCard).toHaveBeenCalledWith(
+        'course-1', 'front_back', 'Draft question', 'Draft answer', [], undefined, undefined,
+      ));
+    }
+  });
+
+  it('preserves the saved answer mode if authoring is turned off while editing', async () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    mockCard = { ...generatedCard, sequenceItemId: undefined, answerMode: 'reveal' };
+    renderEditing();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), { target: { value: 'type' } });
+    mockCourse = { ...course, lessonViewMode: 'study' };
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Updated question' } });
+    expect(screen.queryByRole('combobox', { name: 'Card answer mode' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateCard).toHaveBeenCalledWith('card-1', expect.objectContaining({ answerMode: 'reveal' })));
+  });
+
 });

@@ -5,6 +5,7 @@
 - Moved typed answers into authoring: choose a lesson default, override individual cards
   in the editor/creator, or change selected cards together. Study sessions use those choices
   with the existing offline comparison and self-marking. Removed the global typing switch.
+  Restoring a draft or leaving Author mode cannot change a hidden answer-mode choice.
 - Preserved answer modes through backups, course sharing and author updates; standalone
   card JSON exports include the effective mode so re-import does not depend on a lesson.
 
