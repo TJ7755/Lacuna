@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Kept Course Settings section headings below the sticky mobile jumper after
+  navigation, matching the existing Settings section offset.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
