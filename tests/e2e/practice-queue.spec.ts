@@ -66,7 +66,7 @@ for (const dueOnly of [false, true]) {
           }
         }
       }
-      await expect(page.getByRole('heading', { name: 'You’ve reached your goal' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
       await expect(page.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow', '100');
     });
   }
