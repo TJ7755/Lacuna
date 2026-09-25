@@ -203,6 +203,37 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Nothing matches “missing”.')).toBeInTheDocument();
   });
 
+  it('links the combobox to a listbox only while results exist', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    const input = screen.getByRole('combobox');
+
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(input).not.toHaveAttribute('aria-controls');
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'missing' } });
+    await waitFor(() => expect(screen.getByText('Nothing matches “missing”.')).toBeInTheDocument());
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(input).not.toHaveAttribute('aria-controls');
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    const listbox = await screen.findByRole('listbox');
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveAttribute('aria-controls', listbox.id);
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
+    expect(listbox.querySelector('#palette-option-0')).toBeInTheDocument();
+  });
+
   afterEach(() => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [],
@@ -276,7 +307,7 @@ describe('CommandPalette', () => {
 
     const input = screen.getByRole('combobox');
     expect(input).toHaveAttribute('role', 'combobox');
-    expect(input).toHaveAttribute('aria-controls', 'palette-listbox');
+    expect(input).not.toHaveAttribute('aria-controls');
     expect(input).toHaveAttribute('aria-autocomplete', 'list');
     // No results yet (empty query) -> collapsed and no active descendant
     expect(input).toHaveAttribute('aria-expanded', 'false');
@@ -289,6 +320,7 @@ describe('CommandPalette', () => {
 
     const listbox = await screen.findByRole('listbox');
     expect(listbox).toHaveAttribute('id', 'palette-listbox');
+    expect(input).toHaveAttribute('aria-controls', listbox.id);
 
     const options = screen.getAllByRole('option');
     expect(options).toHaveLength(1);
@@ -306,6 +338,7 @@ describe('CommandPalette', () => {
       });
 
       expect(input).toHaveAttribute('aria-expanded', 'false');
+      expect(input).not.toHaveAttribute('aria-controls');
       expect(input).not.toHaveAttribute('aria-activedescendant');
     });
 
