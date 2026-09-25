@@ -1,7 +1,8 @@
 # 8. The exam objective — the core invariant (`src/fsrs/objective.ts`)
 
-A deck's `examObjective` is the single value from which **both** the scheduler's sort key
-and the progress-bar value are derived, so they can never disagree.
+A deck's `examObjective` determines the scheduler's sort key and the predicted-readiness
+measurement shown on the dashboard and in session reports. The active session's top bar
+measures work completion separately (see [Learn mode](learn-mode.md)).
 
 ### Progress-bar value (`progressValue`, via `src/fsrs/progress.ts`)
 

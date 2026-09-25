@@ -1,7 +1,7 @@
 // The single source of truth for a deck's exam objective.
 //
 // The whole point of this module is that the scheduler's sort metric and the
-// progress bar are *both* derived from `deck.examObjective`, so they can never
+// predicted readiness are *both* derived from `deck.examObjective`, so they never
 // disagree. Anything that ranks cards or reports progress must go through here.
 //
 //  - "expectedMarks" (default): maximise the sum of predicted exam-day
@@ -59,8 +59,8 @@ export function makeObjectiveContext(
 }
 
 /**
- * Progress-bar value (0..1) for the deck's objective. This is the *only* function
- * the UI should use for the bar, guaranteeing it matches the scheduler.
+ * Predicted-readiness value (0..1) for the deck's objective, used by dashboard
+ * bars and session reports. Active-session completion is measured separately.
  */
 export function progressValue(
   cards: Card[],

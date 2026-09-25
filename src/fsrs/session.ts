@@ -3,7 +3,7 @@
 // A Learn session may study a single deck (the classic per-deck route), every
 // deck at once (the global "Today" session), or a course/lesson scope (course-
 // architecture migration). All cases run through here so the scheduler ordering
-// and the progress bar stay derived from each unit's exam objective (see
+// and predicted recall stay derived from each unit's exam objective (see
 // objective.ts) and from the eligibility rules (see eligibility.ts).
 //
 // Single unit: ordering is exactly the per-unit objective order (delegated to
@@ -79,6 +79,8 @@ export interface SessionContext {
   decks: Map<string, SessionDeckContext>;
   /** Ordering mode for the session. Defaults to the unit objective. */
   mode: SessionMode;
+  /** Captured work and review counts, used to respect intervals after an answer. */
+  initialReviewCounts?: ReadonlyMap<string, number>;
 }
 
 interface SessionCardIndex {
@@ -107,6 +109,7 @@ function cardsForUnit(cards: Card[], unit: SessionDeckContext): Card[] {
 export function makeSessionContext(
   units: Array<(SchedulerConfig & { id: string }) | SchedulingUnitRecord | SessionUnit>,
   mode: SessionMode = 'objective',
+  initialCards?: Card[],
 ): SessionContext {
   const map = new Map<string, SessionDeckContext>();
   for (const u of units) {
@@ -118,7 +121,13 @@ export function makeSessionContext(
       oc: makeObjectiveContext(unit.config, unit.examDateContext),
     });
   }
-  return { decks: map, mode };
+  const context: SessionContext = { decks: map, mode };
+  if (initialCards) {
+    context.initialReviewCounts = new Map(
+      sessionServePool(initialCards, context).map((card) => [card.id, card.reps]),
+    );
+  }
+  return context;
 }
 
 /** Exam-proximity urgency: nearer exams weigh more. Smooth and always positive.
@@ -194,12 +203,22 @@ function indexSessionCards(cards: Card[], ctx: SessionContext): SessionCardIndex
 function unitServePool(
   cards: Card[],
   deck: SchedulerConfig,
-  mode: SessionMode,
+  ctx: SessionContext,
   now: number,
 ): Card[] {
+  const { mode } = ctx;
   if (deck.archived) return [];
-  if (mode === 'due') return dueCards(cards, now);
-  return mode === 'cram' ? availableCards(cards, now) : studyPool(cards, deck, now);
+  const pool = mode === 'due'
+    ? dueCards(cards, now)
+    : mode === 'cram' ? availableCards(cards, now) : studyPool(cards, deck, now);
+  const initialReviewCounts = ctx.initialReviewCounts;
+  if (!initialReviewCounts || mode === 'cram') return pool;
+  return pool.filter((card) => {
+    const initialReps = initialReviewCounts.get(card.id);
+    return initialReps !== undefined && (
+      card.reps <= initialReps || card.due === null || card.due <= now
+    );
+  });
 }
 
 function indexedUnitsForCard(
@@ -237,7 +256,7 @@ export function sessionServePool(
 ): Card[] {
   if (ctx.decks.size === 1) {
     const unit = ctx.decks.values().next().value as SessionDeckContext;
-    return unitServePool(cardsForUnit(cards, unit), unit.deck, ctx.mode, now);
+    return unitServePool(cardsForUnit(cards, unit), unit.deck, ctx, now);
   }
   return sessionServePoolFromIndex(indexSessionCards(cards, ctx), ctx, now);
 }
@@ -251,7 +270,7 @@ function sessionServePoolFromIndex(
   const pool: Card[] = [];
   for (const { deck, scope } of ctx.decks.values()) {
     const deckCards = index.byUnit.get(unitKey(scope)) ?? [];
-    const eligible = unitServePool(deckCards, deck, ctx.mode, now);
+    const eligible = unitServePool(deckCards, deck, ctx, now);
     for (const c of eligible) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
@@ -276,7 +295,7 @@ export function selectNext(
     : null;
   const index = singleUnit ? null : indexSessionCards(cards, ctx);
   const pool = singleUnit
-    ? unitServePool(cardsForUnit(cards, singleUnit), singleUnit.deck, ctx.mode, now)
+    ? unitServePool(cardsForUnit(cards, singleUnit), singleUnit.deck, ctx, now)
     : sessionServePoolFromIndex(index!, ctx, now);
   if (pool.length === 0) return null;
 
@@ -367,16 +386,19 @@ export function selectNext(
   return best;
 }
 
-/** Due review ends at an empty due pool; other modes retain their exam objective. */
+/** Finish when captured work is cleared, or the remaining exam objective is met. */
 export function sessionComplete(
   cards: Card[],
   ctx: SessionContext,
   now: number = Date.now(),
 ): boolean {
-  if (ctx.mode === 'due') return sessionServePool(cards, ctx, now).length === 0;
+  if (ctx.mode === 'due' || ctx.initialReviewCounts) {
+    if (sessionServePool(cards, ctx, now).length === 0) return true;
+    if (ctx.mode === 'due') return false;
+  }
   if (ctx.decks.size === 1) {
     const unit = ctx.decks.values().next().value as SessionDeckContext;
-    const served = unitServePool(cardsForUnit(cards, unit), unit.deck, ctx.mode, now);
+    const served = unitServePool(cardsForUnit(cards, unit), unit.deck, ctx, now);
     return served.length > 0 && isObjectiveComplete(served, unit.oc, now);
   }
   const index = indexSessionCards(cards, ctx);
@@ -385,7 +407,7 @@ export function sessionComplete(
     const served = unitServePool(
       index.byUnit.get(unitKey(scope)) ?? [],
       deck,
-      ctx.mode,
+      ctx,
       now,
     );
     if (served.length > 0) anyPoolNonEmpty = true;
@@ -421,4 +443,15 @@ export function sessionProgress(
     total += available.length;
   }
   return total ? acc / total : 1;
+}
+
+/** Work cleared in this session; predicted recall remains sessionProgress. */
+export function sessionCompletionProgress(
+  cards: Card[],
+  ctx: SessionContext,
+  now: number = Date.now(),
+): number {
+  const total = ctx.initialReviewCounts?.size ?? 0;
+  if (total === 0) return 1;
+  return Math.max(0, 1 - sessionServePool(cards, ctx, now).length / total);
 }
