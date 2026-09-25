@@ -101,6 +101,7 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
   let invalidated = false;
 
   function persist(): void {
+    if (!owner) return;
     saveHostedState(storage, {
       conversationId: snapshot.conversationId,
       items: [...snapshot.items],
@@ -378,11 +379,11 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
     dispose() {
       active = false;
       interrupt();
+      publish({ ...snapshot, connection: { status: 'disconnected' } });
       owner = false;
       releaseOwnership?.();
       releaseOwnership = null;
       token = null;
-      publish({ ...snapshot, connection: { status: 'disconnected' } });
     },
     pair: async () => failure('conflict', 'Built-in AI uses an access code.'),
     connectHosted: connect,
@@ -417,7 +418,7 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
     },
     async resetConnection() {
       interrupt();
-      storage.removeItem(HOSTED_ACCESS_STORAGE_KEY);
+      if (owner) storage.removeItem(HOSTED_ACCESS_STORAGE_KEY);
       token = null;
       publish({ ...snapshot, connection: { status: 'disconnected' } });
       return { ok: true, data: undefined };

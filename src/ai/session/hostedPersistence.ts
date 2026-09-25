@@ -82,7 +82,12 @@ export function loadHostedState(storage: HostedSessionStorage): HostedStoredStat
 
 export function saveHostedState(storage: HostedSessionStorage, state: HostedStoredState): void {
   try {
-    const encoded = JSON.stringify({ version: 1, ...state });
+    let items = state.items;
+    let encoded = JSON.stringify({ version: 1, ...state, items });
+    while (encoded.length > MAX_STORED_BYTES && items.length > 0) {
+      items = items.slice(1);
+      encoded = JSON.stringify({ version: 1, ...state, items });
+    }
     if (encoded.length <= MAX_STORED_BYTES) storage.setItem(HOSTED_SESSION_STORAGE_KEY, encoded);
   } catch {
     // A full browser store must not interrupt an active response.

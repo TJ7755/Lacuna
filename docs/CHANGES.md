@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed hosted AI provider switches leaving a previous session active, and prevented tabs without
+  ownership from overwriting the saved conversation or removing its access code. Older replies
+  are trimmed when needed so later turns and the tool ledger remain saved. Rejected exact write
+  approvals now tell the model that no change was made.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
@@ -16,7 +20,7 @@
   runtime dependency set.
   Replaced the unavailable pinned Gateway model with `poolside/laguna-s-2.1-free` and
   `inclusionai/ling-3.0-flash-fin`, retaining the live zero-price check for each route.
-  OpenRouter's free router takes priority when configured and requires a live zero-price and
+  OpenRouter routes take priority over Gateway when configured and require a live zero-price and
   tool-support check before use. Every Gateway price field must also be zero.
   Prefer pinned OpenRouter Nemotron Ultra and Gemma 4 free models, checking live zero pricing
   and tool support for each, before the variable free router. Log failed provider routes for diagnosis.

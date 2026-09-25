@@ -52,6 +52,8 @@ function RouterWithOptionalAi() {
   const matchingSession = session && (session.provider ?? 'external') === settings.provider ? session : null;
   const sessionRef = useRef<EnabledAiSession | null>(null);
   const handleSessionReady = useCallback((next: EnabledAiSession) => {
+    const previous = sessionRef.current;
+    if (previous && previous !== next) previous.dispose();
     sessionRef.current = next;
     setSession(next);
   }, []);
@@ -69,7 +71,7 @@ function RouterWithOptionalAi() {
     if (previousProvider.current === settings.provider) return;
     previousProvider.current = settings.provider;
     const current = sessionRef.current;
-    if (!current) return;
+    if (!current || (current.provider ?? 'external') === settings.provider) return;
     current.dispose();
     sessionRef.current = null;
     setSession(null);

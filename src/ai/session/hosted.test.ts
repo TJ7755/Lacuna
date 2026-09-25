@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createHostedAiSession } from './hosted';
 import { HOSTED_SESSION_STORAGE_KEY, type HostedSessionStorage } from './hostedPersistence';
+import { HOSTED_ACCESS_STORAGE_KEY } from './hostedTransport';
 import type { HostedTransport } from './hostedTransport';
 import type { HostedEvent } from '../hostedProtocol';
 
@@ -95,5 +96,28 @@ describe('hosted AI session', () => {
       status: 'disconnected', reason: 'Built-in AI is open in another tab.',
     }));
     expect(await session.send('Can I send?')).toMatchObject({ ok: false });
+  });
+
+  it('does not let a non-owner overwrite the conversation or remove the access code', async () => {
+    const storage = memoryStorage();
+    const other = createHostedAiSession({ storage, acquireOwnership: async () => null });
+    const { session } = await connected([
+      { type: 'text_delta', text: 'Latest answer' },
+      { type: 'completed', finishReason: 'stop' },
+    ], storage);
+    await session.send('Latest question');
+    await vi.waitFor(() => expect(session.getSnapshot().run?.status).toBe('completed'));
+    const saved = storage.getItem(HOSTED_SESSION_STORAGE_KEY);
+    expect(storage.getItem(HOSTED_ACCESS_STORAGE_KEY)).not.toBeNull();
+
+    other.activate();
+    await vi.waitFor(() => expect(other.getSnapshot().connection).toMatchObject({
+      reason: 'Built-in AI is open in another tab.',
+    }));
+    await other.resetConnection();
+    other.dispose();
+
+    expect(storage.getItem(HOSTED_SESSION_STORAGE_KEY)).toBe(saved);
+    expect(storage.getItem(HOSTED_ACCESS_STORAGE_KEY)).not.toBeNull();
   });
 });

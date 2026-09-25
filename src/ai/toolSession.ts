@@ -310,6 +310,12 @@ export class AiToolSession {
       return this.approvalRequired(approval);
     }
     if (approval.approval.status === 'pending') return this.approvalPending(approval);
+    if (approval.approval.status === 'rejected') {
+      return this.conflict('You rejected this action. No change was made.');
+    }
+    if (approval.approval.status === 'expired') {
+      return this.conflict('This approval expired. No change was made.');
+    }
     if (approval.approval.status !== 'approved') {
       return this.conflict('This destructive approval cannot be reused.');
     }

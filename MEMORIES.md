@@ -87,7 +87,12 @@ has one without Lacuna's preload. Choose the hosted service origin from `electro
 
 AI and data MCP companions share transport but have different grants. Preserve every generated
 profile argument and verify the client's active tools, not just saved registration. A transport
-harness does not prove model-authored chat. Web AI currently has no cross-tab ownership lease.
+harness does not prove model-authored chat. External web AI currently has no cross-tab ownership
+lease; hosted AI uses a Web Lock and only its owner may write shared session storage.
+
+React can run a newly mounted AI runtime's effect before its parent's provider-change effect.
+Session replacement must dispose the previous session in the ready handler; the parent effect
+must check the current session's provider before disposing it.
 
 Managed-device redirects to `https://localhost:6543/block?...` are network filtering, not a
 Lacuna endpoint: never add that origin to CSP. Device sync still needs the relay even when
