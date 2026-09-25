@@ -2,14 +2,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
-const { extractFile } = require('@electron/asar');
 const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const baselineVersion = '0.2.7';
 const baselineSha256 = 'c14f683fb3047e57c41abad1e40677d20c7bc0d5be376bebfb875e0184b8760a';
@@ -55,8 +52,12 @@ async function processSnapshot(stage) {
 }
 
 async function installedVersion(executable) {
-  const archive = path.join(path.dirname(executable), 'resources', 'app.asar');
-  return JSON.parse(extractFile(archive, 'package.json').toString()).version;
+  const result = await powershell(
+    '(Get-Item -LiteralPath $env:LACUNA_PROBE_EXE).VersionInfo.ProductVersion',
+    { LACUNA_PROBE_EXE: executable },
+  );
+  if (result.exitCode !== 0) throw new Error(`Cannot read installed version: ${result.stderr}`);
+  return result.stdout;
 }
 
 async function install(installer, directory, stage) {
@@ -76,7 +77,9 @@ try {
   assert.equal(digest, baselineSha256, 'The historical installer does not match its published SHA-256.');
   await processSnapshot('before baseline installation');
   await install(baselineInstaller, installDirectory, 'baseline installation');
-  assert.equal(await installedVersion(executable), baselineVersion);
+  const installedBaselineVersion = await installedVersion(executable);
+  report.stages.push({ stage: 'baseline version', version: installedBaselineVersion });
+  assert.equal(installedBaselineVersion, baselineVersion);
 
   const entry = path.join(installDirectory, 'resources', 'app.asar', 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js');
   companion = spawn(executable, [
@@ -98,7 +101,9 @@ try {
   await processSnapshot('before upgrade with live companion');
   await install(currentInstaller, installDirectory, 'upgrade');
   await processSnapshot('after upgrade');
-  assert.equal(await installedVersion(executable), packageJson.version);
+  const installedTargetVersion = await installedVersion(executable);
+  report.stages.push({ stage: 'target version', version: installedTargetVersion });
+  assert.equal(installedTargetVersion, packageJson.version);
   for (let attempt = 0; attempt < 10 && companion.exitCode === null && companion.signalCode === null; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
