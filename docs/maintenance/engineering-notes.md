@@ -8,6 +8,9 @@ working in that area; current contracts belong in the [specification](../SPEC.md
 - Updater tests need a matching historical installer and published block map: a saved v0.2.8
   installer differed from the hosted checksum despite sharing its version. Test both a verified
   matching cache and empty-cache full-download fallback.
+- The Windows installed-upgrade CI probe holds the v0.2.7 AI companion's stdio open while
+  installing the current package. It covers NSIS replacement of a live companion, but does not
+  reproduce Codex's process ownership or explain the intermittent v0.2.8 failure in #205.
 - Native TypeScript 7 and typescript-eslint need different compiler packages: keep the native
   compiler under `@typescript/native` and the compatibility API under `typescript`.
 - Browser library declarations include ES2022, while emitted syntax targets ES2021; the target

@@ -239,3 +239,35 @@ jobs:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
+
+  windows-installed-upgrade:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run electron:build:win
+      - name: Download the verified v0.2.7 installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force test-results/windows-upgrade/source | Out-Null
+          gh release download v0.2.7 --pattern Lacuna-Setup-0.2.7.exe --dir test-results/windows-upgrade/source
+      - name: Upgrade with a long-running installed AI companion
+        run: node scripts/windows-upgrade-companion.mjs test-results/windows-upgrade/source/Lacuna-Setup-0.2.7.exe
+      - name: Preserve installed upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-installed-upgrade-results
+          path: test-results/windows-upgrade/installed-upgrade.json
+          if-no-files-found: ignore

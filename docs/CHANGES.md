@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a Windows CI installed-upgrade probe using the verified v0.2.7 installer and a
+  long-running, installed AI companion. It records installer exit codes and process identities
+  on failure. The intermittent Codex-hosted shutdown failure remains unexplained.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
