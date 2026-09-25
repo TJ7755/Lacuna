@@ -21,13 +21,17 @@ vi.mock('../analytics/useChartColours', () => ({
 }));
 
 vi.mock('recharts', () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
   Bar: () => null,
   Cell: () => null,
   XAxis: () => null,
   YAxis: () => null,
   Tooltip: () => null,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="responsive-container">{children}</div>
+  ),
 }));
 
 const mockSummary: SessionSummary = {
@@ -50,7 +54,7 @@ describe('SessionReport', () => {
     const onReturn = vi.fn();
     render(<SessionReport summary={mockSummary} onReturn={onReturn} />);
     expect(screen.queryByText('Goal reached')).not.toBeInTheDocument();
-    expect(screen.getByText('You\u2019ve reached your goal')).toBeInTheDocument();
+    expect(screen.getByText('Goal reached.')).toBeInTheDocument();
   });
 
   it('reports progress changes in percentage points with a named progress bar', () => {
@@ -113,4 +117,61 @@ describe('SessionReport', () => {
     render(<SessionReport summary={distractedSummary} onReturn={vi.fn()} />);
     expect(screen.getByText(/left the page during/)).toBeInTheDocument();
   });
+});
+
+describe('minimal completion report', () => {
+  it('leads with the goal and keeps secondary results collapsed', () => {
+    render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
+    expect(screen.queryByText('Session complete')).not.toBeInTheDocument();
+    const details = screen.getByText('Session details').closest('details');
+    expect(details).not.toHaveAttribute('open');
+    expect(details).toContainElement(screen.getByText('Mean time'));
+    expect(details).toContainElement(screen.getByText('Focus'));
+    expect(details).toContainElement(screen.getByText('+15 percentage points'));
+    expect(screen.getByText('Accuracy').closest('details')).toBeNull();
+  });
+
+  it('retains simple-pass continuation without a grading chart', () => {
+    const onContinue = vi.fn();
+    render(
+      <SessionReport
+        summary={{ ...mockSummary, simpleMode: true }}
+        onReturn={vi.fn()}
+        onContinue={onContinue}
+      />,
+    );
+    expect(screen.queryByText('How you rated')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep studying' }));
+    expect(onContinue).toHaveBeenCalledOnce();
+  });
+});
+
+it('keeps a time-limited session continuable without claiming the goal was reached', () => {
+  const onContinue = vi.fn();
+  render(
+    <SessionReport
+      summary={{ ...mockSummary, reachedGoal: false, timeLimitReached: true }}
+      onReturn={vi.fn()}
+      onContinue={onContinue}
+    />,
+  );
+  expect(screen.getByRole('heading', { name: 'Time’s up' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Goal reached.' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Continue anyway' }));
+  expect(onContinue).toHaveBeenCalledOnce();
+});
+
+it('reports an empty session and a negative progress change without invalid statistics', () => {
+  render(
+    <SessionReport
+      summary={{ ...mockSummary, events: [], reachedGoal: false, masteryAfter: 0.3 }}
+      onReturn={vi.fn()}
+    />,
+  );
+  expect(screen.getByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
+  expect(screen.getByText('0.0s')).toBeInTheDocument();
+  expect(screen.getByText('-10 percentage points')).toBeInTheDocument();
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30');
+  expect(screen.queryByRole('button', { name: 'Keep studying' })).not.toBeInTheDocument();
 });

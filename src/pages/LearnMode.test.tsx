@@ -352,7 +352,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await answerYesAndWaitForExposure(lesson1.id);
     await screen.findByRole('heading', {
-      name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+      name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
     });
     await act(async () => unmount());
     // Give any (incorrect) ratchet write a chance to land before asserting it didn't.
@@ -565,7 +565,7 @@ describe('LearnMode course/lesson scope', () => {
       await continueFromNotes();
       await answerYesAndWaitForExposure(lesson1.id);
       await screen.findByRole('heading', {
-        name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+        name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
       });
       await act(async () => unmount());
       await new Promise((r) => setTimeout(r, 50));
@@ -1050,7 +1050,7 @@ describe('LearnMode course/lesson scope', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+        name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
       }),
     ).toBeInTheDocument();
     await act(async () => {
@@ -1329,7 +1329,7 @@ describe('LearnMode course/lesson scope', () => {
       }
     });
 
-    expect(await screen.findByText('Session complete')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
     expect(await storedReviewsForCard(card.id)).toHaveLength(0);
     await act(async () => unmount());
   });
@@ -1453,8 +1453,8 @@ describe('LearnMode course/lesson scope', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
       fireEvent.click(await screen.findByRole('button', { name: actionLabel }));
 
-      expect(await screen.findByText('Session complete')).toBeInTheDocument();
-      expect(screen.queryByText('You’ve reached your goal')).not.toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
+      expect(screen.queryByText('Goal reached.')).not.toBeInTheDocument();
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
@@ -1482,7 +1482,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await answerYes();
 
-    expect(await screen.findByText('You’ve reached your goal')).toBeInTheDocument();
+    expect(await screen.findByText('Goal reached.')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('progressbar', { name: 'Cards correct in this pass' })).toHaveAttribute(
         'aria-valuenow',
