@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { importSharePayload } from '../db/share';
+import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
 import { SharePage } from './SharePage';
 import type { Card, Course } from '../db/types';
@@ -77,6 +79,16 @@ vi.mock('../db/share', () => ({
   })),
 }));
 
+const mockBuildCourseFile = vi.fn();
+const mockDecodeCourseFile = vi.fn();
+const mockWithCourseFileAssets = vi.fn((_file: unknown, callback: () => Promise<unknown>) => callback());
+vi.mock('../db/courseFile', () => ({
+  buildCourseFile: (...args: unknown[]) => mockBuildCourseFile(...args),
+  decodeCourseFile: (...args: unknown[]) => mockDecodeCourseFile(...args),
+  withCourseFileAssets: (file: unknown, callback: () => Promise<unknown>) => mockWithCourseFileAssets(file, callback),
+  MAX_COURSE_FILE_BYTES: 100 * 1024 * 1024,
+}));
+
 let mockFindCourseForLineage: (() => Promise<Course | undefined>) | undefined;
 const mockMergeLineageUpdate = vi.fn();
 const mockImportLineageFirstTime = vi.fn();
@@ -92,6 +104,7 @@ vi.mock('../db/mergeImport', () => ({
 
 vi.mock('../db/export', () => ({
   exportCardsSimple: vi.fn(() => 'card front\tcard back'),
+  downloadTextFile: vi.fn(),
 }));
 
 vi.mock('../components/ui/icons', () => ({
@@ -165,6 +178,11 @@ const mockSummary: CourseSummary = {
 
 beforeEach(() => {
   mockNotify.mockClear();
+  vi.mocked(importSharePayload).mockClear();
+  vi.mocked(downloadTextFile).mockClear();
+  mockBuildCourseFile.mockReset();
+  mockDecodeCourseFile.mockReset();
+  mockWithCourseFileAssets.mockClear();
   mockCourses = undefined;
   mockSummaries = undefined;
   mockCourseCards = [];
@@ -176,6 +194,50 @@ beforeEach(() => {
 });
 
 describe('SharePage', () => {
+  it('saves the selected course as a file', async () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockBuildCourseFile.mockResolvedValue('course file contents');
+    render(<SharePage />);
+    expect(screen.getByRole('button', { name: 'Save course file' })).toBeDisabled();
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save course file' }));
+    await waitFor(() => expect(downloadTextFile).toHaveBeenCalledWith(
+      'course file contents', 'Test Course.lacuna', 'application/json',
+    ));
+    expect(mockBuildCourseFile).toHaveBeenCalledWith(mockCourse.id);
+  });
+
+  it('previews a chosen course file without importing until confirmed', async () => {
+    const file = { format: 'lacuna-course', version: 1, payload: { v: 2 }, assets: [] };
+    mockDecodeCourseFile.mockResolvedValue(file);
+    render(<SharePage />);
+    fireEvent.change(screen.getByLabelText('Course file to import'), {
+      target: { files: [new File(['contents'], 'Biology.lacuna')] },
+    });
+    await screen.findByText('Ready to import');
+    expect(mockDecodeCourseFile).toHaveBeenCalledWith('contents');
+    expect(importSharePayload).not.toHaveBeenCalled();
+    expect(mockWithCourseFileAssets).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Add to my courses'));
+    await waitFor(() => expect(mockWithCourseFileAssets).toHaveBeenCalledWith(file, expect.any(Function)));
+    expect(importSharePayload).toHaveBeenCalledWith(file.payload);
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive'));
+  });
+
+  it('clears an earlier preview when the next course file is corrupt', async () => {
+    mockDecodeCourseFile.mockResolvedValueOnce({ payload: { v: 2 }, assets: [] });
+    mockDecodeCourseFile.mockRejectedValueOnce(new Error('The course file contains corrupt media.'));
+    render(<SharePage />);
+    const input = screen.getByLabelText('Course file to import');
+    fireEvent.change(input, { target: { files: [new File(['contents'], 'Biology.lacuna')] } });
+    await screen.findByText('Ready to import');
+    fireEvent.change(input, { target: { files: [new File(['bad data'], 'Biology.lacuna')] } });
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('The course file contains corrupt media.', 'negative'));
+    expect(screen.queryByText('Ready to import')).not.toBeInTheDocument();
+    expect(importSharePayload).not.toHaveBeenCalled();
+  });
+
   it('deep-links full recovery through the hash router and retains the section anchor', () => {
     render(<SharePage />);
 

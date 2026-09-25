@@ -1,3 +1,5 @@
+import { CourseFileExportButton, CourseFileImportButton } from '../components/import/CourseFileControls';
+import { withCourseFileAssets, type CourseFile } from '../db/courseFile';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -62,6 +64,7 @@ function mediaCardLabel(card: Card, index: number): string {
 interface PendingShareImport {
   summary: ShareSummary;
   raw: string;
+  file?: CourseFile;
   merge?: {
     course: CourseRecord;
     incomingRevision: number;
@@ -116,8 +119,7 @@ function describeMergeResult(result: MergeLineageResult): string {
 }
 
 /**
- * Share a course as a single copy-and-paste code, and rebuild a course from a code. Share
- * codes are text-only so they stay small; full backups are the route for transferring images.
+ * Share course files with media, or compact text codes, through the same import preview.
  */
 export function SharePage() {
   const courses = useCourses();
@@ -338,27 +340,29 @@ export function SharePage() {
     if (!pending || pending.merge?.stale) return;
     setImporting(true);
     try {
-      const payload = await decodeShare(pending.raw);
-      if (pending.merge) {
-        const result = await mergeLineageUpdate(pending.merge.course.id, payload);
-        notify(describeMergeResult(result), 'positive');
-      } else if (isLineagePayload(payload)) {
-        await importLineageFirstTime(payload);
-        notify(
-          `Added 1 course and ${pending.summary.cardCount} card${pending.summary.cardCount === 1 ? '' : 's'}.`,
-          'positive',
-        );
+      const payload = pending.file?.payload ?? (await decodeShare(pending.raw));
+      const importContent = async () => {
+        if (pending.merge) {
+          return describeMergeResult(await mergeLineageUpdate(pending.merge.course.id, payload));
+        }
+        if (isLineagePayload(payload)) {
+          await importLineageFirstTime(payload);
+          return `Added 1 course and ${pending.summary.cardCount} card${pending.summary.cardCount === 1 ? '' : 's'}.`;
+        }
+        const { courses, cards: count } = await importSharePayload(payload);
+        return `Added ${courses} course${courses === 1 ? '' : 's'} and ${count} card${count === 1 ? '' : 's'}.`;
+      };
+      let message: string;
+      if (pending.file) {
+        message = await withCourseFileAssets(pending.file, importContent);
       } else {
-        const { courses, cards: c } = await importSharePayload(payload);
-        notify(
-          `Added ${courses} course${courses === 1 ? '' : 's'} and ${c} card${c === 1 ? '' : 's'}.`,
-          'positive',
-        );
+        message = await importContent();
       }
+      notify(message, 'positive');
       setPending(null);
       setInput('');
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Import failed — the code may be corrupted.', 'negative');
+      notify(err instanceof Error ? err.message : 'Import failed — the shared course may be corrupted.', 'negative');
     } finally {
       setImporting(false);
     }
@@ -436,10 +440,8 @@ export function SharePage() {
           <h2 className="font-display text-xl">Export a course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Select a course, then generate a code to copy and share. This sends course material, not
-          a restorable backup: schedules stay private and media files are omitted. Use a full backup
-          when you need an exact transfer with images or audio.
-          {' '}
+          Save a course file to share lessons, cards and media. Your study history stays private.
+          Text and QR codes are also available, but omit media files.{' '}
           <Link to="/settings#settings-export" className="text-accent underline underline-offset-2">
             Open full backup and recovery
           </Link>
@@ -553,8 +555,8 @@ export function SharePage() {
                     This course contains media in {selectedMediaCards.length}{' '}
                     {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code cannot
                     carry the files: recipients get a placeholder in their place, and diagram
-                    cards fall back to text with no image to label. Export a full backup from
-                    Full backup and recovery in Settings to transfer the media too.
+                    cards fall back to text with no image to label. Save a course file to include
+                    the media.
                   </p>
                   <ul className="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-ink-faint">
                     {selectedMediaCards.map((card, index) => (
@@ -564,8 +566,9 @@ export function SharePage() {
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
+                <CourseFileExportButton courseId={selectedCourseId} name={selectedCourse?.name ?? 'Course'} />
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   onClick={handleGenerate}
                   disabled={!selectedCourseId || generating}
                 >
@@ -726,10 +729,18 @@ export function SharePage() {
           <h2 className="font-display text-xl">Import a shared course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Paste a share code below to add it as a new course of your own. This never
-          overwrites your existing courses. All Lacuna share-code encodings (LAC0–LAC3)
-          are supported, including older Lacuna exports and current course shares.
+          Choose a course file or paste a share code, then review it before importing.
+          Published course updates are matched to your existing copy. All Lacuna share-code encodings (LAC0–LAC3) are supported.
         </p>
+
+        <CourseFileImportButton
+          disabled={importing}
+          onReadStart={() => setPending(null)}
+          onInspect={async (file) => {
+            const next = await resolvePending(file.payload, '');
+            setPending({ ...next, file });
+          }}
+        />
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
           <textarea
