@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pinned release, CI and Security workflow actions to reviewed full commit SHAs,
+  while keeping version comments and weekly Dependabot updates for maintenance.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels

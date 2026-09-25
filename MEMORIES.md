@@ -13,6 +13,10 @@ Release tags must be pushed with maintainer credentials: a tag created using Act
 `GITHUB_TOKEN` does not trigger the tag build. Use the release helper and exact-commit push
 workflow evidence; successful PR checks alone do not prove the merged release commit.
 
+Some upstream GitHub Action version tags are annotated. Their tag-object SHA is not an
+executable commit pin; use the peeled commit (`refs/tags/<version>^{}`) and keep the
+version comment on the `uses:` line for Dependabot updates.
+
 ## Protect unrelated work
 
 Use a disposable worktree for baseline tests rather than stashing unrelated work.
