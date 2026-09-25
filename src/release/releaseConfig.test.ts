@@ -340,9 +340,9 @@ describe('release configuration', () => {
         expect(allowlistCheck).toContain('shell: bash');
         expect(allowlistCheck).toContain('compgen -G "$pattern"');
       }
-      expect(attest).toContain('uses: actions/attest@v4');
+      expect(attest).toMatch(/uses: actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/);
       expect(blockScalarValues(attest, 'subject-path')).toEqual(platform.paths);
-      expect(upload).toContain('uses: actions/upload-artifact@v7');
+      expect(upload).toMatch(/uses: actions\/upload-artifact@[a-f0-9]{40} # v7\.\d+\.\d+/);
       expect(upload).toContain(`name: ${platform.artefact}`);
       expect(blockScalarValues(upload, 'path')).toEqual(platform.paths);
       expect(job.indexOf(allowlistCheck)).toBeLessThan(job.indexOf(attest));
@@ -369,13 +369,13 @@ describe('release configuration', () => {
     );
     for (const artefact of githubPlatforms.map(({ artefact }) => artefact)) {
       const download = workflowStep(publisher, `Download ${artefact}`);
-      expect(download).toContain('uses: actions/download-artifact@v8');
+      expect(download).toMatch(/uses: actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+/);
       expect(download).toContain(`name: ${artefact}`);
       expect(download).toContain('path: release-assets');
     }
 
     const checksumAttestation = workflowStep(publisher, 'Attest GitHub checksum manifest');
-    expect(checksumAttestation).toContain('uses: actions/attest@v4');
+    expect(checksumAttestation).toMatch(/uses: actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/);
     expect(checksumAttestation).toContain('subject-path: release-assets/SHA256SUMS-github.txt');
     expect(publisher.indexOf('name: Create checksums')).toBeLessThan(
       publisher.indexOf(checksumAttestation),
@@ -396,18 +396,32 @@ describe('release configuration', () => {
     expect(publisher).toContain('! -name SHA256SUMS-github.txt');
     expect(publisher).not.toContain('gh release delete-asset');
     expect(releaseWorkflow).not.toContain('--publish always');
-    expect(releaseWorkflow.match(/actions\/attest@v4/g)).toHaveLength(3);
-    expect(releaseWorkflow).not.toMatch(/actions\/attest@v[1-3](?:\D|$)/);
+    expect(releaseWorkflow.match(/actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/g)).toHaveLength(3);
+    expect(releaseWorkflow).not.toMatch(/actions\/attest@[a-f0-9]{40} # v[1-3](?:\D|$)/);
   });
 
   it('uses Node 24 action majors throughout CI and release workflows', () => {
     for (const workflow of [ciWorkflow, releaseWorkflow, securityWorkflow]) {
-      expect(workflow).toContain('actions/checkout@v7');
-      expect(workflow).not.toMatch(/actions\/checkout@v[1-6](?:\D|$)/);
-      expect(workflow).not.toMatch(/actions\/(?:upload|download)-artifact@v[1-6](?:\D|$)/);
+      expect(workflow).toMatch(/actions\/checkout@[a-f0-9]{40} # v7\.\d+\.\d+/);
+      expect(workflow).not.toMatch(/actions\/checkout@[a-f0-9]{40} # v[1-6](?:\D|$)/);
+      expect(workflow).not.toMatch(
+        /actions\/(?:upload|download)-artifact@[a-f0-9]{40} # v[1-6](?:\D|$)/,
+      );
     }
-    expect(releaseWorkflow).toContain('actions/upload-artifact@v7');
-    expect(releaseWorkflow).toContain('actions/download-artifact@v8');
+    expect(releaseWorkflow).toMatch(/actions\/upload-artifact@[a-f0-9]{40} # v7\.\d+\.\d+/);
+    expect(releaseWorkflow).toMatch(/actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+/);
+  });
+
+  it('pins every action in release and its CI and Security gates to a full commit', () => {
+    const workflows = [ciWorkflow, releaseWorkflow, securityWorkflow];
+    for (const workflow of workflows) {
+      const references = [...workflow.matchAll(/^\s+- uses: (\S+)(?: # (\S+))?$/gm)];
+      expect(references.length).toBeGreaterThan(0);
+      for (const [, reference, version] of references) {
+        expect(reference).toMatch(/^[\w.-]+\/[\w.-]+(?:\/[\w.-]+)?@[a-f0-9]{40}$/);
+        expect(version).toMatch(/^v\d+\.\d+\.\d+$/);
+      }
+    }
   });
 
   it('keeps the required browser check while sharding the full suite', () => {
@@ -441,8 +455,8 @@ describe('release configuration', () => {
     expect(securityWorkflow).not.toContain('bun audit --ignore');
 
     expect(securityWorkflow).toContain('language: [javascript-typescript, actions]');
-    expect(securityWorkflow).toContain('github/codeql-action/init@v4');
-    expect(securityWorkflow).toContain('github/codeql-action/analyze@v4');
+    expect(securityWorkflow).toMatch(/github\/codeql-action\/init@[a-f0-9]{40} # v4\.\d+\.\d+/);
+    expect(securityWorkflow).toMatch(/github\/codeql-action\/analyze@[a-f0-9]{40} # v4\.\d+\.\d+/);
     expect(securityWorkflow).toContain('build-mode: none');
     expect(securityWorkflow).toContain('security-events: write');
     expect(securityWorkflow).toContain('actions: read');

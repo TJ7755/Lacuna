@@ -45,6 +45,16 @@ The tag is pushed with maintainer credentials, rather than from a workflow using
 [GitHub does not trigger another push workflow from that token](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 No new secret, scheduled watcher or repository permission is needed.
 
+### Updating action pins
+
+Release, CI and Security workflow actions use full commit SHAs with a same-line version comment.
+The existing weekly `github-actions` Dependabot group can propose updates. Review the action's
+upstream release and diff, confirm the proposed SHA resolves to its documented version tag, and
+run the workflow policy test before merging. Annotated tags resolve first to a tag object: use
+the peeled commit (`refs/tags/<version>^{}`) for the `uses:` reference. Keep the version comment
+beside the SHA so Dependabot can identify the release. Run the normal CI and Security gates;
+for release actions, retain a native build and draft verification before publishing.
+
 ### Evidence that still needs platform testing
 
 Automated asset verification proves that updater metadata identifies the verified installer;
