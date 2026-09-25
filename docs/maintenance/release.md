@@ -147,6 +147,10 @@ writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately b
 the draft. An attestation proves which GitHub workflow and commit produced a file with that digest.
 It does not sign the application with an Apple or Microsoft identity.
 
+CI first packages an unsigned macOS app and runs `test:e2e:electron-macos-smoke` against it.
+That required gate checks `app:` launch, IndexedDB course persistence after reload and a
+seeded study answer. It uses the host architecture and does not replace signing or notarisation.
+
 On the exact release commit, the macOS operator runs:
 
 ```bash

@@ -81,7 +81,7 @@ jobs:
       - run: bun run test:coverage:recovery
 
   test:
-    needs: [test-unit, test-coverage, handwriting]
+    needs: [test-unit, test-coverage, handwriting, electron-macos-smoke]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -90,9 +90,10 @@ jobs:
           UNIT_RESULT: ${{ needs.test-unit.result }}
           COVERAGE_RESULT: ${{ needs.test-coverage.result }}
           HANDWRITING_RESULT: ${{ needs.handwriting.result }}
+          MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}
         run: |
-          if [ "$UNIT_RESULT" != "success" ] || [ "$COVERAGE_RESULT" != "success" ] || [ "$HANDWRITING_RESULT" != "success" ]; then
-            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT"
+          if [ "$UNIT_RESULT" != "success" ] || [ "$COVERAGE_RESULT" != "success" ] || [ "$HANDWRITING_RESULT" != "success" ] || [ "$MACOS_ELECTRON_RESULT" != "success" ]; then
+            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT macos-electron=$MACOS_ELECTRON_RESULT"
             exit 1
           fi
 
@@ -239,3 +240,31 @@ jobs:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
+
+  electron-macos-smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run electron:prepare
+      - run: bun run build:assets
+      - run: bunx electron-builder --mac --dir --config electron/electron-builder.yml --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - run: bun run test:e2e:electron-macos-smoke
+      - name: Preserve macOS smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-electron-smoke-results
+          path: test-results/
+          if-no-files-found: ignore
