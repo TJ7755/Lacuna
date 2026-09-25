@@ -110,6 +110,8 @@ The verifier requires successful ordinary CI and Security push workflows for the
 commit on master or main. Those workflows cover root typechecking, lint, all unit shards and
 coverage, the canonical release scenario, browser end-to-end tests, relay checks and standalone
 AI MCP checks. The release verifier reuses that evidence rather than running those suites again.
+Root typechecking and lint cover the Playwright suites and web performance audit used by these
+gates; the typecheck job installs relay dependencies because browser fixtures import its handler.
 The ordinary production job also builds assets and enforces the performance budget, so the release
 verifier needs no dependency installation or repeated web build. Windows and Linux still build natively in Actions; macOS
 builds and package checks run locally on Apple Silicon.

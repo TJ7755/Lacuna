@@ -53,10 +53,10 @@ async function startCompanion(
     },
     stderr: 'pipe',
   });
-  transport.stderr?.setEncoding('utf8');
-  transport.stderr?.on('data', (chunk: string) => {
-    stderr += chunk;
-    process.stderr.write(`[Lacuna AI companion] ${chunk}`);
+  transport.stderr?.on('data', (chunk: Buffer | string) => {
+    const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    stderr += text;
+    process.stderr.write(`[Lacuna AI companion] ${text}`);
   });
   const client = new Client({ name, version: '1.0.0' });
   try {
