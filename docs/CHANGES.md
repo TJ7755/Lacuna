@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Loaded route announcements separately after the initial render, keeping the combined
-  maintenance changes within the existing initial JavaScript budget.
+  maintenance changes within the existing initial JavaScript budget. Precached that deferred
+  shell component so cold offline reloads retain it.
 
 - Integrated the maintenance PRs with both Python and packaged macOS required by the test
   gate, pinned actions in the newly added jobs, and focused-test rejection in the new suites.
