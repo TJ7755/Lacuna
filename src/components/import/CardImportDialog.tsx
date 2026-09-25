@@ -124,8 +124,8 @@ export function CardImportDialog({
       ref={trapRef}
       className="card-import-overlay"
       onKeyDown={(event) => {
-        event.stopPropagation();
         if (event.key === 'Escape') {
+          event.stopPropagation();
           event.preventDefault();
           cancel();
         }

@@ -140,6 +140,17 @@ describe('CardImportDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
     await waitFor(() => expect(onImport).toHaveBeenCalledWith({ kind: 'apkg', result }, ''));
   });
+  it('wraps keyboard focus within the dialogue in both directions', () => {
+    render(<CardImportDialog targetName="French" onCancel={vi.fn()} onImport={vi.fn()} />);
+    paste('Q\tA');
+    const first = screen.getByRole('button', { name: 'Close import' });
+    const last = screen.getByRole('button', { name: 'Review cards' });
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+    expect(last).toHaveFocus();
+  });
   it('requires a title only for new destinations', () => {
     render(<CardImportDialog titleLabel="Course title" onCancel={vi.fn()} onImport={vi.fn()} />);
     paste('Q\tA');

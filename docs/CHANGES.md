@@ -7,7 +7,8 @@
   Undo returns to the input step with the draft intact; it never deletes study data.
   New courses and lessons can be created with their imported cards, retaining the
   chosen study target. Anki packages preserve scheduling and media, and failed imports
-  retain their drafts without leaving partially created destinations.
+  retain their drafts without leaving partially created destinations. Keyboard focus stays
+  within the dialogue when tabbing in either direction.
 
 - Replaced dashboard course countdown headings with a calendar icon and the exam date.
   Steady retention uses an infinity icon with a hover description and screen-reader label;

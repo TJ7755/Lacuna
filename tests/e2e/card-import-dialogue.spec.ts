@@ -46,6 +46,13 @@ for (const width of [1280, 390]) {
       .getByLabel('Paste your cards')
       .fill('Import greeting\thello\n{{c1::Paris}} is in France');
     await expect(dialog).toHaveCSS('transform', 'none');
+    const close = dialog.getByRole('button', { name: 'Close import' });
+    const review = dialog.getByRole('button', { name: 'Review cards', exact: true });
+    await review.focus();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(review).toBeFocused();
     const first = await dialog.boundingBox();
     await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
     await dialog.getByRole('checkbox', { name: 'Also create reverse' }).check();
