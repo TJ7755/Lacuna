@@ -79,7 +79,7 @@ try {
   await install(baselineInstaller, installDirectory, 'baseline installation');
   const installedBaselineVersion = await installedVersion(executable);
   report.stages.push({ stage: 'baseline version', version: installedBaselineVersion });
-  assert.equal(installedBaselineVersion, baselineVersion);
+  assert.equal(installedBaselineVersion, `${baselineVersion}.0`);
 
   const entry = path.join(installDirectory, 'resources', 'app.asar', 'electron', 'dist-electron', 'mcp', 'aiCompanionEntry.js');
   companion = spawn(executable, [
@@ -103,7 +103,7 @@ try {
   await processSnapshot('after upgrade');
   const installedTargetVersion = await installedVersion(executable);
   report.stages.push({ stage: 'target version', version: installedTargetVersion });
-  assert.equal(installedTargetVersion, packageJson.version);
+  assert.equal(installedTargetVersion, `${packageJson.version}.0`);
   for (let attempt = 0; attempt < 10 && companion.exitCode === null && companion.signalCode === null; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
