@@ -295,7 +295,7 @@ export function CourseSettings() {
           />
 
           <div className="flex flex-col gap-10">
-            <div id="course-settings-basics" className="flex flex-col gap-6">
+            <div id="course-settings-basics" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Basics</h2>
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <div className="flex flex-col gap-4">
@@ -352,7 +352,7 @@ export function CourseSettings() {
               </section>
             </div>
 
-            <div id="course-settings-study" className="flex flex-col gap-6">
+            <div id="course-settings-study" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Study</h2>
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Scheduling</h3>
@@ -505,7 +505,7 @@ export function CourseSettings() {
               </div>
             </div>
 
-            <div id="course-settings-content" className="flex flex-col gap-6">
+            <div id="course-settings-content" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Content</h2>
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Lessons</h3>
@@ -518,7 +518,7 @@ export function CourseSettings() {
               </section>
             </div>
 
-            <div id="course-settings-assessments" className="flex flex-col gap-6">
+            <div id="course-settings-assessments" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Assessments</h2>
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <ExamDatesSection
@@ -529,7 +529,7 @@ export function CourseSettings() {
               </section>
             </div>
 
-            <div id="course-settings-danger" className="flex flex-col gap-6">
+            <div id="course-settings-danger" className="flex scroll-mt-20 flex-col gap-6">
               {course.distributedCopy?.locked === true && (
                 <div>
                   <DetachCourseSection
