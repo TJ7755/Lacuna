@@ -10,6 +10,11 @@
   due time before it can return in that session. Undo restores eligibility; due-only
   review, daily limits, new-card caps and planned revision retain their own rules.
 
+- Added `bun run ai:invites` to generate private batches of beta AI codes and matching
+  server credential hashes, with an option to preserve existing users when adding a batch.
+- Capped combined AI invitation configuration at 48 KiB to leave room for other
+  server settings within Vercel's environment-variable budget.
+
 - Redesigned the study-step transition as a vertical path from the completed topic to
   the next activity, removing the redundant completion and next-step subtitles. The
   topic settles back before the path and destination appear; reduced motion skips the
