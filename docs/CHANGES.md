@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Separated Practice session completion from predicted recall. The top bar now fills
+  as the captured work is cleared and reaches 100% when finished; predicted recall
+  or secured proportion stays separately labelled in the header and report.
+- Stopped ordinary Practice/FSRS sessions immediately repeating or alternating the
+  last cards to chase an exam target. After any rating, a card waits until its saved
+  due time before it can return in that session. Undo restores eligibility; due-only
+  review, daily limits, new-card caps and planned revision retain their own rules.
+
 - Redesigned the study-step transition as a vertical path from the completed topic to
   the next activity, removing the redundant completion and next-step subtitles. The
   topic settles back before the path and destination appear; reduced motion skips the
