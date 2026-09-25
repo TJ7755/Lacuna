@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:http';
 import path from 'node:path';
 import { _electron as electron, expect } from '@playwright/test';
 
@@ -17,6 +18,18 @@ const profile = path.join(root, 'profile');
 const executablePath = path.join(directory, 'Lacuna.exe');
 const report = { baseline: '0.2.10', target: version, stages: [] };
 let application;
+const server = createServer(async (request, response) => {
+  const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
+  if (![ 'latest.yml', `Lacuna-Setup-${version}.exe`, `Lacuna-Setup-${version}.exe.blockmap` ].includes(name)) {
+    response.writeHead(404).end(); return;
+  }
+  try {
+    const data = await readFile(path.join('release', name));
+    response.writeHead(200, { 'Content-Length': data.length }); response.end(data);
+  } catch { response.writeHead(404).end(); }
+});
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const feed = `http://127.0.0.1:${server.address().port}`;
 
 async function install(installer) {
   const child = spawn(installer, ['/S', `/D=${directory}`], { stdio: 'inherit' });
@@ -32,6 +45,13 @@ async function open(expectedVersion) {
   application = await electron.launch({ executablePath, args: [`--user-data-dir=${profile}`], timeout: 60_000 });
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
   assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
+  if (expectedVersion === '0.2.10') {
+    await application.evaluate(({ app }, url) => {
+      const { createRequire } = require('node:module');
+      const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
+      updater.setFeedURL({ provider: 'generic', url });
+    }, feed);
+  }
   const page = await application.firstWindow();
   await expect(page.getByRole('navigation', { name: 'Courses' })).toBeVisible({ timeout: 60_000 });
   return page;
@@ -69,9 +89,26 @@ try {
   await expect.poll(async () => (await snapshot(page)).reviewHistory?.length ?? 0).toBeGreaterThan(0);
   const before = await snapshot(page);
   assert(before.courses.length > 0);
-  await application.close(); application = undefined;
   report.stages.push('baseline installed and study database populated');
-  await install(path.resolve(`release/Lacuna-Setup-${version}.exe`));
+  await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
+  await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
+    { timeout: 180_000 }).toBe('downloaded');
+  assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
+  const closed = application.waitForEvent('close', { timeout: 60_000 });
+  await application.evaluate(({ app }) => {
+    const { createRequire } = require('node:module');
+    const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
+    updater.quitAndInstall(true, false);
+  });
+  await closed; application = undefined;
+  await expect.poll(async () => {
+    try {
+      const { createRequire } = await import('node:module');
+      const { extractFile } = createRequire(import.meta.url)('@electron/asar');
+      return JSON.parse(extractFile(path.join(directory, 'resources', 'app.asar'), 'package.json')).version;
+    } catch { return null; }
+  }, { timeout: 180_000 }).toBe(version);
+  report.stages.push('installed baseline updater downloaded and silently installed the release');
   page = await open(version);
   const after = await snapshot(page);
   assert.deepEqual(after, before, 'Upgrade changed existing course, lesson, card or review records');
@@ -83,6 +120,7 @@ try {
 } catch (error) {
   report.result = 'failed'; report.error = String(error); throw error;
 } finally {
+  server.close();
   if (application) await application.close();
   await mkdir('test-results/windows-release-upgrade', { recursive: true });
   await writeFile('test-results/windows-release-upgrade/report.json', JSON.stringify(report, null, 2));
