@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a Windows CI installed-upgrade probe using the verified v0.2.7 installer and a
+  long-running, installed AI companion. It records installer exit codes and process identities
+  on failure. The intermittent Codex-hosted shutdown failure remains unexplained.
+
 - Loaded route announcements separately after the initial render, keeping the combined
   maintenance changes within the existing initial JavaScript budget. Precached that deferred
   shell component so cold offline reloads retain it.

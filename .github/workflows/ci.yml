@@ -322,3 +322,35 @@ jobs:
           name: macos-electron-smoke-results
           path: test-results/
           if-no-files-found: ignore
+
+  windows-installed-upgrade:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run electron:build:win
+      - name: Download the verified v0.2.7 installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force test-results/windows-upgrade/source | Out-Null
+          gh release download v0.2.7 --pattern Lacuna-Setup-0.2.7.exe --dir test-results/windows-upgrade/source
+      - name: Upgrade with a long-running installed AI companion
+        run: node scripts/windows-upgrade-companion.mjs test-results/windows-upgrade/source/Lacuna-Setup-0.2.7.exe
+      - name: Preserve installed upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-installed-upgrade-results
+          path: test-results/windows-upgrade/installed-upgrade.json
+          if-no-files-found: ignore
