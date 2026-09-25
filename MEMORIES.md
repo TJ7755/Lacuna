@@ -67,32 +67,7 @@ while the picker is open, and test the expanded menu rather than only the closed
 
 ## AI authority and deployment
 
-GitHub `pull_request_review_comment` runs on a PR merge ref. A privileged
-comment-triggered AI workflow must explicitly check out the trusted default branch
-before starting a tool with secrets; the usual checkout default is unsafe here.
 
-Electron loading-spinner events can accompany hash navigation. Use main-frame,
-cross-document navigation to invalidate AI readiness; a hash route retains its listener.
-
-Vercel can retain an npm install override despite the Bun manifest and lockfile. Keep the
-install command explicit in `vercel.json`; repository configuration overrides dashboard settings.
-
-AI and data MCP companions share transport but have different grants. Preserve every generated
-profile argument and verify the client's active tools, not just saved registration. A transport
-harness does not prove model-authored chat. Web AI currently has no cross-tab ownership lease.
-
-Managed-device redirects to `https://localhost:6543/block?...` are network filtering, not a
-Lacuna endpoint: never add that origin to CSP. Device sync still needs the relay even when
-desktop AI uses local IPC. See [engineering notes](docs/maintenance/engineering-notes.md).
-
-## Bundle changes can break offline use
-
-Hash routing needs no server catch-all: missing hashed assets must remain 404. Derive the
-app-shell precache from emitted imports and rerun cold offline Cards reload after bundle changes.
-Workers must use the ID and share-codec utilities without importing database initialisation.
-
-## Product restraint
-
-Keep cards around related content; fewer nested boxes does not mean flat pages. Landing scenes
-should have one or two focal points, brief copy, flat bright illustrations and concrete calendar
-examples. Historical plans are evidence of past intent, not an active implementation queue.
+The frozen Python v3 short-term candidate loads the v2 coefficient file because v3 changed
+only routing. The shipped TypeScript runtime loads v3 JSON. The shared port fixture checks
+both, so a coefficient update must keep their versioned artefacts aligned.

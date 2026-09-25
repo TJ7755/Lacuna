@@ -438,6 +438,22 @@ describe('release configuration', () => {
     expect(gate).toContain('test "$RESULT" = success');
   });
 
+  it('runs both locked Python suites and makes them part of the required test gate', () => {
+    const python = workflowJob(ciWorkflow, 'python-tools');
+    expect(python).toContain('workspace: [short-term-memory, semantic-answer-match]');
+    expect(python).toContain('astral-sh/setup-uv@');
+    expect(python).toContain("python-version: '3.12'");
+    expect(python).toContain("if: matrix.workspace == 'semantic-answer-match'");
+    expect(python).toMatch(/uses: oven-sh\/setup-bun@[a-f0-9]{40} # v2\.\d+\.\d+/);
+    expect(python).toContain('uv run --locked pytest');
+    expect(python).toContain('working-directory: tooling/${{ matrix.workspace }}');
+
+    const gate = workflowJob(ciWorkflow, 'test');
+    expect(gate).toContain('needs: [test-unit, test-coverage, handwriting, python-tools]');
+    expect(gate).toContain('PYTHON_RESULT: ${{ needs.python-tools.result }}');
+    expect(gate).toContain('"$PYTHON_RESULT" != "success"');
+  });
+
   it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {
     expect(securityWorkflow).toContain('push:');
     expect(securityWorkflow).toContain('pull_request:');
