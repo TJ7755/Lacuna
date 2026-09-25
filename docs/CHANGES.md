@@ -3,6 +3,10 @@
 ## Unreleased
 
 
-- Added locked Python test jobs for both offline tool workspaces to the required CI test
-  gate, and checked the shipped short-term model against shared Python and TypeScript
-  prediction cases covering coefficients, count capping and routed handovers.
+- Updated Toast countdown bars through transforms instead of React state and
+  width changes on every animation frame, preserving their existing timers.
+- Removed repeated lesson headings from the notes-first study screen, leaving the lesson
+  name in its header and the notes section heading above the content.
+- Moved lesson deletion confirmation below its row so its consequences and action labels
+  remain readable at narrow widths, including long unbroken lesson names. Cancelling
+  returns focus to the delete button.
