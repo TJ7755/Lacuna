@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added three standalone session-report design previews on the prototype branch,
+  using the animated study path as their visual reference. Compare Path, Quiet finish
+  and Session receipt at `/design/session-report/index.html` during development.
+
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.
 - Capped combined AI invitation configuration at 48 KiB to leave room for other
