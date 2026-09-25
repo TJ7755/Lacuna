@@ -8,12 +8,12 @@ import {
 } from 'react';
 import { m as motion } from 'motion/react';
 import { ProgressBar } from '../ui/ProgressBar';
-import { relativeExam, startOfDay } from '../../utils/datetime';
+import { formatDate, relativeExam, startOfDay } from '../../utils/datetime';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric } from '../../state/courseCardMetric';
-import { PlayIcon } from '../ui/icons';
+import { CalendarIcon, InfinityIcon, PlayIcon } from '../ui/icons';
 import type { Card, Course } from '../../db/types';
 import type { CourseSummary } from '../../state/useCourseData';
 import { cardReviewTimestamps, type ReviewActivity } from '../../fsrs/heatmap';
@@ -100,12 +100,12 @@ export function CourseCard({
   }
 
   const examPassed = course.examDate !== undefined && course.examDate < Date.now();
-  const examLabel =
+  const examDateLabel =
+    course.examDate === undefined ? null : formatDate(course.examDate, course.timeZone);
+  const targetDescription =
     course.examDate === undefined
       ? 'Steady retention'
-      : examPassed
-        ? 'Exam date passed'
-        : `Exam ${relativeExam(course.examDate, Date.now(), course.timeZone)}`;
+      : `Exam on ${examDateLabel} — ${examPassed ? 'exam date passed' : relativeExam(course.examDate, Date.now(), course.timeZone)}`;
 
   const lessonCount = summary?.lessonCount ?? 0;
   const cardCount = summary?.cardCount ?? 0;
@@ -199,14 +199,27 @@ export function CourseCard({
 
   const face = (
     <>
-      {/* Exam date label */}
+      {/* Study target: a dated exam or ongoing retention. */}
       <div
+        title={targetDescription}
         className={cn(
-          'mb-1 pr-10 text-xs uppercase tracking-[0.14em]',
-          examPassed ? 'text-warning-fg' : 'text-ink-faint',
+          'mb-2 flex min-h-5 items-center gap-2 pr-10 text-xs',
+          examPassed ? 'text-warning-fg' : 'text-ink-soft',
         )}
       >
-        {examLabel}
+        {course.examDate === undefined ? (
+          <>
+            <InfinityIcon width={20} height={20} />
+            <span className="sr-only">Steady retention</span>
+          </>
+        ) : (
+          <>
+            <CalendarIcon width={16} height={16} className="-translate-y-px shrink-0" />
+            <span className="sr-only">Exam on </span>
+            <time dateTime={new Date(course.examDate).toISOString()}>{examDateLabel}</time>
+            {examPassed && <span className="sr-only">Exam date passed.</span>}
+          </>
+        )}
       </div>
 
       {/* Course name */}

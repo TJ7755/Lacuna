@@ -58,6 +58,9 @@ offline reload. Do not claim the WebKit test proves an offline document reload.
 CPU-profiler startup and Playwright accessibility queries can dominate renderer traces.
 Keep untraced controls and inspect stacks before attributing task time to application code.
 
+Parallel Playwright invocations need distinct `--output` directories. Each runner clears
+its output directory, so shared output can delete another run's active traces at teardown.
+
 Playwright's relative JSON report path resolves beneath the configuration directory here.
 Use an absolute `PLAYWRIGHT_JSON_OUTPUT_NAME` to keep measurement reports in root artefacts.
 

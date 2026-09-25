@@ -118,7 +118,7 @@ test('opens an archived course as read-only content', async ({ page }) => {
   await openSeededDashboard(page);
   const courseCard = page
     .locator('main')
-    .getByRole('button', { name: /Exam in .* Welcome to Lacuna/ });
+    .getByRole('button', { name: /Exam on .* Welcome to Lacuna/ });
 
   await courseCard.click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Archive' }).click();

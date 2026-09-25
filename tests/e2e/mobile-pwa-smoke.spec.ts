@@ -29,7 +29,7 @@ async function waitForServiceWorkerControl(page: Page) {
 
 test('opens course navigation and returns to the dashboard', async ({ page }) => {
   await enterFreshLacuna(page);
-  await page.locator('main').getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
+  await page.locator('main').getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
   const sections = page.getByRole('navigation', { name: 'Course sections' });
   await sections.getByRole('link', { name: 'Cards' }).click();
   await expect(page.locator('main[data-route-path$="/cards"]')).toBeVisible();

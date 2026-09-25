@@ -9,6 +9,20 @@
   chosen study target. Anki packages preserve scheduling and media, and failed imports
   retain their drafts without leaving partially created destinations.
 
+- Replaced dashboard course countdown headings with a calendar icon and the exam date.
+  Steady retention uses an infinity icon with a hover description and screen-reader label;
+  past exams retain their date and subdued warning colour. The calendar is optically
+  aligned with the date lettering rather than just its line box. Browser navigation
+  checks now locate the dated card using its updated accessible text.
+
+- Separated Practice session completion from predicted recall. The top bar now fills
+  as the captured work is cleared and reaches 100% when finished; predicted recall
+  or secured proportion stays separately labelled in the header and report.
+- Stopped ordinary Practice/FSRS sessions immediately repeating or alternating the
+  last cards to chase an exam target. After any rating, a card waits until its saved
+  due time before it can return in that session. Undo restores eligibility; due-only
+  review, daily limits, new-card caps and planned revision retain their own rules.
+
 - Simplified the session report to a goal heading, reviewed count, accuracy and a thin
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the

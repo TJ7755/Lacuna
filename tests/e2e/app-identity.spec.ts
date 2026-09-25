@@ -25,7 +25,7 @@ for (const theme of ['light', 'dark'] as const) {
         path: test.info().outputPath('courses.png'),
       });
       const dashboardUrl = page.url();
-      await page.getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
+      await page.getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
       const course = page.getByRole('heading', {
         name: 'Welcome to Lacuna',
         exact: true,
@@ -45,7 +45,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.screenshot({ animations: 'disabled', path: test.info().outputPath('course.png') });
       await page.goto(dashboardUrl);
       await page
-        .getByRole('button', { name: /Exam in .* Welcome to Lacuna/ })
+        .getByRole('button', { name: /Exam on .* Welcome to Lacuna/ })
         .click({ button: 'right' });
       await page.getByRole('menuitem', { name: 'Archive', exact: true }).click();
       await page.getByRole('button', { name: 'Archive course', exact: true }).click();
@@ -65,7 +65,7 @@ for (const theme of ['light', 'dark'] as const) {
 test('an empty study session uses the minimal report with accessible details', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await page.getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
+  await page.getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/learn`);
   await expect(page.getByRole('heading', { name: 'Nice work' })).toBeVisible();
