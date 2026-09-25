@@ -37,14 +37,19 @@ Pairing creation is limited to 10 requests per hour and client IP. The relay has
 trusted client-address header before storing the shared compare-and-swap counter in Blob. These
 counters are separate from the device-sync mint limit.
 
-## AI maintenance
+## Daily maintenance
 
 Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. The job removes AI sessions 24
 hours after their pairing or claimed-session expiry, and removes corrupt or orphaned AI objects
 after the same 24-hour grace from their last upload. Expired pairing-rate records are atomically
 cleared to a compact marker, which the next pairing request replaces; this avoids deleting a fresh
 counter that raced with cleanup. Corrupt objects outside the pairing-rate keyspace are removed. The
-job scans only `ai/` and `ai-rate/`; it does not touch device-sync `c/` objects.
+job also scans up to 100 `c/` objects per run, advancing a stored cursor so repeated runs
+eventually visit every channel. A channel group is removed only when the latest upload across
+its metadata, state and keybag is at least 90 days old, plus a 24-hour cleanup grace. The grace
+exceeds the function's maximum lifetime, so a write authorised before expiry has time to finish.
+Maintenance re-reads the group before deletion and keeps it if a slot was refreshed. A group
+with a recent slot remains intact even when its metadata is old.
 
 The route requires `Authorization: Bearer <CRON_SECRET>`. Vercel adds that header automatically to
 configured Cron invocations. If `CRON_SECRET` is missing or blank, the route returns `401` and
@@ -77,7 +82,7 @@ Variables** → name `RELAY_MINT_SECRET`, paste the generated value, apply to
 Production (and Preview if you mint from previews). Redeploy after setting
 or removing it. With the variable absent the relay still mints publicly.
 
-Set a separate `CRON_SECRET` for the daily AI cleanup. This is required even when
+Set a separate `CRON_SECRET` for daily maintenance. This is required even when
 `RELAY_MINT_SECRET` is unset. Generate another independent value:
 
 ```sh
@@ -105,7 +110,7 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
    Vercel project does not treat `api/[...path].ts` as a catch-all — that
    file matches one path segment, so `/c/:id/:slot` never reaches the
    handler. Do not put the handler back in a bracketed filename.
-5. Set `CRON_SECRET` on the project so daily AI maintenance can authenticate and run. A missing
+5. Set `CRON_SECRET` on the project so daily maintenance can authenticate and run. A missing
    value fails closed.
 6. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass.
    Minting works without it via the public path.
@@ -163,8 +168,8 @@ not this; this is the panic button for every device on the channel.
 
 A channel with no write for 90 days is treated as gone, matching the app's
 tombstone window. A device offline longer than that will find its channel
-gone. There is no device-sync cron: channel expiry is checked on the next request. The daily AI
-maintenance job deliberately does not scan channel objects.
+gone. The daily maintenance job also reclaims expired channel objects after a 24-hour grace;
+it does not need a request for each channel id.
 
 ## Concurrency
 
