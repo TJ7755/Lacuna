@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Updated page titles and added a polite route announcement for screen readers across
+  shell and full-screen navigation. In-page query changes leave focus and the announcement alone.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
