@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Loaded route announcements separately after the initial render, keeping the combined
+  maintenance changes within the existing initial JavaScript budget.
+
 - Integrated the maintenance PRs with both Python and packaged macOS required by the test
   gate, pinned actions in the newly added jobs, and focused-test rejection in the new suites.
 
