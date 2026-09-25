@@ -157,6 +157,10 @@ writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately b
 the draft. An attestation proves which GitHub workflow and commit produced a file with that digest.
 It does not sign the application with an Apple or Microsoft identity.
 
+The Electron AI command builds renderer assets and serves them through Vite preview on
+`http://localhost:5173`. Its asset check compares the loaded script with `dist/index.html`;
+the port must be free so a development server cannot stand in for that build.
+
 On the exact release commit, the macOS operator runs:
 
 ```bash
