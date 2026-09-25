@@ -8,6 +8,12 @@
 - Preserved answer modes through backups, course sharing and author updates; standalone
   card JSON exports include the effective mode so re-import does not depend on a lesson.
 
+- Replaced dashboard course countdown headings with a calendar icon and the exam date.
+  Steady retention uses an infinity icon with a hover description and screen-reader label;
+  past exams retain their date and subdued warning colour. The calendar is optically
+  aligned with the date lettering rather than just its line box. Browser navigation
+  checks now locate the dated card using its updated accessible text.
+
 - Separated Practice session completion from predicted recall. The top bar now fills
   as the captured work is cleared and reaches 100% when finished; predicted recall
   or secured proportion stays separately labelled in the header and report.
