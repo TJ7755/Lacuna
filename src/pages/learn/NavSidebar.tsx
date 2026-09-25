@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../../components/ui/ModalBackdrop';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
 import { Sidebar } from '../../components/layout/Sidebar';
@@ -18,7 +19,7 @@ export function NavSidebar({ open, onClose }: { open: boolean; onClose: () => vo
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+          <ModalBackdrop shade={50} onClick={onClose} />
           <motion.div
             className="absolute inset-y-0 left-0"
             initial={{ x: -280 }}

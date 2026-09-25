@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -310,10 +311,7 @@ function AppShellLayout() {
               exit={motionEnabled ? { opacity: 0 } : undefined}
               transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={() => setMobileOpen(false)}
-              />
+              <ModalBackdrop onClick={() => setMobileOpen(false)} />
               <motion.div
                 ref={mobileDrawerRef}
                 className="absolute inset-y-0 left-0"

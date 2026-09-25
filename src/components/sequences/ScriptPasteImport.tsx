@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 // Paste + auto-split flow for lines-mode sequences: paste a raw script, split it
 // into speaker-tagged items via the pure `splitScript` parser, then let the author
 // correct any misattributed lines in a preview before replacing the editor's item
@@ -70,7 +71,7 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
         }
       }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <ModalBackdrop shade={50} onClick={onCancel} />
       <motion.div
         role="dialog"
         aria-modal="true"

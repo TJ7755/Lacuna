@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -120,7 +121,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
         }
       }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <ModalBackdrop shade={50} onClick={onClose} />
 
       <motion.div
         role="dialog"

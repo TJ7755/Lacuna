@@ -1,3 +1,4 @@
+import { ModalBackdrop } from './ModalBackdrop';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { SHORTCUT_GROUPS } from '../../state/shortcuts';
 import { useShortcutBindings, formatBinding } from '../../state/shortcutBindings';
@@ -75,7 +76,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
           aria-modal="true"
           aria-label="Keyboard shortcuts"
         >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+          <ModalBackdrop shade={50} onClick={onClose} />
 
           <motion.div
             role="dialog"
