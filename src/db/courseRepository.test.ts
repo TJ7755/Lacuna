@@ -38,6 +38,7 @@ import {
   stampMissingLessonViewModes,
   updateCourse,
   updateCourseAssessment,
+  upsertLessonCardExposure,
 } from './repository';
 import { createOrResumeRevisionPlan } from './revisionPlanRepository';
 import { FSRS_VERSION } from '../fsrs/params';
@@ -1499,6 +1500,63 @@ describe('createCourseCard', () => {
 
 describe('assignCardsToLesson', () => {
   beforeEach(reset);
+
+  it('rejects a mixed-course batch without changing cards, exposures or review history', async () => {
+    const courseA = await createCourse('Course A');
+    const courseB = await createCourse('Course B');
+    const lessonA = await createLesson(courseA.id, 'Lesson A');
+    const lessonB = await createLesson(courseB.id, 'Lesson B');
+    const ownCard = await createLessonCard(courseA.id, lessonA.id, 'front_back', 'own', 'a');
+    const foreignCard = await createLessonCard(courseB.id, lessonB.id, 'front_back', 'foreign', 'b');
+    await upsertLessonCardExposure(lessonA.id, ownCard.id, 1);
+    await upsertLessonCardExposure(lessonB.id, foreignCard.id, 1);
+    await db.reviewHistory.add({
+      id: 'review:event:foreign',
+      eventId: 'foreign',
+      cardId: foreignCard.id,
+      deckId: foreignCard.deckId,
+      schedulingUnitId: foreignCard.schedulingUnitId,
+      courseId: courseB.id,
+      primaryLessonId: lessonB.id,
+      timestamp: 1,
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 1,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    });
+    const before = {
+      cards: await db.cards.toArray(),
+      exposures: await db.lessonCardExposures.toArray(),
+      history: await db.reviewHistory.toArray(),
+    };
+
+    await expect(
+      assignCardsToLesson([ownCard.id, foreignCard.id], courseA.id, lessonA.id),
+    ).rejects.toThrow('Card does not belong to the selected Course.');
+
+    expect(await db.cards.toArray()).toEqual(before.cards);
+    expect(await db.lessonCardExposures.toArray()).toEqual(before.exposures);
+    expect(await db.reviewHistory.toArray()).toEqual(before.history);
+  });
+
+  it('rejects a lesson belonging to another course without changing stored rows', async () => {
+    const courseA = await createCourse('Course A');
+    const courseB = await createCourse('Course B');
+    const lessonA = await createLesson(courseA.id, 'Lesson A');
+    const lessonB = await createLesson(courseB.id, 'Lesson B');
+    const card = await createLessonCard(courseA.id, lessonA.id, 'front_back', 'q', 'a');
+    const before = await db.cards.get(card.id);
+
+    await expect(assignCardsToLesson([card.id], courseA.id, lessonB.id)).rejects.toThrow(
+      'Lesson does not belong to the selected Course.',
+    );
+
+    expect(await db.cards.get(card.id)).toEqual(before);
+  });
 
   it('keeps canonical review-history ownership in sync when assigning a reviewed card', async () => {
     const course = await createCourse('Course');
