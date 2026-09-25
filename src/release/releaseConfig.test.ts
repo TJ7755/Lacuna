@@ -410,18 +410,24 @@ describe('release configuration', () => {
     expect(releaseWorkflow).toContain('actions/download-artifact@v8');
   });
 
-  it('keeps the required browser check while sharding the full suite', () => {
+  it('requires Chromium shards and focused mobile WebKit smoke', () => {
     const tests = workflowJob(ciWorkflow, 'browser-tests');
     expect(tests).toContain('shard: [1, 2]');
     expect(tests).toContain('fail-fast: false');
-    expect(tests).toContain('bun run test:e2e:web -- --shard=${{ matrix.shard }}/2');
+    expect(tests).toContain('bun run test:e2e:web -- --project=chromium --shard=${{ matrix.shard }}/2');
     expect(tests).toContain('if: always()');
     expect(tests).toContain('playwright-report/');
+    const mobile = workflowJob(ciWorkflow, 'browser-mobile');
+    expect(mobile).toContain('playwright install --with-deps webkit');
+    expect(mobile).toContain('bun run test:e2e:web -- --project=webkit-mobile --workers=1');
+    expect(mobile).toContain('if: always()');
+    expect(mobile).toContain('playwright-report/');
     const gate = workflowJob(ciWorkflow, 'browser-smoke');
-    expect(gate).toContain('needs: browser-tests');
+    expect(gate).toContain('needs: [browser-tests, browser-mobile]');
     expect(gate).toContain('if: always() && !cancelled()');
     expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
-    expect(gate).toContain('test "$RESULT" = success');
+    expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
+    expect(gate).toContain('test "$RESULT" = success && test "$MOBILE_RESULT" = success');
   });
 
   it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {

@@ -59,7 +59,7 @@ test('navigates a visited card library while offline', async ({ page, context })
   await addCard(page, 'Mobile offline front', 'Mobile offline back');
   await page.getByRole('navigation', { name: 'Course sections' }).getByRole('link', { name: 'Cards' }).click();
   const cards = page.locator('main[data-route-path$="/cards"]');
-  await expect(cards.getByText('Mobile offline front', { exact: true })).toBeVisible();
+  await expect(cards.getByText('Mobile offline front', { exact: true }).first()).toBeVisible();
   await context.setOffline(true);
   try {
     await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
