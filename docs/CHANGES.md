@@ -8,6 +8,10 @@
   sequence. Actions share aligned sizing, and Continue reveals its arrow without
   shifting neighbouring buttons. Paused steps, breaks and revision summaries remain available.
 
+- Declared Vercel Blob in the web build's development dependencies because its
+  Playwright relay fixture imports the relay store during root typechecking.
+  Root-only Vercel installs now resolve the store's types.
+
 - Loaded the desktop updater controller only in Electron, keeping it out of the
   initial browser JavaScript and restoring the existing asset budget.
 - Kept committed hosted AI tool receipts and their saved ledger when Stop or disposal
