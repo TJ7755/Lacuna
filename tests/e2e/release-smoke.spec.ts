@@ -151,7 +151,7 @@ test('opens an archived course as read-only content', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Author mode' })).toHaveCount(0);
 
   await page.goto(`/#/course/${courseId}/cards`);
-  await expect(page).toHaveURL(new RegExp(`#\/course\/${courseId}\/?$`));
+  await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/?$`));
   await expect(page.getByRole('heading', { name: 'Curriculum' })).toBeVisible();
 });
 

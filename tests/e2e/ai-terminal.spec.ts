@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { TerminalAiClient } from '../../tooling/lacuna-ai-mcp/src/client.js';
+import type { TerminalAiClient } from '../../tooling/lacuna-ai-mcp/src/client.js';
 import {
   connectTerminal,
   pairBrowserAndTerminal,
@@ -199,7 +199,7 @@ test('carries misconception-first instructions through a memory-guided teaching 
   const courseId = requiredString(course, 'id');
   const createInput = {
     scope: { kind: 'course' as const, courseId },
-    tags: ['misconception'] as const,
+    tags: ['misconception'],
     status: 'uncertain' as const,
     content: 'Division distributes over addition.',
     basis: 'learner-stated' as const,

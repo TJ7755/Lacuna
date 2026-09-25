@@ -231,7 +231,7 @@ async function measureBuildOutput() {
   try {
     index = await readFile('dist/index.html', 'utf8');
   } catch {
-    return { available: false };
+    return { available: false as const };
   }
 
   const references = [...index.matchAll(/(?:src|href)="(\/assets\/[^"?]+)"/g)].map(
@@ -261,7 +261,7 @@ async function measureBuildOutput() {
   const initialJavaScript = assets.filter((asset) => asset.name.endsWith('.js'));
   const initialCss = assets.filter((asset) => asset.name.endsWith('.css'));
   return {
-    available: true,
+    available: true as const,
     initialJavaScript: {
       assets: initialJavaScript,
       bytes: initialJavaScript.reduce((total, asset) => total + asset.bytes, 0),
