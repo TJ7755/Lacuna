@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Blob as NativeBlob } from 'node:buffer';
 import { db } from './schema';
 import { createCourse, createLesson, createLessonCard, createNote } from './repository';
 import { createOcclusion } from './occlusionRepository';
@@ -52,6 +53,33 @@ async function seedCourse() {
 beforeEach(clearDatabase);
 
 describe('course files', () => {
+  it('exports Blob-backed media even when reading its bytes takes another task', async () => {
+    const { course, image } = await seedCourse();
+    await db.assets.update(image.hash, { blob: new NativeBlob(['diagram']) as unknown as Blob });
+    const read = NativeBlob.prototype.arrayBuffer;
+    const spy = vi.spyOn(NativeBlob.prototype, 'arrayBuffer').mockImplementation(async function (this: NativeBlob) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return read.call(this);
+    });
+    try {
+      const file = await decodeCourseFile(await buildCourseFile(course.id));
+      expect(file.assets.find((asset) => asset.hash === image.hash)?.data).toBe(btoa('diagram'));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('preserves recipient metadata when an imported asset already exists', async () => {
+    const { course, image } = await seedCourse();
+    const file = await decodeCourseFile(await buildCourseFile(course.id));
+    const incoming = file.assets.find((asset) => asset.hash === image.hash)!;
+    incoming.mimeType = 'audio/mpeg';
+    incoming.kind = 'audio';
+    incoming.width = 1;
+    await withCourseFileAssets(file, () => importSharePayload(file.payload));
+    expect(await db.assets.get(image.hash)).toEqual(image);
+  });
+
   it('transfers a usable occlusion, card media and notes into an empty recipient database', async () => {
     const { course, image, audio } = await seedCourse();
     const sourceCards = await db.cards.toArray();

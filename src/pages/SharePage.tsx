@@ -135,6 +135,7 @@ export function SharePage() {
 
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<PendingShareImport | null>(null);
+  const inspectionGeneration = useRef(0);
   const [importing, setImporting] = useState(false);
   const copyTimeoutRef = useRef<number | null>(null);
   const plainTextCopyTimeoutRef = useRef<number | null>(null);
@@ -325,14 +326,22 @@ export function SharePage() {
     }
   }
 
+  function beginInspection() {
+    setPending(null);
+    return ++inspectionGeneration.current;
+  }
+
   async function handleInspect() {
     const raw = input.trim();
     if (!raw) return;
+    const generation = beginInspection();
     try {
       const payload = await decodeShare(raw);
-      setPending(await resolvePending(payload, raw));
+      const next = await resolvePending(payload, raw);
+      if (generation === inspectionGeneration.current) setPending(next);
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Invalid share code.', 'negative');
+      if (generation === inspectionGeneration.current)
+        notify(err instanceof Error ? err.message : 'Invalid share code.', 'negative');
     }
   }
 
@@ -384,6 +393,7 @@ export function SharePage() {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decodedText) => {
+          const generation = beginInspection();
           // Stop scanning immediately on success
           try {
             await scanner.stop();
@@ -395,7 +405,8 @@ export function SharePage() {
           setScanning(false);
           try {
             const payload = await decodeShare(decodedText);
-            setPending(await resolvePending(payload, decodedText));
+            const next = await resolvePending(payload, decodedText);
+            if (generation === inspectionGeneration.current) setPending(next);
           } catch (err) {
             notify(err instanceof Error ? err.message : 'Invalid QR code.', 'negative');
           }
@@ -735,10 +746,10 @@ export function SharePage() {
 
         <CourseFileImportButton
           disabled={importing}
-          onReadStart={() => setPending(null)}
-          onInspect={async (file) => {
+          onReadStart={beginInspection}
+          onInspect={async (file, generation) => {
             const next = await resolvePending(file.payload, '');
-            setPending({ ...next, file });
+            if (generation === inspectionGeneration.current) setPending({ ...next, file });
           }}
         />
 
@@ -749,7 +760,7 @@ export function SharePage() {
             value={input}
             onChange={(e) => {
               setInput(e.target.value);
-              if (pending) setPending(null);
+              beginInspection();
             }}
             rows={4}
             placeholder="Paste a Lacuna share code here (it starts with LAC)..."

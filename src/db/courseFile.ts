@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import Dexie from 'dexie';
 import { db } from './schema';
 import {
   buildCourseSharePayload,
@@ -65,7 +66,7 @@ function assertComplete(file: CourseFile): void {
 export async function buildCourseFile(courseId: string): Promise<string> {
   const file = await db.transaction('r', db.tables, async (): Promise<CourseFile> => {
     const payload = await buildCourseSharePayload(courseId, { includeMedia: true });
-    const assets = await assetsForBackup([...requiredAssets(payload)]);
+    const assets = await Dexie.waitFor(assetsForBackup([...requiredAssets(payload)]));
     return { format: 'lacuna-course', version: 1, payload, assets };
   });
   assertComplete(file);
@@ -117,7 +118,8 @@ export async function withCourseFileAssets<T>(
 ): Promise<T> {
   const assets = await validatedAssets(file);
   return db.transaction('rw', db.tables, async () => {
-    await db.assets.bulkPut(assets);
+    const existing = await db.assets.bulkGet(assets.map((asset) => asset.hash));
+    await db.assets.bulkAdd(assets.filter((_, index) => !existing[index]));
     return importContent();
   });
 }

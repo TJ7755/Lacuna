@@ -55,20 +55,20 @@ export function CourseFileImportButton({
   onReadStart,
   disabled,
 }: {
-  onInspect: (file: CourseFile) => Promise<void>;
-  onReadStart: () => void;
+  onInspect: (file: CourseFile, generation: number) => Promise<void>;
+  onReadStart: () => number;
   disabled: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
   const { notify } = useToast();
 
-  async function inspect(file: File) {
+  async function inspect(file: File, generation: number) {
     setReading(true);
     try {
       if (file.size > MAX_COURSE_FILE_BYTES)
         throw new Error('The course file exceeds the 100 MB limit.');
-      await onInspect(await decodeCourseFile(await file.text()));
+      await onInspect(await decodeCourseFile(await file.text()), generation);
     } catch (error) {
       notify(
         error instanceof Error ? error.message : 'Could not read the course file.',
@@ -92,8 +92,7 @@ export function CourseFileImportButton({
           const file = event.target.files?.[0];
           event.target.value = '';
           if (file) {
-            onReadStart();
-            void inspect(file);
+            void inspect(file, onReadStart());
           }
         }}
       />

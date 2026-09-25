@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { importSharePayload } from '../db/share';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { decodeShare, importSharePayload } from '../db/share';
 import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
 import { SharePage } from './SharePage';
@@ -194,6 +194,40 @@ beforeEach(() => {
 });
 
 describe('SharePage', () => {
+  it('ignores a slow code read after a newer file preview', async () => {
+    let finish!: (payload: Awaited<ReturnType<typeof decodeShare>>) => void;
+    vi.mocked(decodeShare).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const file = { payload: { v: 2 }, assets: [] };
+    mockDecodeCourseFile.mockResolvedValue(file);
+    render(<SharePage />);
+    fireEvent.change(screen.getByLabelText('Share code to import'), { target: { value: 'LAC2-older' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+    fireEvent.change(screen.getByLabelText('Course file to import'), {
+      target: { files: [new File(['contents'], 'Biology.lacuna')] },
+    });
+    await screen.findByText('Ready to import');
+    await act(async () => { finish({ v: 2 } as Awaited<ReturnType<typeof decodeShare>>); });
+    fireEvent.click(screen.getByText('Add to my courses'));
+    await waitFor(() => expect(mockWithCourseFileAssets).toHaveBeenCalledWith(file, expect.any(Function)));
+  });
+
+  it('ignores a slow file read after a newer code preview', async () => {
+    let finish!: (file: unknown) => void;
+    mockDecodeCourseFile.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<SharePage />);
+    fireEvent.change(screen.getByLabelText('Course file to import'), {
+      target: { files: [new File(['contents'], 'Biology.lacuna')] },
+    });
+    await waitFor(() => expect(mockDecodeCourseFile).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('Share code to import'), { target: { value: 'LAC2-newer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+    await screen.findByText('Ready to import');
+    await act(async () => { finish({ payload: { v: 2 }, assets: [] }); });
+    fireEvent.click(screen.getByText('Add to my courses'));
+    await waitFor(() => expect(importSharePayload).toHaveBeenCalledWith(mockDecodedPayload));
+    expect(mockWithCourseFileAssets).not.toHaveBeenCalled();
+  });
+
   it('saves the selected course as a file', async () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };

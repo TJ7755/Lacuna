@@ -6,6 +6,8 @@
   occlusion diagrams once each, without personal study history. File imports preview before
   confirmation and retain published-course update handling. Missing or corrupt media is
   rejected; media and course content import atomically. Text and QR codes remain available.
+  Review hardening preserves existing recipient media metadata, keeps Blob reads within the
+  export transaction, and prevents slower inspections from replacing a newer preview.
 
 - Replaced inline card import with a fixed-size, two-step dialogue. Paste or upload,
   review real Markdown/cloze previews, and optionally add independent reverse cards.
