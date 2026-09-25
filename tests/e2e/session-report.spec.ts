@@ -18,9 +18,12 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await sheet.getByRole('button', { name: 'Start Simple Learn' }).click();
   await page.getByRole('button', { name: /Show answer/i }).last().click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'You’ve reached your goal' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
   await expect(page.getByText('Goal reached', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('+100 percentage points')).toBeHidden();
+  await page.locator('summary').filter({ hasText: 'Session details' }).click();
   await expect(page.getByText('+100 percentage points')).toBeVisible();
+  await page.locator('summary').filter({ hasText: 'Session details' }).click();
   await expect(page.getByRole('progressbar', { name: 'Cards correct in this pass' })).toHaveAttribute('aria-valuenow', '100');
   await expect(page.getByText('Card added.', { exact: true })).toBeHidden();
   await expect.poll(() => page.getByRole('progressbar').locator(':scope > div').evaluate(
@@ -33,5 +36,5 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
     await page.screenshot({ path: testInfo.outputPath(`session-report-${width}.png`), fullPage: true });
   }
   await page.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'You’ve reached your goal' })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeHidden();
 });
