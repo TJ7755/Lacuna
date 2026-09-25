@@ -1,13 +1,13 @@
 import { streamText, tool, type ModelMessage } from 'ai';
 import { z } from 'zod';
-import { aiToolNameSchema } from '../../src/ai/protocol';
+import { aiToolNameSchema } from '../../src/ai/protocol.js';
 import {
   encodeHostedEvent,
   parseHostedRequest,
   type HostedRequest,
-} from '../../src/ai/hostedProtocol';
-import { buildAiInstructionBundle } from '../../src/ai/instructions';
-import { listToolsContract } from '../../src/mcp/contracts/registry';
+} from '../../src/ai/hostedProtocol.js';
+import { buildAiInstructionBundle } from '../../src/ai/instructions.js';
+import { listToolsContract } from '../../src/mcp/contracts/registry.js';
 import type { HostedModelRoute } from './providers';
 
 const hostedTools = {

@@ -1,8 +1,8 @@
-import { loadAccessConfiguration, verifySessionToken } from '../../server/ai/access';
-import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http';
-import { createHostedInferenceResponse } from '../../server/ai/inference';
-import { configuredFreeModels } from '../../server/ai/providers';
-import { createAiQuotaStore } from '../../server/ai/quota';
+import { loadAccessConfiguration, verifySessionToken } from '../../server/ai/access.js';
+import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
+import { createHostedInferenceResponse } from '../../server/ai/inference.js';
+import { configuredFreeModels } from '../../server/ai/providers.js';
+import { createAiQuotaStore } from '../../server/ai/quota.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {

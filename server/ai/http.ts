@@ -1,4 +1,4 @@
-import { MAX_HOSTED_REQUEST_BYTES } from '../../src/ai/hostedProtocol';
+import { MAX_HOSTED_REQUEST_BYTES } from '../../src/ai/hostedProtocol.js';
 
 export function allowedOrigin(request: Request): string | null | false {
   const origin = request.headers.get('origin');

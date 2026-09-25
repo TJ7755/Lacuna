@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import { MCP_TOOL_NAME_MAX_LENGTH } from '../limits';
+import { MCP_TOOL_NAME_MAX_LENGTH } from '../limits.js';
 import type { ToolContract } from '../types';
-import { CONTENT_TOOL_CONTRACTS } from './content';
-import { DESTRUCTIVE_TOOL_CONTRACTS } from './destructive';
-import { IMPORT_TOOL_CONTRACTS } from './import';
-import { LINEAGE_TOOL_CONTRACTS } from './lineage';
-import { READ_TOOL_CONTRACTS } from './read';
-import { QUESTION_TOOL_CONTRACTS } from './questions';
-import { MEMORY_TOOL_CONTRACTS } from './memories';
+import { CONTENT_TOOL_CONTRACTS } from './content.js';
+import { DESTRUCTIVE_TOOL_CONTRACTS } from './destructive.js';
+import { IMPORT_TOOL_CONTRACTS } from './import.js';
+import { LINEAGE_TOOL_CONTRACTS } from './lineage.js';
+import { READ_TOOL_CONTRACTS } from './read.js';
+import { QUESTION_TOOL_CONTRACTS } from './questions.js';
+import { MEMORY_TOOL_CONTRACTS } from './memories.js';
 
 /** Versions names and wire shapes independently of the database schema. */
 export const MCP_TOOL_SURFACE_VERSION = 3;

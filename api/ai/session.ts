@@ -1,5 +1,5 @@
-import { exchangeCredential, loadAccessConfiguration } from '../../server/ai/access';
-import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http';
+import { exchangeCredential, loadAccessConfiguration } from '../../server/ai/access.js';
+import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {

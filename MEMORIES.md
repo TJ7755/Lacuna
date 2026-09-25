@@ -72,6 +72,9 @@ cross-document navigation to invalidate AI readiness; a hash route retains its l
 
 Vercel can retain an npm install override despite the Bun manifest and lockfile. Keep the
 install command explicit in `vercel.json`; repository configuration overrides dashboard settings.
+Vercel's Node ESM runtime keeps relative import specifiers from these TypeScript functions.
+Runtime imports in the hosted function graph need `.js` suffixes; TypeScript bundler resolution
+maps them to `.ts` locally. The compiled-module regression test catches extensionless imports.
 
 AI and data MCP companions share transport but have different grants. Preserve every generated
 profile argument and verify the client's active tools, not just saved registration. A transport

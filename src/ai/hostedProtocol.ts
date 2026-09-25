@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { MAX_AI_IDENTIFIER_LENGTH, aiToolNameSchema, boundedJsonValueSchema } from './protocol';
-import { AI_TEACHING_INSTRUCTION_VERSION } from './instructions';
+import { MAX_AI_IDENTIFIER_LENGTH, aiToolNameSchema, boundedJsonValueSchema } from './protocol.js';
+import { AI_TEACHING_INSTRUCTION_VERSION } from './instructions.js';
 
 export const HOSTED_PROTOCOL_VERSION = 1 as const;
 export const MAX_HOSTED_REQUEST_BYTES = 96 * 1024;

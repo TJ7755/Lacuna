@@ -11,7 +11,7 @@ import {
   AGENT_MEMORY_STATUSES,
   AGENT_MEMORY_TAGS,
   AGENT_MEMORY_BASES,
-} from '../../agentMemoryContract';
+} from '../../agentMemoryContract.js';
 import type { ToolContract } from '../types';
 
 const identifierSchema = z.string().trim().min(1).max(AGENT_MEMORY_IDENTIFIER_LIMIT);
