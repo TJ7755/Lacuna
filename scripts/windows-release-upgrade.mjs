@@ -47,7 +47,7 @@ async function open(expectedVersion) {
   assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
   if (expectedVersion === '0.2.10') {
     await application.evaluate(({ app }, url) => {
-      const { createRequire } = require('node:module');
+      const { createRequire } = process.getBuiltinModule('node:module');
       const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
       updater.setFeedURL({ provider: 'generic', url });
     }, feed);
@@ -100,7 +100,7 @@ try {
   assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
   const closed = application.waitForEvent('close', { timeout: 60_000 });
   await application.evaluate(({ app }) => {
-    const { createRequire } = require('node:module');
+    const { createRequire } = process.getBuiltinModule('node:module');
     const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
     updater.quitAndInstall(true, false);
   });
