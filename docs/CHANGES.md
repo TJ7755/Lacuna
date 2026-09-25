@@ -18,6 +18,8 @@
   `inclusionai/ling-3.0-flash-fin`, retaining the live zero-price check for each route.
   OpenRouter's free router takes priority when configured and requires a live zero-price and
   tool-support check before use. Every Gateway price field must also be zero.
+  Prefer two pinned OpenRouter Ling free models, checking live zero pricing and tool support
+  for each, before the variable free router. Log failed provider routes for diagnosis.
   Made hosted function imports resolvable by Vercel's Node ESM runtime and added a
   compiled-module regression test after the first deployed session request failed at load time.
   Used Lacuna's Electron preload to choose the hosted service URL, so an ordinary browser

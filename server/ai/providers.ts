@@ -13,6 +13,12 @@ const FREE_GATEWAY_MODEL_IDS = [
   'poolside/laguna-s-2.1-free',
 ] as const;
 
+const FREE_OPENROUTER_MODEL_IDS = [
+  'inclusionai/ling-3.0-flash-sante:free',
+  'inclusionai/ling-3.0-flash-fin:free',
+  'openrouter/free',
+] as const;
+
 /** Model IDs are fixed here so a request or deployment variable cannot select a paid route. */
 export function isZeroPricedGatewayModel(model: Pick<GatewayModelEntry, 'pricing'> | undefined): boolean {
   return !!model && model.pricing !== null && model.pricing !== undefined &&
@@ -29,15 +35,19 @@ export function selectFreeGatewayModels(
   });
 }
 
-export function isZeroPricedOpenRouterFreeRoute(model: unknown): boolean {
+function isZeroPricedOpenRouterModel(model: unknown, id: string): boolean {
   if (!model || typeof model !== 'object') return false;
   const candidate = model as { id?: unknown; pricing?: unknown; supported_parameters?: unknown };
-  if (candidate.id !== 'openrouter/free' || !Array.isArray(candidate.supported_parameters) ||
+  if (candidate.id !== id || !Array.isArray(candidate.supported_parameters) ||
       !candidate.supported_parameters.includes('tools') || !candidate.pricing ||
       typeof candidate.pricing !== 'object') return false;
   const pricing = candidate.pricing as Record<string, unknown>;
   return pricing.prompt === '0' && pricing.completion === '0' &&
     Object.values(pricing).every((price) => typeof price === 'string' && /^0(?:\.0+)?$/.test(price));
+}
+
+export function isZeroPricedOpenRouterFreeRoute(model: unknown): boolean {
+  return isZeroPricedOpenRouterModel(model, 'openrouter/free');
 }
 
 export async function configuredFreeModels(
@@ -53,13 +63,17 @@ export async function configuredFreeModels(
       });
       if (!response.ok) throw new Error('OpenRouter catalogue is unavailable.');
       const catalogue = await response.json() as { data?: unknown };
-      if (Array.isArray(catalogue.data) && catalogue.data.some(isZeroPricedOpenRouterFreeRoute)) {
+      if (Array.isArray(catalogue.data)) {
         const openrouter = createOpenAICompatible({
           name: 'openrouter',
           baseURL: 'https://openrouter.ai/api/v1',
           apiKey: env.OPENROUTER_API_KEY,
         });
-        routes.push({ id: 'openrouter:openrouter/free', model: openrouter.chatModel('openrouter/free') });
+        for (const id of FREE_OPENROUTER_MODEL_IDS) {
+          if (catalogue.data.some((model) => isZeroPricedOpenRouterModel(model, id))) {
+            routes.push({ id: `openrouter:${id}`, model: openrouter.chatModel(id) });
+          }
+        }
       }
     } catch {
       // A missing catalogue must not make the free router an assumed zero-cost route.

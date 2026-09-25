@@ -55,6 +55,29 @@ describe('hosted provider policy', () => {
       catalogue({ ...free, pricing: { prompt: '0', completion: '0.01' } }) as typeof fetch)).toEqual([]);
   });
 
+  it('prefers pinned zero-priced tool models to the random free router', async () => {
+    const model = (id: string, completion = '0', tools = true) => ({
+      id, pricing: { prompt: '0', completion }, supported_parameters: tools ? ['tools'] : [],
+    });
+    const catalogue = (data: unknown[]) => async () => new Response(JSON.stringify({ data }));
+    const routes = await configuredFreeModels({ OPENROUTER_API_KEY: 'fixture' }, catalogue([
+      model('inclusionai/ling-3.0-flash-fin:free'),
+      model('openrouter/free'),
+      model('inclusionai/ling-3.0-flash-sante:free'),
+      model('inclusionai/ling-3.0-flash-sante', '0.01'),
+    ]) as typeof fetch);
+    expect(routes.map((route) => route.id)).toEqual([
+      'openrouter:inclusionai/ling-3.0-flash-sante:free',
+      'openrouter:inclusionai/ling-3.0-flash-fin:free',
+      'openrouter:openrouter/free',
+    ]);
+    const paidOrNoTools = await configuredFreeModels({ OPENROUTER_API_KEY: 'fixture' }, catalogue([
+      model('inclusionai/ling-3.0-flash-sante:free', '0.01'),
+      model('inclusionai/ling-3.0-flash-fin:free', '0', false),
+    ]) as typeof fetch);
+    expect(paidOrNoTools).toEqual([]);
+  });
+
   it('offers only named free routes and requires confirmation for a Gemini free-tier key', async () => {
     expect(await configuredFreeModels({})).toEqual([]);
     const routes = await configuredFreeModels({

@@ -6,11 +6,12 @@ and a filed PR on 25 September 2026, with zero paid inference spend and a live k
 Implementation started on `codex/ai-gateway-spike` on 24 September 2026. Phase 1 now has a
 versioned, bounded request/event contract and a loopback-only AI SDK 7 streaming harness.
 The harness requires a Gateway key, a model ID and a separate local bearer token. Its tests
-use an SDK mock model. Synthetic live text and tool-call requests have now succeeded through
-OpenRouter's free route; the full in-app workflow remains untested with a live provider.
+use an SDK mock model. Synthetic live text and tool-call requests succeeded through
+OpenRouter's free route. The deployed preview also answered a course-card count using live
+local read tools. Live approved and rejected writes and Stop remain unverified.
 The branch now has `/api/ai/` functions, an opt-in sidebar path, Electron connectivity and
-server-side admission controls. Browser fixtures cover the flow; a live-model test remains
-outstanding until the prompter supplies the local test key after the PR is filed.
+server-side admission controls. Browser fixtures cover the flow; a capped, zero-credit
+OpenRouter test key is configured only on the preview branch.
 
 ## Outcome
 
@@ -242,7 +243,8 @@ only when actually learned. This draft itself needs no application changelog ent
 - The maintainer chose zero paid inference spend and delegated usage caps. Current defaults are
   50 steps per learner per day, 600 per month and 1,000 globally per day. Model calls use only
   pinned free routes; a Gateway credit allowance does not authorise paid routes.
-- Confirm durable quota store and secrets against the existing Vercel web project. OpenRouter free,
+- Confirm durable quota store and secrets against the existing Vercel web project. Pinned
+  OpenRouter Ling free models, OpenRouter's free router,
   Gateway free and Gemini free-tier routes are configured in that order, subject to their
   specific free-usage checks. Confirm their actual tool-call behaviour with a live key.
 - Confirm the selected providers' retention/training policy and corresponding enablement copy.

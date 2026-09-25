@@ -66,6 +66,9 @@ while the picker is open, and test the expanded menu rather than only the closed
 Vercel Gateway's monthly credits are separate from routes whose catalogue input and output
 prices are both zero. Keep hosted route selection pinned and fail closed if live pricing is
 missing or changes; a free credit allowance is not a no-spend guarantee.
+OpenRouter's `openrouter/free` can switch models between tool steps. A live request returned
+only reasoning until the output cap and no answer. Prefer pinned free models after verifying
+each model's live zero price and tool support; keep the router as fallback.
 
 Electron loading-spinner events can accompany hash navigation. Use main-frame,
 cross-document navigation to invalidate AI readiness; a hash route retains its listener.
