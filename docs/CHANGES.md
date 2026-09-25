@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Restricted comment-triggered OpenCode runs to the repository owner, checked out
+  the default branch for both comment events, reduced token permissions, denied
+  OpenCode command execution with its API key present, and pinned the action to
+  a reviewed commit.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
