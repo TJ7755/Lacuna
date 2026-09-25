@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Loaded the desktop updater controller only in Electron, keeping it out of the
+  initial browser JavaScript and restoring the existing asset budget.
 - Kept committed hosted AI tool receipts and their saved ledger when Stop or disposal
   interrupts an approved local action. Bound each complete hosted request by its
   encoded byte size, retaining complete tool calls and results across continuations.

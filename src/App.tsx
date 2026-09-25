@@ -20,7 +20,6 @@ import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
 import type { EnabledAiSession } from './ai/session/EnabledAiRuntime';
-import { DesktopUpdateController } from './components/updates/DesktopUpdateController';
 
 export { router } from './routes/router';
 
@@ -114,6 +113,8 @@ function RouterWithOptionalAi() {
 }
 
 const McpBridgeController = lazy(loadMcpBridgeController);
+const DesktopUpdateController = lazy(() => import('./components/updates/DesktopUpdateController')
+  .then((module) => ({ default: module.DesktopUpdateController })));
 
 function isPublicEntry(hash: string): boolean {
   return /^#\/(?:welcome|landing|download)\/?(?:[?#]|$)/.test(hash);
@@ -279,7 +280,11 @@ export function App() {
         <AccentProvider>
           <FontScaleProvider>
             <ToastProvider>
-              {window.electronAPI?.updater && <DesktopUpdateController />}
+              {window.electronAPI?.updater && (
+                <Suspense fallback={null}>
+                  <DesktopUpdateController />
+                </Suspense>
+              )}
               {window.electronAPI?.isElectron && (
                 <Suspense fallback={null}>
                   <McpBridgeController />
