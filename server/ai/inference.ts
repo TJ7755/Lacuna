@@ -23,6 +23,15 @@ const hostedTools = {
   }),
 };
 
+const hostedToolInstructions = `
+Hosted Lacuna tools
+- The available functions are lacuna_list_tools and lacuna_invoke_tool. Use lacuna_list_tools to discover domain tools and their inputs.
+- Call lacuna_invoke_tool with name lacuna.create_card and an input object to create a card; use the same wrapper for other domain tool names.
+- Writes may pause for Lacuna's in-app approval. Call the write tool and wait for its structured result; do not ask for approval in prose.
+- A successful write result means Lacuna authorised that action through approval or an existing course grant. Never claim that approval was bypassed.
+- No web search tool is available. Do not claim to have checked external sources. Ask for the missing subject or syllabus when a requested course would require guessing.
+`;
+
 export function hostedModelMessages(request: HostedRequest): ModelMessage[] {
   const messages: ModelMessage[] = [];
   const callNames = new Map<string, string>();
@@ -80,7 +89,7 @@ export function createHostedInferenceResponse(
           try {
             const result = streamText({
               model: route.model,
-              system: instructions.content,
+              system: `${instructions.content}\n${hostedToolInstructions}`,
               messages,
               tools: hostedTools,
               maxOutputTokens: 768,
@@ -111,6 +120,7 @@ export function createHostedInferenceResponse(
                 throw new Error('Provider stream failed.');
               }
             }
+            if (!visible) throw new Error('Provider returned no usable output.');
             emit({ type: 'completed', finishReason: calledTool ? 'tool_calls' : 'stop' });
             finished = true;
             break;

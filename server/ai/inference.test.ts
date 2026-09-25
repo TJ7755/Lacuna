@@ -19,6 +19,29 @@ async function events(response: Response) {
 }
 
 describe('hosted AI inference', () => {
+  it('explains the hosted tool wrapper and local approval semantics to the model', async () => {
+    const model = new MockLanguageModelV4({ doStream: async () => ({
+      stream: new ReadableStream({ start(controller) {
+        controller.enqueue({ type: 'text-start', id: 'text-1' });
+        controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'Ready.' });
+        controller.enqueue({ type: 'text-end', id: 'text-1' });
+        controller.close();
+      } }),
+    }) });
+    await events(createHostedInferenceResponse(JSON.stringify(request),
+      [{ id: 'free', model }], new AbortController().signal));
+    expect(model.doStreamCalls[0]?.prompt).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'system', content: expect.stringContaining(
+        'Call lacuna_invoke_tool with name lacuna.create_card',
+      ) }),
+    ]));
+    expect(model.doStreamCalls[0]?.prompt).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'system', content: expect.stringContaining(
+        'A successful write result means Lacuna authorised that action',
+      ) }),
+    ]));
+  });
+
   it('maps generic model tools to validated Lacuna tool requests and preserves continuation', async () => {
     const model = new MockLanguageModelV4({
       doStream: async () => ({
@@ -68,6 +91,33 @@ describe('hosted AI inference', () => {
   it('falls back when a provider finishes without text or a tool call', async () => {
     const empty = new MockLanguageModelV4({ doStream: async () => ({
       stream: new ReadableStream({ start(controller) { controller.close(); } }),
+    }) });
+    const working = new MockLanguageModelV4({ doStream: async () => ({
+      stream: new ReadableStream({ start(controller) {
+        controller.enqueue({ type: 'text-start', id: 'text-1' });
+        controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'Ready.' });
+        controller.enqueue({ type: 'text-end', id: 'text-1' });
+        controller.close();
+      } }),
+    }) });
+    expect(await events(createHostedInferenceResponse(JSON.stringify(request), [
+      { id: 'empty', model: empty }, { id: 'working', model: working },
+    ], new AbortController().signal))).toEqual([
+      { type: 'text_delta', text: 'Ready.' },
+      { type: 'completed', finishReason: 'stop' },
+    ]);
+    expect(working.doStreamCalls).toHaveLength(1);
+  });
+
+  it('falls back when a provider reports completion without usable output', async () => {
+    const empty = new MockLanguageModelV4({ doStream: async () => ({
+      stream: new ReadableStream({ start(controller) {
+        controller.enqueue({ type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage: {
+          inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 1, text: 0, reasoning: 1 },
+        } });
+        controller.close();
+      } }),
     }) });
     const working = new MockLanguageModelV4({ doStream: async () => ({
       stream: new ReadableStream({ start(controller) {

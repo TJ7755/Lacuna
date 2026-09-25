@@ -8,7 +8,8 @@ versioned, bounded request/event contract and a loopback-only AI SDK 7 streaming
 The harness requires a Gateway key, a model ID and a separate local bearer token. Its tests
 use an SDK mock model. Synthetic live text and tool-call requests succeeded through
 OpenRouter's free route. The deployed preview also answered a course-card count using live
-local read tools. Live approved and rejected writes and Stop remain unverified.
+local read tools and committed one card after the in-app approval. A later write reused that
+course's granted write scope; rejected writes and Stop remain unverified.
 The branch now has `/api/ai/` functions, an opt-in sidebar path, Electron connectivity and
 server-side admission controls. Browser fixtures cover the flow; a capped, zero-credit
 OpenRouter test key is configured only on the preview branch.

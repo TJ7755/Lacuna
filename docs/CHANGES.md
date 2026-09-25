@@ -20,6 +20,8 @@
   tool-support check before use. Every Gateway price field must also be zero.
   Prefer two pinned OpenRouter Ling free models, checking live zero pricing and tool support
   for each, before the variable free router. Log failed provider routes for diagnosis.
+  Tell hosted models the exact local tool wrappers and approval behaviour, and try the next
+  verified free route when a provider finishes without usable text or a tool call.
   Made hosted function imports resolvable by Vercel's Node ESM runtime and added a
   compiled-module regression test after the first deployed session request failed at load time.
   Used Lacuna's Electron preload to choose the hosted service URL, so an ordinary browser

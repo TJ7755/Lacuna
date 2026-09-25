@@ -69,6 +69,8 @@ missing or changes; a free credit allowance is not a no-spend guarantee.
 OpenRouter's `openrouter/free` can switch models between tool steps. A live request returned
 only reasoning until the output cap and no answer. Prefer pinned free models after verifying
 each model's live zero price and tool support; keep the router as fallback.
+Approving a hosted `write_grant` retains write scope for that course. A later write there can
+commit without another prompt; use a different course or fresh hosted session to test rejection.
 
 Electron loading-spinner events can accompany hash navigation. Use main-frame,
 cross-document navigation to invalidate AI readiness; a hash route retains its listener.
