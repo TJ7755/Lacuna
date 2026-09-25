@@ -387,14 +387,34 @@ export async function assignCardsToLesson(
   courseId: string,
   lessonId: string | null,
 ): Promise<void> {
-  const deckId = lessonId
-    ? await ensureLessonDeck(courseId, lessonId)
-    : await ensureCourseBankDeck(courseId);
   await db.transaction(
     'rw',
-    [db.cards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
+    [
+      db.cards,
+      db.courses,
+      db.lessons,
+      db.courseAssessments,
+      db.schedulingUnits,
+      db.coursePerformance,
+      db.schedulingPerformance,
+      db.lessonCardExposures,
+      db.reviewHistory,
+      db.tombstones,
+    ],
     async (tx) => {
+      if (lessonId) {
+        const lesson = await db.lessons.get(lessonId);
+        if (!lesson || lesson.courseId !== courseId) {
+          throw new Error('Lesson does not belong to the selected Course.');
+        }
+      }
       const cards = await db.cards.where('id').anyOf(ids).toArray();
+      if (cards.some((card) => card.courseId !== courseId)) {
+        throw new Error('Card does not belong to the selected Course.');
+      }
+      const deckId = lessonId
+        ? await ensureLessonDeck(courseId, lessonId)
+        : await ensureCourseBankDeck(courseId);
       const removedPrimaryExposures = cards
         .filter(
           (card) => typeof card.primaryLessonId === 'string' && card.primaryLessonId !== lessonId,

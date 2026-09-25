@@ -37,8 +37,10 @@
   In multi-select mode the bulk toolbar offers **delete** (with an Undo toast that restores
   a snapshot), **move** to another lesson within the same course context, and
   **"Assign to lesson…"** (reassigns selected cards' `primaryLessonId`, only offered where
-  the list is passed a `courseId`). Clicking a card row expands it in-place to show a
-  **per-card forgetting curve** and **vital statistics** (see §14, Per-card analysis).
+  the list is passed a `courseId`). Assignment rejects cards outside that course or a target
+  lesson outside it before changing any selected card, exposure or review history. Clicking a
+  card row expands it in-place to show a **per-card forgetting curve** and **vital statistics**
+  (see §14, Per-card analysis).
 - Course creation can **start blank** or **import** material immediately (see §13). The blank
   path collects the course name and visible **Exam date** in one modal. The date defaults to
   seven days after creation at 23:59 in the learner's current IANA time zone; changing it preserves
