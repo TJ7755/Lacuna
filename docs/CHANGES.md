@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Counted daily review caps and goals from persisted review events across sessions and repeat
+  attempts, with local calendar-day boundaries and the existing Continue anyway override.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
