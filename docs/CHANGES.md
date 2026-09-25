@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Blocked startup when a pre-migration snapshot fails and the upgrade path crosses
+  destructive schema versions 22, 24 or 26, including the default upgrade to v27.
+  Failed snapshots remain retryable; upgrades crossing no destructive version can continue.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
