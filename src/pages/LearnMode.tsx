@@ -608,6 +608,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   <div className="mt-8">
                     <StepSwap
                       stepKey={phase}
+                      effect="fade-lift"
                       className={
                         phase === 'question'
                           ? 'flex flex-col items-center gap-2'

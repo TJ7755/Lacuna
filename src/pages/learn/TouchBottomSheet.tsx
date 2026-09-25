@@ -32,6 +32,7 @@ export function TouchBottomSheet({
     >
       <StepSwap
         stepKey={phase}
+        effect="fade-lift"
         className="mx-auto flex max-w-3xl flex-col items-center gap-3"
       >
         {phase === 'question' ? (

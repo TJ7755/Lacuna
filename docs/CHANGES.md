@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Study controls now fade out before the grading buttons lift in together, on desktop
+  and touch layouts. This separates Show answer from Yes instead of overlapping them.
+  Motion speed settings scale the transition; reduced motion swaps immediately.
+  Implements direction A from the `prototype/card-control-motion` design study.
+
 - Redesigned the study-step transition as a vertical path from the completed topic to
   the next activity, removing the redundant completion and next-step subtitles. The
   topic settles back before the path and destination appear; reduced motion skips the
