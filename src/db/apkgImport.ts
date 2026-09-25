@@ -128,15 +128,16 @@ function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMediaRef>)
  */
 export async function importApkgResult(
   result: ApkgImportResult,
-  targetSchedulingUnitId?: string,
+  targetSchedulingUnitId?: string | (() => Promise<string>),
 ): Promise<{ courseId: string; cards: Card[] }> {
   const { createCourse, createCards } = await import('./repository');
   const { storeAudioBlob, storeImageBlob } = await import('./assets');
 
-  let targetUnit = targetSchedulingUnitId
-    ? await db.schedulingUnits.get(targetSchedulingUnitId)
-    : undefined;
-  if (targetSchedulingUnitId && (!targetUnit || !targetUnit.courseId)) {
+  let targetUnit =
+    typeof targetSchedulingUnitId === 'string'
+      ? await db.schedulingUnits.get(targetSchedulingUnitId)
+      : undefined;
+  if (typeof targetSchedulingUnitId === 'string' && (!targetUnit || !targetUnit.courseId)) {
     throw new Error('Target scheduling unit not found.');
   }
 
@@ -182,6 +183,12 @@ export async function importApkgResult(
       db.schedulingPerformance,
     ],
     async () => {
+      if (typeof targetSchedulingUnitId === 'function') {
+        targetUnit = await db.schedulingUnits.get(await targetSchedulingUnitId());
+        if (!targetUnit?.courseId) throw new Error('Target scheduling unit not found.');
+        courseId = targetUnit.courseId;
+      }
+
       if (!targetUnit) {
         const course = await createCourse(result.deckName);
         courseId = course.id;

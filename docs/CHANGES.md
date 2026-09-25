@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Replaced inline card import with a fixed-size, two-step dialogue. Paste or upload,
+  review real Markdown/cloze previews, and optionally add independent reverse cards.
+  Undo returns to the input step with the draft intact; it never deletes study data.
+  New courses and lessons can be created with their imported cards, retaining the
+  chosen study target. Anki packages preserve scheduling and media, and failed imports
+  retain their drafts without leaving partially created destinations.
+
 - Simplified the session report to a goal heading, reviewed count, accuracy and a thin
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the

@@ -1,3 +1,4 @@
+import { createImportedCards } from '../../db/cardImport';
 import type { ApkgImportResult } from '../../db/apkgImport';
 import type { ParsedCard } from '../../db/import';
 import { importApkgResult } from '../../db/apkgImport';
@@ -19,7 +20,7 @@ export interface CardListContext {
   importTargetName: string;
   /** Optional backing-deck id used only for duplicate detection in the import panel. */
   importTargetId?: string;
-  onImport: (cards: ParsedCard[]) => void | Promise<void>;
+  onImport: (cards: ParsedCard[], reverse?: boolean) => void | Promise<void>;
   onApkgImport: (result: ApkgImportResult) => void | Promise<void>;
   /** Omit moveTargets and onMove when moving cards is not meaningful for this surface. */
   moveTargets?: CardMoveTarget[];
@@ -43,7 +44,11 @@ export function courseCardListContext({
     schedulingConfig,
     importTargetId: schedulingConfig.id,
     importTargetName,
-    onImport: async (cards) => {
+    onImport: async (cards, reverse) => {
+      if (reverse) {
+        await createImportedCards(schedulingConfig.id, cards, true);
+        return;
+      }
       await createCards(schedulingConfig.id, cards, { courseId, primaryLessonId });
     },
     onApkgImport: async (result) => {

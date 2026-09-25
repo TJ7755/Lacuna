@@ -6,7 +6,8 @@ import { Menu, type MenuItem } from '../ui/Menu';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
-import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
+import { CardImportDialog } from '../import/CardImportDialog';
+import { importCardCount, type CardImportContent } from '../../db/cardImport';
 import {
   addTagToCards,
   assignCardsToLesson,
@@ -40,8 +41,6 @@ import { sequenceForItemId } from '../../db/sequenceGeneration';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
-import type { ParsedCard } from '../../db/import';
-import type { ApkgImportResult } from '../../db/apkgImport';
 import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
@@ -323,16 +322,12 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     }
   }
 
-  async function handleImport(cards: ParsedCard[]) {
-    await context.onImport(cards);
+  async function handleCardImport(content: CardImportContent) {
+    if (content.kind === 'apkg') await context.onApkgImport(content.result);
+    else await context.onImport(content.cards, content.reverse);
     setImporting(false);
-    notify(`${cards.length} card${cards.length === 1 ? '' : 's'} imported.`, 'positive');
-  }
-
-  async function handleApkgImport(result: ApkgImportResult) {
-    await context.onApkgImport(result);
-    setImporting(false);
-    notify(`${result.cards.length} card${result.cards.length === 1 ? '' : 's'} imported from Anki.`, 'positive');
+    const count = importCardCount(content);
+    notify(`${count} card${count === 1 ? '' : 's'} imported.`, 'positive');
   }
 
   const handleResume = useCallback(async (card: Card) => {
@@ -448,33 +443,14 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
         </div>
       </div>
 
-      {/* Inline import panel */}
-      <AnimatePresence>
-        {importing && (
-          <motion.div
-            initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            exit={m > 0 ? { opacity: 0 } : undefined}
-            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-4"
-          >
-            <div className="rounded-2xl border border-line-strong bg-surface p-5">
-              <h3 className="mb-1 font-display text-lg">Import cards into {importTargetName}</h3>
-              <p className="mb-4 text-sm text-ink-soft">
-                Paste card text or upload CSV, JSON or an Anki APKG. This adds cards; it does not
-                restore a full Lacuna backup or import a shared course.
-              </p>
-              <UnifiedImportPanel
-                deckId={context.importTargetId}
-                onImport={handleImport}
-                onCancel={() => setImporting(false)}
-                importLabel="Add cards"
-                onApkgImport={handleApkgImport}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {importing && (
+        <CardImportDialog
+          targetName={importTargetName}
+          schedulingUnitId={context.importTargetId}
+          onCancel={() => setImporting(false)}
+          onImport={handleCardImport}
+        />
+      )}
 
       {selectMode && (
         <div className="mb-4 rounded-xl border border-line-strong bg-surface px-4 py-2.5">
