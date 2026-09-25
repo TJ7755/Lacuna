@@ -38,12 +38,17 @@ function main() {
     hashes[id] = createHash('sha256').update(code).digest('hex');
     rows.push(`${id},${code},,`);
   }
+  const configuration = `${JSON.stringify(hashes)}\n`;
+  // Vercel shares 64 KiB across all environment variables; reserve space for other settings.
+  if (Buffer.byteLength(configuration, 'utf8') > 48 * 1024) {
+    throw new Error('Combined credential configuration exceeds 48 KiB. Reduce the batch size or remove revoked entries.');
+  }
   const root = resolve('.ai-invites');
   mkdirSync(root, { recursive: true, mode: 0o700 });
   const directory = mkdtempSync(join(root, 'batch-'));
   try {
     writeFileSync(join(directory, 'codes.csv'), `${rows.join('\n')}\n`, { mode: 0o600, flag: 'wx' });
-    writeFileSync(join(directory, 'credential-hashes.json'), `${JSON.stringify(hashes)}\n`, { mode: 0o600, flag: 'wx' });
+    writeFileSync(join(directory, 'credential-hashes.json'), configuration, { mode: 0o600, flag: 'wx' });
   } catch (error) {
     rmSync(directory, { recursive: true, force: true });
     throw error;

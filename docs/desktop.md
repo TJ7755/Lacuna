@@ -47,7 +47,11 @@ bun run ai:invites
 ```
 
 This creates 20 individual codes in a new, Git-ignored `.ai-invites/batch-…/` directory.
-Use `--count 50` for a different batch size (1–1,000). The command prints file paths,
+Use `--count 50` for a different batch size. Counts from 1–1,000 are accepted, but the
+combined configuration must fit within 48 KiB; oversized batches fail before writing.
+This reserves space within [Vercel's 64 KB environment-variable budget](https://vercel.com/docs/limits)
+for other settings. Check the total if your other variables exceed the remaining space.
+The command prints file paths,
 never the codes. Files are owner-only on POSIX systems; on Windows, keep the directory
 in your private user profile with appropriate filesystem permissions.
 

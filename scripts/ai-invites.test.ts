@@ -80,3 +80,19 @@ it('rejects malformed existing configuration without exposing its contents', () 
   expect(result.stdout + result.stderr).not.toContain('private-invalid-value');
   expect(readdirSync(cwd)).toEqual(['existing.json']);
 });
+
+it('rejects oversized new and combined configurations before writing', () => {
+  const { cwd, run } = fixture();
+  const large = run('--count', '1000');
+  expect(large.status).toBe(1);
+  expect(large.stderr).toContain('48 KiB');
+  expect(readdirSync(cwd)).toEqual([]);
+  const file = join(cwd, 'existing.json');
+  writeFileSync(file, JSON.stringify(Object.fromEntries(
+    Array.from({ length: 650 }, (_, index) => [`learner_${index}`, 'a'.repeat(64)]),
+  )));
+  const merged = run('--count', '1', '--existing', file);
+  expect(merged.status).toBe(1);
+  expect(merged.stderr).toContain('48 KiB');
+  expect(readdirSync(cwd)).toEqual(['existing.json']);
+});
