@@ -5,7 +5,7 @@
 - Simplified the session report to a goal heading, reviewed count, accuracy and a thin
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the
-  study-step transition. Existing Simple Learn restart and limit overrides are unchanged.
+  study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.

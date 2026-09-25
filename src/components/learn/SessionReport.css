@@ -141,10 +141,12 @@
     gap: 32px;
   }
   .session-report-actions {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 8px;
   }
   .session-report-actions button {
-    justify-content: flex-start;
+    padding-inline: 12px;
+  }
+  .session-report-actions .session-report-done {
+    min-width: 128px;
   }
 }
