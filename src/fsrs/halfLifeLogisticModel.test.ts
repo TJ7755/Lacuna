@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v3.json';
 import v1Coefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v1.json';
+import modelPortCases from '../../tooling/short-term-memory/tests/fixtures/model-port-v3.json';
 import { revisionReplanReasons } from '../course/revisionPlan';
 import type { Card, RevisionPlanInputSnapshot } from '../db/types';
 import {
@@ -52,6 +53,37 @@ function card(partial: Partial<Card> = {}): Card {
 }
 
 describe('half-life-logistic-v3 runtime', () => {
+  it('agrees with the frozen Python candidate on shared prediction cases', () => {
+    expect(modelPortCases.model).toBe(frozenCoefficients.candidate);
+    const model = createHalfLifeLogisticModel(modelPortCases.decay);
+    expect(model).toBeDefined();
+    if (!model) return;
+
+    for (const sample of modelPortCases.cases) {
+      const history: Card['history'] = sample.history.map((recalled, index) => ({
+        timestamp: REVIEWED_AT - index,
+        grade: recalled ? 3 : 1,
+        correct: recalled,
+        responseTimeSec: 4,
+        distracted: false,
+        stabilityBefore: null,
+        stabilityAfter: sample.stability_days,
+        difficultyBefore: null,
+        difficultyAfter: 5,
+        retrievabilityAtReview: null,
+      }));
+      const probability = model.predictRecall({
+        card: card({
+          history,
+          state: sample.state as Card['state'],
+          stability: sample.stability_days,
+        }),
+        at: REVIEWED_AT + sample.elapsed_seconds * 1_000,
+      }).probability;
+      expect(probability, sample.name).toBeCloseTo(sample.probability, 12);
+    }
+  });
+
   it('matches offline reference values and blends smoothly into ordinary FSRS', () => {
     const model = createHalfLifeLogisticModel(-0.5);
     expect(model).toBeDefined();

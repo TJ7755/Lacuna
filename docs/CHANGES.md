@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added locked Python test jobs for both offline tool workspaces to the required CI test
+  gate, and checked the shipped short-term model against shared Python and TypeScript
+  prediction cases covering coefficients, count capping and routed handovers.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels

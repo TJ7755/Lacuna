@@ -63,6 +63,10 @@ while the picker is open, and test the expanded menu rather than only the closed
 
 ## AI authority and deployment
 
+The frozen Python v3 short-term candidate loads the v2 coefficient file because v3 changed
+only routing. The shipped TypeScript runtime loads v3 JSON. The shared port fixture checks
+both, so a coefficient update must keep their versioned artefacts aligned.
+
 Electron loading-spinner events can accompany hash navigation. Use main-frame,
 cross-document navigation to invalidate AI readiness; a hash route retains its listener.
 
