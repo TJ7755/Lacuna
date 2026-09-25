@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   root: fileURLToPath(new URL('../..', import.meta.url)),
   test: {
+    allowOnly: !process.env.CI,
     environment: 'happy-dom',
     clearMocks: false,
     include: [

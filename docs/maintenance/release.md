@@ -76,9 +76,9 @@ and updater hash comparisons. The release verifier also avoids installing depend
 rebuilding web assets: the exact-commit `production` CI job already enforces that asset budget.
 Required CI and Security gates remain intact. Native build time and platform checks still apply;
 no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
-Browser CI now runs the full suite in two Playwright shards, each preserving its report and failure
-evidence. The existing required `browser-smoke` check aggregates both shards and fails if either
-fails. This shortens the longest observed CI stage without changing the tests or branch protection.
+Browser CI runs the full Chromium suite in two Playwright shards and a focused iPhone-sized
+WebKit smoke suite in one worker. Each job preserves its failure evidence. The existing required
+`browser-smoke` check fails if either Chromium shard or the WebKit job fails.
 
 ## Signing policy
 
@@ -159,7 +159,51 @@ writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately b
 the draft. An attestation proves which GitHub workflow and commit produced a file with that digest.
 It does not sign the application with an Apple or Microsoft identity.
 
+The Electron AI command builds renderer assets and serves them through Vite preview on
+`http://localhost:5173`. Its asset check compares the loaded script with `dist/index.html`;
+the port must be free so a development server cannot stand in for that build.
 
 CI first packages an unsigned macOS app and runs `test:e2e:electron-macos-smoke` against it.
 That required gate checks `app:` launch, IndexedDB course persistence after reload and a
 seeded study answer. It uses the host architecture and does not replace signing or notarisation.
+
+On the exact release commit, the macOS operator runs:
+
+```bash
+bun install --frozen-lockfile
+bun run test:e2e:electron-ai
+CSC_IDENTITY_AUTO_DISCOVERY=false bun run electron:build:mac
+bun run test:e2e:electron-package
+release_version=$(node -p "require('./package.json').version")
+unzip -t "release/Lacuna-${release_version}-arm64-mac.zip"
+hdiutil verify "release/Lacuna-${release_version}-arm64.dmg"
+shasum -a 256 \
+  "release/Lacuna-${release_version}-arm64.dmg" \
+  "release/Lacuna-${release_version}-arm64.dmg.blockmap" \
+  "release/Lacuna-${release_version}-arm64-mac.zip" \
+  "release/Lacuna-${release_version}-arm64-mac.zip.blockmap" \
+  release/latest-mac.yml \
+  > release/SHA256SUMS-macos.txt
+```
+
+After the Actions workflow has created the draft, upload those six local files to the matching
+`v${release_version}` tag with `gh release upload`, listing each file explicitly. The workflow
+deliberately preserves draft assets it does not own, so
+a rerun does not delete the local macOS files. `SHA256SUMS-macos.txt` provides an integrity check,
+not provenance: neither it nor the macOS artefacts can pass `gh attestation verify`.
+
+After downloading a draft asset, verify its provenance with the GitHub CLI:
+
+```bash
+gh attestation verify PATH_TO_ASSET -R TJ7755/Lacuna
+```
+
+Verify `SHA256SUMS-github.txt` the same way, then compare the downloaded Windows and Linux files
+with it using the platform's SHA-256 tool. Compare the macOS files with
+`SHA256SUMS-macos.txt` separately. The workflow overwrites its own draft assets but preserves local
+macOS assets, and refuses to overwrite an already published release.
+
+Repository plan, branch protection, required checks and release-review rules are GitHub settings.
+They cannot be proved by this checkout. See the [governance record](governance.md) for dated API
+verification, the distinction between preparing a draft and approving publication, and remaining
+policy decisions.

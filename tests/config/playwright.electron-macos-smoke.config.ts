@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  forbidOnly: !!process.env.CI,
   outputDir: '../../test-results',
   testDir: '../e2e-electron',
   testMatch: 'macos-smoke.spec.ts',
