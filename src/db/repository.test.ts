@@ -39,6 +39,49 @@ async function waitForTrajectorySample(
   throw new Error(`Timed out waiting for trajectory sample ${eventId}.`);
 }
 
+describe('recordReview response time', () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.cards.clear(),
+      db.reviewHistory.clear(),
+      db.sessionHistory.clear(),
+      db.schedulingUnits.clear(),
+      db.schedulingPerformance.clear(),
+    ]);
+  });
+
+  it.each([NaN, Infinity, -Infinity, -1])(
+    'rejects invalid response time %s before changing persisted state',
+    async (responseTimeSec) => {
+      const deck = await createCourse('Invalid review time');
+      const card = await createCard(deck.id, 'front_back', 'q', 'a');
+      const cardBefore = await db.cards.get(card.id);
+      const unitBefore = await db.schedulingUnits.get(deck.id);
+      const performanceBefore = await db.schedulingPerformance.get(deck.id);
+
+      await expect(
+        recordReview({
+          card,
+          deck,
+          eventId: 'invalid-time',
+          sessionId: 'invalid-time-session',
+          sessionKind: 'deck',
+          grade: 3,
+          responseTimeSec,
+          distracted: false,
+          correct: true,
+        }),
+      ).rejects.toThrow('Review response time must be a non-negative finite number.');
+
+      expect(await db.cards.get(card.id)).toEqual(cardBefore);
+      expect(await db.schedulingUnits.get(deck.id)).toEqual(unitBefore);
+      expect(await db.schedulingPerformance.get(deck.id)).toEqual(performanceBefore);
+      expect(await db.reviewHistory.count()).toBe(0);
+      expect(await db.sessionHistory.count()).toBe(0);
+    },
+  );
+});
+
 describe('undoReview', () => {
   beforeEach(async () => {
     await Promise.all([
