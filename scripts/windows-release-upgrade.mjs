@@ -107,6 +107,10 @@ try {
   await application.waitForExit(); application = undefined;
   await expect.poll(async () => {
     try {
+      try {
+        await readFile(path.join(process.env.LOCALAPPDATA, 'Lacuna', 'installation-in-progress'));
+        return null;
+      } catch (error) { if (error.code !== 'ENOENT') throw error; }
       const { createRequire } = await import('node:module');
       const { extractFile, uncacheAll } = createRequire(import.meta.url)('@electron/asar');
       uncacheAll();
