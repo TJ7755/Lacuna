@@ -49,7 +49,7 @@ environment variables in Vercel; never use a `VITE_` prefix:
 | `AI_SESSION_SIGNING_KEY` | Random secret of at least 32 characters for one-hour session tokens. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Secure Redis REST endpoint and token for atomic usage and concurrent-run admission. |
 | `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `inclusionai/ling-3.0-flash-fin` and `poolside/laguna-s-2.1-free` are selected, in that order, and only while every live catalogue price field is zero for each route. |
-| `OPENROUTER_API_KEY` | Preferred route using `openrouter/free`, selected only while the live catalogue reports zero pricing and tool support. Its free-account rate limit applies in addition to Lacuna's limits. |
+| `OPENROUTER_API_KEY` | Preferred provider. The pinned `nvidia/nemotron-3-ultra-550b-a55b:free` and `google/gemma-4-31b-it:free` routes precede `openrouter/free`; each is selected only while the live catalogue reports zero pricing and tool support. Free-account rate limits still apply. |
 | `GOOGLE_GENERATIVE_AI_API_KEY`, `AI_GOOGLE_FREE_TIER_CONFIRMED=1` | Optional final fallback through Gemini 2.5 Flash Lite. Set the confirmation only for a project verified to remain on the free tier. |
 | `AI_SERVICE_DISABLED=1` | Immediately refuse new sessions and inference requests. |
 
@@ -61,8 +61,9 @@ in-flight steps. Multi-step tool conversations consume multiple steps. Responses
 never accepts a client-selected model. Review actual provider pricing and free-tier conditions
 before enabling a key. No paid route is configured by this implementation.
 
-The hosted flow has browser and unpacked Windows Electron fixture tests. A real provider answer
-and a managed-network check need a configured test key and target device respectively. Keep the
+The hosted flow has browser and unpacked Windows Electron fixture tests. The preview deployment
+has completed live read, approved-write, rejected-write and Stop checks using zero-priced
+OpenRouter routes. The packaged app still needs a check on the target managed network. Keep the
 existing external client mode available if the hosted endpoint is unreachable.
 
 ### External AI client

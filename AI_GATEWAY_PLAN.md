@@ -9,10 +9,27 @@ The harness requires a Gateway key, a model ID and a separate local bearer token
 use an SDK mock model. Synthetic live text and tool-call requests succeeded through
 OpenRouter's free route. The deployed preview also answered a course-card count using live
 local read tools and committed one card after the in-app approval. A later write reused that
-course's granted write scope; rejected writes and Stop remain unverified.
+course's granted write scope. A fresh session rejected a write without mutation, and Stop
+interrupted a live response.
 The branch now has `/api/ai/` functions, an opt-in sidebar path, Electron connectivity and
 server-side admission controls. Browser fixtures cover the flow; a capped, zero-credit
 OpenRouter test key is configured only on the preview branch.
+
+## Live preview evidence — 25 September 2026
+
+- On the Vercel preview, an OpenRouter free model used local read tools and answered that
+  the onboarding course had 30 cards. The local tool ledger confirmed that count.
+- A live `lacuna.create_card` call paused for course write approval. Approving it produced
+  exactly one card and one receipt. A subsequent write reused the course grant as designed.
+- In a fresh hosted session, a plain request to add a card paused for approval. Rejecting it
+  left the course count unchanged and produced no write receipt. Nemotron 3 Ultra's five
+  inference steps took about 61 seconds in total; OpenRouter logged $0 cost for every step.
+- Stop marked the user message stopped and the partial assistant response interrupted;
+  no write receipt appeared. The vague request “Create a deck on GCSE courses” prompted
+  a subject clarification instead of inventing a syllabus or creating a course.
+- The disposable cards were deleted and the onboarding course returned to 30 cards. The
+  packaged application has fixture coverage but has not been checked on the target managed
+  network. The hosted model has no web search tool, so current syllabus facts need a source.
 
 ## Outcome
 
