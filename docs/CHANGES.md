@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added offline `.lacuna` course files to Share. Files include referenced images, audio and
+  occlusion diagrams once each, without personal study history. File imports preview before
+  confirmation and retain published-course update handling. Missing or corrupt media is
+  rejected; media and course content import atomically. Text and QR codes remain available.
+  Review hardening preserves existing recipient media metadata, keeps Blob reads within the
+  export transaction, and prevents slower inspections from replacing a newer preview.
+
 - Replaced inline card import with a fixed-size, two-step dialogue. Paste or upload,
   review real Markdown/cloze previews, and optionally add independent reverse cards.
   Undo returns to the input step with the draft intact; it never deletes study data.
@@ -37,6 +44,7 @@
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the
   study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
+
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.

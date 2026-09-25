@@ -89,6 +89,7 @@ A single, reusable export UI offering multiple output formats:
 - **Plain text** — human-readable Q:/A: format with course, lesson, and tag metadata.
 - CSV, TSV, Markdown, JSON-array and plain-text exports are Card-only. They are not a Question
   backup; use Full backup or a Course share for Question definitions.
+- **Course file** — course material with media, saved as `.lacuna` from the dedicated Share page.
 - **Course share code** — compact, copy-pasteable course material generated from the dedicated
   Share page via `buildCourseShareCode`; it is not part of this full-backup/card-export panel.
 
@@ -99,7 +100,7 @@ A single, reusable export UI offering multiple output formats:
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
   progress, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions`, `concepts`,
   `questions`, `questionConcepts` and `questionAttempts`). Backups are
-  the route that carries media between machines (share codes deliberately do not, §13); an
+  one route that carries media between machines; course files also carry media, while text share codes do not. An
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
   `lacuna-asset://` references. Older backups are normalised through the pure v24 converter;
@@ -154,6 +155,26 @@ A single, reusable export UI offering multiple output formats:
   can also be written to a chosen folder so it survives clearing browser data.
   Where unsupported, the UI explains this and points to manual export.
 
+### Course files (`src/db/courseFile.ts`, `SharePage`, `/share`)
+
+**Save course file** exports a `.lacuna` file; **Choose course file** reads it into the
+existing import preview. Both work locally without a relay, account or network connection.
+The recipient confirms before any data is written. Published files use the same lineage
+matching and update review as share codes.
+
+The file is a versioned JSON envelope (`format: "lacuna-course"`, `version: 1`) containing
+an existing v3 course-share payload and its referenced media as `BackupAsset` records.
+Card, note and Question media references remain intact. Occlusion diagrams are gathered
+from their asset hashes, and each required image or audio asset is included once. The
+content scope matches course share codes, including their exclusion of unassigned bank
+material; personal review history, scheduling state and unrelated media are excluded.
+
+Files are limited to 100 MiB, checked before reading a selected file and again when decoding
+or exporting. Unsupported envelopes, invalid payloads, duplicate or unrelated assets,
+missing media and media whose SHA-256 hash does not match its bytes are rejected. Media
+and course content commit together; a failed import leaves neither partial content nor
+new orphaned assets. Export refuses missing media instead of producing an incomplete file.
+
 ### Course sharing — share codes (`src/db/share.ts`, `SharePage`, `/share`)
 
 A dedicated **Share** tab in the sidebar turns a whole course into a single, compact,
@@ -185,12 +206,9 @@ never one person's scheduling progress or review history.
   reference in card and note Markdown with placeholder text (`[Image omitted from share
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
   not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
-  for the recipient, and the study face falls back to each card's plain-text content. Solving
-  asset transport properly needs either a companion asset file or the Arc 12 relay, so the
-  chosen behaviour is **local and backup only, with the failure made loud**: the Share page
-  counts affected cards — asset-bearing _and_ occlusion-generated — names them, and says what
-  the recipient will actually receive. Backups carry assets properly (`BackupFile.assets`), so
-  this is a share-code and published-lineage limitation only.
+  for the recipient, and the study face falls back to each card's plain-text content. The
+  Share page names affected cards and directs users to **Save course file** to include media.
+  This limitation applies to text/QR codes; course files and full backups carry the assets.
 - **What it omits:** personal FSRS memory state, Card review history, Question Attempts and Question
   scheduling state, plus suspended/buried/flag state on Cards.
   Imported cards always start with clean scheduling for their new owner. Lesson exposures,

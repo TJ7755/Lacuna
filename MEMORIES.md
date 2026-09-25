@@ -128,6 +128,8 @@ desktop AI uses local IPC. See [engineering notes](docs/maintenance/engineering-
 Hash routing needs no server catch-all: missing hashed assets must remain 404. Derive the
 app-shell precache from emitted imports and rerun cold offline Cards reload after bundle changes.
 Workers must use the ID and share-codec utilities without importing database initialisation.
+Course-file operations must load with the Share route: deferring their module until the first
+button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
 

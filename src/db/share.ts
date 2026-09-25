@@ -352,10 +352,8 @@ const ShareOcclusionRegionSchema = z.object({
   bn: z.string().optional(), // backNote
 });
 
-/** A whole Occlusion (regions inline) in a v2 share payload. The diagram itself never
- *  travels — `stripAssetMedia` removes asset media from share codes — so `ah` will not
- *  resolve for the recipient and the study face falls back to legible text. Publishing
- *  and exporting warn about exactly this (Arc 6 §6.6). */
+/** A whole Occlusion (regions inline). Text codes omit its diagram; course files
+ * carry the referenced asset alongside this payload. */
 const ShareOcclusionSchema = z.object({
   id: z.string(),
   n: z.string().min(1),
@@ -582,7 +580,7 @@ interface ShareOcclusionRegion {
 interface ShareOcclusion {
   id: string;
   n: string; // name
-  ah: string; // assetHash; never resolvable for the recipient (see the schema comment)
+  ah: string; // assetHash; course files carry the referenced asset separately
   regions: ShareOcclusionRegion[];
   pl?: number; // index into the payload's lessons array (primaryLessonId)
 }
@@ -710,7 +708,7 @@ export async function encodeShareQR(payload: SharePayload): Promise<string> {
 export const V1_SHARE_CODE_MESSAGE =
   'This share code is a v1 deck share code and can no longer be imported.';
 
-function parseSharePayload(payload: unknown): SharePayload {
+export function parseSharePayload(payload: unknown): SharePayload {
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
     throw new Error('This share code is from an unsupported version of Lacuna.');
@@ -908,11 +906,15 @@ export function summariseShare(payload: SharePayload): ShareSummary {
 // Packing (DB -> code)
 // ---------------------------------------------------------------------------
 
+function packMedia(markdown: string, includeMedia: boolean): { markdown: string; stripped: boolean } {
+  return includeMedia ? { markdown, stripped: false } : stripAssetMedia(markdown);
+}
+
 /**
  * Pack a deck's cards, folding each front/back card that has an exact mirror into a
  * single reversible entry. Cloze cards pass through untouched.
  */
-function packCards(cards: Card[], preserveIds = false): ShareCard[] {
+function packCards(cards: Card[], preserveIds = false, includeMedia = false): ShareCard[] {
   const out: ShareCard[] = [];
   const consumed = new Set<string>();
   // Use a length-prefixed key so the separator can never collide with card content.
@@ -933,8 +935,8 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
   for (const c of cards) {
     if (consumed.has(c.id)) continue;
     const tags = c.tags && c.tags.length ? { g: c.tags } : {};
-    const front = stripAssetMedia(c.front);
-    const back = stripAssetMedia(c.back);
+    const front = packMedia(c.front, includeMedia);
+    const back = packMedia(c.back, includeMedia);
     // The compact `i` field predates audio and remains unchanged for share-code compatibility.
     const mediaFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
     const seqRef = c.sequenceItemId ? { si: c.sequenceItemId } : {};
@@ -1031,7 +1033,7 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Pack a lesson's notes, stripping media the same way card content is stripped.
+ * Pack a lesson's notes with the same media policy as card content.
  * `withOriginatingIds` packs each note's local id as `oi` — only meaningful (and
  * only ever passed) when the exporting course has published, so a plain course
  * export is unaffected.
@@ -1039,9 +1041,10 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
 function packNotes(
   notes: { id: string; name: string; content: string }[],
   withOriginatingIds = false,
+  includeMedia = false,
 ): ShareNote[] {
   return notes.map((n) => {
-    const content = stripAssetMedia(n.content);
+    const content = packMedia(n.content, includeMedia);
     return {
       n: n.name,
       c: content.markdown,
@@ -1052,7 +1055,10 @@ function packNotes(
 }
 
 /** Pack a whole course, including Concepts and Questions, into a v3 payload. */
-async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3> {
+export async function buildCourseSharePayload(
+  courseId: string,
+  { includeMedia = false }: { includeMedia?: boolean } = {},
+): Promise<SharePayloadV3> {
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('Course not found.');
 
@@ -1101,8 +1107,8 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
         ? { sf: lesson.sessionFilter }
         : {}),
       ...(lesson.answerMode ? { am: lesson.answerMode } : {}),
-      notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution),
-      cards: packCards(cardsByLesson.get(lesson.id) ?? [], true),
+      notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution, includeMedia),
+      cards: packCards(cardsByLesson.get(lesson.id) ?? [], true, includeMedia),
       ...(distribution ? { i: lesson.id } : {}),
     };
   });
@@ -1263,8 +1269,8 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
         gc: question.generatorConfig,
       };
     }
-    const prompt = stripAssetMedia(question.prompt);
-    const explanation = stripAssetMedia(question.explanation);
+    const prompt = packMedia(question.prompt, includeMedia);
+    const explanation = packMedia(question.explanation, includeMedia);
     return {
       ...common,
       k: 0 as const,
@@ -1283,7 +1289,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
     course: shareCourse,
     lessons: shareLessons,
     ...(shareExams.length ? { exams: shareExams } : {}),
-    ...(bankCards.length ? { bankCards: packCards(bankCards, true) } : {}),
+    ...(bankCards.length ? { bankCards: packCards(bankCards, true, includeMedia) } : {}),
     ...(shareLinks.length ? { links: shareLinks } : {}),
     ...(shareSequences.length ? { sequences: shareSequences } : {}),
     ...(shareOcclusions.length ? { occlusions: shareOcclusions } : {}),
@@ -1627,8 +1633,8 @@ async function importCourseSharePayload(
       // Occlusions insert on the same terms as sequences: after lessonIds exists (for
       // primaryLessonId) and after their generated cards already carry remapped region
       // ids, and directly rather than through createOcclusion, which would generate a
-      // second set of cards. `assetHash` travels but the asset itself does not (§6.6),
-      // so the study face falls back to each card's plain-text front/back.
+      // second set of cards. Course files supply the referenced asset; text codes
+      // omit it, so their study face falls back to plain-text front/back.
       const importedOcclusions: Occlusion[] = (payload.occlusions ?? []).map((shareOcc, index) => ({
         id: makeId(),
         courseId: course.id,
