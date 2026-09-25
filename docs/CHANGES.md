@@ -12,7 +12,8 @@
   opt-in built-in AI in the existing sidebar for web and Electron, with issued beta access codes,
   server-side free-route selection and atomic limits, streamed answers, local tools and approvals,
   and local transcript recovery. Provider calls remain disabled until the hosted service is
-  configured with secrets and a quota store.
+  configured with secrets and a quota store. Kept the server SDKs outside the packaged Electron
+  runtime dependency set.
 
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.

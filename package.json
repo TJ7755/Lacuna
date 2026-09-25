@@ -58,10 +58,6 @@
     "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never"
   },
   "dependencies": {
-    "@ai-sdk/gateway": "^4.0.92",
-    "@ai-sdk/google": "^4.0.80",
-    "@ai-sdk/openai-compatible": "^3.0.55",
-    "ai": "^7.0.113",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9"
   },
@@ -72,6 +68,9 @@
     "@napi-rs/wasm-runtime": "1.2.4"
   },
   "devDependencies": {
+    "@ai-sdk/gateway": "^4.0.92",
+    "@ai-sdk/google": "^4.0.80",
+    "@ai-sdk/openai-compatible": "^3.0.55",
     "@electron/asar": "4.3.0",
     "@eslint/compat": "^2.0.0",
     "@eslint/eslintrc": "^3.3.3",
@@ -93,6 +92,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vitejs/plugin-react-swc": "^4.3.1",
     "@vitest/coverage-v8": "5.0.1",
+    "ai": "^7.0.113",
     "concurrently": "^10.0.5",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",

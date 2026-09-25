@@ -12,12 +12,16 @@ const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'
 const packagedRuntimeDependencies = ['electron-log', 'electron-updater'] as const;
 
 const buildOnlyDependencies = [
+  '@ai-sdk/gateway',
+  '@ai-sdk/google',
+  '@ai-sdk/openai-compatible',
   '@modelcontextprotocol/client',
   '@modelcontextprotocol/server',
   'zod',
   '@napi-rs/wasm-runtime',
   '@open-spaced-repetition/binding',
   '@vercel/analytics',
+  'ai',
   'dexie',
   'dexie-react-hooks',
   'fflate',
