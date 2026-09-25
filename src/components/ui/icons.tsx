@@ -260,6 +260,12 @@ export const InfoIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const InfinityIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 12c-2.5-3-4-5-6.5-5a5 5 0 0 0 0 10c2.5 0 4-2 6.5-5s4-5 6.5-5a5 5 0 0 1 0 10c-2.5 0-4-2-6.5-5Z" />
+  </Icon>
+);
+
 export const CalendarIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3" y="4" width="18" height="18" rx="2" />
