@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rejected selected backup files over 200 MB before reading or parsing them,
+  preventing oversized imports from exhausting the application.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
