@@ -65,6 +65,27 @@ describe('hosted AI inference', () => {
     expect(working.doStreamCalls).toHaveLength(1);
   });
 
+  it('falls back when a provider finishes without text or a tool call', async () => {
+    const empty = new MockLanguageModelV4({ doStream: async () => ({
+      stream: new ReadableStream({ start(controller) { controller.close(); } }),
+    }) });
+    const working = new MockLanguageModelV4({ doStream: async () => ({
+      stream: new ReadableStream({ start(controller) {
+        controller.enqueue({ type: 'text-start', id: 'text-1' });
+        controller.enqueue({ type: 'text-delta', id: 'text-1', delta: 'Ready.' });
+        controller.enqueue({ type: 'text-end', id: 'text-1' });
+        controller.close();
+      } }),
+    }) });
+    expect(await events(createHostedInferenceResponse(JSON.stringify(request), [
+      { id: 'empty', model: empty }, { id: 'working', model: working },
+    ], new AbortController().signal))).toEqual([
+      { type: 'text_delta', text: 'Ready.' },
+      { type: 'completed', finishReason: 'stop' },
+    ]);
+    expect(working.doStreamCalls).toHaveLength(1);
+  });
+
   it('rejects arbitrary model selection before invoking a provider', () => {
     const model = new MockLanguageModelV4();
     const response = createHostedInferenceResponse(JSON.stringify({ ...request, model: 'paid/model' }),

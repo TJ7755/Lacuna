@@ -48,8 +48,8 @@ environment variables in Vercel; never use a `VITE_` prefix:
 | `AI_ACCESS_CREDENTIAL_HASHES` | JSON object mapping individual learner IDs to lowercase SHA-256 access-code hashes. Codes must be 32–256 characters. Remove an entry to revoke its sessions. |
 | `AI_SESSION_SIGNING_KEY` | Random secret of at least 32 characters for one-hour session tokens. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Secure Redis REST endpoint and token for atomic usage and concurrent-run admission. |
-| `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `minimax/minimax-m3-free` is selected, and only while the live catalogue reports zero input and output pricing. |
-| `OPENROUTER_API_KEY` | Optional fallback using `openrouter/free`. Its free-account rate limit applies in addition to Lacuna's limits. |
+| `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `inclusionai/ling-3.0-flash-fin` and `poolside/laguna-s-2.1-free` are selected, in that order, and only while every live catalogue price field is zero for each route. |
+| `OPENROUTER_API_KEY` | Preferred route using `openrouter/free`, selected only while the live catalogue reports zero pricing and tool support. Its free-account rate limit applies in addition to Lacuna's limits. |
 | `GOOGLE_GENERATIVE_AI_API_KEY`, `AI_GOOGLE_FREE_TIER_CONFIRMED=1` | Optional final fallback through Gemini 2.5 Flash Lite. Set the confirmation only for a project verified to remain on the free tier. |
 | `AI_SERVICE_DISABLED=1` | Immediately refuse new sessions and inference requests. |
 

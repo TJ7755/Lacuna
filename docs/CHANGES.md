@@ -14,6 +14,10 @@
   and local transcript recovery. Provider calls remain disabled until the hosted service is
   configured with secrets and a quota store. Kept the server SDKs outside the packaged Electron
   runtime dependency set.
+  Replaced the unavailable pinned Gateway model with `poolside/laguna-s-2.1-free` and
+  `inclusionai/ling-3.0-flash-fin`, retaining the live zero-price check for each route.
+  OpenRouter's free router takes priority when configured and requires a live zero-price and
+  tool-support check before use. Every Gateway price field must also be zero.
 
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.
