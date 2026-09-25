@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
+import { LessonAnswerModeControl } from './AnswerModeControl';
 import { CardList } from './CardList';
 import { courseCardListContext } from './cardListContext';
 import { LinkCardsDialog } from './LinkCardsDialog';
@@ -117,6 +118,8 @@ export function LessonCardsSection({
         )}
       </div>
 
+      <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
+
       {pendingUnlink && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
           <span className="text-sm text-ink-soft">Remove card from this lesson?</span>
@@ -131,6 +134,7 @@ export function LessonCardsSection({
 
       {lessonCards.length === 0 && importReadyFor === importKey && preparedDeck ? (
         <CardList
+          courseId={courseId}
           cards={[]}
           context={courseCardListContext({
             schedulingConfig: preparedDeck,
@@ -192,6 +196,7 @@ export function LessonCardsSection({
         </div>
       ) : (
         <CardList
+          courseId={courseId}
           cards={lessonCards}
           context={courseCardListContext({
             schedulingConfig: lessonSchedulingConfig,

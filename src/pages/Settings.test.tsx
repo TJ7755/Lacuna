@@ -134,10 +134,10 @@ describe('Settings', () => {
     expect(setStartInFocusMode).toHaveBeenCalledWith(true);
   });
 
-  it('labels the typing setting switch', () => {
+  it('keeps authored typing controls out of global settings', () => {
     render(<Settings />);
 
-    expect(screen.getByRole('switch', { name: 'Type your answer' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Type your answer' })).not.toBeInTheDocument();
   });
 
   it('names the shared sidebar control as a search entry rather than either search surface', () => {

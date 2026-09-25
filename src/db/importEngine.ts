@@ -404,11 +404,13 @@ export function parseJsonImport(input: string): ImportParseResult {
       continue;
     }
 
+    const answerMode: Pick<ParsedCard, 'answerMode'> =
+      obj.answerMode === 'type' || obj.answerMode === 'reveal' ? { answerMode: obj.answerMode } : {};
     const typeVal = typeof obj.type === 'string' ? obj.type.toLowerCase() : '';
     if (typeVal === 'cloze' || hasCloze(front)) {
-      cards.push({ type: 'cloze', front, back, ...(tags ? { tags } : {}) });
+      cards.push({ type: 'cloze', front, back, ...(tags ? { tags } : {}), ...answerMode });
     } else if (back) {
-      cards.push({ type: 'front_back', front, back, ...(tags ? { tags } : {}) });
+      cards.push({ type: 'front_back', front, back, ...(tags ? { tags } : {}), ...answerMode });
     } else {
       skipped++;
     }

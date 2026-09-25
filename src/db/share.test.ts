@@ -81,6 +81,20 @@ function v2Payload(
 describe('share codes', () => {
   beforeEach(reset);
 
+  it('preserves lesson typing and explicit card overrides through a share code', async () => {
+    const course = await createCourse('Typing');
+    const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'type' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
+    await db.cards.update(card.id, { answerMode: 'reveal' });
+    const code = await buildCourseShareCode(course.id);
+    const payload = await decodeShare(code);
+    await importSharePayload(payload);
+    const imported = (await db.lessons.toArray()).find((row) => row.id !== lesson.id)!;
+    expect(imported.answerMode).toBe('type');
+    const cards = await db.cards.where('primaryLessonId').equals(imported.id).toArray();
+    expect(cards[0].answerMode).toBe('reveal');
+  });
+
   it('refuses a v1 deck share code at decode and import', async () => {
     const payload = v1Payload();
     const code = await encodeShareDirect(payload);

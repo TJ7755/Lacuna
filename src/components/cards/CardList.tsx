@@ -3,6 +3,7 @@ import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useStat
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { Button } from '../ui/Button';
 import { Menu, type MenuItem } from '../ui/Menu';
+import { SelectedCardsAnswerMode } from './AnswerModeControl';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
@@ -477,6 +478,7 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
             </button>
             <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex flex-wrap gap-2">
+              <SelectedCardsAnswerMode courseId={courseId} cards={cards.filter((card) => selected.has(card.id))} />
               <Button
                 size="sm"
                 variant={tagging ? 'primary' : 'secondary'}
