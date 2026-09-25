@@ -114,7 +114,12 @@ export function createHostedInferenceResponse(
             emit({ type: 'completed', finishReason: calledTool ? 'tool_calls' : 'stop' });
             finished = true;
             break;
-          } catch {
+          } catch (error) {
+            console.error('Hosted AI route failed', {
+              route: route.id,
+              name: error instanceof Error ? error.name : typeof error,
+              message: error instanceof Error ? error.message : 'Unknown provider error',
+            });
             if (visible || signal.aborted) break;
           }
         }
