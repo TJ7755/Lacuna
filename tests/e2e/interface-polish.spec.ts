@@ -7,7 +7,7 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 });
     await enterFreshLacuna(page);
-    await page.getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
+    await page.getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
     const drawings = page.locator('[data-path-drawing]');
     await expect(drawings).toHaveCount(2);
     const connectors = page.locator('svg[data-path-connector]');

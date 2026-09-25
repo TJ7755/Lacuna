@@ -5,7 +5,8 @@
 - Replaced dashboard course countdown headings with a calendar icon and the exam date.
   Steady retention uses an infinity icon with a hover description and screen-reader label;
   past exams retain their date and subdued warning colour. The calendar is optically
-  aligned with the date lettering rather than just its line box.
+  aligned with the date lettering rather than just its line box. Browser navigation
+  checks now locate the dated card using its updated accessible text.
 
 - Simplified the session report to a goal heading, reviewed count, accuracy and a thin
   progress bar. Timing, focus, progress change and ratings sit under Session details.
