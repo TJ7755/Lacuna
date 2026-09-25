@@ -130,3 +130,40 @@ describe('CourseCard metrics', () => {
     expect(onArchiveMenu).toHaveBeenCalledWith({ x: 12, y: 12 }, button);
   });
 });
+
+describe('CourseCard study targets', () => {
+  function targetCard(overrides: Partial<Course>) {
+    render(<CourseCard course={{ ...course, ...overrides }} onClick={vi.fn()} />);
+    return within(screen.getByRole('button', { name: /Biology/ }));
+  }
+
+  it('shows the exam date in its time zone with an SVG calendar instead of a countdown', () => {
+    const card = targetCard({
+      examDate: Date.UTC(2099, 0, 1, 0, 30),
+      timeZone: 'America/Los_Angeles',
+    });
+    const date = card.getByText('31 December 2098');
+    expect(date.tagName).toBe('TIME');
+    expect(date).toHaveAttribute('datetime', '2099-01-01T00:30:00.000Z');
+    expect(date.parentElement?.querySelector('svg')).not.toBeNull();
+    expect(card.queryByText(/Exam in/)).not.toBeInTheDocument();
+    expect(card.getByTitle(/^Exam on 31 December 2098/)).toBeInTheDocument();
+  });
+
+  it('retains the date for past exams and explains the status accessibly', () => {
+    const card = targetCard({ examDate: Date.UTC(2000, 0, 1, 12), timeZone: 'UTC' });
+    expect(card.getByText('1 January 2000')).toBeInTheDocument();
+    expect(card.getByTitle('Exam on 1 January 2000 — exam date passed')).toHaveClass(
+      'text-warning-fg',
+    );
+    expect(card.getByText('Exam date passed.')).toHaveClass('sr-only');
+  });
+
+  it('uses an SVG infinity mark with a hover description and screen-reader text', () => {
+    const card = targetCard({ examDate: undefined, schedulingMode: 'steady' });
+    const target = card.getByTitle('Steady retention');
+    expect(target.querySelector('svg')).not.toBeNull();
+    expect(card.getByText('Steady retention')).toHaveClass('sr-only');
+    expect(target.querySelector('time')).toBeNull();
+  });
+});

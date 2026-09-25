@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replaced dashboard course countdown headings with a calendar icon and the exam date.
+  Steady retention uses an infinity icon with a hover description and screen-reader label;
+  past exams retain their date and subdued warning colour.
+
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.
 - Capped combined AI invitation configuration at 48 KiB to leave room for other
