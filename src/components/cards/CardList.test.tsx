@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { CardList } from './CardList';
 import type { Card, LegacyDeckRecord, Occlusion, Sequence } from '../../db/types';
-import type { ApkgImportResult } from '../../db/apkgImport';
 import { courseCardListContext, type CardListContext } from './cardListContext';
 
 const mockNotify = vi.fn();
@@ -91,35 +90,12 @@ vi.mock('./CardAnalytics', () => ({
   ),
 }));
 
-vi.mock('../import/UnifiedImportPanel', () => ({
-  UnifiedImportPanel: ({
-    deckId,
-    onImport,
-    onApkgImport,
-  }: {
-    deckId?: string;
-    onImport?: (cards: never[]) => void;
-    onApkgImport?: (result: ApkgImportResult) => void;
-  }) => (
+vi.mock('../import/CardImportDialog', () => ({
+  CardImportDialog: ({ schedulingUnitId, onImport }: { schedulingUnitId?: string; onImport: (content: unknown) => void }) => (
     <div data-testid="import-panel">
-      <span data-testid="import-target">{deckId}</span>
-      <button type="button" onClick={() => onImport?.([])}>
-        Trigger import
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          onApkgImport?.({
-            deckName: 'Imported',
-            cards: [],
-            media: new Map(),
-            skippedNotes: 0,
-            skippedCards: 0,
-          })
-        }
-      >
-        Trigger APKG import
-      </button>
+      <span data-testid="import-target">{schedulingUnitId}</span>
+      <button type="button" onClick={() => onImport({ kind: 'text', cards: [], reverse: false })}>Trigger import</button>
+      <button type="button" onClick={() => onImport({ kind: 'apkg', result: { deckName: 'Imported', cards: [], media: new Map(), skippedNotes: 0, skippedCards: 0 } })}>Trigger APKG import</button>
     </div>
   ),
 }));

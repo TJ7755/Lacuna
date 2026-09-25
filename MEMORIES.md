@@ -36,6 +36,9 @@ migration copies it. Runtime Cards hydrate `reviewHistory`; an explicitly suppli
 history is authoritative. Legacy Deck/Folder types still serve historical upgrades even though
 the live stores are gone. Do not collapse the migration chain.
 
+Load dynamically imported validators before opening a Dexie transaction: a first module
+load can outlive the transaction and leave earlier writes committed.
+
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
 

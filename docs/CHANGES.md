@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Replaced inline card import with a fixed-size, two-step dialogue. Paste or upload,
+  review real Markdown/cloze previews, and optionally add independent reverse cards.
+  Undo returns to the input step with the draft intact; it never deletes study data.
+  New courses and lessons can be created with their imported cards, retaining the
+  chosen study target. Anki packages preserve scheduling and media, and failed imports
+  retain their drafts without leaving partially created destinations. Keyboard focus stays
+  within the dialogue when tabbing in either direction. Anki images and audio preview
+  directly from the package without saving assets before confirmation. Generated
+  reverses retain the original card’s authored answer mode.
+
 - Moved typed answers into authoring: choose a lesson default, override individual cards
   in the editor/creator, or change selected cards together. Study sessions use those choices
   with the existing offline comparison and self-marking. Removed the global typing switch.

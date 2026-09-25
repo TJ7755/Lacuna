@@ -1,3 +1,4 @@
+import { LazyCardImportDialog as CardImportDialog } from '../import/LazyCardImportDialog';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -35,7 +36,8 @@ interface NewCourseFormProps {
 export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
-  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input, textarea' });
+  const [importingCards, setImportingCards] = useState(false);
+  const trapRef = useFocusTrap(!importingCards, { autoFocusSelector: 'input, textarea' });
   const nameInputRef = useRef<HTMLInputElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLFieldSetElement>(null);
@@ -53,10 +55,10 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
 
   const canCreate = !saving;
 
-  async function handleCreate() {
+  async function handleCreate(importCards = false) {
     if (saving) return;
     const trimmedName = name.trim();
-    if (!trimmedName) {
+    if (!trimmedName && !importCards) {
       setNameError('Enter a course name before creating the course.');
       nameInputRef.current?.focus();
       return;
@@ -74,6 +76,10 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
       return;
     }
     setNameError(null);
+    if (importCards) {
+      setImportingCards(true);
+      return;
+    }
     setSaving(true);
     try {
       const course = await createCourse(
@@ -98,6 +104,32 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
     const courseId = courseIds[0];
     if (courseId) void navigate(`/course/${courseId}`);
   }
+
+  if (importingCards)
+    return (
+      <CardImportDialog
+        initialTitle={name}
+        titleLabel="Course title"
+        onCancel={() => setImportingCards(false)}
+        onImport={async (content, title) => {
+          const { importCardsToDestination } = await import('../../db/cardImport');
+          const result = await importCardsToDestination(
+            {
+              kind: 'course',
+              title,
+              options:
+                schedulingMode === 'exam'
+                  ? { schedulingMode, examDate, timeZone }
+                  : { schedulingMode: 'steady' },
+            },
+            content,
+          );
+          notify(`${result.count} cards imported.`, 'positive');
+          onClose();
+          void navigate(`/course/${result.courseId}/lesson/${result.lesson!.id}`);
+        }}
+      />
+    );
 
   return createPortal(
     <motion.div
@@ -280,6 +312,13 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
               <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
                 <Button variant="ghost" onClick={onClose} disabled={saving}>
                   Cancel
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleCreate(true)}
+                  disabled={!canCreate}
+                >
+                  Import cards
                 </Button>
                 <Button variant="primary" onClick={() => void handleCreate()} disabled={!canCreate}>
                   {saving ? 'Creating…' : 'Create'}

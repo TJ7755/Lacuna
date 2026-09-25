@@ -25,7 +25,7 @@ export const CardContent = memo(function CardContent({
   audioAutoplay = false,
   occlusion,
 }: {
-  card: Card;
+  card: Pick<Card, 'id' | 'type' | 'front' | 'back' | 'sequenceItemId' | 'occlusionRegionId'>;
   side: Side;
   className?: string;
   /**

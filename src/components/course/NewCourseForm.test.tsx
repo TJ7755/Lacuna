@@ -38,6 +38,26 @@ describe('NewCourseForm', () => {
     vi.restoreAllMocks();
   });
 
+  it('opens the two-step card importer and Undo preserves the course title and pasted cards', async () => {
+    window.matchMedia = vi
+      .fn()
+      .mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    render(<NewCourseForm onClose={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Course name'), { target: { value: 'French' } });
+    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import cards' }));
+    expect(await screen.findByRole('dialog', { name: 'Import cards' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Paste your cards'), {
+      target: { value: 'bonjour\thello' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+    expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
+    expect(screen.getByLabelText('Course title')).toHaveValue('French');
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+    expect(mocks.createLesson).not.toHaveBeenCalled();
+  });
+
   it('requires an explicit scheduling target before showing an exam date', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 

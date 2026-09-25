@@ -40,6 +40,39 @@ app:
   back is a front/back card; a single column containing cloze notation becomes a
   cloze card; otherwise the row is skipped.
 
+### Card import dialogue (`src/components/import/CardImportDialog.tsx`)
+
+Card-list imports use a fixed-size two-step dialogue: **Add content → Review cards**.
+The central area scrolls within the available viewport; the header, footer and outer
+bounds remain stable between steps. The input supports pasted text, uploaded files,
+drag and drop, automatic format detection and a manual format override.
+
+- Course creation offers **Import cards** after selecting the course study target.
+  The dialogue accepts a course title and creates an initial Lesson 1 with the cards.
+- Add lesson offers **Import cards** with an editable lesson title. Existing-lesson
+  and course-bank imports display their destination without renaming it.
+- **Undo** on the review step means return to Add content. It preserves the title,
+  text/file, manual format and reverse setting. It does not mutate or delete records.
+- **Also create reverse** applies only to non-empty, plain front/back cards without
+  structured item payloads. Each reverse swaps the content, copies tags and the
+  authored answer mode, shares its
+  original's Concept and starts with independent scheduling. Cloze and Anki package
+  cards are not automatically reversed. Duplicate warnings include generated reverses.
+- Previews use the normal card-content renderer, with separate answer reveals and
+  previous/next navigation. All originals can be inspected; the reverse preview is
+  shown beside an eligible original when enabled. Anki package images and audio use
+  temporary preview URLs, released when review closes or the package changes;
+  reviewing never saves media assets.
+- The 5,000-card limit includes generated reverses. Text over 500,000 characters is
+  rejected rather than silently truncated. Anki's existing compressed/uncompressed
+  limits remain enforced by its parser. Warnings report skipped rows/cards.
+- New destinations and cards commit atomically. APKG media is ingested before the
+  persistence transaction, then scheduling/history and card records commit together.
+  Failures preserve the draft for correction/retry. Closing and duplicate submissions
+  are blocked during a write. Success closes the dialogue and confirms the card count.
+- Share codes continue through New course's **Import share code** workflow, preserving
+  lineage/update routing; full backup restoration remains a separate operation.
+
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
 
 A single, reusable export UI offering multiple output formats:
