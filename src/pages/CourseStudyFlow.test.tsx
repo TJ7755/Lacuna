@@ -249,8 +249,8 @@ describe('CourseStudyFlow', () => {
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
-    expect(await screen.findByText('Up next')).toBeInTheDocument();
-    expect(screen.getByText('Practice')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Practice', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByText('Up next')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
 
     await waitFor(() =>

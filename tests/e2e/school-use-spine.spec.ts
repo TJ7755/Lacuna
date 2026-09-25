@@ -45,7 +45,9 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
   ).toBeVisible();
   await page.keyboard.press('Y');
 
-  await expect(page.getByText('Step complete', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('main', { name: 'Study progress' }).getByRole('img', { name: 'Completed', exact: true }),
+  ).toBeVisible();
   await expect(page.getByText(/^1 card reviewed/)).toHaveCount(0);
   await expect.poll(async () => {
     const reviews = await readAll<ReviewHistoryEntry>(page, 'reviewHistory');

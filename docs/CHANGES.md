@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Redesigned the study-step transition as a vertical path from the completed topic to
+  the next activity, removing the redundant completion and next-step subtitles. The
+  topic settles back before the path and destination appear; reduced motion skips the
+  sequence. Actions share aligned sizing, and Continue reveals its arrow without
+  shifting neighbouring buttons. Paused steps, breaks and revision summaries remain available.
+  Browser study and sync checks assert the accessible completion marker instead of the removed subtitle.
+
 - Declared Vercel Blob in the web build's development dependencies because its
   Playwright relay fixture imports the relay store during root typechecking.
   Root-only Vercel installs now resolve the store's types.

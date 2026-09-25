@@ -70,7 +70,9 @@ async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
   if (!cardId) throw new Error('The study card has no persisted identity.');
   await page.keyboard.press('Space');
   await page.keyboard.press('Y');
-  await expect(page.getByText('Step complete', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('main', { name: 'Study progress' }).getByRole('img', { name: 'Completed', exact: true }),
+  ).toBeVisible();
   return cardId;
 }
 

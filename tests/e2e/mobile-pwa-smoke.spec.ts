@@ -49,7 +49,9 @@ test('studies a card with touch controls', async ({ page }) => {
   await page.getByRole('button', { name: /Show answer/i }).last().tap();
   await expect(page.locator('[data-study-face="back"]').getByText('Mobile study back')).toBeVisible();
   await page.getByRole('button', { name: 'Yes', exact: true }).tap();
-  await expect(page.getByText('Step complete', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('main', { name: 'Study progress' }).getByRole('img', { name: 'Completed', exact: true }),
+  ).toBeVisible();
 });
 
 test('navigates a visited card library while offline', async ({ page, context }) => {

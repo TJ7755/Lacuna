@@ -265,9 +265,12 @@ duplicating the editor.
 The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
 or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
-staged animation: the panel settles, the completion state lands, and the summary and next-step
-controls follow. Disabling motion removes the delays rather than trapping the learner behind a
-decorative transition. While the conductor recalculates the authoritative next step, Continue
+staged animation: the completed topic settles back, a vertical connector draws down, and the
+next activity appears as the main destination. Completion is conveyed by the tick rather than
+“Step complete” and “Up next” subtitles. Actions align beneath the destination, stacking at narrow
+widths; Continue reserves space for the landing-style arrow reveal on hover or keyboard focus.
+Entering controls remain inert until visible; reduced motion makes them immediately available.
+While the conductor recalculates the authoritative next step, Continue
 remains visible but disabled as **Planning next step…**; it never accepts a click that cannot yet
 advance.
 
