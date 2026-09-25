@@ -48,22 +48,7 @@ export async function createLesson(
   opts?: Partial<Lesson>,
 ): Promise<Lesson> {
   try {
-    const existing = await db.lessons.where('courseId').equals(courseId).toArray();
-    const maxIndex = existing.reduce((m, l) => Math.max(m, l.orderIndex), -1);
-    const createdAt = Date.now();
-    const lesson = stampUpdatedAt(
-      {
-        id: makeId(),
-        courseId,
-        name: name.trim() || 'Untitled lesson',
-        orderIndex: maxIndex + 1,
-        isExtension: false,
-        createdAt,
-        ...opts,
-      },
-      createdAt,
-    );
-    await db.transaction(
+    return await db.transaction(
       'rw',
       [
         db.courses,
@@ -74,11 +59,26 @@ export async function createLesson(
         db.schedulingPerformance,
       ],
       async () => {
+        const existing = await db.lessons.where('courseId').equals(courseId).toArray();
+        const maxIndex = existing.reduce((m, l) => Math.max(m, l.orderIndex), -1);
+        const createdAt = Date.now();
+        const lesson = stampUpdatedAt(
+          {
+            id: makeId(),
+            courseId,
+            name: name.trim() || 'Untitled lesson',
+            orderIndex: maxIndex + 1,
+            isExtension: false,
+            createdAt,
+            ...opts,
+          },
+          createdAt,
+        );
         await db.lessons.add(lesson);
         await syncCourseSchedulingUnits(courseId);
+        return lesson;
       },
     );
-    return lesson;
   } catch (err) {
     throw friendlyDbError(err);
   }

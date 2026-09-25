@@ -291,6 +291,20 @@ describe('createLesson orderIndex', () => {
     expect(next.orderIndex).toBe(11);
   });
 
+  it('gives concurrent lessons distinct indices and a stable listed order', async () => {
+    const course = await createCourse('History');
+    const created = await Promise.all(
+      Array.from({ length: 5 }, (_, index) => createLesson(course.id, `Week ${index + 1}`)),
+    );
+    const listed = await listLessons(course.id);
+
+    expect(created.map((lesson) => lesson.orderIndex).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    expect(listed.map((lesson) => lesson.orderIndex)).toEqual([0, 1, 2, 3, 4]);
+    expect((await listLessons(course.id)).map((lesson) => lesson.id)).toEqual(
+      listed.map((lesson) => lesson.id),
+    );
+  });
+
   it('defaults isExtension to false', async () => {
     const course = await createCourse('History');
     const lesson = await createLesson(course.id, 'Week 1');
@@ -1073,6 +1087,21 @@ describe('listNotes ordering', () => {
 
     const notes = await listNotes(lesson.id);
     expect(notes.map((n) => n.id)).toEqual([n1.id, n2.id, n3.id]);
+  });
+
+  it('gives concurrent notes distinct indices and a stable listed order', async () => {
+    const course = await createCourse('Notes test');
+    const lesson = await createLesson(course.id, 'L1');
+    const created = await Promise.all(
+      Array.from({ length: 5 }, (_, index) => createNote(lesson.id, `Note ${index + 1}`)),
+    );
+    const listed = await listNotes(lesson.id);
+
+    expect(created.map((note) => note.orderIndex).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    expect(listed.map((note) => note.orderIndex)).toEqual([0, 1, 2, 3, 4]);
+    expect((await listNotes(lesson.id)).map((note) => note.id)).toEqual(
+      listed.map((note) => note.id),
+    );
   });
 });
 
