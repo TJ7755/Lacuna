@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.cache/typescript/release-tooling.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "@playwright/test", "vite/client"]
+  },
+  "include": [
+    "tests/e2e/**/*.ts",
+    "tests/e2e-electron/**/*.ts",
+    "tests/config/playwright.*.config.ts",
+    "scripts/performance-audit.ts"
+  ]
+}

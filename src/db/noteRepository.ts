@@ -17,23 +17,25 @@ export async function createNote(
   opts?: Partial<Note>,
 ): Promise<Note> {
   try {
-    const existing = await db.notes.where('lessonId').equals(lessonId).toArray();
-    const maxIndex = existing.reduce((m, n) => Math.max(m, n.orderIndex), -1);
-    const createdAt = Date.now();
-    const note = stampUpdatedAt(
-      {
-        id: makeId(),
-        lessonId,
-        name: name.trim() || 'Untitled note',
-        content: content ?? '',
-        orderIndex: maxIndex + 1,
+    return await db.transaction('rw', db.notes, async () => {
+      const existing = await db.notes.where('lessonId').equals(lessonId).toArray();
+      const maxIndex = existing.reduce((m, n) => Math.max(m, n.orderIndex), -1);
+      const createdAt = Date.now();
+      const note = stampUpdatedAt(
+        {
+          id: makeId(),
+          lessonId,
+          name: name.trim() || 'Untitled note',
+          content: content ?? '',
+          orderIndex: maxIndex + 1,
+          createdAt,
+          ...opts,
+        },
         createdAt,
-        ...opts,
-      },
-      createdAt,
-    );
-    await db.notes.add(note);
-    return note;
+      );
+      await db.notes.add(note);
+      return note;
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }

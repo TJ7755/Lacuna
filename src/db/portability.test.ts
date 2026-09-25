@@ -6,6 +6,7 @@ import {
   downloadBackup,
   importBackup,
   readBackupFile,
+  MAX_BACKUP_FILE_BYTES,
   validateBackup,
   BACKUP_VERSION,
   PRE_V22_BACKUP_MESSAGE,
@@ -956,6 +957,23 @@ describe('importBackup', () => {
     await expect(
       readBackupFile(new File([JSON.stringify({ app: 'not-lacuna' })], 'invalid.json')),
     ).rejects.toThrow('This file is not a valid Lacuna backup.');
+  });
+
+  it('rejects an oversized backup before reading it', async () => {
+    const file = new File(['ignored'], 'large.json');
+    Object.defineProperty(file, 'size', { value: MAX_BACKUP_FILE_BYTES + 1 });
+    const read = vi.spyOn(file, 'text');
+
+    await expect(readBackupFile(file)).rejects.toThrow('Backup file exceeds the 200 MB limit.');
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid backup at the file size limit', async () => {
+    const backup = await exportDatabase();
+    const file = new File([JSON.stringify(backup)], 'backup.json');
+    Object.defineProperty(file, 'size', { value: MAX_BACKUP_FILE_BYTES });
+
+    await expect(readBackupFile(file)).resolves.toEqual(backup);
   });
 
   it('adds a missing course in merge mode without clobbering an existing local one', async () => {

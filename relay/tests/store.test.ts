@@ -50,6 +50,29 @@ describe('canonicalEtag', () => {
 });
 
 describe('createVercelStore', () => {
+  it('uses one bounded Blob list page with its supplied cursor', async () => {
+    const calls: Array<{ prefix: string; cursor?: string; limit: number }> = [];
+    const client: BlobClient = {
+      async get() { return null; },
+      async put() { return { etag: 'unused' }; },
+      async del() {},
+      async list(options) {
+        calls.push(options);
+        return {
+          blobs: [{ pathname: 'c/a/meta', uploadedAt: new Date(0) }],
+          hasMore: true,
+          cursor: 'next-page',
+        };
+      },
+    };
+
+    expect(await createVercelStore(client).listPage('c/', 'prior-page', 100)).toEqual({
+      objects: [{ key: 'c/a/meta', uploadedAt: 0 }],
+      cursor: 'next-page',
+    });
+    expect(calls).toEqual([{ prefix: 'c/', cursor: 'prior-page', limit: 100 }]);
+  });
+
   it('reads with useCache: false', async () => {
     const gets: Array<{ access: 'private'; useCache: boolean }> = [];
     const client: BlobClient = {

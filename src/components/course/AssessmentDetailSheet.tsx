@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { m as motion } from 'motion/react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
@@ -54,7 +55,7 @@ export function AssessmentDetailSheet({
         if (event.key === 'Escape') onClose();
       }}
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <ModalBackdrop shade={40} onClick={onClose} />
       <motion.aside
         role="dialog"
         aria-modal="true"

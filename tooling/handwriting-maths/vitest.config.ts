@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
  *  file. These tests are pure and need no DOM environment. */
 export default defineConfig({
   test: {
+    allowOnly: !process.env.CI,
     environment: 'node',
     include: ['src/**/*.test.ts'],
   },

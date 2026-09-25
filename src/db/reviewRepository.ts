@@ -267,6 +267,9 @@ function scheduleReviewTrajectorySample(args: ReviewTrajectorySampleArgs): void 
  * immediate review path.
  */
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
+  if (!Number.isFinite(args.responseTimeSec) || args.responseTimeSec < 0) {
+    throw new Error('Review response time must be a non-negative finite number.');
+  }
   try {
     const {
       card,

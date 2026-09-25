@@ -127,7 +127,7 @@ function ToastBar({
   motionMultiplier?: number;
 }) {
   const m = motionMultiplier ?? 1;
-  const [progress, setProgress] = useState(1);
+  const barRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
   const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
@@ -149,7 +149,9 @@ function ToastBar({
     function tick(now: number) {
       const elapsed = now - startRef.current;
       const currentRemaining = Math.max(0, remainingRef.current - elapsed);
-      setProgress(currentRemaining / duration);
+      if (barRef.current) {
+        barRef.current.style.transform = `scaleX(${currentRemaining / duration})`;
+      }
 
       if (currentRemaining > 0) {
         rafRef.current = requestAnimationFrame(tick);
@@ -170,7 +172,7 @@ function ToastBar({
 
   useEffect(() => {
     remainingRef.current = isPersistent ? 1 : toastDuration;
-    setProgress(1);
+    if (barRef.current) barRef.current.style.transform = 'scaleX(1)';
     if (isPersistent) {
       return;
     }
@@ -211,9 +213,13 @@ function ToastBar({
     >
       {/* Dismiss timer progress bar — hidden for persistent toasts */}
       {!isPersistent && (
-        <motion.div
-          className={cn('absolute bottom-0 left-0 h-[2px] origin-left', progressColour[toast.tone])}
-          style={{ width: `${progress * 100}%`, opacity: 0.6 }}
+        <div
+          ref={barRef}
+          className={cn(
+            'absolute bottom-0 left-0 h-[2px] w-full origin-left',
+            progressColour[toast.tone],
+          )}
+          style={{ transform: 'scaleX(1)', opacity: 0.6 }}
         />
       )}
 

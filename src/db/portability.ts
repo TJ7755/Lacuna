@@ -56,6 +56,7 @@ import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
 
 export const BACKUP_VERSION = 11;
+export const MAX_BACKUP_FILE_BYTES = 200 * 1024 * 1024;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
   row: T,
@@ -994,6 +995,9 @@ function canonicalMemory(value: unknown): string {
 
 /** Read and parse a user-selected JSON backup file. */
 export async function readBackupFile(file: File): Promise<BackupFile> {
+  if (file.size > MAX_BACKUP_FILE_BYTES) {
+    throw new Error('Backup file exceeds the 200 MB limit.');
+  }
   const text = await file.text();
   const data = JSON.parse(text);
   if (!validateBackup(data)) {

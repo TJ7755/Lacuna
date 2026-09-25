@@ -7,6 +7,7 @@ import {
   createLesson,
   createLessonCard,
   createPracticeNode,
+  updateCourse,
   upsertLessonCardExposure,
 } from '../../db/repository';
 import { db } from '../../db/schema';
@@ -92,6 +93,41 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
+  it.each([
+    ['maxReviewsPerDay', 'limitReached'],
+    ['dailyReviewGoal', 'reachedGoal'],
+  ] as const)('keeps %s reached when another session starts today', async (setting, resultFlag) => {
+    const course = await createCourse('Daily count');
+    const lesson = await createLesson(course.id, 'Lesson');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'First', 'Answer');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Second', 'Answer');
+    await updateCourse(course.id, { learnFirst: false, [setting]: 1 });
+    const params = sessionParams({ courseId: course.id });
+
+    const first = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(first.result.current.current).not.toBeNull());
+    act(() => first.result.current.reveal());
+    await act(async () => { await first.result.current.answer(3); });
+    await waitFor(() => expect(first.result.current.phase).toBe('finished'));
+    expect(first.result.current.summary?.[resultFlag]).toBe(true);
+    expect(await db.reviewHistory.count()).toBe(1);
+    first.unmount();
+
+    const second = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(second.result.current.phase).toBe('finished'));
+    expect(second.result.current.summary?.[resultFlag]).toBe(true);
+    expect(second.result.current.events.current).toHaveLength(0);
+    if (setting === 'maxReviewsPerDay') {
+      act(() => {
+        second.result.current.setSummary(null);
+        second.result.current.setLimitOverride(true);
+        second.result.current.serveNext();
+      });
+      await waitFor(() => expect(second.result.current.phase).toBe('question'));
+    }
+    second.unmount();
+  });
+
   it('does not load curricular practice records for a standalone course pass', async () => {
     const course = await createCourse('Optional pass');
     const lesson = await createLesson(course.id, 'Cells');

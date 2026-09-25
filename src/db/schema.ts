@@ -1560,6 +1560,15 @@ export async function capturePreMigrationSnapshot(
   saveSnapshot: typeof savePreMigrationSnapshot = savePreMigrationSnapshot,
 ): Promise<void> {
   const currentVersion = await getCurrentDbVersion(dbName);
+  await capturePreMigrationSnapshotFromVersion(dbName, currentVersion, targetVersion, saveSnapshot);
+}
+
+async function capturePreMigrationSnapshotFromVersion(
+  dbName: string,
+  currentVersion: number,
+  targetVersion: number,
+  saveSnapshot: typeof savePreMigrationSnapshot,
+): Promise<void> {
   if (currentVersion === 0 || currentVersion >= targetVersion) return;
 
   const payload = await readAllDataFromVersion(dbName, currentVersion);
@@ -1586,14 +1595,29 @@ export async function ensurePreMigrationSnapshot(
   if (existing) return existing;
 
   const promise = (async () => {
+    let currentVersion: number | undefined;
     try {
-      await capturePreMigrationSnapshot(dbName, targetVersion, saveSnapshot);
+      currentVersion = await getCurrentDbVersion(dbName);
+      await capturePreMigrationSnapshotFromVersion(
+        dbName,
+        currentVersion,
+        targetVersion,
+        saveSnapshot,
+      );
     } catch (e) {
       console.error('Pre-migration snapshot failed:', e);
       // Remove from cache so a future call can retry. Destructive upgrades
       // propagate the failure to every caller sharing this promise.
       snapshotPromises.delete(snapshotKey);
-      if (DESTRUCTIVE_SCHEMA_VERSIONS.has(targetVersion)) throw e;
+      if (currentVersion === undefined) throw e;
+      const versionBeforeUpgrade = currentVersion;
+      if (
+        [...DESTRUCTIVE_SCHEMA_VERSIONS].some(
+          (version) => versionBeforeUpgrade < version && version <= targetVersion,
+        )
+      ) {
+        throw e;
+      }
     }
   })();
 

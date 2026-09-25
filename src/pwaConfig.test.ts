@@ -65,6 +65,25 @@ describe('service-worker asset caching', () => {
     expect(workbox.globPatterns).not.toContain('assets/*.js');
   });
 
+  it('precaches deferred route announcements loaded before worker control', () => {
+    expect(
+      collectAppShellScripts([
+        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+        {
+          fileName: 'assets/RouteAnnouncement-ANNOUNCE.js',
+          isEntry: false,
+          imports: ['assets/labels-LABELS01.js'],
+        },
+        { fileName: 'assets/labels-LABELS01.js', isEntry: false, imports: [] },
+        { fileName: 'assets/CardsPage-CARDS001.js', isEntry: false, imports: [] },
+      ]),
+    ).toEqual([
+      'assets/app-ENTRY001.js',
+      'assets/RouteAnnouncement-ANNOUNCE.js',
+      'assets/labels-LABELS01.js',
+    ]);
+  });
+
   it('retains shared Cards imports loaded before worker control without precaching the route', () => {
     const chunks = [
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },

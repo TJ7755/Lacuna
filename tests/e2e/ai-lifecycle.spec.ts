@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { AI_RELAY_SESSION_STORAGE_KEY } from '../../src/ai/session/relayPersistence.js';
 import type { TerminalAiClient } from '../../tooling/lacuna-ai-mcp/src/client.js';
 import { pairBrowserAndTerminal } from './fixtures/aiRelay.js';
@@ -32,7 +32,7 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   const courseId = successfulId(created);
   const memoryInput = {
     scope: { kind: 'global' as const },
-    tags: ['preference'] as const,
+    tags: ['preference'],
     content: 'Prefer lifecycle examples with explicit evidence.',
     basis: 'learner-stated' as const,
   };
@@ -201,7 +201,7 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   await expect(terminal.disconnect()).rejects.toThrow(/relay HTTP 404/i);
 });
 
-async function ensureAiPanelOpen(page: import('@playwright/test').Page): Promise<void> {
+async function ensureAiPanelOpen(page: Page): Promise<void> {
   const panel = page.getByRole('complementary', { name: 'AI conversation' });
   if (!(await panel.isVisible())) {
     await page.getByRole('button', { name: 'AI', exact: true }).first().click();
@@ -211,7 +211,7 @@ async function ensureAiPanelOpen(page: import('@playwright/test').Page): Promise
 
 type TerminalToolResponse = Awaited<ReturnType<TerminalAiClient['invokeTool']>>;
 
-async function cardCount(page: import('@playwright/test').Page): Promise<number> {
+async function cardCount(page: Page): Promise<number> {
   return page.evaluate(
     () =>
       new Promise<number>((resolve, reject) => {

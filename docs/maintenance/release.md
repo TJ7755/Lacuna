@@ -45,6 +45,16 @@ The tag is pushed with maintainer credentials, rather than from a workflow using
 [GitHub does not trigger another push workflow from that token](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 No new secret, scheduled watcher or repository permission is needed.
 
+### Updating action pins
+
+Release, CI and Security workflow actions use full commit SHAs with a same-line version comment.
+The existing weekly `github-actions` Dependabot group can propose updates. Review the action's
+upstream release and diff, confirm the proposed SHA resolves to its documented version tag, and
+run the workflow policy test before merging. Annotated tags resolve first to a tag object: use
+the peeled commit (`refs/tags/<version>^{}`) for the `uses:` reference. Keep the version comment
+beside the SHA so Dependabot can identify the release. Run the normal CI and Security gates;
+for release actions, retain a native build and draft verification before publishing.
+
 ### Evidence that still needs platform testing
 
 Automated asset verification proves that updater metadata identifies the verified installer;
@@ -66,9 +76,9 @@ and updater hash comparisons. The release verifier also avoids installing depend
 rebuilding web assets: the exact-commit `production` CI job already enforces that asset budget.
 Required CI and Security gates remain intact. Native build time and platform checks still apply;
 no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
-Browser CI now runs the full suite in two Playwright shards, each preserving its report and failure
-evidence. The existing required `browser-smoke` check aggregates both shards and fails if either
-fails. This shortens the longest observed CI stage without changing the tests or branch protection.
+Browser CI runs the full Chromium suite in two Playwright shards and a focused iPhone-sized
+WebKit smoke suite in one worker. Each job preserves its failure evidence. The existing required
+`browser-smoke` check fails if either Chromium shard or the WebKit job fails.
 
 ## Signing policy
 
@@ -100,6 +110,8 @@ The verifier requires successful ordinary CI and Security push workflows for the
 commit on master or main. Those workflows cover root typechecking, lint, all unit shards and
 coverage, the canonical release scenario, browser end-to-end tests, relay checks and standalone
 AI MCP checks. The release verifier reuses that evidence rather than running those suites again.
+Root typechecking and lint cover the Playwright suites and web performance audit used by these
+gates; the typecheck job installs relay dependencies because browser fixtures import its handler.
 The ordinary production job also builds assets and enforces the performance budget, so the release
 verifier needs no dependency installation or repeated web build. Windows and Linux still build natively in Actions; macOS
 builds and package checks run locally on Apple Silicon.
@@ -146,6 +158,14 @@ After both GitHub package jobs pass, the publisher downloads their named workflo
 writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately before adding it to
 the draft. An attestation proves which GitHub workflow and commit produced a file with that digest.
 It does not sign the application with an Apple or Microsoft identity.
+
+The Electron AI command builds renderer assets and serves them through Vite preview on
+`http://localhost:5173`. Its asset check compares the loaded script with `dist/index.html`;
+the port must be free so a development server cannot stand in for that build.
+
+CI first packages an unsigned macOS app and runs `test:e2e:electron-macos-smoke` against it.
+That required gate checks `app:` launch, IndexedDB course persistence after reload and a
+seeded study answer. It uses the host architecture and does not replace signing or notarisation.
 
 On the exact release commit, the macOS operator runs:
 

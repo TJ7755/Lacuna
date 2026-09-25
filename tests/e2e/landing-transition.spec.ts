@@ -19,9 +19,14 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
   });
   const session = await page.context().newCDPSession(page);
   const events: TraceEvent[] = [];
-  session.on('Tracing.dataCollected', ({ value }: { value: TraceEvent[] }) =>
-    events.push(...value),
-  );
+  session.on('Tracing.dataCollected', ({ value }) => {
+    for (const raw of value) {
+      const event = raw as unknown as TraceEvent;
+      if (typeof event.name === 'string' && typeof event.ts === 'number' && typeof event.pid === 'number') {
+        events.push(event);
+      }
+    }
+  });
   await session.send('Tracing.start', {
     categories: 'devtools.timeline,disabled-by-default-devtools.timeline,blink.user_timing,cc',
     transferMode: 'ReportEvents',
