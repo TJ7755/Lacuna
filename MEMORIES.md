@@ -63,6 +63,10 @@ while the picker is open, and test the expanded menu rather than only the closed
 
 ## AI authority and deployment
 
+GitHub `pull_request_review_comment` runs on a PR merge ref. A privileged
+comment-triggered AI workflow must explicitly check out the trusted default branch
+before starting a tool with secrets; the usual checkout default is unsafe here.
+
 Electron loading-spinner events can accompany hash navigation. Use main-frame,
 cross-document navigation to invalidate AI readiness; a hash route retains its listener.
 
