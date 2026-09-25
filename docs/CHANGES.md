@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rejected invalid review response times before changing cards, review history or
+  calibration, preventing non-finite timing statistics from being saved.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
