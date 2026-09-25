@@ -29,6 +29,44 @@ bun run test:e2e:electron-package
 
 ## Optional AI chat
 
+Settings → AI offers **Built-in AI** alongside the existing external AI client. Built-in AI uses
+the existing sidebar on web and Electron. An issued beta access code is required. The web app
+calls its own `/api/ai/` functions; Electron calls `https://lacuna-beta-one.vercel.app/api/ai/`.
+Some managed networks may block that host. Ordinary study remains available when the AI service
+or network is unavailable. Messages and selected tool content travel over HTTPS to the hosted
+provider; the local transcript, study database, tool execution and write approvals stay on the
+device. The access code is stored locally, outside backups and sync. Free providers may retain or
+use submitted content under their own terms. Switching modes starts a separate conversation.
+
+### Hosted service operation
+
+Deploy the existing web project with Node functions in `api/ai/`. Set these server-only
+environment variables in Vercel; never use a `VITE_` prefix:
+
+| Variable | Purpose |
+| --- | --- |
+| `AI_ACCESS_CREDENTIAL_HASHES` | JSON object mapping individual learner IDs to lowercase SHA-256 access-code hashes. Codes must be 32–256 characters. Remove an entry to revoke its sessions. |
+| `AI_SESSION_SIGNING_KEY` | Random secret of at least 32 characters for one-hour session tokens. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Secure Redis REST endpoint and token for atomic usage and concurrent-run admission. |
+| `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `minimax/minimax-m3-free` is selected, and only while the live catalogue reports zero input and output pricing. |
+| `OPENROUTER_API_KEY` | Optional fallback using `openrouter/free`. Its free-account rate limit applies in addition to Lacuna's limits. |
+| `GOOGLE_GENERATIVE_AI_API_KEY`, `AI_GOOGLE_FREE_TIER_CONFIRMED=1` | Optional final fallback through Gemini 2.5 Flash Lite. Set the confirmation only for a project verified to remain on the free tier. |
+| `AI_SERVICE_DISABLED=1` | Immediately refuse new sessions and inference requests. |
+
+At least one provider key is required for inference. If access or Redis configuration is missing,
+the service fails closed. Default admission is 50 inference steps per learner per day, 600 per
+month, 1,000 globally per day, six per learner per minute, with two learner and twelve global
+in-flight steps. Multi-step tool conversations consume multiple steps. Responses are limited to
+768 output tokens per step, eight continuations and a 30-second request timeout. The server
+never accepts a client-selected model. Review actual provider pricing and free-tier conditions
+before enabling a key. No paid route is configured by this implementation.
+
+The hosted flow has browser and unpacked Windows Electron fixture tests. A real provider answer
+and a managed-network check need a configured test key and target device respectively. Keep the
+existing external client mode available if the hosted endpoint is unreachable.
+
+### External AI client
+
 Enable **Settings → AI**, open the panel and copy its setup prompt into an MCP-capable client.
 Preserve the complete command, arguments and environment: these select the correct installation
 and Electron profile. Use the client's server registration flow and required reload/restart;

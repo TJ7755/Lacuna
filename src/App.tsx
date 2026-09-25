@@ -48,6 +48,8 @@ function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
   const [session, setSession] = useState<EnabledAiSession | null>(null);
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
+  const previousProvider = useRef(settings.provider);
+  const matchingSession = session && (session.provider ?? 'external') === settings.provider ? session : null;
   const sessionRef = useRef<EnabledAiSession | null>(null);
   const handleSessionReady = useCallback((next: EnabledAiSession) => {
     sessionRef.current = next;
@@ -62,6 +64,17 @@ function RouterWithOptionalAi() {
     setSession((existing) => (existing === current ? null : existing));
     current.dispose();
   }, [settings.enabled]);
+
+  useEffect(() => {
+    if (previousProvider.current === settings.provider) return;
+    previousProvider.current = settings.provider;
+    const current = sessionRef.current;
+    if (!current) return;
+    current.dispose();
+    sessionRef.current = null;
+    setSession(null);
+    setRuntimeGeneration((generation) => generation + 1);
+  }, [settings.provider]);
 
   useEffect(() => {
     if (!settings.enabled) return;
@@ -83,12 +96,12 @@ function RouterWithOptionalAi() {
   );
 
   return (
-    <AiSessionProvider session={settings.enabled ? session : null}>
+    <AiSessionProvider session={settings.enabled ? matchingSession : null}>
       <Suspense fallback={null}>
         {settings.enabled && (
           <EnabledAiRuntime
-            key={runtimeGeneration}
-            retainedSession={session}
+            key={`${settings.provider}:${runtimeGeneration}`}
+            retainedSession={matchingSession}
             onSessionReady={handleSessionReady}
           />
         )}

@@ -4,9 +4,10 @@ export const VITE_RENDERER_ORIGIN = 'http://localhost:5173';
 export const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
 const DEFAULT_SYNC_RELAY_ORIGIN = 'https://lacuna-relay.vercel.app';
+const HOSTED_AI_ORIGIN = 'https://lacuna-beta-one.vercel.app';
 const ALLOWED_MEDIA_TYPES = new Set(['audio', 'video']);
 const PRODUCTION_RENDERER_CSP =
-  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;";
+  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app https://lacuna-beta-one.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;";
 
 export type ElectronResponseHeaders = Record<string, string[]>;
 
@@ -52,6 +53,13 @@ export function addElectronSecurityHeaders(
           'Authorization, Content-Type, If-Match',
         ]);
         setResponseHeader(headers, 'Access-Control-Expose-Headers', ['ETag']);
+        setResponseHeader(headers, 'Cross-Origin-Resource-Policy', ['cross-origin']);
+        setResponseHeader(headers, 'Vary', ['Origin']);
+      } else if (new URL(responseUrl).origin === HOSTED_AI_ORIGIN &&
+          new URL(responseUrl).pathname.startsWith('/api/ai/')) {
+        setResponseHeader(headers, 'Access-Control-Allow-Origin', [APP_RENDERER_ORIGIN]);
+        setResponseHeader(headers, 'Access-Control-Allow-Methods', ['POST, OPTIONS']);
+        setResponseHeader(headers, 'Access-Control-Allow-Headers', ['Authorization, Content-Type']);
         setResponseHeader(headers, 'Cross-Origin-Resource-Policy', ['cross-origin']);
         setResponseHeader(headers, 'Vary', ['Origin']);
       }

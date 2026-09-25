@@ -6,7 +6,9 @@ records release history. Historical plans do not override these contracts.
 
 Lacuna is a local-first, exam-driven FSRS-6 application organised into courses, lessons,
 notes and recall Cards. Questions have independent evidence and scheduling. Core study data
-lives in IndexedDB; optional sync and web AI use the relay. Legacy Deck/Folder types support
+lives in IndexedDB; optional sync and external web AI use the relay. Built-in AI sends selected
+content through the web deployment to a hosted model; local tools and approvals stay on the device.
+Legacy Deck/Folder types support
 historical migrations, while current scheduling uses scheduling units.
 
 Read the section relevant to the change, alongside the [domain glossary](domain-language.md).

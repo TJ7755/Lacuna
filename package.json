@@ -58,6 +58,9 @@
     "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "^4.0.92",
+    "@ai-sdk/google": "^4.0.80",
+    "@ai-sdk/openai-compatible": "^3.0.55",
     "ai": "^7.0.113",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9"

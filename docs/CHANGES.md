@@ -8,8 +8,11 @@
   remain readable at narrow widths, including long unbroken lesson names. Cancelling
   returns focus to the delete button.
 - Began the built-in AI Gateway work with a bounded hosted request and streaming-event
-  contract, plus a loopback-only AI SDK harness for testing model text and tool calls.
-  The hosted service and sidebar switch are not enabled.
+  contract, plus a loopback-only AI SDK harness for testing model text and tool calls. Added
+  opt-in built-in AI in the existing sidebar for web and Electron, with issued beta access codes,
+  server-side free-route selection and atomic limits, streamed answers, local tools and approvals,
+  and local transcript recovery. Provider calls remain disabled until the hosted service is
+  configured with secrets and a quota store.
 
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.

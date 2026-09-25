@@ -7,11 +7,13 @@ let unsavedSettings: AiSettings | null = null;
 export interface AiSettings {
   enabled: boolean;
   misconceptionFirstEnabled: boolean;
+  provider: 'external' | 'hosted';
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
   enabled: false,
   misconceptionFirstEnabled: true,
+  provider: 'external',
 };
 
 let cachedSnapshotKey = '';
@@ -29,6 +31,7 @@ function readPersistedAiSettings(): AiSettings {
         typeof parsed.misconceptionFirstEnabled === 'boolean'
           ? parsed.misconceptionFirstEnabled
           : DEFAULT_AI_SETTINGS.misconceptionFirstEnabled,
+      provider: parsed.provider === 'hosted' ? 'hosted' : 'external',
     };
   } catch {
     return { ...DEFAULT_AI_SETTINGS };
@@ -52,7 +55,7 @@ export function writeAiSettings(patch: Partial<AiSettings>): void {
 
 function getAiSettingsSnapshot(): AiSettings {
   const settings = readAiSettings();
-  const key = `${settings.enabled}:${settings.misconceptionFirstEnabled}`;
+  const key = `${settings.enabled}:${settings.misconceptionFirstEnabled}:${settings.provider}`;
   if (key !== cachedSnapshotKey) {
     cachedSnapshotKey = key;
     cachedSnapshot = settings;
