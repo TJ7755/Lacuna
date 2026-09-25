@@ -4,11 +4,8 @@ import './prototype.css';
 
 const variants = ['A', 'B', 'C'];
 const names = { A: 'Path', B: 'Quiet finish', C: 'Session receipt' };
-const tick =
-  '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const arrow =
   '<svg viewBox="0 0 22 16" width="22" height="16" fill="none" aria-hidden="true"><path d="M1 8h19M14 2l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const badge = `<span class="completion-mark" role="img" aria-label="Completed">${tick}</span>`;
 const actions = () =>
   `<div class="report-actions"><button class="primary" data-action="Done">Done <span class="action-arrow">${arrow}</span></button><button class="secondary" data-action="Keep studying">Keep studying</button></div><p class="action-feedback" role="status"></p>`;
 const facts = () =>
@@ -19,13 +16,13 @@ const progress = () =>
   '<div class="progress-copy"><span>Cards correct in this pass</span><span><span class="before">0%</span> <span aria-hidden="true">→</span> <strong>100%</strong></span></div><div class="progress-track" role="progressbar" aria-label="Cards correct in this pass" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div></div></div>';
 
 function path() {
-  return `<main class="report path" aria-label="Session report"><div class="path-origin"><span class="origin-dot" aria-hidden="true"></span><p>Session complete</p></div><div class="path-destination">${badge}<div><h1>Goal reached.</h1><p class="lead">Everything in this pass, answered correctly.</p></div></div><div class="path-body">${facts()}<div class="path-progress">${progress()}</div>${details()}${actions()}</div></main>`;
+  return `<main class="report path" aria-label="Session report"><h1>Goal reached.</h1><div class="path-body">${facts()}<div class="path-progress">${progress()}</div>${details()}${actions()}</div></main>`;
 }
 function quiet() {
-  return `<main class="report quiet" aria-label="Session report">${badge}<h1>You’re done.</h1><p class="lead">You’ve reached your goal for this session.</p><div class="quiet-result"><span class="quiet-number">100<span>%</span></span><p>Cards correct in this pass</p><span class="quiet-start">Up from 0%</span></div><p class="quiet-facts">1 card reviewed <span aria-hidden="true">·</span> 100% accuracy</p>${actions()}${details()}</main>`;
+  return `<main class="report quiet" aria-label="Session report"><h1>You’re done.</h1><p class="lead">You’ve reached your goal for this session.</p><div class="quiet-result"><span class="quiet-number">100<span>%</span></span><p>Cards correct in this pass</p><span class="quiet-start">Up from 0%</span></div><p class="quiet-facts">1 card reviewed <span aria-hidden="true">·</span> 100% accuracy</p>${actions()}${details()}</main>`;
 }
 function receipt() {
-  return `<main class="report receipt" aria-label="Session report"><header><p class="eyebrow">Session complete</p><h1>A good place <br />to stop.</h1>${actions()}</header><section class="receipt-card" aria-label="Session results"><div class="receipt-heading">${badge}<h2>Goal reached</h2></div><div class="receipt-score"><span>100<span>%</span></span><p>Cards correct<br />in this pass</p></div><div class="receipt-change"><span>Started at 0%</span><span>Finished at 100%</span></div>${facts()}${details()}</section></main>`;
+  return `<main class="report receipt" aria-label="Session report"><header><h1>A good place <br />to stop.</h1>${actions()}</header><section class="receipt-card" aria-label="Session results"><div class="receipt-heading"><h2>Goal reached</h2></div><div class="receipt-score"><span>100<span>%</span></span><p>Cards correct<br />in this pass</p></div><div class="receipt-change"><span>Started at 0%</span><span>Finished at 100%</span></div>${facts()}${details()}</section></main>`;
 }
 function current() {
   const value = new URL(location.href).searchParams.get('variant');

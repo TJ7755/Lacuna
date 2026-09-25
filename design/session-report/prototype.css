@@ -45,16 +45,6 @@ h1 {
   line-height: 1.6;
   margin-top: 18px;
 }
-.completion-mark {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
-  border-radius: 50%;
-  background: hsl(var(--positive) / 0.12);
-  color: hsl(var(--positive));
-}
 .report-actions {
   display: flex;
   gap: 12px;
@@ -177,44 +167,6 @@ h1 {
   line-height: 1.7;
   max-width: 440px;
 }
-.path-origin {
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 26px;
-  align-items: center;
-  position: relative;
-  padding-bottom: 52px;
-  color: hsl(var(--ink-soft));
-  font-size: 18px;
-}
-.origin-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: hsl(var(--line-strong));
-  justify-self: center;
-}
-.path-origin::after {
-  content: '';
-  position: absolute;
-  top: 27px;
-  bottom: 8px;
-  left: 23px;
-  width: 1px;
-  background: hsl(var(--line));
-}
-.path-destination {
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 26px;
-  align-items: start;
-}
-.path-destination .completion-mark {
-  margin-top: 8px;
-}
-.path-body {
-  margin-left: 74px;
-}
 .path .key-facts {
   margin: 38px 0 32px;
 }
@@ -251,9 +203,6 @@ h1 {
   text-align: center;
   align-items: center;
   max-width: 650px;
-}
-.quiet > .completion-mark {
-  margin-bottom: 28px;
 }
 .quiet h1 {
   font-size: clamp(64px, 8vw, 88px);
@@ -304,11 +253,6 @@ h1 {
   gap: 72px;
   align-items: center;
 }
-.eyebrow {
-  font-size: 14px;
-  color: hsl(var(--ink-soft));
-  margin-bottom: 24px;
-}
 .receipt h1 {
   font-size: clamp(50px, 6vw, 72px);
 }
@@ -325,14 +269,6 @@ h1 {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-.receipt-heading .completion-mark {
-  height: 32px;
-  width: 32px;
-  flex-basis: 32px;
-}
-.receipt-heading svg {
-  width: 18px;
 }
 .receipt-heading h2 {
   font-size: 16px;
@@ -449,22 +385,6 @@ h1 {
   .report {
     min-height: calc(100svh - 80px);
     padding: 56px 24px 105px;
-  }
-  .path-origin,
-  .path-destination {
-    grid-template-columns: 40px 1fr;
-    gap: 16px;
-  }
-  .path-origin::after {
-    left: 19px;
-  }
-  .completion-mark {
-    width: 40px;
-    height: 40px;
-    flex-basis: 40px;
-  }
-  .path-body {
-    margin-left: 56px;
   }
   .path h1 {
     font-size: 48px;
