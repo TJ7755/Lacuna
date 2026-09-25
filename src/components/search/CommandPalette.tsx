@@ -227,11 +227,13 @@ function CommandPaletteDialog({
                 ref={inputRef}
                 role="combobox"
                 aria-label="Search all content"
-                aria-controls="palette-listbox"
+                aria-controls={hasVisibleResults ? 'palette-listbox' : undefined}
                 aria-expanded={hasVisibleResults}
                 aria-autocomplete="list"
                 aria-activedescendant={
-                  hasVisibleResults && active >= 0 ? `palette-option-${active}` : undefined
+                  hasVisibleResults && active >= 0 && active < results.length
+                    ? `palette-option-${active}`
+                    : undefined
                 }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

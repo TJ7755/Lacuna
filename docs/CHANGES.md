@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Linked Quick search's combobox to its results list only while the list exists,
+  keeping its expanded and active option state consistent for assistive technology.
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
