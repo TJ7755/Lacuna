@@ -44,6 +44,10 @@ must cover candidate snapshotting and merging as well as import.
 
 ## Browser evidence matters
 
+On local macOS WebKit, Playwright's offline `page.reload()` can fail with an internal browser
+error. The mobile WebKit gate covers offline in-app navigation; the Chromium gate covers cold
+offline reload. Do not claim the WebKit test proves an offline document reload.
+
 CPU-profiler startup and Playwright accessibility queries can dominate renderer traces.
 Keep untraced controls and inspect stacks before attributing task time to application code.
 

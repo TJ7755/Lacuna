@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added a focused iPhone-sized WebKit browser gate for course navigation, touch study and
+  offline navigation. Its single-worker CI job joins the existing required browser check;
+  the full Chromium suite remains split across two shards.
+- Raised the card editor's touch action bar above the mobile course navigation so its
+  Add card action remains tappable.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels

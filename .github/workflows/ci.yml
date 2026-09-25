@@ -202,7 +202,7 @@ jobs:
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bunx playwright install --with-deps chromium
-      - run: bun run test:e2e:web -- --shard=${{ matrix.shard }}/2
+      - run: bun run test:e2e:web -- --project=chromium --shard=${{ matrix.shard }}/2
       - name: Preserve browser test evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -213,16 +213,43 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
+  browser-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps webkit
+      - run: bun run test:e2e:web -- --project=webkit-mobile --workers=1
+      - name: Preserve mobile browser test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-results-webkit-mobile
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
   # Keep the existing branch-protection check name while running every test in parallel shards.
   browser-smoke:
-    needs: browser-tests
+    needs: [browser-tests, browser-mobile]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Require all browser shards
         env:
           RESULT: ${{ needs.browser-tests.result }}
-        run: test "$RESULT" = success
+          MOBILE_RESULT: ${{ needs.browser-mobile.result }}
+        run: test "$RESULT" = success && test "$MOBILE_RESULT" = success
 
   electron-ai:
     runs-on: windows-latest

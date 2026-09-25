@@ -66,9 +66,9 @@ and updater hash comparisons. The release verifier also avoids installing depend
 rebuilding web assets: the exact-commit `production` CI job already enforces that asset budget.
 Required CI and Security gates remain intact. Native build time and platform checks still apply;
 no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
-Browser CI now runs the full suite in two Playwright shards, each preserving its report and failure
-evidence. The existing required `browser-smoke` check aggregates both shards and fails if either
-fails. This shortens the longest observed CI stage without changing the tests or branch protection.
+Browser CI runs the full Chromium suite in two Playwright shards and a focused iPhone-sized
+WebKit smoke suite in one worker. Each job preserves its failure evidence. The existing required
+`browser-smoke` check fails if either Chromium shard or the WebKit job fails.
 
 ## Signing policy
 
