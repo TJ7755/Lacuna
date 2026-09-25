@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Allocated lesson and note order indices inside their insert transactions, so concurrent
+  creation in the same parent keeps distinct indices and stable listed order.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
