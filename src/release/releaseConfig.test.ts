@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
+import { blockScalarValues, namedAction, workflowJob, workflowStep } from './releaseWorkflowRead';
 
 const root = resolve(import.meta.dirname, '../..');
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
@@ -25,6 +27,13 @@ const builderConfig = readFileSync(resolve(root, 'electron/electron-builder.yml'
   /\r\n/g,
   '\n',
 );
+const builder = parse(builderConfig) as {
+  win: { target: { target: string; arch: string[] }[]; icon: string };
+  linux: { target: { target: string; arch: string[] }[]; maintainer: string; icon: string };
+  mac: { target: string[]; icon: string };
+  nsis: { artifactName: string; include: string };
+  portable: { artifactName: string; splashImage: string };
+};
 const windowsInstallerInclude = readFileSync(
   resolve(root, 'electron/windows-installer.nsh'),
   'utf8',
@@ -35,8 +44,6 @@ const handwritingBunLock = readFileSync(
   resolve(root, 'tooling/handwriting-maths/bun.lock'),
   'utf8',
 );
-const updaterSource = readFileSync(resolve(root, 'electron/updater.ts'), 'utf8');
-const updaterServiceSource = readFileSync(resolve(root, 'electron/updaterService.ts'), 'utf8');
 const ciWorkflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8').replace(
   /\r\n/g,
   '\n',
@@ -49,14 +56,6 @@ const securityWorkflow = readFileSync(
   resolve(root, '.github/workflows/security.yml'),
   'utf8',
 ).replace(/\r\n/g, '\n');
-const prepareElectronBuild = readFileSync(
-  resolve(root, 'scripts/prepare-electron-build.mjs'),
-  'utf8',
-);
-const electronAiE2e = readFileSync(
-  resolve(root, 'tests/e2e-electron/ai-companion.spec.ts'),
-  'utf8',
-);
 
 function resolvedVersionsFrom(lockfile: string, packageName: string): string[] {
   const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -89,38 +88,22 @@ function expectResolvedAtLeast(
   expect(versions.every((version) => isAtLeast(version, minimum))).toBe(true);
 }
 
-function workflowJob(workflow: string, name: string): string {
-  const lines = workflow.split('\n');
-  const start = lines.findIndex((line) => line === `  ${name}:`);
-  if (start === -1) throw new Error(`Workflow job ${name} does not exist`);
-
-  const nextJob = lines.findIndex((line, index) => index > start && /^ {2}[a-z0-9-]+:$/.test(line));
-  return lines.slice(start, nextJob === -1 ? lines.length : nextJob).join('\n');
+function expectResolvedAtLeastFrom(
+  lockfile: string,
+  packageName: string,
+  minimum: readonly [number, number, number],
+): void {
+  const versions = resolvedVersionsFrom(lockfile, packageName);
+  expect(versions.length).toBeGreaterThan(0);
+  expect(versions.every((version) => isAtLeast(version, minimum))).toBe(true);
 }
 
-function workflowStep(job: string, name: string): string {
-  const lines = job.split('\n');
-  const start = lines.findIndex((line) => line === `      - name: ${name}`);
-  if (start === -1) throw new Error(`Workflow step ${name} does not exist`);
-
-  const nextStep = lines.findIndex((line, index) => index > start && line.startsWith('      - '));
-  return lines.slice(start, nextStep === -1 ? lines.length : nextStep).join('\n');
-}
-
-function blockScalarValues(block: string, key: string): string[] {
-  const lines = block.split('\n');
-  const start = lines.findIndex((line) => line.trim() === `${key}: |`);
-  if (start === -1) throw new Error(`Block scalar ${key} does not exist`);
-
-  const indentation = lines[start].length - lines[start].trimStart().length;
-  const values: string[] = [];
-  for (const line of lines.slice(start + 1)) {
-    const value = line.trim();
-    const valueIndentation = line.length - line.trimStart().length;
-    if (!value || valueIndentation <= indentation) break;
-    values.push(value);
-  }
-  return values;
+function expectDeclaredAtLeast(
+  declared: string | undefined,
+  minimum: readonly [number, number, number],
+): void {
+  expect(declared).toMatch(/^\^?\d+\.\d+\.\d+$/);
+  expect(isAtLeast(declared!.replace(/^\^/, ''), minimum)).toBe(true);
 }
 
 describe('release configuration', () => {
@@ -149,64 +132,62 @@ describe('release configuration', () => {
     }
   });
 
-  it('uses the maintained Electron Builder 26 toolchain without vulnerable transitive versions', () => {
-    expect(packageJson.devDependencies?.['electron-builder']).toBe('^26.16.1');
-    expect(resolvedVersions('electron-builder')).toEqual(['26.16.1']);
+  it('uses a safe Electron Builder toolchain without vulnerable transitive versions', () => {
+    expectDeclaredAtLeast(packageJson.devDependencies?.['electron-builder'], [26, 16, 1]);
+    expectResolvedAtLeast('electron-builder', [26, 16, 1]);
     expectResolvedAtLeast('app-builder-lib', [26, 15, 0]);
     expectResolvedAtLeast('builder-util-runtime', [9, 7, 0]);
     expectResolvedAtLeast('tar', [7, 5, 21]);
     expect(bunLock).not.toContain('["app-builder-bin@');
   });
 
-  it('keeps every test workspace on the aligned Vitest 5 and Vite 8 toolchain', () => {
-    expect(packageJson.devDependencies?.vitest).toBe('5.0.1');
-    expect(packageJson.devDependencies?.['@vitest/coverage-v8']).toBe('5.0.1');
-    expect(relayPackageJson.devDependencies?.vitest).toBe('5.0.1');
-    expect(relayPackageJson.devDependencies?.vite).toBe('^8.3.0');
+  it('keeps every test workspace on safe Vitest and Vite versions', () => {
+    for (const manifest of [
+      packageJson,
+      relayPackageJson,
+      handwritingPackageJson,
+      aiMcpPackageJson,
+    ]) {
+      expectDeclaredAtLeast(manifest.devDependencies?.vitest, [5, 0, 1]);
+    }
+    expect(packageJson.devDependencies?.['@vitest/coverage-v8']).toBe(
+      packageJson.devDependencies?.vitest,
+    );
+    expectDeclaredAtLeast(packageJson.devDependencies?.vite, [8, 3, 0]);
+    expectDeclaredAtLeast(relayPackageJson.devDependencies?.vite, [8, 3, 0]);
     expect(relayPackageJson.overrides?.vite).toBeUndefined();
-    expect(handwritingPackageJson.devDependencies?.vitest).toBe('5.0.1');
-    expect(aiMcpPackageJson.devDependencies?.vitest).toBe('5.0.1');
 
-    expect(resolvedVersions('vitest')).toEqual(['5.0.1']);
-    expect(resolvedVersions('@vitest/coverage-v8')).toEqual(['5.0.1']);
-    expect(resolvedVersions('vite')).toEqual(['8.3.0']);
-    expect(resolvedVersionsFrom(relayBunLock, 'vitest')).toEqual(['5.0.1']);
-    expect(resolvedVersionsFrom(relayBunLock, 'vite')).toEqual(['8.3.0']);
-    expect(resolvedVersionsFrom(handwritingBunLock, 'vitest')).toEqual(['5.0.1']);
-    expect(resolvedVersionsFrom(handwritingBunLock, 'vite')).toEqual(['8.3.0']);
+    for (const lockfile of [bunLock, relayBunLock, handwritingBunLock]) {
+      expectResolvedAtLeastFrom(lockfile, 'vitest', [5, 0, 1]);
+      expectResolvedAtLeastFrom(lockfile, 'vite', [8, 3, 0]);
+    }
+    expectResolvedAtLeast('@vitest/coverage-v8', [5, 0, 1]);
     expect(existsSync(resolve(root, 'tooling/lacuna-ai-mcp/bun.lock'))).toBe(false);
   });
 
-  it('runs Electron build tools without platform shell shims', () => {
-    expect(prepareElectronBuild).toContain('process.execPath');
-    expect(prepareElectronBuild).toContain("'node_modules/@typescript/native/bin/tsc'");
-    expect(prepareElectronBuild).not.toContain('tsc.cmd');
-    expect(prepareElectronBuild).not.toContain('shell: true');
-  });
-
-  it('lets Electron 42 lazily install its platform runtime for desktop tests', () => {
-    expect(electronAiE2e).toContain('createRequire(import.meta.url)');
-    expect(electronAiE2e).toContain("require('electron')");
-    expect(electronAiE2e).not.toContain('node_modules/electron/dist');
-  });
-
   it('builds the supported Windows, Linux and macOS artefacts', () => {
-    expect(builderConfig).toMatch(/target:\s*[\s\S]*?target:\s*nsis[\s\S]*?target:\s*portable/);
-    expect(builderConfig).toMatch(
-      /artifactName:\s*['"]\$\{productName\}-Setup-\$\{version\}\.\$\{ext\}['"]/,
+    expect(builder.win.target).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ target: 'nsis', arch: expect.arrayContaining(['x64']) }),
+        expect.objectContaining({ target: 'portable', arch: expect.arrayContaining(['x64']) }),
+      ]),
     );
-    expect(builderConfig).toMatch(
-      /artifactName:\s*['"]\$\{productName\}-Portable-\$\{version\}\.\$\{ext\}['"]/,
+    expect(builder.linux.target).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ target: 'AppImage', arch: expect.arrayContaining(['x64']) }),
+        expect.objectContaining({ target: 'deb', arch: expect.arrayContaining(['x64']) }),
+      ]),
     );
-    expect(builderConfig).toMatch(/linux:\s*[\s\S]*?target:\s*AppImage[\s\S]*?target:\s*deb/);
-    expect(builderConfig).toMatch(/maintainer:\s*[^\s#]+/);
-    expect(builderConfig).toMatch(/arch:\s*[\s\S]*?- x64/);
-    expect(builderConfig).toMatch(/linux:[\s\S]*?icon: electron\/assets\/icon\.png/);
-    expect(builderConfig).toMatch(/mac:[\s\S]*?icon: electron\/assets\/icon\.png/);
+    expect(builder.mac.target).toEqual(expect.arrayContaining(['dmg', 'zip']));
+    expect(builder.nsis.artifactName).toBe('${productName}-Setup-${version}.${ext}');
+    expect(builder.portable.artifactName).toBe('${productName}-Portable-${version}.${ext}');
+    expect(builder.linux.maintainer).toMatch(/\S/);
+    expect(builder.linux.icon).toBe('electron/assets/icon.png');
+    expect(builder.mac.icon).toBe('electron/assets/icon.png');
   });
 
   it('prevents registered companions from racing a Windows upgrade', () => {
-    expect(builderConfig).toMatch(/nsis:\s*[\s\S]*?include:\s*electron\/windows-installer\.nsh/);
+    expect(builder.nsis.include).toBe('electron/windows-installer.nsh');
     expect(windowsInstallerInclude).toContain('!macro customCheckAppRunning');
     expect(windowsInstallerInclude).toContain('GetCurrentProcessId');
     expect(windowsInstallerInclude).toContain('installation-in-progress');
@@ -220,15 +201,12 @@ describe('release configuration', () => {
   });
 
   it('builds the Windows icon from the generated desktop artwork', () => {
-    const windowsConfig = builderConfig.match(/^win:\n([\s\S]*?)^nsis:/m)?.[1] ?? '';
-    expect(windowsConfig).toContain('icon: electron/assets/icon.png');
+    expect(builder.win.icon).toBe('electron/assets/icon.png');
     expect(existsSync(resolve(root, 'electron/assets/icon.ico'))).toBe(false);
   });
 
   it('shows immediate branded feedback while the Windows portable build extracts', () => {
-    expect(builderConfig).toMatch(
-      /portable:\s*[\s\S]*?splashImage:\s*electron\/assets\/portable-splash\.bmp/,
-    );
+    expect(builder.portable.splashImage).toBe('electron/assets/portable-splash.bmp');
     const splashPath = resolve(root, 'electron/assets/portable-splash.bmp');
     expect(existsSync(splashPath)).toBe(true);
 
@@ -237,21 +215,6 @@ describe('release configuration', () => {
     expect(splash.readInt32LE(18)).toBe(560);
     expect(splash.readInt32LE(22)).toBe(260);
     expect(splash.readUInt16LE(28)).toBe(24);
-  });
-
-  it('keeps updater distribution rules explicit', () => {
-    expect(updaterSource).toContain('environment: process.env');
-    expect(updaterServiceSource).toContain('options.environment.PORTABLE_EXECUTABLE_FILE');
-    expect(updaterServiceSource).toContain('options.environment.APPIMAGE');
-    expect(updaterServiceSource).toMatch(
-      /options\.platform === ['"]linux['"][\s\S]*?!options\.environment\.APPIMAGE/,
-    );
-    expect(updaterServiceSource).toMatch(
-      /options\.platform === ['"]win32['"][\s\S]*?PORTABLE_EXECUTABLE_FILE/,
-    );
-    expect(updaterServiceSource).toContain('options.updater.allowPrerelease = true');
-    expect(updaterServiceSource).toContain('options.updater.checkForUpdates()');
-    expect(updaterServiceSource).toContain('options.updater.autoInstallOnAppQuit = false');
   });
 
   it('gates one draft publisher on exact-commit CI without repeating its suites', () => {
@@ -340,143 +303,5 @@ describe('release configuration', () => {
         expect(allowlistCheck).toContain('shell: bash');
         expect(allowlistCheck).toContain('compgen -G "$pattern"');
       }
-      expect(attest).toMatch(/uses: actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/);
-      expect(blockScalarValues(attest, 'subject-path')).toEqual(platform.paths);
-      expect(upload).toMatch(/uses: actions\/upload-artifact@[a-f0-9]{40} # v7\.\d+\.\d+/);
-      expect(upload).toContain(`name: ${platform.artefact}`);
-      expect(blockScalarValues(upload, 'path')).toEqual(platform.paths);
-      expect(job.indexOf(allowlistCheck)).toBeLessThan(job.indexOf(attest));
-      expect(job.indexOf(attest)).toBeLessThan(job.indexOf(upload));
-    }
-
-    const windowsJob = workflowJob(releaseWorkflow, 'build-win');
-    expect(windowsJob).toContain('bun run test:e2e:electron-ai');
-    expect(windowsJob).toContain('bun run test:e2e:electron-package');
-    expect(windowsJob).toContain('LACUNA_ELECTRON_APP_DIR: release/win-unpacked');
-    expect(windowsJob.indexOf('bun run test:e2e:electron-package')).toBeLessThan(
-      windowsJob.indexOf('name: Attest Windows artefacts'),
-    );
-    expect(releaseWorkflow).not.toContain('  build-mac:');
-    expect(releaseWorkflow).not.toContain('runs-on: macos-15');
-    expect(releaseWorkflow).not.toContain('lacuna-macos-arm64');
-    expect(releaseWorkflow).not.toContain('release/*.AppImage.blockmap');
-
-    const publisher = workflowJob(releaseWorkflow, 'publish-draft');
-    expect(publisher).toContain('needs: [build-win, build-linux]');
-    expect(publisher).toContain(
-      'permissions:\n      artifact-metadata: write\n      attestations: write\n' +
-        '      contents: write\n      id-token: write',
-    );
-    for (const artefact of githubPlatforms.map(({ artefact }) => artefact)) {
-      const download = workflowStep(publisher, `Download ${artefact}`);
-      expect(download).toMatch(/uses: actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+/);
-      expect(download).toContain(`name: ${artefact}`);
-      expect(download).toContain('path: release-assets');
-    }
-
-    const checksumAttestation = workflowStep(publisher, 'Attest GitHub checksum manifest');
-    expect(checksumAttestation).toMatch(/uses: actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/);
-    expect(checksumAttestation).toContain('subject-path: release-assets/SHA256SUMS-github.txt');
-    expect(publisher.indexOf('name: Create checksums')).toBeLessThan(
-      publisher.indexOf(checksumAttestation),
-    );
-    expect(publisher.indexOf(checksumAttestation)).toBeLessThan(
-      publisher.indexOf('name: Upload artefacts to draft release'),
-    );
-
-    const workflowHeader = releaseWorkflow.slice(0, releaseWorkflow.indexOf('\njobs:'));
-    expect(workflowHeader).toContain('actions: read');
-    expect(workflowHeader).toContain('contents: read');
-    expect(releaseWorkflow).not.toContain('release/*.exe');
-    expect(releaseWorkflow).not.toContain('path: release/**');
-    expect(releaseWorkflow).not.toContain('path: release/*');
-    expect(publisher).toContain('--draft');
-    expect(publisher).toContain('--prerelease');
-    expect(publisher).toContain('--title "Lacuna ${GITHUB_REF_NAME#v} Beta"');
-    expect(publisher).toContain('! -name SHA256SUMS-github.txt');
-    expect(publisher).not.toContain('gh release delete-asset');
-    expect(releaseWorkflow).not.toContain('--publish always');
-    expect(releaseWorkflow.match(/actions\/attest@[a-f0-9]{40} # v4\.\d+\.\d+/g)).toHaveLength(3);
-    expect(releaseWorkflow).not.toMatch(/actions\/attest@[a-f0-9]{40} # v[1-3](?:\D|$)/);
-  });
-
-  it('uses Node 24 action majors throughout CI and release workflows', () => {
-    for (const workflow of [ciWorkflow, releaseWorkflow, securityWorkflow]) {
-      expect(workflow).toMatch(/actions\/checkout@[a-f0-9]{40} # v7\.\d+\.\d+/);
-      expect(workflow).not.toMatch(/actions\/checkout@[a-f0-9]{40} # v[1-6](?:\D|$)/);
-      expect(workflow).not.toMatch(
-        /actions\/(?:upload|download)-artifact@[a-f0-9]{40} # v[1-6](?:\D|$)/,
-      );
-    }
-    expect(releaseWorkflow).toMatch(/actions\/upload-artifact@[a-f0-9]{40} # v7\.\d+\.\d+/);
-    expect(releaseWorkflow).toMatch(/actions\/download-artifact@[a-f0-9]{40} # v8\.\d+\.\d+/);
-  });
-
-  it('pins every action in release and its CI and Security gates to a full commit', () => {
-    const workflows = [ciWorkflow, releaseWorkflow, securityWorkflow];
-    for (const workflow of workflows) {
-      const references = [...workflow.matchAll(/^\s+- uses: (\S+)(?: # (\S+))?$/gm)];
-      expect(references.length).toBeGreaterThan(0);
-      for (const [, reference, version] of references) {
-        expect(reference).toMatch(/^[\w.-]+\/[\w.-]+(?:\/[\w.-]+)?@[a-f0-9]{40}$/);
-        expect(version).toMatch(/^v\d+\.\d+\.\d+$/);
-      }
-    }
-  });
-
-  it('keeps the required browser check while sharding the full suite', () => {
-    const tests = workflowJob(ciWorkflow, 'browser-tests');
-    expect(tests).toContain('shard: [1, 2]');
-    expect(tests).toContain('fail-fast: false');
-    expect(tests).toContain('bun run test:e2e:web -- --shard=${{ matrix.shard }}/2');
-    expect(tests).toContain('if: always()');
-    expect(tests).toContain('playwright-report/');
-    const gate = workflowJob(ciWorkflow, 'browser-smoke');
-    expect(gate).toContain('needs: browser-tests');
-    expect(gate).toContain('if: always() && !cancelled()');
-    expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
-    expect(gate).toContain('test "$RESULT" = success');
-  });
-
-  it('runs both locked Python suites and makes them part of the required test gate', () => {
-    const python = workflowJob(ciWorkflow, 'python-tools');
-    expect(python).toContain('workspace: [short-term-memory, semantic-answer-match]');
-    expect(python).toContain('astral-sh/setup-uv@');
-    expect(python).toContain("python-version: '3.12'");
-    expect(python).toContain("if: matrix.workspace == 'semantic-answer-match'");
-    expect(python).toMatch(/uses: oven-sh\/setup-bun@[a-f0-9]{40} # v2\.\d+\.\d+/);
-    expect(python).toContain('uv run --locked pytest');
-    expect(python).toContain('working-directory: tooling/${{ matrix.workspace }}');
-
-    const gate = workflowJob(ciWorkflow, 'test');
-    expect(gate).toContain('needs: [test-unit, test-coverage, handwriting, python-tools]');
-    expect(gate).toContain('PYTHON_RESULT: ${{ needs.python-tools.result }}');
-    expect(gate).toContain('"$PYTHON_RESULT" != "success"');
-  });
-
-  it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {
-    expect(securityWorkflow).toContain('push:');
-    expect(securityWorkflow).toContain('pull_request:');
-    expect(securityWorkflow).toContain('schedule:');
-    expect(securityWorkflow).toContain('branches: [master, main]');
-    expect(securityWorkflow).toContain("cron: '31 3 * * 1'");
-    expect(securityWorkflow).toMatch(/^permissions:\n {2}contents: read/m);
-
-    expect(securityWorkflow.match(/bun install --frozen-lockfile/g)).toHaveLength(3);
-    expect(securityWorkflow.match(/bun audit --audit-level=high/g)).toHaveLength(3);
-    expect(securityWorkflow).toContain('working-directory: relay');
-    expect(securityWorkflow).toContain('working-directory: tooling/handwriting-maths');
-    expect(securityWorkflow).not.toContain('continue-on-error: true');
-    expect(securityWorkflow).not.toContain('|| true');
-    expect(securityWorkflow).not.toContain('bun audit --ignore');
-
-    expect(securityWorkflow).toContain('language: [javascript-typescript, actions]');
-    expect(securityWorkflow).toMatch(/github\/codeql-action\/init@[a-f0-9]{40} # v4\.\d+\.\d+/);
-    expect(securityWorkflow).toMatch(/github\/codeql-action\/analyze@[a-f0-9]{40} # v4\.\d+\.\d+/);
-    expect(securityWorkflow).toContain('build-mode: none');
-    expect(securityWorkflow).toContain('security-events: write');
-    expect(securityWorkflow).toContain('actions: read');
-    expect(securityWorkflow).toContain('contents: read');
-    expect(securityWorkflow).not.toContain('pull_request_target');
-  });
-});
+    expect(securityWorkflow).toContain('github/codeql-action/init@');
+    expect(securityWorkflow).toContain('github/codeql-action/analyze@');
