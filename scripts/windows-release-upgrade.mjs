@@ -53,7 +53,11 @@ async function open(expectedVersion) {
     }, feed);
   }
   const page = await application.firstWindow();
-  await expect(page.getByRole('navigation', { name: 'Courses' })).toBeVisible({ timeout: 60_000 });
+  const start = page.getByRole('link', { name: 'Start revising', exact: true });
+  const courses = page.getByRole('navigation', { name: 'Courses' });
+  await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
+  if (await start.isVisible()) await start.click();
+  await expect(courses).toBeVisible({ timeout: 60_000 });
   return page;
 }
 
@@ -104,7 +108,8 @@ try {
   await expect.poll(async () => {
     try {
       const { createRequire } = await import('node:module');
-      const { extractFile } = createRequire(import.meta.url)('@electron/asar');
+      const { extractFile, uncacheAll } = createRequire(import.meta.url)('@electron/asar');
+      uncacheAll();
       return JSON.parse(extractFile(path.join(directory, 'resources', 'app.asar'), 'package.json')).version;
     } catch { return null; }
   }, { timeout: 180_000 }).toBe(version);
