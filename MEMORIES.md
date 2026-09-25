@@ -69,6 +69,8 @@ missing or changes; a free credit allowance is not a no-spend guarantee.
 OpenRouter's `openrouter/free` can switch models between tool steps. A live request returned
 only reasoning until the output cap and no answer. Prefer pinned free models after verifying
 each model's live zero price and tool support; keep the router as fallback.
+The Ling 3.0 Flash Sante free route repeatedly emitted invalid tool calls after visible text
+in the preview. Prefer the verified Nemotron Ultra and Gemma 4 free routes for live testing.
 Approving a hosted `write_grant` retains write scope for that course. A later write there can
 commit without another prompt; use a different course or fresh hosted session to test rejection.
 

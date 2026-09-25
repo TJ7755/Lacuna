@@ -245,7 +245,7 @@ only when actually learned. This draft itself needs no application changelog ent
   50 steps per learner per day, 600 per month and 1,000 globally per day. Model calls use only
   pinned free routes; a Gateway credit allowance does not authorise paid routes.
 - Confirm durable quota store and secrets against the existing Vercel web project. Pinned
-  OpenRouter Ling free models, OpenRouter's free router,
+  OpenRouter Nemotron Ultra and Gemma 4 free models, OpenRouter's free router,
   Gateway free and Gemini free-tier routes are configured in that order, subject to their
   specific free-usage checks. Confirm their actual tool-call behaviour with a live key.
 - Confirm the selected providers' retention/training policy and corresponding enablement copy.

@@ -18,8 +18,8 @@
   `inclusionai/ling-3.0-flash-fin`, retaining the live zero-price check for each route.
   OpenRouter's free router takes priority when configured and requires a live zero-price and
   tool-support check before use. Every Gateway price field must also be zero.
-  Prefer two pinned OpenRouter Ling free models, checking live zero pricing and tool support
-  for each, before the variable free router. Log failed provider routes for diagnosis.
+  Prefer pinned OpenRouter Nemotron Ultra and Gemma 4 free models, checking live zero pricing
+  and tool support for each, before the variable free router. Log failed provider routes for diagnosis.
   Tell hosted models the exact local tool wrappers and approval behaviour, and try the next
   verified free route when a provider finishes without usable text or a tool call.
   Report a rejected write as a rejection with no mutation, so the model does not describe

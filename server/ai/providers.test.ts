@@ -61,19 +61,20 @@ describe('hosted provider policy', () => {
     });
     const catalogue = (data: unknown[]) => async () => new Response(JSON.stringify({ data }));
     const routes = await configuredFreeModels({ OPENROUTER_API_KEY: 'fixture' }, catalogue([
-      model('inclusionai/ling-3.0-flash-fin:free'),
+      model('nvidia/nemotron-3-ultra-550b-a55b:free'),
       model('openrouter/free'),
       model('inclusionai/ling-3.0-flash-sante:free'),
-      model('inclusionai/ling-3.0-flash-sante', '0.01'),
+      model('google/gemma-4-31b-it:free'),
+      model('google/gemma-4-31b-it', '0.01'),
     ]) as typeof fetch);
     expect(routes.map((route) => route.id)).toEqual([
-      'openrouter:inclusionai/ling-3.0-flash-sante:free',
-      'openrouter:inclusionai/ling-3.0-flash-fin:free',
+      'openrouter:nvidia/nemotron-3-ultra-550b-a55b:free',
+      'openrouter:google/gemma-4-31b-it:free',
       'openrouter:openrouter/free',
     ]);
     const paidOrNoTools = await configuredFreeModels({ OPENROUTER_API_KEY: 'fixture' }, catalogue([
-      model('inclusionai/ling-3.0-flash-sante:free', '0.01'),
-      model('inclusionai/ling-3.0-flash-fin:free', '0', false),
+      model('nvidia/nemotron-3-ultra-550b-a55b:free', '0.01'),
+      model('google/gemma-4-31b-it:free', '0', false),
     ]) as typeof fetch);
     expect(paidOrNoTools).toEqual([]);
   });

@@ -14,8 +14,8 @@ const FREE_GATEWAY_MODEL_IDS = [
 ] as const;
 
 const FREE_OPENROUTER_MODEL_IDS = [
-  'inclusionai/ling-3.0-flash-sante:free',
-  'inclusionai/ling-3.0-flash-fin:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
+  'google/gemma-4-31b-it:free',
   'openrouter/free',
 ] as const;
 
