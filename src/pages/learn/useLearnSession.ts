@@ -8,7 +8,7 @@ import {
   performanceForReviewUnits,
 } from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
-import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
+import { dailyReviewCounts, hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type {
   Card,
   Course,
@@ -439,8 +439,9 @@ export function useLearnSession({
   const finalising = useRef(false);
   // Retained across a failed submission retry; cleared only when the player advances.
   const pendingReviewEventId = useRef<string | null>(null);
-  // Per-deck review counters for the daily workload cap.
+  // Per-unit counts from canonical events for the current local calendar day.
   const reviewsByDeck = useRef<Map<string, number>>(new Map());
+  const reviewsDayStart = useRef(0);
   // When the user clicks "Continue anyway" after hitting a daily limit.
   const [limitOverride, setLimitOverride] = useState(false);
   // When the user clicks "Continue anyway" after hitting a session time limit.
@@ -983,6 +984,8 @@ export function useLearnSession({
     revisionRetryAt.current = new Map();
     revisionFailures.current = new Map();
     revisionReviewEventIds.current = [];
+    reviewsByDeck.current = new Map();
+    reviewsDayStart.current = 0;
     setCanUndo(false);
     setSummary(null);
     setEditing(false);
@@ -1258,16 +1261,18 @@ export function useLearnSession({
       }
       if (cancelled) return;
       const initialProgress = sessionProgress(cards, ctx);
-      const hasServeableCards = plannedRevision
-        ? cards.length > 0
-        : isSimpleMode
-          ? cards.length > 0
-          : sessionServePool(cards, ctx).length > 0;
+      const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
+      const hasServeableCards = serveableCards.length > 0;
       setSchedulerProgress(initialProgress);
       setSessionCardIds(cards.map((card) => card.id));
       sessionCardOutcomesRef.current = new Map();
       setSessionCardOutcomes(sessionCardOutcomesRef.current);
-      reviewsByDeck.current = new Map();
+      if (!isSimpleMode) {
+        const reviewNow = Date.now();
+        reviewsDayStart.current = startOfDay(reviewNow);
+        reviewsByDeck.current = await dailyReviewCounts(reviewKindRef.current, reviewNow);
+        if (cancelled) return;
+      }
       setLimitOverride(false);
       setSingleDeck((prev) => {
         const next = !isGlobal ? units[0] : null;
@@ -1350,6 +1355,35 @@ export function useLearnSession({
       }
 
       progressBefore.current = initialProgress;
+      if (!isSimpleMode) {
+        const cardUnitIds = new Set(serveableCards.map((card) => card.schedulingUnitId));
+        const activeUnits = isGlobal
+          ? units.filter((unit) => cardUnitIds.has(unit.id))
+          : units;
+        const hasReached = (setting: 'maxReviewsPerDay' | 'dailyReviewGoal') =>
+          activeUnits.some((unit) => {
+            const config = isGlobal ? unit : schedulingConfigRef.current;
+            const threshold = config?.[setting];
+            return Boolean(threshold && (reviewsByDeck.current.get(unit.id) ?? 0) >= threshold);
+          });
+        const limitReached = hasReached('maxReviewsPerDay');
+        const goalReached = hasReached('dailyReviewGoal');
+        if (limitReached || goalReached) {
+          finaliseSummaryRef.current({
+            events: [],
+            masteryBefore: initialProgress,
+            masteryAfter: initialProgress,
+            objectiveLabel: isGlobal
+              ? 'Predicted readiness across all courses'
+              : progressHeading(units[0]),
+            focusFraction: 1,
+            reachedGoal: !limitReached && goalReached,
+            limitReached,
+            mode,
+          });
+          return;
+        }
+      }
       if (!plannedRevision && !isSimpleMode && sessionComplete(cards, ctx)) {
         finaliseSummaryRef.current({
           events: [],
@@ -1667,8 +1701,15 @@ export function useLearnSession({
           return next;
         });
 
-        const deckReviews = (reviewsByDeck.current.get(deck.id) ?? 0) + 1;
-        reviewsByDeck.current.set(deck.id, deckReviews);
+        const reviewNow = Date.now();
+        const reviewDayStart = startOfDay(reviewNow);
+        if (reviewDayStart !== reviewsDayStart.current) {
+          reviewsByDeck.current = await dailyReviewCounts(kind, reviewNow);
+          reviewsDayStart.current = reviewDayStart;
+        } else if (recorded) {
+          reviewsByDeck.current.set(deck.id, (reviewsByDeck.current.get(deck.id) ?? 0) + 1);
+        }
+        const deckReviews = reviewsByDeck.current.get(deck.id) ?? 0;
 
         lastAnswer.current = recorded
           ? {
