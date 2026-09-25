@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Kept committed hosted AI tool receipts and their saved ledger when Stop or disposal
+  interrupts an approved local action. Bound each complete hosted request by its
+  encoded byte size, retaining complete tool calls and results across continuations.
 - Fixed hosted AI provider switches leaving a previous session active, and prevented tabs without
   ownership from overwriting the saved conversation or removing its access code. Older replies
   are trimmed when needed so later turns and the tool ledger remain saved. Rejected exact write

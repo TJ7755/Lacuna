@@ -5,6 +5,7 @@ import { normaliseJsonValue } from '../toolSession/state';
 import { HOSTED_PROTOCOL_VERSION, type HostedEvent, type HostedRequest } from '../hostedProtocol';
 import type { ReplacementParticipant } from '../../db/replacementLifecycle';
 import { appendConversationItems } from './relayEvents';
+import { budgetHostedRequest } from './hostedRequestBudget';
 import { HOSTED_ACCESS_STORAGE_KEY, createHostedTransport, type HostedTransport } from './hostedTransport';
 import {
   HOSTED_SESSION_STORAGE_KEY,
@@ -194,6 +195,14 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
     const seenCallIds = new Set<string>();
     let lastPublishAt = 0;
     const current = () => active && owner && !invalidated && epoch === runEpoch && !controller.signal.aborted;
+    const reconcileReceipt = (result: Awaited<ReturnType<AiToolSession['invoke']>>) => {
+      const receipt = result.effects.receipt;
+      if (receipt && !snapshot.items.some((item) => item.kind === 'receipt' && item.receipt.callId === receipt.callId)) {
+        publish({ ...snapshot, items: appendConversationItems(snapshot.items, {
+          kind: 'receipt', id: createId('receipt'), receipt,
+        }) });
+      }
+    };
     const flushText = () => {
       if (!current() || !assistantText) return;
       const item = snapshot.items.find((candidate) => candidate.id === assistantId);
@@ -213,7 +222,7 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
     try {
       while (step <= 8 && current()) {
         let stepText = '';
-        const request: HostedRequest = {
+        const request: HostedRequest = budgetHostedRequest({
           version: HOSTED_PROTOCOL_VERSION,
           conversationId: run.conversationId,
           runId: run.runId,
@@ -223,7 +232,8 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
             misconceptionFirstEnabled: getInstructions().misconceptionFirstEnabled,
           },
           messages,
-        };
+        });
+        messages = request.messages;
         const calls: Extract<HostedEvent, { type: 'tool_call' }>[] = [];
         let completed: 'stop' | 'tool_calls' | null = null;
         for await (const event of transport.infer(request, await freshToken(), controller.signal)) {
@@ -271,6 +281,7 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
             runStatus: 'active' as const, callId: call.callId,
             toolName: call.name, input: call.input };
           let result = await toolSession.invoke(invocation);
+          reconcileReceipt(result);
           if (!current()) return;
           if (result.effects.approval?.status === 'pending') {
             publish({ ...snapshot, approval: result.effects.approval,
@@ -280,6 +291,7 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
             pendingDecision = null;
             if (!current()) return;
             result = await toolSession.invoke(invocation);
+            reconcileReceipt(result);
           }
           if (!current()) return;
           const response = boundedToolResponse(result.response);
@@ -289,14 +301,10 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
             { role: 'tool_call', callId: call.callId, name: call.name, input: call.input },
             { role: 'tool_result', callId: call.callId, result: normalised }];
           publish({ ...snapshot, approval: null,
-            items: result.effects.receipt
-              ? appendConversationItems(snapshot.items, { kind: 'receipt', id: createId('receipt'), receipt: result.effects.receipt })
-              : snapshot.items,
             activity: { runId: run.runId, status: 'working', summary: 'AI is responding', updatedAt: now() },
           });
         }
         step += 1;
-        if (messages.length > 24) throw new Error('The AI tool sequence exceeded its limit.');
       }
       if (current()) throw new Error('The AI tool sequence exceeded its limit.');
     } catch (error) {
@@ -364,6 +372,7 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
     activate() {
       if (active) return;
       active = true;
+      if (owner) return;
       void (options.acquireOwnership ?? browserOwnership)().then((release) => {
         if (!active || invalidated) { release?.(); return; }
         if (!release) {
@@ -380,10 +389,15 @@ export function createHostedAiSession(options: HostedAiSessionOptions = {}): Hos
       active = false;
       interrupt();
       publish({ ...snapshot, connection: { status: 'disconnected' } });
-      owner = false;
-      releaseOwnership?.();
-      releaseOwnership = null;
       token = null;
+      const finish = () => {
+        if (active) return;
+        owner = false;
+        releaseOwnership?.();
+        releaseOwnership = null;
+      };
+      if (running) void running.finally(finish);
+      else finish();
     },
     pair: async () => failure('conflict', 'Built-in AI uses an access code.'),
     connectHosted: connect,
