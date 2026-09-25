@@ -119,24 +119,28 @@ Two modes, chosen in Settings (default **silent**):
 - **Manual:** the four FSRS buttons (Again/Hard/Good/Easy) are shown and the user
   grades directly; no inference is applied.
 
-### Typing setting (`src/state/typingSetting.ts`)
+### Authored answer mode
 
-Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode toggle above:
+Authors choose **Reveal answers** or **Type answers** on a lesson's card section.
+`Lesson.answerMode` supplies the default for current and future eligible cards. The card
+editor/creator and card-list selection controls offer **Use lesson setting**, **Reveal
+answer** and **Type answer**. `Card.answerMode` is an optional override; clearing it
+restores inheritance. Unconfigured lessons and unassigned cards default to reveal.
+These controls are available only in Author mode on editable, active courses.
 
-- **Reveal (default):** the ordinary flip-card flow — tap/press to reveal the answer.
-- **Type:** before reveal, an eligible card (front_back, basic_reversed, or cloze) shows a
-  text input; on reveal, the typed answer is compared against the expected answer
-  (`src/utils/answerComparison.ts`, front_back/basic_reversed use `back`, cloze uses the
-  joined deletion text via `clozeAnswerText`) and shown word-by-word with match/mismatch
-  highlighting. This was previously a dedicated `typing` card type; it is now a global
-  presentation mode that applies to any eligible card, so a course does not need
-  typing-specific cards to use it. Self-grading (Yes/No or the four FSRS buttons) is
-  unchanged — the comparison is feedback only, never an automatic grade. How strictly the
-  comparison matches is a separate per-user setting, **grading strictness**
-  (`src/state/answerStrictness.ts`, chosen in Settings next to the typing toggle, default
-  **lenient**): lenient ignores case and punctuation (the original behaviour), standard
-  ignores case only, and exact requires both to match. `answerComparisonOptions` maps the
-  level to `AnswerComparisonOptions` for `compareAnswer`.
+Lesson sessions use the active lesson's default (including linked cards); course-wide
+and daily reviews use the card's primary lesson. An explicit card override wins in every
+session. Numeric/working items retain their own inputs; occlusions require answer text.
+
+Typing shows an input and **Check answer**. Enter reveals the expected answer with
+word-by-word comparison against the learner's answer. Yes/No or manual four-point
+self-grading still decides the result; there is no AI request or automatic marking.
+Comparison strictness remains a per-user setting in Settings (`src/state/answerStrictness.ts`).
+The former global typing switch no longer controls study sessions.
+
+Lesson defaults and card overrides travel through backups, course share codes and
+shared-course updates. Standalone card JSON exports resolve inheritance into an explicit
+answer mode, since they do not carry lessons. CSV/TSV and Markdown exports remain lossy.
 
 ### Structured-item verification
 

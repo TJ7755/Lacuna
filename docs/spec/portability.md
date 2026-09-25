@@ -357,3 +357,11 @@ uses.
 
 
 [Specification index](../SPEC.md)
+
+### Authored answer modes
+
+Full backups and course shares preserve `Lesson.answerMode` defaults and optional
+`Card.answerMode` overrides, including explicit Reveal overrides on typing lessons.
+Shared-course updates treat these as authored content, preserving learner review history.
+Standalone JSON card exports include each card's resolved mode; re-import keeps that
+explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.

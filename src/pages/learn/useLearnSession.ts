@@ -95,7 +95,6 @@ import { linesModeSequencesByCard } from '../../db/linesModeCards';
 import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
 import { filterSessionCardPool } from '../../db/search';
 import type { CardFilter } from '../../db/search';
-import type { TypingSetting } from '../../state/typingSetting';
 import { FILTER_LABELS } from './types';
 import type {
   LearnModeType,
@@ -168,7 +167,6 @@ export interface UseLearnSessionParams {
   onStepFinished?: (summary: SessionSummary) => void;
   notify: ReturnType<typeof useToast>['notify'];
   distraction: DistractionTracker;
-  typingSetting: TypingSetting;
   startInFocusMode: boolean;
 }
 
@@ -201,7 +199,6 @@ export function useLearnSession({
   onStepFinished,
   notify,
   distraction,
-  typingSetting,
   startInFocusMode,
 }: UseLearnSessionParams) {
   const reviewSessionIdRef = useRef(sessionId ?? makeId());
@@ -280,6 +277,7 @@ export function useLearnSession({
   // been studied before (see the loading effect) — shown as a 'notes' phase
   // ahead of the first card, with a continue action that starts serving cards.
   const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
+  const answerModeLessonsRef = useRef<Map<string, Lesson>>(new Map());
   const [current, setCurrent] = useState<Card | null>(null);
   // Cards in this session's pool generated from a lines-mode Sequence, mapped to their
   // owning Sequence — loaded once alongside the card pool (see linesModeCards.ts). Drives
@@ -296,13 +294,15 @@ export function useLearnSession({
   // firstWordsHint.ts for the pure hint builders.
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
   // An occlusion-generated card's typing eligibility is decided per-card by whether its
-  // region resolves an answerText, never by the blanket typingSetting check that applies
+  // region resolves an answerText, never by the authored answer-mode check that applies
   // to ordinary front_back cards — its plain-text `back` fallback is not a typing target.
   const currentOcclusionData =
     current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
   const isTypingCard =
-    typingSetting === 'type' &&
     current !== null &&
+    (current.answerMode ??
+      answerModeLessonsRef.current.get(lessonId ?? current.primaryLessonId ?? '')?.answerMode ??
+      'reveal') === 'type' &&
     (current.occlusionRegionId !== undefined
       ? currentOcclusionData?.answerText !== undefined
       : isTypingEligible(current));
@@ -1248,6 +1248,14 @@ export function useLearnSession({
       );
       ctxRef.current = ctx;
       cardsRef.current = cards;
+      const answerLessonIds = [
+        ...new Set(cards.flatMap((card) => card.primaryLessonId ? [card.primaryLessonId] : [])),
+      ];
+      if (lessonId && !answerLessonIds.includes(lessonId)) answerLessonIds.push(lessonId);
+      const answerLessons = await db.lessons.bulkGet(answerLessonIds);
+      answerModeLessonsRef.current = new Map(
+        answerLessons.flatMap((lesson) => lesson ? [[lesson.id, lesson]] : []),
+      );
       try {
         linesModeMapRef.current = await linesModeSequencesByCard(cards);
       } catch {

@@ -1,8 +1,9 @@
-import type { CardType, ItemPayload } from '../db/types';
+import type { AnswerMode, CardType, ItemPayload } from '../db/types';
 
 const DRAFT_PREFIX = 'lacuna:draft';
 
 export interface DraftData {
+  answerMode?: AnswerMode;
   front: string;
   back: string;
   tags: string[];

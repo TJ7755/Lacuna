@@ -14,6 +14,7 @@ import {
   useSequences,
   useCourseBankBackingDecks,
 } from '../state/useCourseData';
+import { LessonAnswerModeControl } from '../components/cards/AnswerModeControl';
 import { CardList } from '../components/cards/CardList';
 import { courseCardListContext } from '../components/cards/cardListContext';
 import { FadeInView } from '../components/ui/FadeInView';
@@ -233,6 +234,7 @@ function LessonBucket({
           Open lesson
         </Link>
       </div>
+      <LessonAnswerModeControl courseId={courseId} lessonId={lesson.id} />
       {deck && (
         <CardList
           cards={cards}

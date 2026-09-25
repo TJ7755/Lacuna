@@ -379,6 +379,7 @@ describe('CardEditor — numeric items', () => {
         '',
         [],
         { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+        undefined,
       ),
     );
   });
@@ -539,6 +540,7 @@ describe('CardEditor — working items', () => {
             },
           ],
         },
+        undefined,
       ),
     );
   });
@@ -601,6 +603,7 @@ describe('CardEditor — working items', () => {
           kind: 'working',
           fixtures: [expect.objectContaining({ studentAnswer: ['4'], expectedMarks: 1 })],
         }),
+        undefined,
       ),
     );
   });
@@ -702,5 +705,32 @@ describe('CardEditor — return-to-origin back-link', () => {
 
     const link = screen.getByRole('link', { name: 'Cards' });
     expect(link).toHaveAttribute('href', '/course/course-1/cards');
+  });
+});
+
+
+describe('CardEditor — authored answer mode', () => {
+  it('saves an explicit typing choice when creating a card', async () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    renderNew();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), { target: { value: 'type' } });
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'French for cat?' } });
+    fireEvent.change(screen.getByPlaceholderText(/answer/i), { target: { value: 'chat' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
+    await waitFor(() => expect(createCourseCard).toHaveBeenCalledWith(
+      'course-1', 'front_back', 'French for cat?', 'chat', [], undefined, 'type',
+    ));
+  });
+
+  it('loads an override and can return an existing card to the lesson default', async () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    mockCard = { ...generatedCard, sequenceItemId: undefined, answerMode: 'type' };
+    renderEditing();
+    expect(screen.getByRole('combobox', { name: 'Card answer mode' })).toHaveValue('type');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), { target: { value: 'inherit' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateCard).toHaveBeenCalledWith(mockCard!.id,
+      expect.objectContaining({ answerMode: undefined }),
+    ));
   });
 });
