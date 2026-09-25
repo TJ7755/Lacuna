@@ -32,7 +32,9 @@ describe('BatchAuthoringPromptDialog', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('batch-authoring-backdrop'));
+    const backdrop = screen.getByTestId('batch-authoring-backdrop');
+    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+    fireEvent.click(backdrop);
     expect(onClose).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));

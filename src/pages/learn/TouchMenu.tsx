@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../../components/ui/ModalBackdrop';
 import { useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { m as motion, useMotionValue, useSpring } from 'motion/react';
@@ -92,7 +93,7 @@ export function TouchMenuSheet({
       aria-label="Card actions"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <ModalBackdrop shade={30} />
       <motion.div
         ref={sheetRef}
         style={{ y: springY }}

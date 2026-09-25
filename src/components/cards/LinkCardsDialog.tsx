@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useMemo, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -88,7 +89,7 @@ export function LinkCardsDialog({
         }
       }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <ModalBackdrop shade={50} onClick={onCancel} />
       <motion.div
         role="dialog"
         aria-modal="true"

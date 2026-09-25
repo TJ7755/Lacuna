@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -319,10 +320,7 @@ function ArchiveCourseDialog({
         }
       }}
     >
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={() => !busy && onClose()}
-      />
+      <ModalBackdrop onClick={() => !busy && onClose()} />
       <motion.div
         role="dialog"
         aria-modal="true"

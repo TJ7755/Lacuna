@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import {
@@ -124,7 +125,7 @@ export function AssessmentEditorDialog({
         }
       }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <ModalBackdrop shade={50} onClick={onCancel} />
       <motion.div
         role="dialog"
         aria-modal="true"

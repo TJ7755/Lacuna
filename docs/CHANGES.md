@@ -3,8 +3,10 @@
 ## Unreleased
 
 
-- Reclaimed abandoned device-sync relay channels during the existing daily maintenance job.
-  Each run scans a bounded page and resumes from a stored cursor. Cleanup uses the latest
-  metadata or slot upload, waits 24 hours beyond the 90-day channel expiry, and rechecks
-  uploads before deleting a group.
-
+- Consolidated decorative modal backdrops into a shared layer hidden from the
+  accessibility tree, preserving each overlay's existing click-to-close behaviour.
+- Removed repeated lesson headings from the notes-first study screen, leaving the lesson
+  name in its header and the notes section heading above the content.
+- Moved lesson deletion confirmation below its row so its consequences and action labels
+  remain readable at narrow widths, including long unbroken lesson names. Cancelling
+  returns focus to the delete button.

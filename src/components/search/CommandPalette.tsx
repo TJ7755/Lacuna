@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -212,7 +213,7 @@ function CommandPaletteDialog({
           aria-label="Quick search"
           className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+          <ModalBackdrop shade={40} onClick={onClose} />
           <motion.div
             initial={{ opacity: 0, y: -12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
