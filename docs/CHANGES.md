@@ -1,6 +1,6 @@
-# Lacuna — version 0.2.10
+# Lacuna — version 0.2.11
 
-## Unreleased
+## 0.2.11 beta — offline course files, authoring and study improvements
 
 - Added offline `.lacuna` course files to Share. Files include referenced images, audio and
   occlusion diagrams once each, without personal study history. File imports preview before

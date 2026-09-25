@@ -67,7 +67,10 @@ Windows AI companion shutdown issue must also be considered when testing install
 
 The release workflow runs the existing normal-motion packaged interaction test on Windows before
 attestation/upload and retains its `test-results` artefact. It checks the real packaged app, clean
-shutdown and renderer errors; it is not an installation or historical-profile upgrade test.
+shutdown and renderer errors. A separate native Windows gate installs the hash-pinned 0.2.10
+baseline, opens an isolated study profile, upgrades using the release installer, and checks
+that course, lesson, card and review records survive unchanged and automatic update mode remains enabled.
+Ordinary CI also tests upgrading 0.2.7 with a long-running AI companion.
 
 ### Why this is faster
 
