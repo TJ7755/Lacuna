@@ -352,7 +352,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await answerYesAndWaitForExposure(lesson1.id);
     await screen.findByRole('heading', {
-      name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+      name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
     });
     await act(async () => unmount());
     // Give any (incorrect) ratchet write a chance to land before asserting it didn't.
@@ -565,7 +565,7 @@ describe('LearnMode course/lesson scope', () => {
       await continueFromNotes();
       await answerYesAndWaitForExposure(lesson1.id);
       await screen.findByRole('heading', {
-        name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+        name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
       });
       await act(async () => unmount());
       await new Promise((r) => setTimeout(r, 50));
@@ -911,7 +911,7 @@ describe('LearnMode course/lesson scope', () => {
     });
   });
 
-  it('shows scheduler progress instead of latest-answer progress in a global objective session', async () => {
+  it('separates session completion from predicted recall in a global objective session', async () => {
     const now = Date.now();
     const deck = await createCourse('Objective deck');
     await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
@@ -945,8 +945,10 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     expect(
-      await screen.findByRole('progressbar', { name: 'Predicted score progress' }),
-    ).toHaveAttribute('aria-valuenow', String(expected));
+      await screen.findByRole('progressbar', { name: 'Session progress' }),
+    ).toHaveAttribute('aria-valuenow', '0');
+    expect(screen.getByText(`${expected}% predicted readiness`)).toBeInTheDocument();
+    expect(screen.getByText('0% complete')).toBeInTheDocument();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
@@ -978,7 +980,7 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    const progress = await screen.findByRole('progressbar', { name: 'Predicted score progress' });
+    const progress = await screen.findByRole('progressbar', { name: 'Session progress' });
     const header = progress.closest('header');
     const firstSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
     expect(header).not.toBeNull();
@@ -988,7 +990,7 @@ describe('LearnMode course/lesson scope', () => {
     await waitFor(() => {
       const next = document.querySelector<HTMLElement>('[data-study-card-id]');
       expect(next?.dataset.studyCardId).not.toBe(firstSurface?.dataset.studyCardId);
-      expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
+      expect(screen.getByRole('progressbar', { name: 'Session progress' })).toBe(progress);
       expect(progress.closest('header')).toBe(header);
     });
 
@@ -997,7 +999,7 @@ describe('LearnMode course/lesson scope', () => {
     await waitFor(() => {
       const next = document.querySelector<HTMLElement>('[data-study-card-id]');
       expect(next?.dataset.studyCardId).not.toBe(secondSurface?.dataset.studyCardId);
-      expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
+      expect(screen.getByRole('progressbar', { name: 'Session progress' })).toBe(progress);
       expect(progress.closest('header')).toBe(header);
     });
     await waitFor(async () => expect(await db.sessionHistory.count()).toBe(1));
@@ -1050,7 +1052,7 @@ describe('LearnMode course/lesson scope', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
+        name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
       }),
     ).toBeInTheDocument();
     await act(async () => {
@@ -1109,12 +1111,13 @@ describe('LearnMode course/lesson scope', () => {
     }
   });
 
-  it('grades an incorrect numeric answer as Again and clears it for the retry', async () => {
+  it('grades an incorrect numeric answer as Again and clears it for the next card', async () => {
     const deck = await createCourse('Numeric retry deck');
     const card = await createCard(deck.id, 'front_back', 'What is 3 squared?', '', [], {
       payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '9' } },
     });
 
+    await createCard(deck.id, 'front_back', 'Next question', '', [], { payload: card.payload });
     render(
       <ThemeProvider>
         <ToastProvider>
@@ -1128,12 +1131,13 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     const input = await screen.findByLabelText('Your answer');
+    const reviewedId = document.querySelector('[data-study-card-id]')!.getAttribute('data-study-card-id')!;
     fireEvent.change(input, { target: { value: '6' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(async () => {
-      expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
+      expect((await storedReviewsForCard(reviewedId))[0]).toMatchObject({
         grade: 1,
         correct: false,
         marksEarned: 0,
@@ -1141,6 +1145,7 @@ describe('LearnMode course/lesson scope', () => {
       });
     });
     expect(await screen.findByLabelText('Your answer')).toHaveValue('');
+    expect(document.querySelector('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', reviewedId);
   });
 
   it('checks working lines and persists full marks with their verdicts', async () => {
@@ -1201,7 +1206,7 @@ describe('LearnMode course/lesson scope', () => {
     }
   });
 
-  it('grades partial working as Again and clears it for the retry', async () => {
+  it('grades partial working as Again and clears it for the next card', async () => {
     const deck = await createCourse('Working retry deck');
     const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
       payload: {
@@ -1213,6 +1218,7 @@ describe('LearnMode course/lesson scope', () => {
         ],
       },
     });
+    await createCard(deck.id, 'front_back', 'Next question', '', [], { payload: card.payload });
     render(
       <ThemeProvider>
         <ToastProvider>
@@ -1224,11 +1230,13 @@ describe('LearnMode course/lesson scope', () => {
         </ToastProvider>
       </ThemeProvider>,
     );
+    await screen.findByLabelText('Your working');
+    const reviewedId = document.querySelector('[data-study-card-id]')!.getAttribute('data-study-card-id')!;
     fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(async () => {
-      expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
+      expect((await storedReviewsForCard(reviewedId))[0]).toMatchObject({
         grade: 1,
         correct: false,
         marksEarned: 1,
@@ -1236,6 +1244,7 @@ describe('LearnMode course/lesson scope', () => {
       });
     });
     expect(await screen.findByLabelText('Your working')).toHaveValue('');
+    expect(document.querySelector('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', reviewedId);
   });
 
   it('renders a scaffold-kind item read-only, with no grading affordance and an empty history', async () => {
@@ -1329,7 +1338,7 @@ describe('LearnMode course/lesson scope', () => {
       }
     });
 
-    expect(await screen.findByText('Session complete')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
     expect(await storedReviewsForCard(card.id)).toHaveLength(0);
     await act(async () => unmount());
   });
@@ -1453,8 +1462,8 @@ describe('LearnMode course/lesson scope', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
       fireEvent.click(await screen.findByRole('button', { name: actionLabel }));
 
-      expect(await screen.findByText('Session complete')).toBeInTheDocument();
-      expect(screen.queryByText('You’ve reached your goal')).not.toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
+      expect(screen.queryByText('Goal reached.')).not.toBeInTheDocument();
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
@@ -1482,7 +1491,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await answerYes();
 
-    expect(await screen.findByText('You’ve reached your goal')).toBeInTheDocument();
+    expect(await screen.findByText('Goal reached.')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('progressbar', { name: 'Cards correct in this pass' })).toHaveAttribute(
         'aria-valuenow',

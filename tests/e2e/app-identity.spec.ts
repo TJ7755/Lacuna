@@ -62,16 +62,25 @@ for (const theme of ['light', 'dark'] as const) {
   }
 }
 
-test('an empty study session carries the recall drawing into its report', async ({ page }) => {
+test('an empty study session uses the minimal report with accessible details', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await page.getByRole('button', { name: /Exam in .* Welcome to Lacuna/ }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/learn`);
   await expect(page.getByRole('heading', { name: 'Nice work' })).toBeVisible();
-  const drawing = page.locator('svg[viewBox="0 0 88 82"]');
-  await expect(drawing).toBeVisible();
-  await expect(drawing).toHaveAttribute('aria-hidden', 'true');
+  const report = page.getByRole('main', { name: 'Session report' });
+  await expect(report.locator('svg[viewBox="0 0 88 82"]')).toHaveCount(0);
+  await expect(report.getByText('Session complete', { exact: true })).toHaveCount(0);
+  await expect(report.getByRole('heading', { name: 'Goal reached.' })).toHaveCount(0);
+  await expect(report.getByText('Mean time', { exact: true })).toBeHidden();
+  await report.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(report.getByText('Mean time', { exact: true })).toBeVisible();
+  await expect(report.getByText('0.0s', { exact: true })).toBeVisible();
+  await report.locator('summary').press('Enter');
+  await expect(report.getByText('Mean time', { exact: true })).toBeHidden();
+  await expect(report.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: test.info().outputPath('session.png') });
 });
 

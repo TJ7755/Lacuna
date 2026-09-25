@@ -8,6 +8,18 @@
 - Preserved answer modes through backups, course sharing and author updates; standalone
   card JSON exports include the effective mode so re-import does not depend on a lesson.
 
+- Separated Practice session completion from predicted recall. The top bar now fills
+  as the captured work is cleared and reaches 100% when finished; predicted recall
+  or secured proportion stays separately labelled in the header and report.
+- Stopped ordinary Practice/FSRS sessions immediately repeating or alternating the
+  last cards to chase an exam target. After any rating, a card waits until its saved
+  due time before it can return in that session. Undo restores eligibility; due-only
+  review, daily limits, new-card caps and planned revision retain their own rules.
+
+- Simplified the session report to a goal heading, reviewed count, accuracy and a thin
+  progress bar. Timing, focus, progress change and ratings sit under Session details.
+  Removed completion badges, confetti and redundant copy; aligned actions with the
+  study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.

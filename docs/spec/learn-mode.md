@@ -2,7 +2,7 @@
 
 A Learn session may study a lesson, a course Practice node, a **single deck**, or **every
 deck at once** (the legacy global review session). FSRS-backed sessions run through one engine
-so ordering and progress stay objective-derived; lesson teaching uses the Simple-mode loop.
+so ordering and predicted recall stay objective-derived; lesson teaching uses the Simple-mode loop.
 Course-guided sessions run inside the persistent conductor, while direct legacy routes remain
 available for standalone entry.
 
@@ -13,7 +13,16 @@ available for standalone entry.
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.
 2. If there is nothing to study or the objective is already met, go straight to the
    **report**.
-3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
+3. Otherwise **serve** cards one at a time until the captured work is cleared, the
+   remaining objective is met, a configured limit is reached, or the user exits.
+
+The top bar shows **session completion**, starting at zero for outstanding work and
+reaching 100% when that work is finished. It counts the captured eligible cards which
+no longer need a review now, independently of predicted recall. Undo restores the
+card and reverses its completion. A daily limit or early exit does not manufacture
+100% completion. Predicted recall (or secured proportion) appears separately in the
+header and remains the before/after measurement in the report. Planned revision
+retains its time-budget bar; Simple Learn retains its successful-answer segments.
 
 Maximum reviews per day and the daily review goal count persisted review events in the user's
 local calendar day, including repeat reviews and earlier sessions. A new Practice session reports
@@ -98,8 +107,13 @@ eligibility: selection rechecks the updated due dates after every answer, includ
 learning and relearning steps. Once no cards in the captured scope are due, the session
 finishes even if predicted exam readiness remains below target. Future-due cards and new
 cards without a due date cannot enter that queue. Exam-objective ordering and readiness
-reporting remain in use; ordinary curricular Practice and planned assessment revision
-retain their existing completion rules.
+reporting remain in use. Ordinary curricular Practice keeps its initial objective-based
+scope, then respects each saved due time after an answer. A reviewed card cannot be
+served again before that time, regardless of grade or queue size. Once every remaining
+card is waiting for its next review, the session finishes without claiming perfect
+recall. An ongoing session may serve a failed card again once its retry becomes due.
+The captured review counts make Undo restore eligibility without a second queue.
+Planned assessment revision retains its allocator and completion rules.
 
 In-memory, per session, to stop a just-failed card being shown again immediately:
 
