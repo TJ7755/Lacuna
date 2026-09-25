@@ -38,6 +38,42 @@ provider; the local transcript, study database, tool execution and write approva
 device. The access code is stored locally, outside backups and sync. Free providers may retain or
 use submitted content under their own terms. Switching modes starts a separate conversation.
 
+### Handing out beta access codes
+
+Generate a batch from the repository root:
+
+```bash
+bun run ai:invites
+```
+
+This creates 20 individual codes in a new, Git-ignored `.ai-invites/batch-…/` directory.
+Use `--count 50` for a different batch size (1–1,000). The command prints file paths,
+never the codes. Files are owner-only on POSIX systems; on Windows, keep the directory
+in your private user profile with appropriate filesystem permissions.
+
+1. Open `credential-hashes.json`. Set the web project's server environment variable
+   `AI_ACCESS_CREDENTIAL_HASHES` to its complete contents and redeploy once for the batch.
+   The signing key, Redis and provider configuration below must already be set up.
+2. Keep `codes.csv` private. Send each tester just one unused `access_code`, and record
+   their name and the issue date in `issued_to` and `issued_on`. Do not send the whole CSV.
+3. The tester selects **Settings → AI → Built-in AI**, enables AI, opens the sidebar,
+   pastes their code and clicks **Connect**. Each code has a separate usage allowance.
+
+When adding more codes, save the **current deployed** `AI_ACCESS_CREDENTIAL_HASHES` JSON
+to a file inside `.ai-invites/`, then include it:
+
+```bash
+bun run ai:invites --count 20 --existing .ai-invites/current-hashes.json
+```
+
+The new configuration preserves those entries and adds the new batch; the new CSV contains
+only the new codes. Replace the server variable with the combined JSON and redeploy.
+Omitting `--existing` creates an independent list: deploying it would revoke earlier codes.
+Do not reuse an old configuration containing revoked entries, as that would restore access.
+To revoke a tester, remove their `learner_id` entry from the deployed configuration and
+redeploy. Codes are reusable bearer credentials, not single-use invitations; distribute
+them privately and keep the CSV in secure storage. Hashes cannot recover lost codes.
+
 ### Hosted service operation
 
 Deploy the existing web project with Node functions in `api/ai/`. Set these server-only

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added `bun run ai:invites` to generate private batches of beta AI codes and matching
+  server credential hashes, with an option to preserve existing users when adding a batch.
+
 - Redesigned the study-step transition as a vertical path from the completed topic to
   the next activity, removing the redundant completion and next-step subtitles. The
   topic settles back before the path and destination appear; reduced motion skips the
