@@ -1,4 +1,4 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -53,10 +53,10 @@ async function startCompanion(
     },
     stderr: 'pipe',
   });
-  transport.stderr?.setEncoding('utf8');
-  transport.stderr?.on('data', (chunk: string) => {
-    stderr += chunk;
-    process.stderr.write(`[Lacuna AI companion] ${chunk}`);
+  transport.stderr?.on('data', (chunk: Buffer | string) => {
+    const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    stderr += text;
+    process.stderr.write(`[Lacuna AI companion] ${text}`);
   });
   const client = new Client({ name, version: '1.0.0' });
   try {
@@ -67,6 +67,42 @@ async function startCompanion(
   }
   return client;
 }
+
+test('the Electron AI renderer loads the production asset from the built index', async () => {
+  test.skip(
+    process.platform !== 'darwin' && process.platform !== 'win32',
+    'The release gate runs against the supported macOS and Windows desktop builds.',
+  );
+
+  const html = await readFile(path.join(root, 'dist', 'index.html'), 'utf8');
+  const bundlePath = html.match(
+    /<script type="module"[^>]+src="(\/assets\/app-[A-Za-z0-9_-]{8}\.js)"/,
+  )?.[1];
+  expect(bundlePath).toBeDefined();
+
+  const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-electron-ai-assets-')));
+  let app: ElectronApplication | undefined;
+  try {
+    app = await electron.launch({
+      executablePath: electronExecutable(),
+      args: [root, `--user-data-dir=${profile}`],
+    });
+    const page = await app.firstWindow();
+    await page.waitForLoadState('domcontentloaded');
+    expect(new URL(page.url()).origin).toBe('http://localhost:5173');
+    await expect(page.locator('script[type="module"][src]')).toHaveAttribute('src', bundlePath!);
+    await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
+
+    const loadedAssets = await page.evaluate(() =>
+      performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname),
+    );
+    expect(loadedAssets).toContain(bundlePath);
+    expect(loadedAssets).not.toContain('/@vite/client');
+  } finally {
+    await app?.close().catch(() => undefined);
+    await rm(profile, { recursive: true, force: true });
+  }
+});
 
 test('the enabled Electron renderer accepts a companion and completes a message cycle', async () => {
   test.skip(

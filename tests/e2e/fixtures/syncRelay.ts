@@ -66,6 +66,15 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
   };
   await attach(page);
 
+  const waitForStatePulls = async (arrivals: number): Promise<void> => {
+    const barrier = pullBarrier;
+    if (!barrier) throw new Error('No state-pull barrier is installed.');
+    while (barrier.arrived < arrivals) {
+      await new Promise<void>((resolve) => barrier.arrivalWaiters.push(resolve));
+      if (barrier.cancelled) throw new Error('The state-pull barrier was released early.');
+    }
+  };
+
   return {
     relayBase,
     requests,
@@ -80,17 +89,10 @@ export async function installStatefulSyncRelay(page: Page): Promise<StatefulSync
     statePullArrivals() {
       return pullBarrier?.arrived ?? 0;
     },
-    async waitForStatePulls(arrivals: number) {
-      const barrier = pullBarrier;
-      if (!barrier) throw new Error('No state-pull barrier is installed.');
-      while (barrier.arrived < arrivals) {
-        await new Promise<void>((resolve) => barrier.arrivalWaiters.push(resolve));
-        if (barrier.cancelled) throw new Error('The state-pull barrier was released early.');
-      }
-    },
+    waitForStatePulls,
     async releaseStatePullsAfter(arrivals: number) {
       const barrier = pullBarrier;
-      await this.waitForStatePulls(arrivals);
+      await waitForStatePulls(arrivals);
       if (!barrier) throw new Error('No state-pull barrier is installed.');
       pullBarrier = undefined;
       barrier.release();

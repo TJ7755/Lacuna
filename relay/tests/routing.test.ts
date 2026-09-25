@@ -142,6 +142,8 @@ describe('AI maintenance route', () => {
       sessionsDeleted: 3,
       rateRecordsDeleted: 2,
       objectsDeleted: 5,
+      channelsDeleted: 0,
+      channelObjectsDeleted: 0,
     });
     expect(await store.list(`ai/${expired.sessionId}/`)).toEqual([]);
     expect(await store.list(`ai/${corruptId}/`)).toEqual([]);

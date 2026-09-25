@@ -9,6 +9,90 @@
   ownership from overwriting the saved conversation or removing its access code. Older replies
   are trimmed when needed so later turns and the tool ledger remain saved. Rejected exact write
   approvals now tell the model that no change was made.
+
+- Added a Windows CI installed-upgrade probe using the verified v0.2.7 installer and a
+  long-running, installed AI companion. It records installer exit codes and process identities
+  on failure. The intermittent Codex-hosted shutdown failure remains unexplained.
+
+- Loaded route announcements separately after the initial render, keeping the combined
+  maintenance changes within the existing initial JavaScript budget. Precached that deferred
+  shell component so cold offline reloads retain it.
+
+- Integrated the maintenance PRs with both Python and packaged macOS required by the test
+  gate, pinned actions in the newly added jobs, and focused-test rejection in the new suites.
+
+- Rejected invalid review response times before changing cards, review history or
+  calibration, preventing non-finite timing statistics from being saved.
+- Blocked startup when a pre-migration snapshot fails and the upgrade path crosses
+  destructive schema versions 22, 24 or 26, including the default upgrade to v27.
+  Failed snapshots remain retryable; upgrades crossing no destructive version can continue.
+
+- Rejected cross-course card assignments before changing cards, lesson exposures or canonical
+  review history. The target lesson must also belong to the selected course.
+
+- Rejected selected backup files over 200 MB before reading or parsing them,
+  preventing oversized imports from exhausting the application.
+- Restricted comment-triggered OpenCode runs to the repository owner, checked out
+  the default branch for both comment events, reduced token permissions, denied
+  OpenCode command execution with its API key present, and pinned the action to
+  a reviewed commit.
+
+- Allocated lesson and note order indices inside their insert transactions, so concurrent
+  creation in the same parent keeps distinct indices and stable listed order.
+
+- Linked Quick search's combobox to its results list only while the list exists,
+  keeping its expanded and active option state consistent for assistive technology.
+- Made every CI Vitest and Playwright configuration reject focused `.only` tests,
+  while keeping local focused runs available for debugging.
+- Pinned release, CI and Security workflow actions to reviewed full commit SHAs,
+  while keeping version comments and weekly Dependabot updates for maintenance.
+
+- Added CI per-file coverage gates for schema migration snapshots, card and ordering
+  repositories, and Learn-session persistence and orchestration. Thresholds use measured
+  [baselines](maintenance/coverage.md) so a strong file cannot hide a weak one behind an
+  aggregate percentage.
+
+- Counted daily review caps and goals from persisted review events across sessions and repeat
+  attempts, with local calendar-day boundaries and the existing Continue anyway override.
+
+- Kept Course Settings section headings below the sticky mobile jumper after
+  navigation, matching the existing Settings section offset.
+- Ran Electron AI interaction tests against freshly built production renderer assets,
+  and checked that Electron loads the hashed entry script from `dist/index.html`.
+  The suite still uses its local Electron host and companion transport.
+
+- Added locked Python test jobs for both offline tool workspaces to the required CI test
+  gate, and checked the shipped short-term model against shared Python and TypeScript
+  prediction cases covering coefficients, count capping and routed handovers.
+
+- Updated Toast countdown bars through transforms instead of React state and
+  width changes on every animation frame, preserving their existing timers.
+- Added CI typechecking and lint coverage for release-gating Playwright suites and the web
+  performance audit, fixing the newly exposed type and lint errors in those paths.
+
+- Checked release tool versions against minimum safe versions and parsed builder
+  targets and workflow action identities as YAML. Removed source-text checks already
+  exercised by updater tests, Electron tests and release build gates.
+- Updated page titles and added a polite route announcement for screen readers across
+  shell and full-screen navigation. In-page query changes leave focus and the announcement alone.
+- Made shortcut capture a labelled modal with a keyboard-accessible Cancel button.
+  Focus stays inside it and returns to the selected shortcut after capture or dismissal.
+- Reclaimed abandoned device-sync relay channels during the existing daily maintenance job.
+  Each run scans a bounded page and resumes from a stored cursor. Cleanup uses the latest
+  metadata or slot upload, waits 24 hours beyond the 90-day channel expiry, and rechecks
+  uploads before deleting a group.
+
+- Consolidated decorative modal backdrops into a shared layer hidden from the
+  accessibility tree, preserving each overlay's existing click-to-close behaviour.
+- Added a required macOS CI smoke for the unsigned packaged Electron app. It checks native
+  launch, a course stored across reload, and a seeded study answer in the desktop renderer.
+
+- Added a focused iPhone-sized WebKit browser gate for course navigation, touch study and
+  offline navigation. Its single-worker CI job joins the existing required browser check;
+  the full Chromium suite remains split across two shards.
+- Raised the card editor's touch action bar above the mobile course navigation so its
+  Add card action remains tappable.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels

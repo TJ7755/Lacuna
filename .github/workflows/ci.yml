@@ -13,30 +13,32 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+        working-directory: relay
       - run: bun run typecheck
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -49,14 +51,14 @@ jobs:
         shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -66,22 +68,46 @@ jobs:
   test-coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run test:coverage
       - run: bun run test:coverage:recovery
+      - run: bun run test:coverage:risk
+
+  python-tools:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [short-term-memory, semantic-answer-match]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: 0.12.19
+          python-version: '3.12'
+          working-directory: tooling/${{ matrix.workspace }}
+          enable-cache: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: matrix.workspace == 'semantic-answer-match'
+        with:
+          bun-version: 1.4.0
+      - run: uv run --locked pytest
+        working-directory: tooling/${{ matrix.workspace }}
 
   test:
-    needs: [test-unit, test-coverage, handwriting]
+    needs: [test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -90,9 +116,11 @@ jobs:
           UNIT_RESULT: ${{ needs.test-unit.result }}
           COVERAGE_RESULT: ${{ needs.test-coverage.result }}
           HANDWRITING_RESULT: ${{ needs.handwriting.result }}
+          PYTHON_RESULT: ${{ needs.python-tools.result }}
+          MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}
         run: |
-          if [ "$UNIT_RESULT" != "success" ] || [ "$COVERAGE_RESULT" != "success" ] || [ "$HANDWRITING_RESULT" != "success" ]; then
-            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT"
+          if [ "$UNIT_RESULT" != "success" ] || [ "$COVERAGE_RESULT" != "success" ] || [ "$HANDWRITING_RESULT" != "success" ] || [ "$PYTHON_RESULT" != "success" ] || [ "$MACOS_ELECTRON_RESULT" != "success" ]; then
+            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT"
             exit 1
           fi
 
@@ -102,14 +130,14 @@ jobs:
       run:
         working-directory: tooling/handwriting-maths
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -119,14 +147,14 @@ jobs:
   relay:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -141,14 +169,14 @@ jobs:
   ai-mcp:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -166,14 +194,14 @@ jobs:
   production:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
@@ -188,24 +216,24 @@ jobs:
       matrix:
         shard: [1, 2]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bunx playwright install --with-deps chromium
-      - run: bun run test:e2e:web -- --shard=${{ matrix.shard }}/2
+      - run: bun run test:e2e:web -- --project=chromium --shard=${{ matrix.shard }}/2
       - name: Preserve browser test evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: browser-results-${{ matrix.shard }}
           path: |
@@ -213,29 +241,116 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
+  browser-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps webkit
+      - run: bun run test:e2e:web -- --project=webkit-mobile --workers=1
+      - name: Preserve mobile browser test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-results-webkit-mobile
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
   # Keep the existing branch-protection check name while running every test in parallel shards.
   browser-smoke:
-    needs: browser-tests
+    needs: [browser-tests, browser-mobile]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Require all browser shards
         env:
           RESULT: ${{ needs.browser-tests.result }}
-        run: test "$RESULT" = success
+          MOBILE_RESULT: ${{ needs.browser-mobile.result }}
+        run: test "$RESULT" = success && test "$MOBILE_RESULT" = success
 
   electron-ai:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
+
+  electron-macos-smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run electron:prepare
+      - run: bun run build:assets
+      - run: bunx electron-builder --mac --dir --config electron/electron-builder.yml --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - run: bun run test:e2e:electron-macos-smoke
+      - name: Preserve macOS smoke evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-electron-smoke-results
+          path: test-results/
+          if-no-files-found: ignore
+
+  windows-installed-upgrade:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - run: bun run electron:build:win
+      - name: Download the verified v0.2.7 installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force test-results/windows-upgrade/source | Out-Null
+          gh release download v0.2.7 --pattern Lacuna-Setup-0.2.7.exe --dir test-results/windows-upgrade/source
+      - name: Upgrade with a long-running installed AI companion
+        run: node scripts/windows-upgrade-companion.mjs test-results/windows-upgrade/source/Lacuna-Setup-0.2.7.exe
+      - name: Preserve installed upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-installed-upgrade-results
+          path: test-results/windows-upgrade/installed-upgrade.json
+          if-no-files-found: ignore

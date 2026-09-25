@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config';
 // tests/setup.ts supplies fake IndexedDB for persistence tests.
 export default defineConfig({
   test: {
+    allowOnly: !process.env.CI,
     environment: 'happy-dom',
     clearMocks: false,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts', 'server/**/*.test.ts'],

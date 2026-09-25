@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../components/ui/cn';
 import { KeyboardIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ACTION_LABELS, formatBinding, useShortcutBindings, type LearnAction } from '../../state/shortcutBindings';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 
@@ -79,14 +80,25 @@ function KeyCaptureOverlay({ action, onCapture, onCancel }: {
   onCapture: (key: string) => void;
   onCancel: () => void;
 }) {
+  const titleId = useId();
+  const instructionsId = useId();
+  const trapRef = useFocusTrap(true, { autoFocusSelector: '[role="dialog"]' });
+
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      event.preventDefault();
+      if (event.key === 'Tab') return;
       if (event.key === 'Escape') {
+        event.preventDefault();
         onCancel();
         return;
       }
-      if (['Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'Dead'].includes(event.key)) return;
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Dead'].includes(event.key)) return;
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest('[data-shortcut-cancel]') &&
+        (event.key === 'Enter' || event.key === ' ')
+      ) return;
+      event.preventDefault();
       if (event.key === ' ') {
         onCapture('Space');
         return;
@@ -98,12 +110,25 @@ function KeyCaptureOverlay({ action, onCapture, onCancel }: {
   }, [action, onCapture, onCancel]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onCancel}>
-      <div className="rounded-2xl border border-line-strong bg-surface px-8 py-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <SettingsSubsectionHeading className="mb-2 font-display text-lg">
+    <div ref={trapRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onCancel}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={instructionsId}
+        tabIndex={0}
+        className="rounded-2xl border border-line-strong bg-surface px-8 py-6 shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <SettingsSubsectionHeading id={titleId} className="mb-2 font-display text-lg">
           Set shortcut for {ACTION_LABELS[action]}
         </SettingsSubsectionHeading>
-        <p className="text-sm text-ink-soft">Press the key you want to use. Press Escape or click outside this card to cancel.</p>
+        <p id={instructionsId} className="text-sm text-ink-soft">Press the key you want to use. Press Escape or click outside this card to cancel.</p>
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="ghost" size="sm" data-shortcut-cancel onClick={onCancel}>
+            Cancel shortcut capture
+          </Button>
+        </div>
       </div>
     </div>
   );

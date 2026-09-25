@@ -1,3 +1,4 @@
+import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
@@ -120,7 +121,7 @@ function UpdateReadyDialog({
         onLater();
       }}
     >
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" aria-hidden="true" />
+      <ModalBackdrop shade={45} />
       <div className="relative w-full max-w-md rounded-2xl border border-line-strong bg-surface p-6 shadow-2xl shadow-black/20">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">Update ready</p>
         <h2 className="mt-2 font-display text-2xl tracking-tight">Restart to update Lacuna</h2>

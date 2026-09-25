@@ -13,6 +13,10 @@ Release tags must be pushed with maintainer credentials: a tag created using Act
 `GITHUB_TOKEN` does not trigger the tag build. Use the release helper and exact-commit push
 workflow evidence; successful PR checks alone do not prove the merged release commit.
 
+Some upstream GitHub Action version tags are annotated. Their tag-object SHA is not an
+executable commit pin; use the peeled commit (`refs/tags/<version>^{}`) and keep the
+version comment on the `uses:` line for Dependabot updates.
+
 ## Protect unrelated work
 
 Use a disposable worktree for baseline tests rather than stashing unrelated work.
@@ -44,6 +48,10 @@ must cover candidate snapshotting and merging as well as import.
 
 ## Browser evidence matters
 
+On local macOS WebKit, Playwright's offline `page.reload()` can fail with an internal browser
+error. The mobile WebKit gate covers offline in-app navigation; the Chromium gate covers cold
+offline reload. Do not claim the WebKit test proves an offline document reload.
+
 CPU-profiler startup and Playwright accessibility queries can dominate renderer traces.
 Keep untraced controls and inspect stacks before attributing task time to application code.
 
@@ -73,6 +81,14 @@ The Ling 3.0 Flash Sante free route repeatedly emitted invalid tool calls after 
 in the preview. Prefer the verified Nemotron Ultra and Gemma 4 free routes for live testing.
 Approving a hosted `write_grant` retains write scope for that course. A later write there can
 commit without another prompt; use a different course or fresh hosted session to test rejection.
+
+GitHub `pull_request_review_comment` runs on a PR merge ref. A privileged
+comment-triggered AI workflow must explicitly check out the trusted default branch
+before starting a tool with secrets; the usual checkout default is unsafe here.
+
+The frozen Python v3 short-term candidate loads the v2 coefficient file because v3 changed
+only routing. The shipped TypeScript runtime loads v3 JSON. The shared port fixture checks
+both, so a coefficient update must keep their versioned artefacts aligned.
 
 Electron loading-spinner events can accompany hash navigation. Use main-frame,
 cross-document navigation to invalidate AI readiness; a hash route retains its listener.

@@ -1,0 +1,99 @@
+{
+  "model": "half-life-logistic-v3-routed",
+  "decay": -0.1542,
+  "cases": [
+    {
+      "name": "first-success-short",
+      "elapsed_seconds": 3600,
+      "history": [true],
+      "state": 1,
+      "stability_days": 3.0,
+      "probability": 0.9620066068073557
+    },
+    {
+      "name": "first-failure-success-route",
+      "elapsed_seconds": 54000,
+      "history": [false],
+      "state": 1,
+      "stability_days": 3.0,
+      "probability": 0.8037094148988629
+    },
+    {
+      "name": "success-start",
+      "elapsed_seconds": 21600,
+      "history": [true, true],
+      "state": 2,
+      "stability_days": 3.0,
+      "probability": 0.9179888742846644
+    },
+    {
+      "name": "success-blend",
+      "elapsed_seconds": 54000,
+      "history": [true, false, true],
+      "state": 2,
+      "stability_days": 3.0,
+      "probability": 0.8959684586202826
+    },
+    {
+      "name": "success-end",
+      "elapsed_seconds": 86400,
+      "history": [true, true],
+      "state": 2,
+      "stability_days": 3.0,
+      "probability": 0.9573357955610086
+    },
+    {
+      "name": "failure-start",
+      "elapsed_seconds": 345600,
+      "history": [false, true],
+      "state": 3,
+      "stability_days": 1.5,
+      "probability": 0.7152435086083344
+    },
+    {
+      "name": "failure-blend",
+      "elapsed_seconds": 388800,
+      "history": [false, false],
+      "state": 3,
+      "stability_days": 1.5,
+      "probability": 0.6526023197224236
+    },
+    {
+      "name": "failure-end",
+      "elapsed_seconds": 432000,
+      "history": [false, true],
+      "state": 3,
+      "stability_days": 1.5,
+      "probability": 0.7995068598704307
+    },
+    {
+      "name": "count-cap-mixed",
+      "elapsed_seconds": 388800,
+      "history": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "state": 0,
+      "stability_days": 9.0,
+      "probability": 0.6761138851558518
+    }
+  ]
+}

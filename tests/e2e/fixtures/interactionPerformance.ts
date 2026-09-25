@@ -121,9 +121,11 @@ export async function measurePointerInteraction({
               return;
             }
 
+            const acknowledgementTime = acknowledgementAt;
+            const meaningfulTime = meaningfulAt;
             window.clearTimeout(deadline);
             stopped = true;
-            const measuredUntil = Math.max(acknowledgementAt, meaningfulAt);
+            const measuredUntil = Math.max(acknowledgementTime, meaningfulTime);
             // Long-task entries are delivered asynchronously. This extra frame is
             // outside the measured interval and merely lets the observer flush.
             requestAnimationFrame(() => {
@@ -139,8 +141,8 @@ export async function measurePointerInteraction({
                 );
                 const durations = relevantLongTasks.map((entry) => entry.duration);
                 state.result = {
-                  acknowledgementMs: acknowledgementAt - startedAt,
-                  meaningfulMs: meaningfulAt - startedAt,
+                  acknowledgementMs: acknowledgementTime - startedAt,
+                  meaningfulMs: meaningfulTime - startedAt,
                   longTasks: {
                     supported: longTasksSupported,
                     count: durations.length,

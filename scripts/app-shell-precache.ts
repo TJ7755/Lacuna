@@ -22,7 +22,16 @@ function collectStaticImports(chunks: readonly StaticChunk[], root: StaticChunk)
 export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[] {
   const entry = chunks.find((chunk) => chunk.isEntry);
   if (!entry) throw new Error('Could not find the application entry for shell precaching.');
-  return collectStaticImports(chunks, entry);
+  // This shell component loads before worker control, so runtime caching can miss it.
+  const announcements = chunks.find((chunk) =>
+    /^assets\/RouteAnnouncement-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+  );
+  return [
+    ...new Set([
+      ...collectStaticImports(chunks, entry),
+      ...(announcements ? collectStaticImports(chunks, announcements) : []),
+    ]),
+  ];
 }
 
 /** Keep the Cards route's shared import spine available after an offline reload. */
@@ -63,7 +72,7 @@ export function appShellPrecachePlugin(): Plugin {
         ...[...eagerFiles, ...cardsDependencies].map((url) => ({ url, revision: null })),
       ]);
       this.info(
-        `Application shell precache: ${eagerFiles.length} eager scripts and ${cardsDependencies.length} shared Cards dependencies.`,
+        `Application shell precache: ${eagerFiles.length} shell scripts and ${cardsDependencies.length} shared Cards dependencies.`,
       );
     },
   };

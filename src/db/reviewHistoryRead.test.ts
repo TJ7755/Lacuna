@@ -2,7 +2,10 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourseCard, createCourse } from './repository';
+import { addDays } from '../fsrs/heatmap';
+import { startOfDay } from '../utils/datetime';
 import {
+  dailyReviewCounts,
   hydrateCardsWithHistory,
   listAllReviewHistory,
   listReviewHistoryForCards,
@@ -34,6 +37,35 @@ describe('review-history read adapter', () => {
       db.courses.clear(),
       db.reviewHistory.clear(),
     ]);
+  });
+
+  it('counts repeat attempts within the local day by course and scheduling unit', async () => {
+    const course = await createCourse('Daily reviews');
+    const otherCourse = await createCourse('Other course');
+    const card = await createCourseCard(course.id, 'front_back', 'Q', 'A');
+    const otherCard = await createCourseCard(otherCourse.id, 'front_back', 'Q', 'A');
+    const today = Date.now();
+    const dayStart = startOfDay(today);
+    const tomorrow = addDays(dayStart, 1);
+    await db.reviewHistory.bulkAdd([
+      { ...review(dayStart - 1, 'yesterday'), id: 'yesterday', cardId: card.id,
+        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
+      { ...review(dayStart, 'first'), id: 'first', cardId: card.id,
+        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
+      { ...review(today, 'repeat'), id: 'repeat', cardId: card.id,
+        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
+      { ...review(tomorrow, 'tomorrow'), id: 'tomorrow', cardId: card.id,
+        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
+      { ...review(today, 'other'), id: 'other', cardId: otherCard.id,
+        courseId: otherCourse.id, schedulingUnitId: otherCard.schedulingUnitId },
+    ]);
+
+    expect(await dailyReviewCounts('course', today)).toEqual(
+      new Map([[course.id, 2], [otherCourse.id, 1]]),
+    );
+    expect(await dailyReviewCounts('scheduling-unit', today)).toEqual(
+      new Map([[card.schedulingUnitId, 2], [otherCard.schedulingUnitId, 1]]),
+    );
   });
 
   it('returns canonical rows first and retains legacy-only projection rows', async () => {

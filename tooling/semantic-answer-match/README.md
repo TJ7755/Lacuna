@@ -139,3 +139,6 @@ model artefact.
 ```sh
 uv run pytest
 ```
+
+CI runs this suite with Python 3.12, Bun and the committed `uv.lock`, including the real
+TypeScript baseline subprocess tests. Tests do not download model weights.

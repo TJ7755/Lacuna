@@ -2,8 +2,10 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
 import { consumeAiPairingPermit, handleAiMaintenanceRoute } from './aiMaintenance.js';
+import { CHANNEL_TTL_MS } from './channelMaintenance.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
+export { CHANNEL_TTL_MS } from './channelMaintenance.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -13,7 +15,6 @@ export const MAX_BODY_BYTES = 25 * 1024 * 1024;
  * 90-day tombstone window: a device that can no longer merge also cannot fetch
  * a blob that has sat untouched for that long.
  */
-export const CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 /** Unwritten-slot sentinel. Not a Blob ETag. */
 export const EMPTY_SLOT_ETAG = '"0"';

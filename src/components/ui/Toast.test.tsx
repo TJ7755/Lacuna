@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ToastProvider, useToast } from './Toast';
 import { renderHook } from '@testing-library/react';
+import { Profiler } from 'react';
 
 function TestComponent() {
   const { notify } = useToast();
@@ -97,6 +98,69 @@ describe('ToastProvider', () => {
       expect(screen.queryByText('First answer', { selector: 'span' })).not.toBeInTheDocument();
       expect(screen.getByText('Second answer', { selector: 'span' })).toBeInTheDocument();
     });
+  });
+
+  it('updates the countdown by transform without changing its width', async () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Notify' }));
+    const bar = screen.getByLabelText('Notifications').querySelector('.origin-left') as HTMLElement;
+    expect(bar.style.width).toBe('');
+    expect(bar.style.transform).toBe('scaleX(1)');
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+    expect(bar.style.width).toBe('');
+    expect(bar.style.transform).not.toBe('scaleX(1)');
+  });
+
+  it('does not commit a React render for each countdown frame', async () => {
+    const onRender = vi.fn();
+    render(
+      <Profiler id="toast" onRender={onRender}>
+        <ToastProvider>
+          <TestComponent />
+        </ToastProvider>
+      </Profiler>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Notify' }));
+    const commitsAfterOpening = onRender.mock.calls.length;
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+    expect(onRender).toHaveBeenCalledTimes(commitsAfterOpening);
+  });
+
+  it('pauses dismissal on hover and resumes with the remaining time', async () => {
+    const onDismiss = vi.fn();
+    function TimedToast() {
+      const { notify } = useToast();
+      return (
+        <button onClick={() => notify('Timed', 'neutral', { duration: 500, onDismiss })}>
+          Show timed toast
+        </button>
+      );
+    }
+    render(
+      <ToastProvider>
+        <TimedToast />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Show timed toast' }));
+    const toast = screen.getByText('Timed').closest('.relative') as HTMLElement;
+    fireEvent.mouseEnter(toast);
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    expect(screen.getByText('Timed')).toBeInTheDocument();
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    fireEvent.mouseLeave(toast);
+    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1), { timeout: 1000 });
+    await waitFor(() => expect(screen.queryByText('Timed')).not.toBeInTheDocument());
   });
 
   it('throws when useToast is called outside provider', () => {
