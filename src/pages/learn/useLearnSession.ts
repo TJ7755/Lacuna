@@ -74,6 +74,7 @@ import {
   makeSessionContext,
   selectNext,
   sessionComplete,
+  sessionCompletionProgress,
   sessionProgress,
   sessionServePool,
 } from '../../fsrs/session';
@@ -674,6 +675,7 @@ export function useLearnSession({
     (nextSummary: SessionSummary) => {
       if (!mountedRef.current || finalising.current) return;
       finalising.current = true;
+      if (nextSummary.reachedGoal) setSchedulerProgress(1);
       setCanUndo(false);
       lastAnswer.current = null;
       void (async () => {
@@ -1245,6 +1247,7 @@ export function useLearnSession({
       const ctx = makeSessionContext(
         sessionUnits,
         !plannedRevision && !isSimpleMode && filterParams.includes('due') ? 'due' : 'objective',
+        plannedRevision || isSimpleMode ? undefined : cards,
       );
       ctxRef.current = ctx;
       cardsRef.current = cards;
@@ -1263,7 +1266,7 @@ export function useLearnSession({
       const initialProgress = sessionProgress(cards, ctx);
       const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
       const hasServeableCards = serveableCards.length > 0;
-      setSchedulerProgress(initialProgress);
+      setSchedulerProgress(sessionCompletionProgress(cards, ctx));
       setSessionCardIds(cards.map((card) => card.id));
       sessionCardOutcomesRef.current = new Map();
       setSessionCardOutcomes(sessionCardOutcomesRef.current);
@@ -1647,7 +1650,7 @@ export function useLearnSession({
 
         const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
         cardsRef.current = nextCards;
-        setSchedulerProgress(sessionProgress(nextCards, ctx));
+        setSchedulerProgress(sessionCompletionProgress(nextCards, ctx));
         if (practiceSessionRef.current) {
           await persistPracticeMilestone(nextCards, false);
         }
@@ -1828,7 +1831,7 @@ export function useLearnSession({
       cardsRef.current = cardsRef.current.map((c) =>
         c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
       );
-      setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
+      setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx));
       cooldowns.current = snap.cooldowns;
       revisionCovered.current = snap.revisionCovered;
       revisionImproved.current = snap.revisionImproved;
@@ -1881,7 +1884,7 @@ export function useLearnSession({
       });
     }
     progressCacheRef.current.dirty = true;
-    setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
+    setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx));
     const hasRemainingCards = isSimpleMode
       ? simpleQueue.current.some((card) => !simpleMastered.current.has(card.id))
       : sessionServePool(cardsRef.current, ctx).length > 0;
@@ -2015,6 +2018,9 @@ export function useLearnSession({
     sessionCardOutcomes,
     setSessionCardOutcomes,
     schedulerProgress,
+    predictedRecall: !isSimpleMode && !plannedRevision && ctxRef.current
+      ? cachedSessionProgress(cardsRef.current, ctxRef.current)
+      : 0,
     simpleProgress,
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,

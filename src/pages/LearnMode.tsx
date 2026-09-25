@@ -168,6 +168,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setSessionCardIds,
     sessionCardOutcomes,
     schedulerProgress,
+    predictedRecall,
     simpleProgress,
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,
@@ -458,6 +459,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   singleDeck={singleDeck}
                   unitDisplayName={unitDisplayName}
                   sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
+                  predictedRecall={predictedRecall}
                   sessionCardIds={sessionCardIds}
                   sessionCardOutcomes={sessionCardOutcomes}
                   filterParams={filterParams}
