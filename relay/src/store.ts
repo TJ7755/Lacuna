@@ -11,6 +11,11 @@ export interface ListedObject {
   uploadedAt: number;
 }
 
+export interface ListedPage {
+  objects: ListedObject[];
+  cursor?: string;
+}
+
 export type PutOptions = { exclusive: true } | { ifMatch: string } | { overwrite: true };
 
 export type PutResult = { ok: true; etag: string } | { ok: false; reason: 'precondition' };
@@ -30,6 +35,7 @@ export interface BlobStore {
   put(key: string, body: Uint8Array, opts: PutOptions): Promise<PutResult>;
   del(keys: string[]): Promise<void>;
   list(prefix: string): Promise<ListedObject[]>;
+  listPage(prefix: string, cursor: string | undefined, limit: number): Promise<ListedPage>;
 }
 
 export function canonicalEtag(value: string): string {
@@ -79,6 +85,17 @@ export class MemoryStore implements BlobStore {
       }
     }
     return out;
+  }
+
+  async listPage(prefix: string, cursor: string | undefined, limit: number): Promise<ListedPage> {
+    const objects = (await this.list(prefix)).sort((a, b) => a.key.localeCompare(b.key));
+    const start = cursor ? objects.findIndex((object) => object.key > cursor) : 0;
+    const offset = start < 0 ? objects.length : start;
+    const page = objects.slice(offset, offset + limit);
+    return {
+      objects: page,
+      cursor: page.length === limit ? page.at(-1)?.key : undefined,
+    };
   }
 }
 
@@ -205,6 +222,20 @@ export function createVercelStore(client: BlobClient = { get, put, del, list }):
           cursor = page.hasMore ? page.cursor : undefined;
         } while (cursor);
         return out;
+      } catch (err) {
+        throw new Error('blob list failed', { cause: err });
+      }
+    },
+    async listPage(prefix, cursor, limit) {
+      try {
+        const page = await client.list({ prefix, cursor, limit });
+        return {
+          objects: page.blobs.map((blob) => ({
+            key: blob.pathname,
+            uploadedAt: blob.uploadedAt.getTime(),
+          })),
+          cursor: page.hasMore ? page.cursor : undefined,
+        };
       } catch (err) {
         throw new Error('blob list failed', { cause: err });
       }

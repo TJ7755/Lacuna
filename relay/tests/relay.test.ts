@@ -532,6 +532,9 @@ describe('relay', () => {
       async list() {
         return [];
       },
+      async listPage() {
+        return { objects: [] };
+      },
     });
 
     const res = await handle(
@@ -785,6 +788,7 @@ function flakyStore(inner: MemoryStore): {
       async list(prefix) {
         return inner.list(prefix);
       },
+      listPage: (prefix, cursor, limit) => inner.listPage(prefix, cursor, limit),
     },
     puts,
     get lost() {
@@ -828,6 +832,7 @@ function emptyFirstStatePut(
       },
       del: (keys) => inner.del(keys),
       list: (prefix) => inner.list(prefix),
+      listPage: (prefix, cursor, limit) => inner.listPage(prefix, cursor, limit),
     },
     puts,
   };
