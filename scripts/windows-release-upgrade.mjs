@@ -54,7 +54,7 @@ async function open(expectedVersion) {
     }, feed);
   }
   const page = await application.firstWindow();
-  const start = page.getByRole('link', { name: 'Start revising', exact: true });
+  const start = page.getByRole('region', { name: 'Revision around your exam', exact: true }).getByRole('link', { name: 'Start revising', exact: true });
   const courses = page.getByRole('navigation', { name: 'Courses' });
   await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
   if (await start.isVisible()) await start.click();
@@ -92,6 +92,9 @@ try {
   await page.getByRole('button', { name: /Show answer/i }).last().click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect.poll(async () => (await snapshot(page)).reviewHistory?.length ?? 0).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Leave this session?' }).getByRole('button', { name: 'Leave', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Study', exact: true }).last()).toBeVisible();
   const before = await snapshot(page);
   assert(before.courses.length > 0);
   report.stages.push('baseline installed and study database populated');
