@@ -79,6 +79,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test:coverage
       - run: bun run test:coverage:recovery
+      - run: bun run test:coverage:risk
 
   test:
     needs: [test-unit, test-coverage, handwriting]

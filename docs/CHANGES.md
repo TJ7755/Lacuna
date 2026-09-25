@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added CI per-file coverage gates for schema migration snapshots, card and ordering
+  repositories, and Learn-session persistence and orchestration. Thresholds use measured
+  [baselines](maintenance/coverage.md) so a strong file cannot hide a weak one behind an
+  aggregate percentage.
+
 - Removed repeated lesson headings from the notes-first study screen, leaving the lesson
   name in its header and the notes section heading above the content.
 - Moved lesson deletion confirmation below its row so its consequences and action labels
