@@ -192,6 +192,7 @@ const ShareCardSchema = z
     p: ShareItemPayloadSchema.optional(),
     // Stable Concept identity within a v3 payload. Optional only for v2 compatibility.
     co: z.string().optional(),
+    am: z.enum(['reveal', 'type']).optional(),
   })
   .superRefine((card, context) => {
     if (card.p !== undefined && card.k !== 0) {
@@ -228,6 +229,7 @@ const ShareNoteSchema = z.object({
 
 /** A single lesson in a v2 (course) share payload. */
 const ShareLessonSchema = z.object({
+  am: z.enum(['reveal', 'type']).optional(),
   n: z.string().min(1),
   d: z.string().optional(), // description
   x: z.union([z.literal(0), z.literal(1)]).optional(), // isExtension
@@ -445,6 +447,7 @@ const SharePayloadSchema = z.discriminatedUnion('v', [
 
 /** A single card in a share payload. `k` is the kind. */
 interface ShareCard {
+  am?: 'reveal' | 'type';
   id?: string;
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
@@ -494,6 +497,7 @@ interface ShareNote {
 
 /** A single lesson in a v2 share payload. */
 export interface ShareLesson {
+  am?: 'reveal' | 'type';
   n: string; // name
   d?: string; // description
   x?: 0 | 1; // isExtension
@@ -937,7 +941,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
     const occRef = c.occlusionRegionId ? { oc: c.occlusionRegionId } : {};
     const payload = c.payload ? { p: c.payload } : {};
     const identity = preserveIds ? { id: c.id } : {};
-    const concept = { co: c.conceptId };
+    const metadata = { co: c.conceptId, ...(c.answerMode ? { am: c.answerMode } : {}) };
 
     if (c.type === 'cloze') {
       out.push({
@@ -949,7 +953,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         ...occRef,
         ...payload,
         ...identity,
-        ...concept,
+        ...metadata,
       });
       consumed.add(c.id);
       continue;
@@ -968,7 +972,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         ...occRef,
         ...payload,
         ...identity,
-        ...concept,
+        ...metadata,
       });
       consumed.add(c.id);
       continue;
@@ -976,9 +980,11 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
 
     const partner =
       !preserveIds &&
-      (byContent.get(key(c.back, c.front)) ?? []).find((p) => p.id !== c.id && !consumed.has(p.id));
+      (byContent.get(key(c.back, c.front)) ?? []).find(
+        (p) => p.id !== c.id && !consumed.has(p.id) && p.answerMode === c.answerMode,
+      );
     if (partner) {
-      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...concept });
+      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...metadata });
       consumed.add(c.id);
       consumed.add(partner.id);
     } else {
@@ -989,7 +995,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         ...tags,
         ...mediaFlag,
         ...identity,
-        ...concept,
+        ...metadata,
       });
       consumed.add(c.id);
     }
@@ -1002,22 +1008,22 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
 // ---------------------------------------------------------------------------
 
 function unpackCard(sc: ShareCard): ParsedCard[] {
-  const tags = sc.g && sc.g.length ? { tags: sc.g } : {};
+  const attributes = { ...(sc.g?.length ? { tags: sc.g } : {}), ...(sc.am ? { answerMode: sc.am } : {}) };
   if (sc.p !== undefined) {
     assertValidCardPayload(sc.k === 1 ? 'cloze' : 'front_back', sc.p);
   }
   const payload = sc.p !== undefined ? { payload: sc.p as ItemPayload } : {};
-  if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...tags, ...payload }];
+  if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...attributes, ...payload }];
   if (sc.k === 2) {
     const back = sc.b ?? '';
     return [
-      { type: 'front_back', front: sc.f, back, ...tags, ...payload },
-      { type: 'front_back', front: back, back: sc.f, ...tags, ...payload },
+      { type: 'front_back', front: sc.f, back, ...attributes, ...payload },
+      { type: 'front_back', front: back, back: sc.f, ...attributes, ...payload },
     ];
   }
   // k === 3 (typing) and k === 0 (front/back) both unpack to a plain front_back
   // card — typing is a retired card type, folded here for older share codes.
-  return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags, ...payload }];
+  return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...attributes, ...payload }];
 }
 
 // ---------------------------------------------------------------------------
@@ -1094,6 +1100,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
       ...(lesson.sessionFilter && lesson.sessionFilter !== 'new'
         ? { sf: lesson.sessionFilter }
         : {}),
+      ...(lesson.answerMode ? { am: lesson.answerMode } : {}),
       notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution),
       cards: packCards(cardsByLesson.get(lesson.id) ?? [], true),
       ...(distribution ? { i: lesson.id } : {}),
@@ -1428,6 +1435,7 @@ async function importCourseSharePayload(
         ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
         ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
         ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
+        ...(shareLesson.am ? { answerMode: shareLesson.am } : {}),
       }));
       if (importedLessons.length > 0) await db.lessons.bulkAdd(importedLessons);
       const lessonIds = importedLessons.map((lesson) => lesson.id);

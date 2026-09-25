@@ -13,6 +13,8 @@ import {
   useOcclusions,
   useSequences,
 } from '../state/useCourseData';
+import { isLessonAuthoringMode } from '../course/lessonViewMode';
+import { CardAnswerModeField } from '../components/cards/AnswerModeControl';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
 import { TagInput } from '../components/ui/TagInput';
@@ -46,7 +48,7 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
-import type { Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
+import type { AnswerMode, Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 import { isAudioCardFront } from '../media/audio';
 
 type EditorCardType = CardType | 'numeric' | 'working' | 'audio';
@@ -94,6 +96,7 @@ export function CardEditor() {
   const occlusions = useOcclusions(courseId);
 
   const [type, setType] = useState<EditorCardType>('front_back');
+  const [answerMode, setAnswerMode] = useState<AnswerMode>();
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
@@ -124,6 +127,7 @@ export function CardEditor() {
       back,
       tags,
       alsoReverse,
+      answerMode,
       payload:
         type === 'numeric'
           ? { v: 1, kind: 'numeric', answer: numericAnswer }
@@ -156,6 +160,7 @@ export function CardEditor() {
     window.clearTimeout(draftTimer.current);
     draftKeyRef.current = currentDraftKey;
     setLoaded(false);
+    setAnswerMode(undefined);
     setDraftDirty(false);
     setDraftPrompt(false);
     // Deliberately keyed on the draft key alone; form state is read through persistDraftRef.
@@ -247,6 +252,7 @@ export function CardEditor() {
                 ? 'audio'
                 : card.type,
         );
+        setAnswerMode(card.answerMode);
         setFront(card.front);
         setBack(card.back);
         if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
@@ -268,6 +274,7 @@ export function CardEditor() {
         ? draft.itemKind
         : draft.type,
     );
+    setAnswerMode(draft.answerMode);
     setFront(draft.front);
     setBack(draft.back);
     setTags(draft.tags);
@@ -298,6 +305,7 @@ export function CardEditor() {
               ? 'audio'
               : card.type,
       );
+      setAnswerMode(card.answerMode);
       setFront(card.front);
       setBack(card.back);
       setTags(card.tags ?? []);
@@ -325,6 +333,7 @@ export function CardEditor() {
     back,
     tags,
     alsoReverse,
+    answerMode,
     numericAnswer,
     workingCompilation,
     workingFixtures,
@@ -555,6 +564,9 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
+    const storedAnswerMode = course && !course.archived && isLessonAuthoringMode(course)
+      ? (isStructured ? undefined : answerMode)
+      : (editing ? card?.answerMode : undefined);
     const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
     const backValue = isCloze || isStructured ? '' : back;
     const payload: ItemPayload | undefined = isNumeric
@@ -570,7 +582,7 @@ export function CardEditor() {
           }
         : undefined;
     if (editing && card) {
-      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload });
+      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload, answerMode: storedAnswerMode });
       // If this is a basic_reversed card, update its reverse partner too.
       if (card.type === 'basic_reversed' && card.reverseCardId) {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
@@ -589,18 +601,18 @@ export function CardEditor() {
     const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
-        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
+        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
       } else if (reversed) {
-        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags);
+        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
       } else {
-        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload);
+        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload, storedAnswerMode);
       }
     } else if (isBasicReversed) {
-      await createCourseBasicReversedPair(courseId!, front, backValue, tags);
+      await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
     } else if (reversed) {
-      await createCourseCardWithReverse(courseId!, front, backValue, tags);
+      await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
     } else {
-      await createCourseCard(courseId!, storedType, front, backValue, tags, payload);
+      await createCourseCard(courseId!, storedType, front, backValue, tags, payload, storedAnswerMode);
     }
     clearDraft(draftKeyRef.current);
     setDraftDirty(false);
@@ -721,6 +733,15 @@ export function CardEditor() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {!isStructured && (
+            <CardAnswerModeField
+              courseId={courseId}
+              lessonId={lessonId ?? card?.primaryLessonId ?? undefined}
+              value={answerMode}
+              onChange={(value) => modifyDraftField(setAnswerMode, value)}
+            />
+          )}
 
           {/* Card type selector */}
           <div>

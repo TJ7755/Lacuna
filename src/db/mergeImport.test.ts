@@ -92,6 +92,23 @@ describe('mergeImport: first import of a lineage', () => {
     await db.open();
   });
 
+  it('carries answer modes through first import and later author updates', async () => {
+    const sharedLesson = lessonOne({ am: 'type' });
+    sharedLesson.cards[0].am = 'reveal';
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [sharedLesson] }));
+    expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('type');
+    expect((await db.cards.get('card-1'))?.answerMode).toBe('reveal');
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
+    const updatedLesson = lessonOne({ am: 'reveal' });
+    updatedLesson.cards[0].am = 'type';
+    await mergeLineageUpdate(course.id, coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }));
+    expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('reveal');
+    expect((await db.cards.get('card-1'))?.answerMode).toBe('type');
+    await mergeLineageUpdate(course.id, coursePayload({ rv: 3, at: 3000, lessons: [lessonOne()] }));
+    expect((await db.lessons.get('lesson-1'))?.answerMode).toBeUndefined();
+    expect((await db.cards.get('card-1'))?.answerMode).toBeUndefined();
+  });
+
   it('keeps a first lineage import empty in both review-history stores', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     const card = (await db.cards.get('card-1'))!;

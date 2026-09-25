@@ -4,6 +4,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CardsPage } from './CardsPage';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 
+vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
+
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
@@ -19,6 +21,7 @@ let observedContexts: {
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLessons: () => mockLessons,
+  useLesson: (id: string) => mockLessons?.find((lesson) => lesson.id === id),
   useCourseCardProjections: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,

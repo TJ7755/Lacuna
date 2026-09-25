@@ -156,6 +156,7 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
     ed: lesson.ed,
     tz: lesson.tz,
     sf: lesson.sf,
+    am: lesson.am,
     notes: lesson.notes.map((note): ShareNoteInput => {
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
@@ -171,6 +172,7 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
           b: card.b,
           g: card.g,
           p: card.p as ItemPayload | undefined,
+          am: card.am,
         };
       }),
   };
@@ -186,6 +188,7 @@ function toExistingLesson(lesson: Lesson): ExistingLesson {
     examDate: lesson.examDate,
     timeZone: lesson.timeZone,
     sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
+    answerMode: lesson.answerMode,
     orderIndex: lesson.orderIndex,
   };
 }
@@ -208,6 +211,7 @@ function toExistingCard(card: Card): ExistingCard {
     back: card.back,
     tags: card.tags,
     payload: card.payload,
+    answerMode: card.answerMode,
   };
 }
 
@@ -227,6 +231,7 @@ function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
     back: card.back,
     tags: card.tags,
     payload: card.payload,
+    answerMode: card.answerMode,
   };
 }
 
@@ -296,6 +301,7 @@ function lessonSnapshotsEqual(a: LineageLessonSnapshot, b: LineageLessonSnapshot
     a.examDate === b.examDate &&
     a.timeZone === b.timeZone &&
     a.sessionFilter === b.sessionFilter &&
+    a.answerMode === b.answerMode &&
     a.orderIndex === b.orderIndex
   );
 }
@@ -316,6 +322,7 @@ function cardSnapshotsEqual(a: LineageCardSnapshot, b: LineageCardSnapshot): boo
     a.front === b.front &&
     a.back === b.back &&
     tagsEqual(a.tags, b.tags) &&
+    a.answerMode === b.answerMode &&
     jsonValuesEqual(a.payload, b.payload)
   );
 }
@@ -733,6 +740,7 @@ async function applyCreates(
     ...(typeof l.examDate === 'number' ? { examDate: l.examDate } : {}),
     ...(l.timeZone ? { timeZone: l.timeZone } : {}),
     ...(l.sessionFilter ? { sessionFilter: l.sessionFilter } : {}),
+    answerMode: l.answerMode,
     orderIndex: l.orderIndex,
     createdAt,
     updatedAt: createdAt,
@@ -791,6 +799,7 @@ async function applyCreates(
       updatedAt: createdAt,
       tags: c.tags ?? [],
       payload: c.payload,
+      answerMode: c.answerMode,
       suspended: false,
       buriedUntil: null,
     });
@@ -864,6 +873,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
         ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
         ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
+        answerMode: shareLesson.am,
       };
     });
     if (newLessons.length > 0) await db.lessons.bulkAdd(newLessons);
@@ -938,6 +948,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
           history: [],
           tags: shareCard.g ?? [],
           payload: shareCard.p as ItemPayload | undefined,
+          answerMode: shareCard.am,
           suspended: false,
           buriedUntil: null,
         };
@@ -1409,6 +1420,7 @@ async function takeIncomingConflict(
       examDate: inc.ed,
       timeZone: inc.tz,
       sessionFilter: inc.sf,
+      answerMode: inc.am,
     });
   } else if (kind === 'note') {
     const inc = incoming as ShareNoteInput;
@@ -1421,6 +1433,7 @@ async function takeIncomingConflict(
       back: inc.k === 1 ? '' : (inc.b ?? ''),
       tags: inc.g ?? [],
       payload: inc.p,
+      answerMode: inc.am,
     });
   }
   await refreshSnapshot(kind, entityId, mapping);

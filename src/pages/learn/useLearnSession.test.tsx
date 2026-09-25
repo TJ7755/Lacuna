@@ -48,7 +48,6 @@ function sessionParams(overrides: Partial<UseLearnSessionParams> = {}): UseLearn
     navigate: vi.fn(),
     notify: vi.fn(),
     distraction,
-    typingSetting: 'reveal',
     startInFocusMode: false,
     ...overrides,
   };
@@ -93,6 +92,43 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
+  it.each(['lesson', 'course'] as const)('uses authored typing in a %s session', async (scope) => {
+    const course = await createCourse('Typing', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'type' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
+    const params = sessionParams({
+      ...(scope === 'lesson' ? { lessonId: lesson.id } : { courseId: course.id }),
+      isSimpleMode: true, standaloneSimple: true, mode: 'simple',
+    });
+    const session = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+    expect(session.result.current.isTypingCard).toBe(true);
+    session.unmount();
+  });
+
+  it('uses a card typing override even when its lesson defaults to reveal', async () => {
+    const course = await createCourse('Typing', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'reveal' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat', [], undefined, 'type');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+    expect(session.result.current.isTypingCard).toBe(true);
+    session.unmount();
+  });
+
+  it('lets an explicit reveal override a typing lesson', async () => {
+    const course = await createCourse('Typing', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'type' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
+    await db.cards.update(card.id, { answerMode: 'reveal' });
+    const params = sessionParams({ lessonId: lesson.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+    expect(session.result.current.isTypingCard).toBe(false);
+    session.unmount();
+  });
+
   it.each([
     ['maxReviewsPerDay', 'limitReached'],
     ['dailyReviewGoal', 'reachedGoal'],
@@ -283,7 +319,6 @@ describe('useLearnSession answer boundary', () => {
       navigate: vi.fn(),
       notify: vi.fn(),
       distraction,
-      typingSetting: 'reveal' as const,
       startInFocusMode: false,
     };
     const { result } = renderHook(() => useLearnSession(params));
@@ -320,7 +355,6 @@ describe('useLearnSession answer boundary', () => {
       navigate: vi.fn(),
       notify: vi.fn(),
       distraction,
-      typingSetting: 'reveal' as const,
       startInFocusMode: false,
     };
     const { result } = renderHook(() => useLearnSession(params));
@@ -376,7 +410,6 @@ describe('useLearnSession answer boundary', () => {
       navigate: vi.fn(),
       notify: vi.fn(),
       distraction,
-      typingSetting: 'reveal' as const,
       startInFocusMode: false,
     };
     const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(0);
@@ -543,7 +576,6 @@ describe('useLearnSession answer boundary', () => {
       navigate: vi.fn(),
       notify: vi.fn(),
       distraction,
-      typingSetting: 'reveal' as const,
       startInFocusMode: false,
     };
     const { result } = renderHook(() => useLearnSession(params));

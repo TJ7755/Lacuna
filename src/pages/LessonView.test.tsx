@@ -42,6 +42,7 @@ vi.mock('dexie-react-hooks', () => ({
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
+  useLesson: () => mockLesson,
   useLessons: () => mockLessons,
   useCourseAssessments: () => mockExamDates,
   useNotes: () => mockNotes,
