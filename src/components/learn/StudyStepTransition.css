@@ -1,0 +1,223 @@
+.study-transition {
+  min-height: 100svh;
+  padding: 40px 24px;
+  background: hsl(var(--paper));
+}
+.study-transition-main {
+  --path-gutter: 74px;
+  max-width: 720px;
+  min-height: 70svh;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.study-transition-timer {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 24px;
+}
+.study-transition-completed,
+.study-transition-destination.has-next {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 26px;
+  position: relative;
+}
+.study-transition-completed.has-next {
+  padding-bottom: 54px;
+}
+.study-transition-completed.has-next::after {
+  content: '';
+  position: absolute;
+  left: 23px;
+  top: 48px;
+  bottom: 8px;
+  width: 1px;
+  background: hsl(var(--line));
+  transform-origin: top;
+  animation: study-path-draw calc(420ms * var(--step-motion)) calc(420ms * var(--step-motion)) both;
+}
+.study-transition-tick,
+.study-transition-node {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+.study-transition-tick {
+  color: hsl(var(--positive));
+  background: hsl(var(--positive) / 0.12);
+  animation: study-node-arrive calc(380ms * var(--step-motion)) calc(300ms * var(--step-motion))
+    both;
+}
+.study-transition-title {
+  min-width: 0;
+  align-self: center;
+}
+.study-transition-title h1 {
+  margin: 0;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 450;
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+.has-next .study-transition-title h1 {
+  max-width: calc(100% / 1.3);
+  color: hsl(var(--ink-soft));
+  transform-origin: left center;
+  animation: study-topic-settle calc(700ms * var(--step-motion)) calc(180ms * var(--step-motion))
+    cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.study-transition-details:empty {
+  display: none;
+}
+.study-transition-details {
+  margin: 0 0 24px var(--path-gutter);
+}
+.study-transition-destination:not(.has-next) {
+  margin: 24px 0 0 var(--path-gutter);
+}
+.study-transition-destination h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 450;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+.study-transition-destination.has-next h2 {
+  font-size: clamp(48px, 8vw, 96px);
+  letter-spacing: -0.065em;
+  animation: study-content-arrive calc(600ms * var(--step-motion)) calc(720ms * var(--step-motion))
+    cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.study-transition-node {
+  margin-top: 8px;
+  color: hsl(var(--accent-fg));
+  background: hsl(var(--accent));
+  animation: study-node-arrive calc(400ms * var(--step-motion)) calc(700ms * var(--step-motion))
+    both;
+}
+.study-transition-actions {
+  margin: 32px 0 0 var(--path-gutter);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  animation: study-content-arrive calc(420ms * var(--step-motion)) calc(880ms * var(--step-motion))
+    both;
+}
+.study-transition-actions button {
+  /* Keep the shared Button hover scale from moving labels during the arrow reveal. */
+  transform: none !important;
+  min-height: 52px;
+  padding: 12px;
+  font-size: 14px;
+}
+.study-transition-actions .study-transition-continue {
+  min-width: 140px;
+  justify-content: space-between;
+  gap: 16px;
+}
+/* Reserve the landing CTA's arrow space so neighbouring actions never move on hover. */
+.study-transition-arrow {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  flex: 0 0 30px;
+}
+.study-transition-arrow svg {
+  opacity: 0;
+  transform: translateX(-5px);
+  transition:
+    opacity calc(200ms * var(--step-motion)) ease,
+    transform calc(300ms * var(--step-motion)) ease;
+}
+.study-transition-continue:hover .study-transition-arrow svg,
+.study-transition-continue:focus-visible .study-transition-arrow svg {
+  opacity: 1;
+  transform: translateX(0);
+}
+@keyframes study-topic-settle {
+  from {
+    transform: translateY(60px) scale(1.3);
+    color: hsl(var(--ink));
+  }
+  to {
+    transform: translateY(0) scale(1);
+    color: hsl(var(--ink-soft));
+  }
+}
+@keyframes study-path-draw {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes study-node-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes study-content-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.study-transition[data-motion='off'] *,
+.study-transition[data-motion='off'] *::after {
+  animation: none;
+}
+.study-transition[data-motion='off'] .study-transition-arrow svg {
+  visibility: hidden;
+  transition: none;
+}
+@media (max-width: 540px) {
+  .study-transition-main {
+    --path-gutter: 64px;
+  }
+  .study-transition-completed,
+  .study-transition-destination.has-next {
+    gap: 16px;
+  }
+  .study-transition-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .study-transition-actions button {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .study-transition-actions .study-transition-continue {
+    justify-content: space-between;
+  }
+  .has-next .study-transition-title h1 {
+    max-width: 100%;
+    animation-name: study-content-arrive;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .study-transition *,
+  .study-transition *::after {
+    animation: none;
+  }
+  .study-transition-arrow svg {
+    visibility: hidden;
+    transition: none;
+  }
+}
