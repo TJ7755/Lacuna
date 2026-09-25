@@ -18,7 +18,8 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   const [connectionBusy, setConnectionBusy] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const connection = snapshot.connection;
-  const local = isElectronRuntime();
+  const hosted = session.provider === 'hosted';
+  const local = isElectronRuntime() && !hosted;
   const disconnected = connection.status === 'disconnected' || connection.status === 'pairing';
   const pendingApproval = snapshot.approval?.status === 'pending';
   const stoppableRun =
@@ -32,6 +33,8 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         : 'Not connected'
       : connection.status === 'pairing'
         ? 'Waiting for AI client'
+        : connection.status === 'hosted'
+          ? 'Built-in AI connected'
         : connection.status === 'quiet'
           ? 'Connection quiet'
           : connection.client.name;
@@ -78,12 +81,12 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
               {!disconnected && (
                 <button
                   type="button"
-                  aria-label="Disconnect AI client"
+                  aria-label={hosted ? 'Sign out of built-in AI' : 'Disconnect AI client'}
                   disabled={connectionBusy}
                   onClick={resetConnection}
                   className="min-h-6 shrink-0 rounded px-1 py-0.5 text-xs font-medium text-ink-faint underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-40"
                 >
-                  {connectionBusy ? 'Disconnecting' : 'Disconnect'}
+                  {connectionBusy ? 'Disconnecting' : hosted ? 'Sign out' : 'Disconnect'}
                 </button>
               )}
             </div>
@@ -143,6 +146,19 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
             (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
           }
           local={local}
+          hosted={hosted}
+          onConnectAccess={(credential) => {
+            if (!session.connectHosted) return;
+            setConnectionBusy(true);
+            setConnectionError(null);
+            void session.connectHosted(credential).then((result) => {
+              setConnectionBusy(false);
+              if (!result.ok) setConnectionError(result.error.message);
+            }).catch(() => {
+              setConnectionBusy(false);
+              setConnectionError('Built-in AI is unavailable. Try again later.');
+            });
+          }}
           compact={!local && connection.status === 'disconnected' && snapshot.items.length > 0}
           onStartPairing={() => {
             setConnectionBusy(true);

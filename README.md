@@ -6,8 +6,9 @@ Lacuna is a local-first revision app built around FSRS-6. Organise material into
 lessons and notes, then practise recall Cards towards an exam date. A separate Questions
 mode supports automatically marked application problems with independent evidence and scheduling.
 
-Study data lives in IndexedDB without an account. Optional device sync and web AI use encrypted
-relay payloads; desktop AI connects through a local companion. Export a full JSON backup from
+Study data lives in IndexedDB without an account. Optional device sync and external web AI use
+encrypted relay payloads; external desktop AI connects through a local companion. Built-in AI sends
+selected conversation and tool content to a hosted model. Export a full JSON backup from
 **Settings → Full backup & recovery** before moving devices or replacing data.
 
 ## Features
@@ -52,9 +53,11 @@ The web app's `#/download` page selects packages for the current platform. Windo
 AppImage update through the beta channel; Windows portable, Linux DEB and unsigned macOS update
 manually. See [desktop setup](docs/desktop.md) for packaging, MCP access and optional AI chat.
 
-AI is disabled by default. Enable it in Settings and copy the complete generated setup into your
-MCP client. Keep Lacuna and the model task running; saving a server configuration alone does not
-mean its tools are active. Writes and destructive actions require the relevant in-app approval.
+AI is disabled by default. Settings offers built-in AI with an issued beta access code, or the
+existing external MCP client connection. For the latter, copy the complete generated setup into
+your MCP client and keep its model task running. Writes and destructive actions require the
+relevant in-app approval in either mode. Built-in AI availability requires server configuration;
+see [desktop and AI setup](docs/desktop.md).
 
 ## Documentation
 

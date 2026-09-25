@@ -15,6 +15,7 @@ module.exports = {
     project: [
       './tsconfig.app.json',
       './tsconfig.node.json',
+      './tsconfig.server.json',
       './tsconfig.release-tooling.json',
       './scripts/electron-performance/tsconfig.json',
       './electron/tsconfig.json',

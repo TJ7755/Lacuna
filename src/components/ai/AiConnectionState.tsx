@@ -18,6 +18,8 @@ export interface AiConnectionStateProps {
   compact?: boolean;
   onStartPairing: () => void;
   onCancel: () => void;
+  hosted?: boolean;
+  onConnectAccess?: (credential: string) => void;
 }
 
 function AiClientSetupGuide() {
@@ -48,6 +50,8 @@ export function AiConnectionState({
   compact = false,
   onStartPairing,
   onCancel,
+  hosted = false,
+  onConnectAccess,
 }: AiConnectionStateProps) {
   const connectRef = useRef<HTMLButtonElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
@@ -56,6 +60,7 @@ export function AiConnectionState({
   const [localSetupError, setLocalSetupError] = useState<string | null>(null);
   const [rendererStatus, setRendererStatus] = useState<AiRendererStatus | null>(null);
   const [rendererRestarting, setRendererRestarting] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
   const pairingCode = pairing?.code ?? null;
   const relayInstruction = pairingCode
     ? `Connect to Lacuna with code ${pairingCode}. First verify this active AI client exposes lacuna.wait_for_message. If it does not, use the client's normal MCP registration flow, read ${TERMINAL_SETUP_URL} for client-specific reload steps, and continue only after this task exposes the tool; do not run Lacuna or its companion directly for diagnostics. Then keep calling lacuna.wait_for_message. For every claimed message, this same live task must follow the returned versioned instructions, perform the permitted work and send a fresh authored response with lacuna.reply; never substitute canned transport-test text. Continue until I ask you to disconnect.`
@@ -63,7 +68,7 @@ export function AiConnectionState({
   const instruction = local ? (localInstruction ?? '') : relayInstruction;
 
   useEffect(() => {
-    if (!local) return;
+    if (!local || hosted) return;
 
     let cancelled = false;
     let statusTimer: number | undefined;
@@ -108,13 +113,41 @@ export function AiConnectionState({
       cancelled = true;
       if (statusTimer !== undefined) window.clearTimeout(statusTimer);
     };
-  }, [local]);
+  }, [local, hosted]);
 
   useEffect(() => {
     setCopyStatus('idle');
+    if (hosted) return;
     if (pairingCode || (local && localInstruction)) copyRef.current?.focus();
     else connectRef.current?.focus();
-  }, [local, localInstruction, pairingCode]);
+  }, [hosted, local, localInstruction, pairingCode]);
+
+  if (hosted) {
+    return (
+      <section aria-labelledby="ai-connect-title" className="flex flex-1 flex-col overflow-y-auto p-5">
+        <div className="my-auto">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">Connection</p>
+          <h2 id="ai-connect-title" className="mt-2 font-display text-xl text-ink">Built-in AI</h2>
+          <p className="mt-2 text-sm leading-6 text-ink-soft">
+            Enter your personal access code to use AI in Lacuna.
+          </p>
+          <form className="mt-5 space-y-3" onSubmit={(event) => {
+            event.preventDefault();
+            if (accessCode.trim()) onConnectAccess?.(accessCode.trim());
+          }}>
+            <label htmlFor="ai-access-code" className="block text-xs font-medium text-ink-soft">Access code</label>
+            <input id="ai-access-code" type="password" autoComplete="off" value={accessCode}
+              onChange={(event) => setAccessCode(event.target.value)}
+              className="min-h-11 w-full rounded-lg border border-line-strong bg-paper px-3 text-sm text-ink outline-none focus:border-accent" />
+            <Button type="submit" disabled={busy || accessCode.trim().length === 0}>
+              {busy ? 'Connecting' : 'Connect'}
+            </Button>
+          </form>
+          {error && <p role="alert" className="mt-3 text-sm text-negative">{error}</p>}
+        </div>
+      </section>
+    );
+  }
 
   async function copyInstruction() {
     if (!instruction) return;

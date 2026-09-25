@@ -69,6 +69,9 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
                 AI
               </p>
               <MarkdownView source={item.content} className="mt-1 break-words text-sm leading-6" />
+              {item.progress === 'interrupted' && (
+                <p className="mt-2 text-xs text-warning">Response interrupted</p>
+              )}
               {item.sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {item.sources.map((source) => {

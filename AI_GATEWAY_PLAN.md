@@ -1,7 +1,35 @@
 # Built-in AI Gateway sidebar
 
-Draft implementation plan — 22 September 2026. Planning only; this document does not
-authorise deployment, spending or implementation beyond the separately agreed scope.
+Draft implementation plan — 22 September 2026. The prompter authorised full implementation
+and a filed PR on 25 September 2026, with zero paid inference spend and a live key to follow.
+
+Implementation started on `codex/ai-gateway-spike` on 24 September 2026. Phase 1 now has a
+versioned, bounded request/event contract and a loopback-only AI SDK 7 streaming harness.
+The harness requires a Gateway key, a model ID and a separate local bearer token. Its tests
+use an SDK mock model. Synthetic live text and tool-call requests succeeded through
+OpenRouter's free route. The deployed preview also answered a course-card count using live
+local read tools and committed one card after the in-app approval. A later write reused that
+course's granted write scope. A fresh session rejected a write without mutation, and Stop
+interrupted a live response.
+The branch now has `/api/ai/` functions, an opt-in sidebar path, Electron connectivity and
+server-side admission controls. Browser fixtures cover the flow; a capped, zero-credit
+OpenRouter test key is configured only on the preview branch.
+
+## Live preview evidence — 25 September 2026
+
+- On the Vercel preview, an OpenRouter free model used local read tools and answered that
+  the onboarding course had 30 cards. The local tool ledger confirmed that count.
+- A live `lacuna.create_card` call paused for course write approval. Approving it produced
+  exactly one card and one receipt. A subsequent write reused the course grant as designed.
+- In a fresh hosted session, a plain request to add a card paused for approval. Rejecting it
+  left the course count unchanged and produced no write receipt. Nemotron 3 Ultra's five
+  inference steps took about 61 seconds in total; OpenRouter logged $0 cost for every step.
+- Stop marked the user message stopped and the partial assistant response interrupted;
+  no write receipt appeared. The vague request “Create a deck on GCSE courses” prompted
+  a subject clarification instead of inventing a syllabus or creating a course.
+- The disposable cards were deleted and the onboarding course returned to 30 cards. The
+  packaged application has fixture coverage but has not been checked on the target managed
+  network. The hosted model has no web search tool, so current syllabus facts need a source.
 
 ## Outcome
 
@@ -94,9 +122,11 @@ Prefer inexpensive or free options when they pass. Require streaming and reliabl
 and check provider data handling, availability and pricing at selection time. A reasoning model
 can be used, but constrain its output/reasoning budget. Do not display raw reasoning traces.
 
-Free promotions are not a durable service budget. Recheck the live Gateway catalogue before
-release; do not assume an OpenRouter `:free` model exists on Gateway. OpenRouter integration
-is outside this first implementation. Restrict automatic fallback to the approved model list
+Free promotions are not a durable service budget. The Gateway's monthly credit allowance is
+separate from models whose input and output prices are genuinely zero. Recheck the live Gateway
+catalogue before each route selection; do not assume an OpenRouter `:free` model exists on
+Gateway. OpenRouter's own `openrouter/free` route is an optional fallback. Restrict automatic
+fallback to the approved model list
 and cost ceiling, and only retry before visible output or reconcile a failed step explicitly.
 Never replay an entire tool-bearing turn blindly after a provider failure.
 
@@ -224,13 +254,17 @@ Update `docs/SPEC.md` and the relevant spec pages, `docs/desktop.md`, README and
 `docs/CHANGES.md` when implementation lands. Add durable operational lessons to `MEMORIES.md`
 only when actually learned. This draft itself needs no application changelog entry.
 
-## Decisions to resolve before deployment
+## Decisions and deployment checks
 
 - Confirm limited-beta credential enrolment, issuance/revocation and the eventual public
   access policy; no full account system is assumed by this plan.
-- Set the concrete daily/monthly spend ceilings and per-learner allowance with the maintainer.
-- Confirm deployment hostname, durable quota store and secret management against the actual
-  Vercel projects; select the default and fallback models from live tests.
+- The maintainer chose zero paid inference spend and delegated usage caps. Current defaults are
+  50 steps per learner per day, 600 per month and 1,000 globally per day. Model calls use only
+  pinned free routes; a Gateway credit allowance does not authorise paid routes.
+- Confirm durable quota store and secrets against the existing Vercel web project. Pinned
+  OpenRouter Nemotron Ultra and Gemma 4 free models, OpenRouter's free router,
+  Gateway free and Gemini free-tier routes are configured in that order, subject to their
+  specific free-usage checks. Confirm their actual tool-call behaviour with a live key.
 - Confirm the selected providers' retention/training policy and corresponding enablement copy.
 
 These decisions do not block implementing and reviewing local contracts or tests, but paid

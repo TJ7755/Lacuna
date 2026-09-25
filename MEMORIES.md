@@ -71,6 +71,17 @@ while the picker is open, and test the expanded menu rather than only the closed
 
 ## AI authority and deployment
 
+Vercel Gateway's monthly credits are separate from routes whose catalogue input and output
+prices are both zero. Keep hosted route selection pinned and fail closed if live pricing is
+missing or changes; a free credit allowance is not a no-spend guarantee.
+OpenRouter's `openrouter/free` can switch models between tool steps. A live request returned
+only reasoning until the output cap and no answer. Prefer pinned free models after verifying
+each model's live zero price and tool support; keep the router as fallback.
+The Ling 3.0 Flash Sante free route repeatedly emitted invalid tool calls after visible text
+in the preview. Prefer the verified Nemotron Ultra and Gemma 4 free routes for live testing.
+Approving a hosted `write_grant` retains write scope for that course. A later write there can
+commit without another prompt; use a different course or fresh hosted session to test rejection.
+
 GitHub `pull_request_review_comment` runs on a PR merge ref. A privileged
 comment-triggered AI workflow must explicitly check out the trusted default branch
 before starting a tool with secrets; the usual checkout default is unsafe here.
@@ -84,10 +95,20 @@ cross-document navigation to invalidate AI readiness; a hash route retains its l
 
 Vercel can retain an npm install override despite the Bun manifest and lockfile. Keep the
 install command explicit in `vercel.json`; repository configuration overrides dashboard settings.
+Vercel's Node ESM runtime keeps relative import specifiers from these TypeScript functions.
+Runtime imports in the hosted function graph need `.js` suffixes; TypeScript bundler resolution
+maps them to `.ts` locally. The compiled-module regression test catches extensionless imports.
+An Electron user-agent alone does not identify Lacuna's packaged renderer: the shared T3 browser
+has one without Lacuna's preload. Choose the hosted service origin from `electronAPI.isElectron`.
 
 AI and data MCP companions share transport but have different grants. Preserve every generated
 profile argument and verify the client's active tools, not just saved registration. A transport
-harness does not prove model-authored chat. Web AI currently has no cross-tab ownership lease.
+harness does not prove model-authored chat. External web AI currently has no cross-tab ownership
+lease; hosted AI uses a Web Lock and only its owner may write shared session storage.
+
+React can run a newly mounted AI runtime's effect before its parent's provider-change effect.
+Session replacement must dispose the previous session in the ready handler; the parent effect
+must check the current session's provider before disposing it.
 
 Managed-device redirects to `https://localhost:6543/block?...` are network filtering, not a
 Lacuna endpoint: never add that origin to CSP. Device sync still needs the relay even when

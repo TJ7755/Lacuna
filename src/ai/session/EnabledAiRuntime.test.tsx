@@ -17,26 +17,35 @@ const runtime = vi.hoisted(() => {
     dispose,
     replacementParticipant: {},
   } as unknown as AiSession & { replacementParticipant: ReplacementParticipant };
+  const hostedSession = {
+    activate,
+    dispose,
+    replacementParticipant: {},
+  } as unknown as AiSession & { replacementParticipant: ReplacementParticipant };
   return {
     relaySession,
     localSession,
+    hostedSession,
+    settings: { provider: 'external' },
     activate,
     dispose,
     unregister,
     register: vi.fn(() => unregister),
     createRelayAiSession: vi.fn(() => relaySession),
     createLocalAiSession: vi.fn(() => localSession),
+    createHostedAiSession: vi.fn(() => hostedSession),
     createElectronLocalAiRequestSource: vi.fn(() => ({})),
   };
 });
 
 vi.mock('./relay', () => ({ createRelayAiSession: runtime.createRelayAiSession }));
 vi.mock('./local', () => ({ createLocalAiSession: runtime.createLocalAiSession }));
+vi.mock('./hosted', () => ({ createHostedAiSession: runtime.createHostedAiSession }));
 vi.mock('./localIpc', () => ({
   createElectronLocalAiRequestSource: runtime.createElectronLocalAiRequestSource,
 }));
 vi.mock('../relayClient', () => ({ createRelayClient: vi.fn(() => ({})) }));
-vi.mock('../settings', () => ({ readAiSettings: vi.fn(() => ({})) }));
+vi.mock('../settings', () => ({ readAiSettings: vi.fn(() => runtime.settings) }));
 vi.mock('../instructions', () => ({ buildAiInstructionBundle: vi.fn(() => ({})) }));
 vi.mock('../../db/replacementLifecycle', () => ({
   replacementLifecycle: { register: runtime.register },
@@ -52,6 +61,7 @@ describe('EnabledAiRuntime', () => {
       value: 'Mozilla/5.0',
     });
     vi.clearAllMocks();
+    runtime.settings.provider = 'external';
   });
 
   it('publishes an active relay session on the web and unregisters it on unmount', async () => {
@@ -131,6 +141,19 @@ describe('EnabledAiRuntime', () => {
     expect(runtime.createLocalAiSession).toHaveBeenCalledOnce();
     expect(runtime.createRelayAiSession).not.toHaveBeenCalled();
 
+    view.unmount();
+  });
+
+  it('selects the hosted session on Electron without starting the local companion', async () => {
+    runtime.settings.provider = 'hosted';
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: true },
+    });
+    const view = render(<EnabledAiRuntime retainedSession={null} onSessionReady={vi.fn()} />);
+    await waitFor(() => expect(runtime.createHostedAiSession).toHaveBeenCalledOnce());
+    expect(runtime.createLocalAiSession).not.toHaveBeenCalled();
+    expect(runtime.createElectronLocalAiRequestSource).not.toHaveBeenCalled();
     view.unmount();
   });
 });

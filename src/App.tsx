@@ -20,7 +20,6 @@ import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
 import type { EnabledAiSession } from './ai/session/EnabledAiRuntime';
-import { DesktopUpdateController } from './components/updates/DesktopUpdateController';
 
 export { router } from './routes/router';
 
@@ -48,8 +47,12 @@ function RouterWithOptionalAi() {
   const [settings] = useAiSettings();
   const [session, setSession] = useState<EnabledAiSession | null>(null);
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
+  const previousProvider = useRef(settings.provider);
+  const matchingSession = session && (session.provider ?? 'external') === settings.provider ? session : null;
   const sessionRef = useRef<EnabledAiSession | null>(null);
   const handleSessionReady = useCallback((next: EnabledAiSession) => {
+    const previous = sessionRef.current;
+    if (previous && previous !== next) previous.dispose();
     sessionRef.current = next;
     setSession(next);
   }, []);
@@ -62,6 +65,17 @@ function RouterWithOptionalAi() {
     setSession((existing) => (existing === current ? null : existing));
     current.dispose();
   }, [settings.enabled]);
+
+  useEffect(() => {
+    if (previousProvider.current === settings.provider) return;
+    previousProvider.current = settings.provider;
+    const current = sessionRef.current;
+    if (!current || (current.provider ?? 'external') === settings.provider) return;
+    current.dispose();
+    sessionRef.current = null;
+    setSession(null);
+    setRuntimeGeneration((generation) => generation + 1);
+  }, [settings.provider]);
 
   useEffect(() => {
     if (!settings.enabled) return;
@@ -83,12 +97,12 @@ function RouterWithOptionalAi() {
   );
 
   return (
-    <AiSessionProvider session={settings.enabled ? session : null}>
+    <AiSessionProvider session={settings.enabled ? matchingSession : null}>
       <Suspense fallback={null}>
         {settings.enabled && (
           <EnabledAiRuntime
-            key={runtimeGeneration}
-            retainedSession={session}
+            key={`${settings.provider}:${runtimeGeneration}`}
+            retainedSession={matchingSession}
             onSessionReady={handleSessionReady}
           />
         )}
@@ -99,6 +113,8 @@ function RouterWithOptionalAi() {
 }
 
 const McpBridgeController = lazy(loadMcpBridgeController);
+const DesktopUpdateController = lazy(() => import('./components/updates/DesktopUpdateController')
+  .then((module) => ({ default: module.DesktopUpdateController })));
 
 function isPublicEntry(hash: string): boolean {
   return /^#\/(?:welcome|landing|download)\/?(?:[?#]|$)/.test(hash);
@@ -264,7 +280,11 @@ export function App() {
         <AccentProvider>
           <FontScaleProvider>
             <ToastProvider>
-              {window.electronAPI?.updater && <DesktopUpdateController />}
+              {window.electronAPI?.updater && (
+                <Suspense fallback={null}>
+                  <DesktopUpdateController />
+                </Suspense>
+              )}
               {window.electronAPI?.isElectron && (
                 <Suspense fallback={null}>
                   <McpBridgeController />

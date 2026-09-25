@@ -86,7 +86,16 @@ its navigation cannot drift from the rendered groups.
   AI setting subscribers recheck the stored snapshot when they attach, so an enable or disable
   write between render and subscription is not dropped.
 
-  The production `AiSession` boundary has two transports. The hosted web build creates a ten-minute
+  AI connection preference selects the existing external client or built-in hosted inference.
+  Existing users remain on external mode. Built-in mode requires an issued access code and sends
+  bounded conversation content to the web deployment; Electron uses that deployment's HTTPS
+  endpoint too. The server chooses only configured free routes and enforces durable per-learner
+  and global limits. The renderer keeps the transcript locally, executes domain tools through
+  `AiToolSession`, and applies the same in-app approval and receipt rules. One tab owns a hosted
+  session; Stop and reload mark incomplete responses interrupted. Switching mode leaves the
+  other mode's conversation separate. Missing service configuration leaves ordinary study usable.
+
+  The external-client `AiSession` boundary has two transports. The web build creates a ten-minute
   pairing code, persists the local conversation and relay credentials across reload, and polls two
   encrypted directional HTTP mailboxes. Its deliberately running terminal task launches
   `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead runs

@@ -18,7 +18,7 @@ describe('Electron renderer security policy', () => {
         'Cross-Origin-Embedder-Policy': ['credentialless'],
         'Access-Control-Allow-Origin': ['*'],
         'Content-Security-Policy': [
-          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;",
+          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app https://lacuna-beta-one.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;",
         ],
       });
     });

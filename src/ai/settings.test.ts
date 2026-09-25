@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readAiSettings, useAiSettings, writeAiSettings } from './settings';
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   localStorage.clear();
 });
 
@@ -12,6 +13,7 @@ describe('AI settings', () => {
     expect(readAiSettings()).toEqual({
       enabled: false,
       misconceptionFirstEnabled: true,
+      provider: 'external',
     });
   });
 
@@ -21,6 +23,7 @@ describe('AI settings', () => {
     expect(readAiSettings()).toEqual({
       enabled: true,
       misconceptionFirstEnabled: false,
+      provider: 'external',
     });
   });
 
@@ -43,6 +46,7 @@ describe('AI settings', () => {
     expect(readAiSettings()).toEqual({
       enabled: false,
       misconceptionFirstEnabled: true,
+      provider: 'external',
     });
   });
 
@@ -62,6 +66,7 @@ describe('AI settings', () => {
     expect(result.current[0]).toEqual({
       enabled: true,
       misconceptionFirstEnabled: false,
+      provider: 'external',
     });
 
     act(() => {
@@ -76,6 +81,15 @@ describe('AI settings', () => {
     expect(result.current[0]).toEqual({
       enabled: true,
       misconceptionFirstEnabled: false,
+      provider: 'external',
     });
+    setItem.mockRestore();
+  });
+
+  it('keeps existing users on the external client and persists an explicit hosted choice', () => {
+    localStorage.setItem('lacuna.aiSettings', JSON.stringify({ enabled: true }));
+    expect(readAiSettings().provider).toBe('external');
+    writeAiSettings({ provider: 'hosted' });
+    expect(readAiSettings().provider).toBe('hosted');
   });
 });

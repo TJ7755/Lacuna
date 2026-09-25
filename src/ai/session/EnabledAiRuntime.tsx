@@ -5,6 +5,7 @@ import { createRelayClient } from '../relayClient';
 import { createRelayAiSession } from './relay';
 import { createLocalAiSession } from './local';
 import { createElectronLocalAiRequestSource } from './localIpc';
+import { createHostedAiSession } from './hosted';
 import { replacementLifecycle } from '../../db/replacementLifecycle';
 import type { ReplacementParticipant } from '../../db/replacementLifecycle';
 import type { AiSession } from './types';
@@ -28,7 +29,11 @@ export function EnabledAiRuntime({
   const [session] = useState(
     () =>
       retainedSession ??
-      (isElectronRuntime()
+      (readAiSettings().provider === 'hosted'
+        ? createHostedAiSession({
+            getInstructions: () => buildAiInstructionBundle(readAiSettings()),
+          })
+        : isElectronRuntime()
         ? createLocalAiSession({
             source: createElectronLocalAiRequestSource(),
             getInstructions: () => buildAiInstructionBundle(readAiSettings()),

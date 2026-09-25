@@ -17,6 +17,7 @@ const dependencies = vi.hoisted(() => ({
 }));
 interface TestAiSession extends AiSession {
   testId: string;
+  provider: 'external' | 'hosted';
   dispose: Mock<() => void>;
 }
 const runtime = vi.hoisted(() => ({
@@ -31,6 +32,7 @@ const AI_RUNTIME_TEST_TIMEOUT_MS = 10_000;
 function createTestSession(): TestAiSession {
   const session = {
     testId: crypto.randomUUID(),
+    provider: readAiSettings().provider,
     dispose: vi.fn<() => void>(),
   } as unknown as TestAiSession;
   runtime.createdSessions.push(session);
@@ -93,7 +95,7 @@ vi.mock('./ai/session/EnabledAiRuntime', () => ({
 }));
 
 import { App } from './App';
-import { writeAiSettings } from './ai/settings';
+import { readAiSettings, writeAiSettings } from './ai/settings';
 
 describe('optional AI runtime', () => {
   beforeEach(() => {
@@ -201,5 +203,31 @@ describe('optional AI runtime', () => {
       'data-ai-session',
       originalSessionId,
     );
+  }, AI_RUNTIME_TEST_TIMEOUT_MS);
+
+  it('disposes the old session and retains the new session when the provider changes', async () => {
+    writeAiSettings({ enabled: true, provider: 'hosted' });
+    render(<App />);
+    await screen.findByTestId('enabled-ai-runtime');
+    await waitFor(() => expect(runtime.createdSessions).toHaveLength(1));
+    const hosted = runtime.createdSessions[0];
+
+    act(() => writeAiSettings({ provider: 'external' }));
+
+    await waitFor(() => expect(runtime.createdSessions.length).toBeGreaterThan(1));
+    const external = runtime.createdSessions.find((session) => session.provider === 'external');
+    expect(external).toBeDefined();
+    await waitFor(() => expect(hosted.dispose).toHaveBeenCalledOnce());
+    expect(external!.dispose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('router-surface')).toHaveAttribute('data-ai-session', external!.testId);
+
+    act(() => writeAiSettings({ provider: 'hosted' }));
+    await waitFor(() => expect(runtime.createdSessions.length).toBeGreaterThan(2));
+    const nextHosted = runtime.createdSessions.find((session) =>
+      session.provider === 'hosted' && session !== hosted);
+    expect(nextHosted).toBeDefined();
+    await waitFor(() => expect(external!.dispose).toHaveBeenCalledOnce());
+    expect(nextHosted!.dispose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('router-surface')).toHaveAttribute('data-ai-session', nextHosted!.testId);
   }, AI_RUNTIME_TEST_TIMEOUT_MS);
 });

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Loaded the desktop updater controller only in Electron, keeping it out of the
+  initial browser JavaScript and restoring the existing asset budget.
+- Kept committed hosted AI tool receipts and their saved ledger when Stop or disposal
+  interrupts an approved local action. Bound each complete hosted request by its
+  encoded byte size, retaining complete tool calls and results across continuations.
+- Fixed hosted AI provider switches leaving a previous session active, and prevented tabs without
+  ownership from overwriting the saved conversation or removing its access code. Older replies
+  are trimmed when needed so later turns and the tool ledger remain saved. Rejected exact write
+  approvals now tell the model that no change was made.
+
 - Added a Windows CI installed-upgrade probe using the verified v0.2.7 installer and a
   long-running, installed AI companion. It records installer exit codes and process identities
   on failure. The intermittent Codex-hosted shutdown failure remains unexplained.
@@ -90,6 +100,29 @@
 - Moved lesson deletion confirmation below its row so its consequences and action labels
   remain readable at narrow widths, including long unbroken lesson names. Cancelling
   returns focus to the delete button.
+- Began the built-in AI Gateway work with a bounded hosted request and streaming-event
+  contract, plus a loopback-only AI SDK harness for testing model text and tool calls. Added
+  opt-in built-in AI in the existing sidebar for web and Electron, with issued beta access codes,
+  server-side free-route selection and atomic limits, streamed answers, local tools and approvals,
+  and local transcript recovery. Provider calls remain disabled until the hosted service is
+  configured with secrets and a quota store. Kept the server SDKs outside the packaged Electron
+  runtime dependency set.
+  Replaced the unavailable pinned Gateway model with `poolside/laguna-s-2.1-free` and
+  `inclusionai/ling-3.0-flash-fin`, retaining the live zero-price check for each route.
+  OpenRouter routes take priority over Gateway when configured and require a live zero-price and
+  tool-support check before use. Every Gateway price field must also be zero.
+  Prefer pinned OpenRouter Nemotron Ultra and Gemma 4 free models, checking live zero pricing
+  and tool support for each, before the variable free router. Log failed provider routes for diagnosis.
+  Tell hosted models the exact local tool wrappers and approval behaviour, and try the next
+  verified free route when a provider finishes without usable text or a tool call.
+  Report a rejected write as a rejection with no mutation, so the model does not describe
+  it as an expired or reused approval.
+  Verified live preview reads, an approved write, a rejected write and Stop at zero provider
+  cost; vague GCSE course requests now ask for a subject rather than inventing a syllabus.
+  Made hosted function imports resolvable by Vercel's Node ESM runtime and added a
+  compiled-module regression test after the first deployed session request failed at load time.
+  Used Lacuna's Electron preload to choose the hosted service URL, so an ordinary browser
+  running inside an Electron shell still calls its own preview deployment.
 
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.

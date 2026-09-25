@@ -195,7 +195,7 @@ describe('AiToolSession', () => {
 
   it('does not reuse a rejected approval', async () => {
     const course = await createCourse('Biology');
-    const { session } = makeSession();
+    const { session, executeToolCall } = makeSession();
     const request = {
       toolName: 'lacuna.create_lesson',
       input: { courseId: course.id, name: 'Cells' },
@@ -205,7 +205,44 @@ describe('AiToolSession', () => {
     await session.decide(pending.effects.approval!.approvalId, false);
     const retry = await invoke(session, request);
 
-    expect(retry.response).toMatchObject({ ok: false, error: { kind: 'conflict' } });
+    expect(retry.response).toMatchObject({
+      ok: false, error: { kind: 'conflict', message: 'You rejected this write. No change was made.' },
+    });
+    expect(executeToolCall).not.toHaveBeenCalled();
+  });
+
+  it('reports that rejected exact course creation made no change', async () => {
+    const { session, executeToolCall } = makeSession();
+    const request = { toolName: 'lacuna.create_course', input: { name: 'Biology' } };
+    const pending = await invoke(session, request);
+
+    await session.decide(pending.effects.approval!.approvalId, false);
+    const retry = await invoke(session, request);
+
+    expect(retry.response).toMatchObject({
+      ok: false, error: { kind: 'conflict', message: 'You rejected this action. No change was made.' },
+    });
+    expect(executeToolCall).not.toHaveBeenCalled();
+  });
+
+  it('reports that an expired exact approval made no change', async () => {
+    const { session, executeToolCall } = makeSession();
+    const request = { toolName: 'lacuna.create_course', input: { name: 'Biology' } };
+    await invoke(session, request);
+    const state = session.exportState();
+    const pending = state.approvals[0];
+    state.approvals[0] = {
+      ...pending,
+      approval: { ...pending.approval, status: 'expired', expiredAt: 101 },
+    };
+    session.restoreState(state);
+
+    const retry = await invoke(session, request);
+
+    expect(retry.response).toMatchObject({
+      ok: false, error: { kind: 'conflict', message: 'This approval expired. No change was made.' },
+    });
+    expect(executeToolCall).not.toHaveBeenCalled();
   });
 
   it('rejects stopped and disconnected runs before admission', async () => {

@@ -310,6 +310,12 @@ export class AiToolSession {
       return this.approvalRequired(approval);
     }
     if (approval.approval.status === 'pending') return this.approvalPending(approval);
+    if (approval.approval.status === 'rejected') {
+      return this.conflict('You rejected this action. No change was made.');
+    }
+    if (approval.approval.status === 'expired') {
+      return this.conflict('This approval expired. No change was made.');
+    }
     if (approval.approval.status !== 'approved') {
       return this.conflict('This destructive approval cannot be reused.');
     }
@@ -367,8 +373,11 @@ export class AiToolSession {
   ): AiToolInvokeResult {
     if (pending) {
       if (pending.approval.status === 'pending') return this.approvalPending(pending);
-      if (pending.approval.status === 'rejected' || pending.approval.status === 'expired') {
-        return this.conflict('This write approval cannot be reused.');
+      if (pending.approval.status === 'rejected') {
+        return this.conflict('You rejected this write. No change was made.');
+      }
+      if (pending.approval.status === 'expired') {
+        return this.conflict('This write approval expired. No change was made.');
       }
     }
     const sharedPending = [...this.approvals.values()].find(

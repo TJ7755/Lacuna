@@ -21,16 +21,35 @@ export function AiSection() {
         <SettingsSectionHeading className="font-display text-xl">AI</SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
-        Pair a running AI client with Lacuna using an encrypted relay. Lacuna stores no model
-        credentials and does not choose the model or client.
+        {settings.provider === 'hosted'
+          ? 'Built-in AI sends the messages and local content you choose to an external model. Study data and action approvals stay on this device.'
+          : 'Pair a running AI client with Lacuna using an encrypted relay. Lacuna stores no model credentials and does not choose the model or client.'}
       </p>
+
+      <fieldset className="mb-6 border-b border-line pb-5">
+        <legend className="mb-2 text-sm font-medium text-ink">AI connection</legend>
+        <div className="flex flex-wrap gap-2">
+          {([
+            ['external', 'External AI client'],
+            ['hosted', 'Built-in AI'],
+          ] as const).map(([provider, label]) => (
+            <label key={provider} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm ${settings.provider === provider ? 'border-accent bg-accent/5 text-ink' : 'border-line text-ink-soft'}`}>
+              <input type="radio" name="ai-provider" value={provider}
+                checked={settings.provider === provider}
+                onChange={() => update({ provider })} />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm text-ink">Enable AI</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
-            Adds desktop AI chat and short-code client pairing. Disabled by default and
-            unavailable on mobile.
+            {settings.provider === 'hosted'
+              ? 'Adds the built-in AI conversation to the sidebar. An access code is required.'
+              : 'Adds desktop AI chat and short-code client pairing. Disabled by default and unavailable on mobile.'}
           </p>
         </div>
         <Toggle

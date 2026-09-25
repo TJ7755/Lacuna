@@ -8,7 +8,7 @@ export default defineConfig({
     allowOnly: !process.env.CI,
     environment: 'happy-dom',
     clearMocks: false,
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts', 'server/**/*.test.ts'],
     setupFiles: ['./tests/setup.ts'],
     // One worker keeps the suite inside the memory budget of supported developer
     // machines and makes timing-sensitive component tests deterministic.
