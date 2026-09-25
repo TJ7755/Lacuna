@@ -1,5 +1,4 @@
 import { decodeHostedEvents, type HostedEvent, type HostedRequest } from '../hostedProtocol';
-import { isElectronRuntime } from '../../electron/runtime';
 
 export const HOSTED_ACCESS_STORAGE_KEY = 'lacuna.aiHostedAccess';
 export const HOSTED_SERVICE_ORIGIN = 'https://lacuna-beta-one.vercel.app';
@@ -22,7 +21,7 @@ export class HostedTransportError extends Error {
 }
 
 function endpoint(path: string): string {
-  return `${isElectronRuntime() ? HOSTED_SERVICE_ORIGIN : ''}/api/ai/${path}`;
+  return `${window.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : ''}/api/ai/${path}`;
 }
 
 function responseError(status: number): HostedTransportError {

@@ -20,6 +20,8 @@
   tool-support check before use. Every Gateway price field must also be zero.
   Made hosted function imports resolvable by Vercel's Node ESM runtime and added a
   compiled-module regression test after the first deployed session request failed at load time.
+  Used Lacuna's Electron preload to choose the hosted service URL, so an ordinary browser
+  running inside an Electron shell still calls its own preview deployment.
 
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.

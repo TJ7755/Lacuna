@@ -75,6 +75,8 @@ install command explicit in `vercel.json`; repository configuration overrides da
 Vercel's Node ESM runtime keeps relative import specifiers from these TypeScript functions.
 Runtime imports in the hosted function graph need `.js` suffixes; TypeScript bundler resolution
 maps them to `.ts` locally. The compiled-module regression test catches extensionless imports.
+An Electron user-agent alone does not identify Lacuna's packaged renderer: the shared T3 browser
+has one without Lacuna's preload. Choose the hosted service origin from `electronAPI.isElectron`.
 
 AI and data MCP companions share transport but have different grants. Preserve every generated
 profile argument and verify the client's active tools, not just saved registration. A transport
