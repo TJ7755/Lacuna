@@ -1,10 +1,10 @@
-import { m as motion } from 'motion/react';
+import { useMemo } from 'react';
 import type { Card, Occlusion } from '../../db/types';
+import { MarkdownView } from '../../components/markdown/MarkdownView';
 import { CardContent } from '../../components/cards/CardContent';
 import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint';
 import { HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
-import { compareAnswer } from '../../utils/answerComparison';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
 
 export function StudyCardFace({
@@ -42,14 +42,13 @@ export function StudyCardFace({
   onReplayAudio: () => void;
   onRevealHint: () => void;
 }) {
-  const comparison =
-    side === 'back' && isTyping && typedAnswer !== undefined
-      ? compareAnswer(
-          typedAnswer,
-          typingExpectedAnswer(card, occlusionAnswerText),
-          answerComparisonOptions(answerStrictness),
-        )
-      : null;
+  const typedAnswerFeedback = useMemo(
+    () =>
+      side === 'back' && isTyping && typedAnswer !== undefined
+        ? { answer: typedAnswer, options: answerComparisonOptions(answerStrictness) }
+        : undefined,
+    [side, isTyping, typedAnswer, answerStrictness],
+  );
 
   return (
     <>
@@ -67,7 +66,18 @@ export function StudyCardFace({
           sequenceCue
           sequenceMode={isLinesModeCard ? 'lines' : 'list'}
           occlusion={occlusion}
+          typedAnswerFeedback={typedAnswerFeedback}
         />
+        {occlusion &&
+          card.occlusionRegionId &&
+          typedAnswerFeedback &&
+          occlusionAnswerText !== undefined && (
+            <MarkdownView
+              source={occlusionAnswerText}
+              typedAnswerFeedback={typedAnswerFeedback}
+              className="mt-6"
+            />
+          )}
       </div>
       {audioCard &&
         side === 'back' &&
@@ -115,45 +125,6 @@ export function StudyCardFace({
             <LineHintButton step={(hintStep ?? 0) as 0 | 1} onReveal={onRevealHint} />
           )}
         </div>
-      )}
-      {comparison && (
-        <motion.div
-          initial={measuring ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={
-            measuring
-              ? { duration: 0 }
-              : {
-                  duration: 0.2 * motionMultiplier,
-                  delay: 0.2 * motionMultiplier,
-                  ease: [0.16, 1, 0.3, 1],
-                }
-          }
-          className="mx-auto mt-6 max-w-prose border-t border-line pt-6 text-center"
-        >
-          <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-            Your answer
-          </div>
-          <div className="mb-4 text-lg text-ink">
-            {typedAnswer?.trim() || <span className="italic text-ink-faint">(empty)</span>}
-          </div>
-          <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-accent">
-            Correct answer
-          </div>
-          <div className="text-lg">
-            {comparison.words.map((word, index) => (
-              <span
-                key={index}
-                className={
-                  word.matched ? 'text-positive' : 'text-negative underline decoration-negative/50'
-                }
-              >
-                {word.text}
-                {index < comparison.words.length - 1 ? ' ' : ''}
-              </span>
-            ))}
-          </div>
-        </motion.div>
       )}
     </>
   );

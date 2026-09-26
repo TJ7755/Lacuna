@@ -1,14 +1,12 @@
 // Compares a typed answer against the expected answer text for the "type" answer-input
-// mode (see src/state/typingSetting.ts). Used by Learn mode to give diff-friendly
+// mode. Used by Learn mode to give diff-friendly
 // feedback after reveal; grading itself stays a separate, self-graded step.
 
 /**
  * Normalisation applied before comparing words. Both default to true (case and
  * punctuation are ignored), matching the pre-existing typing-card behaviour.
  *
- * These are exposed as options rather than hard-coded so a future "strictness"
- * setting can turn them off per-user (e.g. an exact-match mode that cares about
- * capitalisation and punctuation) without changing the comparison algorithm.
+ * The answer-strictness setting controls these options without changing alignment.
  */
 export interface AnswerComparisonOptions {
   /** Ignore letter case when comparing words. Default true. */
@@ -29,6 +27,8 @@ export interface AnswerComparisonResult {
   correct: boolean;
   /** The expected answer, split into words tagged for highlighting matches vs mismatches. */
   words: ComparisonWord[];
+  /** Submitted words, aligned with the expected answer. */
+  typedWords: ComparisonWord[];
 }
 
 const DEFAULT_OPTIONS: Required<AnswerComparisonOptions> = {
@@ -52,33 +52,65 @@ function splitWords(text: string): string[] {
   return text.trim().split(/\s+/).filter(Boolean);
 }
 
-/**
- * Compare a typed answer against the expected answer text, word by word in order.
- * Returns per-word match flags (for highlighting) and an overall correctness flag.
- *
- * The comparison is deliberately simple and positional (word N of the typed answer
- * is checked against word N of the expected answer) rather than a full edit-distance
- * diff — this keeps the feedback predictable and matches how a self-graded typed
- * answer is used: the learner sees at a glance which words they got right.
- */
+/** Align words in order so one omission does not mark every subsequent word wrong. */
 export function compareAnswer(
   typed: string,
   expected: string,
   options: AnswerComparisonOptions = {},
 ): AnswerComparisonResult {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  const expectedWords = splitWords(expected);
-  const typedWords = splitWords(typed).map((w) => normaliseWord(w, opts));
-
-  const words: ComparisonWord[] = expectedWords.map((word, i) => ({
-    text: word,
-    matched: typedWords[i] !== undefined && typedWords[i] === normaliseWord(word, opts),
-  }));
-
-  const correct =
-    words.length > 0 &&
-    words.every((w) => w.matched) &&
-    typedWords.length === expectedWords.length;
-
-  return { correct, words };
+  const words = splitWords(expected).map((text) => ({ text, matched: false }));
+  const typedWords = splitWords(typed).map((text) => ({ text, matched: false }));
+  const a = words.map((word) => normaliseWord(word.text, opts));
+  const b = typedWords.map((word) => normaliseWord(word.text, opts));
+  const correct = a.length > 0 && a.length === b.length && a.every((word, i) => word === b[i]);
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) {
+    words[start].matched = typedWords[start].matched = true;
+    start++;
+  }
+  let endA = a.length,
+    endB = b.length;
+  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
+    words[--endA].matched = typedWords[--endB].matched = true;
+  }
+  const rows = endA - start,
+    columns = endB - start;
+  // Bound work for unusually large imported answers. Ordered matching still preserves
+  // useful feedback without allocating a quadratic table for entire essays.
+  if (rows * columns > 250_000) {
+    const positions = new Map<string, number[]>();
+    for (let j = endB - 1; j >= start; j--) {
+      const indices = positions.get(b[j]) ?? [];
+      indices.push(j);
+      positions.set(b[j], indices);
+    }
+    let cursor = start;
+    for (let i = start; i < endA; i++) {
+      const indices = positions.get(a[i]);
+      while (indices?.length && indices[indices.length - 1] < cursor) indices.pop();
+      const j = indices?.pop();
+      if (j !== undefined) {
+        words[i].matched = typedWords[j].matched = true;
+        cursor = j + 1;
+      }
+    }
+  } else if (rows && columns) {
+    const table = Array.from({ length: rows + 1 }, () => new Uint32Array(columns + 1));
+    for (let i = rows - 1; i >= 0; i--)
+      for (let j = columns - 1; j >= 0; j--)
+        table[i][j] =
+          a[start + i] === b[start + j]
+            ? table[i + 1][j + 1] + 1
+            : Math.max(table[i + 1][j], table[i][j + 1]);
+    let i = 0,
+      j = 0;
+    while (i < rows && j < columns) {
+      if (a[start + i] === b[start + j]) {
+        words[start + i++].matched = typedWords[start + j++].matched = true;
+      } else if (table[i + 1][j] >= table[i][j + 1]) i++;
+      else j++;
+    }
+  }
+  return { correct, words, typedWords };
 }

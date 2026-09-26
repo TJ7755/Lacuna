@@ -2,9 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function cardHeight(card: Locator): Promise<number> {
-  return card
-    .locator('[data-study-face]')
-    .evaluate((face) => face.parentElement!.offsetHeight);
+  return card.locator('[data-study-face]').evaluate((face) => face.parentElement!.offsetHeight);
 }
 
 async function measuredFaceHeight(card: Locator): Promise<number> {
@@ -185,3 +183,95 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   await expect(backPrimary).toBeVisible();
   await expect.poll(async () => Math.abs(await centreOffsetFromCard(backPrimary))).toBeLessThan(2);
 });
+
+for (const width of [1280, 390]) {
+  test(`keeps a typed card anchored through reveal and hide at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await enterFreshLacuna(page);
+    await createCourse(page, 'Typed alignment');
+    await page.getByRole('button', { name: 'Author mode' }).click();
+    await page.getByRole('button', { name: 'New card', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Front' }).fill('Translate the phrase');
+    await page.getByRole('textbox', { name: 'Back' }).fill('a lighter timetable');
+    await page.getByLabel('Card answer mode', { exact: true }).selectOption('type');
+    await page.getByRole('button', { name: 'Add card', exact: true }).click();
+    await expect(page).not.toHaveURL(/\/cards\/new$/);
+    await page.getByRole('link', { name: 'Course', exact: true }).click();
+    await page.getByRole('button', { name: 'Study', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Choose what to study' })
+      .getByRole('button', { name: /^(Start|Continue):/ })
+      .first()
+      .click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByPlaceholder('Type your answer…').fill('timetable');
+    const card = page.locator('[data-study-card-id]').first();
+    await expect(card.locator('[data-study-face="front"]')).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const front = (await card.boundingBox())!;
+    for (let repeat = 0; repeat < 2; repeat++) {
+      await page.getByRole('button', { name: 'Check answer', exact: true }).click();
+      await expect(card.locator('[data-study-face="back"]')).toBeVisible();
+      await expect
+        .poll(async () => Math.abs((await card.boundingBox())!.y - front.y))
+        .toBeLessThan(1);
+      expect((await card.boundingBox())!.height).toBeCloseTo(front.height, 0);
+      await card.getByRole('button', { name: 'Hide answer' }).click();
+      await expect(card.locator('[data-study-face="front"]')).toBeVisible();
+      await expect
+        .poll(async () => Math.abs((await card.boundingBox())!.y - front.y))
+        .toBeLessThan(1);
+    }
+
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    for (const inputMode of ['keyboard', 'touch']) {
+      await page.evaluate((inputMode) => {
+        localStorage.setItem('lacuna.gradingMode', 'manual');
+        window.dispatchEvent(new CustomEvent('lacuna:grading-mode'));
+        localStorage.setItem('lacuna.inputMode', inputMode);
+        window.dispatchEvent(new CustomEvent('lacuna:input-mode'));
+      }, inputMode);
+      await expect(page.getByPlaceholder('Type your answer…')).toBeFocused();
+      for (const destination of ['back', 'front']) {
+        const movement = await page.evaluate(async () => {
+          await new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          );
+          const card = document.querySelector('[data-study-card-id]')!;
+          const initial = card.getBoundingClientRect();
+          document
+            .querySelector('[data-study-face]')!
+            .closest('[role="button"]')!
+            .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          return new Promise<number>((resolve) => {
+            const start = performance.now();
+            let maximum = 0;
+            const sample = () => {
+              const next = card.getBoundingClientRect();
+              maximum = Math.max(
+                maximum,
+                Math.abs(next.top - initial.top),
+                Math.abs(next.bottom - initial.bottom),
+              );
+              if (performance.now() - start > 800) resolve(maximum);
+              else requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
+          });
+        });
+        expect(movement).toBeLessThan(1);
+        await expect(card.locator(`[data-study-face="${destination}"]`)).toBeVisible();
+        if (destination === 'back') {
+          await expect(page.getByRole('button', { name: 'Check answer', exact: true })).toHaveCount(
+            0,
+          );
+          await expect(page.getByPlaceholder('Type your answer…')).not.toBeFocused();
+        } else {
+          await expect(page.getByPlaceholder('Type your answer…')).toBeFocused();
+        }
+      }
+    }
+  });
+}

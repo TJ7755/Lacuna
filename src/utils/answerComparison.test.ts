@@ -79,4 +79,30 @@ describe('compareAnswer', () => {
     const result = compareAnswer('the   mitochondria', 'the mitochondria');
     expect(result.correct).toBe(true);
   });
+  it('aligns a missing prefix without flagging the remaining answer', () => {
+    const result = compareAnswer('timetable', 'a lighter timetable');
+    expect(result.words.map((word) => word.matched)).toEqual([false, false, true]);
+    expect(result.typedWords).toEqual([{ text: 'timetable', matched: true }]);
+    expect(result.correct).toBe(false);
+  });
+
+  it('isolates inserted words and preserves repeated-word order', () => {
+    const result = compareAnswer('the very very blue sky', 'the very blue sky');
+    expect(result.words.every((word) => word.matched)).toBe(true);
+    expect(result.typedWords.filter((word) => !word.matched).map((word) => word.text)).toEqual([
+      'very',
+    ]);
+    expect(result.correct).toBe(false);
+    expect(compareAnswer('blue the sky', 'the blue sky').correct).toBe(false);
+  });
+  it('bounds alignment work for long answers while retaining ordered matches', () => {
+    const expected = Array.from({ length: 600 }, (_, i) => `word${i}`).join(' ');
+    const result = compareAnswer(`extra ${expected} ending`, expected);
+    expect(result.words.every((word) => word.matched)).toBe(true);
+    expect(result.typedWords.filter((word) => !word.matched).map((word) => word.text)).toEqual([
+      'extra',
+      'ending',
+    ]);
+    expect(result.correct).toBe(false);
+  });
 });

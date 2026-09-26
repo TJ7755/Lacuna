@@ -1,5 +1,15 @@
 # Lacuna — version 0.2.11
 
+## Unreleased
+
+- Replaced typed-answer reports with inline comparison: muted submitted text above
+  the answer, strikethroughs on extra words and soft highlights on missing words.
+  Matching answers appear once, without captions or ticks. Word alignment preserves
+  strictness, Markdown and cloze context; grading remains manual.
+- Kept study cards anchored during reveal and hide by reserving the larger control
+  area for both phases. Inactive controls are inert; keyboard focus returns to the
+  typing field without scrolling.
+
 ## 0.2.11 beta — offline course files, authoring and study improvements
 
 - Fixed packaged release checks timing out when the window already has its route title.
