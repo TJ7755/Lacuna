@@ -328,10 +328,22 @@ export function CoursePath() {
   );
 
   // Single-lesson branch (addendum E): render the lesson view directly rather than
-  // showing a one-item path. No redirect — this is a rendering branch.
+  // showing a one-item path. No redirect — this is a rendering branch. The
+  // course header (and its review entry point) is bypassed here, so a pending
+  // merge review gets the same entry above the lesson.
   if (lessons.length === 1) {
     return (
       <>
+        {pendingUpdate && (
+          <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
+            <Link
+              to={`/course/${courseId}/updates`}
+              className="inline-flex min-h-11 items-center rounded-lg bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+            >
+              Review updates
+            </Link>
+          </div>
+        )}
         <Suspense
           fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}
         >

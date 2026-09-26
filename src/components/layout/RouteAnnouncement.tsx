@@ -20,6 +20,7 @@ function routeLabel(pathname: string): string {
 
   const segments = pathname.split('/').filter(Boolean);
   if (segments[0] === 'lesson' && segments[2] === 'learn') return 'Learn lesson';
+  if (segments[0] === 's') return 'Shared course';
   if (segments[0] !== 'course') return 'Page not found';
 
   const section = segments[2];

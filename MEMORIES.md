@@ -42,6 +42,14 @@ load can outlive the transaction and leave earlier writes committed.
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
 
+## Stale preview servers poison e2e runs
+
+The Playwright web config reuses an existing server on port 4173. An aborted
+run can leave its `vite preview` behind, and every later run then reuses that
+build without rebuilding — code changes silently stop taking effect and
+failures look impossible. When e2e results defy the current source, check
+`lsof -i :4173` and kill leftovers before trusting another run.
+
 ## Share-link state
 
 `publishCourse` rebuilds `Course.distribution` from scratch: any new field on

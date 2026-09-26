@@ -195,6 +195,48 @@ missing media and media whose SHA-256 hash does not match its bytes are rejected
 and course content commit together; a failed import leaves neither partial content nor
 new orphaned assets. Export refuses missing media instead of producing an incomplete file.
 
+### Share links (`relay/src/shares.ts`, `src/shareLinks/`, `/s/:code`)
+
+A hosted variant of the course file for classroom distribution. The teacher
+clicks **Create share link** on the Share page and gets one stable link (plus a
+QR of the link, which always fits since it encodes a URL, not a payload). The
+link itself or its trailing code opens an `/#/s/<code>` importer; pasted links
+and bare codes in the import box route there too. Hash routing keeps the link
+deployable as static files with no server rewrites.
+
+- **What travels:** the existing versioned course-file envelope
+  (`format: "lacuna-course"`), so media, lineage ids and revisions ride along
+  with the same validation as a manual file. The relay stays opaque: it stores
+  `payload` and `meta` bytes without inspecting them.
+- **Relay routes** (same Blob store and conventions as sync channels):
+  `POST /shares` mints a 32-hex share id plus write token (public path
+  rate-limited 10/hour/IP, secret bypass like channels); `PUT
+  /shares/:id/payload|meta` publishes with `If-Match` compare-and-swap;
+  `GET` on either slot is unauthenticated (knowledge of the id is the read
+  capability) with `Cache-Control: no-store`; `DELETE /shares/:id` unpublishes
+  the group. Payloads are capped at 4 MB so publishes stay under the function
+  body ceiling and inside free-tier limits — larger courses keep the manual
+  file path, and the 413 message says so. Untouched links expire with the
+  existing channel inactivity window via the daily maintenance job.
+- **Teacher state:** `Course.distribution.shareId` holds the stable link id and
+  survives republishes (`publishCourse` preserves it); the write token and slot
+  generations stay device-local in sync state, never in backups or course
+  files. Republishing reuses both, so the link never changes. Stopping a share
+  deletes the relay copy, forgets the token and clears the share id while
+  keeping the lineage counter; imported student copies are untouched.
+- **Student updates:** the `meta` slot is a small manifest (lineage id,
+  revision, published-at, byte size, course name). Opening the dashboard polls
+  it (throttled to hourly per link, failing soft offline); a newer revision
+  fetches the payload and runs the existing `mergeLineageUpdate`, so updates
+  surface through the established review badge and student-wins policy. No new
+  badge or merge path was added. The merge runs inside `withCourseFileAssets`,
+  so bundled media is stored with the update exactly as on manual import; a
+  payload whose manifest went stale mid-fetch is skipped rather than merged,
+  so a slow older poll can never roll back a newer revision. A link tracks
+  only the course it served: imports are recorded after verifying the
+  course's lineage against the link's manifest, so a different course
+  imported on the same page neither untracks the link nor attracts its polls.
+
 ### Course sharing — share codes (`src/db/share.ts`, `SharePage`, `/share`)
 
 A dedicated **Share** tab in the sidebar turns a whole course into a single, compact,

@@ -2,17 +2,27 @@
 
 ## Unreleased
 
-- Added share-link publishing for classroom distribution: the Share page publishes
-  a course to the relay and shows one stable link (plus a scannable QR of the
-  link) that carries lessons, cards and media. Republishing updates the same
-  link; stopping sharing deletes the relay copy while imported student copies
-  keep working. Links are capped at 4 MB per payload to stay within free-tier
-  function limits — larger courses keep the manual course file. Unpublished
-  links expire with the relay's existing inactivity window. Unreachable relay
-  hosts report a readable connection error instead of a bare fetch failure.
-  A course whose link was created on another device asks for explicit
-  replacement instead of silently forking the link, and the panel shows the
-  uploaded revision so a plain publish can never masquerade as an upload.
+- Added share links for classroom distribution: the Share page publishes a course
+  to the relay and shows one stable link (plus a scannable QR of the link) that
+  carries lessons, cards and media. The link itself or its trailing code opens an
+  `/#/s/<code>` importer reusing the course-file preview and published-course
+  update matching. Pasted links and codes in the import box route there too.
+  Republishing updates the same link; student copies poll the lightweight manifest
+  on opening the dashboard and merge newer revisions through the existing update
+  review, preserving the student's scheduling and edits. Poll merges store
+  bundled media with the update, stale polls cannot roll back newer revisions,
+  and a link only tracks the course it served. Links are capped at 4 MB
+  per payload to stay within free-tier function limits — larger courses keep the
+  manual course file. Teachers can stop sharing a link, which deletes the relay
+  copy while imported student copies keep working; stopping reports failure
+  rather than success when the relay copy cannot be confirmed gone. A course
+  whose link was created on another device asks for explicit replacement
+  instead of silently forking the link, and the panel shows the uploaded
+  revision so a plain publish can never masquerade as an upload. Unpublished
+  links expire with the relay's existing inactivity window. The Review updates
+  entry now also appears for single-lesson courses, which previously bypassed
+  it by rendering the lesson view directly. Unreachable relay hosts report a
+  readable connection error instead of a bare fetch failure.
 
 - Forgetting-curve tooltips now show a readable date and predicted recall percentage.
   Review markers no longer disrupt hover selection, keeping the highlighted point
