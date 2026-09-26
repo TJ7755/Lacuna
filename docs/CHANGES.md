@@ -5,7 +5,9 @@
 - Improved desktop input and accessibility: Author-mode mouse/pen lesson drags start on
   movement and carry the lesson, with neighbours making room; touch retains its deliberate
   hold and keyboard reordering remains available. Automatic input mode follows the input
-  in use, while explicit preferences remain fixed. Card swipes follow held pointers directly.
+  in use, while explicit preferences remain fixed. Input-mode changes wait until a pressed
+  control's click has fired, so the first touch on a mouse-operated screen is not lost.
+  Card swipes follow held pointers directly.
 - Added named card-details controls, labelled search and typed answers, accessible chart
   data tables and stronger secondary-text contrast. Departing course pages are inert;
   step-completion actions are immediately available. Study overlays suppress underlying

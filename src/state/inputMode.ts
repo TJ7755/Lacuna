@@ -8,6 +8,7 @@ const FONT_SCALE_USER_SET_KEY = 'lacuna-font-scale-user-set';
 
 type ResolvedInput = 'keyboard' | 'touch';
 let activeInput: ResolvedInput | undefined;
+let pendingInputSwitch: number | undefined;
 const inputListeners = new Set<() => void>();
 
 function setActiveInput(next: ResolvedInput) {
@@ -17,17 +18,27 @@ function setActiveInput(next: ResolvedInput) {
 }
 
 function onPointer(event: PointerEvent) {
-  if (event.pointerType === 'mouse') setActiveInput('keyboard');
-  else if (
-    event.type === 'pointerdown' &&
+  if (event.pointerType === 'mouse') {
+    window.clearTimeout(pendingInputSwitch);
+    if (event.type === 'pointermove') setActiveInput('keyboard');
+    else if (event.type === 'pointerup') {
+      pendingInputSwitch = window.setTimeout(() => setActiveInput('keyboard'), 0);
+    }
+  } else if (
+    event.type === 'pointerup' &&
     (event.pointerType === 'touch' || event.pointerType === 'pen')
   ) {
-    setActiveInput('touch');
+    window.clearTimeout(pendingInputSwitch);
+    // Keep the pressed control mounted until the browser dispatches its click.
+    pendingInputSwitch = window.setTimeout(() => setActiveInput('touch'), 0);
   }
 }
 
 function onKeyboard(event: KeyboardEvent) {
-  if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) setActiveInput('keyboard');
+  if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) {
+    window.clearTimeout(pendingInputSwitch);
+    setActiveInput('keyboard');
+  }
 }
 
 function subscribeToInput(listener: () => void) {
@@ -35,6 +46,7 @@ function subscribeToInput(listener: () => void) {
   if (inputListeners.size === 1) {
     window.addEventListener('pointerdown', onPointer, true);
     window.addEventListener('pointermove', onPointer, true);
+    window.addEventListener('pointerup', onPointer, true);
     window.addEventListener('keydown', onKeyboard, true);
   }
   return () => {
@@ -42,7 +54,9 @@ function subscribeToInput(listener: () => void) {
     if (inputListeners.size === 0) {
       window.removeEventListener('pointerdown', onPointer, true);
       window.removeEventListener('pointermove', onPointer, true);
+      window.removeEventListener('pointerup', onPointer, true);
       window.removeEventListener('keydown', onKeyboard, true);
+      window.clearTimeout(pendingInputSwitch);
     }
   };
 }

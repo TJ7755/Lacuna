@@ -51,6 +51,10 @@ must cover candidate snapshotting and merging as well as import.
 
 ## Browser evidence matters
 
+Changing automatic input mode during pointer-down can unmount the pressed control before
+the browser dispatches click. Switch after the gesture's click when controls differ by mode;
+the mobile WebKit study test catches a lost first touch after mouse-driven setup.
+
 On local macOS WebKit, Playwright's offline `page.reload()` can fail with an internal browser
 error. The mobile WebKit gate covers offline in-app navigation; the Chromium gate covers cold
 offline reload. Do not claim the WebKit test proves an offline document reload.
