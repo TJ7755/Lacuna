@@ -1,4 +1,5 @@
 import { db } from '../db/schema';
+import type { MediaAsset } from '../db/types';
 import { makeId } from '../utils/id';
 import type { QuestionSetRecord } from './questionSetCodec';
 import { createQuestionSet, updateQuestionSet } from './questionSetRepository';
@@ -157,7 +158,14 @@ export function createQuestionSetDraft(
 ): QuestionSetDraft {
   return {
     schemaVersion: 1,
-    content: structuredClone(content),
+    content: structuredClone({
+      id: content.id,
+      courseId: content.courseId,
+      title: content.title,
+      lessonIds: content.lessonIds,
+      assessmentIds: content.assessmentIds,
+      questions: content.questions,
+    }),
     baseContentRevisionId,
     draftRevisionId: (options.makeId ?? makeId)(),
     updatedAt: options.now ?? Date.now(),
@@ -212,6 +220,18 @@ export async function saveQuestionSetDraft(
     });
     await db.appState.put({ key, value: parsed });
     return parsed;
+  });
+}
+
+/** Persist a prepared asset and the draft that first references it as one local commit. */
+export async function saveQuestionSetDraftWithAssets(
+  draft: QuestionSetDraft,
+  assets: readonly MediaAsset[],
+  options: { expectedDraftRevisionId: string | null },
+): Promise<QuestionSetDraft> {
+  return db.transaction('rw', [db.assets, db.appState], async () => {
+    if (assets.length > 0) await db.assets.bulkPut([...assets]);
+    return saveQuestionSetDraft(draft, options);
   });
 }
 

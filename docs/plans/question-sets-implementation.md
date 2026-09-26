@@ -311,7 +311,20 @@ server and Electron typechecks and focused ESLint passed.
 Drafts remain excluded from backup/share/sync. Live upload protection belongs to editor
 integration. Personal attempts, learner UI and the authoring UI remain unimplemented.
 The prompter has assigned the UI redesign to the primary agent, not Sol or Luna;
-stop after this storage gate before starting that redesign.
+the Paper direction was subsequently selected for implementation.
+
+### Paper direction selected — 26 September 2026
+
+The prompter selected Paper from the primary agent's three comparisons, preserved on
+`prototype/question-set-directions` at `3c4973da`. Production UI is rewritten on
+`feat/question-sets`; prototype fixtures and switching controls are not carried over.
+
+The authoring session foundation now serialises saves, retains edits arriving during
+writes, identifies draft versus published-content conflicts and protects images with an
+atomic asset/draft commit. Garbage collection uses a transaction across its root scan and
+deletions. Unchanged saved-set drafts publish without incrementing the content revision.
+Backend evidence: 60 focused tests, baseline failure for the new authoring module, and
+T3 create/edit/image/link/publish/reopen verification. UI evidence is recorded separately.
 
 ## Stage 3 — authoring and validation
 
