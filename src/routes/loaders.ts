@@ -78,3 +78,6 @@ export const loadLanding = () =>
 
 export const loadImportPage = () =>
   import('../pages/ImportPage').then((module) => ({ default: module.ImportPage }));
+
+export const loadShareLinkPage = () =>
+  import('../pages/ShareLinkPage').then((module) => ({ default: module.ShareLinkPage }));

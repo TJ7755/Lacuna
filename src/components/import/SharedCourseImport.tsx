@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
+import { parseShareCode } from '../../shareLinks/client';
 import { useCourseQrScanner } from './useCourseQrScanner';
 import { CourseFileImportButton } from './CourseFileControls';
 import {
@@ -63,6 +64,25 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
   return { summary, raw };
 }
 
+/** A share-link code (or full link) when the text is one, else null. Text share
+ *  codes fall through to the ordinary decode path. */
+function tryParseShareCode(raw: string): string | null {
+  try {
+    return parseShareCode(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Open a share link through the hash router directly, matching the existing
+ * `window.location.hash` navigation in App and Settings. This keeps the
+ * importer usable wherever it is embedded without requiring router context.
+ */
+function openShareLink(shareId: string): void {
+  window.location.hash = `#/s/${shareId}`;
+}
+
 /** Turn a merge result into a single sentence for the post-import toast. */
 function describeMergeResult(result: MergeLineageResult): string {
   const parts: string[] = [];
@@ -120,6 +140,13 @@ export function SharedCourseImport({
     startScanning: handleStartScan,
     stopScanning: handleStopScan,
   } = useCourseQrScanner(async (text) => {
+    // A scanned share link (or its bare code) opens the link importer rather
+    // than decoding as a text code — the s/:code route fetches the course.
+    const shareId = tryParseShareCode(text);
+    if (shareId) {
+      openShareLink(shareId);
+      return;
+    }
     const generation = beginInspection();
     try {
       const payload = await decodeShare(text);
@@ -181,6 +208,13 @@ export function SharedCourseImport({
   async function handleInspect() {
     const raw = input.trim();
     if (!raw) return;
+    // A pasted share link (or its bare code) opens the link importer rather
+    // than decoding as a text code — the s/:code route fetches the course.
+    const shareId = tryParseShareCode(raw);
+    if (shareId) {
+      openShareLink(shareId);
+      return;
+    }
     const generation = beginInspection();
     try {
       const payload = await decodeShare(raw);

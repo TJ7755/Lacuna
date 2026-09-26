@@ -46,6 +46,23 @@ export function Dashboard() {
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
 
+  // Background check for teacher republishes of share-linked courses. The poll
+  // module (with the merge importer and course-file decoder) loads on demand so
+  // none of that weight joins the initial bundle; the dashboard never waits on
+  // it either. A merged update surfaces through the existing pending-review
+  // badge. A failed chunk load simply retries on the next dashboard visit.
+  useEffect(() => {
+    let cancelled = false;
+    void import('../shareLinks/polling')
+      .then(({ pollShareUpdates }) => {
+        if (!cancelled) void pollShareUpdates();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Active courses only (archived ones are hidden from the main grid), ordered per
   // the "Choose how courses are ordered" dashboard setting.
   const activeCourses = useMemo(() => {

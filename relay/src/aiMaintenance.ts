@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { readAiSessionExpiry } from './aiSessionMetadata.js';
 import { cleanupExpiredChannels } from './channelMaintenance.js';
+import { cleanupExpiredShares } from './shares.js';
 import { canonicalEtag, type BlobStore, type ListedObject } from './store.js';
 
 const AI_PAIRING_RATE_LIMIT = 10;
@@ -28,7 +29,8 @@ export async function handleAiMaintenanceRoute(
   if (request.method !== 'GET') return maintenanceJson(405, { error: 'method not allowed' });
   const ai = await cleanupAiState(store, now);
   const channels = await cleanupExpiredChannels(store, now);
-  return maintenanceJson(200, { ...ai, ...channels });
+  const shares = await cleanupExpiredShares(store, now);
+  return maintenanceJson(200, { ...ai, ...channels, ...shares });
 }
 
 export async function consumeAiPairingPermit(

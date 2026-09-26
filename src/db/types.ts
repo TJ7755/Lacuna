@@ -377,9 +377,20 @@ export interface CourseRecord {
   /**
    * Teacher-side publish state: present once the teacher has clicked Publish
    * at least once. Distinct from `distributedCopy` — this course is the
-   * lineage's origin, not a copy of it (Arc 7 §7.2).
+   * lineage's origin, not a copy of it (Arc 7 §7.2). `shareId` is the stable
+   * relay capability id behind the `/#/s/<code>` link, present once the
+   * course has been published to a share link; `shareRevision` is the
+   * revision actually uploaded there (a plain publish can move `revision`
+   * ahead of it). Both are public (the id appears in the URL) and need no
+   * migration, like the rest of this object.
    */
-  distribution?: { lineageId: string; revision: number; publishedAt: number };
+  distribution?: {
+    lineageId: string;
+    revision: number;
+    publishedAt: number;
+    shareId?: string;
+    shareRevision?: number;
+  };
 }
 
 /** A student's distributed-copy tracking on an imported `Course` (Arc 7 §7.2). */
@@ -1104,6 +1115,18 @@ export interface RememberedSyncCredentials {
 }
 
 /**
+ * Device-local credentials for one teacher share link: the relay origin plus
+ * the bearer write token and the last-known slot generations (so republishes
+ * can compare-and-swap instead of blindly overwriting).
+ */
+export interface RememberedShareLinkCredentials {
+  relayUrl: string;
+  writeToken: string;
+  payloadGeneration?: string;
+  metaGeneration?: string;
+}
+
+/**
  * Local sync-channel bookkeeping. Stored under `appState` key `syncState`.
  * Absent until a device is paired; the P6 Settings flow owns pairing and
  * stores the relay origin, wrapped recovery copy and optional remembered
@@ -1117,6 +1140,13 @@ export interface SyncState {
   wrappedKeyMaterial?: string;
   /** Present while this device remembers its credentials without the passphrase. */
   remembered?: RememberedSyncCredentials;
+  /**
+   * Teacher share-link write credentials, keyed by relay share id. Device-local
+   * like `remembered`: never exported in backups or course files, since anyone
+   * holding a write token can replace the linked course. The public share id
+   * itself lives on the course's `distribution` instead.
+   */
+  shareLinks?: Record<string, RememberedShareLinkCredentials>;
   lastPushedGeneration?: string;
   lastSuccessfulSyncAt?: number;
   /** Last encrypted snapshot size, retained for the Settings sync status panel. */
