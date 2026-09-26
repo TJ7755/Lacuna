@@ -49,6 +49,11 @@ pre-replacement restore point survives. Recovery merge and peer merge use differ
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
 must cover candidate snapshotting and merging as well as import.
 
+## Local Electron commands
+
+The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron application
+tests; otherwise packaged executables reject Chromium arguments as Node options.
+
 ## Browser evidence matters
 
 On local macOS WebKit, Playwright's offline `page.reload()` can fail with an internal browser
