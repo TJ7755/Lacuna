@@ -56,6 +56,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+`html5-qrcode.start()` can resolve after its view closes. Camera cleanup must also
+run after that pending start resolves; stopping only during unmount can leave a
+camera running. Start scanning after the scanner element mounts.
+
 On local macOS WebKit, Playwright's offline `page.reload()` can fail with an internal browser
 error. The mobile WebKit gate covers offline in-app navigation; the Chromium gate covers cold
 offline reload. Do not claim the WebKit test proves an offline document reload.
