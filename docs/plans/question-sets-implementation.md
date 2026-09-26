@@ -397,26 +397,26 @@ No numerical exam forecast or classifier has been added.
 
 ## Stage 4 — practice, self-marking, annotations and resume
 
-- [ ] Implement Practice and Paper feedback timing. Practice reveals feedback after the
+- [x] Implement Practice and Paper feedback timing. Practice reveals feedback after the
   independent question/dependency group; Paper stores responses until paper submission. Do not
   add a timer to v1.
-- [ ] Persist a presentation/attempt snapshot before display and save partial answers as the
+- [x] Persist a presentation/attempt snapshot before display and save partial answers as the
   learner moves. Preserve original answer separately from later correction.
-- [ ] Add explicit unanswered-part handling before submission; record assistance when a learner
+- [x] Add explicit unanswered-part handling before submission; record assistance when a learner
   opens related cards/lessons before submitting.
-- [ ] Implement side-by-side desktop answer/scheme and a single-flow small-screen marking view.
+- [x] Implement side-by-side desktop answer/scheme and a single-flow small-screen marking view.
   Decisions must support zero through maximum, partial credit where configured, and a distinct
   Unsure state without defaulting to zero/full marks.
-- [ ] Show one active answerable part during answering and one active criterion during
+- [x] Show one active answerable part during answering and one active criterion during
   marking, preserving parent context and dependent-part feedback rules. Capture both
   states in desktop and narrow-screen gate screenshots.
-- [ ] Add accessible text highlighting, comments and Add note controls. Keep annotations separate
+- [x] Add accessible text highlighting, comments and Add note controls. Keep annotations separate
   from the original answer. Pen drawing is out of scope.
-- [ ] Add optional multi-reason reflection and a separate corrections area; neither silently
+- [x] Add optional multi-reason reflection and a separate corrections area; neither silently
   changes first-attempt evidence.
 - [ ] Add Save and finish later, resume at the active question/scroll location, return to the
   originating entry point and preserve library filter/scroll state.
-- [ ] Keep self-marked results labelled as such; show unresolved decisions as provisional and
+- [x] Keep self-marked results labelled as such; show unresolved decisions as provisional and
   completion separately from score. Repeating creates a new attempt.
 - [ ] Add tests for close/reopen resume, Paper reveal timing, dependency groups, answer snapshot
   immutability, assisted exposure, annotation persistence and zero-mark completed attempts.
@@ -427,6 +427,46 @@ No numerical exam forecast or classifier has been added.
 
 Exit condition: an attempt can be answered, left, resumed, self-marked, annotated and completed
 without loss or accidental conversion of unknown/unsure to zero.
+
+### Core learner browser gate — 26 September 2026
+
+Implemented the real overview/start/history flow and persisted Practice/Paper attempts. The
+Paper workspace shares its question renderer with author preview. Each screen presents one
+answerable part or marking criterion; desktop compares original response and criterion side by
+side, while narrow screens stack them. Original responses are selectable plain text, never
+rewritten by highlights, notes or corrections. Related cards are revealed only after assistance
+is recorded. Optional reflection is separate from both marks and original answers.
+
+The write queue owns the attempt revision. Response text autosaves and flushes before navigation
+or submission. Accepted commands behind a failed write remain queued for retry; text arriving
+while a slow flush finishes is drained before it resolves. Errors block departure and further
+marking mutations. Explicit Save and finish later restores active part/criterion and per-tab
+scroll. The current entry point returns to its set overview.
+
+Evidence:
+- Sol implemented and audited attempt persistence; Luna supplied UI regressions and audit;
+  the primary agent implemented every UI component.
+- Actual missing-module red runs preceded the learner page and shared renderer. Two additional
+  deferred-write tests failed before the queue fixes and passed afterwards.
+- 27 relevant UI/session/regression tests passed across eight files, including failed mark save
+  and retry, resume, zero, blank submission, notes, corrections, assistance and reflection.
+- Web/server/Electron typechecks, focused ESLint and production build passed.
+- T3 browser origin 5183: filled nested Biology parts, saved/left/resumed at (a)(ii), submitted
+  Practice, saved a selected-text highlight/comment and separate correction, marked unsure then
+  resolved it, awarded an explicit zero and completed at 2/4. A fresh Paper attempt kept its scheme
+  hidden and required explicit confirmation for unanswered parts. No Card schedule changed.
+- Checked desktop and 390×844 layout with no horizontal overflow. Browser testing caught the
+  shell's default selection prohibition; the original-answer panel now explicitly enables text
+  selection. Selection changed from empty to the actual answer and a persisted highlight.
+- Desktop answering: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiub4td-f65692aa.png`.
+- Desktop marking: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiudwld-838142e5.png`.
+- Narrow marking: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiuejtp-925f67de.png`.
+
+Remaining Stage 4 release checks: enlarged-diagram interaction, supported-browser/touch and
+packaged desktop checks, cold offline validation, and preserving future path/exam entry context
+and library filter/scroll across those entries. Practice currently treats a top-level question as
+the dependency group; separately authored cross-question dependency metadata is not implemented.
+Stage 5 path/exam entry points and Stage 6 exam-performance integration remain unimplemented.
 
 ## Stage 5 — sharing, path and exam entry points
 

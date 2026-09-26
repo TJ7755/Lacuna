@@ -84,3 +84,5 @@ export const loadShareLinkPage = () =>
 
 export const loadQuestionSetEditor = () => import('../pages/QuestionSetEditor').then(module => ({ default: module.QuestionSetEditor }));
 export const loadQuestionSetOverview = () => import('../pages/QuestionSetOverview').then(module => ({ default: module.QuestionSetOverview }));
+
+export const loadQuestionSetPractice = () => import('../pages/QuestionSetPractice').then(module => ({ default: module.QuestionSetPractice }));
