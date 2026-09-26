@@ -75,3 +75,6 @@ export const loadMcpBridgeController = () =>
 
 export const loadLanding = () =>
   import('../pages/Landing').then((module) => ({ default: module.Landing }));
+
+export const loadImportPage = () =>
+  import('../pages/ImportPage').then((module) => ({ default: module.ImportPage }));

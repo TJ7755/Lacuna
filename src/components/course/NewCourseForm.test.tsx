@@ -14,18 +14,6 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
 vi.mock('../../db/courseRepository', () => ({ createCourse: mocks.createCourse }));
 vi.mock('../../db/lessonRepository', () => ({ createLesson: mocks.createLesson }));
-vi.mock('../import/UnifiedImportPanel', () => ({
-  ShareCodeImportPanel: ({
-    onShareImport,
-  }: {
-    onShareImport: (courses: number, cards: number, courseIds: string[]) => Promise<void>;
-  }) => (
-    <button type="button" onClick={() => void onShareImport(1, 2, ['imported-course'])}>
-      Complete share import
-    </button>
-  ),
-}));
-
 describe('NewCourseForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,26 +24,6 @@ describe('NewCourseForm', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('opens the two-step card importer and Undo preserves the course title and pasted cards', async () => {
-    window.matchMedia = vi
-      .fn()
-      .mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() });
-    render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), { target: { value: 'French' } });
-    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Import cards' }));
-    expect(await screen.findByRole('dialog', { name: 'Import cards' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Paste your cards'), {
-      target: { value: 'bonjour\thello' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
-    expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
-    expect(screen.getByLabelText('Course title')).toHaveValue('French');
-    expect(mocks.createCourse).not.toHaveBeenCalled();
-    expect(mocks.createLesson).not.toHaveBeenCalled();
   });
 
   it('requires an explicit scheduling target before showing an exam date', () => {
@@ -209,18 +177,11 @@ describe('NewCourseForm', () => {
     expect(input).toHaveFocus();
     expect(mocks.createCourse).not.toHaveBeenCalled();
   });
+});
 
-  it('offers share-code import and opens the imported course', async () => {
-    const onClose = vi.fn();
-    render(<NewCourseForm onClose={onClose} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Import share code' }));
-    expect(screen.queryByRole('button', { name: 'Exam date' })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Complete share import' }));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(mocks.notify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive');
-    expect(mocks.navigate).toHaveBeenCalledWith('/course/imported-course');
-    expect(mocks.createCourse).not.toHaveBeenCalled();
-  });
+it('keeps course creation separate from import', () => {
+  render(<NewCourseForm onClose={vi.fn()} />);
+  expect(screen.queryByRole('button', { name: 'Import cards' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Import share code' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
 });

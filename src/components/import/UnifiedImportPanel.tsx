@@ -1,8 +1,8 @@
 // Unified import panel: a single, powerful import UI that auto-detects the input
 // format (CSV, TSV, Markdown table, Markdown list, JSON, Anki text, share codes,
-// plain text Q&A) and shows a live preview. NewCourseForm uses its ShareCodeImportPanel
-// entry point for shared courses. Card-list imports use CardImportDialog with the same
-// parsing engine. The Share page has its own importer.
+// plain text Q&A) and shows a live preview. Card-list and Import page imports use
+// CardImportDialog with the same parsing engine. SharedCourseImport handles course
+// files, codes and QR scanning for the Import and Share pages.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';

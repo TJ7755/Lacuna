@@ -159,3 +159,24 @@ describe('CardImportDialog', () => {
     expect(screen.getByRole('button', { name: 'Review cards' })).toBeEnabled();
   });
 });
+
+it('supports an inline review with destination validation and preserves input on Undo', async () => {
+  const onImport = vi.fn();
+  render(
+    <CardImportDialog
+      presentation="page"
+      onCancel={vi.fn()}
+      onImport={onImport}
+      canImport={false}
+      reviewOptions={<p>Choose a destination</p>}
+    />,
+  );
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  paste('bonjour\thello');
+  await review();
+  expect(screen.getByText('Choose a destination')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+  expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
+  expect(onImport).not.toHaveBeenCalled();
+});

@@ -37,14 +37,41 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await enterFreshLacuna(page);
     const before = (await importedCards(page)).length;
-    await page.locator('main').getByRole('button', { name: 'New course' }).click();
-    await page.getByRole('radio', { name: /Steady retention/ }).click();
-    await page.getByRole('button', { name: 'Import cards', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Import cards', exact: true });
-    await dialog.getByLabel('Course title').fill('Import regression');
-    await dialog
+    await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
+    await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
+    const importer = page.locator('.card-import-page');
+    await importer
       .getByLabel('Paste your cards')
       .fill('Import greeting\thello\n{{c1::Paris}} is in France');
+    await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
+    await importer.getByLabel('Course title').fill('Import regression');
+    await importer.getByRole('radio', { name: /Steady retention/ }).check();
+    await importer.getByRole('checkbox', { name: 'Also create reverse' }).check();
+    await expect(importer.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
+    await importer.getByRole('button', { name: 'Undo' }).click();
+    await expect(importer.getByLabel('Paste your cards')).toHaveValue(
+      'Import greeting\thello\n{{c1::Paris}} is in France',
+    );
+    expect((await importedCards(page)).length).toBe(before);
+    await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
+    await expect(importer.getByRole('checkbox')).toBeChecked();
+    await expect(importer.getByLabel('Course title')).toHaveValue('Import regression');
+    await importer.getByRole('button', { name: 'Import 3 cards' }).click();
+    await expect(importer).toBeHidden();
+    await expect(page).toHaveURL(/\/lesson\//);
+    await expect.poll(async () => (await importedCards(page)).length).toBe(before + 3);
+    const added = await importedCards(page);
+    const original = added.find((card) => card.front === 'Import greeting')!;
+    expect(
+      added.find((card) => card.front === 'hello' && card.back === 'Import greeting'),
+    ).toMatchObject({ conceptId: original.conceptId, primaryLessonId: original.primaryLessonId });
+
+    const dialog = page.getByRole('dialog', { name: 'Import cards', exact: true });
+
+    // Import into this lesson as well: Undo must not remove the existing cards.
+    await page.getByRole('button', { name: 'More ways to add cards' }).click();
+    await page.getByRole('menuitem', { name: 'Import cards' }).click();
+    await dialog.getByLabel('Paste your cards').fill('Second import\tretained');
     await expect(dialog).toHaveCSS('transform', 'none');
     const close = dialog.getByRole('button', { name: 'Close import' });
     const review = dialog.getByRole('button', { name: 'Review cards', exact: true });
@@ -55,33 +82,7 @@ for (const width of [1280, 390]) {
     await expect(review).toBeFocused();
     const first = await dialog.boundingBox();
     await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
-    await dialog.getByRole('checkbox', { name: 'Also create reverse' }).check();
-    await expect(dialog.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
-    const second = await dialog.boundingBox();
-    expect(second).toEqual(first);
-    await dialog.getByRole('button', { name: 'Undo' }).click();
-    await expect(dialog.getByLabel('Paste your cards')).toHaveValue(
-      'Import greeting\thello\n{{c1::Paris}} is in France',
-    );
-    await expect(dialog.getByLabel('Course title')).toHaveValue('Import regression');
-    expect((await importedCards(page)).length).toBe(before);
-    await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
-    await expect(dialog.getByRole('checkbox')).toBeChecked();
-    await dialog.getByRole('button', { name: 'Import 3 cards' }).click();
-    await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/lesson\//);
-    await expect.poll(async () => (await importedCards(page)).length).toBe(before + 3);
-    const added = await importedCards(page);
-    const original = added.find((card) => card.front === 'Import greeting')!;
-    expect(
-      added.find((card) => card.front === 'hello' && card.back === 'Import greeting'),
-    ).toMatchObject({ conceptId: original.conceptId, primaryLessonId: original.primaryLessonId });
-
-    // Import into this lesson as well: Undo must not remove the existing cards.
-    await page.getByRole('button', { name: 'More ways to add cards' }).click();
-    await page.getByRole('menuitem', { name: 'Import cards' }).click();
-    await dialog.getByLabel('Paste your cards').fill('Second import\tretained');
-    await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
+    expect(await dialog.boundingBox()).toEqual(first);
     await dialog.getByRole('button', { name: 'Undo' }).click();
     expect((await importedCards(page)).length).toBe(before + 3);
     await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();

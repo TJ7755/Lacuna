@@ -347,10 +347,22 @@ jobs:
           gh release download v0.2.7 --pattern Lacuna-Setup-0.2.7.exe --dir test-results/windows-upgrade/source
       - name: Upgrade with a long-running installed AI companion
         run: node scripts/windows-upgrade-companion.mjs test-results/windows-upgrade/source/Lacuna-Setup-0.2.7.exe
+      - name: Verify installation and latest released profile upgrade
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force baseline | Out-Null
+          gh release download v0.2.10 --pattern Lacuna-Setup-0.2.10.exe --dir baseline
+          node scripts/windows-release-upgrade.mjs baseline/Lacuna-Setup-0.2.10.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Preserve installed upgrade evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-installed-upgrade-results
-          path: test-results/windows-upgrade/installed-upgrade.json
+          path: |
+            test-results/windows-upgrade/installed-upgrade.json
+            test-results/windows-release-upgrade/report.json
           if-no-files-found: ignore

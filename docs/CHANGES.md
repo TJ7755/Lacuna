@@ -1,4 +1,4 @@
-# Lacuna — version 0.2.10
+# Lacuna — version 0.2.11
 
 ## Unreleased
 
@@ -14,6 +14,28 @@
   shortcuts, cancel pending grades and recover focus. The deliberate graded-card pause
   and existing flip/departure timing are preserved. See the
   [desktop validation report](performance/2026-09-26/README.md) for evidence and hardware gaps.
+
+- Kept the installed Windows upgrade probe clear of the downloaded-update
+  dialogue while it records baseline study data, then installed the same verified
+  update and checked that the records survived.
+
+- Fixed QR import camera cleanup: stopping or leaving the importer releases the
+  camera, including when startup completes after cancellation. Camera permission
+  errors remain visible after the scanner closes.
+
+- Added a dedicated Import screen beside New course, with Lacuna course, Anki and
+  text/spreadsheet entry points and automatic file routing. Reused the card import
+  input and review UI inline, with destination and study-target choices during review.
+  Existing lessons and new lessons/courses use the same atomic import writer. Shared
+  course files, codes and QR imports reuse the Share workflow and open the imported
+  course. New course now handles empty course creation only. Back navigation matches
+  the existing editors, with a reserved navigation row keeping headings and content
+  stationary across import paths.
+
+## 0.2.11 beta — offline course files, authoring and study improvements
+
+- Fixed packaged release checks timing out when the window already has its route title.
+- Explicitly validated inspector callbacks in the installed-upgrade probe before invocation.
 
 - Added offline `.lacuna` course files to Share. Files include referenced images, audio and
   occlusion diagrams once each, without personal study history. File imports preview before
