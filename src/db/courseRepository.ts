@@ -9,6 +9,11 @@ import type {
   QuestionDefinition,
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import {
+  listQuestionSetDrafts,
+  questionSetDraftKey,
+  type QuestionSetDraft,
+} from '../questions/questionSetDrafts';
 import { restoreDeletedQuestionSets } from '../questions/questionSetRepository';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { readPracticeDefaults } from '../state/practiceDefaults';
@@ -406,6 +411,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.lineageIdMappings,
       db.pendingMergeReviews,
       db.agentMemories,
+      db.appState,
       db.tombstones,
     ],
     async (tx) => {
@@ -455,6 +461,7 @@ export async function deleteCourse(id: string): Promise<void> {
         await db.questionAttempts.where('courseId').equals(id).primaryKeys()
       ).map(String);
       const questionSets = await db.questionSets.where('courseId').equals(id).toArray();
+      const questionSetDrafts = await listQuestionSetDrafts(id);
       const lineageMappingIds = (
         await db.lineageIdMappings.where('courseId').equals(id).primaryKeys()
       ).map(String);
@@ -500,6 +507,9 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.cards.where('courseId').equals(id).delete();
       await db.questionAttempts.where('courseId').equals(id).delete();
       await db.questionSets.where('courseId').equals(id).delete();
+      await db.appState.bulkDelete(
+        questionSetDrafts.map((draft) => questionSetDraftKey(id, draft.content.id)),
+      );
       await db.questionConcepts.where('courseId').equals(id).delete();
       await db.questions.where('courseId').equals(id).delete();
       await db.concepts.where('courseId').equals(id).delete();
@@ -577,6 +587,7 @@ export interface CourseSnapshot {
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
   questionSets: QuestionSetRecord[];
+  questionSetDrafts?: QuestionSetDraft[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories?: AgentMemory[];
@@ -609,6 +620,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questionConcepts,
     questionAttempts,
     questionSets,
+    questionSetDrafts,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -627,6 +639,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.questionConcepts.where('courseId').equals(id).toArray(),
     db.questionAttempts.where('courseId').equals(id).toArray(),
     db.questionSets.where('courseId').equals(id).toArray(),
+    listQuestionSetDrafts(id),
     db.lineageIdMappings.where('courseId').equals(id).toArray(),
     db.pendingMergeReviews.where('courseId').equals(id).toArray(),
     db.agentMemories.where('courseId').equals(id).toArray(),
@@ -687,6 +700,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questionConcepts,
     questionAttempts,
     questionSets,
+    questionSetDrafts,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -741,6 +755,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.lineageIdMappings,
         db.pendingMergeReviews,
         db.agentMemories,
+        db.appState,
         db.tombstones,
       ],
       async (tx) => {
@@ -768,6 +783,16 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.questions.bulkPut(snapshot.questions),
           db.questionConcepts.bulkPut(snapshot.questionConcepts),
           db.questionAttempts.bulkPut(snapshot.questionAttempts),
+          db.appState.bulkPut(
+            (snapshot.questionSetDrafts ?? []).map((draft) => ({
+              key: questionSetDraftKey(snapshot.course.id, draft.content.id),
+              value: {
+                ...draft,
+                draftRevisionId: makeId(),
+                updatedAt: Math.max(Date.now(), draft.updatedAt + 1),
+              },
+            })),
+          ),
           db.lineageIdMappings.bulkPut(snapshot.lineageIdMappings),
           db.pendingMergeReviews.bulkPut(snapshot.pendingMergeReviews),
           db.agentMemories.bulkPut(

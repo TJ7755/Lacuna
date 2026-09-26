@@ -436,6 +436,12 @@ export async function collectOrphanedAssets(): Promise<number> {
       referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
       questionSetOffset += batch.length;
     }
+    // Author drafts are deliberately local-only app state, but their media must remain
+    // reachable until the author either publishes or discards the draft.
+    const draftEntries = await db.appState.where('key').startsWith('questionSetDraft:').toArray();
+    referencedAssetHashesInValues(draftEntries.map((entry) => entry.value)).forEach((hash) =>
+      referenced.add(hash),
+    );
 
     // Stream asset keys and collect orphans without loading all keys at once.
     const orphans: string[] = [];

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added device-local Question Set drafts with stale-edit protection, atomic finished saves,
+  draft media retention and Course deletion/undo support. Immutable editing helpers retain
+  question, part and subpart identities when reordered. This is storage groundwork; the
+  redesigned authoring interface is not included. Drafts are not backed up, shared or synced.
+
 - Added durable authored Question Sets to backup v12, peer sync, course-share v4 and `.lacourse`
   course files, including strict parsing, reference validation, deterministic aggregate merges,
   deletion receipts, nested ID remapping and media reachability. The new `lacuna-v12` marker makes

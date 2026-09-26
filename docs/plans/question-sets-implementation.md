@@ -288,9 +288,30 @@ not the planned set editor:
 - [Narrow library](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muirjn1i-7c3bbc79.png)
 - [Narrow legacy editor](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muirk8wp-81f67596.png)
 
-**Remaining boundaries:** no new set editor or learner UI, draft/attempt persistence, set-aware
+**Remaining boundaries at this gate:** no new set editor or learner UI, draft/attempt persistence, set-aware
 sharing summaries or path/exam entry points. MCP lineage preview/apply rejects sets until it
 can accurately preview their changes. No Jev, automatic marking or exam-score forecast is added.
+
+### Local author-draft storage gate — 26 September 2026
+
+- [x] Incomplete drafts in device-local `appState`, with nested runtime parsing, explicit
+  corruption errors and revision-based stale-write protection.
+- [x] Atomic complete-set save and draft removal through the existing repository.
+- [x] Immutable add/remove/reorder helpers for questions, parts and subparts.
+- [x] Draft media retention and Course deletion/undo, including fresh restored revisions.
+- [x] T3 browser: reload recovery, rejected invalid/stale saves, unchanged saved content,
+  successful complete save/removal, backup exclusion, draft-only media retention/release,
+  and Course deletion/undo with stale-tab rejection.
+
+Validation: 115 tests passed across draft storage, editing helpers, asset cleanup and
+Course repository coverage. Baseline `aa6a0eb5` fails the new draft API import and the
+draft-media retention assertion; the proposed implementation passes both. Full web,
+server and Electron typechecks and focused ESLint passed.
+
+Drafts remain excluded from backup/share/sync. Live upload protection belongs to editor
+integration. Personal attempts, learner UI and the authoring UI remain unimplemented.
+The prompter has assigned the UI redesign to the primary agent, not Sol or Luna;
+stop after this storage gate before starting that redesign.
 
 ## Stage 3 — authoring and validation
 
