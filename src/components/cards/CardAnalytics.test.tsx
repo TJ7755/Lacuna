@@ -73,6 +73,24 @@ afterEach(() => {
 });
 
 describe('CardAnalytics', () => {
+  it('keeps the exam label above the plot with readable text', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW);
+    render(
+      <CardAnalytics
+        card={{ ...makeCard(), stability: 60 }}
+        schedulingConfig={makeSchedulingConfig(NOW + 6 * MS_PER_DAY)}
+        motionMultiplier={0}
+      />,
+    );
+    const label = screen.getByText('Exam').closest('text')!;
+    const grid = document.querySelectorAll('.recharts-cartesian-grid-horizontal line');
+    const plotTop = Math.min(...Array.from(grid, (line) => Number(line.getAttribute('y1'))));
+    expect(Number(label.getAttribute('y'))).toBeLessThan(plotTop);
+    expect(Number(label.getAttribute('y'))).toBeGreaterThanOrEqual(12);
+    expect(label).toHaveAttribute('fill', 'black');
+    expect(label).toHaveAttribute('font-size', '12');
+  });
+
   it('labels a passed exam as a maintenance target', () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
@@ -118,7 +136,11 @@ describe('forgetting curve hover', () => {
       if (withHistory) {
         const marker = container.querySelector('.recharts-reference-dot circle')!;
         expect(Number(marker.getAttribute('cx'))).toBeCloseTo(36, 0);
-        expect(Number(marker.getAttribute('cy'))).toBeCloseTo(38.8, 0);
+        const lines = container.querySelectorAll('.recharts-cartesian-grid-horizontal line');
+        const ys = Array.from(lines, (line) => Number(line.getAttribute('y1')));
+        const top = Math.min(...ys);
+        const bottom = Math.max(...ys);
+        expect(Number(marker.getAttribute('cy'))).toBeCloseTo(top + (bottom - top) * 0.2, 0);
       }
       const chart = container.querySelector('.recharts-wrapper')!;
       vi.spyOn(chart, 'getBoundingClientRect').mockReturnValue({

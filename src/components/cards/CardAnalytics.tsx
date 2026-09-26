@@ -140,7 +140,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
         {hasData ? (
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={curveData} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
+              <ComposedChart data={curveData} margin={{ top: 28, right: 12, bottom: 0, left: -8 }}>
                 <defs>
                   <linearGradient id={`card-traj-${card.id}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
@@ -185,9 +185,10 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                   strokeDasharray="4 4"
                   label={{
                     value: 'Exam',
-                    position: 'insideTopLeft',
-                    fill: c.positive,
-                    fontSize: 11,
+                    position: 'top',
+                    fill: c.ink,
+                    fontSize: 12,
+                    fontWeight: 500,
                   }}
                 />
                 {reviewDots.map((dot, index) => (

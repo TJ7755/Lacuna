@@ -4,7 +4,8 @@
 
 - Forgetting-curve tooltips now show a readable date and predicted recall percentage.
   Review markers no longer disrupt hover selection, keeping the highlighted point
-  and tooltip aligned with the hovered day.
+  and tooltip aligned with the hovered day. Exam labels sit above the plot in
+  stronger text so the curve cannot cross them.
 
 - Replaced typed-answer reports with inline comparison: muted submitted text above
   the answer, strikethroughs on extra words and soft highlights on missing words.
