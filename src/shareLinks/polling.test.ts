@@ -117,11 +117,13 @@ describe('pollShareUpdates', () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     recordShareImport(SHARE_ID, course.id);
     // Publish uploads the payload before the manifest, so a poll can read a
-    // new payload beside the old manifest: merging it would apply an update
-    // the manifest never announced.
+    // newer payload beside a newer-but-different manifest: merging it would
+    // apply an update the manifest never announced. The manifest must name a
+    // newer revision than the local course, or polling returns before the
+    // payload is even fetched and the guard below goes untested.
     const { fetchImpl } = shareFetch(
-      manifestBytes(1),
-      courseFileText(coursePayload({ rv: 2, at: 2000, lessons: [lessonOne({ n: 'Unannounced' })] })),
+      manifestBytes(2),
+      courseFileText(coursePayload({ rv: 3, at: 2000, lessons: [lessonOne({ n: 'Unannounced' })] })),
     );
 
     const results = await pollShareUpdates({ fetchImpl, throttleMs: 0 });
