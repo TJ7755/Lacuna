@@ -2,7 +2,13 @@ import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
 import type { useCardImportSource } from './useCardImportSource';
 
-export function CardImportInput({ source }: { source: ReturnType<typeof useCardImportSource> }) {
+export function CardImportInput({
+  source,
+  preferPackage = false,
+}: {
+  source: ReturnType<typeof useCardImportSource>;
+  preferPackage?: boolean;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   return (
@@ -23,7 +29,9 @@ export function CardImportInput({ source }: { source: ReturnType<typeof useCardI
       }}
     >
       <div className="card-import-input-label">
-        <label htmlFor="card-import-text">Paste your cards</label>
+        <label htmlFor="card-import-text">
+          {preferPackage ? 'Anki package' : 'Paste your cards'}
+        </label>
         <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
           Upload a file <span aria-hidden="true">↗</span>
         </button>
@@ -33,7 +41,7 @@ export function CardImportInput({ source }: { source: ReturnType<typeof useCardI
         type="file"
         aria-label="Upload cards"
         hidden
-        accept=".csv,.tsv,.txt,.json,.md,.markdown,.html,.xml,.apkg"
+        accept={preferPackage ? '.apkg' : '.csv,.tsv,.txt,.json,.md,.markdown,.html,.xml,.apkg'}
         onChange={(event) => {
           void source.readFile(event.target.files?.[0]);
           event.target.value = '';
@@ -46,6 +54,14 @@ export function CardImportInput({ source }: { source: ReturnType<typeof useCardI
           <p>Includes scheduling history and media.</p>
           <button type="button" onClick={() => source.changeText('')}>
             Use text instead
+          </button>
+        </div>
+      ) : preferPackage && !source.text ? (
+        <div className="card-import-package">
+          <strong>Drop an Anki package here</strong>
+          <p>Import cards with their media and scheduling history.</p>
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
+            Choose Anki package
           </button>
         </div>
       ) : (
@@ -73,7 +89,7 @@ export function CardImportInput({ source }: { source: ReturnType<typeof useCardI
                 : 'Text, CSV, JSON or Anki'}
         </span>
       </div>
-      {!source.apkg && (
+      {!source.apkg && !preferPackage && (
         <details>
           <summary>Import settings</summary>
           <label>
