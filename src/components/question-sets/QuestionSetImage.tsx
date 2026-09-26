@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import { Button } from '../ui/Button';
 
@@ -9,58 +9,107 @@ export function QuestionSetImage({
   session: QuestionSetDraftSession;
   nodeId: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const chooserRef = useRef<HTMLButtonElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
   const [alt, setAlt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (!file) {
+      setPreview('');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  function clear() {
+    setFile(null);
+    setAlt('');
+    setError('');
+    if (inputRef.current) inputRef.current.value = '';
+    requestAnimationFrame(() => chooserRef.current?.focus());
+  }
   return (
     <details className="qs-image-form">
       <summary>Add a diagram or image</summary>
-      <label className="qs-field">
-        Image
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
-      </label>
-      <label className="qs-field">
-        Image description
-        <input
-          value={alt}
-          onChange={(e) => setAlt(e.target.value)}
-          placeholder="Describe the information shown in the diagram"
-        />
-      </label>
-      <p className="qs-muted">
-        The description is available to screen readers. Add a caption beneath the image in the
-        question text.
-      </p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        aria-label="Image file"
+        disabled={busy}
+        onChange={(event) => {
+          const next = event.target.files?.[0];
+          if (!next) return;
+          setFile(next);
+          setError('');
+        }}
+      />
+      <div className="qs-image-choice">
+        {file && preview && (
+          <img className="qs-image-thumb" src={preview} alt="Selected image preview" />
+        )}
+        <div className="qs-image-choice-info">
+          {file && <p className="qs-image-filename">{file.name}</p>}
+          <div className="qs-actions">
+            <Button
+              ref={chooserRef}
+              variant="secondary"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+            >
+              {file ? 'Change image' : 'Choose image'}
+            </Button>
+            {file && (
+              <Button variant="ghost" disabled={busy} onClick={clear}>
+                Remove selection
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+      {file && (
+        <>
+          <label className="qs-field">
+            Image description
+            <input
+              value={alt}
+              disabled={busy}
+              onChange={(event) => setAlt(event.target.value)}
+              placeholder="Describe what the diagram shows"
+            />
+          </label>
+          <p className="qs-muted">Describe the information a learner needs from this image.</p>
+          <Button
+            className="mt-4"
+            variant="primary"
+            disabled={!alt.trim() || busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                await session.insertImage(nodeId, file, alt);
+                clear();
+              } catch (cause) {
+                setError(cause instanceof Error ? cause.message : 'Could not add this image.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? 'Adding image…' : 'Add image'}
+          </Button>
+        </>
+      )}
       {error && (
         <p role="alert" className="qs-error">
           {error}
         </p>
       )}
-      <Button
-        variant="secondary"
-        disabled={!file || !alt.trim() || busy}
-        onClick={async () => {
-          if (!file) return;
-          setBusy(true);
-          setError('');
-          try {
-            await session.insertImage(nodeId, file, alt);
-            setFile(null);
-            setAlt('');
-          } catch (cause) {
-            setError(cause instanceof Error ? cause.message : 'Could not add this image.');
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {busy ? 'Adding image…' : 'Add image'}
-      </Button>
     </details>
   );
 }
