@@ -17,7 +17,7 @@ import './ImportPage.css';
 
 type Source = 'lacuna' | 'anki' | 'text';
 const sources = [
-  { id: 'lacuna', title: 'Lacuna course', detail: 'File, share code or QR', icon: ShareIcon },
+  { id: 'lacuna', title: 'Lacuna course', detail: 'File, link, code or QR', icon: ShareIcon },
   { id: 'anki', title: 'Anki deck', detail: 'Anki package (.apkg)', icon: CardsIcon },
   { id: 'text', title: 'Text or spreadsheet', detail: 'Paste or upload cards', icon: FileTextIcon },
 ] as const;

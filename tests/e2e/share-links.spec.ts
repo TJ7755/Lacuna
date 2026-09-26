@@ -43,9 +43,10 @@ async function openShare(page: Page, courseName: string): Promise<void> {
 }
 
 async function createShareLink(page: Page): Promise<string> {
+  await page.getByRole('button', { name: 'Share link', exact: true }).click();
   await page.getByRole('button', { name: 'Create share link' }).click();
   await expect(page.getByText('Share link · revision 1')).toBeVisible();
-  const url = await page.getByLabel('Share link').inputValue();
+  const url = await page.getByRole('textbox', { name: 'Share link', exact: true }).inputValue();
   const code = url.split('/').pop() ?? '';
   expect(code).toMatch(/^[0-9a-f]{32}$/);
   return code;
@@ -159,7 +160,7 @@ test('stopping a share removes the link for new visitors', async ({ browser }: {
   const code = await createShareLink(teacher);
   await teacher.getByRole('button', { name: 'Stop sharing' }).click();
   await teacher.getByRole('button', { name: 'Yes, stop sharing' }).click();
-  await expect(teacher.getByLabel('Share link')).toBeHidden();
+  await expect(teacher.getByRole('textbox', { name: 'Share link', exact: true })).toBeHidden();
   await expect(teacher.getByRole('button', { name: 'Create share link' })).toBeVisible();
 
   const studentContext = await browser.newContext();

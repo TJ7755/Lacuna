@@ -13,6 +13,7 @@ test('saves and imports course media on first use while offline', async ({ page,
   const share = page.locator('main[data-route-path="/share"]');
   await expect(share.getByRole('heading', { name: 'Share', exact: true })).toBeVisible();
   await share.getByRole('button', { name: /Welcome to Lacuna/ }).click();
+  await share.getByRole('button', { name: 'Course file', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save course file' })).toBeEnabled();
 
   await context.setOffline(true);
@@ -57,6 +58,7 @@ test('saves and imports course media on first use while offline', async ({ page,
     await expect(page.getByText(/Offline imported course —/)).toBeVisible();
     await page.getByRole('button', { name: 'Add to my courses' }).click();
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
+    await share.getByRole('button', { name: 'Change course' }).click();
     await expect(share.getByRole('button', { name: /Offline imported course/ })).toBeVisible();
     const restored = await page.evaluate(
       (hash: string) =>

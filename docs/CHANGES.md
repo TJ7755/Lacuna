@@ -5,7 +5,8 @@
 - Added the sharing announcement across the app, using the illustrated invitation
   design. It stays visible until dismissed or its Explore sharing link is followed,
   and remembers dismissal per browser/device. The action opens Share with the
-  share-link button highlighted; course selection and publishing remain explicit.
+  share-link button highlighted after course selection; course selection and publishing
+  remain explicit.
   Removed the comparison designs and development-only prototype controls. The
   announcement loads separately to preserve the initial JavaScript budget. Its
   assets are precached for offline starts, load failures leave the app usable,
@@ -75,6 +76,15 @@
 - Kept the installed Windows upgrade probe clear of the downloaded-update
   dialogue while it records baseline study data, then installed the same verified
   update and checked that the records survived.
+
+- Reorganised the Share page into three steps — course, method, send — from the
+  `share-prototype` collapsed-variant study. The five sharing actions no longer
+  sit in one row: each method (link, file, code, QR, plain text) shows only its
+  own action and output panel, with Change controls to revisit earlier steps.
+  Generated outputs are retained while hidden, so switching method and back
+  restores them. Reopening course selection keeps those outputs until a different
+  course is chosen. Courses with a live link reopen on the link method. The
+  throwaway prototype route and its fake data were removed.
 
 - Fixed QR import camera cleanup: stopping or leaving the importer releases the
   camera, including when startup completes after cancellation. Camera permission
