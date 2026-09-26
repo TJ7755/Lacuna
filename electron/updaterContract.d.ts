@@ -29,6 +29,7 @@ export interface UpdateState {
   mode: 'automatic' | 'manual';
   currentVersion: string;
   availableVersion?: string;
+  releaseNotes?: string;
   manualReason?: ManualUpdateReason;
   progress?: UpdateProgress;
   error?: string;

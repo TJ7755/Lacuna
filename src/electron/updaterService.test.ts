@@ -109,3 +109,61 @@ describe('createDesktopUpdater', () => {
     expect(JSON.stringify(controller.getState())).not.toContain('/private/path');
   });
 });
+
+describe('release notes', () => {
+  it('retains release notes through download progress and a downloaded event without notes', () => {
+    const updater = fakeUpdater();
+    const controller = createDesktopUpdater(options(updater));
+    listener(
+      updater,
+      'update-available',
+    )({ version: '0.2.4', releaseNotes: '  - Better revision  ' });
+    expect(controller.getState()).toMatchObject({ releaseNotes: '- Better revision' });
+    listener(
+      updater,
+      'download-progress',
+    )({ percent: 50, transferred: 50, total: 100, bytesPerSecond: 10 });
+    expect(controller.getState()).toMatchObject({ releaseNotes: '- Better revision' });
+    listener(updater, 'update-downloaded')({ version: '0.2.4' });
+    expect(controller.getState()).toMatchObject({ releaseNotes: '- Better revision' });
+    listener(updater, 'update-available')({ version: '0.2.5' });
+    expect(controller.getState()).not.toHaveProperty('releaseNotes', '- Better revision');
+  });
+
+  it('selects the downloaded version from versioned notes and does not reuse another version’s notes', () => {
+    const updater = fakeUpdater();
+    const controller = createDesktopUpdater(options(updater));
+    listener(
+      updater,
+      'update-downloaded',
+    )({
+      version: '0.2.4',
+      releaseNotes: [
+        { version: '0.2.3', note: 'Old notes' },
+        { version: '0.2.4', note: '<ul><li>New notes</li></ul>' },
+      ],
+    });
+    expect(controller.getState()).toMatchObject({ releaseNotes: '<ul><li>New notes</li></ul>' });
+    listener(updater, 'update-downloaded')({ version: '0.2.5' });
+    expect(controller.getState().releaseNotes).toBeUndefined();
+  });
+
+  it('bounds oversized notes before publishing them', () => {
+    const updater = fakeUpdater();
+    const controller = createDesktopUpdater(options(updater));
+    listener(updater, 'update-downloaded')({ version: '0.2.4', releaseNotes: 'x'.repeat(70_000) });
+    expect(controller.getState().releaseNotes).toHaveLength(64_000);
+  });
+
+  it.each([undefined, null, '', '  ', 42, {}, [{ version: '0.2.4', note: 42 }]])(
+    'ignores missing or malformed notes: %j',
+    (releaseNotes) => {
+      const updater = fakeUpdater();
+      const controller = createDesktopUpdater(options(updater));
+      listener(updater, 'update-downloaded')({ version: '0.2.4', releaseNotes });
+      expect(controller.getState().releaseNotes).toBeUndefined();
+      controller.restartAndInstall();
+      expect(updater.quitAndInstall).toHaveBeenCalledOnce();
+    },
+  );
+});

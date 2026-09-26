@@ -10,6 +10,12 @@
   area for both phases. Inactive controls are inert; keyboard focus returns to the
   typing field without scrolling.
 
+- Replaced the downloaded-update prompt with the selected illustrated dialogue: a
+  symmetrical card stack, the version in body text, and expandable release notes.
+  GitHub Markdown/HTML notes survive updater progress and the validated preload bridge;
+  unsafe markup and remote media are excluded. Missing notes do not block installation.
+  Restart remains explicit, Later defers the current version, and the prototypes were removed.
+
 - Kept the installed Windows upgrade probe clear of the downloaded-update
   dialogue while it records baseline study data, then installed the same verified
   update and checked that the records survived.
