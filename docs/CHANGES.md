@@ -6,7 +6,8 @@
   design. It stays visible until dismissed or its Explore sharing link is followed,
   and remembers dismissal per browser/device. The action opens Share with the
   share-link button highlighted; course selection and publishing remain explicit.
-  Removed the comparison designs and development-only prototype controls.
+  Removed the comparison designs and development-only prototype controls. The
+  announcement loads separately to preserve the initial JavaScript budget.
 
 - Added share links for classroom distribution: the Share page publishes a course
   to the relay and shows one stable link (plus a scannable QR of the link) that

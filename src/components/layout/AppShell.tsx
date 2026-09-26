@@ -1,4 +1,3 @@
-import { SharingAnnouncement } from './SharingAnnouncement';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
@@ -27,6 +26,10 @@ import { loadAiPanel } from '../ai/loaders';
 import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
+
+const SharingAnnouncement = lazy(() =>
+  import('./SharingAnnouncement').then((module) => ({ default: module.SharingAnnouncement })),
+);
 
 const AiPanel = lazy(loadAiPanel);
 const StudySheet = lazy(() =>
@@ -410,7 +413,9 @@ function AppShellLayout() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
           >
-            <SharingAnnouncement />
+            <Suspense fallback={null}>
+              <SharingAnnouncement />
+            </Suspense>
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
                 <RouteTransitions
