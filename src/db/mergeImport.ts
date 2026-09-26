@@ -61,7 +61,7 @@ import type {
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
-import type { SharePayload, SharePayloadV2, SharePayloadV3 } from './share';
+import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4 } from './share';
 import type {
   Card,
   CardType,
@@ -86,9 +86,13 @@ import type {
 } from '../questions/types';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
+import { applyLineageQuestionSets } from '../questions/questionSetLineage';
 
 /** Narrowed view of the fields this module reads off a decoded course share payload. */
-type LineagePayload = (SharePayloadV2 | SharePayloadV3) & { li: string; rv: number };
+type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4) & {
+  li: string;
+  rv: number;
+};
 
 /** Type guard: a decoded payload actually carries a lineage (`li`/`rv`, §7.2). */
 export function isLineagePayload(payload: SharePayload): payload is LineagePayload {
@@ -337,6 +341,7 @@ const MERGE_TABLES = [
   db.questions,
   db.questionConcepts,
   db.questionAttempts,
+  db.questionSets,
   db.lessonCards,
   db.lessonCardExposures,
   db.lessonCompletions,
@@ -363,6 +368,8 @@ function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
     cardIds: [],
     conceptIds: [],
     questionIds: [],
+    questionSetIds: [],
+    questionSetRevisions: {},
     sequenceIds: [],
     occlusionIds: [],
     lessonSnapshots: {},
@@ -376,7 +383,7 @@ async function upsertLineageConcepts(
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<string[]> {
-  if (payload.v !== 3) return [];
+  if (payload.v === 2) return [];
   const previousIds = [...(mapping.conceptIds ?? [])];
   const conceptIds = new Set(payload.concepts.map((concept) => concept.id));
   if (conceptIds.size !== payload.concepts.length) {
@@ -424,7 +431,7 @@ async function upsertLineageConcepts(
 
 function incomingCardConceptIds(payload: LineagePayload): Map<string, string> {
   const result = new Map<string, string>();
-  if (payload.v !== 3) return result;
+  if (payload.v === 2) return result;
   for (const lesson of payload.lessons) {
     for (const card of lesson.cards) {
       if (!card.id || !card.co || isGeneratedShareCard(card)) continue;
@@ -481,7 +488,7 @@ async function applyLineageQuestions(
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<void> {
-  if (payload.v !== 3) return;
+  if (payload.v === 2) return;
   const previousIds = new Set(mapping.questionIds ?? []);
   const incomingIds = new Set(payload.questions.map((question) => question.id));
   const removedIds = [...previousIds].filter((id) => !incomingIds.has(id));
@@ -915,11 +922,11 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
         const type = shareCardKindToType(shareCard.k);
         assertValidCardPayload(type, shareCard.p);
-        const conceptId = payload.v === 3 ? shareCard.co : lineageCardConceptId(shareCard.id);
+        const conceptId = payload.v !== 2 ? shareCard.co : lineageCardConceptId(shareCard.id);
         if (!conceptId) {
           throw new Error(`A shared Card references a missing Concept: ${shareCard.id}.`);
         }
-        if (payload.v !== 3) {
+        if (payload.v === 2) {
           newConcepts.push(
             buildCardConcept({
               id: conceptId,
@@ -999,6 +1006,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await applySequences(payload, course.id, lessonIdByIndex, mapping);
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
     await applyLineageQuestions(payload, course.id, mapping);
+    if (payload.v === 4) await applyLineageQuestionSets(payload, course.id, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
 
@@ -1048,7 +1056,7 @@ export async function mergeLineageUpdate(
     const existingMapping = await db.lineageIdMappings.get(payload.li);
     const mapping = existingMapping ?? emptyMapping(payload.li, courseId);
     const previousConceptIds = await upsertLineageConcepts(payload, courseId, mapping);
-    const conceptIdByCard = payload.v === 3 ? incomingCardConceptIds(payload) : undefined;
+    const conceptIdByCard = payload.v !== 2 ? incomingCardConceptIds(payload) : undefined;
 
     const [existingLessons, courseCards] = await Promise.all([
       db.lessons.where('courseId').equals(courseId).toArray(),
@@ -1210,6 +1218,7 @@ export async function mergeLineageUpdate(
       }
     }
     await applyLineageQuestions(payload, courseId, mapping);
+    if (payload.v === 4) await applyLineageQuestionSets(payload, courseId, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 
     // 6. Revision + mapping bookkeeping.

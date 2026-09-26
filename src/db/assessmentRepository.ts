@@ -1,4 +1,5 @@
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { removeQuestionSetAssessmentReference } from '../questions/questionSetRepository';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
@@ -209,6 +210,7 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
         db.courses,
         db.lessons,
         db.courseAssessments,
+        db.questionSets,
         db.revisionPlans,
         db.schedulingUnits,
         db.coursePerformance,
@@ -224,6 +226,7 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
           await db.revisionPlans.where('assessmentId').equals(id).primaryKeys()
         ).map(String);
         await db.revisionPlans.where('assessmentId').equals(id).delete();
+        await removeQuestionSetAssessmentReference(assessment.courseId, id, Date.now());
         await db.courseAssessments.delete(id);
         await recordTombstone(tx, 'courseAssessments', id);
         await recordTombstones(tx, 'revisionPlans', revisionPlanIds);

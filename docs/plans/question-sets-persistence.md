@@ -36,7 +36,11 @@ The public authored-content repository is the only write seam:
 createQuestionSet(input: QuestionSet, now?: number): Promise<QuestionSetRecord>
 getQuestionSet(id: string): Promise<QuestionSetRecord | null>
 listQuestionSets(courseId: string): Promise<QuestionSetRecord[]>
-updateQuestionSet(id: string, content: QuestionSet, now?: number): Promise<QuestionSetRecord>
+updateQuestionSet(
+  id: string,
+  content: QuestionSet,
+  options: { expectedContentRevisionId: string; now?: number },
+): Promise<QuestionSetRecord>
 deleteQuestionSet(id: string, now?: number): Promise<void>
 ```
 
@@ -45,15 +49,20 @@ object keys, missing or wrongly typed fields, non-finite timestamps, invalid ver
 every pure-domain validation issue. Repository writes validate before opening their transaction,
 then transactionally confirm that the Course exists and every referenced Lesson, Assessment and
 Concept exists in that same Course. Create clears an older set tombstone. Update preserves `id`,
-`courseId` and `createdAt`; it increments `contentVersion`, replaces the whole aggregate, stamps a
-fresh `contentRevisionId`, and updates `updatedAt`. Supplying identical content is a no-op that
-preserves the revision and timestamps. Delete removes the row and writes a `questionSets`
-tombstone in the same transaction.
+`courseId` and `createdAt`; it requires the revision the editor opened, increments
+`contentVersion`, replaces the whole aggregate, stamps a fresh `contentRevisionId`, and advances
+`updatedAt` by at least one millisecond even when the wall clock stalls or moves backwards.
+Supplying identical content is a no-op that preserves the revision and timestamps. Delete removes
+the row and writes a newer `questionSets` tombstone in the same transaction. Recreating a
+deliberately restored ID stamps the new row later than its tombstone before clearing that
+tombstone, so a peer cannot immediately delete the restored content again.
 
 Concept deletion is refused while current authored content refers to the Concept. Lesson and
 assessment deletion remove their links by repository update, producing a new content revision.
-Course deletion cascades authored sets and writes their tombstones. These rules prevent current
-rows from becoming invalid without fabricating replacement links.
+Lesson undo restores the removed link as another revision while retaining intervening set edits.
+Course deletion cascades authored sets and writes their tombstones; Course undo restores the
+captured aggregates with revisions newer than those tombstones. These rules prevent current rows
+from becoming invalid without fabricating replacement links.
 
 ## Future attempts and retained revisions
 
@@ -84,7 +93,11 @@ Backup and peer-sync envelopes increment from v11 to v12 when they add `question
 authored content. Older v11 inputs normalise to an empty `questionSets` collection and retain all
 legacy Question meaning. Future attempt records require another envelope increment; they must not
 be added silently to v12. Newer envelopes fail closed in older readers that cannot preserve the
-added collections; silently dropping unknown stores is forbidden.
+added collections; silently dropping unknown stores is forbidden. V12 uses `app: 'lacuna-v12'`
+because old readers accept unfamiliar numeric versions. Historical raw snapshots used schema
+numbers rather than backup versions: the reader preserves those boundaries, and raw v22/v23
+content still passes through the legacy Question migration. New snapshots from v24 onwards use
+the current portable envelope.
 
 Replace-import includes `questionSets` in candidate validation, replacement deletion and restore.
 Peer merge treats a set as one revisioned aggregate. The greater `updatedAt` wins; equal timestamps
@@ -92,14 +105,19 @@ use the lexically greater `contentRevisionId` as a stable tie-break. Equal revis
 content are a hard validation error. Tombstones defeat older live rows. Backup recovery merge keeps
 its existing per-ID behaviour: the most recently touched copy wins, with the same deterministic
 revision-ID tie-break added for equal set timestamps. It does not acquire peer-sync conflict-review
-semantics merely because the row shape is shared. Future immutable attempts merge by ID only when
+semantics merely because the row shape is shared. Recovering a deleted set advances its mutation
+stamp beyond deletion receipts and clears the local receipt so a later sync cannot discard the
+recovered content. Future immutable attempts merge by ID only when
 receipts are byte-for-byte equivalent; a mismatch is surfaced for review.
 
 Course share payloads increment from v3 to v4 when they begin carrying current authored sets. The
 outer `.lacourse` envelope remains v1 and carries the v4 payload; old payload parsers fail closed.
 Imported sets receive collision-safe stable IDs and all nested references are remapped as a single
 operation. Personal attempts, annotations, decisions, schedules and tombstones are excluded.
-Ordinary Card exports remain Card-only.
+Ordinary Card exports remain Card-only. Published updates track accepted set revisions and refuse
+conflicting local edits or deletions atomically. Assessment-linked sets are supported by ordinary
+unpublished course imports; published export/import rejects them until assessment lineage exists.
+MCP lineage preview/apply also rejects sets until its preview can represent their changes.
 
 ## Migration and operational coverage
 

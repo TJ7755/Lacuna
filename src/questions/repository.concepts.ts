@@ -2,6 +2,7 @@ import { clearTombstone, recordTombstone } from '../db/mutationStamp';
 import { db, makeId } from '../db/schema';
 import type { Concept } from './types';
 import { cleanName } from './repository.shared';
+import { referencedQuestionSetConceptIds } from './questionSetRepository';
 
 export async function createConcept(
   courseId: string,
@@ -58,11 +59,11 @@ export async function updateConcept(
 export async function deleteConcept(conceptId: string, now = Date.now()): Promise<void> {
   await db.transaction(
     'rw',
-    [db.concepts, db.cards, db.questionConcepts, db.tombstones],
+    [db.concepts, db.cards, db.questionConcepts, db.questionSets, db.tombstones],
     async (tx) => {
       const concept = await db.concepts.get(conceptId);
       if (!concept) return;
-      const [cardReference, questionReference] = await Promise.all([
+      const [cardReference, questionReference, questionSetReference] = await Promise.all([
         db.cards.where('conceptId').equals(conceptId).first(),
         db.questionConcepts
           .filter(
@@ -71,7 +72,13 @@ export async function deleteConcept(conceptId: string, now = Date.now()): Promis
               set.prerequisiteConceptIds.includes(conceptId),
           )
           .first(),
+        db.questionSets
+          .filter((set) => referencedQuestionSetConceptIds(set).includes(conceptId))
+          .first(),
       ]);
+      if (questionSetReference) {
+        throw new Error('The Concept is still referenced by a Question Set.');
+      }
       if (cardReference || questionReference) {
         throw new Error('The Concept is still referenced by a Card or Question.');
       }

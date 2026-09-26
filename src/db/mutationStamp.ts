@@ -32,6 +32,7 @@ export type SnapshotTable =
   | 'questions'
   | 'questionConcepts'
   | 'questionAttempts'
+  | 'questionSets'
   | 'lineageIdMappings'
   | 'pendingMergeReviews'
   | 'agentMemories';

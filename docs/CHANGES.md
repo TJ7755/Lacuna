@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added durable authored Question Sets to backup v12, peer sync, course-share v4 and `.lacourse`
+  course files, including strict parsing, reference validation, deterministic aggregate merges,
+  deletion receipts, nested ID remapping and media reachability. The new `lacuna-v12` marker makes
+  old readers reject rather than silently discard the added collection; legacy public backups and
+  schema v22–v28 pre-migration snapshots remain readable.
+
 - Release focus from departing route content before hiding it from assistive
   technology. Opening the Question editor no longer retains focus in the hidden
   Questions page; route transition timing is preserved.
@@ -136,7 +142,6 @@
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the
   study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
-
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.

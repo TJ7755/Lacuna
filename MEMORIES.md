@@ -64,6 +64,12 @@ pre-replacement restore point survives. Recovery merge and peer merge use differ
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
 must cover candidate snapshotting and merging as well as import.
 
+## Question-set backup compatibility
+
+Older readers accept unfamiliar numeric backup versions. V12 therefore uses the `lacuna-v12`
+marker so they reject rather than discard sets. Historical pre-migration files used schema
+numbers; raw v22/v23 still need the legacy Question adapter before current normalisation.
+
 ## Local Electron commands
 
 The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron application

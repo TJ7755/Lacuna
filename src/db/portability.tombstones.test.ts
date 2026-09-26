@@ -13,7 +13,7 @@ async function reset() {
 
 function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
-    app: 'lacuna',
+    app: 'lacuna-v12',
     version: BACKUP_VERSION,
     exportedAt: 1,
     cards: [],
@@ -24,6 +24,7 @@ function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
     questions: [],
     questionConcepts: [],
     questionAttempts: [],
+    questionSets: [],
     ...overrides,
   };
 }
@@ -31,7 +32,7 @@ function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
 describe('backup tombstones', () => {
   beforeEach(reset);
 
-  it('round-trips tombstones at version 11', async () => {
+  it('round-trips tombstones at version 12', async () => {
     const tombstones: Tombstone[] = [
       { table: 'cards', recordId: 'card-gone', deletedAt: 50 },
       { table: 'courses', recordId: 'course-gone', deletedAt: 60 },
@@ -39,7 +40,7 @@ describe('backup tombstones', () => {
     await db.tombstones.bulkPut(tombstones);
 
     const backup = await exportDatabase();
-    expect(backup.version).toBe(11);
+    expect(backup.version).toBe(12);
     expect(backup.tombstones).toEqual(expect.arrayContaining(tombstones));
     expect(validateBackup(backup)).toBe(true);
 
@@ -49,7 +50,7 @@ describe('backup tombstones', () => {
   });
 
   it('imports a v9 backup with no tombstones array', async () => {
-    const v9 = emptyBackup({ version: 9, tombstones: undefined });
+    const v9 = emptyBackup({ app: 'lacuna', version: 9, tombstones: undefined });
     expect(validateBackup(v9)).toBe(true);
     await importBackup(v9, 'replace');
     expect(await db.tombstones.count()).toBe(0);

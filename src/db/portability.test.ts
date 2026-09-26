@@ -80,7 +80,7 @@ describe('exportDatabase', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.app).toBe('lacuna');
+    expect(backup.app).toBe('lacuna-v12');
     expect(backup.version).toBe(BACKUP_VERSION);
     expect(validateBackup(backup)).toBe(true);
     expect(backup.decks).toBeUndefined();
@@ -668,6 +668,7 @@ describe('importBackup', () => {
     const current = await exportDatabase();
     const legacy = {
       ...current,
+      app: 'lacuna' as const,
       version: 6,
       courses: current.courses?.map((record) => ({
         ...record,

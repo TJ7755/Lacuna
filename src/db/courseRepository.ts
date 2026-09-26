@@ -8,6 +8,8 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
 } from '../questions/types';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import { restoreDeletedQuestionSets } from '../questions/questionSetRepository';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
@@ -204,9 +206,7 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
  * originating-id fields into the payload — this function only owns the
  * counter, not the encoding.
  */
-export async function publishCourse(
-  courseId: string,
-): Promise<{
+export async function publishCourse(courseId: string): Promise<{
   lineageId: string;
   revision: number;
   publishedAt: number;
@@ -335,7 +335,9 @@ export async function setCourseShareId(
       if (!/^[0-9a-f]{32}$/.test(shareId)) throw new Error('The share link code is invalid.');
       await db.courses.update(
         courseId,
-        stampUpdatedAt({ distribution: { ...course.distribution, shareId, shareRevision: revision } }),
+        stampUpdatedAt({
+          distribution: { ...course.distribution, shareId, shareRevision: revision },
+        }),
       );
     });
   } catch (err) {
@@ -354,8 +356,11 @@ export async function clearCourseShareId(courseId: string): Promise<void> {
       const course = await db.courses.get(courseId);
       if (!course) throw new Error('The course could not be found.');
       if (!course.distribution?.shareId) return;
-      const { shareId: _omitted, shareRevision: _omittedRevision, ...distribution } =
-        course.distribution;
+      const {
+        shareId: _omitted,
+        shareRevision: _omittedRevision,
+        ...distribution
+      } = course.distribution;
       await db.courses.update(courseId, stampUpdatedAt({ distribution }));
     });
   } catch (err) {
@@ -397,6 +402,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.questions,
       db.questionConcepts,
       db.questionAttempts,
+      db.questionSets,
       db.lineageIdMappings,
       db.pendingMergeReviews,
       db.agentMemories,
@@ -448,6 +454,7 @@ export async function deleteCourse(id: string): Promise<void> {
       const questionAttemptIds = (
         await db.questionAttempts.where('courseId').equals(id).primaryKeys()
       ).map(String);
+      const questionSets = await db.questionSets.where('courseId').equals(id).toArray();
       const lineageMappingIds = (
         await db.lineageIdMappings.where('courseId').equals(id).primaryKeys()
       ).map(String);
@@ -492,6 +499,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.occlusions.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       await db.questionAttempts.where('courseId').equals(id).delete();
+      await db.questionSets.where('courseId').equals(id).delete();
       await db.questionConcepts.where('courseId').equals(id).delete();
       await db.questions.where('courseId').equals(id).delete();
       await db.concepts.where('courseId').equals(id).delete();
@@ -529,6 +537,9 @@ export async function deleteCourse(id: string): Promise<void> {
       await recordTombstones(tx, 'questions', questionIds);
       await recordTombstones(tx, 'questionConcepts', questionConceptIds);
       await recordTombstones(tx, 'questionAttempts', questionAttemptIds);
+      for (const set of questionSets) {
+        await recordTombstone(tx, 'questionSets', set.id, Math.max(Date.now(), set.updatedAt + 1));
+      }
       await recordTombstones(tx, 'lineageIdMappings', lineageMappingIds);
       await recordTombstones(tx, 'pendingMergeReviews', pendingMergeReviewIds);
       await recordTombstones(tx, 'agentMemories', agentMemoryIds, agentMemoryDeletedAt);
@@ -565,6 +576,7 @@ export interface CourseSnapshot {
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  questionSets: QuestionSetRecord[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories?: AgentMemory[];
@@ -596,6 +608,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questions,
     questionConcepts,
     questionAttempts,
+    questionSets,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -613,6 +626,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.questions.where('courseId').equals(id).toArray(),
     db.questionConcepts.where('courseId').equals(id).toArray(),
     db.questionAttempts.where('courseId').equals(id).toArray(),
+    db.questionSets.where('courseId').equals(id).toArray(),
     db.lineageIdMappings.where('courseId').equals(id).toArray(),
     db.pendingMergeReviews.where('courseId').equals(id).toArray(),
     db.agentMemories.where('courseId').equals(id).toArray(),
@@ -672,6 +686,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questions,
     questionConcepts,
     questionAttempts,
+    questionSets,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -722,6 +737,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.questions,
         db.questionConcepts,
         db.questionAttempts,
+        db.questionSets,
         db.lineageIdMappings,
         db.pendingMergeReviews,
         db.agentMemories,
@@ -732,6 +748,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           cardsToRestore.map((card) => card.id),
           reviewHistoryToRestore,
         );
+        await restoreDeletedQuestionSets(snapshot.questionSets ?? [], Date.now());
         await Promise.all([
           db.courses.put(snapshot.course),
           db.lessons.bulkPut(snapshot.lessons),
@@ -858,6 +875,11 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           tx,
           'questionAttempts',
           snapshot.questionAttempts.map((attempt) => attempt.id),
+        );
+        await clearTombstones(
+          tx,
+          'questionSets',
+          (snapshot.questionSets ?? []).map((set) => set.id),
         );
         await clearTombstones(
           tx,

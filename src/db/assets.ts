@@ -429,6 +429,13 @@ export async function collectOrphanedAssets(): Promise<number> {
       referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
       attemptOffset += batch.length;
     }
+    let questionSetOffset = 0;
+    for (;;) {
+      const batch = await db.questionSets.offset(questionSetOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+      questionSetOffset += batch.length;
+    }
 
     // Stream asset keys and collect orphans without loading all keys at once.
     const orphans: string[] = [];

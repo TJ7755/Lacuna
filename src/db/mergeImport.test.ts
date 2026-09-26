@@ -1,13 +1,14 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ShareLesson, SharePayloadV2, SharePayloadV3 } from './share';
+import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4 } from './share';
 import type { Course } from './types';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
+import { deleteQuestionSet } from '../questions/questionSetRepository';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
 // (bypassing encode/decode, which Task 3 already tests) matching the real wire shape:
@@ -86,6 +87,49 @@ function questionPayloadV3(overrides: Partial<SharePayloadV3> = {}): SharePayloa
   };
 }
 
+function questionPayloadV4(overrides: Partial<SharePayloadV4> = {}): SharePayloadV4 {
+  const base = questionPayloadV3();
+  return {
+    ...base,
+    v: 4,
+    questionSets: [
+      {
+        id: 'set-quadratics',
+        courseId: 'teacher-course',
+        title: 'Quadratics paper',
+        lessonIds: ['lesson-questions'],
+        assessmentIds: [],
+        questions: [
+          {
+            id: 'set-question-quadratics',
+            prompt: 'Solve x² - 4 = 0.',
+            answer: {
+              maxMarks: 1,
+              response: { kind: 'written' },
+              prerequisiteConceptIds: [],
+              allocations: [
+                {
+                  id: 'allocation-quadratics',
+                  criterion: 'Finds both roots',
+                  maxMarks: 1,
+                  dimension: 'knowledge',
+                  targetConceptIds: ['concept-quadratic'],
+                },
+              ],
+            },
+            parts: [],
+          },
+        ],
+        contentVersion: 1,
+        contentRevisionId: 'set-revision-1',
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 describe('mergeImport: first import of a lineage', () => {
   beforeEach(async () => {
     await db.delete();
@@ -101,7 +145,10 @@ describe('mergeImport: first import of a lineage', () => {
     await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
     const updatedLesson = lessonOne({ am: 'reveal' });
     updatedLesson.cards[0].am = 'type';
-    await mergeLineageUpdate(course.id, coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }));
+    await mergeLineageUpdate(
+      course.id,
+      coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }),
+    );
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('reveal');
     expect((await db.cards.get('card-1'))?.answerMode).toBe('type');
     await mergeLineageUpdate(course.id, coursePayload({ rv: 3, at: 3000, lessons: [lessonOne()] }));
@@ -401,6 +448,87 @@ describe('mergeImport: v3 Question lineage', () => {
   });
 });
 
+describe('mergeImport: v4 Question Set lineage', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('adopts a set and applies a later teacher revision', async () => {
+    const first = questionPayloadV4();
+    const { course } = await importLineageFirstTime(first);
+    expect(await db.questionSets.get('set-quadratics')).toMatchObject({
+      courseId: course.id,
+      title: 'Quadratics paper',
+    });
+
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV4({
+        at: 2_000,
+        rv: 2,
+        questionSets: [
+          {
+            ...first.questionSets[0],
+            title: 'Updated quadratics paper',
+            contentVersion: 2,
+            contentRevisionId: 'set-revision-2',
+            updatedAt: 2_000,
+          },
+        ],
+      }),
+    );
+    expect(await db.questionSets.get('set-quadratics')).toMatchObject({
+      title: 'Updated quadratics paper',
+      contentRevisionId: 'set-revision-2',
+    });
+  });
+
+  it('fails closed on local edits, local deletion and unsupported Assessment links', async () => {
+    const first = questionPayloadV4();
+    const { course } = await importLineageFirstTime(first);
+    await db.questionSets.update('set-quadratics', {
+      title: 'Learner edit',
+      contentRevisionId: 'local-revision',
+      updatedAt: 1_500,
+    });
+    await expect(
+      mergeLineageUpdate(course.id, questionPayloadV4({ at: 2_000, rv: 2 })),
+    ).rejects.toThrow('locally edited Question Set');
+    expect((await db.questionSets.get('set-quadratics'))?.title).toBe('Learner edit');
+
+    await db.questionSets.update('set-quadratics', {
+      title: first.questionSets[0].title,
+      contentRevisionId: 'set-revision-1',
+      updatedAt: 1_000,
+    });
+    await deleteQuestionSet('set-quadratics', 2_100);
+    await expect(
+      mergeLineageUpdate(course.id, questionPayloadV4({ at: 3_000, rv: 3 })),
+    ).rejects.toThrow('locally deleted Question Set');
+
+    await db.delete();
+    await db.open();
+    const assessmentLinked = questionPayloadV4();
+    assessmentLinked.questionSets[0] = {
+      ...assessmentLinked.questionSets[0],
+      assessmentIds: ['assessment-origin'],
+    };
+    await expect(importLineageFirstTime(assessmentLinked)).rejects.toThrow(
+      'cannot yet import Question Sets linked to assessments',
+    );
+    expect(await db.courses.count()).toBe(0);
+    expect(await db.questionSets.count()).toBe(0);
+  });
+
+  it('removes an untouched set when the teacher removes it', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV4());
+    await mergeLineageUpdate(course.id, questionPayloadV4({ at: 2_000, rv: 2, questionSets: [] }));
+    expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
+    expect(await db.tombstones.get(['questionSets', 'set-quadratics'])).toBeDefined();
+  });
+});
+
 describe('mergeImport: merge apply', () => {
   let courseId: string;
   let course: Course;
@@ -435,7 +563,7 @@ describe('mergeImport: merge apply', () => {
     expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
   });
 
-  it('preserves the learner\'s introduction preference when the teacher publishes an update', async () => {
+  it("preserves the learner's introduction preference when the teacher publishes an update", async () => {
     await db.courses.update(courseId, { learnFirst: false });
     const payload = coursePayload({ rv: 2, lessons: [lessonOne()] });
     expect(payload.course.lf).toBeUndefined();
