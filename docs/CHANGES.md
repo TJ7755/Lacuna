@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Started the question-set domain foundation: ordered nested content, manual Concept
+  links, mark-allocation validation and self-marked totals with explicit unresolved
+  states. This is an in-memory foundation, not a new user-facing Questions flow;
+  existing storage and schedules are unchanged. See the
+  [implementation checklist](plans/question-sets-implementation.md).
+
 - Forgetting-curve tooltips now show a readable date and predicted recall percentage.
   Review markers no longer disrupt hover selection, keeping the highlighted point
   and tooltip aligned with the hovered day. Exam labels sit above the plot in

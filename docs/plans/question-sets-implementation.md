@@ -110,8 +110,18 @@ Branch: `feat/question-sets`; starting revision:
 - Final `bun run test src/questions`: 9 files, 70 tests passed, including 8 new tests.
 - `bun run typecheck:web`: passed.
 - `bunx eslint src/questions/questionSets.ts src/questions/questionSets.test.ts`: passed.
-- The worker's focused Prettier check passed. The foundation browser smoke check is
-  pending below; migration and portability checks belong to the storage stages.
+- The worker's focused Prettier check passed. Migration and portability checks belong
+  to the storage stages.
+- T3 browser smoke on the proposed working tree at `http://127.0.0.1:5179/`, desktop
+  1280×800 and narrow 390×844: Welcome course → Questions → New Question rendered,
+  with no horizontal overflow in narrow views and no saved content. A browser import
+  of the new module returned valid content, a provisional unmarked summary and a
+  complete zero-mark summary as expected. This tests the domain in the browser and
+  existing navigation, not a new question-set UI.
+- The browser gate remains pending: clicking New Question retains focus inside the
+  outgoing hidden page and emits an `aria-hidden` warning. This is being corrected
+  separately from the domain foundation. The React Router warning from direct hash
+  navigation did not recur through the visible Back link.
 
 The validator accepts typed values; it is not an untrusted JSON parser. The storage
 stage must add runtime parsing before using it at import, sync or repository boundaries.
