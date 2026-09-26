@@ -25,6 +25,8 @@ import {
   assignCardsToLesson,
   detachCourse,
   setCourseAutoAcceptUpdates,
+  setCourseShareId,
+  clearCourseShareId,
   linkCardsToLesson,
   linkCardToLesson,
   listNotes,
@@ -1704,6 +1706,67 @@ describe('publishCourse', () => {
 
   it('rejects publishing a course that does not exist', async () => {
     await expect(publishCourse('missing')).rejects.toThrow('could not be found');
+  });
+
+  it('keeps the share link id across republishes', async () => {
+    const course = await createCourse('Share link test');
+    await publishCourse(course.id);
+    await setCourseShareId(course.id, 'a'.repeat(32));
+
+    const republished = await publishCourse(course.id);
+
+    expect(republished.shareId).toBe('a'.repeat(32));
+    expect(republished.revision).toBe(2);
+    expect(await db.courses.get(course.id)).toMatchObject({ distribution: republished });
+  });
+});
+
+describe('setCourseShareId', () => {
+  beforeEach(reset);
+
+  it('records the share id while leaving the rest of distribution untouched', async () => {
+    const course = await createCourse('Share id test');
+    const distribution = await publishCourse(course.id);
+
+    await setCourseShareId(course.id, 'b'.repeat(32));
+
+    expect((await db.courses.get(course.id))?.distribution).toEqual({
+      ...distribution,
+      shareId: 'b'.repeat(32),
+    });
+  });
+
+  it('rejects an unpublished course, a missing course and a malformed id', async () => {
+    const course = await createCourse('Unpublished test');
+    await expect(setCourseShareId(course.id, 'b'.repeat(32))).rejects.toThrow('not been published');
+    await expect(setCourseShareId('missing', 'b'.repeat(32))).rejects.toThrow('could not be found');
+
+    await publishCourse(course.id);
+    await expect(setCourseShareId(course.id, 'short')).rejects.toThrow('share link code is invalid');
+  });
+});
+
+describe('clearCourseShareId', () => {
+  beforeEach(reset);
+
+  it('clears the share id while keeping the lineage counter', async () => {
+    const course = await createCourse('Clear share id test');
+    await publishCourse(course.id);
+    await setCourseShareId(course.id, 'c'.repeat(32));
+
+    await clearCourseShareId(course.id);
+
+    expect((await db.courses.get(course.id))?.distribution).toEqual(
+      expect.objectContaining({ revision: 1 }),
+    );
+    expect((await db.courses.get(course.id))?.distribution).not.toHaveProperty('shareId');
+  });
+
+  it('is a no-op without a share id and rejects a missing course', async () => {
+    const course = await createCourse('Nothing shared test');
+    await publishCourse(course.id);
+    await expect(clearCourseShareId(course.id)).resolves.toBeUndefined();
+    await expect(clearCourseShareId('missing')).rejects.toThrow('could not be found');
   });
 });
 

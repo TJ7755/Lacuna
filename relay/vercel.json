@@ -13,7 +13,13 @@
     { "source": "/c/:id/:slot", "destination": "/api?__path=/c/:id/:slot" },
     { "source": "/api/channel", "destination": "/api?__path=/api/channel" },
     { "source": "/api/c/:id", "destination": "/api?__path=/api/c/:id" },
-    { "source": "/api/c/:id/:slot", "destination": "/api?__path=/api/c/:id/:slot" }
+    { "source": "/api/c/:id/:slot", "destination": "/api?__path=/api/c/:id/:slot" },
+    { "source": "/shares", "destination": "/api?__path=/shares" },
+    { "source": "/shares/:id", "destination": "/api?__path=/shares/:id" },
+    { "source": "/shares/:id/:slot", "destination": "/api?__path=/shares/:id/:slot" },
+    { "source": "/api/shares", "destination": "/api?__path=/api/shares" },
+    { "source": "/api/shares/:id", "destination": "/api?__path=/api/shares/:id" },
+    { "source": "/api/shares/:id/:slot", "destination": "/api?__path=/api/shares/:id/:slot" }
   ],
   "crons": [{ "path": "/api/ai/maintenance", "schedule": "0 3 * * *" }]
 }

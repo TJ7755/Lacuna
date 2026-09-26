@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added share-link publishing for classroom distribution: the Share page publishes
+  a course to the relay and shows one stable link (plus a scannable QR of the
+  link) that carries lessons, cards and media. Republishing updates the same
+  link; stopping sharing deletes the relay copy while imported student copies
+  keep working. Links are capped at 4 MB per payload to stay within free-tier
+  function limits — larger courses keep the manual course file. Unpublished
+  links expire with the relay's existing inactivity window. Unreachable relay
+  hosts report a readable connection error instead of a bare fetch failure.
+
 - Forgetting-curve tooltips now show a readable date and predicted recall percentage.
   Review markers no longer disrupt hover selection, keeping the highlighted point
   and tooltip aligned with the hovered day. Exam labels sit above the plot in

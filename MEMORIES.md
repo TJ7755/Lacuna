@@ -42,6 +42,13 @@ load can outlive the transaction and leave earlier writes committed.
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
 
+## Share-link state
+
+`publishCourse` rebuilds `Course.distribution` from scratch: any new field on
+that object must be carried over there, or republishing wipes it (this already
+bit `shareId`). Teacher share write tokens live in sync state, never on the
+course row, so they stay out of backups and course files.
+
 ## Recovery is not peer sync
 
 Replace-import deliberately preserves `db.backups`; exports deliberately omit it, so a

@@ -171,6 +171,20 @@ tombstone window. A device offline longer than that will find its channel
 gone. The daily maintenance job also reclaims expired channel objects after a 24-hour grace;
 it does not need a request for each channel id.
 
+## Course share links
+
+Teacher-published course snapshots behind a stable link. `POST /shares` mints
+a 32-hex share id plus write token (public path rate-limited 10/hour/IP, with
+the same `RELAY_MINT_SECRET` bypass as channels). `PUT /shares/:id/payload`
+carries the opaque course file (capped at 4 MB — larger courses keep the manual
+file); `PUT /shares/:id/meta` carries the teacher client's small polling
+manifest. Both PUTs need the bearer token and `If-Match` (`"0"` for the first
+write). `GET` on either slot is unauthenticated with `Cache-Control: no-store`;
+`DELETE /shares/:id` with the bearer token removes the group. Knowledge of the
+share id is the read capability. Shares untouched past the channel TTL plus
+grace are swept by the daily maintenance job, which reports `sharesDeleted` and
+`shareObjectsDeleted` alongside the channel counters.
+
 ## Concurrency
 
 `ETag` is the opaque value Vercel Blob returns. It is not a counter.

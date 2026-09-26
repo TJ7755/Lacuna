@@ -107,6 +107,14 @@ vi.mock('../db/export', () => ({
   downloadTextFile: vi.fn(),
 }));
 
+const mockPublishShareLink = vi.fn();
+const mockUnpublishShareLink = vi.fn();
+vi.mock('../shareLinks/publish', () => ({
+  publishShareLink: (...args: unknown[]) => mockPublishShareLink(...args),
+  unpublishShareLink: (...args: unknown[]) => mockUnpublishShareLink(...args),
+  SHARE_PAYLOAD_MAX_BYTES: 4 * 1024 * 1024,
+}));
+
 vi.mock('../components/ui/icons', () => ({
   CheckIcon: () => <svg data-testid="check-icon" />,
   DownloadIcon: () => <svg data-testid="download-icon" />,
@@ -191,6 +199,8 @@ beforeEach(() => {
   mockSearchParams = new URLSearchParams();
   mockImportLineageFirstTime.mockReset();
   mockMergeLineageUpdate.mockReset();
+  mockPublishShareLink.mockReset();
+  mockUnpublishShareLink.mockReset();
 });
 
 describe('SharePage', () => {
@@ -322,6 +332,84 @@ describe('SharePage', () => {
     render(<SharePage />);
     const generateBtn = screen.getByText('Generate share code');
     expect(generateBtn).toBeDisabled();
+  });
+
+  it('creates a share link for the selected course', async () => {
+    const shareId = 'a'.repeat(32);
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockPublishShareLink.mockResolvedValue({ shareId, revision: 1, byteSize: 128 });
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByText('Create share link'));
+    await screen.findByText('Share link · revision 1');
+    expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id);
+    expect(screen.getByLabelText('Share link')).toHaveValue(
+      `${window.location.origin}/#/s/${shareId}`,
+    );
+    expect(
+      screen.getByText(/Send the link itself, or just the code after the final slash/),
+    ).toBeInTheDocument();
+  });
+
+  it('restores the link panel when selecting a course that already has a link', async () => {
+    const shareId = 'c'.repeat(32);
+    const linked: Course = {
+      ...mockCourse,
+      distribution: {
+        lineageId: 'lineage-1',
+        revision: 3,
+        publishedAt: Date.now() - 60_000,
+        shareId,
+      },
+    };
+    mockCourses = [linked];
+    mockSummaries = { [linked.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    await screen.findByText('Share link · revision 3');
+    expect(screen.getByLabelText('Share link')).toHaveValue(
+      `${window.location.origin}/#/s/${shareId}`,
+    );
+    expect(mockPublishShareLink).not.toHaveBeenCalled();
+  });
+
+  it('stops sharing after inline confirmation', async () => {
+    const shareId = 'd'.repeat(32);
+    const linked: Course = {
+      ...mockCourse,
+      distribution: {
+        lineageId: 'lineage-1',
+        revision: 2,
+        publishedAt: Date.now() - 60_000,
+        shareId,
+      },
+    };
+    mockCourses = [linked];
+    mockSummaries = { [linked.id]: mockSummary };
+    mockUnpublishShareLink.mockResolvedValue(undefined);
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    await screen.findByText('Share link · revision 2');
+    fireEvent.click(screen.getByRole('button', { name: 'Stop sharing' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, stop sharing' }));
+    await waitFor(() => expect(mockUnpublishShareLink).toHaveBeenCalledWith(linked.id));
+    await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
+    expect(mockNotify).toHaveBeenCalledWith(
+      'Share link removed. Students keep their copies but will not receive updates.',
+      'positive',
+    );
+  });
+
+  it('notifies when share link creation fails', async () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockPublishShareLink.mockRejectedValue(new Error('Too large.'));
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByText('Create share link'));
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Too large.', 'negative'));
+    expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument();
   });
 
   it('shows a media-placeholder warning and identifies affected cards', () => {
