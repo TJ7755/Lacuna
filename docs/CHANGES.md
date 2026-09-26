@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed QR import camera cleanup: stopping or leaving the importer releases the
+  camera, including when startup completes after cancellation. Camera permission
+  errors remain visible after the scanner closes.
+
 - Added a dedicated Import screen beside New course, with Lacuna course, Anki and
   text/spreadsheet entry points and automatic file routing. Reused the card import
   input and review UI inline, with destination and study-target choices during review.

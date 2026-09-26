@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { Html5Qrcode } from 'html5-qrcode';
+import { useCourseQrScanner } from './useCourseQrScanner';
 import { CourseFileImportButton } from './CourseFileControls';
 import {
   decodeCourseFile,
@@ -112,29 +112,24 @@ export function SharedCourseImport({
   const importInputRef = useRef<HTMLTextAreaElement>(null);
   const [motionSpeed] = useMotionSpeed();
 
-  // QR code scanning state
-  const [scanning, setScanning] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
-  const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-
-  // Clean up QR scanner on unmount
-  useEffect(() => {
-    return () => {
-      const scanner = html5QrCodeRef.current;
-      if (scanner) {
-        html5QrCodeRef.current = null;
-        void scanner
-          .stop()
-          .then(() => {
-            void scanner.clear();
-          })
-          .catch(() => {
-            // Ignore cleanup errors
-          });
-      }
-    };
-  }, []);
+  const {
+    scanning,
+    scanError,
+    scannerRef,
+    scannerId,
+    startScanning: handleStartScan,
+    stopScanning: handleStopScan,
+  } = useCourseQrScanner(async (text) => {
+    const generation = beginInspection();
+    try {
+      const payload = await decodeShare(text);
+      const next = await resolvePending(payload, text);
+      if (generation === inspectionGeneration.current) setPending(next);
+    } catch (error) {
+      if (generation === inspectionGeneration.current)
+        notify(error instanceof Error ? error.message : 'Invalid QR code.', 'negative');
+    }
+  });
 
   const m = speedMultiplier(motionSpeed);
 
@@ -239,65 +234,6 @@ export function SharedCourseImport({
     }
   }
 
-  async function handleStartScan() {
-    if (html5QrCodeRef.current) return;
-    setScanError(null);
-    setScanning(true);
-    try {
-      const { Html5Qrcode } = await import('html5-qrcode');
-      if (!scannerRef.current) {
-        setScanError('Scanner element not found.');
-        setScanning(false);
-        return;
-      }
-      const scanner = new Html5Qrcode(scannerRef.current.id);
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        async (decodedText) => {
-          const generation = beginInspection();
-          // Stop scanning immediately on success
-          try {
-            await scanner.stop();
-            await scanner.clear();
-          } catch {
-            // Ignore stop errors — scanner may already be stopped
-          }
-          html5QrCodeRef.current = null;
-          setScanning(false);
-          try {
-            const payload = await decodeShare(decodedText);
-            const next = await resolvePending(payload, decodedText);
-            if (generation === inspectionGeneration.current) setPending(next);
-          } catch (err) {
-            notify(err instanceof Error ? err.message : 'Invalid QR code.', 'negative');
-          }
-        },
-        () => {
-          // QR code not found in this frame — silent, keep scanning
-        },
-      );
-    } catch (err) {
-      html5QrCodeRef.current = null;
-      setScanError(err instanceof Error ? err.message : 'Could not start camera scanner.');
-      setScanning(false);
-    }
-  }
-
-  async function handleStopScan() {
-    if (html5QrCodeRef.current) {
-      try {
-        await html5QrCodeRef.current.stop();
-        await html5QrCodeRef.current.clear();
-      } catch {
-        // Ignore stop errors — scanner may already be stopped
-      }
-      html5QrCodeRef.current = null;
-    }
-    setScanning(false);
-    setScanError(null);
-  }
-
   return (
     <section ref={importSectionRef} className="rounded-2xl border border-line bg-surface p-6">
       <div className="mb-1 flex items-center gap-2">
@@ -348,6 +284,11 @@ export function SharedCourseImport({
         </Button>
       </div>
 
+      {scanError && (
+        <p role="alert" className="mt-3 text-sm text-negative">
+          {scanError}
+        </p>
+      )}
       {/* QR scanner */}
       <AnimatePresence>
         {scanning && (
@@ -363,12 +304,17 @@ export function SharedCourseImport({
                 <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
                   QR scanner
                 </span>
-                <Button size="sm" variant="ghost" onClick={handleStopScan}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Close scanner"
+                  onClick={handleStopScan}
+                >
                   <CloseIcon width={14} height={14} />
                 </Button>
               </div>
               <div
-                id="qr-scanner-container"
+                id={scannerId}
                 ref={scannerRef}
                 className="relative mx-auto aspect-square max-w-sm overflow-hidden rounded-lg bg-black"
               >
