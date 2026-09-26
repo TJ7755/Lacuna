@@ -29,6 +29,7 @@ function routeLabel(pathname: string): string {
   if (section === 'learn') return 'Practise course';
   if (section === 'lesson') return segments.includes('cards') ? 'Edit card' : 'Lesson';
   if (section === 'cards') return segments.length > 3 ? 'Edit card' : 'Cards';
+  if (section === 'question-sets') return segments[4] === 'edit' ? 'Edit question set' : 'Question set';
   if (section === 'questions') {
     if (segments[3] === 'learn') return 'Practise questions';
     return segments.length > 3 ? 'Edit question' : 'Questions';

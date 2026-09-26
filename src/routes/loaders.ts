@@ -81,3 +81,6 @@ export const loadImportPage = () =>
 
 export const loadShareLinkPage = () =>
   import('../pages/ShareLinkPage').then((module) => ({ default: module.ShareLinkPage }));
+
+export const loadQuestionSetEditor = () => import('../pages/QuestionSetEditor').then(module => ({ default: module.QuestionSetEditor }));
+export const loadQuestionSetOverview = () => import('../pages/QuestionSetOverview').then(module => ({ default: module.QuestionSetOverview }));

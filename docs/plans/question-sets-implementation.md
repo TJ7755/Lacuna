@@ -355,6 +355,46 @@ Exit condition: an author can create, edit, preview and validate a complete set 
 without configuring lesson/exam/concepts before writing. The set library and unanswered
 learner view do not expose the scheme; author preview can exercise the full marking flow.
 
+### Paper authoring UI gate — 26 September 2026
+
+Implemented by the primary agent (no delegated UI implementation):
+
+- Real set library with search and Author-only local drafts; existing individual Questions
+  stay available. New sets start with an empty title and question, without required links.
+- Paper workspace with collapsible outline, persistent selected part in the current browser
+  session, stable nested numbering, add/remove/reorder, and confirmation before replacing
+  scored content with shared source material.
+- Separate Question, Mark scheme and Links steps. Existing Markdown renders directly;
+  text editing reveals a compact toolbar and a Write/Preview toggle. One criterion is expanded.
+- Written, calculation and text/Markdown MCQ options; maximum marks and allocation totals;
+  alternatives/level guidance; author-selected dimensions. Changing away from populated
+  MCQ options requires confirmation.
+- Manual concept/card search and related-card inspection, create-in-place concepts,
+  per-allocation targets and prerequisite links. Lesson and dated exam links are optional.
+- Image upload with required description, atomic asset/draft persistence, explicit save
+  state, retries, confirmed stale-draft reload and a separate-copy action for stale saved content.
+- Save set validates authored content and missing images. It saves locally; it does not
+  publish a share link. Locked/archived courses cannot open the editor.
+- Author preview renders ancestor sources, actual marks, response formats and an explicitly
+  requested scheme preview. Preview responses never become learner evidence.
+
+Validation: UI/library/legacy/Markdown/route regression suites pass. The new compact-editor
+assertion fails on baseline (the general image uploader remains visible there); new authoring
+APIs also fail to import before the slice. Full web/server/Electron typechecks passed, followed
+by a final web typecheck and focused ESLint after UI changes.
+
+T3 browser evidence: create, nested part selection, autosave, diagram upload with description,
+manual concept link, complete save, reopen, author preview and live stale-draft rejection with
+confirmed recovery. Narrow viewport 390×844 has no horizontal overflow. All 30 fixture card
+schedules match the pre-change baseline and the legacy attempt remains. Fresh-tab diagnostics
+contain no application errors. Desktop/narrow screenshots are shared in the chat.
+
+Remaining Stage 3 work includes set sharing/removal controls, richer media-option authoring,
+full offline/accessibility release checks and reuse of the preview renderer in recorded practice.
+This gate does not complete Stage 4: student attempts, marking decisions, annotations, correction
+history and feedback/dependency timing need their persistence and learner-flow gate first.
+No numerical exam forecast or classifier has been added.
+
 ## Stage 4 — practice, self-marking, annotations and resume
 
 - [ ] Implement Practice and Paper feedback timing. Practice reveals feedback after the

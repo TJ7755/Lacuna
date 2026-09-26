@@ -19,3 +19,8 @@ it('announces the removed share prototype as a missing page', async () => {
   await waitFor(() => expect(document.title).toBe('Page not found · Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Page not found');
 });
+
+it('names the question set editor', async () => {
+  render(<RouteAnnouncement pathname="/course/biology/question-sets/cells/edit" />);
+  expect(await screen.findByText('Edit question set')).toBeInTheDocument();
+});
