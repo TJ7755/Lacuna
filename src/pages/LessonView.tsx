@@ -1,3 +1,4 @@
+import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. The
 // second half renders in one of two workspace modes, resolved by
 // src/course/lessonViewMode.ts: Study (read-only notes, a cards summary) or
@@ -337,6 +338,7 @@ export function LessonView({
             </>
           )}
         </StepSwap>
+        {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
       </motion.div>
     </div>
   );

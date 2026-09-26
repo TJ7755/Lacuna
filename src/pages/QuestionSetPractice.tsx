@@ -1,5 +1,6 @@
+import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
 import { feedbackAvailable, type QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import {
@@ -45,6 +46,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
   const [reflectionDirty, setReflectionDirty] = useState(false);
   const progress = useAttemptProgress(session, formDirty || reflectionDirty);
   const attempt = progress.record;
+  const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -174,7 +176,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
     <div className="qs-practice" ref={rootRef}>
       <header className="qs-practice-header">
         <div>
-          <Link className="qs-back" to={base}>
+          <Link className="qs-back" to={base} state={origin}>
             ← {attempt.receipt.title}
           </Link>
           <p className="qs-kicker">
@@ -192,11 +194,13 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
             onClick={() =>
               void perform(async () => {
                 await progress.flush();
-                await navigate(base);
+                await navigate(origin?.questionSetReturnTo ?? base);
               })
             }
           >
-            {attempt.status === 'complete' ? 'Back to set' : 'Save and finish later'}
+            {attempt.status === 'complete'
+              ? (origin?.questionSetReturnLabel ?? 'Back to set')
+              : 'Save and finish later'}
           </Button>
         </div>
       </header>
@@ -441,8 +445,8 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 Next question
               </Button>
             ) : attempt.status === 'complete' ? (
-              <Link className="qs-back" to={base}>
-                Back to set →
+              <Link className="qs-back" to={origin?.questionSetReturnTo ?? base}>
+                {origin?.questionSetReturnLabel ?? 'Back to set'} →
               </Link>
             ) : (
               <Button

@@ -477,11 +477,11 @@ These depend on the persistence work and can then proceed in parallel UI slices.
   required and leaving learner attempts private. Include required referenced media in `.lacourse`.
 - [ ] Add an optional **Practice Qs** path activity after a lesson by extending existing path and
   practice-node models. Preserve stable activity IDs and existing Path completion behaviour.
-- [ ] Show related sets from the lesson and assessment detail views, and support return to the
+- [x] Show related sets from the lesson and assessment detail views, and support return to the
   original path/lesson/exam entry point after practice.
 - [ ] Link sets to existing assessment IDs, not copied dates. Moving an exam changes planning
   context only; historical attempt timestamps, marks and content versions stay fixed.
-- [ ] Expose related questions in card detail through existing Concept relationships. Manual links
+- [x] Expose related questions in card detail through existing Concept relationships. Manual links
   only; no Jev/classifier or paid suggestion call in v1.
 - [ ] Add duplicate/import, missing-media, stale-assessment, set-removal and offline share/import
   regression cases.
@@ -551,3 +551,14 @@ Jev or another classifier suggesting links; automatic marking; classroom assignm
 freehand annotation; timed papers; arbitrary user-authored executable generators; a mixed
 Cards-and-Questions FSRS session; Question-set FSRS state; and a numerical exam-day forecast
 without calibration. Future work can revisit these with separate evidence and design review.
+
+### Related-set entry gate — 26 September 2026
+
+- Added indexed lesson/exam queries and course-scoped Concept/Card queries, with assessed
+  concepts kept distinct from prerequisites. Cards show sets assessing their linked concept.
+- Browser verified lesson → set → saved attempt → lesson, exam → set → reopened exam details,
+  and Card expansion → related set at desktop and 390px width.
+- Regression tests cover relationships, same-course return validation, save-before-return and
+  unchanged Card records. Existing CardList/LessonView/CoursePath suites: 72 passing.
+- This completes the entry-point slice only. Persisted optional Practice Qs path activities,
+  sharing controls and release portability checks remain open; no new path schema was improvised.

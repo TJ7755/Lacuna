@@ -91,15 +91,21 @@ async function fixture() {
   return { course, set };
 }
 
-function open(courseId: string, setId: string, attemptId: string) {
-  return render(
-    <RouterProvider
-      router={createMemoryRouter(
-        [{ path: '/course/:courseId/question-sets/:setId/attempts/:attemptId', element: <QuestionSetPractice /> }],
-        { initialEntries: [`/course/${courseId}/question-sets/${setId}/attempts/${attemptId}`] },
-      )}
-    />,
+function open(
+  courseId: string,
+  setId: string,
+  attemptId: string,
+  origin?: { pathname: string; search?: string; state?: unknown },
+) {
+  const router = createMemoryRouter(
+    [{ path: '/course/:courseId/question-sets/:setId/attempts/:attemptId', element: <QuestionSetPractice /> }],
+    {
+      initialEntries: [
+        origin ?? `/course/${courseId}/question-sets/${setId}/attempts/${attemptId}`,
+      ],
+    },
   );
+  return { ...render(<RouterProvider router={router} />), router };
 }
 
 async function answerAndAdvance(value: string, nextHeading: string) {
@@ -118,6 +124,35 @@ describe('QuestionSetPractice', () => {
     db.close();
     await db.delete();
     await db.open();
+  });
+
+  it('flushes the answer before returning to the originating lesson', async () => {
+    const { course, set } = await fixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    const view = open(course.id, set.id, attempt.id, {
+      pathname: `/course/${course.id}/question-sets/${set.id}/attempts/${attempt.id}`,
+      state: {
+        questionSetReturnTo: `/course/${course.id}/lesson/lesson-1?tab=cards`,
+        questionSetReturnLabel: 'Back to lesson',
+      },
+    });
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'A persisted response.' },
+    });
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    const save = screen.getByRole('button', { name: 'Save and finish later' });
+    await waitFor(() => expect(save).not.toBeDisabled());
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(view.router?.state.location.pathname).toBe(
+        `/course/${course.id}/lesson/lesson-1`,
+      ),
+    );
+    expect(view.router?.state.location.search).toBe('?tab=cards');
+    expect((await getQuestionSetAttempt(attempt.id))?.responses[0].draft).toEqual({
+      kind: 'written',
+      text: 'A persisted response.',
+    });
   });
 
   it('autosaves a Paper answer and restores it after remount without showing criteria early', async () => {

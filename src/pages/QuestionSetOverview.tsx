@@ -1,3 +1,4 @@
+import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Button } from '../components/ui/Button';
@@ -8,7 +9,7 @@ import {
 import { summariseSelfMarking } from '../questions/questionSets';
 import type { QuestionSetAttemptMode } from '../questions/questionSetAttempts';
 import '../components/question-sets/question-set-practice.css';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getQuestionSet } from '../questions/questionSetRepository';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
 import { questionSetMarks, nodeMarks } from '../components/question-sets/presentation';
@@ -19,6 +20,7 @@ import '../components/question-sets/question-sets.css';
 
 export function QuestionSetOverview() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
+  const origin = questionSetReturn(useLocation().state, courseId!);
   const course = useCourse(courseId);
   const navigate = useNavigate();
   const [mode, setMode] = useState<QuestionSetAttemptMode>('practice');
@@ -35,8 +37,8 @@ export function QuestionSetOverview() {
     );
   return (
     <div className="qs-overview">
-      <Link className="qs-back" to={`/course/${courseId}/questions`}>
-        ← Question sets
+      <Link className="qs-back" to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}>
+        ← {origin?.questionSetReturnLabel ?? 'Question sets'}
       </Link>
       <div className="qs-between">
         <h1>{content.title}</h1>
@@ -69,7 +71,9 @@ export function QuestionSetOverview() {
             setError('');
             void startQuestionSetAttempt(setId!, mode)
               .then((attempt) =>
-                navigate(`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`),
+                navigate(`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`, {
+                  state: origin,
+                }),
               )
               .catch((cause) => {
                 setError(cause instanceof Error ? cause.message : 'Could not start this attempt.');
@@ -95,6 +99,7 @@ export function QuestionSetOverview() {
                 <Link
                   className="qs-set-row"
                   key={attempt.id}
+                  state={origin}
                   to={`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`}
                 >
                   <div>
