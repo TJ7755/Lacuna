@@ -14,6 +14,7 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
+  PendingMergeReview,
   PracticeMilestone,
   PracticeNode,
 } from '../db/types';
@@ -50,7 +51,7 @@ let mockLessons: Lesson[] | undefined;
 let mockAssessments: CourseAssessment[] | undefined;
 let mockCourseCards: Card[] | undefined;
 let mockPracticeNodes: PracticeNode[] | undefined;
-let mockPendingMerge: null;
+let mockPendingMerge: PendingMergeReview | null;
 let mockPerformance: unknown[] | undefined;
 const live = vi.hoisted(() => ({
   links: [] as LessonCardLink[],
@@ -341,6 +342,53 @@ describe('CoursePath Study mode', () => {
   it('disables course-wide practice when no reached card is eligible', () => {
     renderPage();
     expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+  });
+
+  it('links to the updates review from the multi-lesson header when an update is pending', () => {
+    mockPendingMerge = {
+      id: 'review-1',
+      courseId: 'course-1',
+      lineageId: 'lineage-1',
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [] },
+        updates: { lessons: [], notes: [], cards: [] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [] },
+        conflicts: [],
+      },
+      createdAt: 0,
+    };
+
+    renderPage();
+
+    expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
+      'href',
+      '/course/course-1/updates',
+    );
+  });
+
+  it('links to the updates review above a single-lesson course when an update is pending', () => {
+    mockLessons = [lesson1];
+    mockPendingMerge = {
+      id: 'review-1',
+      courseId: 'course-1',
+      lineageId: 'lineage-1',
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [] },
+        updates: { lessons: [], notes: [], cards: [] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [] },
+        conflicts: [],
+      },
+      createdAt: 0,
+    };
+
+    renderPage();
+
+    expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
+      'href',
+      '/course/course-1/updates',
+    );
   });
 
   it('exposes course-wide practice in a single-lesson course header', async () => {

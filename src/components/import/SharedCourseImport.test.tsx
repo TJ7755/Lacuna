@@ -1,6 +1,23 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { SharedCourseImport } from './SharedCourseImport';
+
+function Probe() {
+  const location = useLocation();
+  return <p data-testid="location">{location.pathname}</p>;
+}
+
+function renderImport() {
+  return render(
+    <MemoryRouter initialEntries={['/share']}>
+      <Routes>
+        <Route path="/share" element={<SharedCourseImport />} />
+        <Route path="/s/:code" element={<Probe />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -33,7 +50,7 @@ beforeEach(() => {
 });
 
 it('stops and clears the active QR camera when Stop scanning is pressed', async () => {
-  render(<SharedCourseImport />);
+  renderImport();
   fireEvent.click(screen.getByRole('button', { name: 'Scan QR code' }));
   await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
   fireEvent.click(screen.getByRole('button', { name: 'Stop scanning' }));
@@ -49,7 +66,7 @@ it('releases a camera that finishes starting after the importer closes', async (
         started = resolve;
       }),
   );
-  const view = render(<SharedCourseImport />);
+  const view = renderImport();
   fireEvent.click(screen.getByRole('button', { name: 'Scan QR code' }));
   await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
   view.unmount();
@@ -62,7 +79,7 @@ it('releases a camera that finishes starting after the importer closes', async (
 
 it('shows camera startup errors after the scanning view closes', async () => {
   mocks.start.mockRejectedValue(new Error('Camera permission denied'));
-  render(<SharedCourseImport />);
+  renderImport();
   fireEvent.click(screen.getByRole('button', { name: 'Scan QR code' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Camera permission denied');
   expect(screen.getByRole('button', { name: 'Scan QR code' })).toBeEnabled();
@@ -76,7 +93,7 @@ it('stops a camera that finishes starting after Stop scanning is pressed', async
         started = resolve;
       }),
   );
-  render(<SharedCourseImport />);
+  renderImport();
   fireEvent.click(screen.getByRole('button', { name: 'Scan QR code' }));
   await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
   fireEvent.click(screen.getByRole('button', { name: 'Stop scanning' }));
@@ -85,4 +102,26 @@ it('stops a camera that finishes starting after Stop scanning is pressed', async
   });
   await waitFor(() => expect(mocks.stop).toHaveBeenCalledOnce());
   expect(mocks.clear).toHaveBeenCalledOnce();
+});
+
+it('navigates to the link importer for a pasted share code', async () => {
+  const code = 'a'.repeat(32);
+  window.location.hash = '#/share';
+  renderImport();
+  fireEvent.change(screen.getByLabelText('Share code to import'), {
+    target: { value: code },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  await waitFor(() => expect(window.location.hash).toBe(`#/s/${code}`));
+});
+
+it('navigates to the link importer for a pasted full share link', async () => {
+  const code = 'b'.repeat(32);
+  window.location.hash = '#/share';
+  renderImport();
+  fireEvent.change(screen.getByLabelText('Share code to import'), {
+    target: { value: `https://lacuna.example/#/s/${code}` },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  await waitFor(() => expect(window.location.hash).toBe(`#/s/${code}`));
 });
