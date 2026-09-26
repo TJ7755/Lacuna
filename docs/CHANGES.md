@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Kept the installed Windows upgrade probe clear of the downloaded-update
+  dialogue while it records baseline study data, then installed the same verified
+  update and checked that the records survived.
+
 - Fixed QR import camera cleanup: stopping or leaving the importer releases the
   camera, including when startup completes after cancellation. Camera permission
   errors remain visible after the scanner closes.

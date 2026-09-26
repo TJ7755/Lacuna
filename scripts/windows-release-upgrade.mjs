@@ -84,6 +84,11 @@ async function snapshot(page) {
 try {
   await install(baseline);
   let page = await open('0.2.10');
+  await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
+  await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
+    { timeout: 180_000 }).toBe('downloaded');
+  assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
+  await page.getByRole('dialog', { name: 'Update ready' }).getByRole('button', { name: 'Later' }).click();
   await expect.poll(async () => (await snapshot(page)).cards?.length ?? 0).toBeGreaterThan(0);
   await page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Welcome to Lacuna' }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
@@ -98,10 +103,6 @@ try {
   const before = await snapshot(page);
   assert(before.courses.length > 0);
   report.stages.push('baseline installed and study database populated');
-  await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
-  await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
-    { timeout: 180_000 }).toBe('downloaded');
-  assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
   await application.evaluate(({ app }) => {
     const { createRequire } = process.getBuiltinModule('node:module');
     const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
