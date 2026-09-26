@@ -98,7 +98,7 @@ test('a share link imports a course and republishes update it', async ({ browser
   await installShareRelay(student, handle);
   await enterFreshLacuna(student);
   await student.goto(`/#/s/${code}`);
-  await expect(student.getByRole('heading', { name: 'Shared course' })).toBeVisible();
+  await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
   await expect(student.getByText(/Link biology —/)).toBeVisible();
   await student.getByRole('button', { name: 'Add to my courses' }).click();
