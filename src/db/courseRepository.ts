@@ -206,9 +206,23 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
  */
 export async function publishCourse(
   courseId: string,
-): Promise<{ lineageId: string; revision: number; publishedAt: number }> {
+): Promise<{
+  lineageId: string;
+  revision: number;
+  publishedAt: number;
+  shareId?: string;
+  shareRevision?: number;
+}> {
   try {
-    let distribution: { lineageId: string; revision: number; publishedAt: number } | undefined;
+    let distribution:
+      | {
+          lineageId: string;
+          revision: number;
+          publishedAt: number;
+          shareId?: string;
+          shareRevision?: number;
+        }
+      | undefined;
     await db.transaction('rw', db.courses, async () => {
       const course = await db.courses.get(courseId);
       if (!course) throw new Error('The course could not be found.');
@@ -216,6 +230,14 @@ export async function publishCourse(
         lineageId: course.distribution?.lineageId ?? makeId(),
         revision: (course.distribution?.revision ?? 0) + 1,
         publishedAt: Date.now(),
+        // A republish keeps the stable share link and its uploaded revision;
+        // only an explicit unpublish clears them (see forgetShareCredentials
+        // + detach flows). The uploaded revision deliberately trails behind
+        // until the link itself is republished.
+        ...(course.distribution?.shareId ? { shareId: course.distribution.shareId } : {}),
+        ...(course.distribution?.shareRevision !== undefined
+          ? { shareRevision: course.distribution.shareRevision }
+          : {}),
       };
       await db.courses.update(courseId, stampUpdatedAt({ distribution }));
     });
@@ -285,6 +307,57 @@ export async function setCourseAutoAcceptUpdates(
         distributedCopy: { ...course.distributedCopy, autoAcceptUpdates },
       }),
     );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Records the relay share id behind a teacher's `/#/s/<code>` link on the
+ * course's distribution state, following the `setCourseAutoAcceptUpdates`
+ * pattern. The id is public (it appears in the shared URL); the write token
+ * stays device-local in sync state and is never stored here.
+ */
+export async function setCourseShareId(
+  courseId: string,
+  shareId: string,
+  revision: number,
+): Promise<void> {
+  try {
+    // Read and write inside one transaction: a concurrent publishCourse
+    // between a separate read and write would otherwise be overwritten with
+    // a stale revision. Same-table read-write transactions serialise in
+    // Dexie, and publishCourse already takes one on this table.
+    await db.transaction('rw', db.courses, async () => {
+      const course = await db.courses.get(courseId);
+      if (!course) throw new Error('The course could not be found.');
+      if (!course.distribution) throw new Error('This course has not been published.');
+      if (!/^[0-9a-f]{32}$/.test(shareId)) throw new Error('The share link code is invalid.');
+      await db.courses.update(
+        courseId,
+        stampUpdatedAt({ distribution: { ...course.distribution, shareId, shareRevision: revision } }),
+      );
+    });
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Clears the relay share id from a teacher's course, e.g. after unpublishing
+ * its share link. The lineage counter is untouched: republishing resumes the
+ * same revision sequence, while a future link mints a fresh share id.
+ */
+export async function clearCourseShareId(courseId: string): Promise<void> {
+  try {
+    await db.transaction('rw', db.courses, async () => {
+      const course = await db.courses.get(courseId);
+      if (!course) throw new Error('The course could not be found.');
+      if (!course.distribution?.shareId) return;
+      const { shareId: _omitted, shareRevision: _omittedRevision, ...distribution } =
+        course.distribution;
+      await db.courses.update(courseId, stampUpdatedAt({ distribution }));
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }

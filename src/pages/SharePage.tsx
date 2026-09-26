@@ -10,6 +10,15 @@ import { useToast } from '../components/ui/Toast';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { buildCourseShareCode, buildCourseShareCodeQR } from '../db/share';
+import { formatShareLink } from '../shareLinks/client';
+import {
+  publishShareLink,
+  ShareLinkNeedsReplacementError,
+  unpublishShareLink,
+} from '../shareLinks/publish';
+import { readShareCredentials } from '../shareLinks/credentials';
+import { ConfirmInlineSwap } from '../components/ui/ConfirmInline';
+import { HOSTED_SERVICE_ORIGIN } from '../ai/session/hostedTransport';
 import { referencedAssetHashes } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
 import { publishCourse } from '../db/courseRepository';
@@ -57,6 +66,7 @@ export function SharePage() {
 
   const copyTimeoutRef = useRef<number | null>(null);
   const plainTextCopyTimeoutRef = useRef<number | null>(null);
+  const linkCopyTimeoutRef = useRef<number | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const [plainText, setPlainText] = useState('');
   const [plainTextCopied, setPlainTextCopied] = useState(false);
@@ -66,11 +76,22 @@ export function SharePage() {
   const [qrGenerating, setQrGenerating] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
+  // Share link state: one stable link per course, refreshed in place on republish.
+  const [shareLink, setShareLink] = useState<{ shareId: string; revision: number } | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
+  const [linkManaged, setLinkManaged] = useState<boolean | null>(null);
+  const [confirmingReplace, setConfirmingReplace] = useState(false);
+  const selectedCourseIdRef = useRef<string | null>(null);
+  selectedCourseIdRef.current = selectedCourseId;
+
   // Clear pending copy timeouts on unmount to avoid setState on unmounted component.
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) window.clearTimeout(copyTimeoutRef.current);
       if (plainTextCopyTimeoutRef.current) window.clearTimeout(plainTextCopyTimeoutRef.current);
+      if (linkCopyTimeoutRef.current) window.clearTimeout(linkCopyTimeoutRef.current);
     };
   }, []);
 
@@ -95,42 +116,159 @@ export function SharePage() {
     [courseCards],
   );
 
+  const selectedShareId = selectedCourse?.distribution?.shareId;
+  useEffect(() => {
+    if (!selectedShareId) {
+      setLinkManaged(null);
+      return;
+    }
+    let cancelled = false;
+    setLinkManaged(null);
+    readShareCredentials(selectedShareId).then(
+      (credentials) => {
+        if (!cancelled) setLinkManaged(credentials ? true : false);
+      },
+      () => {
+        if (!cancelled) setLinkManaged(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedShareId]);
+
   function select(id: string) {
-    setSelectedCourseId((prev) => (prev === id ? null : id));
+    const next = selectedCourseId === id ? null : id;
+    setSelectedCourseId(next);
     // Any change invalidates a previously generated code or plain text export.
     setCode('');
     setPlainText('');
     setQrCode('');
     setShowQR(false);
+    // A course that already has a link reopens its panel, so a returning
+    // teacher sees the live link rather than a blank slate.
+    const course = next ? courses?.find((candidate) => candidate.id === next) : undefined;
+    const linkId = course?.distribution?.shareId;
+    setShareLink(
+      linkId && course?.distribution
+        ? {
+            shareId: linkId,
+            revision: course.distribution.shareRevision ?? course.distribution.revision,
+          }
+        : null,
+    );
+    setLinkCopied(false);
+    setConfirmingUnpublish(false);
+    setConfirmingReplace(false);
+  }
+
+  // Inside Electron the link must open the hosted web app; on the web a
+  // same-origin link keeps preview deployments working.
+  const linkOrigin =
+    window.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : window.location.origin;
+  const shareLinkUrl = shareLink ? formatShareLink(shareLink.shareId, linkOrigin) : '';
+
+  async function handleShareLink(replaceLink = false) {
+    const courseId = selectedCourseId;
+    if (!courseId) return;
+    setLinkBusy(true);
+    try {
+      const result = replaceLink
+        ? await publishShareLink(courseId, { replaceLink: true })
+        : await publishShareLink(courseId);
+      if (selectedCourseIdRef.current !== courseId) return;
+      setShareLink({ shareId: result.shareId, revision: result.revision });
+      setLinkCopied(false);
+      setLinkManaged(true);
+      setConfirmingReplace(false);
+      notify(
+        `Share link ready — revision ${result.revision}. Republishing updates the same link.`,
+        'positive',
+      );
+    } catch (err) {
+      if (selectedCourseIdRef.current !== courseId) return;
+      if (err instanceof ShareLinkNeedsReplacementError) {
+        setLinkManaged(false);
+        notify(err.message, 'negative');
+        return;
+      }
+      notify(err instanceof Error ? err.message : 'Could not create a share link.', 'negative');
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!shareLinkUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareLinkUrl);
+      setLinkCopied(true);
+      notify('Share link copied to the clipboard.', 'positive');
+      if (linkCopyTimeoutRef.current) window.clearTimeout(linkCopyTimeoutRef.current);
+      linkCopyTimeoutRef.current = window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      notify('Copy failed — select the link and copy it manually.', 'negative');
+    }
   }
 
   async function handlePublish() {
-    if (!selectedCourseId) return;
+    const courseId = selectedCourseId;
+    if (!courseId) return;
     setPublishing(true);
     try {
-      await publishCourse(selectedCourseId);
+      await publishCourse(courseId);
+      if (selectedCourseIdRef.current !== courseId) return;
       // Keep an already-generated code in sync with the new revision, rather than
-      // leaving a stale pre-publish code on screen.
+      // leaving a stale pre-publish code on screen. A plain publish bumps the
+      // course counter without uploading, so the link panel keeps showing the
+      // uploaded revision until the next link publish.
       if (code) {
-        const refreshed = await buildCourseShareCode(selectedCourseId);
+        const refreshed = await buildCourseShareCode(courseId);
+        if (selectedCourseIdRef.current !== courseId) return;
         setCode(refreshed);
         setCopied(false);
       }
     } catch (err) {
+      if (selectedCourseIdRef.current !== courseId) return;
       notify(err instanceof Error ? err.message : 'Could not publish this course.', 'negative');
     } finally {
       setPublishing(false);
     }
   }
 
+  async function handleUnpublish() {
+    const courseId = selectedCourseId;
+    if (!courseId) return;
+    setConfirmingUnpublish(false);
+    setLinkBusy(true);
+    try {
+      await unpublishShareLink(courseId);
+      if (selectedCourseIdRef.current !== courseId) return;
+      setShareLink(null);
+      setLinkCopied(false);
+      notify(
+        'Share link removed. Students keep their copies but will not receive updates.',
+        'positive',
+      );
+    } catch (err) {
+      if (selectedCourseIdRef.current !== courseId) return;
+      notify(err instanceof Error ? err.message : 'Could not remove the share link.', 'negative');
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
   async function handleGenerate() {
-    if (!selectedCourseId) return;
+    const courseId = selectedCourseId;
+    if (!courseId) return;
     setGenerating(true);
     try {
-      const result = await buildCourseShareCode(selectedCourseId);
+      const result = await buildCourseShareCode(courseId);
+      if (selectedCourseIdRef.current !== courseId) return;
       setCode(result);
       setCopied(false);
     } catch (err) {
+      if (selectedCourseIdRef.current !== courseId) return;
       notify(err instanceof Error ? err.message : 'Could not generate a share code.', 'negative');
     } finally {
       setGenerating(false);
@@ -138,12 +276,14 @@ export function SharePage() {
   }
 
   async function handleGenerateQR() {
-    if (!selectedCourseId) return;
+    const courseId = selectedCourseId;
+    if (!courseId) return;
     setQrGenerating(true);
     setQrCode('');
     setShowQR(false);
     try {
-      const result = await buildCourseShareCodeQR(selectedCourseId);
+      const result = await buildCourseShareCodeQR(courseId);
+      if (selectedCourseIdRef.current !== courseId) return;
       if (result.length > MAX_QR_ALPHANUMERIC_CHARS) {
         notify(
           'This course is too large for a single QR code. Use the text share code instead.',
@@ -154,6 +294,7 @@ export function SharePage() {
       setQrCode(result);
       setShowQR(true);
     } catch (err) {
+      if (selectedCourseIdRef.current !== courseId) return;
       notify(err instanceof Error ? err.message : 'Could not generate a QR code.', 'negative');
     } finally {
       setQrGenerating(false);
@@ -220,7 +361,8 @@ export function SharePage() {
         </div>
         <p className="mb-5 text-sm text-ink-soft">
           Save a course file to share lessons, cards and media. Your study history stays private.
-          Text and QR codes are also available, but omit media files.{' '}
+          A share link includes media and updates in place when you republish. Text and QR codes
+          are also available, but omit media files.{' '}
           <Link to="/settings#settings-export" className="text-accent underline underline-offset-2">
             Open full backup and recovery
           </Link>
@@ -365,6 +507,18 @@ export function SharePage() {
                 </Button>
                 <Button
                   variant="secondary"
+                  onClick={() => void handleShareLink()}
+                  disabled={!selectedCourseId || linkBusy}
+                >
+                  <ShareIcon width={18} height={18} />
+                  {linkBusy
+                    ? 'Publishing…'
+                    : shareLink
+                      ? `Republish link (revision ${shareLink.revision})`
+                      : 'Create share link'}
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={handleExportPlainText}
                   disabled={!selectedCourseId || !selectedSummary?.cardCount}
                 >
@@ -451,6 +605,134 @@ export function SharePage() {
                         This QR code uses a Base45-encoded share code for maximum density. Any
                         camera can scan it.
                       </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Share link panel */}
+            <AnimatePresence>
+              {shareLink && linkManaged !== false && (
+                <motion.div
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  exit={m > 0 ? { opacity: 0 } : undefined}
+                  transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="mt-5"
+                >
+                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                        Share link · revision {shareLink.revision}
+                      </span>
+                      <Button size="sm" variant="secondary" onClick={() => void handleCopyLink()}>
+                        {linkCopied ? (
+                          <>
+                            <CheckIcon width={14} height={14} />
+                            Copied
+                          </>
+                        ) : (
+                          'Copy'
+                        )}
+                      </Button>
+                    </div>
+                    <textarea
+                      readOnly
+                      aria-label="Share link"
+                      value={shareLinkUrl}
+                      onFocus={(e) => e.currentTarget.select()}
+                      rows={2}
+                      className="w-full resize-none break-all rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
+                    />
+                    <p className="mt-2 text-xs text-ink-faint">
+                      Send the link itself, or just the code after the final slash — both open the
+                      same course.
+                      {selectedCourse?.distribution?.shareId === shareLink.shareId && (
+                        <>
+                          {' '}
+                          Revision {shareLink.revision} · published{' '}
+                          {formatRelativeTime(selectedCourse.distribution.publishedAt)}.
+                        </>
+                      )}
+                      {selectedCourse?.distribution?.shareId === shareLink.shareId &&
+                        selectedCourse.distribution.revision > shareLink.revision && (
+                          <>
+                            {' '}
+                            The course is at revision {selectedCourse.distribution.revision} —
+                            republish the link to upload it.
+                          </>
+                        )}
+                    </p>
+                    <div className="mt-3 flex justify-center">
+                      <div className="rounded-xl border border-line bg-white p-4 dark:bg-white">
+                        <QRCode
+                          value={shareLinkUrl}
+                          size={192}
+                          level="L"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+                      <p className="text-xs text-ink-faint">
+                        Republishing updates this link in place.
+                      </p>
+                      <ConfirmInlineSwap
+                        active={confirmingUnpublish}
+                        onCancel={() => setConfirmingUnpublish(false)}
+                        message="Stop sharing this link? Students keep their copies but will not receive updates."
+                        confirmLabel="Yes, stop sharing"
+                        onConfirm={() => void handleUnpublish()}
+                      >
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setConfirmingUnpublish(true)}
+                          disabled={linkBusy}
+                        >
+                          Stop sharing
+                        </Button>
+                      </ConfirmInlineSwap>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Unmanaged link box: the share id belongs to another device. */}
+            <AnimatePresence>
+              {linkManaged === false && selectedCourse && (
+                <motion.div
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  exit={m > 0 ? { opacity: 0 } : undefined}
+                  transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="mt-5"
+                >
+                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
+                    <p className="text-sm text-ink-soft">
+                      This course&apos;s link was created on another device. Publishing here
+                      creates a new link; the old link stays live until it expires.
+                    </p>
+                    <div className="mt-3 flex justify-end">
+                      <ConfirmInlineSwap
+                        active={confirmingReplace}
+                        onCancel={() => setConfirmingReplace(false)}
+                        message="Replace the link? The old link stays live until it expires."
+                        confirmLabel="Yes, replace it"
+                        onConfirm={() => void handleShareLink(true)}
+                      >
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setConfirmingReplace(true)}
+                          disabled={linkBusy}
+                        >
+                          Replace link
+                        </Button>
+                      </ConfirmInlineSwap>
                     </div>
                   </div>
                 </motion.div>

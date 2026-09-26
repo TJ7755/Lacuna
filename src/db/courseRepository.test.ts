@@ -25,6 +25,8 @@ import {
   assignCardsToLesson,
   detachCourse,
   setCourseAutoAcceptUpdates,
+  setCourseShareId,
+  clearCourseShareId,
   linkCardsToLesson,
   linkCardToLesson,
   listNotes,
@@ -1704,6 +1706,92 @@ describe('publishCourse', () => {
 
   it('rejects publishing a course that does not exist', async () => {
     await expect(publishCourse('missing')).rejects.toThrow('could not be found');
+  });
+
+  it('keeps the share link id across republishes', async () => {
+    const course = await createCourse('Share link test');
+    await publishCourse(course.id);
+    await setCourseShareId(course.id, 'a'.repeat(32), 1);
+
+    const republished = await publishCourse(course.id);
+
+    expect(republished.shareId).toBe('a'.repeat(32));
+    expect(republished.shareRevision).toBe(1);
+    expect(republished.revision).toBe(2);
+    expect(await db.courses.get(course.id)).toMatchObject({ distribution: republished });
+  });
+});
+
+describe('setCourseShareId', () => {
+  beforeEach(reset);
+
+  it('records the share id and uploaded revision while leaving the rest untouched', async () => {
+    const course = await createCourse('Share id test');
+    const distribution = await publishCourse(course.id);
+
+    await setCourseShareId(course.id, 'b'.repeat(32), 1);
+
+    expect((await db.courses.get(course.id))?.distribution).toEqual({
+      ...distribution,
+      shareId: 'b'.repeat(32),
+      shareRevision: 1,
+    });
+  });
+
+  it('rejects an unpublished course, a missing course and a malformed id', async () => {
+    const course = await createCourse('Unpublished test');
+    await expect(setCourseShareId(course.id, 'b'.repeat(32), 1)).rejects.toThrow(
+      'not been published',
+    );
+    await expect(setCourseShareId('missing', 'b'.repeat(32), 1)).rejects.toThrow(
+      'could not be found',
+    );
+
+    await publishCourse(course.id);
+    await expect(setCourseShareId(course.id, 'short', 1)).rejects.toThrow(
+      'share link code is invalid',
+    );
+  });
+
+  it('keeps both a concurrent publish and the share id', async () => {
+    // A share-ID write that spans a concurrent publish must not clobber the
+    // committed revision: both writers run in same-table transactions, so
+    // every interleaving below must converge on revision 2 with the id set.
+    for (let round = 0; round < 10; round += 1) {
+      const course = await createCourse(`Concurrent share ${round}`);
+      await publishCourse(course.id);
+      await Promise.all([publishCourse(course.id), setCourseShareId(course.id, 'b'.repeat(32), 2)]);
+      const distribution = (await db.courses.get(course.id))?.distribution;
+      expect(distribution?.revision).toBe(2);
+      expect(distribution?.shareId).toBe('b'.repeat(32));
+      expect(distribution?.shareRevision).toBe(2);
+      await db.courses.delete(course.id);
+    }
+  });
+});
+
+describe('clearCourseShareId', () => {
+  beforeEach(reset);
+
+  it('clears the share id while keeping the lineage counter', async () => {
+    const course = await createCourse('Clear share id test');
+    await publishCourse(course.id);
+    await setCourseShareId(course.id, 'c'.repeat(32), 1);
+
+    await clearCourseShareId(course.id);
+
+    expect((await db.courses.get(course.id))?.distribution).toEqual(
+      expect.objectContaining({ revision: 1 }),
+    );
+    expect((await db.courses.get(course.id))?.distribution).not.toHaveProperty('shareId');
+    expect((await db.courses.get(course.id))?.distribution).not.toHaveProperty('shareRevision');
+  });
+
+  it('is a no-op without a share id and rejects a missing course', async () => {
+    const course = await createCourse('Nothing shared test');
+    await publishCourse(course.id);
+    await expect(clearCourseShareId(course.id)).resolves.toBeUndefined();
+    await expect(clearCourseShareId('missing')).rejects.toThrow('could not be found');
   });
 });
 

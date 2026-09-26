@@ -3,9 +3,22 @@ import { canonicalEtag, type BlobStore } from './store.js';
 import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
 import { consumeAiPairingPermit, handleAiMaintenanceRoute } from './aiMaintenance.js';
 import { CHANNEL_TTL_MS } from './channelMaintenance.js';
+import {
+  handleShareItem,
+  handleShareMint,
+  handleShareSlot,
+  __resetShareMintRateLimitForTests,
+  type ShareSlot,
+} from './shares.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 export { CHANNEL_TTL_MS } from './channelMaintenance.js';
+export {
+  EMPTY_SHARE_ETAG,
+  SHARE_META_MAX_BYTES,
+  SHARE_PAYLOAD_MAX_BYTES,
+  __resetShareMintRateLimitForTests,
+} from './shares.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -67,6 +80,14 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
           return await handleSlot(store, request, route.id, route.slot, now);
         case 'slot-invalid':
           return json(400, request, { error: 'invalid slot' });
+        case 'share-collection':
+          return await handleShareMint(store, request);
+        case 'share-item':
+          return await handleShareItem(store, request, route.id, now);
+        case 'share-slot':
+          return await handleShareSlot(store, request, route.id, route.slot, now);
+        case 'share-slot-invalid':
+          return json(400, request, { error: 'invalid slot' });
         default:
           return json(404, request, { error: 'not found' });
       }
@@ -103,6 +124,7 @@ function isRateLimited(attempts: RateLimitAttempts, ip: string, now: number): bo
 
 export function __resetMintRateLimitForTests(): void {
   deviceSyncMintAttempts.clear();
+  __resetShareMintRateLimitForTests();
 }
 
 async function handleChannel(store: BlobStore, request: Request): Promise<Response> {
@@ -329,6 +351,10 @@ export type Route =
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
   | { kind: 'slot-invalid' }
+  | { kind: 'share-collection' }
+  | { kind: 'share-item'; id: string }
+  | { kind: 'share-slot'; id: string; slot: ShareSlot }
+  | { kind: 'share-slot-invalid' }
   | { kind: 'unknown' };
 
 /**
@@ -374,6 +400,17 @@ function matchPath(pathname: string): Route | null {
       return { kind: 'slot', id: parts[1], slot };
     }
     return { kind: 'slot-invalid' };
+  }
+  if (parts.length === 1 && parts[0] === 'shares') return { kind: 'share-collection' };
+  if (parts.length === 2 && parts[0] === 'shares' && parts[1] !== undefined) {
+    return { kind: 'share-item', id: parts[1] };
+  }
+  if (parts.length === 3 && parts[0] === 'shares' && parts[1] !== undefined && parts[2] !== undefined) {
+    const slot = parts[2];
+    if (slot === 'payload' || slot === 'meta') {
+      return { kind: 'share-slot', id: parts[1], slot };
+    }
+    return { kind: 'share-slot-invalid' };
   }
   return null;
 }

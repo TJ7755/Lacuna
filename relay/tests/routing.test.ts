@@ -12,6 +12,8 @@ const API_ALIASES = ['/api/channel', '/api/c/:id', '/api/c/:id/:slot'] as const;
 const AI_PUBLIC_PATHS = ['/ai/sessions', '/ai/s/:id', '/ai/s/:id/:action'] as const;
 const AI_API_ALIASES = ['/api/ai/sessions', '/api/ai/s/:id', '/api/ai/s/:id/:action'] as const;
 const AI_MAINTENANCE_PATHS = ['/ai/maintenance', '/api/ai/maintenance'] as const;
+const SHARE_PUBLIC_PATHS = ['/shares', '/shares/:id', '/shares/:id/:slot'] as const;
+const SHARE_API_ALIASES = ['/api/shares', '/api/shares/:id', '/api/shares/:id/:slot'] as const;
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -47,6 +49,29 @@ describe('parseRoute', () => {
       kind: 'ai-claim',
       id: 'ABCDEFGHJKMNPQRSTVWZ',
     });
+    expect(parseRoute('https://relay.example/shares')).toEqual({ kind: 'share-collection' });
+    expect(parseRoute('https://relay.example/api/shares')).toEqual({ kind: 'share-collection' });
+    expect(parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899')).toEqual({
+      kind: 'share-item',
+      id: 'aabbccddeeff00112233445566778899',
+    });
+    expect(
+      parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899/payload'),
+    ).toEqual({
+      kind: 'share-slot',
+      id: 'aabbccddeeff00112233445566778899',
+      slot: 'payload',
+    });
+    expect(
+      parseRoute('https://relay.example/api/shares/aabbccddeeff00112233445566778899/meta'),
+    ).toEqual({
+      kind: 'share-slot',
+      id: 'aabbccddeeff00112233445566778899',
+      slot: 'meta',
+    });
+    expect(parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899/notes')).toEqual(
+      { kind: 'share-slot-invalid' },
+    );
   });
 
   it('recovers a route after a rewrite that collapses the pathname to /api', () => {
@@ -144,6 +169,8 @@ describe('AI maintenance route', () => {
       objectsDeleted: 5,
       channelsDeleted: 0,
       channelObjectsDeleted: 0,
+      sharesDeleted: 0,
+      shareObjectsDeleted: 0,
     });
     expect(await store.list(`ai/${expired.sessionId}/`)).toEqual([]);
     expect(await store.list(`ai/${corruptId}/`)).toEqual([]);
@@ -200,6 +227,8 @@ describe('vercel routing contract', () => {
       ...AI_PUBLIC_PATHS,
       ...AI_API_ALIASES,
       ...AI_MAINTENANCE_PATHS,
+      ...SHARE_PUBLIC_PATHS,
+      ...SHARE_API_ALIASES,
     ]) {
       const rewrite = config.rewrites.find((entry) => entry.source === source);
       expect(rewrite, `missing rewrite for ${source}`).toBeTruthy();
