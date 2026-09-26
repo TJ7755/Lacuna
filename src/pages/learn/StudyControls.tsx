@@ -2,6 +2,7 @@ import { useLayoutEffect, type RefObject } from 'react';
 import { m as motion } from 'motion/react';
 import type { Grade } from '../../db/types';
 import { Button } from '../../components/ui/Button';
+import { fadeLiftTiming } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { TouchBottomSheet } from './TouchBottomSheet';
 import type { Phase } from './types';
@@ -39,7 +40,6 @@ export function StudyControls({
     if (question) input.focus({ preventScroll: true });
     else if (document.activeElement === input) input.blur();
   }, [question, isTypingCard, typingInputRef]);
-  const transition = { duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] as const };
   return (
     <>
       {(isTypingCard || !isTouchMode) && (
@@ -48,7 +48,7 @@ export function StudyControls({
             className="col-start-1 row-start-1 flex w-full flex-col items-center self-start gap-3"
             initial={false}
             animate={{ opacity: question ? 1 : 0 }}
-            transition={transition}
+            transition={fadeLiftTiming(question, m)}
             inert={!question}
             aria-hidden={!question}
           >
@@ -93,8 +93,8 @@ export function StudyControls({
             <motion.div
               className="col-start-1 row-start-1 flex w-full flex-col items-center self-start"
               initial={false}
-              animate={{ opacity: question ? 0 : 1 }}
-              transition={transition}
+              animate={{ opacity: question ? 0 : 1, y: question && m > 0 ? 14 : 0 }}
+              transition={fadeLiftTiming(!question, m)}
               inert={question}
               aria-hidden={question}
             >

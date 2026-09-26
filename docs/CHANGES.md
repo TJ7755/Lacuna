@@ -8,7 +8,8 @@
   strictness, Markdown and cloze context; grading remains manual.
 - Kept study cards anchored during reveal and hide by reserving the larger control
   area for both phases. Inactive controls are inert; keyboard focus returns to the
-  typing field without scrolling.
+  typing field without scrolling. The shared controls retain the visible answer label
+  and the fade-before-lift timing when combined with the desktop interaction changes.
 
 - Replaced the downloaded-update prompt with the selected illustrated dialogue: a
   symmetrical card stack, the version in body text, and expandable release notes.
@@ -28,6 +29,11 @@
   shortcuts, cancel pending grades and recover focus. The deliberate graded-card pause
   and existing flip/departure timing are preserved. See the
   [desktop validation report](performance/2026-09-26/README.md) for evidence and hardware gaps.
+
+- Study controls now fade out before the grading buttons lift in together, on desktop
+  and touch layouts. This separates Show answer from Yes instead of overlapping them.
+  Motion speed settings scale the transition; reduced motion swaps immediately.
+  Implements direction A from the `prototype/card-control-motion` design study.
 
 - Kept the installed Windows upgrade probe clear of the downloaded-update
   dialogue while it records baseline study data, then installed the same verified

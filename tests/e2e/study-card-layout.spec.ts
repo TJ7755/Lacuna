@@ -241,27 +241,43 @@ for (const width of [1280, 390]) {
           );
           const card = document.querySelector('[data-study-card-id]')!;
           const initial = card.getBoundingClientRect();
+          const questionControls = document
+            .querySelector<HTMLInputElement>('input[placeholder="Type your answer…"]')!
+            .closest('.col-start-1')!;
+          const gradingControls = questionControls.nextElementSibling;
+
           document
             .querySelector('[data-study-face]')!
             .closest('[role="button"]')!
             .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-          return new Promise<number>((resolve) => {
+          return new Promise<{ maximum: number; overlap: number }>((resolve) => {
             const start = performance.now();
             let maximum = 0;
+            let overlap = 0;
             const sample = () => {
               const next = card.getBoundingClientRect();
+              if (gradingControls) {
+                overlap = Math.max(
+                  overlap,
+                  Math.min(
+                    Number(getComputedStyle(questionControls).opacity),
+                    Number(getComputedStyle(gradingControls).opacity),
+                  ),
+                );
+              }
               maximum = Math.max(
                 maximum,
                 Math.abs(next.top - initial.top),
                 Math.abs(next.bottom - initial.bottom),
               );
-              if (performance.now() - start > 800) resolve(maximum);
+              if (performance.now() - start > 800) resolve({ maximum, overlap });
               else requestAnimationFrame(sample);
             };
             requestAnimationFrame(sample);
           });
         });
-        expect(movement).toBeLessThan(1);
+        expect(movement.maximum).toBeLessThan(1);
+        expect(movement.overlap).toBeLessThan(0.02);
         await expect(card.locator(`[data-study-face="${destination}"]`)).toBeVisible();
         if (destination === 'back') {
           await expect(page.getByRole('button', { name: 'Check answer', exact: true })).toHaveCount(
