@@ -112,6 +112,7 @@ const OPTIONAL_COLLECTIONS = [
   'questionConcepts',
   'questionAttempts',
   'questionSets',
+  'questionSetAttempts',
   'agentMemories',
 ] as const;
 
@@ -202,6 +203,7 @@ function courseContributors(snapshot: BackupFile): string[] {
   for (const set of snapshot.questionConcepts ?? []) add(set, set.courseId);
   for (const attempt of snapshot.questionAttempts ?? []) add(attempt, attempt.courseId);
   for (const set of snapshot.questionSets ?? []) add(set, set.courseId);
+  for (const attempt of snapshot.questionSetAttempts ?? []) add(attempt, attempt.courseId);
   for (const memory of snapshot.agentMemories ?? []) add(memory, memory.courseId ?? undefined);
 
   const assetOwners = assetOwnerMap(snapshot, lessonCourse, cardCourse);

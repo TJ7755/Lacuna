@@ -55,12 +55,13 @@ import { adaptLegacyBackup } from './legacyBackupAdapter';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
+import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
 } from '../questions/questionSetMerge';
 
-export const BACKUP_VERSION = 12;
+export const BACKUP_VERSION = 13;
 export const MAX_BACKUP_FILE_BYTES = 200 * 1024 * 1024;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
@@ -70,6 +71,17 @@ function withUpdatedAt<T extends { updatedAt?: number }>(
   return typeof row.updatedAt === 'number'
     ? (row as T & { updatedAt: number })
     : { ...row, updatedAt: fallback };
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const row = value as Record<string, unknown>;
+  return `{${Object.keys(row)
+    .sort()
+    .filter((key) => row[key] !== undefined)
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(row[key])}`)
+    .join(',')}}`;
 }
 
 /** Gather the whole database into a single backup object. */
@@ -99,6 +111,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     questionConcepts,
     questionAttempts,
     questionSets,
+    questionSetAttempts,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -127,6 +140,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.questionConcepts.toArray(),
     db.questionAttempts.toArray(),
     db.questionSets.toArray(),
+    db.questionSetAttempts.toArray(),
     db.lineageIdMappings.toArray(),
     db.pendingMergeReviews.toArray(),
     db.agentMemories.toArray(),
@@ -140,12 +154,15 @@ export async function exportDatabase(): Promise<BackupFile> {
   // cards carry a plain-text fallback, not a Markdown embed — so it must be gathered
   // explicitly or a backup would restore occlusions with no image (mirrors assets.ts's GC).
   for (const occlusion of occlusions) referencedHashes.add(occlusion.assetHash);
-  referencedAssetHashesInValues(questions, questionAttempts, questionSets).forEach((hash) =>
-    referencedHashes.add(hash),
-  );
+  referencedAssetHashesInValues(
+    questions,
+    questionAttempts,
+    questionSets,
+    questionSetAttempts,
+  ).forEach((hash) => referencedHashes.add(hash));
   const assets = await assetsForBackup([...referencedHashes]);
   return {
-    app: 'lacuna-v12',
+    app: 'lacuna-v13',
     version: BACKUP_VERSION,
     exportedAt: Date.now(),
     cards: projectedCards,
@@ -174,6 +191,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     questionConcepts,
     questionAttempts,
     questionSets,
+    questionSetAttempts,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -238,11 +256,25 @@ export function validateBackup(data: unknown): data is BackupFile {
             return false;
           }
         })));
+  const hasCurrentQuestionSetAttempts =
+    typeof b.version === 'number' &&
+    (b.version < 13 ||
+      isLegacyRawSnapshot ||
+      (Array.isArray(b.questionSetAttempts) &&
+        b.questionSetAttempts.every((row) => {
+          try {
+            parseQuestionSetAttemptRecord(row);
+            return true;
+          } catch {
+            return false;
+          }
+        })));
   return (
     ((b.app === 'lacuna' &&
       typeof b.version === 'number' &&
       (b.version <= 11 || isLegacyRawSnapshot)) ||
-      (b.app === 'lacuna-v12' && b.version === 12)) &&
+      (b.app === 'lacuna-v12' && b.version === 12) ||
+      (b.app === 'lacuna-v13' && b.version === 13)) &&
     typeof b.version === 'number' &&
     (b.version <= BACKUP_VERSION || isLegacyRawSnapshot) &&
     (b.decks === undefined || Array.isArray(b.decks)) &&
@@ -250,6 +282,7 @@ export function validateBackup(data: unknown): data is BackupFile {
     cardsHaveValidPayloads &&
     hasCurrentQuestionCollections &&
     hasCurrentQuestionSets &&
+    hasCurrentQuestionSetAttempts &&
     Array.isArray(b.assets) &&
     Array.isArray(b.sessionHistory) &&
     Array.isArray(b.userPerformance) &&
@@ -294,6 +327,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     questionAttempts: backup.questionAttempts ?? [],
   };
   const incomingQuestionSets = (backup.questionSets ?? []).map(parseQuestionSetRecord);
+  const incomingQuestionSetAttempts = (backup.questionSetAttempts ?? []).map(
+    parseQuestionSetAttemptRecord,
+  );
 
   // Pre-process markdown assets outside the IndexedDB transaction so long-running
   // canvas compressions cannot auto-abort the import transaction.
@@ -485,6 +521,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.questionConcepts,
       db.questionAttempts,
       db.questionSets,
+      db.questionSetAttempts,
       db.lineageIdMappings,
       db.pendingMergeReviews,
       db.agentMemories,
@@ -521,6 +558,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.questionConcepts.clear(),
           db.questionAttempts.clear(),
           db.questionSets.clear(),
+          db.questionSetAttempts.clear(),
           db.lineageIdMappings.clear(),
           db.pendingMergeReviews.clear(),
           db.agentMemories.clear(),
@@ -599,6 +637,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         if (incomingQuestionSets.length > 0) {
           await db.questionSets.bulkAdd(incomingQuestionSets);
         }
+        if (incomingQuestionSetAttempts.length > 0) {
+          await db.questionSetAttempts.bulkAdd(incomingQuestionSetAttempts);
+        }
         if (backup.lineageIdMappings && backup.lineageIdMappings.length > 0) {
           await db.lineageIdMappings.bulkAdd(backup.lineageIdMappings);
         }
@@ -676,6 +717,100 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         return { ...record, updatedAt: Math.max(record.updatedAt, deletedAt + 1, Date.now()) };
       });
       if (mergedQuestionSets.length > 0) await db.questionSets.bulkPut(mergedQuestionSets);
+      if (incomingQuestionSetAttempts.length > 0) {
+        const local = new Map(
+          (await db.questionSetAttempts.toArray()).map((row) => [
+            row.id,
+            parseQuestionSetAttemptRecord(row),
+          ]),
+        );
+        for (const incoming of incomingQuestionSetAttempts) {
+          const existing = local.get(incoming.id);
+          if (existing && canonicalJson(existing.receipt) !== canonicalJson(incoming.receipt)) {
+            throw new Error('Question Set attempt has conflicting immutable receipts.');
+          }
+          if (
+            existing &&
+            (existing.mode !== incoming.mode ||
+              existing.courseId !== incoming.courseId ||
+              existing.questionSetId !== incoming.questionSetId ||
+              existing.createdAt !== incoming.createdAt)
+          ) {
+            throw new Error('Question Set attempt has conflicting immutable identity.');
+          }
+          if (
+            existing?.revisionId === incoming.revisionId &&
+            canonicalJson(existing) !== canonicalJson(incoming)
+          ) {
+            throw new Error('Question Set attempt reuses a revision for unequal data.');
+          }
+          for (const original of existing?.responses.filter((row) => row.submitted) ?? []) {
+            const competing = incoming.responses.find(
+              (row) => row.nodeId === original.nodeId && row.submitted,
+            );
+            if (
+              competing &&
+              canonicalJson({ response: competing.submitted, at: competing.submittedAt }) !==
+                canonicalJson({ response: original.submitted, at: original.submittedAt })
+            ) {
+              throw new Error('Question Set attempt has conflicting submitted responses.');
+            }
+          }
+          if (!existing) {
+            await db.questionSetAttempts.put(incoming);
+            continue;
+          }
+          const lifecycle = { answering: 0, marking: 1, complete: 2 } as const;
+          const incomingWins =
+            lifecycle[incoming.status] > lifecycle[existing.status] ||
+            (lifecycle[incoming.status] === lifecycle[existing.status] &&
+              (incoming.updatedAt > existing.updatedAt ||
+                (incoming.updatedAt === existing.updatedAt &&
+                  incoming.revisionId > existing.revisionId)));
+          const winner = structuredClone(incomingWins ? incoming : existing);
+          const loser = incomingWins ? existing : incoming;
+          for (const original of loser.responses.filter((row) => row.submitted)) {
+            const target = winner.responses.find((row) => row.nodeId === original.nodeId)!;
+            if (!target.submitted) {
+              target.submitted = structuredClone(original.submitted);
+              target.submittedAt = original.submittedAt;
+              target.draft = structuredClone(original.submitted!);
+            }
+          }
+          const revealed = new Set([
+            ...existing.revealedQuestionIds,
+            ...incoming.revealedQuestionIds,
+          ]);
+          winner.revealedQuestionIds = winner.receipt.questions
+            .map((question) => question.id)
+            .filter((id) => revealed.has(id));
+          const assistance = new Map(
+            [...existing.assistance, ...incoming.assistance].map((event) => [
+              canonicalJson(event),
+              event,
+            ]),
+          );
+          winner.assistance = [...assistance.values()].sort(
+            (a, b) =>
+              a.occurredAt - b.occurredAt || canonicalJson(a).localeCompare(canonicalJson(b)),
+          );
+          if (
+            existing.paperSubmittedAt !== undefined &&
+            incoming.paperSubmittedAt !== undefined &&
+            existing.paperSubmittedAt !== incoming.paperSubmittedAt
+          ) {
+            throw new Error('Question Set attempt has conflicting paper submission.');
+          }
+          winner.paperSubmittedAt = existing.paperSubmittedAt ?? incoming.paperSubmittedAt;
+          const allSubmitted = winner.responses.every((response) => response.submitted);
+          if (allSubmitted && winner.status === 'answering') winner.status = 'marking';
+          if (winner.mode === 'paper' && allSubmitted) {
+            winner.revealedQuestionIds = winner.receipt.questions.map((question) => question.id);
+          }
+          winner.updatedAt = Math.max(existing.updatedAt, incoming.updatedAt);
+          await db.questionSetAttempts.put(winner);
+        }
+      }
       if (restoredQuestionSetIds.size > 0) {
         await db.tombstones.bulkDelete(
           [...restoredQuestionSetIds].map((id) => ['questionSets', id]),

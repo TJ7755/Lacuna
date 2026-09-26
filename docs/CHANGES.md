@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added durable personal Question Set attempts in schema v29 and backup/sync v13. Each attempt
+  retains its authored questions, diagrams and mark scheme, immutable submitted answers,
+  separate corrections and annotations, self-marking decisions and resume position. Practice
+  reveals whole-question feedback; Paper waits for submission. Conflicting originals fail
+  explicitly during sync. Attempts remain private when sharing Courses and never update Card FSRS.
+
 - Implemented the Paper Question Set authoring interface: real set/draft library, nested
   questions and parts, separate Question/Mark scheme/Links steps, written/calculation/MCQ
   formats, manual concept and related-card linking, lesson/exam selection, described images,

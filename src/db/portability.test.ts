@@ -80,7 +80,7 @@ describe('exportDatabase', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.app).toBe('lacuna-v12');
+    expect(backup.app).toBe('lacuna-v13');
     expect(backup.version).toBe(BACKUP_VERSION);
     expect(validateBackup(backup)).toBe(true);
     expect(backup.decks).toBeUndefined();

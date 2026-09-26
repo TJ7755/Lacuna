@@ -199,7 +199,8 @@ describe('Question backup portability', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(12);
+    expect(backup.version).toBe(13);
+    expect(backup.app).toBe('lacuna-v13');
     expect(backup.concepts).toEqual([CONCEPT]);
     expect(backup.questions).toHaveLength(1);
     expect(backup.questionConcepts).toEqual([LINKS]);
@@ -219,7 +220,7 @@ describe('Question backup portability', () => {
     expect(await db.assets.count()).toBe(2);
   });
 
-  it('uses a v12 marker that legacy readers reject and fails closed on future versions', () => {
+  it('accepts historical v12 files and fails closed on unsupported future versions', () => {
     expect(
       validateBackup({
         app: 'lacuna-v12',

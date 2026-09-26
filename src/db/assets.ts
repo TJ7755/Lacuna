@@ -397,6 +397,7 @@ export async function collectOrphanedAssets(): Promise<number> {
         db.questions,
         db.questionAttempts,
         db.questionSets,
+        db.questionSetAttempts,
         db.appState,
         db.assets,
       ],
@@ -458,6 +459,16 @@ export async function collectOrphanedAssets(): Promise<number> {
           if (batch.length === 0) break;
           referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
           questionSetOffset += batch.length;
+        }
+        let questionSetAttemptOffset = 0;
+        for (;;) {
+          const batch = await db.questionSetAttempts
+            .offset(questionSetAttemptOffset)
+            .limit(batchSize)
+            .toArray();
+          if (batch.length === 0) break;
+          referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+          questionSetAttemptOffset += batch.length;
         }
         // Author drafts are deliberately local-only app state, but their media must remain
         // reachable until the author either publishes or discards the draft.
