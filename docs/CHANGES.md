@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added serial Question Set authoring sessions: edits made during a save are retained,
+  stale edits require explicit recovery, and unchanged publication preserves the existing
+  content revision. Diagram assets and their draft references are committed together;
+  asset cleanup now scans and deletes within one transaction.
+
 - Added device-local Question Set drafts with stale-edit protection, atomic finished saves,
   draft media retention and Course deletion/undo support. Immutable editing helpers retain
   question, part and subpart identities when reordered. This is storage groundwork; the

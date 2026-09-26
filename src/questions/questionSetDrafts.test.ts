@@ -13,13 +13,19 @@ import {
   questionSetDraftKey,
   publishQuestionSetDraft,
   saveQuestionSetDraft,
+  saveQuestionSetDraftWithAssets,
 } from './questionSetDrafts';
 import { createQuestionSet, updateQuestionSet } from './questionSetRepository';
 
 describe('Question Set drafts', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
-    await Promise.all([db.appState.clear(), db.questionSets.clear(), db.courses.clear()]);
+    await Promise.all([
+      db.appState.clear(),
+      db.assets.clear(),
+      db.questionSets.clear(),
+      db.courses.clear(),
+    ]);
   });
 
   it('round-trips an incomplete title-first draft and lists it by Course', async () => {
@@ -37,6 +43,52 @@ describe('Question Set drafts', () => {
     expect(await loadQuestionSetDraft('course-1', 'set-1')).toEqual(saved);
     expect(await listQuestionSetDrafts('course-1')).toEqual([saved]);
     expect(await listQuestionSetDrafts('course-2')).toEqual([]);
+  });
+
+  it('commits a prepared image with the draft that references it', async () => {
+    const draft = createEmptyQuestionSetDraft('course-1', 'set-1');
+    const hash = 'a'.repeat(64);
+    draft.content.title = `![diagram](lacuna-asset://${hash})`;
+    const asset = {
+      hash,
+      blob: new Uint8Array([1]),
+      mimeType: 'image/png',
+      kind: 'image' as const,
+      width: 1,
+      height: 1,
+      createdAt: 1,
+    };
+
+    const saved = await saveQuestionSetDraftWithAssets(draft, [asset], {
+      expectedDraftRevisionId: null,
+    });
+
+    expect(await db.assets.get(hash)).toEqual(asset);
+    expect(await loadQuestionSetDraft('course-1', 'set-1')).toEqual(saved);
+  });
+
+  it('rolls back a prepared image when draft CAS fails', async () => {
+    const current = await saveQuestionSetDraft(createEmptyQuestionSetDraft('course-1', 'set-1'), {
+      expectedDraftRevisionId: null,
+      makeId: () => 'current',
+    });
+    const hash = 'b'.repeat(64);
+    const asset = {
+      hash,
+      blob: new Uint8Array([1]),
+      mimeType: 'image/png',
+      kind: 'image' as const,
+      width: 1,
+      height: 1,
+      createdAt: 1,
+    };
+
+    await expect(
+      saveQuestionSetDraftWithAssets(current, [asset], { expectedDraftRevisionId: null }),
+    ).rejects.toBeInstanceOf(QuestionSetDraftConflictError);
+
+    expect(await db.assets.get(hash)).toBeUndefined();
+    expect((await loadQuestionSetDraft('course-1', 'set-1'))?.draftRevisionId).toBe('current');
   });
 
   it('rejects stale writes and guarded deletion without losing the newer draft', async () => {
@@ -163,6 +215,46 @@ describe('Question Set drafts', () => {
 
     expect(published.title).toBe('Cells');
     expect(await db.appState.get(questionSetDraftKey(course.id, 'set'))).toBeUndefined();
+  });
+
+  it('projects a saved record to authored fields and does not revise unchanged content', async () => {
+    const course = await createCourse('Biology');
+    const published = await createQuestionSet({
+      id: 'set',
+      courseId: course.id,
+      title: 'Cells',
+      lessonIds: [],
+      assessmentIds: [],
+      questions: [
+        {
+          id: 'q1',
+          prompt: 'Name the organelle.',
+          parts: [],
+          answer: {
+            maxMarks: 1,
+            response: { kind: 'written' },
+            prerequisiteConceptIds: [],
+            allocations: [
+              {
+                id: 'a1',
+                criterion: 'Nucleus',
+                maxMarks: 1,
+                dimension: 'knowledge',
+                targetConceptIds: [],
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const draft = createQuestionSetDraft(published, published.contentRevisionId);
+    expect(draft.content).not.toHaveProperty('contentVersion');
+    const saved = await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
+
+    const unchanged = await publishQuestionSetDraft(course.id, 'set', saved.draftRevisionId);
+
+    expect(unchanged.contentVersion).toBe(published.contentVersion);
+    expect(unchanged.contentRevisionId).toBe(published.contentRevisionId);
   });
 
   it('retains an invalid draft without changing existing published content', async () => {

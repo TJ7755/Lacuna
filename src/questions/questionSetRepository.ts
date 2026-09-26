@@ -4,6 +4,13 @@ import { db, makeId } from '../db/schema';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import { validateQuestionSet, type QuestionAnswer, type QuestionSet } from './questionSets';
 
+export class QuestionSetRevisionConflictError extends Error {
+  constructor() {
+    super('The Question Set changed since it was opened.');
+    this.name = 'QuestionSetRevisionConflictError';
+  }
+}
+
 function requireValidContent(content: QuestionSet): void {
   const issues = validateQuestionSet(content);
   if (issues.length > 0) {
@@ -136,7 +143,7 @@ export async function updateQuestionSet(
         throw new Error('A Question Set cannot change identity or Course.');
       }
       if (options.expectedContentRevisionId !== existing.contentRevisionId) {
-        throw new Error('The Question Set changed since it was opened.');
+        throw new QuestionSetRevisionConflictError();
       }
       if (sameContent(content, authoredContent(existing)))
         return { record: existing, changed: false };
