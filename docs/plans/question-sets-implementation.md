@@ -5,6 +5,44 @@
 using the evidence and limitations in the [research note](../question-sets-research-2026-09-26.md).
 No completion dates are assigned. Check an item only after its code and required evidence exist.
 
+## Next-session checkpoint — 26 September 2026
+
+Worktree: `/Users/tj7755/Documents/Coding/Lacuna-question-sets`, branch `feat/question-sets`.
+The original Lacuna checkout is separate; do not move or overwrite its work.
+
+Completed this session, each with browser evidence and its own commit:
+
+- `a906b9e9`: compact image chooser with preview and progressive description controls.
+- `723c114e`: lesson/exam/Card entry points and return after saving, including exam reopening.
+- `2cacd949`: per-set descriptive evidence with first/repeated filters and unresolved marks.
+
+Latest validation: 93 Question Set/learner tests plus 72 surrounding CardList/LessonView/
+CoursePath tests passed; full typechecks, focused lint and production asset build passed.
+Desktop and 390px browser gates passed. This is not a packaged or cold-offline release sign-off.
+
+**V1 remains incomplete. Next stages, in order:**
+
+1. Finish learner navigation/media: enlarge diagrams without losing answers; retain library
+   search/filter and scroll through entry/return. Lesson/exam return is already implemented.
+2. Finish author management: set removal confirmation using the existing tombstone/receipt
+   repository, sharing entry points using existing Course transport, and required media authoring
+   affordances. Do not invent a second sharing format. Assessment-linked published-course
+   lineage support remains restricted and must be resolved or explicitly scoped before release.
+3. Add optional Practice Qs path activities as one persistence gate, including schema, codecs,
+   sharing/remapping, sync, deletion and milestones. Related lesson links already exist but do
+   not replace the promised path activity.
+4. Finish evidence presentation: coverage gaps and unknown evidence; inspect whether useful
+   recommendations are supported. The per-set marks panel is complete, but it does not expose
+   every coverage/status value from the summary API. Numeric exam forecasts stay outside v1.
+5. Complete release evidence: duplicate/import, missing media, stale assessment, removal with
+   retained attempts, privacy, backup/restore and sync; real keyboard/focus and touch checks,
+   packaged desktop, long responses/annotations, and cold-offline launch/navigation.
+
+Root owns UI; Sol handles backend and Luna handles bounded tests/audits. Preserve no-Jev,
+self-marking-only and no question-to-FSRS writes. Do not mark whole stages complete merely
+by checking off their currently implemented portions. Some original broad checkboxes below
+remain open deliberately; dated gates specify the completed slices.
+
 ## Commit and browser gates
 
 The prompter requires regular commits and browser testing at **every gate**, including
@@ -390,7 +428,7 @@ schedules match the pre-change baseline and the legacy attempt remains. Fresh-ta
 contain no application errors. Desktop/narrow screenshots are shared in the chat.
 
 Remaining Stage 3 work includes set sharing/removal controls, richer media-option authoring,
-full offline/accessibility release checks and reuse of the preview renderer in recorded practice.
+full offline/accessibility release checks. Preview and recorded practice now share the answer renderer.
 This gate does not complete Stage 4: student attempts, marking decisions, annotations, correction
 history and feedback/dependency timing need their persistence and learner-flow gate first.
 No numerical exam forecast or classifier has been added.
@@ -464,8 +502,8 @@ Evidence:
 - Narrow answering: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiuj6w3-cffaf79a.png`.
 
 Remaining Stage 4 release checks: enlarged-diagram interaction, supported-browser/touch and
-packaged desktop checks, cold offline validation, and preserving future path/exam entry context
-and library filter/scroll across those entries. Practice currently treats a top-level question as
+packaged desktop checks, cold offline validation, future path-activity context and library
+filter/scroll restoration. Lesson/exam entry context was completed in the later related-set gate. Practice currently treats a top-level question as
 the dependency group; separately authored cross-question dependency metadata is not implemented.
 Stage 5 path/exam entry points and Stage 6 exam-performance integration remain unimplemented.
 
