@@ -34,7 +34,6 @@ import {
   loadSharePage,
   loadImportPage,
   loadShareLinkPage,
-  loadSharePrototypePage,
   loadLanding,
 } from './loaders';
 
@@ -46,8 +45,6 @@ const SearchPage = lazy(loadSearchPage);
 const SharePage = lazy(loadSharePage);
 const ImportPage = lazy(loadImportPage);
 const ShareLinkPage = lazy(loadShareLinkPage);
-// PROTOTYPE — throwaway route. Delete with the share prototype.
-const SharePrototypePage = lazy(loadSharePrototypePage);
 const Analytics = lazy(loadAnalytics);
 const ArchivedCourses = lazy(loadArchivedCourses);
 const HelpPage = lazy(loadHelpPage);
@@ -99,7 +96,6 @@ export const router = createHashRouter([
           { path: 'settings', element: lazyRoute(Settings) },
           { path: 'search', element: lazyRoute(SearchPage) },
           { path: 'share', element: lazyRoute(SharePage) },
-          { path: 'share-prototype', element: lazyRoute(SharePrototypePage) },
           { path: 's/:code', element: lazyRoute(ShareLinkPage) },
           { path: 'import', element: lazyRoute(ImportPage) },
           { path: 'analytics', element: lazyRoute(Analytics) },

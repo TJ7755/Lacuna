@@ -13,3 +13,9 @@ it('keeps announcing known pages', async () => {
   await waitFor(() => expect(document.title).toBe('Share · Lacuna'));
   unmount();
 });
+
+it('announces the removed share prototype as a missing page', async () => {
+  render(<RouteAnnouncement pathname="/share-prototype" />);
+  await waitFor(() => expect(document.title).toBe('Page not found · Lacuna'));
+  expect(await screen.findByRole('status')).toHaveTextContent('Page not found');
+});

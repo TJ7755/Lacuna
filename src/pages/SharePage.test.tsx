@@ -386,6 +386,32 @@ describe('SharePage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps generated outputs when reopening the course picker, then clears them for another course', async () => {
+    const otherCourse: Course = { ...mockCourse, id: 'course-2', name: 'Other Course' };
+    mockCourses = [mockCourse, otherCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary, [otherCourse.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share code' }));
+    fireEvent.click(screen.getByText('Generate share code'));
+    expect(await screen.findByRole('textbox', { name: 'Generated share code' })).toHaveValue(
+      'LAC2-test-code',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change course' }));
+    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue(
+      'LAC2-test-code',
+    );
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue(
+      'LAC2-test-code',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change course' }));
+    fireEvent.click(screen.getByText('Other Course'));
+    expect(screen.queryByRole('textbox', { name: 'Generated share code' })).not.toBeInTheDocument();
+  });
+
   it('creates a share link for the selected course', async () => {
     const shareId = 'a'.repeat(32);
     mockCourses = [mockCourse];
@@ -543,6 +569,7 @@ describe('SharePage', () => {
     fireEvent.click(screen.getByText('Course A'));
     fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
     fireEvent.click(screen.getByText('Create share link'));
+    fireEvent.click(screen.getByRole('button', { name: 'Change course' }));
     fireEvent.click(screen.getByText('Course B'));
     await act(async () => {
       resolvePublish({ shareId: 'a'.repeat(32), revision: 1, byteSize: 128 });

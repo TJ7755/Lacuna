@@ -81,7 +81,3 @@ export const loadImportPage = () =>
 
 export const loadShareLinkPage = () =>
   import('../pages/ShareLinkPage').then((module) => ({ default: module.ShareLinkPage }));
-
-/** PROTOTYPE — throwaway. Delete with the share prototype. */
-export const loadSharePrototypePage = () =>
-  import('../pages/SharePrototypePage').then((module) => ({ default: module.SharePrototypePage }));

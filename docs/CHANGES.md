@@ -71,8 +71,9 @@
   sit in one row: each method (link, file, code, QR, plain text) shows only its
   own action and output panel, with Change controls to revisit earlier steps.
   Generated outputs are retained while hidden, so switching method and back
-  restores them. Courses with a live link reopen on the link method. The
-  prototype route remains for reference until the follow-up UI pass lands.
+  restores them. Reopening course selection keeps those outputs until a different
+  course is chosen. Courses with a live link reopen on the link method. The
+  throwaway prototype route and its fake data were removed.
 
 - Fixed QR import camera cleanup: stopping or leaving the importer releases the
   camera, including when startup completes after cancellation. Camera permission

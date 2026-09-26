@@ -6,7 +6,6 @@ function routeLabel(pathname: string): string {
     '/settings': 'Settings',
     '/search': 'Search',
     '/share': 'Share',
-    '/share-prototype': 'Share prototype',
     '/import': 'Import',
     '/analytics': 'Analytics',
     '/archived': 'Archived courses',

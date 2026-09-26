@@ -138,6 +138,7 @@ export function SharePage() {
   const [searchParams] = useSearchParams();
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [code, setCode] = useState('');
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -220,9 +221,10 @@ export function SharePage() {
   }, [selectedShareId]);
 
   function select(id: string) {
-    const next = selectedCourseId === id ? null : id;
-    setSelectedCourseId(next);
-    // Any change invalidates a previously generated code or plain text export.
+    setCoursePickerOpen(false);
+    if (selectedCourseId === id) return;
+    setSelectedCourseId(id);
+    // A different course invalidates previously generated outputs.
     setCode('');
     setPlainText('');
     setQrCode('');
@@ -230,7 +232,7 @@ export function SharePage() {
     // A course that already has a link reopens on the link method, so a
     // returning teacher sees the live link rather than a blank slate.
     // Otherwise the previously chosen method carries over to the new course.
-    const course = next ? courses?.find((candidate) => candidate.id === next) : undefined;
+    const course = courses?.find((candidate) => candidate.id === id);
     const linkId = course?.distribution?.shareId;
     setShareLink(
       linkId && course?.distribution
@@ -475,56 +477,58 @@ export function SharePage() {
               summary={selectedCourse?.name}
               changeLabel="Change course"
               onChange={
-                selectedCourseId ? () => select(selectedCourseId) : undefined
+                selectedCourseId ? () => setCoursePickerOpen(true) : undefined
               }
             />
-            <div className="flex flex-col gap-2">
-              {courses.map((course) => {
-                const on = selectedCourseId === course.id;
-                const summary = summaries?.[course.id];
-                return (
-                  <motion.button
-                    key={course.id}
-                    type="button"
-                    onClick={() => select(course.id)}
-                    aria-pressed={on}
-                    whileHover={m > 0 ? { y: -2, transition: { duration: 0.1 * m } } : undefined}
-                    className={cn(
-                      'flex items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200',
-                      on
-                        ? 'border-accent bg-accent-soft/50 shadow-paper'
-                        : 'border-line bg-surface hover:border-line-strong hover:shadow-md',
-                    )}
-                  >
-                    <span
+            {(!selectedCourseId || coursePickerOpen) && (
+              <div className="flex flex-col gap-2">
+                {courses.map((course) => {
+                  const on = selectedCourseId === course.id;
+                  const summary = summaries?.[course.id];
+                  return (
+                    <motion.button
+                      key={course.id}
+                      type="button"
+                      onClick={() => select(course.id)}
+                      aria-pressed={on}
+                      whileHover={m > 0 ? { y: -2, transition: { duration: 0.1 * m } } : undefined}
                       className={cn(
-                        'grid h-5 w-5 shrink-0 place-items-center rounded-md border transition-colors',
-                        on ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
+                        'flex items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200',
+                        on
+                          ? 'border-accent bg-accent-soft/50 shadow-paper'
+                          : 'border-line bg-surface hover:border-line-strong hover:shadow-md',
                       )}
                     >
-                      <AnimatePresence>
-                        {on && (
-                          <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            transition={{ type: 'spring', stiffness: 600, damping: 18 }}
-                            className="inline-flex"
-                          >
-                            <CheckIcon width={13} height={13} />
-                          </motion.span>
+                      <span
+                        className={cn(
+                          'grid h-5 w-5 shrink-0 place-items-center rounded-md border transition-colors',
+                          on ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
                         )}
-                      </AnimatePresence>
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{course.name}</span>
-                    <span className="shrink-0 text-xs text-ink-faint">
-                      {summary?.lessonCount ?? 0} lesson{summary?.lessonCount === 1 ? '' : 's'} ·{' '}
-                      {summary?.cardCount ?? 0} card{summary?.cardCount === 1 ? '' : 's'}
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </div>
+                      >
+                        <AnimatePresence>
+                          {on && (
+                            <motion.span
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              exit={{ scale: 0 }}
+                              transition={{ type: 'spring', stiffness: 600, damping: 18 }}
+                              className="inline-flex"
+                            >
+                              <CheckIcon width={13} height={13} />
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{course.name}</span>
+                      <span className="shrink-0 text-xs text-ink-faint">
+                        {summary?.lessonCount ?? 0} lesson{summary?.lessonCount === 1 ? '' : 's'} ·{' '}
+                        {summary?.cardCount ?? 0} card{summary?.cardCount === 1 ? '' : 's'}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="mt-5">
               {selectedCourse && (
