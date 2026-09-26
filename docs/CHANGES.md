@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replaced the native Question Set image input with a compact chooser, selected-image preview
+  and filename. Description and insertion controls appear only after selection; clearing or
+  inserting returns focus to the chooser. Verified insertion and narrow-screen layout in-browser.
+
 - Fixed repeated Question Set attempt merges: combined evidence receives a deterministic bounded
   revision instead of reusing a constituent revision, so subsequent sync with either source does
   not report a false conflict or revert the selected progress. Recovery and peer sync share the
