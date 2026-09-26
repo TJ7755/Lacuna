@@ -15,7 +15,12 @@ for (const width of [1280, 390]) {
     const position = async () => {
       const heading = await title.boundingBox();
       const bounds = await header.boundingBox();
-      return { x: heading!.x, y: heading!.y, contentTop: bounds!.y + bounds!.height };
+      const scrollTop = await page.locator('main').evaluate((node) => node.scrollTop);
+      return {
+        x: heading!.x,
+        y: heading!.y + scrollTop,
+        contentTop: bounds!.y + bounds!.height + scrollTop,
+      };
     };
     const initial = await position();
     for (const source of ['Lacuna course', 'Anki deck', 'Text or spreadsheet']) {

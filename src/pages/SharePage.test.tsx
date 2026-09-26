@@ -147,12 +147,14 @@ vi.mock('../components/ui/Button', () => ({
     children,
     onClick,
     disabled,
+    className,
   }: {
     children: React.ReactNode;
     onClick?: () => void;
     disabled?: boolean;
+    className?: string;
   }) => (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid="button">
+    <button type="button" onClick={onClick} disabled={disabled} className={className} data-testid="button">
       {children}
     </button>
   ),
@@ -352,6 +354,25 @@ describe('SharePage', () => {
     render(<SharePage />);
     const generateBtn = screen.getByText('Generate share code');
     expect(generateBtn).toBeDisabled();
+  });
+
+  it('highlights link creation from the announcement without publishing or selecting a course', () => {
+    mockCourses = [mockCourse];
+    mockSearchParams = new URLSearchParams('highlight=share-link');
+    render(<SharePage />);
+    const button = screen.getByRole('button', { name: 'Create share link' });
+    expect(button).toHaveClass('ring-2', 'ring-accent');
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(button).toBeEnabled();
+    expect(button).toHaveClass('ring-accent');
+    expect(mockPublishShareLink).not.toHaveBeenCalled();
+  });
+
+  it('does not highlight link creation on an ordinary visit', () => {
+    mockCourses = [mockCourse];
+    render(<SharePage />);
+    expect(screen.getByRole('button', { name: 'Create share link' })).not.toHaveClass('ring-accent');
   });
 
   it('creates a share link for the selected course', async () => {

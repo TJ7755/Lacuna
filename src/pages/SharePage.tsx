@@ -507,6 +507,11 @@ export function SharePage() {
                 </Button>
                 <Button
                   variant="secondary"
+                  className={
+                    searchParams.get('highlight') === 'share-link'
+                      ? 'ring-2 ring-accent ring-offset-4 ring-offset-paper'
+                      : undefined
+                  }
                   onClick={() => void handleShareLink()}
                   disabled={!selectedCourseId || linkBusy}
                 >
