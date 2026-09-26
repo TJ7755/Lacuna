@@ -135,3 +135,26 @@ pruning, asset scans, Course share, `.lacourse`, peer snapshots and merge. Tests
 upgrade from v27 containing legacy Question data, repository reference integrity, revision/no-op
 behaviour, deletion tombstones, and the relevant portability round trips before Stage 2 is marked
 complete.
+
+## Device-local author drafts — subsequent storage slice
+
+Incomplete author work is stored in existing `appState` under
+`questionSetDraft:<encodedCourseId>:<encodedSetId>`, without changing schema v28 or
+portable envelopes. Each entry carries schema version 1, the incomplete document,
+its base saved-content revision (null for a new set), a draft revision and timestamp.
+Runtime parsing verifies nested shape and key identity; complete domain validation
+runs when saving the finished document. Malformed stored work is never silently replaced.
+
+Draft writes use compare-and-swap revisions. A finished save checks both the draft and
+saved-content revisions, writes through the existing set repository, then removes the
+draft in the same transaction. Failure preserves both previous states. Immutable editing
+helpers retain node identities across insertion, deletion and reordering.
+
+Drafts are local recovery data, excluded from backup, share and peer sync. Course deletion
+and undo include them; undo issues fresh revisions. Asset cleanup retains media referenced
+by saved drafts. The future editor must additionally protect the interval between creating
+an uploaded asset and saving its draft reference; this storage slice does not close that
+live-upload interval.
+
+The primary agent owns the UI redesign. No delegated UI implementation is included in
+this slice, and work stops before the authoring interface.

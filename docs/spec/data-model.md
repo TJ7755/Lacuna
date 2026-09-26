@@ -469,10 +469,18 @@ validate same-course references and save a complete revision atomically. Existin
 Concept identities connect allocations to Cards without changing Card FSRS state.
 
 Schema v28 adds an empty store. It does not convert or rewrite legacy Questions,
-their schedules or attempts. The authoring interface, draft storage and personal
-set attempts remain separate implementation stages. Future attempts must retain
+their schedules or attempts. The authoring interface and personal set attempts
+remain separate implementation stages. Future attempts must retain
 their own immutable content/scheme receipt; current set records contain no learner
 answers or marks. See the [persistence contract](../plans/question-sets-persistence.md)
 and [implementation checklist](../plans/question-sets-implementation.md).
+
+Author drafts use device-local `appState` entries keyed by encoded Course and set IDs.
+They allow incomplete documents, retain the saved content revision they were based on,
+and use draft revisions to reject stale writes. Saving complete content and removing
+its draft share one transaction. Corrupt drafts remain stored and raise an explicit
+error. Drafts are excluded from backups, sharing and sync; their media remains reachable
+for local cleanup. Course deletion includes drafts and undo restores them with fresh
+revisions. These APIs do not yet have a user-facing editor.
 
 [Specification index](../SPEC.md)
