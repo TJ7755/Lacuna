@@ -108,7 +108,7 @@ it('navigates to the link importer for a pasted share code', async () => {
   const code = 'a'.repeat(32);
   window.location.hash = '#/share';
   renderImport();
-  fireEvent.change(screen.getByLabelText('Share code to import'), {
+  fireEvent.change(screen.getByLabelText('Share link or code to import'), {
     target: { value: code },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
@@ -119,7 +119,7 @@ it('navigates to the link importer for a pasted full share link', async () => {
   const code = 'b'.repeat(32);
   window.location.hash = '#/share';
   renderImport();
-  fireEvent.change(screen.getByLabelText('Share code to import'), {
+  fireEvent.change(screen.getByLabelText('Share link or code to import'), {
     target: { value: `https://lacuna.example/#/s/${code}` },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));

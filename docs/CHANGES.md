@@ -66,6 +66,14 @@
   dialogue while it records baseline study data, then installed the same verified
   update and checked that the records survived.
 
+- Reorganised the Share page into three steps — course, method, send — from the
+  `share-prototype` collapsed-variant study. The five sharing actions no longer
+  sit in one row: each method (link, file, code, QR, plain text) shows only its
+  own action and output panel, with Change controls to revisit earlier steps.
+  Generated outputs are retained while hidden, so switching method and back
+  restores them. Courses with a live link reopen on the link method. The
+  prototype route remains for reference until the follow-up UI pass lands.
+
 - Fixed QR import camera cleanup: stopping or leaving the importer releases the
   camera, including when startup completes after cancellation. Camera permission
   errors remain visible after the scanner closes.

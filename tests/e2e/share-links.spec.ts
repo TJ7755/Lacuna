@@ -43,6 +43,7 @@ async function openShare(page: Page, courseName: string): Promise<void> {
 }
 
 async function createShareLink(page: Page): Promise<string> {
+  await page.getByRole('button', { name: 'Share link', exact: true }).click();
   await page.getByRole('button', { name: 'Create share link' }).click();
   await expect(page.getByText('Share link · revision 1')).toBeVisible();
   const url = await page.getByLabel('Share link').inputValue();

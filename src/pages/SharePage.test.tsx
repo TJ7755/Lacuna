@@ -230,7 +230,7 @@ describe('SharePage', () => {
     const file = { payload: { v: 2 }, assets: [] };
     mockDecodeCourseFile.mockResolvedValue(file);
     render(<SharePage />);
-    fireEvent.change(screen.getByLabelText('Share code to import'), { target: { value: 'LAC2-older' } });
+    fireEvent.change(screen.getByLabelText('Share link or code to import'), { target: { value: 'LAC2-older' } });
     fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
     fireEvent.change(screen.getByLabelText('Course file to import'), {
       target: { files: [new File(['contents'], 'Biology.lacuna')] },
@@ -249,7 +249,7 @@ describe('SharePage', () => {
       target: { files: [new File(['contents'], 'Biology.lacuna')] },
     });
     await waitFor(() => expect(mockDecodeCourseFile).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText('Share code to import'), { target: { value: 'LAC2-newer' } });
+    fireEvent.change(screen.getByLabelText('Share link or code to import'), { target: { value: 'LAC2-newer' } });
     fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
     await screen.findByText('Ready to import');
     await act(async () => { finish({ payload: { v: 2 }, assets: [] }); });
@@ -263,9 +263,11 @@ describe('SharePage', () => {
     mockSummaries = { [mockCourse.id]: mockSummary };
     mockBuildCourseFile.mockResolvedValue('course file contents');
     render(<SharePage />);
-    expect(screen.getByRole('button', { name: 'Save course file' })).toBeDisabled();
     fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save course file' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Course file'}));
+    const saveBtn = screen.getByRole('button', { name: 'Save course file' });
+    expect(saveBtn).toBeEnabled();
+    fireEvent.click(saveBtn);
     await waitFor(() => expect(downloadTextFile).toHaveBeenCalledWith(
       'course file contents', 'Test Course.lacuna', 'application/json',
     ));
@@ -336,22 +338,52 @@ describe('SharePage', () => {
     expect(screen.getByText('1 lesson · 1 card')).toBeInTheDocument();
   });
 
-  it('selects a course when clicked', () => {
+  it('selects a course when clicked, then offers methods', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
     render(<SharePage />);
-    const courseBtn = screen.getByText('Test Course');
-    fireEvent.click(courseBtn);
-    const generateBtn = screen.getByText('Generate share code');
-    expect(generateBtn).not.toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Share code'})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.getByRole('button', { name: 'Share code'}),
+    ).not.toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Generate share code' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
+    expect(screen.getByRole('button', { name: 'Generate share code' })).not.toBeDisabled();
   });
 
-  it('disables generate button when no course is selected', () => {
+  it('hides methods and actions until a course is selected', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
     render(<SharePage />);
-    const generateBtn = screen.getByText('Generate share code');
-    expect(generateBtn).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Share code'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Generate share code' })).not.toBeInTheDocument();
+  });
+
+  it('shows one method panel at a time and restores hidden outputs', async () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [
+      { conceptId: 'concept-export-card', front: 'Question', back: 'Answer' } as Card,
+    ];
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
+    fireEvent.click(screen.getByText('Generate share code'));
+    await screen.findByRole('textbox', { name: 'Generated share code' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change method' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Plain text'}));
+    expect(screen.queryByRole('textbox', { name: 'Generated share code' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Export cards as plain text'));
+    await screen.findByRole('textbox', { name: 'Generated plain-text export' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change method' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
+    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue('LAC2-test-code');
+    expect(
+      screen.queryByRole('textbox', { name: 'Generated plain-text export' }),
+    ).not.toBeInTheDocument();
   });
 
   it('creates a share link for the selected course', async () => {
@@ -361,6 +393,7 @@ describe('SharePage', () => {
     mockPublishShareLink.mockResolvedValue({ shareId, revision: 1, byteSize: 128 });
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
     fireEvent.click(screen.getByText('Create share link'));
     await screen.findByText('Share link · revision 1');
     expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id);
@@ -427,6 +460,7 @@ describe('SharePage', () => {
     mockPublishShareLink.mockRejectedValue(new Error('Too large.'));
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
     fireEvent.click(screen.getByText('Create share link'));
     await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Too large.', 'negative'));
     expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument();
@@ -507,6 +541,7 @@ describe('SharePage', () => {
     );
     render(<SharePage />);
     fireEvent.click(screen.getByText('Course A'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
     fireEvent.click(screen.getByText('Create share link'));
     fireEvent.click(screen.getByText('Course B'));
     await act(async () => {
@@ -594,9 +629,9 @@ describe('SharePage', () => {
       screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
     ).toBeInTheDocument();
     expect(
-      screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
+      screen.getByPlaceholderText('Paste a share link or code here (codes start with LAC)...'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Share code to import' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Share link or code to import' })).toBeInTheDocument();
   });
 
   it('moves the import job into view and focuses it for an explicit import intent', async () => {
@@ -611,7 +646,7 @@ describe('SharePage', () => {
 
     render(<SharePage />);
 
-    const input = screen.getByRole('textbox', { name: 'Share code to import' });
+    const input = screen.getByRole('textbox', { name: 'Share link or code to import' });
     await waitFor(() => expect(input).toHaveFocus());
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
@@ -625,11 +660,14 @@ describe('SharePage', () => {
     render(<SharePage />);
 
     fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
     fireEvent.click(screen.getByText('Generate share code'));
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Generated share code' })).toBeInTheDocument(),
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Change method' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Plain text'}));
     fireEvent.click(screen.getByText('Export cards as plain text'));
     await waitFor(() =>
       expect(
@@ -667,7 +705,7 @@ describe('SharePage', () => {
     async function inspectCode() {
       render(<SharePage />);
       fireEvent.change(
-        screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
+        screen.getByPlaceholderText('Paste a share link or code here (codes start with LAC)...'),
         { target: { value: 'LAC2-some-code' } },
       );
       fireEvent.click(screen.getByText('Read code'));

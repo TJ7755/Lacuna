@@ -275,9 +275,9 @@ export function SharedCourseImport({
         <h2 className="font-display text-xl">Import a shared course</h2>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        Choose a course file or paste a share code, then review it before importing. Published
-        course updates are matched to your existing copy. All Lacuna share-code encodings
-        (LAC0–LAC3) are supported.
+        Choose a course file, or paste a share link or code, then review it before
+        importing. Published course updates are matched to your existing copy.
+        All Lacuna share-code encodings (LAC0–LAC3) are supported.
       </p>
 
       <CourseFileImportButton
@@ -292,14 +292,14 @@ export function SharedCourseImport({
       <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
         <textarea
           ref={importInputRef}
-          aria-label="Share code to import"
+          aria-label="Share link or code to import"
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
             beginInspection();
           }}
           rows={4}
-          placeholder="Paste a Lacuna share code here (it starts with LAC)..."
+          placeholder="Paste a share link or code here (codes start with LAC)..."
           className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
         />
       </div>

@@ -1,7 +1,7 @@
 import { CourseFileExportButton } from '../components/import/CourseFileControls';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
@@ -37,6 +37,85 @@ import QRCode from 'react-qr-code';
 
 /** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
+
+type ShareMethod = 'link' | 'file' | 'code' | 'qr' | 'text';
+
+const SHARE_METHODS: Array<{ id: ShareMethod; label: string; hint: string; icon: ReactNode }> = [
+  {
+    id: 'link',
+    label: 'Share link',
+    hint: 'Best for classes · includes media · updates in place',
+    icon: <ShareIcon width={18} height={18} />,
+  },
+  {
+    id: 'file',
+    label: 'Course file',
+    hint: 'A file to send anywhere · includes media',
+    icon: <DownloadIcon width={18} height={18} />,
+  },
+  {
+    id: 'code',
+    label: 'Share code',
+    hint: 'Paste into messages · text only, no media',
+    icon: <ShareIcon width={18} height={18} />,
+  },
+  {
+    id: 'qr',
+    label: 'QR code',
+    hint: 'Project in the classroom · text only, no media',
+    icon: <QrCodeIcon width={18} height={18} />,
+  },
+  {
+    id: 'text',
+    label: 'Plain text',
+    hint: 'Copy into worksheets · text only, no media',
+    icon: <FileTextIcon width={18} height={18} />,
+  },
+];
+
+function methodLabel(method: ShareMethod): string {
+  return SHARE_METHODS.find((candidate) => candidate.id === method)?.label ?? method;
+}
+
+function StepHeading({
+  step,
+  title,
+  summary,
+  changeLabel,
+  onChange,
+}: {
+  step: number;
+  title: string;
+  summary?: string;
+  changeLabel?: string;
+  onChange?: () => void;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <h3 className="flex min-w-0 items-center gap-3 font-display text-xl">
+        <span
+          aria-hidden
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-accent-fg"
+        >
+          {step}
+        </span>
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0">{title}</span>
+          {summary && (
+            <span className="truncate text-base font-normal text-ink-faint">
+              — {summary}
+            </span>
+          )}
+        </span>
+      </h3>
+      {onChange && changeLabel && (
+        <Button size="sm" variant="ghost" onClick={onChange}>
+          {changeLabel}
+        </Button>
+      )}
+    </div>
+  );
+}
 
 function mediaCardLabel(card: Card, index: number): string {
   const firstTextLine = card.front
@@ -78,6 +157,9 @@ export function SharePage() {
 
   // Share link state: one stable link per course, refreshed in place on republish.
   const [shareLink, setShareLink] = useState<{ shareId: string; revision: number } | null>(null);
+  // Send step: one sharing method at a time. Generated outputs stay in state
+  // while hidden, so switching method and back restores them.
+  const [selectedMethod, setSelectedMethod] = useState<ShareMethod | null>(null);
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
@@ -145,8 +227,9 @@ export function SharePage() {
     setPlainText('');
     setQrCode('');
     setShowQR(false);
-    // A course that already has a link reopens its panel, so a returning
-    // teacher sees the live link rather than a blank slate.
+    // A course that already has a link reopens on the link method, so a
+    // returning teacher sees the live link rather than a blank slate.
+    // Otherwise the previously chosen method carries over to the new course.
     const course = next ? courses?.find((candidate) => candidate.id === next) : undefined;
     const linkId = course?.distribution?.shareId;
     setShareLink(
@@ -157,6 +240,7 @@ export function SharePage() {
           }
         : null,
     );
+    setSelectedMethod((current) => (linkId ? 'link' : current));
     setLinkCopied(false);
     setConfirmingUnpublish(false);
     setConfirmingReplace(false);
@@ -385,6 +469,15 @@ export function SharePage() {
           </div>
         ) : (
           <>
+            <StepHeading
+              step={1}
+              title="Course"
+              summary={selectedCourse?.name}
+              changeLabel="Change course"
+              onChange={
+                selectedCourseId ? () => select(selectedCourseId) : undefined
+              }
+            />
             <div className="flex flex-col gap-2">
               {courses.map((course) => {
                 const on = selectedCourseId === course.id;
@@ -484,51 +577,106 @@ export function SharePage() {
                   </ul>
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
-                <CourseFileExportButton
-                  courseId={selectedCourseId}
-                  name={selectedCourse?.name ?? 'Course'}
+              {selectedCourse && (
+              <div className="mt-6">
+                <StepHeading
+                  step={2}
+                  title="Method"
+                  summary={selectedMethod ? methodLabel(selectedMethod) : undefined}
+                  changeLabel="Change method"
+                  onChange={selectedMethod ? () => setSelectedMethod(null) : undefined}
                 />
-                <Button
-                  variant="secondary"
-                  onClick={handleGenerate}
-                  disabled={!selectedCourseId || generating}
-                >
-                  <ShareIcon width={18} height={18} />
-                  {generating ? 'Generating…' : 'Generate share code'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleGenerateQR}
-                  disabled={!selectedCourseId || qrGenerating}
-                >
-                  <QrCodeIcon width={18} height={18} />
-                  {qrGenerating ? 'Generating…' : 'Generate QR code'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => void handleShareLink()}
-                  disabled={!selectedCourseId || linkBusy}
-                >
-                  <ShareIcon width={18} height={18} />
-                  {linkBusy
-                    ? 'Publishing…'
-                    : shareLink
-                      ? `Republish link (revision ${shareLink.revision})`
-                      : 'Create share link'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleExportPlainText}
-                  disabled={!selectedCourseId || !selectedSummary?.cardCount}
-                >
-                  <FileTextIcon width={18} height={18} />
-                  Export cards as plain text
-                </Button>
+                {selectedMethod === null && (
+                  <div className="flex flex-col gap-2">
+                    {SHARE_METHODS.map((method) => (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() => setSelectedMethod(method.id)}
+                        aria-label={method.label}
+                        aria-describedby={`share-method-hint-${method.id}`}
+                        className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md"
+                      >
+                        <span className="shrink-0 text-accent">{method.icon}</span>
+                        <span>
+                          <span className="block text-sm font-medium text-ink">
+                            {method.label}
+                          </span>
+                          <span
+                            id={`share-method-hint-${method.id}`}
+                            className="block text-xs text-ink-faint"
+                          >
+                            {method.hint}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              )}
+
+              {selectedCourse && selectedMethod !== null && (
+                <div className="mt-6">
+                  <StepHeading step={3} title="Send" />
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMethod === 'file' && (
+                      <CourseFileExportButton
+                        courseId={selectedCourseId}
+                        name={selectedCourse?.name ?? 'Course'}
+                      />
+                    )}
+                    {selectedMethod === 'code' && (
+                      <Button
+                        variant="secondary"
+                        onClick={handleGenerate}
+                        disabled={!selectedCourseId || generating}
+                      >
+                        <ShareIcon width={18} height={18} />
+                        {generating ? 'Generating…' : 'Generate share code'}
+                      </Button>
+                    )}
+                    {selectedMethod === 'qr' && (
+                      <Button
+                        variant="secondary"
+                        onClick={handleGenerateQR}
+                        disabled={!selectedCourseId || qrGenerating}
+                      >
+                        <QrCodeIcon width={18} height={18} />
+                        {qrGenerating ? 'Generating…' : 'Generate QR code'}
+                      </Button>
+                    )}
+                    {selectedMethod === 'link' && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => void handleShareLink()}
+                        disabled={!selectedCourseId || linkBusy}
+                      >
+                        <ShareIcon width={18} height={18} />
+                        {linkBusy
+                          ? 'Publishing…'
+                          : shareLink
+                            ? `Republish link (revision ${shareLink.revision})`
+                            : 'Create share link'}
+                      </Button>
+                    )}
+                    {selectedMethod === 'text' && (
+                      <Button
+                        variant="secondary"
+                        onClick={handleExportPlainText}
+                        disabled={!selectedCourseId || !selectedSummary?.cardCount}
+                      >
+                        <FileTextIcon width={18} height={18} />
+                        Export cards as plain text
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Share code text area */}
+            {selectedMethod === 'code' && (
             <AnimatePresence>
               {code && (
                 <motion.div
@@ -566,8 +714,10 @@ export function SharePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
 
             {/* QR code display */}
+            {selectedMethod === 'qr' && (
             <AnimatePresence>
               {showQR && qrCode && (
                 <motion.div
@@ -610,8 +760,10 @@ export function SharePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
 
             {/* Share link panel */}
+            {selectedMethod === 'link' && (
             <AnimatePresence>
               {shareLink && linkManaged !== false && (
                 <motion.div
@@ -700,8 +852,10 @@ export function SharePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
 
             {/* Unmanaged link box: the share id belongs to another device. */}
+            {selectedMethod === 'link' && (
             <AnimatePresence>
               {linkManaged === false && selectedCourse && (
                 <motion.div
@@ -738,7 +892,9 @@ export function SharePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
 
+            {selectedMethod === 'text' && (
             <AnimatePresence>
               {plainText && (
                 <motion.div
@@ -777,6 +933,7 @@ export function SharePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
           </>
         )}
       </section>
