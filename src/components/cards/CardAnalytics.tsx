@@ -4,9 +4,9 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
-  Scatter,
   Tooltip,
   XAxis,
   YAxis,
@@ -28,8 +28,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
   const m = motionMultiplier ?? 1;
   const c = useChartColours();
   const now = Date.now();
-  const hasActiveExam =
-    schedulingConfig.examDate !== undefined && schedulingConfig.examDate >= now;
+  const hasActiveExam = schedulingConfig.examDate !== undefined && schedulingConfig.examDate >= now;
   const targetDate = schedulingHorizon(schedulingConfig, now);
   const decay = decayOf(schedulingConfig.fsrsParameters);
 
@@ -141,7 +140,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
         {hasData ? (
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={curveData} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
+              <ComposedChart data={curveData} margin={{ top: 28, right: 12, bottom: 0, left: -8 }}>
                 <defs>
                   <linearGradient id={`card-traj-${card.id}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
@@ -161,7 +160,14 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                 <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v) => [`${v}%`, 'Retrievability']}
+                  labelFormatter={(value) =>
+                    new Date(Number(value)).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  }
+                  formatter={(v) => [`${v}%`, 'Predicted recall']}
                   cursor={{ stroke: c.line }}
                 />
                 <Area
@@ -179,24 +185,22 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                   strokeDasharray="4 4"
                   label={{
                     value: 'Exam',
-                    position: 'insideTopLeft',
-                    fill: c.positive,
-                    fontSize: 11,
+                    position: 'top',
+                    fill: c.ink,
+                    fontSize: 12,
+                    fontWeight: 500,
                   }}
                 />
-                {([1, 2, 3, 4] as Grade[]).map((g) => {
-                  const dots = reviewDots.filter((d) => d.grade === g);
-                  if (dots.length === 0) return null;
-                  return (
-                    <Scatter
-                      key={g}
-                      data={dots}
-                      isAnimationActive={false}
-                      fill={gradeColours[g]}
-                      shape="circle"
-                    />
-                  );
-                })}
+                {reviewDots.map((dot, index) => (
+                  <ReferenceDot
+                    key={index}
+                    x={dot.x}
+                    y={dot.y}
+                    r={4}
+                    fill={gradeColours[dot.grade]}
+                    stroke="none"
+                  />
+                ))}
               </ComposedChart>
             </ResponsiveContainer>
           </div>

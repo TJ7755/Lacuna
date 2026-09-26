@@ -56,6 +56,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+In Recharts composed charts, a Scatter's own data can replace the chart-level data
+used for axis hover selection. Use reference dots for fixed annotations; chart
+interaction tests must retain the real Recharts components to catch this.
+
 Changing automatic input mode during pointer-down can unmount the pressed control before
 the browser dispatches click. Switch after the gesture's click when controls differ by mode;
 the mobile WebKit study test catches a lost first touch after mouse-driven setup.
