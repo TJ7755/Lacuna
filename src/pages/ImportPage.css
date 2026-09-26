@@ -1,0 +1,105 @@
+.import-sources {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.import-sources button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 18px;
+  background: hsl(var(--surface));
+  text-align: left;
+  cursor: pointer;
+}
+.import-sources button:hover {
+  border-color: hsl(var(--accent));
+  background: hsl(var(--accent-soft));
+}
+.import-sources svg {
+  color: hsl(var(--accent));
+}
+.import-sources strong {
+  font-weight: 500;
+}
+.import-sources span,
+.import-drop p {
+  font-size: 13px;
+  color: hsl(var(--ink-soft));
+}
+.import-drop {
+  margin-top: 24px;
+  padding: 56px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  border: 1px dashed hsl(var(--line-strong));
+  border-radius: 18px;
+  text-align: center;
+}
+.import-drop[data-dragging='true'] {
+  border-color: hsl(var(--accent));
+  background: hsl(var(--accent-soft));
+}
+.import-drop h2 {
+  font-size: 22px;
+}
+.card-import-page .card-import-dialog {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  box-shadow: none;
+}
+.card-import-page .card-import-scroll {
+  overflow: visible;
+}
+.import-destination {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.import-destination > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+.import-destination select,
+.import-destination > label input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 10px;
+  background: hsl(var(--paper));
+  color: hsl(var(--ink));
+  font-size: 14px;
+}
+.import-destination fieldset > div {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 700px) {
+  .import-sources {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .import-sources button {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    column-gap: 16px;
+    padding: 18px;
+  }
+  .import-sources svg {
+    grid-row: span 2;
+  }
+  .import-sources span {
+    grid-column: 2;
+  }
+  .import-drop {
+    padding: 32px 18px;
+  }
+}

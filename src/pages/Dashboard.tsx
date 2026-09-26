@@ -105,16 +105,21 @@ export function Dashboard() {
           <div className="min-w-0">
             <h1 className="font-display text-3xl tracking-tight md:text-6xl">Courses</h1>
           </div>
-          {activeCourses && activeCourses.length > 0 && (
-            <Button
-              variant="primary"
-              onClick={() => setCreatingCourse(true)}
-              className="shrink-0 whitespace-nowrap"
-            >
-              <PlusIcon width={16} height={16} />
-              New course
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => navigate('/import')}>
+              Import
             </Button>
-          )}
+            {activeCourses && activeCourses.length > 0 && (
+              <Button
+                variant="primary"
+                onClick={() => setCreatingCourse(true)}
+                className="shrink-0 whitespace-nowrap"
+              >
+                <PlusIcon width={16} height={16} />
+                New course
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 

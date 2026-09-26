@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -20,6 +20,12 @@ import './CardImportDialog.css';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
+  presentation?: 'dialog' | 'page';
+  initialFile?: File;
+  reviewOptions?: ReactNode;
+  canImport?: boolean;
+  preferPackage?: boolean;
+  onBusyChange?: (busy: boolean) => void;
   /** Omit for an existing destination, whose name is shown without renaming it. */
   titleLabel?: 'Course title' | 'Lesson title';
   targetName?: string;
@@ -30,6 +36,12 @@ export interface CardImportDialogProps {
 
 export function CardImportDialog({
   initialTitle = '',
+  presentation = 'dialog',
+  initialFile,
+  reviewOptions,
+  canImport = true,
+  preferPackage = false,
+  onBusyChange,
   titleLabel,
   targetName,
   schedulingUnitId,
@@ -37,6 +49,13 @@ export function CardImportDialog({
   onImport,
 }: CardImportDialogProps) {
   const source = useCardImportSource();
+  const loadedFile = useRef<File | undefined>(undefined);
+  useEffect(() => {
+    if (initialFile && loadedFile.current !== initialFile) {
+      loadedFile.current = initialFile;
+      void source.readFile(initialFile);
+    }
+  }, [initialFile, source]);
   const [title, setTitle] = useState(initialTitle);
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [reverse, setReverse] = useState(false);
@@ -46,7 +65,7 @@ export function CardImportDialog({
   const [duplicates, setDuplicates] = useState<number | null>(null);
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
-  const trapRef = useFocusTrap(true, {
+  const trapRef = useFocusTrap(presentation === 'dialog', {
     autoFocusSelector: titleLabel ? '#card-import-title' : '#card-import-text',
   });
   const cards = source.apkg?.cards ?? source.result.cards;
@@ -91,7 +110,7 @@ export function CardImportDialog({
       : '';
   const sourceError =
     source.detected === 'share-code' && !source.apkg
-      ? 'Import shared courses using New course → Import share code.'
+      ? 'Import shared courses from Import → Lacuna course.'
       : source.error;
   const canContinue =
     count > 0 && !limitError && !sourceError && !source.reading && (!titleLabel || !!title.trim());
@@ -99,7 +118,7 @@ export function CardImportDialog({
     if (!busyRef.current) onCancel();
   }
   async function confirm() {
-    if (!canContinue || busyRef.current) return;
+    if (!canContinue || busyRef.current || (step === 'review' && !canImport)) return;
     if (step === 'input') {
       setError('');
       setStep('review');
@@ -107,6 +126,7 @@ export function CardImportDialog({
     }
     busyRef.current = true;
     setBusy(true);
+    onBusyChange?.(true);
     setError('');
     try {
       await onImport(content, title.trim());
@@ -117,25 +137,26 @@ export function CardImportDialog({
     } finally {
       busyRef.current = false;
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
-  return createPortal(
+  const view = (
     <div
       ref={trapRef}
-      className="card-import-overlay"
+      className={presentation === 'dialog' ? 'card-import-overlay' : 'card-import-page'}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') {
+        if (event.key === 'Escape' && presentation === 'dialog') {
           event.stopPropagation();
           event.preventDefault();
           cancel();
         }
       }}
     >
-      <div className="card-import-backdrop" aria-hidden="true" />
+      {presentation === 'dialog' && <div className="card-import-backdrop" aria-hidden="true" />}
       <motion.section
         className="card-import-dialog"
-        role="dialog"
-        aria-modal="true"
+        role={presentation === 'dialog' ? 'dialog' : undefined}
+        aria-modal={presentation === 'dialog' ? true : undefined}
         aria-labelledby="card-import-heading"
         aria-busy={busy || source.reading}
         initial={m ? { opacity: 0, y: 18 } : false}
@@ -171,11 +192,14 @@ export function CardImportDialog({
                       disabled={busy}
                     />
                   </label>
-                ) : (
+                ) : targetName ? (
                   <div className="card-import-destination">
                     <span>Adding to</span>
                     <strong>{targetName}</strong>
                   </div>
+                ) : null}
+                {step === 'review' && reviewOptions && (
+                  <fieldset disabled={busy}>{reviewOptions}</fieldset>
                 )}
                 {step === 'review' && (
                   <>
@@ -221,7 +245,7 @@ export function CardImportDialog({
               </div>
               <div className="card-import-content">
                 {step === 'input' ? (
-                  <CardImportInput source={source} />
+                  <CardImportInput source={source} preferPackage={preferPackage} />
                 ) : (
                   <CardImportPreview
                     cards={cards}
@@ -263,7 +287,7 @@ export function CardImportDialog({
             </span>
             <Button
               variant="primary"
-              disabled={!canContinue || busy}
+              disabled={!canContinue || busy || (step === 'review' && !canImport)}
               onClick={() => void confirm()}
             >
               {busy ? 'Importing…' : step === 'input' ? 'Review cards' : `Import ${count} cards`}
@@ -272,7 +296,7 @@ export function CardImportDialog({
           </div>
         </footer>
       </motion.section>
-    </div>,
-    document.body,
+    </div>
   );
+  return presentation === 'dialog' ? createPortal(view, document.body) : view;
 }

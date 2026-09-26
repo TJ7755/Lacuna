@@ -1,5 +1,14 @@
 # Lacuna — version 0.2.11
 
+## Unreleased
+
+- Added a dedicated Import screen beside New course, with Lacuna course, Anki and
+  text/spreadsheet entry points and automatic file routing. Reused the card import
+  input and review UI inline, with destination and study-target choices during review.
+  Existing lessons and new lessons/courses use the same atomic import writer. Shared
+  course files, codes and QR imports reuse the Share workflow and open the imported
+  course. New course now handles empty course creation only.
+
 ## 0.2.11 beta — offline course files, authoring and study improvements
 
 - Fixed packaged release checks timing out when the window already has its route title.

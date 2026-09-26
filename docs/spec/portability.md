@@ -40,6 +40,24 @@ app:
   back is a front/back card; a single column containing cloze notation becomes a
   cloze card; otherwise the row is skipped.
 
+### Import screen (`src/pages/ImportPage.tsx`)
+
+**Import** beside **New course** on Courses opens a dedicated screen. Choose a Lacuna
+course (file, share code or QR), an Anki package, or text/spreadsheet cards. Dropping
+or choosing a file selects its import path automatically. The welcome import link
+opens the same screen. New course remains focused on creating an empty course.
+
+The screen reuses the card import dialogue's input and review components inline.
+After reviewing content, choose a new course with an explicit study target, a new
+lesson in an existing active course, or an existing lesson. Undo retains the content
+and destination settings. Confirmation imports through the existing atomic writer
+and opens the destination. Anki scheduling and media are preserved.
+
+Lacuna files and codes reuse the Share page's shared-course importer, including
+preview, media validation, QR scanning and published-course update matching. A
+successful import opens its course. The Share page retains the same component for
+existing entry points; backup restoration remains separate.
+
 ### Card import dialogue (`src/components/import/CardImportDialog.tsx`)
 
 Card-list imports use a fixed-size two-step dialogue: **Add content → Review cards**.
@@ -47,8 +65,8 @@ The central area scrolls within the available viewport; the header, footer and o
 bounds remain stable between steps. The input supports pasted text, uploaded files,
 drag and drop, automatic format detection and a manual format override.
 
-- Course creation offers **Import cards** after selecting the course study target.
-  The dialogue accepts a course title and creates an initial Lesson 1 with the cards.
+- The dedicated Import screen configures new courses during review and creates an
+  initial Lesson 1 with their imported cards.
 - Add lesson offers **Import cards** with an editable lesson title. Existing-lesson
   and course-bank imports display their destination without renaming it.
 - **Undo** on the review step means return to Add content. It preserves the title,
@@ -70,7 +88,7 @@ drag and drop, automatic format detection and a manual format override.
   persistence transaction, then scheduling/history and card records commit together.
   Failures preserve the draft for correction/retry. Closing and duplicate submissions
   are blocked during a write. Success closes the dialogue and confirms the card count.
-- Share codes continue through New course's **Import share code** workflow, preserving
+- Share codes use **Import → Lacuna course** or the Share page, preserving
   lineage/update routing; full backup restoration remains a separate operation.
 
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
