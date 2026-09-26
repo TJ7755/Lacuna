@@ -69,6 +69,8 @@ import { getPreset, presetForSequence } from './sequencePresets';
 import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
+import { parseQuestionSetRecord, type QuestionSetRecord } from '../questions/questionSetCodec';
+import { importSharedQuestionSets, packQuestionSetMedia } from '../questions/questionSetShare';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -437,10 +439,16 @@ const SharePayloadV3Schema = SharePayloadV2Schema.omit({ v: true }).extend({
   questions: z.array(ShareQuestionSchema),
 });
 
+const SharePayloadV4Schema = SharePayloadV3Schema.omit({ v: true }).extend({
+  v: z.literal(4),
+  questionSets: z.array(z.unknown()),
+});
+
 const SharePayloadSchema = z.discriminatedUnion('v', [
   SharePayloadV1Schema,
   SharePayloadV2Schema,
   SharePayloadV3Schema,
+  SharePayloadV4Schema,
 ]);
 
 /** A single card in a share payload. `k` is the kind. */
@@ -664,8 +672,13 @@ export interface SharePayloadV3 extends Omit<SharePayloadV2, 'v'> {
   questions: ShareQuestion[];
 }
 
+export interface SharePayloadV4 extends Omit<SharePayloadV3, 'v'> {
+  v: 4;
+  questionSets: QuestionSetRecord[];
+}
+
 /** The decoded contents of a share code, either a flat deck list or a single course. */
-export type SharePayload = SharePayloadV1 | SharePayloadV2 | SharePayloadV3;
+export type SharePayload = SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4;
 
 /** A human-friendly summary of a share code, for the import preview. */
 export interface ShareSummary {
@@ -715,6 +728,12 @@ export function parseSharePayload(payload: unknown): SharePayload {
   }
   if (parse.data.v === 1) {
     throw new Error(V1_SHARE_CODE_MESSAGE);
+  }
+  if (parse.data.v === 4) {
+    return {
+      ...parse.data,
+      questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
+    } as SharePayloadV4;
   }
   return parse.data;
 }
@@ -867,7 +886,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       if (card.i === 1) omittedImages = true;
     }
     if (
-      payload.v === 3 &&
+      payload.v !== 2 &&
       payload.questions.some((question) => question.k === 0 && question.i === 1)
     ) {
       omittedImages = true;
@@ -882,7 +901,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       courseName: payload.course.n,
       lessonCount: payload.lessons.length,
       noteCount: payload.lessons.reduce((count, lesson) => count + lesson.notes.length, 0),
-      questionCount: payload.v === 3 ? payload.questions.length : 0,
+      questionCount: payload.v !== 2 ? payload.questions.length : 0,
     };
   }
 
@@ -906,7 +925,10 @@ export function summariseShare(payload: SharePayload): ShareSummary {
 // Packing (DB -> code)
 // ---------------------------------------------------------------------------
 
-function packMedia(markdown: string, includeMedia: boolean): { markdown: string; stripped: boolean } {
+function packMedia(
+  markdown: string,
+  includeMedia: boolean,
+): { markdown: string; stripped: boolean } {
   return includeMedia ? { markdown, stripped: false } : stripAssetMedia(markdown);
 }
 
@@ -1010,7 +1032,10 @@ function packCards(cards: Card[], preserveIds = false, includeMedia = false): Sh
 // ---------------------------------------------------------------------------
 
 function unpackCard(sc: ShareCard): ParsedCard[] {
-  const attributes = { ...(sc.g?.length ? { tags: sc.g } : {}), ...(sc.am ? { answerMode: sc.am } : {}) };
+  const attributes = {
+    ...(sc.g?.length ? { tags: sc.g } : {}),
+    ...(sc.am ? { answerMode: sc.am } : {}),
+  };
   if (sc.p !== undefined) {
     assertValidCardPayload(sc.k === 1 ? 'cloze' : 'front_back', sc.p);
   }
@@ -1054,18 +1079,18 @@ function packNotes(
   });
 }
 
-/** Pack a whole course, including Concepts and Questions, into a v3 payload. */
+/** Pack a whole course, including Concepts, Questions and authored Question Sets. */
 export async function buildCourseSharePayload(
   courseId: string,
   { includeMedia = false }: { includeMedia?: boolean } = {},
-): Promise<SharePayloadV3> {
+): Promise<SharePayloadV4> {
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('Course not found.');
 
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [notes, courseCards, lessonLinks, concepts, questions, questionConcepts] =
+  const [notes, courseCards, lessonLinks, concepts, questions, questionConcepts, questionSets] =
     await Promise.all([
       lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
       db.cards.where('courseId').equals(courseId).toArray(),
@@ -1073,6 +1098,7 @@ export async function buildCourseSharePayload(
       db.concepts.where('courseId').equals(courseId).toArray(),
       db.questions.where('courseId').equals(courseId).toArray(),
       db.questionConcepts.where('courseId').equals(courseId).toArray(),
+      db.questionSets.where('courseId').equals(courseId).toArray(),
     ]);
   const notesByLesson = new Map<string, Note[]>();
   for (const note of notes) {
@@ -1109,7 +1135,7 @@ export async function buildCourseSharePayload(
       ...(lesson.answerMode ? { am: lesson.answerMode } : {}),
       notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution, includeMedia),
       cards: packCards(cardsByLesson.get(lesson.id) ?? [], true, includeMedia),
-      ...(distribution ? { i: lesson.id } : {}),
+      ...(distribution || questionSets.length > 0 ? { i: lesson.id } : {}),
     };
   });
 
@@ -1226,6 +1252,9 @@ export async function buildCourseSharePayload(
   });
 
   const conceptIds = new Set(concepts.map((concept) => concept.id));
+  if (distribution && questionSets.some((set) => set.assessmentIds.length > 0)) {
+    throw new Error('Published courses cannot yet share Question Sets linked to assessments.');
+  }
   for (const card of courseCards) {
     if (!conceptIds.has(card.conceptId)) {
       throw new Error(`Card ${card.id} references a missing Concept.`);
@@ -1283,7 +1312,7 @@ export async function buildCourseSharePayload(
   });
 
   return {
-    v: 3,
+    v: 4,
     by: null,
     at: Date.now(),
     course: shareCourse,
@@ -1299,6 +1328,7 @@ export async function buildCourseSharePayload(
       ...(concept.provisional ? { p: 1 as const } : {}),
     })),
     questions: shareQuestions,
+    questionSets: questionSets.map((record) => packQuestionSetMedia(record, includeMedia)),
     ...(distribution ? { li: distribution.lineageId, rv: distribution.revision } : {}),
   };
 }
@@ -1337,7 +1367,7 @@ function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
 
 /** Import a v2/v3 single-course payload directly into the course model. */
 async function importCourseSharePayload(
-  payload: SharePayloadV2 | SharePayloadV3,
+  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4,
 ): Promise<ImportShareResult> {
   let cardCount = 0;
   let importedCourseId: string | null = null;
@@ -1360,6 +1390,7 @@ async function importCourseSharePayload(
       db.concepts,
       db.questions,
       db.questionConcepts,
+      db.questionSets,
       db.tombstones,
     ],
     async () => {
@@ -1411,7 +1442,7 @@ async function importCourseSharePayload(
 
       const importedAt = Date.now();
       const conceptIdMap = new Map<string, string>();
-      if (payload.v === 3) {
+      if (payload.v !== 2) {
         const importedConcepts: Concept[] = payload.concepts.map((concept, index) => {
           const id = makeId();
           conceptIdMap.set(concept.id, id);
@@ -1467,14 +1498,14 @@ async function importCourseSharePayload(
           unpackCard(shareCard).map((draft) => ({
             draft: {
               ...draft,
-              ...(payload.v === 3 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
+              ...(payload.v !== 2 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
             },
             sequenceItemId: shareCard.si,
             occlusionRegionId: shareCard.oc,
             sourceCardId: shareCard.id,
           })),
         );
-        if (payload.v === 3 && drafts.some(({ draft }) => !draft.conceptId)) {
+        if (payload.v !== 2 && drafts.some(({ draft }) => !draft.conceptId)) {
           throw new Error('A shared Card references a missing Concept.');
         }
         if (drafts.length === 0) continue;
@@ -1506,12 +1537,12 @@ async function importCourseSharePayload(
         unpackCard(shareCard).map((draft) => ({
           draft: {
             ...draft,
-            ...(payload.v === 3 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
+            ...(payload.v !== 2 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
           },
           sourceCardId: shareCard.id,
         })),
       );
-      if (payload.v === 3 && bankDrafts.some(({ draft }) => !draft.conceptId)) {
+      if (payload.v !== 2 && bankDrafts.some(({ draft }) => !draft.conceptId)) {
         throw new Error('A shared Card references a missing Concept.');
       }
       if (bankDrafts.length > 0) {
@@ -1593,6 +1624,10 @@ async function importCourseSharePayload(
         await db.courseAssessments.bulkAdd(importedAssessments);
         await syncCourseSchedulingUnits(course.id);
       }
+      const assessmentIdMap = new Map<string, string>();
+      (payload.exams ?? []).forEach((exam, index) => {
+        if (exam.id) assessmentIdMap.set(exam.id, importedAssessments[index].id);
+      });
 
       // Insert the sequences themselves once lessonIds is complete (for primaryLessonId)
       // and their generated cards already exist with remapped sequenceItemIds. Inserted
@@ -1662,7 +1697,7 @@ async function importCourseSharePayload(
       }));
       if (importedOcclusions.length > 0) await db.occlusions.bulkAdd(importedOcclusions);
 
-      if (payload.v === 3) {
+      if (payload.v !== 2) {
         const importedQuestions: QuestionDefinition[] = [];
         const importedQuestionConcepts: QuestionConceptSet[] = [];
         for (let index = 0; index < payload.questions.length; index += 1) {
@@ -1737,6 +1772,19 @@ async function importCourseSharePayload(
           await db.questionConcepts.bulkAdd(importedQuestionConcepts);
         }
       }
+      if (payload.v === 4 && payload.questionSets.length > 0) {
+        const importedSets = importSharedQuestionSets({
+          records: payload.questionSets,
+          sharedLessons: payload.lessons,
+          lessonIds,
+          courseId: course.id,
+          conceptIdMap,
+          assessmentIdMap,
+          importedAt,
+          makeId,
+        });
+        await db.questionSets.bulkAdd(importedSets);
+      }
     },
   );
 
@@ -1745,7 +1793,7 @@ async function importCourseSharePayload(
     courses: 1,
     lessons: payload.lessons.length,
     cards: cardCount,
-    questions: payload.v === 3 ? payload.questions.length : 0,
+    questions: payload.v !== 2 ? payload.questions.length : 0,
     courseIds: [importedCourseId],
   };
 }

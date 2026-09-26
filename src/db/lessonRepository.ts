@@ -2,6 +2,11 @@
 // Components call these rather than touching Dexie tables directly.
 
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import {
+  removeQuestionSetLessonReference,
+  restoreQuestionSetLessonReferences,
+} from '../questions/questionSetRepository';
 import { scheduleAssetGc } from './assets';
 import {
   ensureCourseBankBackingDeck,
@@ -122,6 +127,7 @@ export interface LessonSnapshot {
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnit?: SchedulingUnitRecord;
   schedulingPerformance?: SchedulingPerformance;
+  questionSets: QuestionSetRecord[];
 }
 
 /** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
@@ -139,6 +145,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     courseAssessments,
     schedulingUnit,
     schedulingPerformance,
+    questionSets,
   ] = await Promise.all([
     db.notes.where('lessonId').equals(id).toArray(),
     db.lessonCards.where('lessonId').equals(id).toArray(),
@@ -149,6 +156,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
     db.schedulingUnits.get(id),
     db.schedulingPerformance.get(id),
+    db.questionSets.where('lessonIds').equals(id).toArray(),
   ]);
   const noteIds = notes.map((note) => note.id);
   const [noteAnnotations, sessionHistory, reviewHistory] = await Promise.all([
@@ -176,6 +184,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     reviewHistory,
     ...(schedulingUnit ? { schedulingUnit } : {}),
     ...(schedulingPerformance ? { schedulingPerformance } : {}),
+    questionSets,
   };
 }
 
@@ -201,12 +210,18 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.reviewHistory,
         db.schedulingUnits,
         db.schedulingPerformance,
+        db.questionSets,
         db.tombstones,
       ],
       async (tx) => {
         await replaceReviewHistoryForCards(
           cardsToRestore.map((card) => card.id),
           reviewHistoryToRestore,
+        );
+        await restoreQuestionSetLessonReferences(
+          snapshot.questionSets ?? [],
+          snapshot.lesson.id,
+          Date.now(),
         );
         await Promise.all([
           db.lessons.put(snapshot.lesson),
@@ -330,6 +345,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.lessonCardExposures,
       db.lessonCompletions,
       db.cards,
+      db.questionSets,
       db.sequences,
       db.sessionHistory,
       db.courseAssessments,
@@ -385,6 +401,7 @@ export async function deleteLesson(id: string): Promise<void> {
           .modify(stampUpdatedAt({ primaryLessonId: null }, now));
       }
       await removeLessonSchedulingUnit(id);
+      await removeQuestionSetLessonReference(lesson.courseId, id, now);
       await db.lessons.delete(id);
       await recordTombstone(tx, 'lessons', id);
       await recordTombstones(tx, 'notes', noteIds);

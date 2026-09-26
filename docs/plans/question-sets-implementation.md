@@ -68,10 +68,10 @@ These are current seams to extend; inspect surrounding code and tests again befo
 | --- | --- |
 | Question domain, attempts and authoring | `src/questions/types.ts`, `domain.ts`, `repository*.ts`, `grading.ts`, `analytics.ts`; current screens `src/pages/QuestionsPage.tsx`, `QuestionEditor.tsx`, `QuestionLearnMode.tsx` and `src/components/questions/` |
 | Concepts and cards | `src/questions/concepts.ts`, `src/db/types.ts` (`Card.conceptId`), `src/db/cardRepository.ts`, `src/db/lessonRepository.ts` |
-| Dexie schema and upgrades | `src/db/schema.ts` (currently through v27; Question stores were introduced at v24) and `src/db/migrations.ts`; migration upgrades must retain their historical compatibility types |
+| Dexie schema and upgrades | `src/db/schema.ts` (currently through v28; legacy Question stores were introduced at v24) and `src/db/migrations.ts`; migration upgrades must retain their historical compatibility types |
 | Backup, replacement and recovery | `src/questions/backup.ts`, `src/db/backups.ts`, `src/db/importEngine.ts`, `src/db/mergeImport.ts`, `src/db/replacementLifecycle.ts`, `src/db/portability.questions.test.ts` |
 | Course share and media | `src/db/share.ts`, `src/db/shareCodec.ts`, `src/db/courseFile.ts`, `src/db/assets.ts`, `src/pages/SharePage.tsx`; course share excludes personal attempts/schedules, while `.lacourse` includes referenced media |
-| Peer sync and merge | `src/sync/snapshot.ts`, `src/sync/mergeSnapshots.ts`, `src/sync/manualMerge.ts`, `src/questions/merge.ts`; snapshot version is currently 11 |
+| Peer sync and merge | `src/sync/snapshot.ts`, `src/sync/mergeSnapshots.ts`, `src/sync/manualMerge.ts`, `src/questions/merge.ts`; snapshot version is currently 12 (`lacuna-v12`) |
 | Routes and course navigation | `src/App.tsx`, `src/pages/CoursePage.tsx`, `src/components/course/courseSections.ts`, `CourseTabs.tsx`, `CoursePageNavigation.tsx` |
 | Path and exam links | `src/course/path.ts`, `src/components/course/PracticeNode.tsx`, `PracticeNodeEditor.tsx`, `src/course/assessmentPractice.ts`, `src/components/course/AssessmentDetailSheet.tsx`; reuse assessment IDs and existing path activity conventions |
 | Search, MCP and AI contracts | `src/db/search.ts`, `src/mcp/contracts/questions.ts`, `src/mcp/tools/questions.ts` and its `definitions.ts` / `concepts.ts` modules; new discriminated types must not make existing clients misread legacy Questions |
@@ -171,29 +171,29 @@ this does not mark all of Stage 1 or Stage 2 complete.
 Complete this before writing a migration or adding persisted collections. Review the data shape
 against every compatibility boundary in the integration map and agree one versioning plan.
 
-- [ ] Decide whether sets become a distinct entity around existing Questions or whether existing
+- [x] Decide whether sets become a distinct entity around existing Questions or whether existing
   Question definitions evolve in place. Specify stable-ID mapping and how old fixed/generated
   definitions are represented without changing their schedule or history.
 - [ ] Specify records and indexes for authored set content, lesson/assessment links, attempts,
   answer snapshots, allocations, decisions and annotations. Identify what is canonical, what is
   derived, and how content/scheme revisions are pinned by an attempt.
-- [ ] Specify media references and garbage-collection reachability for authored source diagrams,
+- [x] Specify media references and garbage-collection reachability for authored source diagrams,
   question content and retained attempt receipts. A set must not lose an image after it is edited
   or deleted while historical attempts still refer to it.
-- [ ] Specify ownership and deletion rules: deleting a set/content revision, a concept, lesson,
+- [x] Specify ownership and deletion rules: deleting a set/content revision, a concept, lesson,
   assessment or course; retain personal attempts as readable evidence where the brief requires it.
-- [ ] Specify conflict handling for concurrent authored edits and immutable attempt-ID collisions
+- [x] Specify conflict handling for concurrent authored edits and immutable attempt-ID collisions
   in local recovery and peer merge. Do not apply `updatedAt` last-writer-wins to immutable
   submitted evidence.
-- [ ] Specify forward and backward compatibility for current backup v11, sync snapshot v11,
+- [x] Specify forward and backward compatibility for current backup v11, sync snapshot v11,
   Course share v3 and `.lacourse` file v1. Decide if each envelope version increments, whether
   old readers fail closed or preserve unknown data, and which metadata is intentionally excluded.
-- [ ] Specify the pre-migration snapshot/restore path for existing beta data and the failure mode
+- [x] Specify the pre-migration snapshot/restore path for existing beta data and the failure mode
   if the snapshot cannot be made. Existing destructive schema work requires a recoverable point.
-- [ ] Audit direct database table lists, transaction scopes, repository projections, replacement
+- [x] Audit direct database table lists, transaction scopes, repository projections, replacement
   exclusions, tombstones, diagnostics, import validation and asset scans for all four current
   Question stores plus any proposed records.
-- [ ] Run and record the browser gate, then commit the reviewed compatibility design.
+- [x] Run and record the browser gate, then commit the reviewed compatibility design.
 
 Exit condition: a reviewer can trace one set and one attempt through local save, backup replace,
 recovery merge, Course share import/export, peer sync, deletion and restore without data becoming
@@ -226,6 +226,71 @@ normalisers until it has passed its validators.
 Exit condition: a backup or sync replica can be restored and the same content and evidence
 semantics survive. Existing Question schedules and attempt records have explicit regression
 coverage.
+
+### Authored-content storage gate — 26 September 2026
+
+The authored-content portion of Stage 2 is implemented. Attempts, drafts, annotations and
+retained attempt media remain unimplemented, so the combined stage checkboxes above remain open.
+
+- [x] Schema v28, strict aggregate codec and transactional repositories, with same-course
+  references, required stale-save detection and monotonically increasing mutation stamps.
+- [x] Concept deletion protection, Lesson/Assessment unlinking, Course deletion and undo;
+  lesson undo restores its link without overwriting intervening edits to the set.
+- [x] Backup/peer v12, replacement, recovery, deletion receipts and deterministic set merge.
+- [x] Course-share v4 and `.lacourse` v1 content/media round trip with fresh identity mapping.
+- [x] Published set updates reject conflicting local edits/deletions atomically. Published
+  export/import of assessment-linked sets fails explicitly until assessment lineage is supported.
+- [x] Media garbage collection and sync size/ownership accounting include current set content.
+
+**Automated evidence:** schema v28 regression failed at baseline `7ee987be` by assertion
+(`expected 27 to be 28`). The new course-file set regression failed at that baseline because
+`questionSetRepository` did not exist, then passed on the implementation. Additional tests
+cover malformed rows/graphs, old backups, raw v23 migration, revisions, deletion/undo, recovery
+followed by peer sync, same-ID course collisions, equal-time convergence, media and share privacy.
+The broad `src/db src/sync src/questions src/shareLinks` run passed **101 files / 1,048 tests**;
+the final web/server/Electron typecheck and focused ESLint passed. After extracting the shared
+set helpers, 75 relevant share/lineage/course-file tests passed. MCP lineage guard tests passed
+13/13; the local-set guard failed by assertion at baseline (`expected true to be false`).
+The final browser recheck after extraction retained the set, diagram and legacy attempt with
+clean diagnostics. One earlier broad run had a session-history snapshot
+failure; the unchanged assertion passed on five focused reruns, three full course-repository
+reruns and the final broad run. No assertion was relaxed to make it pass.
+
+**Browser evidence:** T3 on `http://127.0.0.1:5183/`. The origin initially ran baseline
+`7ee987be` with schema v27 and a completed legacy Question attempt. The server was then switched
+to the implementation, preserving the same browser database. Schema v28 opened with a
+pre-migration snapshot and an empty new store; legacy Question, attempt, Cards and Concepts
+compared exactly with their saved pre-upgrade values.
+
+Browser repository/API checks on that real IndexedDB database then proved:
+
+1. A nested biology set with a diagram, subparts, all three allocation dimensions, and
+   Lesson/Assessment/Concept links survives save and reload.
+2. Backup replacement restores the set and image and retains the existing restore point.
+3. Recovery merge followed by peer self-merge retains restored sets. The first browser run
+   caught an old tombstone deleting a recovered set; the regression and browser retest now pass.
+4. Peer merges select a newer authored revision, commute for the tested replicas and honour
+   deletion receipts. Card and legacy Question evidence remain separate.
+5. Course-file export/decode/import preserves the image, remaps links into the imported Course
+   and copies no personal attempts.
+6. Published-set import and a teacher update work; a conflicting local edit blocks the next
+   update without advancing the imported revision. Assessment-linked published export reports
+   the unsupported boundary instead of producing an unusable share.
+7. The actual old reader at `7ee987be`, served separately on port 5184, rejects `lacuna-v12`.
+   The same reader accepts a numeric-only version bump, confirming why the marker is required.
+
+Final existing-UI smoke: Questions → New Question → visible Questions Back link at 390×844,
+plus the Questions library at 1280×800. No horizontal overflow, console warnings/errors or
+network errors. These screenshots show the **legacy interface after the storage changes**,
+not the planned set editor:
+
+- [Desktop library](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muirje5s-18c2e9e8.png)
+- [Narrow library](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muirjn1i-7c3bbc79.png)
+- [Narrow legacy editor](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muirk8wp-81f67596.png)
+
+**Remaining boundaries:** no new set editor or learner UI, draft/attempt persistence, set-aware
+sharing summaries or path/exam entry points. MCP lineage preview/apply rejects sets until it
+can accurately preview their changes. No Jev, automatic marking or exam-score forecast is added.
 
 ## Stage 3 — authoring and validation
 

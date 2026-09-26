@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { itemPayloadIsValid } from '../items/payloadValidation';
+import { parseQuestionSetRecord } from '../questions/questionSetCodec';
 
 export const text = z.string();
 export const id = text.min(1);
@@ -201,6 +202,19 @@ const performance = {
   totalCorrectReviews: number,
 };
 
+// Authored aggregates already have strict codecs; reuse them rather than mirroring
+// their nested shape here.
+function codec(parse: (value: unknown) => unknown, message: string) {
+  return z.unknown().refine((value) => {
+    try {
+      parse(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }, message);
+}
+
 export const recordSchemas = {
   cards: card,
   assets: object({
@@ -348,4 +362,5 @@ export const recordSchemas = {
     updatedAt: number.optional(),
   }),
   tombstones: object({ table: id, recordId: id, deletedAt: number }),
+  questionSets: codec(parseQuestionSetRecord, 'Invalid question set'),
 };

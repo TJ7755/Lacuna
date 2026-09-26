@@ -46,6 +46,11 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
 } from '../questions/types';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import {
+  assertQuestionSetReferences,
+  mergeQuestionSetRecords,
+} from '../questions/questionSetMerge';
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
@@ -62,9 +67,9 @@ const NEVER_REVIEWED = {
   history: [] as Card['history'],
 };
 
-/** A v11 snapshot with every table merge always emits present. */
+/** A v12 snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 11;
+  version: 12;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -86,6 +91,7 @@ export type MergedBackupFile = BackupFile & {
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  questionSets: QuestionSetRecord[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories: AgentMemory[];
@@ -227,6 +233,16 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     (memory) => memory.courseId === null || courses.some((course) => course.id === memory.courseId),
   );
   const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
+  const questionSets = mergeQuestionSetRecords(left.questionSets, right.questionSets, [
+    ...tombstones.values(),
+  ]).filter((set) => courses.some((course) => course.id === set.courseId));
+  assertQuestionSetReferences(
+    questionSets,
+    courses,
+    lessons,
+    courseAssessments,
+    questionState.concepts,
+  );
   // Detached lineage state carries deletion receipts (see detachCourse): honour them here
   // so a peer snapshot cannot resurrect a severed registry or its queued review.
   // Lineage mappings carry no updatedAt, so any tombstone for the id wins outright.
@@ -288,6 +304,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questions: questionState.questions,
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
+    questionSets,
     agentMemories,
   });
   const keptTombstones = [...tombstones.values()]
@@ -295,8 +312,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     .sort(compareTombstones);
 
   return {
-    app: 'lacuna',
-    version: 11,
+    app: 'lacuna-v12',
+    version: 12,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),
@@ -311,6 +328,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
       occlusions,
       questionState.questions,
       questionState.questionAttempts,
+      questionSets,
     ),
     sessionHistory: sortSessionHistory(sessionHistory),
     userPerformance: [],
@@ -331,6 +349,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questions: questionState.questions,
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
+    questionSets,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories: sortById(agentMemories),
@@ -362,6 +381,7 @@ interface NormalisedSnapshot extends QuestionMergeCollections {
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories: AgentMemory[];
+  questionSets: QuestionSetRecord[];
 }
 
 function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
@@ -418,6 +438,7 @@ function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
     questions: normalised.questions,
     questionConcepts: normalised.questionConcepts,
     questionAttempts: normalised.questionAttempts,
+    questionSets: normalised.questionSets,
     lineageIdMappings: normalised.lineageIdMappings ?? [],
     pendingMergeReviews: normalised.pendingMergeReviews ?? [],
     agentMemories: normalised.agentMemories ?? [],
@@ -544,6 +565,13 @@ function mergeLineageMappings(
       lessonIds: union(existing.lessonIds, incoming.lessonIds),
       noteIds: union(existing.noteIds, incoming.noteIds),
       cardIds: union(existing.cardIds, incoming.cardIds),
+      conceptIds: union(existing.conceptIds ?? [], incoming.conceptIds ?? []),
+      questionIds: union(existing.questionIds ?? [], incoming.questionIds ?? []),
+      questionSetIds: union(existing.questionSetIds ?? [], incoming.questionSetIds ?? []),
+      questionSetRevisions: records(
+        existing.questionSetRevisions ?? {},
+        incoming.questionSetRevisions ?? {},
+      ),
       sequenceIds: union(existing.sequenceIds, incoming.sequenceIds),
       occlusionIds: union(existing.occlusionIds ?? [], incoming.occlusionIds ?? []),
       lessonSnapshots: records(existing.lessonSnapshots, incoming.lessonSnapshots),
@@ -588,6 +616,7 @@ function collectLiveKeys(tables: {
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  questionSets: QuestionSetRecord[];
   agentMemories: AgentMemory[];
 }): Set<string> {
   const keys = new Set<string>();
@@ -613,6 +642,7 @@ function collectLiveKeys(tables: {
   for (const row of tables.questions) add('questions', row.id);
   for (const row of tables.questionConcepts) add('questionConcepts', row.questionId);
   for (const row of tables.questionAttempts) add('questionAttempts', row.id);
+  for (const row of tables.questionSets) add('questionSets', row.id);
   for (const row of tables.agentMemories) add('agentMemories', row.id);
   return keys;
 }
@@ -727,6 +757,7 @@ function mergeAssets(
   occlusions: Occlusion[],
   questions: QuestionDefinition[],
   attempts: QuestionAttempt[],
+  questionSets: QuestionSetRecord[],
 ): BackupAsset[] {
   const byHash = new Map<string, BackupAsset>();
   for (const asset of [...left, ...right]) {
@@ -737,7 +768,7 @@ function mergeAssets(
       byHash.set(hash, normalised);
     }
   }
-  const referenced = referencedHashes(cards, notes, occlusions, questions, attempts);
+  const referenced = referencedHashes(cards, notes, occlusions, questions, attempts, questionSets);
   return [...byHash.values()]
     .filter((asset) => referenced.has(asset.hash))
     .sort((a, b) => a.hash.localeCompare(b.hash));
@@ -749,6 +780,7 @@ function referencedHashes(
   occlusions: Occlusion[],
   questions: QuestionDefinition[],
   attempts: QuestionAttempt[],
+  questionSets: QuestionSetRecord[],
 ): Set<string> {
   const hashes = new Set<string>();
   const scan = (markdown: string) => {
@@ -769,6 +801,7 @@ function referencedHashes(
   };
   questions.forEach(scanValue);
   attempts.forEach(scanValue);
+  questionSets.forEach(scanValue);
   return hashes;
 }
 

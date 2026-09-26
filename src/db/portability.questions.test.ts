@@ -11,6 +11,9 @@ import type {
   QuestionAttempt,
   QuestionConceptSet,
 } from '../questions/types';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import { deleteQuestionSet } from '../questions/questionSetRepository';
+import { mergeSnapshots } from '../sync/mergeSnapshots';
 
 const COURSE: CourseRecord = {
   id: 'course-1',
@@ -102,6 +105,39 @@ const LINKS: QuestionConceptSet = {
   updatedAt: 10,
 };
 
+const QUESTION_SET: QuestionSetRecord = {
+  id: 'set-1',
+  courseId: COURSE.id,
+  title: 'Addition paper',
+  lessonIds: [],
+  assessmentIds: [FINAL_ASSESSMENT.id],
+  questions: [
+    {
+      id: 'set-question-1',
+      prompt: 'Calculate 1 + 1',
+      answer: {
+        maxMarks: 1,
+        response: { kind: 'written' },
+        prerequisiteConceptIds: [],
+        allocations: [
+          {
+            id: 'allocation-1',
+            criterion: 'Gets 2',
+            maxMarks: 1,
+            dimension: 'knowledge',
+            targetConceptIds: [CONCEPT.id],
+          },
+        ],
+      },
+      parts: [],
+    },
+  ],
+  contentVersion: 1,
+  contentRevisionId: 'set-revision-1',
+  createdAt: 30,
+  updatedAt: 30,
+};
+
 function shownAttempt(renderedExplanation = 'One plus one is two.'): QuestionAttempt {
   return {
     id: 'attempt-1',
@@ -159,14 +195,16 @@ describe('Question backup portability', () => {
     await db.questionAttempts.add(
       shownAttempt(`Worked solution\n\n![receipt](${assetUrl(receiptAsset.hash)})`),
     );
+    await db.questionSets.add(QUESTION_SET);
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(11);
+    expect(backup.version).toBe(12);
     expect(backup.concepts).toEqual([CONCEPT]);
     expect(backup.questions).toHaveLength(1);
     expect(backup.questionConcepts).toEqual([LINKS]);
     expect(backup.questionAttempts).toHaveLength(1);
+    expect(backup.questionSets).toEqual([QUESTION_SET]);
     expect(backup.assets.map((asset) => asset.hash).sort()).toEqual(
       [definitionAsset.hash, receiptAsset.hash].sort(),
     );
@@ -177,57 +215,140 @@ describe('Question backup portability', () => {
     expect(await db.questions.toArray()).toEqual(backup.questions);
     expect(await db.questionConcepts.toArray()).toEqual([LINKS]);
     expect(await db.questionAttempts.toArray()).toEqual(backup.questionAttempts);
+    expect(await db.questionSets.toArray()).toEqual([QUESTION_SET]);
     expect(await db.assets.count()).toBe(2);
   });
 
-  it('converts structured Cards in a v10 backup through the v24 adapter', async () => {
-    const legacyCard = {
-      id: 'structured-card',
-      type: 'front_back',
-      front: 'Calculate 1 + 1',
-      back: 'One plus one is two.',
-      payload: {
-        v: 1,
-        kind: 'numeric',
-        answer: { kind: 'exact', value: '2' },
-      },
-      stability: null,
-      difficulty: null,
-      lastReviewed: null,
-      reps: 0,
-      lapses: 0,
-      state: 0,
-      schedulingUnitId: COURSE.id,
-      courseId: COURSE.id,
-      due: null,
-      scheduledDays: 0,
-      learningSteps: 0,
-      history: [],
-      createdAt: 10,
-      updatedAt: 10,
-    } as unknown as Card;
-    const oldBackup: BackupFile = {
-      app: 'lacuna',
-      version: 10,
-      exportedAt: 20,
-      cards: [legacyCard],
-      assets: [],
-      sessionHistory: [],
-      userPerformance: [],
-      courses: [COURSE],
-      courseAssessments: [FINAL_ASSESSMENT],
-      reviewHistory: [],
-    };
-
-    await importBackup(oldBackup, 'replace');
-
-    expect(await db.cards.count()).toBe(0);
-    expect(await db.concepts.count()).toBe(1);
-    expect(await db.questions.toArray()).toEqual([
-      expect.objectContaining({ kind: 'fixed', prompt: 'Calculate 1 + 1' }),
-    ]);
-    expect(await db.questionConcepts.count()).toBe(1);
+  it('uses a v12 marker that legacy readers reject and fails closed on future versions', () => {
+    expect(
+      validateBackup({
+        app: 'lacuna-v12',
+        version: 12,
+        exportedAt: 1,
+        cards: [],
+        concepts: [],
+        questions: [],
+        questionConcepts: [],
+        questionAttempts: [],
+        questionSets: [],
+        assets: [],
+        sessionHistory: [],
+        userPerformance: [],
+      }),
+    ).toBe(true);
+    expect(
+      validateBackup({
+        app: 'lacuna-v12',
+        version: 13,
+        exportedAt: 1,
+        cards: [],
+        concepts: [],
+        questions: [],
+        questionConcepts: [],
+        questionAttempts: [],
+        questionSets: [],
+        assets: [],
+        sessionHistory: [],
+        userPerformance: [],
+      }),
+    ).toBe(false);
+    expect(
+      validateBackup({
+        app: 'lacuna',
+        version: 27,
+        exportedAt: 1,
+        cards: [],
+        concepts: [],
+        questions: [],
+        questionConcepts: [],
+        questionAttempts: [],
+        assets: [],
+        sessionHistory: [],
+        userPerformance: [],
+      }),
+    ).toBe(true);
   });
+
+  it('restores a deleted set newer than its tombstone so the next peer merge retains it', async () => {
+    await db.courses.add(COURSE);
+    await db.courseAssessments.add(FINAL_ASSESSMENT);
+    await db.concepts.add(CONCEPT);
+    await db.questionSets.add(QUESTION_SET);
+    const backup = await exportDatabase();
+
+    await deleteQuestionSet(QUESTION_SET.id, 100);
+    await importBackup(backup, 'merge');
+
+    const restored = await db.questionSets.get(QUESTION_SET.id);
+    const tombstone = await db.tombstones.get(['questionSets', QUESTION_SET.id]);
+    expect(restored?.updatedAt).toBeGreaterThan(100);
+    expect(tombstone).toBeUndefined();
+    const exported = await exportDatabase();
+    expect(mergeSnapshots(exported, exported).questionSets).toEqual([restored]);
+  });
+
+  it('rejects a malformed Question Set graph before replacement starts', async () => {
+    await db.courses.add(COURSE);
+    await db.courseAssessments.add(FINAL_ASSESSMENT);
+    await db.concepts.add(CONCEPT);
+    const backup = await exportDatabase();
+    backup.questionSets = [{ ...QUESTION_SET, courseId: 'missing-course' }];
+
+    await expect(importBackup(backup, 'replace')).rejects.toThrow('missing Course');
+    expect(await db.courses.get(COURSE.id)).toBeDefined();
+  });
+
+  it.each([10, 23])(
+    'converts structured Cards in a v%s backup/raw snapshot through the v24 adapter',
+    async (version) => {
+      const legacyCard = {
+        id: 'structured-card',
+        type: 'front_back',
+        front: 'Calculate 1 + 1',
+        back: 'One plus one is two.',
+        payload: {
+          v: 1,
+          kind: 'numeric',
+          answer: { kind: 'exact', value: '2' },
+        },
+        stability: null,
+        difficulty: null,
+        lastReviewed: null,
+        reps: 0,
+        lapses: 0,
+        state: 0,
+        schedulingUnitId: COURSE.id,
+        courseId: COURSE.id,
+        due: null,
+        scheduledDays: 0,
+        learningSteps: 0,
+        history: [],
+        createdAt: 10,
+        updatedAt: 10,
+      } as unknown as Card;
+      const oldBackup: BackupFile = {
+        app: 'lacuna',
+        version,
+        exportedAt: 20,
+        cards: [legacyCard],
+        assets: [],
+        sessionHistory: [],
+        userPerformance: [],
+        courses: [COURSE],
+        courseAssessments: [FINAL_ASSESSMENT],
+        reviewHistory: [],
+      };
+
+      await importBackup(oldBackup, 'replace');
+
+      expect(await db.cards.count()).toBe(0);
+      expect(await db.concepts.count()).toBe(1);
+      expect(await db.questions.toArray()).toEqual([
+        expect.objectContaining({ kind: 'fixed', prompt: 'Calculate 1 + 1' }),
+      ]);
+      expect(await db.questionConcepts.count()).toBe(1);
+    },
+  );
 
   it('recover-merges attempt lifecycle state and replays Question scheduling', async () => {
     await db.courses.add(COURSE);
