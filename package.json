@@ -15,6 +15,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "prototype:sharing": "vite --host 127.0.0.1 --open \"/#/?variant=A\"",
     "build": "bun run typecheck && vite build",
     "preview": "bun run build && vite preview",
     "typecheck": "bun run typecheck:web && bun run typecheck:server && bun run typecheck:electron",

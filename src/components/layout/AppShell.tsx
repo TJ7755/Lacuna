@@ -27,6 +27,14 @@ import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 
+const SharingAnnouncementPrototype = import.meta.env.DEV
+  ? lazy(() =>
+      import('./SharingAnnouncement.prototype').then((module) => ({
+        default: module.SharingAnnouncementPrototype,
+      })),
+    )
+  : null;
+
 const AiPanel = lazy(loadAiPanel);
 const StudySheet = lazy(() =>
   import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet })),
@@ -409,6 +417,11 @@ function AppShellLayout() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
           >
+            {SharingAnnouncementPrototype && new URLSearchParams(location.search).has('variant') && (
+              <Suspense fallback={null}>
+                <SharingAnnouncementPrototype />
+              </Suspense>
+            )}
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
                 <RouteTransitions
