@@ -13,7 +13,6 @@ import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
-import { useTypingSetting } from '../state/typingSetting';
 import { useAnswerStrictness } from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
 import { useLessonCourse } from '../state/useCourseData';
@@ -98,7 +97,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
-  const [typingSetting] = useTypingSetting();
   const [answerStrictness] = useAnswerStrictness();
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
@@ -168,6 +166,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setSessionCardIds,
     sessionCardOutcomes,
     schedulerProgress,
+    predictedRecall,
     simpleProgress,
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,
@@ -224,7 +223,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onStepFinished,
     notify,
     distraction,
-    typingSetting,
     startInFocusMode,
   });
 
@@ -458,6 +456,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   singleDeck={singleDeck}
                   unitDisplayName={unitDisplayName}
                   sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
+                  predictedRecall={predictedRecall}
                   sessionCardIds={sessionCardIds}
                   sessionCardOutcomes={sessionCardOutcomes}
                   filterParams={filterParams}

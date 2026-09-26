@@ -7,7 +7,6 @@ import { useStartInFocusMode } from '../../state/focusModePreference';
 import { useGradingMode } from '../../state/gradingMode';
 import { useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import { usePracticeDefaults } from '../../state/practiceDefaults';
-import { useTypingSetting } from '../../state/typingSetting';
 import { cn } from '../../components/ui/cn';
 import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
 import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
@@ -24,7 +23,6 @@ const FINAL_EXAM_POLICIES: Array<{
 
 export function StudySection() {
   const [gradingMode, setGradingMode] = useGradingMode();
-  const [typingSetting, setTypingSetting] = useTypingSetting();
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
   const [audioSettings, setAudioSettings] = useAudioSettings();
@@ -43,13 +41,6 @@ export function StudySection() {
         description="Off: Lacuna infers a grade from correctness and response time. On: choose Again, Hard, Good or Easy."
         checked={gradingMode === 'manual'}
         onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
-      />
-      <SettingToggle
-        bordered
-        title="Type your answer"
-        description="Your answer is compared with the correct one; you still grade yourself."
-        checked={typingSetting === 'type'}
-        onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
       />
 
       <SettingToggle
@@ -84,35 +75,33 @@ export function StudySection() {
         </div>
       </div>
 
-      {typingSetting === 'type' && (
-        <div className="mt-5 flex items-center justify-between gap-3 pl-0">
-          <div className="min-w-0">
-            <div className="text-sm">Grading strictness</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              How closely a typed answer must match. Lenient ignores case and punctuation, standard
-              ignores case only, exact requires both to match.
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-1">
-            {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
-              <button
-                key={level}
-                type="button"
-                onClick={() => setAnswerStrictness(level)}
-                aria-pressed={answerStrictness === level}
-                className={cn(
-                  'rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors',
-                  answerStrictness === level
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-ink-soft hover:border-line-strong',
-                )}
-              >
-                {level}
-              </button>
-            ))}
-          </div>
+      <div className="mt-5 flex items-center justify-between gap-3 pl-0">
+        <div className="min-w-0">
+          <div className="text-sm">Grading strictness</div>
+          <p className="mt-1 text-sm text-ink-soft">
+            How closely a typed answer must match. Lenient ignores case and punctuation, standard
+            ignores case only, exact requires both to match.
+          </p>
         </div>
-      )}
+        <div className="flex shrink-0 gap-1">
+          {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => setAnswerStrictness(level)}
+              aria-pressed={answerStrictness === level}
+              className={cn(
+                'rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors',
+                answerStrictness === level
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-ink-soft hover:border-line-strong',
+              )}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
         <div className="min-w-0">

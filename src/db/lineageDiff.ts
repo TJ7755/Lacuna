@@ -23,6 +23,7 @@ import type { CardType, ItemPayload } from './types';
 // reconciliation there is a type-only rename, not a shape change).
 
 export interface ShareCardInput {
+  am?: 'reveal' | 'type';
   /** Originating id — always present for a lineage-bearing merge (§7.2: "`i` is
    *  populated only when `li` is present", and this module is only ever invoked on the
    *  merge path, where `li` is present by construction). */
@@ -41,6 +42,7 @@ export interface ShareNoteInput {
 }
 
 export interface ShareLessonInput {
+  am?: 'reveal' | 'type';
   i: string;
   n: string;
   d?: string;
@@ -61,6 +63,7 @@ export interface ShareLessonInput {
 // touch).
 
 export interface ExistingLesson {
+  answerMode?: 'reveal' | 'type';
   id: string;
   name: string;
   description?: string;
@@ -81,6 +84,7 @@ export interface ExistingNote {
 }
 
 export interface ExistingCard {
+  answerMode?: 'reveal' | 'type';
   id: string;
   type: CardType;
   front: string;
@@ -124,6 +128,7 @@ export interface LineageDiffInput {
 // module *does* supply, since it is fully determined by the incoming payload.
 
 export interface CreateLessonPayload {
+  answerMode?: 'reveal' | 'type';
   id: string;
   name: string;
   description?: string;
@@ -145,6 +150,7 @@ export interface CreateNotePayload {
 }
 
 export interface CreateCardPayload {
+  answerMode?: 'reveal' | 'type';
   id: string;
   /** The adopted id of the lesson this card belongs to (may itself be a fresh create). */
   lessonId: string;
@@ -156,6 +162,7 @@ export interface CreateCardPayload {
 }
 
 export interface LessonUpdate {
+  answerMode?: 'reveal' | 'type';
   id: string;
   name?: string;
   description?: string;
@@ -178,6 +185,7 @@ export interface NoteUpdate {
  *  difficulty, due, reps, lapses, history, etc.) — mirrors `diffRegeneration`'s
  *  `GeneratedCardUpdate` exactly (§7.3's final classification bullet). */
 export interface CardUpdate {
+  answerMode?: 'reveal' | 'type';
   id: string;
   type?: CardType;
   front?: string;
@@ -275,6 +283,10 @@ function diffLesson(incoming: ShareLessonInput, existing: ExistingLesson, orderI
     update.timeZone = incoming.tz;
     changed = true;
   }
+  if (existing.answerMode !== incoming.am) {
+    update.answerMode = incoming.am;
+    changed = true;
+  }
   if (existing.sessionFilter !== incoming.sf) {
     update.sessionFilter = incoming.sf;
     changed = true;
@@ -323,6 +335,10 @@ function diffCard(incoming: ShareCardInput, existing: ExistingCard): CardUpdate 
   }
   if (!arraysEqual(existing.tags, incoming.g)) {
     update.tags = incoming.g;
+    changed = true;
+  }
+  if (existing.answerMode !== incoming.am) {
+    update.answerMode = incoming.am;
     changed = true;
   }
   if (!jsonValuesEqual(existing.payload, incoming.p)) {
@@ -383,6 +399,7 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
         examDate: incomingLesson.ed,
         timeZone: incomingLesson.tz,
         sessionFilter: incomingLesson.sf,
+        answerMode: incomingLesson.am,
         orderIndex: lessonOrderIndex,
       });
     } else {
@@ -435,6 +452,7 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
           back: incomingCard.b ?? '',
           tags: incomingCard.g,
           payload: incomingCard.p,
+          answerMode: incomingCard.am,
         });
       } else {
         const update = diffCard(incomingCard, existingCard);

@@ -34,7 +34,8 @@ async function fetchDecksAndCards() {
   const courseNameMap = new Map(courses.map((c) => [c.id, c.name]));
   const courseColourMap = new Map(courses.map((c) => [c.id, c.colour ?? '']));
   const lessonNameMap = new Map(lessons.map((l) => [l.id, l.name]));
-  return { courseNameMap, courseColourMap, lessonNameMap, cards };
+  const lessonAnswerModes = new Map(lessons.map((lesson) => [lesson.id, lesson.answerMode]));
+  return { courseNameMap, courseColourMap, lessonNameMap, lessonAnswerModes, cards };
 }
 
 /**
@@ -107,7 +108,7 @@ function cardToRow(
 }
 
 const CSV_WARNING =
-  '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
+  '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose answer modes, review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
 
 export async function exportCardsCsv(): Promise<string> {
   const maps = await fetchDecksAndCards();
@@ -119,7 +120,7 @@ export async function exportCardsCsv(): Promise<string> {
 }
 
 const TSV_WARNING =
-  '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
+  '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose answer modes, review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
 
 export async function exportCardsTsv(): Promise<string> {
   const maps = await fetchDecksAndCards();
@@ -216,6 +217,7 @@ export async function exportCardsJson(): Promise<string> {
     tags: c.tags ?? [],
     deck: resolveDeckDisplay(c, maps).name,
     type: c.type,
+    answerMode: c.answerMode ?? maps.lessonAnswerModes.get(c.primaryLessonId ?? '') ?? 'reveal',
   }));
   return JSON.stringify(items, null, 2);
 }

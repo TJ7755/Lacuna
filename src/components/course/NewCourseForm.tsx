@@ -1,37 +1,25 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { lazy, Suspense, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
-import { StepSwap } from '../ui/StepSwap';
 import { useToast } from '../ui/Toast';
 import { createCourse } from '../../db/courseRepository';
 import { createLesson } from '../../db/lessonRepository';
 import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
-import { DateTimePicker } from '../ui/DateTimePicker';
+import { CourseStudyTarget } from './CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import type { CourseSchedulingMode } from '../../db/types';
-
-const ShareCodeImportPanel = lazy(() =>
-  import('../import/UnifiedImportPanel').then((module) => ({
-    default: module.ShareCodeImportPanel,
-  })),
-);
 
 interface NewCourseFormProps {
   onClose: () => void;
 }
 
-/**
- * A focused overlay for starting a new course. Mirrors CardEditOverlay's modal
- * chrome (backdrop, centred card, Escape to cancel). The default path creates a
- * named course with an initial lesson; the alternate path imports a pasted share
- * code through the existing unified import workflow.
- */
+/** Create an empty course with an explicit study target. */
 export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -47,7 +35,6 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<'create' | 'import'>('create');
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -89,16 +76,6 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
     }
   }
 
-  async function handleShareImport(courses: number, cards: number, courseIds: string[]) {
-    notify(
-      `Added ${courses} course${courses === 1 ? '' : 's'} and ${cards} card${cards === 1 ? '' : 's'}.`,
-      'positive',
-    );
-    onClose();
-    const courseId = courseIds[0];
-    if (courseId) void navigate(`/course/${courseId}`);
-  }
-
   return createPortal(
     <motion.div
       ref={trapRef}
@@ -114,7 +91,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
           if ((e.target as Element).closest('[data-date-time-picker-popover]')) return;
           e.preventDefault();
           onClose();
-        } else if (mode === 'create' && e.key === 'Enter') {
+        } else if (e.key === 'Enter') {
           if ((e.target as Element).closest('[data-date-time-picker]')) return;
           e.preventDefault();
           void handleCreate();
@@ -150,154 +127,61 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
           </button>
         </header>
 
-        <div className="flex gap-2 px-6 pt-5">
-          <button
-            type="button"
-            onClick={() => setMode('create')}
-            aria-pressed={mode === 'create'}
-            className={cn(
-              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
-              mode === 'create'
-                ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
-                : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
+        <div className="flex flex-col gap-5 px-6 py-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+              Course name
+            </label>
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (e.target.value.trim()) setNameError(null);
+              }}
+              placeholder="Course name"
+              autoFocus
+              disabled={saving}
+              aria-invalid={nameError ? 'true' : undefined}
+              aria-describedby={nameError ? 'new-course-name-error' : undefined}
+              className={cn(
+                'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
+                nameError ? 'border-negative' : 'border-line',
+                'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
+                'disabled:opacity-40',
+              )}
+            />
+            {nameError && (
+              <p id="new-course-name-error" role="alert" className="text-sm text-negative">
+                {nameError}
+              </p>
             )}
-          >
-            Create new
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('import')}
-            aria-pressed={mode === 'import'}
-            className={cn(
-              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
-              mode === 'import'
-                ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
-                : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
-            )}
-          >
-            Import share code
-          </button>
+          </div>
+
+          <CourseStudyTarget
+            schedulingMode={schedulingMode}
+            setSchedulingMode={setSchedulingMode}
+            targetError={targetError}
+            setTargetError={setTargetError}
+            saving={saving}
+            targetRef={targetRef}
+            datePickerRef={datePickerRef}
+            examDate={examDate}
+            setExamDate={setExamDate}
+            setExamDateValid={setExamDateValid}
+            timeZone={timeZone}
+          />
         </div>
 
-        <StepSwap stepKey={mode} direction={mode === 'import' ? 1 : -1} moveFocus>
-          {mode === 'create' ? (
-            <>
-              <div className="flex flex-col gap-5 px-6 py-6">
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                    Course name
-                  </label>
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (e.target.value.trim()) setNameError(null);
-                    }}
-                    placeholder="Course name"
-                    autoFocus
-                    disabled={saving}
-                    aria-invalid={nameError ? 'true' : undefined}
-                    aria-describedby={nameError ? 'new-course-name-error' : undefined}
-                    className={cn(
-                      'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
-                      nameError ? 'border-negative' : 'border-line',
-                      'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
-                      'disabled:opacity-40',
-                    )}
-                  />
-                  {nameError && (
-                    <p id="new-course-name-error" role="alert" className="text-sm text-negative">
-                      {nameError}
-                    </p>
-                  )}
-                </div>
-
-                <fieldset
-                  ref={targetRef}
-                  aria-describedby={targetError ? 'course-target-error' : undefined}
-                >
-                  <legend className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
-                    Study target
-                  </legend>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(
-                      [
-                        ['exam', 'Exam date', 'Schedule towards a deadline.'],
-                        ['steady', 'Steady retention', 'Keep knowledge available long term.'],
-                      ] as const
-                    ).map(([value, label, description]) => (
-                      <label
-                        key={value}
-                        className={cn(
-                          'cursor-pointer rounded-xl border px-3 py-3 transition-colors',
-                          schedulingMode === value
-                            ? 'border-accent bg-accent-soft'
-                            : 'border-line hover:border-line-strong',
-                        )}
-                      >
-                        <span className="flex items-center gap-2 text-sm font-medium text-ink">
-                          <input
-                            type="radio"
-                            name="course-scheduling-mode"
-                            value={value}
-                            checked={schedulingMode === value}
-                            onChange={() => {
-                              setSchedulingMode(value);
-                              setTargetError(null);
-                            }}
-                            disabled={saving}
-                          />
-                          {label}
-                        </span>
-                        <span className="mt-1 block pl-6 text-xs leading-relaxed text-ink-faint">
-                          {description}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  {targetError && (
-                    <p id="course-target-error" role="alert" className="mt-2 text-sm text-negative">
-                      {targetError}
-                    </p>
-                  )}
-                </fieldset>
-
-                {schedulingMode === 'exam' && (
-                  <div ref={datePickerRef}>
-                    <DateTimePicker
-                      value={examDate}
-                      onChange={setExamDate}
-                      onValidityChange={setExamDateValid}
-                      timeZone={timeZone}
-                      label="Exam date and time"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
-                <Button variant="ghost" onClick={onClose} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={() => void handleCreate()} disabled={!canCreate}>
-                  {saving ? 'Creating…' : 'Create'}
-                </Button>
-              </footer>
-            </>
-          ) : (
-            <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
-              <p className="mb-4 text-sm leading-relaxed text-ink-soft">
-                Paste a Lacuna share code to add a copy without changing existing courses. LAC0–LAC3
-                codes are supported.
-              </p>
-              <Suspense fallback={<p className="text-sm text-ink-faint">Loading importer…</p>}>
-                <ShareCodeImportPanel onCancel={onClose} onShareImport={handleShareImport} />
-              </Suspense>
-            </div>
-          )}
-        </StepSwap>
+        <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => void handleCreate()} disabled={!canCreate}>
+            {saving ? 'Creating…' : 'Create'}
+          </Button>
+        </footer>
       </motion.div>
     </motion.div>,
     document.body,

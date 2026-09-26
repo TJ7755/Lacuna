@@ -1,13 +1,7 @@
 import { clozeAnswerText } from '../../components/markdown/cloze';
 import { CURRENT_ITEM_PAYLOAD_VERSION, type Card } from '../../db/types';
 
-/** Whether the configured typing presentation can answer this ordinary card. */
-export function isTypingEligible(card: Pick<Card, 'type' | 'payload'>): boolean {
-  return (
-    card.payload === undefined &&
-    (card.type === 'front_back' || card.type === 'basic_reversed' || card.type === 'cloze')
-  );
-}
+export { isTypingEligible } from '../../utils/answerMode';
 
 /** Resolve the text used to compare a typed answer. */
 export function typingExpectedAnswer(

@@ -1,4 +1,4 @@
-# Lacuna — version 0.2.10
+# Lacuna — version 0.2.11
 
 ## Unreleased
 
@@ -6,6 +6,73 @@
   and touch layouts. This separates Show answer from Yes instead of overlapping them.
   Motion speed settings scale the transition; reduced motion swaps immediately.
   Implements direction A from the `prototype/card-control-motion` design study.
+
+- Kept the installed Windows upgrade probe clear of the downloaded-update
+  dialogue while it records baseline study data, then installed the same verified
+  update and checked that the records survived.
+
+- Fixed QR import camera cleanup: stopping or leaving the importer releases the
+  camera, including when startup completes after cancellation. Camera permission
+  errors remain visible after the scanner closes.
+
+- Added a dedicated Import screen beside New course, with Lacuna course, Anki and
+  text/spreadsheet entry points and automatic file routing. Reused the card import
+  input and review UI inline, with destination and study-target choices during review.
+  Existing lessons and new lessons/courses use the same atomic import writer. Shared
+  course files, codes and QR imports reuse the Share workflow and open the imported
+  course. New course now handles empty course creation only. Back navigation matches
+  the existing editors, with a reserved navigation row keeping headings and content
+  stationary across import paths.
+
+## 0.2.11 beta — offline course files, authoring and study improvements
+
+- Fixed packaged release checks timing out when the window already has its route title.
+- Explicitly validated inspector callbacks in the installed-upgrade probe before invocation.
+
+- Added offline `.lacuna` course files to Share. Files include referenced images, audio and
+  occlusion diagrams once each, without personal study history. File imports preview before
+  confirmation and retain published-course update handling. Missing or corrupt media is
+  rejected; media and course content import atomically. Text and QR codes remain available.
+  Review hardening preserves existing recipient media metadata, keeps Blob reads within the
+  export transaction, and prevents slower inspections from replacing a newer preview.
+
+- Replaced inline card import with a fixed-size, two-step dialogue. Paste or upload,
+  review real Markdown/cloze previews, and optionally add independent reverse cards.
+  Undo returns to the input step with the draft intact; it never deletes study data.
+  New courses and lessons can be created with their imported cards, retaining the
+  chosen study target. Anki packages preserve scheduling and media, and failed imports
+  retain their drafts without leaving partially created destinations. Keyboard focus stays
+  within the dialogue when tabbing in either direction. Anki images and audio preview
+  directly from the package without saving assets before confirmation. Generated
+  reverses retain the original card’s authored answer mode.
+
+- Moved typed answers into authoring: choose a lesson default, override individual cards
+  in the editor/creator, or change selected cards together. Study sessions use those choices
+  with the existing offline comparison and self-marking. Removed the global typing switch.
+  Restoring a draft or leaving Author mode cannot change a hidden answer-mode choice.
+- Preserved answer modes through backups, course sharing and author updates; standalone
+  card JSON exports include the effective mode so re-import does not depend on a lesson.
+
+- Replaced dashboard course countdown headings with a calendar icon and the exam date.
+  Steady retention uses an infinity icon with a hover description and screen-reader label;
+  past exams retain their date and subdued warning colour. The calendar is optically
+  aligned with the date lettering rather than just its line box. Browser navigation
+  checks now locate the dated card using its updated accessible text.
+
+- Separated Practice session completion from predicted recall. The top bar now fills
+  as the captured work is cleared and reaches 100% when finished; predicted recall
+  or secured proportion stays separately labelled in the header and report.
+- Stopped ordinary Practice/FSRS sessions immediately repeating or alternating the
+  last cards to chase an exam target. After any rating, a card waits until its saved
+  due time before it can return in that session. Undo restores eligibility; due-only
+  review, daily limits, new-card caps and planned revision retain their own rules.
+
+- Simplified the session report to a goal heading, reviewed count, accuracy and a thin
+  progress bar. Timing, focus, progress change and ratings sit under Session details.
+  Removed completion badges, confetti and redundant copy; aligned actions with the
+  study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
+
+
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.
 - Capped combined AI invitation configuration at 48 KiB to leave room for other

@@ -40,6 +40,59 @@ app:
   back is a front/back card; a single column containing cloze notation becomes a
   cloze card; otherwise the row is skipped.
 
+### Import screen (`src/pages/ImportPage.tsx`)
+
+**Import** beside **New course** on Courses opens a dedicated screen. Choose a Lacuna
+course (file, share code or QR), an Anki package, or text/spreadsheet cards. Dropping
+or choosing a file selects its import path automatically. The welcome import link
+opens the same screen. Each selected import path uses the editors’ muted left-chevron Back control above
+the title. Its navigation row stays reserved on the chooser so the heading and content
+do not shift when moving between import paths. New course remains focused on creating an empty course.
+
+The screen reuses the card import dialogue's input and review components inline.
+After reviewing content, choose a new course with an explicit study target, a new
+lesson in an existing active course, or an existing lesson. Undo retains the content
+and destination settings. Confirmation imports through the existing atomic writer
+and opens the destination. Anki scheduling and media are preserved.
+
+Lacuna files and codes reuse the Share page's shared-course importer, including
+preview, media validation, QR scanning and published-course update matching. A
+successful import opens its course. The Share page retains the same component for
+existing entry points; backup restoration remains separate.
+
+### Card import dialogue (`src/components/import/CardImportDialog.tsx`)
+
+Card-list imports use a fixed-size two-step dialogue: **Add content → Review cards**.
+The central area scrolls within the available viewport; the header, footer and outer
+bounds remain stable between steps. The input supports pasted text, uploaded files,
+drag and drop, automatic format detection and a manual format override.
+
+- The dedicated Import screen configures new courses during review and creates an
+  initial Lesson 1 with their imported cards.
+- Add lesson offers **Import cards** with an editable lesson title. Existing-lesson
+  and course-bank imports display their destination without renaming it.
+- **Undo** on the review step means return to Add content. It preserves the title,
+  text/file, manual format and reverse setting. It does not mutate or delete records.
+- **Also create reverse** applies only to non-empty, plain front/back cards without
+  structured item payloads. Each reverse swaps the content, copies tags and the
+  authored answer mode, shares its
+  original's Concept and starts with independent scheduling. Cloze and Anki package
+  cards are not automatically reversed. Duplicate warnings include generated reverses.
+- Previews use the normal card-content renderer, with separate answer reveals and
+  previous/next navigation. All originals can be inspected; the reverse preview is
+  shown beside an eligible original when enabled. Anki package images and audio use
+  temporary preview URLs, released when review closes or the package changes;
+  reviewing never saves media assets.
+- The 5,000-card limit includes generated reverses. Text over 500,000 characters is
+  rejected rather than silently truncated. Anki's existing compressed/uncompressed
+  limits remain enforced by its parser. Warnings report skipped rows/cards.
+- New destinations and cards commit atomically. APKG media is ingested before the
+  persistence transaction, then scheduling/history and card records commit together.
+  Failures preserve the draft for correction/retry. Closing and duplicate submissions
+  are blocked during a write. Success closes the dialogue and confirms the card count.
+- Share codes use **Import → Lacuna course** or the Share page, preserving
+  lineage/update routing; full backup restoration remains a separate operation.
+
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
 
 A single, reusable export UI offering multiple output formats:
@@ -56,6 +109,7 @@ A single, reusable export UI offering multiple output formats:
 - **Plain text** — human-readable Q:/A: format with course, lesson, and tag metadata.
 - CSV, TSV, Markdown, JSON-array and plain-text exports are Card-only. They are not a Question
   backup; use Full backup or a Course share for Question definitions.
+- **Course file** — course material with media, saved as `.lacuna` from the dedicated Share page.
 - **Course share code** — compact, copy-pasteable course material generated from the dedicated
   Share page via `buildCourseShareCode`; it is not part of this full-backup/card-export panel.
 
@@ -66,7 +120,7 @@ A single, reusable export UI offering multiple output formats:
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
   progress, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions`, `concepts`,
   `questions`, `questionConcepts` and `questionAttempts`). Backups are
-  the route that carries media between machines (share codes deliberately do not, §13); an
+  one route that carries media between machines; course files also carry media, while text share codes do not. An
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
   `lacuna-asset://` references. Older backups are normalised through the pure v24 converter;
@@ -121,6 +175,26 @@ A single, reusable export UI offering multiple output formats:
   can also be written to a chosen folder so it survives clearing browser data.
   Where unsupported, the UI explains this and points to manual export.
 
+### Course files (`src/db/courseFile.ts`, `SharePage`, `/share`)
+
+**Save course file** exports a `.lacuna` file; **Choose course file** reads it into the
+existing import preview. Both work locally without a relay, account or network connection.
+The recipient confirms before any data is written. Published files use the same lineage
+matching and update review as share codes.
+
+The file is a versioned JSON envelope (`format: "lacuna-course"`, `version: 1`) containing
+an existing v3 course-share payload and its referenced media as `BackupAsset` records.
+Card, note and Question media references remain intact. Occlusion diagrams are gathered
+from their asset hashes, and each required image or audio asset is included once. The
+content scope matches course share codes, including their exclusion of unassigned bank
+material; personal review history, scheduling state and unrelated media are excluded.
+
+Files are limited to 100 MiB, checked before reading a selected file and again when decoding
+or exporting. Unsupported envelopes, invalid payloads, duplicate or unrelated assets,
+missing media and media whose SHA-256 hash does not match its bytes are rejected. Media
+and course content commit together; a failed import leaves neither partial content nor
+new orphaned assets. Export refuses missing media instead of producing an incomplete file.
+
 ### Course sharing — share codes (`src/db/share.ts`, `SharePage`, `/share`)
 
 A dedicated **Share** tab in the sidebar turns a whole course into a single, compact,
@@ -152,12 +226,9 @@ never one person's scheduling progress or review history.
   reference in card and note Markdown with placeholder text (`[Image omitted from share
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
   not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
-  for the recipient, and the study face falls back to each card's plain-text content. Solving
-  asset transport properly needs either a companion asset file or the Arc 12 relay, so the
-  chosen behaviour is **local and backup only, with the failure made loud**: the Share page
-  counts affected cards — asset-bearing _and_ occlusion-generated — names them, and says what
-  the recipient will actually receive. Backups carry assets properly (`BackupFile.assets`), so
-  this is a share-code and published-lineage limitation only.
+  for the recipient, and the study face falls back to each card's plain-text content. The
+  Share page names affected cards and directs users to **Save course file** to include media.
+  This limitation applies to text/QR codes; course files and full backups carry the assets.
 - **What it omits:** personal FSRS memory state, Card review history, Question Attempts and Question
   scheduling state, plus suspended/buried/flag state on Cards.
   Imported cards always start with clean scheduling for their new owner. Lesson exposures,
@@ -357,3 +428,11 @@ uses.
 
 
 [Specification index](../SPEC.md)
+
+### Authored answer modes
+
+Full backups and course shares preserve `Lesson.answerMode` defaults and optional
+`Card.answerMode` overrides, including explicit Reveal overrides on typing lessons.
+Shared-course updates treat these as authored content, preserving learner review history.
+Standalone JSON card exports include each card's resolved mode; re-import keeps that
+explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.

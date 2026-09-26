@@ -1,7 +1,7 @@
 {
   "name": "lacuna",
   "private": true,
-  "version": "0.2.10",
+  "version": "0.2.11",
   "packageManager": "bun@1.4.0",
   "type": "module",
   "main": "electron/dist-electron/main.js",
@@ -27,7 +27,7 @@
     "test": "vitest run",
     "test:ci:unit": "vitest run --maxWorkers=1",
     "test:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp test",
-    "test:coverage": "vitest run src/course/path.test.ts src/course/unlock.test.ts src/fsrs/session.test.ts src/db/lineageDiff.test.ts --coverage --maxWorkers=1",
+    "test:coverage": "vitest run src/course/path.test.ts src/course/unlock.test.ts src/fsrs/session.test.ts src/pages/learn/practiceQueue.test.tsx src/db/lineageDiff.test.ts --coverage --maxWorkers=1",
     "test:coverage:recovery": "vitest run --config tests/config/vitest.recovery.config.ts --coverage --maxWorkers=1",
     "test:coverage:risk": "vitest run --config tests/config/vitest.risk.config.ts --coverage --maxWorkers=1",
     "test:e2e:web": "playwright test -c tests/config/playwright.web.config.ts",

@@ -1,3 +1,4 @@
+import { LazyCardImportDialog as CardImportDialog } from '../import/LazyCardImportDialog';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
@@ -26,6 +27,7 @@ export function AddLessonControl({ courseId, lessonCount, onCreated }: AddLesson
   const { notify } = useToast();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(() => defaultLessonName(lessonCount));
+  const [importingCards, setImportingCards] = useState(false);
   const [saving, setSaving] = useState(false);
 
   function startAdd() {
@@ -53,6 +55,26 @@ export function AddLessonControl({ courseId, lessonCount, onCreated }: AddLesson
     }
   }
 
+  if (importingCards)
+    return (
+      <CardImportDialog
+        initialTitle={name}
+        titleLabel="Lesson title"
+        onCancel={() => setImportingCards(false)}
+        onImport={async (content, title) => {
+          const { importCardsToDestination } = await import('../../db/cardImport');
+          const result = await importCardsToDestination(
+            { kind: 'lesson', courseId, title },
+            content,
+          );
+          setImportingCards(false);
+          setOpen(false);
+          notify(`${result.count} cards imported.`, 'positive');
+          onCreated?.(result.lesson!);
+        }}
+      />
+    );
+
   if (open) {
     return (
       <div className="flex w-full flex-col gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3">
@@ -72,8 +94,21 @@ export function AddLessonControl({ courseId, lessonCount, onCreated }: AddLesson
           />
         </label>
         <div className="flex gap-2">
-          <Button variant="primary" size="sm" onClick={() => void save()} disabled={saving || !name.trim()}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void save()}
+            disabled={saving || !name.trim()}
+          >
             {saving ? 'Creating…' : 'Create lesson'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setImportingCards(true)}
+            disabled={saving}
+          >
+            Import cards
           </Button>
           <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
             Cancel

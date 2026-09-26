@@ -74,6 +74,7 @@ import {
   makeSessionContext,
   selectNext,
   sessionComplete,
+  sessionCompletionProgress,
   sessionProgress,
   sessionServePool,
 } from '../../fsrs/session';
@@ -95,7 +96,6 @@ import { linesModeSequencesByCard } from '../../db/linesModeCards';
 import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
 import { filterSessionCardPool } from '../../db/search';
 import type { CardFilter } from '../../db/search';
-import type { TypingSetting } from '../../state/typingSetting';
 import { FILTER_LABELS } from './types';
 import type {
   LearnModeType,
@@ -168,7 +168,6 @@ export interface UseLearnSessionParams {
   onStepFinished?: (summary: SessionSummary) => void;
   notify: ReturnType<typeof useToast>['notify'];
   distraction: DistractionTracker;
-  typingSetting: TypingSetting;
   startInFocusMode: boolean;
 }
 
@@ -201,7 +200,6 @@ export function useLearnSession({
   onStepFinished,
   notify,
   distraction,
-  typingSetting,
   startInFocusMode,
 }: UseLearnSessionParams) {
   const reviewSessionIdRef = useRef(sessionId ?? makeId());
@@ -280,6 +278,7 @@ export function useLearnSession({
   // been studied before (see the loading effect) — shown as a 'notes' phase
   // ahead of the first card, with a continue action that starts serving cards.
   const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
+  const answerModeLessonsRef = useRef<Map<string, Lesson>>(new Map());
   const [current, setCurrent] = useState<Card | null>(null);
   // Cards in this session's pool generated from a lines-mode Sequence, mapped to their
   // owning Sequence — loaded once alongside the card pool (see linesModeCards.ts). Drives
@@ -296,13 +295,15 @@ export function useLearnSession({
   // firstWordsHint.ts for the pure hint builders.
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
   // An occlusion-generated card's typing eligibility is decided per-card by whether its
-  // region resolves an answerText, never by the blanket typingSetting check that applies
+  // region resolves an answerText, never by the authored answer-mode check that applies
   // to ordinary front_back cards — its plain-text `back` fallback is not a typing target.
   const currentOcclusionData =
     current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
   const isTypingCard =
-    typingSetting === 'type' &&
     current !== null &&
+    (current.answerMode ??
+      answerModeLessonsRef.current.get(lessonId ?? current.primaryLessonId ?? '')?.answerMode ??
+      'reveal') === 'type' &&
     (current.occlusionRegionId !== undefined
       ? currentOcclusionData?.answerText !== undefined
       : isTypingEligible(current));
@@ -674,6 +675,7 @@ export function useLearnSession({
     (nextSummary: SessionSummary) => {
       if (!mountedRef.current || finalising.current) return;
       finalising.current = true;
+      if (nextSummary.reachedGoal) setSchedulerProgress(1);
       setCanUndo(false);
       lastAnswer.current = null;
       void (async () => {
@@ -1245,9 +1247,18 @@ export function useLearnSession({
       const ctx = makeSessionContext(
         sessionUnits,
         !plannedRevision && !isSimpleMode && filterParams.includes('due') ? 'due' : 'objective',
+        plannedRevision || isSimpleMode ? undefined : cards,
       );
       ctxRef.current = ctx;
       cardsRef.current = cards;
+      const answerLessonIds = [
+        ...new Set(cards.flatMap((card) => card.primaryLessonId ? [card.primaryLessonId] : [])),
+      ];
+      if (lessonId && !answerLessonIds.includes(lessonId)) answerLessonIds.push(lessonId);
+      const answerLessons = await db.lessons.bulkGet(answerLessonIds);
+      answerModeLessonsRef.current = new Map(
+        answerLessons.flatMap((lesson) => lesson ? [[lesson.id, lesson]] : []),
+      );
       try {
         linesModeMapRef.current = await linesModeSequencesByCard(cards);
       } catch {
@@ -1263,7 +1274,7 @@ export function useLearnSession({
       const initialProgress = sessionProgress(cards, ctx);
       const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
       const hasServeableCards = serveableCards.length > 0;
-      setSchedulerProgress(initialProgress);
+      setSchedulerProgress(sessionCompletionProgress(cards, ctx));
       setSessionCardIds(cards.map((card) => card.id));
       sessionCardOutcomesRef.current = new Map();
       setSessionCardOutcomes(sessionCardOutcomesRef.current);
@@ -1647,7 +1658,7 @@ export function useLearnSession({
 
         const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
         cardsRef.current = nextCards;
-        setSchedulerProgress(sessionProgress(nextCards, ctx));
+        setSchedulerProgress(sessionCompletionProgress(nextCards, ctx));
         if (practiceSessionRef.current) {
           await persistPracticeMilestone(nextCards, false);
         }
@@ -1828,7 +1839,7 @@ export function useLearnSession({
       cardsRef.current = cardsRef.current.map((c) =>
         c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
       );
-      setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
+      setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx));
       cooldowns.current = snap.cooldowns;
       revisionCovered.current = snap.revisionCovered;
       revisionImproved.current = snap.revisionImproved;
@@ -1881,7 +1892,7 @@ export function useLearnSession({
       });
     }
     progressCacheRef.current.dirty = true;
-    setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
+    setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx));
     const hasRemainingCards = isSimpleMode
       ? simpleQueue.current.some((card) => !simpleMastered.current.has(card.id))
       : sessionServePool(cardsRef.current, ctx).length > 0;
@@ -2015,6 +2026,9 @@ export function useLearnSession({
     sessionCardOutcomes,
     setSessionCardOutcomes,
     schedulerProgress,
+    predictedRecall: !isSimpleMode && !plannedRevision && ctxRef.current
+      ? cachedSessionProgress(cardsRef.current, ctxRef.current)
+      : 0,
     simpleProgress,
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,

@@ -36,6 +36,9 @@ migration copies it. Runtime Cards hydrate `reviewHistory`; an explicitly suppli
 history is authoritative. Legacy Deck/Folder types still serve historical upgrades even though
 the live stores are gone. Do not collapse the migration chain.
 
+Load dynamically imported validators before opening a Dexie transaction: a first module
+load can outlive the transaction and leave earlier writes committed.
+
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
 
@@ -46,7 +49,16 @@ pre-replacement restore point survives. Recovery merge and peer merge use differ
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
 must cover candidate snapshotting and merging as well as import.
 
+## Local Electron commands
+
+The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron application
+tests; otherwise packaged executables reject Chromium arguments as Node options.
+
 ## Browser evidence matters
+
+`html5-qrcode.start()` can resolve after its view closes. Camera cleanup must also
+run after that pending start resolves; stopping only during unmount can leave a
+camera running. Start scanning after the scanner element mounts.
 
 On local macOS WebKit, Playwright's offline `page.reload()` can fail with an internal browser
 error. The mobile WebKit gate covers offline in-app navigation; the Chromium gate covers cold
@@ -54,6 +66,9 @@ offline reload. Do not claim the WebKit test proves an offline document reload.
 
 CPU-profiler startup and Playwright accessibility queries can dominate renderer traces.
 Keep untraced controls and inspect stacks before attributing task time to application code.
+
+Parallel Playwright invocations need distinct `--output` directories. Each runner clears
+its output directory, so shared output can delete another run's active traces at teardown.
 
 Playwright's relative JSON report path resolves beneath the configuration directory here.
 Use an absolute `PLAYWRIGHT_JSON_OUTPUT_NAME` to keep measurement reports in root artefacts.
@@ -122,6 +137,8 @@ desktop AI uses local IPC. See [engineering notes](docs/maintenance/engineering-
 Hash routing needs no server catch-all: missing hashed assets must remain 404. Derive the
 app-shell precache from emitted imports and rerun cold offline Cards reload after bundle changes.
 Workers must use the ID and share-codec utilities without importing database initialisation.
+Course-file operations must load with the Share route: deferring their module until the first
+button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
 

@@ -18,6 +18,8 @@ const observedContexts: {
 }[] = [];
 
 vi.mock('../../state/useCourseData', () => ({
+  useCourse: () => ({ id: 'course-1', lessonViewMode: 'edit' }),
+  useLesson: () => lesson,
   useCourseCards: () => mockCourseCards,
   useLessonBackingDeck: () => mockPreparedDeck,
   useLessonCardLinks: () => mockLinks,

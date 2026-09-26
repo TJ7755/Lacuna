@@ -21,7 +21,7 @@ import type { LessonViewMode } from '../state/lessonViewMode';
  * this gate rather than reading lessonViewMode fields directly, so that any
  * future change to locking rules only needs to change this function's body.
  */
-export function canEditLessons(course: Course): boolean {
+export function canEditLessons(course: Pick<Course, 'distributedCopy' | 'lessonViewMode'>): boolean {
   return course.distributedCopy?.locked !== true;
 }
 
@@ -31,12 +31,12 @@ export function canEditLessons(course: Course): boolean {
  * Falls back to 'study' for courses without an explicit lessonViewMode
  * (e.g. an old backup restored after this field became mandatory).
  */
-export function resolveLessonViewMode(course: Course): LessonViewMode {
+export function resolveLessonViewMode(course: Pick<Course, 'distributedCopy' | 'lessonViewMode'>): LessonViewMode {
   if (!canEditLessons(course)) return 'study';
   return course.lessonViewMode ?? 'study';
 }
 
 /** Whether course-path lesson nodes should expose authoring and reordering controls. */
-export function isLessonAuthoringMode(course: Course): boolean {
+export function isLessonAuthoringMode(course: Pick<Course, 'distributedCopy' | 'lessonViewMode'>): boolean {
   return resolveLessonViewMode(course) === 'edit';
 }

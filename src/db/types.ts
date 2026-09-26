@@ -672,7 +672,11 @@ export interface Occlusion {
 }
 
 /** A learning unit on the course path: notes plus the cards taught in it. */
+export type AnswerMode = 'reveal' | 'type';
+
 export interface Lesson {
+  /** Default for cards without their own answer mode. */
+  answerMode?: AnswerMode;
   id: string;
   courseId: string;
   name: string;
@@ -845,6 +849,8 @@ export { CURRENT_ITEM_PAYLOAD_VERSION } from '../items/types';
 export type ItemPayload = SharedItemPayload;
 
 export interface Card {
+  /** Absent means inherit the lesson default; unassigned cards default to reveal. */
+  answerMode?: AnswerMode;
   id: string;
   /** Stable knowledge identity shared by alternate Card presentations. Required after schema v24. */
   conceptId: string;
@@ -1220,6 +1226,7 @@ export interface LineageIdMapping {
 
 /** The subset of a Lesson's fields `lineageDiff.ts` diffs on, captured for student-edit detection. */
 export interface LineageLessonSnapshot {
+  answerMode?: AnswerMode;
   name: string;
   description?: string;
   isExtension: boolean;
@@ -1239,6 +1246,7 @@ export interface LineageNoteSnapshot {
 
 /** The subset of a Card's fields `lineageDiff.ts` diffs on — content only, never FSRS fields. */
 export interface LineageCardSnapshot {
+  answerMode?: AnswerMode;
   type: CardType;
   front: string;
   back: string;

@@ -108,7 +108,8 @@ async function waitForDevTools(
             target.type === 'page' &&
             typeof target.url === 'string' &&
             target.url.startsWith('app:') &&
-            target.title === 'Lacuna',
+            typeof target.title === 'string' &&
+            (target.title === 'Lacuna' || target.title.endsWith(' · Lacuna')),
         );
         if (rendererReady) {
           rendererReadyAt ??= Date.now();

@@ -21,7 +21,7 @@ import {
   type ReviewHistoryEntry,
 } from './reviewHistory';
 import { db, makeId } from './schema';
-import type { Card, CardType, ItemPayload, LessonCardExposure, LessonCardLink } from './types';
+import type { AnswerMode, Card, CardType, ItemPayload, LessonCardExposure, LessonCardLink } from './types';
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;
   const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
@@ -88,7 +88,7 @@ export async function createCard(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload'> & { conceptId?: string },
+  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload' | 'answerMode'> & { conceptId?: string },
 ): Promise<Card> {
   try {
     await assertValidCardPayload(type, opts?.payload);
@@ -142,6 +142,7 @@ export async function createCard(
           courseId,
           primaryLessonId,
           payload: opts?.payload,
+          answerMode: opts?.answerMode,
         },
         now,
       );
@@ -165,6 +166,7 @@ export async function createCards(
     back: string;
     tags?: string[];
     payload?: ItemPayload;
+    answerMode?: AnswerMode;
     conceptId?: string;
   }[],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
@@ -209,6 +211,7 @@ export async function createCards(
               front: draft.front,
               back: draft.back,
               payload: draft.payload,
+              answerMode: draft.answerMode,
               stability: null,
               difficulty: null,
               lastReviewed: null,
@@ -251,7 +254,7 @@ export async function createCardWithReverse(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null },
+  opts?: { courseId?: string | null; primaryLessonId?: string | null; answerMode?: AnswerMode },
 ): Promise<{ card: Card; reverse: Card }> {
   return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
     const card = await createCard(deckId, 'front_back', front, back, tags, opts);
@@ -272,7 +275,7 @@ export async function createBasicReversedPair(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null },
+  opts?: { courseId?: string | null; primaryLessonId?: string | null; answerMode?: AnswerMode },
 ): Promise<{ card: Card; reverse: Card }> {
   return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
     const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
@@ -302,12 +305,14 @@ export async function createLessonCard(
   back: string,
   tags: string[] = [],
   payload?: ItemPayload,
+  answerMode?: AnswerMode,
 ): Promise<Card> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
   return createCard(deckId, type, front, back, tags, {
     courseId,
     primaryLessonId: lessonId,
     payload,
+    answerMode,
   });
 }
 
@@ -318,9 +323,10 @@ export async function createLessonCardWithReverse(
   front: string,
   back: string,
   tags: string[] = [],
+  answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
-  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: lessonId });
+  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: lessonId, answerMode });
 }
 
 /** Lesson-scoped equivalent of {@link createBasicReversedPair}. */
@@ -330,11 +336,13 @@ export async function createLessonBasicReversedPair(
   front: string,
   back: string,
   tags: string[] = [],
+  answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
   return createBasicReversedPair(deckId, front, back, tags, {
     courseId,
     primaryLessonId: lessonId,
+    answerMode,
   });
 }
 
@@ -349,9 +357,10 @@ export async function createCourseCard(
   back: string,
   tags: string[] = [],
   payload?: ItemPayload,
+  answerMode?: AnswerMode,
 ): Promise<Card> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null, payload });
+  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null, payload, answerMode });
 }
 
 /** Course-bank equivalent of {@link createCardWithReverse}. */
@@ -360,9 +369,10 @@ export async function createCourseCardWithReverse(
   front: string,
   back: string,
   tags: string[] = [],
+  answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: null });
+  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: null, answerMode });
 }
 
 /** Course-bank equivalent of {@link createBasicReversedPair}. */
@@ -371,9 +381,10 @@ export async function createCourseBasicReversedPair(
   front: string,
   back: string,
   tags: string[] = [],
+  answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: null });
+  return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: null, answerMode });
 }
 
 /**

@@ -96,7 +96,7 @@ export function ClosingScenes() {
         title="Your study data stays on your device."
         drawings={<DeviceIllustration />}
       >
-        <Link to="/share?intent=import">Import a shared course</Link>
+        <Link to="/import">Import a shared course</Link>
       </ClosingScene>
     </>
   );

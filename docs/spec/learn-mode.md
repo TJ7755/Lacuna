@@ -2,7 +2,7 @@
 
 A Learn session may study a lesson, a course Practice node, a **single deck**, or **every
 deck at once** (the legacy global review session). FSRS-backed sessions run through one engine
-so ordering and progress stay objective-derived; lesson teaching uses the Simple-mode loop.
+so ordering and predicted recall stay objective-derived; lesson teaching uses the Simple-mode loop.
 Course-guided sessions run inside the persistent conductor, while direct legacy routes remain
 available for standalone entry.
 
@@ -13,7 +13,16 @@ available for standalone entry.
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.
 2. If there is nothing to study or the objective is already met, go straight to the
    **report**.
-3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
+3. Otherwise **serve** cards one at a time until the captured work is cleared, the
+   remaining objective is met, a configured limit is reached, or the user exits.
+
+The top bar shows **session completion**, starting at zero for outstanding work and
+reaching 100% when that work is finished. It counts the captured eligible cards which
+no longer need a review now, independently of predicted recall. Undo restores the
+card and reverses its completion. A daily limit or early exit does not manufacture
+100% completion. Predicted recall (or secured proportion) appears separately in the
+header and remains the before/after measurement in the report. Planned revision
+retains its time-budget bar; Simple Learn retains its successful-answer segments.
 
 Maximum reviews per day and the daily review goal count persisted review events in the user's
 local calendar day, including repeat reviews and earlier sessions. A new Practice session reports
@@ -98,8 +107,13 @@ eligibility: selection rechecks the updated due dates after every answer, includ
 learning and relearning steps. Once no cards in the captured scope are due, the session
 finishes even if predicted exam readiness remains below target. Future-due cards and new
 cards without a due date cannot enter that queue. Exam-objective ordering and readiness
-reporting remain in use; ordinary curricular Practice and planned assessment revision
-retain their existing completion rules.
+reporting remain in use. Ordinary curricular Practice keeps its initial objective-based
+scope, then respects each saved due time after an answer. A reviewed card cannot be
+served again before that time, regardless of grade or queue size. Once every remaining
+card is waiting for its next review, the session finishes without claiming perfect
+recall. An ongoing session may serve a failed card again once its retry becomes due.
+The captured review counts make Undo restore eligibility without a second queue.
+Planned assessment revision retains its allocator and completion rules.
 
 In-memory, per session, to stop a just-failed card being shown again immediately:
 
@@ -119,24 +133,28 @@ Two modes, chosen in Settings (default **silent**):
 - **Manual:** the four FSRS buttons (Again/Hard/Good/Easy) are shown and the user
   grades directly; no inference is applied.
 
-### Typing setting (`src/state/typingSetting.ts`)
+### Authored answer mode
 
-Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode toggle above:
+Authors choose **Reveal answers** or **Type answers** on a lesson's card section.
+`Lesson.answerMode` supplies the default for current and future eligible cards. The card
+editor/creator and card-list selection controls offer **Use lesson setting**, **Reveal
+answer** and **Type answer**. `Card.answerMode` is an optional override; clearing it
+restores inheritance. Unconfigured lessons and unassigned cards default to reveal.
+These controls are available only in Author mode on editable, active courses.
 
-- **Reveal (default):** the ordinary flip-card flow — tap/press to reveal the answer.
-- **Type:** before reveal, an eligible card (front_back, basic_reversed, or cloze) shows a
-  text input; on reveal, the typed answer is compared against the expected answer
-  (`src/utils/answerComparison.ts`, front_back/basic_reversed use `back`, cloze uses the
-  joined deletion text via `clozeAnswerText`) and shown word-by-word with match/mismatch
-  highlighting. This was previously a dedicated `typing` card type; it is now a global
-  presentation mode that applies to any eligible card, so a course does not need
-  typing-specific cards to use it. Self-grading (Yes/No or the four FSRS buttons) is
-  unchanged — the comparison is feedback only, never an automatic grade. How strictly the
-  comparison matches is a separate per-user setting, **grading strictness**
-  (`src/state/answerStrictness.ts`, chosen in Settings next to the typing toggle, default
-  **lenient**): lenient ignores case and punctuation (the original behaviour), standard
-  ignores case only, and exact requires both to match. `answerComparisonOptions` maps the
-  level to `AnswerComparisonOptions` for `compareAnswer`.
+Lesson sessions use the active lesson's default (including linked cards); course-wide
+and daily reviews use the card's primary lesson. An explicit card override wins in every
+session. Numeric/working items retain their own inputs; occlusions require answer text.
+
+Typing shows an input and **Check answer**. Enter reveals the expected answer with
+word-by-word comparison against the learner's answer. Yes/No or manual four-point
+self-grading still decides the result; there is no AI request or automatic marking.
+Comparison strictness remains a per-user setting in Settings (`src/state/answerStrictness.ts`).
+The former global typing switch no longer controls study sessions.
+
+Lesson defaults and card overrides travel through backups, course share codes and
+shared-course updates. Standalone card JSON exports resolve inheritance into an explicit
+answer mode, since they do not carry lessons. CSV/TSV and Markdown exports remain lossy.
 
 ### Structured-item verification
 

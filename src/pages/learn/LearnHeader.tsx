@@ -1,6 +1,5 @@
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '../../db/types';
-import { progressNoun } from '../../fsrs/objective';
 import {
   ClockIcon,
   EditIcon,
@@ -102,6 +101,7 @@ export function LearnHeader({
   singleDeck,
   unitDisplayName,
   sessionProgress,
+  predictedRecall,
   sessionCardIds,
   sessionCardOutcomes,
   filterParams,
@@ -133,6 +133,7 @@ export function LearnHeader({
   singleDeck: StudyUnit | null;
   unitDisplayName: string | null;
   sessionProgress: number;
+  predictedRecall: number;
   sessionCardIds: string[];
   sessionCardOutcomes: Map<string, SessionCardOutcome>;
   filterParams: CardFilter[];
@@ -169,12 +170,7 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
-  const progressName =
-    mode === 'simple'
-      ? 'Session progress'
-      : singleDeck && progressNoun(singleDeck) === 'secured'
-        ? 'Secured progress'
-        : 'Predicted score progress';
+  const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 
   return (
     <motion.header
@@ -207,6 +203,16 @@ export function LearnHeader({
           >
             {info.title}
           </h1>
+          {mode !== 'simple' && !plannedRevision && (
+            <div className="mb-1 flex flex-wrap justify-between gap-x-3 text-xs tabular text-ink-faint">
+              <span>{Math.round(displayedProgress * 100)}% complete</span>
+              <span>
+                {Math.round(predictedRecall * 100)}% {singleDeck
+                  ? singleDeck.examObjective === 'securedTopics' ? 'secured' : 'predicted recall'
+                  : 'predicted readiness'}
+              </span>
+            </div>
+          )}
           {info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
@@ -219,7 +225,7 @@ export function LearnHeader({
               label={progressName}
             />
           ) : (
-            <ObjectiveProgressTrack value={displayedProgress} label={progressName} m={m} />
+            <SessionProgressTrack value={displayedProgress} label={progressName} m={m} />
           )}
         </div>
 
@@ -341,7 +347,7 @@ export function LearnHeader({
   );
 }
 
-function ObjectiveProgressTrack({ value, label, m }: { value: number; label: string; m: number }) {
+function SessionProgressTrack({ value, label, m }: { value: number; label: string; m: number }) {
   const progress = Math.max(0, Math.min(1, value));
   return (
     // This track is now the session's only progress indicator, so it carries the
