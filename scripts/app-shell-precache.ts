@@ -23,13 +23,13 @@ export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[]
   const entry = chunks.find((chunk) => chunk.isEntry);
   if (!entry) throw new Error('Could not find the application entry for shell precaching.');
   // This shell component loads before worker control, so runtime caching can miss it.
-  const announcements = chunks.find((chunk) =>
-    /^assets\/RouteAnnouncement-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+  const announcements = chunks.filter((chunk) =>
+    /^assets\/(?:RouteAnnouncement|SharingAnnouncement)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
   return [
     ...new Set([
       ...collectStaticImports(chunks, entry),
-      ...(announcements ? collectStaticImports(chunks, announcements) : []),
+      ...announcements.flatMap((announcement) => collectStaticImports(chunks, announcement)),
     ]),
   ];
 }

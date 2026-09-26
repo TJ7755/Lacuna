@@ -71,6 +71,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
+to viewport bounding boxes before comparing positions. Playwright can scroll a
+control into view while clicking, without changing the content's layout.
+
 In Recharts composed charts, a Scatter's own data can replace the chart-level data
 used for axis hover selection. Use reference dots for fixed annotations; chart
 interaction tests must retain the real Recharts components to catch this.

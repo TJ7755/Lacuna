@@ -27,6 +27,10 @@ import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 
+const SharingAnnouncement = lazy(() =>
+  import('./SharingAnnouncement').then((module) => ({ default: module.SharingAnnouncement })),
+);
+
 const AiPanel = lazy(loadAiPanel);
 const StudySheet = lazy(() =>
   import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet })),
@@ -409,6 +413,11 @@ function AppShellLayout() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
           >
+            <ErrorBoundary fallback={null}>
+              <Suspense fallback={null}>
+                <SharingAnnouncement />
+              </Suspense>
+            </ErrorBoundary>
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
                 <RouteTransitions

@@ -84,6 +84,25 @@ describe('service-worker asset caching', () => {
     ]);
   });
 
+  it('precaches the optional sharing announcement needed for an offline shell', () => {
+    expect(
+      collectAppShellScripts([
+        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+        {
+          fileName: 'assets/SharingAnnouncement-SHARING1.js',
+          isEntry: false,
+          imports: ['assets/icons-ICONS001.js'],
+        },
+        { fileName: 'assets/icons-ICONS001.js', isEntry: false, imports: [] },
+      ]),
+    ).toEqual([
+      'assets/app-ENTRY001.js',
+      'assets/SharingAnnouncement-SHARING1.js',
+      'assets/icons-ICONS001.js',
+    ]);
+    expect(workbox.globPatterns).toContain('assets/SharingAnnouncement-*.css');
+  });
+
   it('retains shared Cards imports loaded before worker control without precaching the route', () => {
     const chunks = [
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },

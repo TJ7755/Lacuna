@@ -160,7 +160,9 @@ export function SharePage() {
   const [shareLink, setShareLink] = useState<{ shareId: string; revision: number } | null>(null);
   // Send step: one sharing method at a time. Generated outputs stay in state
   // while hidden, so switching method and back restores them.
-  const [selectedMethod, setSelectedMethod] = useState<ShareMethod | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<ShareMethod | null>(
+    searchParams.get('highlight') === 'share-link' ? 'link' : null,
+  );
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
@@ -653,6 +655,11 @@ export function SharePage() {
                     {selectedMethod === 'link' && (
                       <Button
                         variant="secondary"
+                        className={
+                          searchParams.get('highlight') === 'share-link'
+                            ? 'ring-2 ring-accent ring-offset-4 ring-offset-paper'
+                            : undefined
+                        }
                         onClick={() => void handleShareLink()}
                         disabled={!selectedCourseId || linkBusy}
                       >

@@ -83,6 +83,12 @@ test('reloads a visited card library with persisted data while offline', async (
     const cardsUrl = page.url();
 
     await expectCardsRouteCached(page);
+    await expect(cachedAssetPaths(page)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^\/assets\/SharingAnnouncement-[A-Za-z0-9_-]{8}\.js$/),
+        expect.stringMatching(/^\/assets\/SharingAnnouncement-[A-Za-z0-9_-]{8}\.css$/),
+      ]),
+    );
 
     const devtools = await context.newCDPSession(page);
     await devtools.send('Network.enable');
@@ -101,6 +107,7 @@ test('reloads a visited card library with persisted data while offline', async (
 
       await expect(page).toHaveURL(cardsUrl);
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'New sharing features' })).toBeVisible();
       await expect(cardsMain.getByRole('heading', { name: 'Cards', level: 1 })).toBeVisible();
       await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();
 
