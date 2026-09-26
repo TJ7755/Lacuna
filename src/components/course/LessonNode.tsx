@@ -74,7 +74,7 @@ export function LessonNode({
   // Hover/focus morphs the circle into a detail squircle (locked nodes stay
   // inert circles — their hint lives in the title tooltip instead).
   const [hovered, setHovered] = useState(false);
-  const expanded = hovered && interactive && detail !== undefined && !reorder?.lifted;
+  const expanded = hovered && interactive && detail !== undefined && !reorder?.enabled;
 
   // Replay a short settle-in whenever the status itself changes after mount
   // (most notably locked → available or available → completed), so a lesson
@@ -96,7 +96,13 @@ export function LessonNode({
   }, [status]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div
+      className="relative flex flex-col items-center gap-2"
+      style={{
+        transform: `translate(${reorder?.offset?.x ?? 0}px, ${reorder?.offset?.y ?? 0}px)`,
+        zIndex: reorder?.lifted ? 30 : undefined,
+      }}
+    >
       {/* Fixed 14x14 slot so the expansion overlays neighbours instead of
           shoving the path about; the button itself morphs within it. */}
       <div className="relative h-14 w-14">
@@ -147,7 +153,7 @@ export function LessonNode({
             'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
             'focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
             interactive ? 'cursor-pointer' : 'cursor-default',
-            reorder?.enabled && 'select-none',
+            reorder?.enabled && 'select-none cursor-grab',
             reorder?.lifted && 'z-20 cursor-grabbing opacity-70 shadow-lg shadow-accent/20',
             expanded && 'z-10 shadow-lg shadow-black/10',
             // Extension nodes use a dashed border to read as off-path enrichment.

@@ -73,6 +73,10 @@ export function CourseAnalytics({
       <FadeInView className="lg:col-span-2" delay={0} y={0}>
         <ChartCard
           title="Predicted exam-day score"
+          data={{
+            columns: ['Date', 'Predicted score (%)'],
+            rows: trajectory.map((point) => [point.label, point.retrievability]),
+          }}
           emptyDrawing="prediction"
           empty={trajectory.length < 2}
           emptyMessage="Study this course to start plotting your trajectory."
@@ -112,6 +116,15 @@ export function CourseAnalytics({
       <FadeInView className="lg:col-span-2" delay={0.06} y={0}>
         <ChartCard
           title="Lesson breakdown"
+          data={{
+            columns: ['Lesson', 'Cards', 'Mastery (%)', 'Completion (%)'],
+            rows: breakdown.map((point) => [
+              point.name,
+              point.cardCount,
+              point.masteryPct,
+              point.completionPct,
+            ]),
+          }}
           emptyDrawing="course"
           empty={breakdown.length === 0}
           emptyMessage="This course has no lessons yet."
@@ -169,6 +182,10 @@ export function CourseAnalytics({
       <FadeInView delay={0.12} y={0}>
         <ChartCard
           title="Card stability profile"
+          data={{
+            columns: ['Stability', 'Cards'],
+            rows: profile.map((point) => [point.range, point.count]),
+          }}
           emptyDrawing="stability"
           empty={cards.length === 0}
           emptyMessage="Add cards to see their stability profile."
@@ -197,6 +214,10 @@ export function CourseAnalytics({
       <FadeInView delay={0.18} y={0}>
         <ChartCard
           title="Review volume"
+          data={{
+            columns: ['Date', 'Reviews'],
+            rows: volume.map((point) => [point.label, point.reviews]),
+          }}
           emptyDrawing="activity"
           empty={!hasReviews}
           emptyMessage="Your daily review counts will appear here."

@@ -107,7 +107,6 @@ export function CardsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
-
       {/* Header */}
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <div>
@@ -147,6 +146,7 @@ export function CardsPage() {
           />
           <input
             type="search"
+            aria-label="Search all cards"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search all cards…"

@@ -54,7 +54,11 @@ export function StudyControls({
           >
             {isTypingCard ? (
               <div className="mx-auto w-full max-w-md">
+                <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
+                  Your answer
+                </label>
                 <input
+                  id="study-typed-answer"
                   ref={typingInputRef}
                   type="text"
                   value={typedAnswer}

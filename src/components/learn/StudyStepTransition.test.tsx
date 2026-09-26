@@ -106,15 +106,13 @@ describe('StudyStepTransition', () => {
     expect(actions.onContinue).toHaveBeenCalledOnce();
   });
 
-  it('keeps entering actions inert until their own animation ends', () => {
+  it('makes actions available before the entrance finishes', () => {
     vi.spyOn(motionSettings, 'speedMultiplier').mockReturnValue(1);
-    const { container } = renderTransition();
-    const actions = container.querySelector('.study-transition-actions')!;
-    expect(actions).toHaveAttribute('inert');
-    fireEvent.animationEnd(screen.getByRole('button', { name: 'Continue' }));
-    expect(actions).toHaveAttribute('inert');
-    fireEvent.animationEnd(actions);
-    expect(actions).not.toHaveAttribute('inert');
+    const onContinue = vi.fn();
+    const { container } = renderTransition({ onContinue });
+    expect(container.querySelector('.study-transition-actions')).not.toHaveAttribute('inert');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(onContinue).toHaveBeenCalledOnce();
   });
 
   it('makes actions available immediately when motion is disabled', () => {

@@ -117,7 +117,7 @@ aggregating across every course:
 - **Stability profile** — distribution of cards by stability range.
 
 Charts are wrapped in `ChartCard` (a consistent titled frame with an empty
-state), in a `lg:grid-cols-2` grid. `FadeInView` triggers the entrance
+state and keyboard-accessible **View data** tables for the plotted values and units), in a `lg:grid-cols-2` grid. `FadeInView` triggers the entrance
 animation on approach (`viewport amount: 0` with a 100px bottom margin) so
 charts below the fold are never invisible. Each chart container is `h-64` with
 `min-w-0` so a chart cannot push its grid track wider than its share.

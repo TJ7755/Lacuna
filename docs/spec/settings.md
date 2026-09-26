@@ -27,8 +27,8 @@ its navigation cannot drift from the rendered groups.
   the mobile drawer, the Learn touch sheet) skip enter/exit when the multiplier is 0
   rather than playing a zero-duration keyframe. Expanding panels (share codes, import
   previews, card-list choosers) fade; they do not animate `height` or `margin`.
-- **Input mode** (v0.0.2): `auto` (default — `touch` on touch devices,
-  `keyboard` otherwise), `touch`, or `keyboard`. The choice drives whether the
+- **Input mode** (v0.0.2): `auto` (default — initially uses the primary pointer, then follows mouse/keyboard
+  or touch/pen activity), `touch`, or `keyboard`. The choice drives whether the
   app renders bottom sheets vs. dropdowns, shows or hides swipe hints, and swaps
   hover-only affordances for always-visible ones. Persisted to `localStorage`.
   Switching to touch mode from the default font scale automatically sets the font

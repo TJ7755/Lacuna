@@ -325,7 +325,7 @@ describe('CardsPage', () => {
       makeCard({ id: 'c2', primaryLessonId: 'lesson-1', front: 'Banana' }),
     ];
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText('Search all cards…'), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search all cards' }), {
       target: { value: 'apple' },
     });
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');

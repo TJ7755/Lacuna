@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { type CSSProperties } from 'react';
 import { Button } from '../ui/Button';
 import { CheckIcon, ClockIcon } from '../ui/icons';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -47,7 +47,6 @@ export function StudyStepTransition({
   const m = speedMultiplier(motionSpeed);
   const incomplete = !summary.reachedGoal;
 
-  const [arrived, setArrived] = useState(false);
   const hasNext = !incomplete && Boolean(nextLabel) && !summary.revision?.nextWindowDay;
   const destination = summary.revision?.nextWindowDay
     ? `Next revision window: ${formatPlanDay(summary.revision.nextWindowDay)}`
@@ -118,13 +117,7 @@ export function StudyStepTransition({
             <h2>{destination}</h2>
           </div>
         )}
-        <div
-          className="study-transition-actions"
-          inert={m > 0 && !arrived}
-          onAnimationEnd={(event) => {
-            if (event.target === event.currentTarget) setArrived(true);
-          }}
-        >
+        <div className="study-transition-actions">
           {breakPending && (
             <Button variant="primary" size="lg" onClick={onTakeBreak}>
               Take a break

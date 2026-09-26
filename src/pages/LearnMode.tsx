@@ -27,6 +27,7 @@ import { LearnHeader } from './learn/LearnHeader';
 import { NavSidebar } from './learn/NavSidebar';
 import { FlipCard } from './learn/FlipCard';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './learn/StudyCardTransition';
+import { useStudyFocus } from './learn/useStudyFocus';
 import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../components/items/UnknownItemFace';
@@ -223,6 +224,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     startInFocusMode,
   });
 
+  const studyFocusRef = useStudyFocus(
+    current?.id, phase, editing || menuOpen || navOpen || hintsOpen,
+  );
+
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
@@ -264,6 +269,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     },
     [answer, notify, undoWithTransitionCancel],
   );
+
+  useEffect(() => {
+    if (editing || menuOpen || navOpen || hintsOpen) cardTransitionRef.current?.cancel();
+  }, [editing, menuOpen, navOpen, hintsOpen]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -343,7 +352,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         itemName="Card"
         answeredCount={sessionCardOutcomes.size}
         totalCount={sessionCardIds.length}
-        onAttempt={persistSimpleResume}
+        onAttempt={() => {
+          cardTransitionRef.current?.cancel();
+          persistSimpleResume();
+        }}
         onConfirm={() => {
           leavingSessionRef.current = true;
           clearSimpleSessionResume();
@@ -495,8 +507,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 clipped and the page scrolls as before. StudyControls reserves the same
                 space in both phases so this centred block does not shift on reveal. */}
             <main
+              ref={studyFocusRef}
+              tabIndex={-1}
+              aria-label="Study card"
               className={
-                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center ' +
+                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center outline-none ' +
                 'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
                 'pt-8 md:pt-12 ' +
                 (isTouchMode && !suppressClassicGrading

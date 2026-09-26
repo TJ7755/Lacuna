@@ -219,9 +219,10 @@ same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
 Curriculum locking controls study progression, not authoring. In Study mode, locked lesson
 nodes remain inert; in Author mode, they retain their locked appearance and status but open the
-ordinary lesson authoring view. Author mode also enables direct path reordering: hold a lesson
-node for 350 ms, then drag it to a lesson boundary and release. Moving before the hold cancels
-the gesture, as do Escape and pointer cancellation. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
+ordinary lesson authoring view. Author mode also enables direct path reordering: mouse and pen
+drags start after 8 px of movement; touch requires a 350 ms hold, leaving early movement free
+for scrolling. The lesson follows the pointer and neighbouring lessons make room. Escape and
+pointer cancellation abandon the move. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
 keyboard equivalent with live announcements. Reordering persists through the same
 `reorderLessons` repository operation used by Course Settings; checkpoint placement remains
 attached to its stable lesson anchor, while manual and automatic Practice positions and
