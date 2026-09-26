@@ -193,6 +193,7 @@ export function Analytics() {
         <FadeInView className="lg:col-span-2" delay={0.04} y={0}>
           <ChartCard
             title="Forecast"
+            data={{ columns: ['Date', 'Due cards', 'New cards'], rows: forecast.map((point) => [point.label, point.due, point.newCards]) }}
             emptyDrawing="prediction"
             empty={cards.length === 0}
             emptyMessage="Add cards to forecast reviews."
@@ -240,6 +241,7 @@ export function Analytics() {
         <FadeInView delay={0.06} y={0}>
           <ChartCard
             title="Predicted exam-day score"
+            data={{ columns: ['Date', 'Predicted score (%)'], rows: trajectory.map((point) => [point.label, point.retrievability]) }}
             emptyDrawing="prediction"
             empty={trajectory.length < 2}
             emptyMessage="Complete reviews to plot a trajectory."
@@ -279,6 +281,7 @@ export function Analytics() {
         <FadeInView delay={0.12} y={0}>
           <ChartCard
             title="Prediction accuracy"
+            data={{ columns: ['Date', 'Brier score', 'Predicted recall (%)', 'Actual recall (%)'], rows: prediction.map((point) => [point.label, point.brier.toFixed(3), Math.round(point.predicted * 100), Math.round(point.actual * 100)]) }}
             emptyDrawing="accuracy"
             description="Brier score · lower is better"
             empty={prediction.length === 0}
@@ -337,6 +340,7 @@ export function Analytics() {
         <FadeInView delay={0.18} y={0}>
           <ChartCard
             title="Review volume"
+            data={{ columns: ['Date', 'Reviews'], rows: volume.map((point) => [point.label, point.reviews]) }}
             emptyDrawing="activity"
             empty={!hasReviews}
             emptyMessage="Complete a review to see activity."
@@ -366,6 +370,7 @@ export function Analytics() {
         <FadeInView delay={0.24} y={0}>
           <ChartCard
             title="Study time"
+            data={{ columns: ['Date', 'Minutes'], rows: studyTime.map((point) => [point.label, point.minutes]) }}
             emptyDrawing="time"
             empty={!hasReviews}
             emptyMessage="Complete a review to see study time."
@@ -404,6 +409,7 @@ export function Analytics() {
         <FadeInView delay={0.3} y={0}>
           <ChartCard
             title="Observed recall by card age"
+            data={{ columns: ['Card age', 'Observed recall (%)', 'Reviews'], rows: retention.map((point) => [point.ageLabel, point.retention, point.count]) }}
             emptyDrawing="recall"
             empty={!hasReviews}
             emptyMessage="Complete a review to see recall."
@@ -436,6 +442,7 @@ export function Analytics() {
         <FadeInView delay={0.36} y={0}>
           <ChartCard
             title="Leech count by course"
+            data={{ columns: ['Course', 'Leeches'], rows: leeches.map((point) => [point.name, point.count]) }}
             emptyDrawing="leech"
             empty={leeches.length === 0}
             emptyMessage="No leech cards."
@@ -472,6 +479,7 @@ export function Analytics() {
         <FadeInView delay={0.42} y={0}>
           <ChartCard
             title="Stability profile"
+            data={{ columns: ['Stability', 'Cards'], rows: profile.map((point) => [point.range, point.count]) }}
             emptyDrawing="stability"
             empty={cards.length === 0}
             emptyMessage="Add cards to see stability."

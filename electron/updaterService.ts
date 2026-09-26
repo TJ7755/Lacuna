@@ -1,13 +1,10 @@
-import type {
-  ManualUpdateReason,
-  UpdateProgress,
-  UpdateState,
-} from './updaterContract.js';
+import type { ManualUpdateReason, UpdateProgress, UpdateState } from './updaterContract.js';
 
 export type { UpdateState } from './updaterContract.js';
 
 interface UpdateInfoPort {
   version: string;
+  releaseNotes?: unknown;
 }
 
 export interface UpdaterPort {
@@ -43,6 +40,20 @@ interface DesktopUpdaterOptions {
 }
 
 const UPDATE_ERROR = 'Could not check for updates. Check your connection and try again.';
+
+// GitHub can supply rendered HTML or a versioned changelog; the renderer sanitises it.
+function releaseNotesFor(info: UpdateInfoPort): string | undefined {
+  const notes = Array.isArray(info.releaseNotes)
+    ? info.releaseNotes.find(
+        (entry: unknown) =>
+          entry !== null &&
+          typeof entry === 'object' &&
+          'version' in entry &&
+          entry.version === info.version,
+      )?.note
+    : info.releaseNotes;
+  return typeof notes === 'string' ? notes.trim().slice(0, 64_000) || undefined : undefined;
+}
 
 function manualReason(options: DesktopUpdaterOptions): ManualUpdateReason | undefined {
   if (!options.packaged) return 'development';
@@ -124,6 +135,7 @@ export function createDesktopUpdater(options: DesktopUpdaterOptions): DesktopUpd
       mode: 'automatic',
       currentVersion: options.currentVersion,
       availableVersion: info.version,
+      releaseNotes: releaseNotesFor(info),
     });
   });
   options.updater.on('download-progress', (progress) => {
@@ -132,6 +144,7 @@ export function createDesktopUpdater(options: DesktopUpdaterOptions): DesktopUpd
       mode: 'automatic',
       currentVersion: options.currentVersion,
       availableVersion: state.availableVersion,
+      releaseNotes: state.releaseNotes,
       progress: {
         percent: Math.max(0, Math.min(100, progress.percent)),
         transferred: Math.max(0, progress.transferred),
@@ -146,6 +159,9 @@ export function createDesktopUpdater(options: DesktopUpdaterOptions): DesktopUpd
       mode: 'automatic',
       currentVersion: options.currentVersion,
       availableVersion: info.version,
+      releaseNotes:
+        releaseNotesFor(info) ??
+        (state.availableVersion === info.version ? state.releaseNotes : undefined),
     });
   });
   options.updater.on('error', (error) => {

@@ -76,7 +76,7 @@ export function useLearnKeyboardShortcuts({
 }: UseLearnKeyboardShortcutsParams) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat || e.defaultPrevented || editing) return;
       // While the user is typing into any input, textarea, or content-editable
       // element, card shortcuts stay inert so keystrokes don't accidentally grade.
       const target = e.target as HTMLElement | null;
@@ -84,17 +84,8 @@ export function useLearnKeyboardShortcuts({
         target &&
         (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
       ) {
-        // Allow Enter in the typing input to submit the answer.
-        if (target.tagName === 'INPUT' && e.key === 'Enter' && isTypingCard) {
-          e.preventDefault();
-          reveal();
-          return;
-        }
         return;
       }
-      // The edit overlay owns the keyboard entirely while open, so typing into it
-      // never reveals or grades the card underneath.
-      if (editing) return;
       // The help overlay only listens for ? / Escape to close itself.
       if (hintsOpen) {
         if (e.key === '?' || e.key === 'Escape') {
@@ -109,10 +100,20 @@ export function useLearnKeyboardShortcuts({
         if (e.key === 'Escape') setNavOpen(false);
         return;
       }
-      if (menuOpen && e.key === 'Escape') {
-        e.preventDefault();
-        setMenuOpen(false);
+      if (menuOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setMenuOpen(false);
+        }
         return;
+      }
+      if (target instanceof HTMLElement) {
+        if (target.closest('[role="dialog"], [role="menu"]')) return;
+        if (
+          (e.key === ' ' || e.key === 'Enter') &&
+          target.closest('button, a, select, [role="button"]')
+        )
+          return;
       }
       if (focusMode && e.key === 'Escape') {
         e.preventDefault();

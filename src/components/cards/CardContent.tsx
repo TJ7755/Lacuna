@@ -1,3 +1,4 @@
+import type { TypedAnswerFeedback } from '../markdown/typedAnswerFeedback';
 import { memo } from 'react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { isLabelCardId, parseSequenceFront } from '../../db/sequenceGeneration';
@@ -24,10 +25,12 @@ export const CardContent = memo(function CardContent({
   sequenceMode = 'list',
   audioAutoplay = false,
   occlusion,
+  typedAnswerFeedback,
 }: {
   card: Pick<Card, 'id' | 'type' | 'front' | 'back' | 'sequenceItemId' | 'occlusionRegionId'>;
   side: Side;
   className?: string;
+  typedAnswerFeedback?: TypedAnswerFeedback;
   /**
    * When true, a sequence-generated positional card's front is split into its
    * header/cue items (per `parseSequenceFront`), styled as muted context above a
@@ -68,6 +71,7 @@ export const CardContent = memo(function CardContent({
       <MarkdownView
         source={card.front}
         clozeMode={side === 'front' ? 'front' : 'back'}
+        typedAnswerFeedback={typedAnswerFeedback}
         className={className}
       />
     );
@@ -110,6 +114,7 @@ export const CardContent = memo(function CardContent({
     <MarkdownView
       source={side === 'front' ? card.front : card.back}
       className={className}
+      typedAnswerFeedback={typedAnswerFeedback}
       audioAutoplay={audioAutoplay && side === 'front'}
     />
   );

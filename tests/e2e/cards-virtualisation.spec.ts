@@ -47,5 +47,5 @@ test('bounds off-screen lesson rows and reveals later cards when scrolling', asy
   await page.getByPlaceholder('Search all cards…').fill('Recall item 0-1-99');
   await expect(rows).toHaveCount(1);
   await rows.first().click();
-  await expect(rows.first()).toHaveAttribute('aria-expanded', 'true');
+  await expect(rows.first().getByRole('button', { name: /^Card details:/ })).toHaveAttribute('aria-expanded', 'true');
 });

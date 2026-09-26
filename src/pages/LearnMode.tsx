@@ -1,3 +1,4 @@
+import { StudyControls } from './learn/StudyControls';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -7,8 +8,6 @@ import { markLessonComplete } from '../db/lessonRepository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
 import { KeyHints } from '../components/ui/KeyHints';
-import { Button } from '../components/ui/Button';
-import { StepSwap } from '../components/ui/StepSwap';
 import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
@@ -20,16 +19,15 @@ import { useStartInFocusMode } from '../state/focusModePreference';
 import { useShortcutBindings } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
-import { CheckIcon, CloseIcon } from '../components/ui/icons';
 import { useToast } from '../components/ui/Toast';
 import type { CardFilter } from '../db/search';
 import { useLearnSession } from './learn/useLearnSession';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { LearnHeader } from './learn/LearnHeader';
 import { NavSidebar } from './learn/NavSidebar';
-import { TouchBottomSheet } from './learn/TouchBottomSheet';
 import { FlipCard } from './learn/FlipCard';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './learn/StudyCardTransition';
+import { useStudyFocus } from './learn/useStudyFocus';
 import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../components/items/UnknownItemFace';
@@ -88,8 +86,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       : courseId
         ? 'practice'
         : 'deck';
-  const dueReviewRequest = request?.kind === 'practice' &&
-    (request.mode === 'recurring' || request.mode === 'ad-hoc');
+  const dueReviewRequest =
+    request?.kind === 'practice' && (request.mode === 'recurring' || request.mode === 'ad-hoc');
   const filterParams = useMemo(() => {
     const filters = searchParams.getAll('filter') as CardFilter[];
     return dueReviewRequest && !filters.includes('due') ? [...filters, 'due' as const] : filters;
@@ -226,6 +224,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     startInFocusMode,
   });
 
+  const studyFocusRef = useStudyFocus(
+    current?.id, phase, editing || menuOpen || navOpen || hintsOpen,
+  );
+
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
@@ -267,6 +269,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     },
     [answer, notify, undoWithTransitionCancel],
   );
+
+  useEffect(() => {
+    if (editing || menuOpen || navOpen || hintsOpen) cardTransitionRef.current?.cancel();
+  }, [editing, menuOpen, navOpen, hintsOpen]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -346,7 +352,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         itemName="Card"
         answeredCount={sessionCardOutcomes.size}
         totalCount={sessionCardIds.length}
-        onAttempt={persistSimpleResume}
+        onAttempt={() => {
+          cardTransitionRef.current?.cancel();
+          persistSimpleResume();
+        }}
         onConfirm={() => {
           leavingSessionRef.current = true;
           clearSimpleSessionResume();
@@ -495,10 +504,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 leaves it optically high, because the reveal and grade controls sit below
                 it and all the remaining height collects underneath them. When a card is
                 taller than the viewport this container simply grows, so nothing is
-                clipped and the page scrolls as before. */}
+                clipped and the page scrolls as before. StudyControls reserves the same
+                space in both phases so this centred block does not shift on reveal. */}
             <main
+              ref={studyFocusRef}
+              tabIndex={-1}
+              aria-label="Study card"
               className={
-                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center ' +
+                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center outline-none ' +
                 'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
                 'pt-8 md:pt-12 ' +
                 (isTouchMode && !suppressClassicGrading
@@ -565,133 +578,22 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 </StudyCardTransition>
               )}
 
-              {/* Typing input for typing cards in question phase */}
-              {!suppressClassicGrading && isTypingCard && phase === 'question' && (
-                <div className="mx-auto mt-6 w-full max-w-md">
-                  <input
-                    ref={typingInputRef}
-                    type="text"
-                    value={typedAnswer}
-                    onChange={(e) => setTypedAnswer(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        reveal();
-                      }
-                    }}
-                    placeholder="Type your answer…"
-                    className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
-                    autoFocus
-                  />
-                  <div className="mt-3 flex justify-center">
-                    <Button variant="primary" size="lg" className="w-full" onClick={reveal}>
-                      Check answer
-                    </Button>
-                  </div>
-                </div>
+              {!suppressClassicGrading && (
+                <StudyControls
+                  key={`controls-${current?.id}`}
+                  phase={phase}
+                  isTypingCard={isTypingCard}
+                  isTouchMode={isTouchMode}
+                  gradingMode={gradingMode}
+                  typedAnswer={typedAnswer}
+                  typingInputRef={typingInputRef}
+                  onTypedAnswer={setTypedAnswer}
+                  onReveal={reveal}
+                  onHide={hide}
+                  onAnswer={answerWithUndo}
+                  m={m}
+                />
               )}
-
-              {/* Controls */}
-              {!suppressClassicGrading &&
-                (isTouchMode ? (
-                  <TouchBottomSheet
-                    phase={phase}
-                    gradingMode={gradingMode}
-                    onReveal={reveal}
-                    onHide={hide}
-                    onAnswer={answerWithUndo}
-                    m={m}
-                    isTypingCard={isTypingCard}
-                  />
-                ) : (
-                  <div className="mt-8">
-                    <StepSwap
-                      stepKey={phase}
-                      className={
-                        phase === 'question'
-                          ? 'flex flex-col items-center gap-2'
-                          : 'flex flex-col items-center gap-3'
-                      }
-                    >
-                      {phase === 'question' ? (
-                        <>
-                          {!isTypingCard && (
-                            <Button
-                              variant="primary"
-                              size="lg"
-                              className="w-full max-w-[13.5rem] shadow-lg shadow-accent/15"
-                              onClick={reveal}
-                            >
-                              Show answer
-                            </Button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {gradingMode === 'manual' ? (
-                            <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
-                              <Button
-                                variant="danger"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => answerWithUndo(1, 'keyboard')}
-                              >
-                                <CloseIcon width={18} height={18} />
-                                Again
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => answerWithUndo(2, 'keyboard')}
-                              >
-                                Hard
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => answerWithUndo(3, 'keyboard')}
-                              >
-                                Good
-                              </Button>
-                              <Button
-                                variant="primary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => answerWithUndo(4, 'keyboard')}
-                              >
-                                <CheckIcon width={18} height={18} />
-                                Easy
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex w-full max-w-md gap-3">
-                              <Button
-                                variant="danger"
-                                size="lg"
-                                className="w-full flex-1"
-                                onClick={() => answerWithUndo(false, 'keyboard')}
-                              >
-                                <CloseIcon width={18} height={18} />
-                                No
-                              </Button>
-                              <Button
-                                variant="primary"
-                                size="lg"
-                                className="w-full flex-1"
-                                onClick={() => answerWithUndo(true, 'keyboard')}
-                              >
-                                <CheckIcon width={18} height={18} />
-                                Yes
-                              </Button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </StepSwap>
-                  </div>
-                ))}
             </main>
           </motion.div>
         )}

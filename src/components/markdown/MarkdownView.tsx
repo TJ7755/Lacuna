@@ -1,3 +1,4 @@
+import { typedAnswerFeedbackHtml, type TypedAnswerFeedback } from './typedAnswerFeedback';
 import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
@@ -31,6 +32,7 @@ interface MarkdownViewProps {
   allowEmbeds?: boolean;
   /** Play embedded card audio when this rendered face is mounted in Learn mode. */
   audioAutoplay?: boolean;
+  typedAnswerFeedback?: TypedAnswerFeedback;
 }
 
 // Stable plugin references so the unified pipeline isn't rebuilt on every call.
@@ -49,7 +51,10 @@ const RESTRICTED_SCHEMA = {
   tagNames: [...(defaultSchema.tagNames ?? []), 'audio'],
   attributes: {
     ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span ?? []), ['className', 'math', 'math-inline']],
+    span: [
+      ...(defaultSchema.attributes?.span ?? []),
+      ['className', 'math', 'math-inline', 'cloze-blank', 'cloze-reveal'],
+    ],
     div: [...(defaultSchema.attributes?.div ?? []), ['className', 'math', 'math-display']],
     code: [...(defaultSchema.attributes?.code ?? []), ['className', /^language-/]],
     audio: ['src', 'controls', 'preload'],
@@ -387,6 +392,7 @@ export const MarkdownView = memo(function MarkdownView({
   className,
   allowEmbeds = false,
   audioAutoplay = false,
+  typedAnswerFeedback,
 }: MarkdownViewProps) {
   const [resolved, setResolved] = useState(source);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -431,8 +437,11 @@ export const MarkdownView = memo(function MarkdownView({
         : clozeMode === 'back'
           ? renderClozeBack(resolved)
           : resolved;
-    return renderMarkdownToHtml(prepared, allowEmbeds);
-  }, [resolved, clozeMode, allowEmbeds]);
+    const rendered = renderMarkdownToHtml(prepared, allowEmbeds);
+    return typedAnswerFeedback
+      ? typedAnswerFeedbackHtml(rendered, typedAnswerFeedback, clozeMode === 'back')
+      : rendered;
+  }, [resolved, clozeMode, allowEmbeds, typedAnswerFeedback]);
 
   useEffect(() => {
     const players = containerRef.current?.querySelectorAll('audio') ?? [];

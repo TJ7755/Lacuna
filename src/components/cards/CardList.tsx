@@ -984,17 +984,19 @@ const CardRow = React.memo(function CardRow({
     if (selectMode || expanded) return;
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest('button, a, [role="button"]')) return;
+    if (target.closest('button:not([data-card-details]), a, [role="button"]')) return;
     e.stopPropagation();
+    dragX.jump(springX.get());
+    springX.jump(dragX.get());
     swipeState.current = {
       dragging: true,
-      startX: e.clientX,
+      startX: e.clientX - springX.get() + (trayOpenRef.current ? -trayWidth : 0),
       startY: e.clientY,
       isSwipe: false,
       openBeforeDrag: trayOpenRef.current,
     };
     cardRef.current?.setPointerCapture(e.pointerId);
-  }, [selectMode, expanded]);
+  }, [selectMode, expanded, dragX, springX]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!swipeState.current.dragging) return;
@@ -1013,7 +1015,8 @@ const CardRow = React.memo(function CardRow({
     const base = swipeState.current.openBeforeDrag ? -trayWidth : 0;
     const clamped = Math.max(-trayWidth, Math.min(isTouchMode ? MAX_DRAG : 0, base + dx));
     dragX.set(clamped);
-  }, [dragX, isTouchMode]);
+    springX.jump(clamped);
+  }, [dragX, springX, isTouchMode]);
 
   const justHandledTap = useRef(false);
 
@@ -1088,17 +1091,6 @@ const CardRow = React.memo(function CardRow({
     }
   }, [selectMode, generated, linked, onToggle, onToggleExpand, dragX]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      if (selectMode && !generated && !linked) {
-        onToggle();
-      } else {
-        onToggleExpand();
-      }
-    }
-  }, [selectMode, generated, linked, onToggle, onToggleExpand]);
-
   const handleMouseEnter = useCallback(() => {
     if (!selectMode) setHovered(true);
   }, [selectMode]);
@@ -1156,6 +1148,8 @@ const CardRow = React.memo(function CardRow({
     >
       {/* Action tray revealed behind the card on swipe-left */}
       <div
+        data-card-swipe-tray
+        inert={!trayOpen}
         className="absolute inset-y-0 right-0 z-0 flex items-center overflow-hidden rounded-r-xl"
         style={{ width: trayWidth }}
       >
@@ -1217,15 +1211,12 @@ const CardRow = React.memo(function CardRow({
               }
         }
         onClick={handleClick}
-        onKeyDown={handleKeyDown}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
-        tabIndex={0}
-        aria-expanded={expanded}
         data-card-id={card.id}
         className={cn(
           'relative z-10 cursor-pointer rounded-xl border bg-surface p-4',
@@ -1234,7 +1225,15 @@ const CardRow = React.memo(function CardRow({
             : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03] active:bg-ink/5',
         )}
       >
-        <div className="flex items-start gap-4">
+        <button
+          type="button"
+          data-card-details
+          aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${card.front || cardTypeLabel(card)}`}
+          aria-expanded={selectMode && !generated && !linked ? undefined : expanded}
+          aria-pressed={selectMode && !generated && !linked ? selected : undefined}
+          className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+        <div className="relative flex items-start gap-4">
           {selectMode && !generated && !linked && (
             <span
               className={cn(
@@ -1344,7 +1343,7 @@ const CardRow = React.memo(function CardRow({
                   'min-h-11 rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
                   flagged
                     ? 'text-accent opacity-100'
-                    : 'text-ink-faint opacity-0 group-hover:opacity-100',
+                    : 'text-ink-faint opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
                 )}
               >
                 <FlagIcon width={16} height={16} />
@@ -1355,7 +1354,7 @@ const CardRow = React.memo(function CardRow({
                 title="Edit card"
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
-                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible"
               >
                 <EditIcon width={16} height={16} />
               </motion.button>
@@ -1367,7 +1366,7 @@ const CardRow = React.memo(function CardRow({
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
                 className={cn(
-                  'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 touch-visible',
+                  'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible',
                   linked
                     ? 'hover:bg-ink/5 hover:text-ink'
                     : 'hover:bg-negative/10 hover:text-negative',
@@ -1386,7 +1385,7 @@ const CardRow = React.memo(function CardRow({
               animate={{ opacity: 1 }}
               exit={m > 0 ? { opacity: 0 } : undefined}
               transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-4"
+              className="relative mt-4"
               onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">

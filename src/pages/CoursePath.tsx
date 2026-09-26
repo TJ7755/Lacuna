@@ -529,7 +529,7 @@ export function CoursePath() {
         )}
       </div>
       <p id="lesson-path-reorder-instructions" className="sr-only">
-        In Author mode, hold this lesson and drag it to reorder. Alternatively, press Alt and the up
+        In Author mode, drag this lesson to reorder; with touch, hold first. Alternatively, press Alt and the up
         or down arrow key.
       </p>
       <div aria-live="polite" aria-atomic="true" className="sr-only">

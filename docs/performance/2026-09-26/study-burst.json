@@ -1,0 +1,578 @@
+{
+  "completed": true,
+  "measuredAt": "2026-09-26T07:07:52.893Z",
+  "label": "desktop-audit",
+  "platform": "darwin",
+  "arch": "arm64",
+  "totalMemoryBytes": 25769803776,
+  "logicalCpus": 10,
+  "cpu": "Apple M5",
+  "browser": "153.0.8010.12",
+  "repetitions": 1,
+  "burstReviews": 30,
+  "rates": [
+    1
+  ],
+  "smoke": true,
+  "mode": "quick",
+  "diagnostics": false,
+  "traced": false,
+  "persistentProfile": null,
+  "productionIndexBytes": 4479,
+  "timingMethod": "Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.",
+  "limitations": "Headless Chromium; CPU throttling affects renderer execution, not an entire low-end CPU/GPU/storage system. JavaScript heap is not total application RAM. Linux memory includes OS, browser and runner.",
+  "runs": [
+    {
+      "rate": 1,
+      "counts": {
+        "courses": 1,
+        "lessons": 2,
+        "cards": 200,
+        "reviews": 4000
+      },
+      "samples": [
+        {
+          "name": "dashboard-load",
+          "iteration": 0,
+          "elapsedMs": 857.102167,
+          "jsHeapUsedBytes": 16539020,
+          "taskDurationMs": 234.742
+        },
+        {
+          "name": "global-search",
+          "iteration": 0,
+          "elapsedMs": 363.28412500000013,
+          "jsHeapUsedBytes": 25308880,
+          "taskDurationMs": 115.75099999999999
+        },
+        {
+          "name": "course-open",
+          "iteration": 0,
+          "elapsedMs": 336.13487499999997,
+          "jsHeapUsedBytes": 31910168,
+          "taskDurationMs": 188.02099999999993
+        },
+        {
+          "name": "cards-open",
+          "iteration": 0,
+          "elapsedMs": 647.8907920000001,
+          "jsHeapUsedBytes": 37170848,
+          "taskDurationMs": 249.07200000000006
+        },
+        {
+          "name": "cards-search",
+          "iteration": 0,
+          "elapsedMs": 65.27416700000003,
+          "jsHeapUsedBytes": 40319996,
+          "taskDurationMs": 30.46700000000002
+        },
+        {
+          "name": "study-open",
+          "iteration": 0,
+          "elapsedMs": 865.0913340000002,
+          "jsHeapUsedBytes": 47219432,
+          "taskDurationMs": 216.39599999999993
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 514.8012920000001,
+          "jsHeapUsedBytes": 48867588,
+          "taskDurationMs": 53.309000000000054,
+          "inputToReadableMs": 430.4399999976158
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 0,
+          "elapsedMs": 680.1428339999993,
+          "jsHeapUsedBytes": 36691140,
+          "taskDurationMs": 85.69500000000008,
+          "inputToReadableMs": 612.9550000019372
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 495.66770799999995,
+          "jsHeapUsedBytes": 37659588,
+          "taskDurationMs": 37.86500000000004,
+          "inputToReadableMs": 429.29499999806285
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 0,
+          "elapsedMs": 662.8110409999999,
+          "jsHeapUsedBytes": 44416544,
+          "taskDurationMs": 59.09399999999998,
+          "inputToReadableMs": 595.9500000029802
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 496.08637499999986,
+          "jsHeapUsedBytes": 45261372,
+          "taskDurationMs": 34.98500000000004,
+          "inputToReadableMs": 429.86500000208616
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 1,
+          "elapsedMs": 663.5529159999996,
+          "jsHeapUsedBytes": 51741408,
+          "taskDurationMs": 57.58900000000011,
+          "inputToReadableMs": 597.390000000596
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 497.63800000000083,
+          "jsHeapUsedBytes": 52572056,
+          "taskDurationMs": 41.27999999999999,
+          "inputToReadableMs": 430.4400000013411
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 2,
+          "elapsedMs": 663.7585000000008,
+          "jsHeapUsedBytes": 59016712,
+          "taskDurationMs": 56.693000000000104,
+          "inputToReadableMs": 597.4750000014901
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 3,
+          "elapsedMs": 496.38229200000023,
+          "jsHeapUsedBytes": 59849864,
+          "taskDurationMs": 37.00900000000007,
+          "inputToReadableMs": 430.01999999955297
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 3,
+          "elapsedMs": 665.1332919999986,
+          "jsHeapUsedBytes": 22414840,
+          "taskDurationMs": 74.90799999999997,
+          "inputToReadableMs": 597.355000000447
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 4,
+          "elapsedMs": 496.9562500000011,
+          "jsHeapUsedBytes": 23252264,
+          "taskDurationMs": 36.57099999999991,
+          "inputToReadableMs": 430.3799999989569
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 4,
+          "elapsedMs": 663.3871660000004,
+          "jsHeapUsedBytes": 30012536,
+          "taskDurationMs": 51.22300000000002,
+          "inputToReadableMs": 598.0450000017881
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 5,
+          "elapsedMs": 497.74945800000023,
+          "jsHeapUsedBytes": 30836160,
+          "taskDurationMs": 35.639999999999894,
+          "inputToReadableMs": 429.91999999806285
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 5,
+          "elapsedMs": 664.3474999999999,
+          "jsHeapUsedBytes": 37087244,
+          "taskDurationMs": 47.36800000000008,
+          "inputToReadableMs": 595.9049999974668
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 6,
+          "elapsedMs": 497.04220799999894,
+          "jsHeapUsedBytes": 37895932,
+          "taskDurationMs": 34.25100000000003,
+          "inputToReadableMs": 430.17500000074506
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 6,
+          "elapsedMs": 663.8789580000011,
+          "jsHeapUsedBytes": 44175900,
+          "taskDurationMs": 55.22300000000002,
+          "inputToReadableMs": 597.2249999977648
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 7,
+          "elapsedMs": 497.15137499999946,
+          "jsHeapUsedBytes": 44966988,
+          "taskDurationMs": 36.3770000000001,
+          "inputToReadableMs": 431.035000000149
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 7,
+          "elapsedMs": 663.7792079999999,
+          "jsHeapUsedBytes": 20210328,
+          "taskDurationMs": 74.762,
+          "inputToReadableMs": 595.3000000007451
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 8,
+          "elapsedMs": 497.74908399999913,
+          "jsHeapUsedBytes": 21032780,
+          "taskDurationMs": 41.16700000000017,
+          "inputToReadableMs": 430.3150000013411
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 8,
+          "elapsedMs": 663.5725000000002,
+          "jsHeapUsedBytes": 27875016,
+          "taskDurationMs": 61.43800000000033,
+          "inputToReadableMs": 595.714999999851
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 9,
+          "elapsedMs": 497.1124999999993,
+          "jsHeapUsedBytes": 28667608,
+          "taskDurationMs": 39.201999999999956,
+          "inputToReadableMs": 430.1299999989569
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 9,
+          "elapsedMs": 664.1137920000019,
+          "jsHeapUsedBytes": 35007476,
+          "taskDurationMs": 53.56400000000016,
+          "inputToReadableMs": 597.839999999851
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 10,
+          "elapsedMs": 496.7324579999986,
+          "jsHeapUsedBytes": 35758728,
+          "taskDurationMs": 35.59099999999971,
+          "inputToReadableMs": 430.29499999806285
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 10,
+          "elapsedMs": 680.3429580000011,
+          "jsHeapUsedBytes": 26715436,
+          "taskDurationMs": 60.706000000000145,
+          "inputToReadableMs": 596.6499999985099
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 11,
+          "elapsedMs": 498.42620800000077,
+          "jsHeapUsedBytes": 27479004,
+          "taskDurationMs": 30.682000000000098,
+          "inputToReadableMs": 429.76499999687076
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 11,
+          "elapsedMs": 664.031583,
+          "jsHeapUsedBytes": 34068664,
+          "taskDurationMs": 56.2330000000002,
+          "inputToReadableMs": 596.2899999991059
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 12,
+          "elapsedMs": 498.27266600000075,
+          "jsHeapUsedBytes": 34853492,
+          "taskDurationMs": 36.77200000000003,
+          "inputToReadableMs": 429.42000000178814
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 12,
+          "elapsedMs": 663.1852920000019,
+          "jsHeapUsedBytes": 20416076,
+          "taskDurationMs": 60.77999999999983,
+          "inputToReadableMs": 595.6199999973178
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 13,
+          "elapsedMs": 498.47991700000057,
+          "jsHeapUsedBytes": 21214576,
+          "taskDurationMs": 39.91099999999959,
+          "inputToReadableMs": 430.80000000074506
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 13,
+          "elapsedMs": 664.6886249999989,
+          "jsHeapUsedBytes": 27815008,
+          "taskDurationMs": 57.4650000000001,
+          "inputToReadableMs": 596.5450000017881
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 14,
+          "elapsedMs": 516.9330420000006,
+          "jsHeapUsedBytes": 28529796,
+          "taskDurationMs": 76.23599999999975,
+          "inputToReadableMs": 422.929999999702
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 14,
+          "elapsedMs": 688.7759579999984,
+          "jsHeapUsedBytes": 34779180,
+          "taskDurationMs": 82.57300000000001,
+          "inputToReadableMs": 591.195000000298
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 15,
+          "elapsedMs": 497.58491700000013,
+          "jsHeapUsedBytes": 35536348,
+          "taskDurationMs": 45.45299999999975,
+          "inputToReadableMs": 428.5649999976158
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 15,
+          "elapsedMs": 663.807334000001,
+          "jsHeapUsedBytes": 26635244,
+          "taskDurationMs": 60.29299999999971,
+          "inputToReadableMs": 588.5399999991059
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 16,
+          "elapsedMs": 499.6342919999988,
+          "jsHeapUsedBytes": 27400840,
+          "taskDurationMs": 36.62699999999974,
+          "inputToReadableMs": 429.589999999851
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 16,
+          "elapsedMs": 669.8472919999986,
+          "jsHeapUsedBytes": 33761252,
+          "taskDurationMs": 56.8970000000002,
+          "inputToReadableMs": 596.0099999979138
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 17,
+          "elapsedMs": 497.9912089999998,
+          "jsHeapUsedBytes": 34548616,
+          "taskDurationMs": 33.67600000000026,
+          "inputToReadableMs": 429.64499999955297
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 17,
+          "elapsedMs": 664.7159169999977,
+          "jsHeapUsedBytes": 20612532,
+          "taskDurationMs": 74.61699999999993,
+          "inputToReadableMs": 597.5649999976158
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 18,
+          "elapsedMs": 498.1647499999999,
+          "jsHeapUsedBytes": 21403452,
+          "taskDurationMs": 39.544000000000246,
+          "inputToReadableMs": 429.39499999955297
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 18,
+          "elapsedMs": 663.9417090000024,
+          "jsHeapUsedBytes": 27697144,
+          "taskDurationMs": 55.12400000000017,
+          "inputToReadableMs": 596.1550000011921
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 19,
+          "elapsedMs": 496.57824999999866,
+          "jsHeapUsedBytes": 28486532,
+          "taskDurationMs": 46.69100000000004,
+          "inputToReadableMs": 431.25999999791384
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 19,
+          "elapsedMs": 663.8018749999974,
+          "jsHeapUsedBytes": 34743768,
+          "taskDurationMs": 75.89699999999988,
+          "inputToReadableMs": 589.019999999553
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 20,
+          "elapsedMs": 497.4565829999992,
+          "jsHeapUsedBytes": 20716516,
+          "taskDurationMs": 60.06,
+          "inputToReadableMs": 427.91499999910593
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 20,
+          "elapsedMs": 662.8710409999985,
+          "jsHeapUsedBytes": 27246432,
+          "taskDurationMs": 64.71500000000007,
+          "inputToReadableMs": 596.9899999983609
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 21,
+          "elapsedMs": 498.1622920000009,
+          "jsHeapUsedBytes": 28043144,
+          "taskDurationMs": 44.4110000000002,
+          "inputToReadableMs": 429.98000000044703
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 21,
+          "elapsedMs": 664.5496669999993,
+          "jsHeapUsedBytes": 34207912,
+          "taskDurationMs": 70.89900000000027,
+          "inputToReadableMs": 587.804999999702
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 22,
+          "elapsedMs": 496.6598330000015,
+          "jsHeapUsedBytes": 34966884,
+          "taskDurationMs": 46.74299999999975,
+          "inputToReadableMs": 427.320000000298
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 22,
+          "elapsedMs": 679.8950420000001,
+          "jsHeapUsedBytes": 26556528,
+          "taskDurationMs": 66.68400000000041,
+          "inputToReadableMs": 614.320000000298
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 23,
+          "elapsedMs": 497.48549999999886,
+          "jsHeapUsedBytes": 27331608,
+          "taskDurationMs": 38.85899999999998,
+          "inputToReadableMs": 430.42500000074506
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 23,
+          "elapsedMs": 665.1230830000022,
+          "jsHeapUsedBytes": 33480404,
+          "taskDurationMs": 62.36299999999994,
+          "inputToReadableMs": 596.589999999851
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 24,
+          "elapsedMs": 497.3170420000024,
+          "jsHeapUsedBytes": 34260560,
+          "taskDurationMs": 45.099999999999696,
+          "inputToReadableMs": 429.78999999910593
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 24,
+          "elapsedMs": 661.3273750000008,
+          "jsHeapUsedBytes": 40442652,
+          "taskDurationMs": 53.261,
+          "inputToReadableMs": 596.320000000298
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 25,
+          "elapsedMs": 498.3391249999986,
+          "jsHeapUsedBytes": 21046700,
+          "taskDurationMs": 51.99700000000007,
+          "inputToReadableMs": 430.2199999988079
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 25,
+          "elapsedMs": 662.9488750000019,
+          "jsHeapUsedBytes": 27216064,
+          "taskDurationMs": 63.74000000000013,
+          "inputToReadableMs": 597.0500000007451
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 26,
+          "elapsedMs": 499.34562499999447,
+          "jsHeapUsedBytes": 28028392,
+          "taskDurationMs": 54.815000000000055,
+          "inputToReadableMs": 428.33500000089407
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 26,
+          "elapsedMs": 662.9123749999999,
+          "jsHeapUsedBytes": 34125144,
+          "taskDurationMs": 61.12100000000042,
+          "inputToReadableMs": 597.285000000149
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 27,
+          "elapsedMs": 498.1303340000013,
+          "jsHeapUsedBytes": 34886196,
+          "taskDurationMs": 44.920999999999545,
+          "inputToReadableMs": 430.48499999940395
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 27,
+          "elapsedMs": 664.2778749999998,
+          "jsHeapUsedBytes": 26929524,
+          "taskDurationMs": 74.2079999999996,
+          "inputToReadableMs": 595.714999999851
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 28,
+          "elapsedMs": 497.6600410000028,
+          "jsHeapUsedBytes": 27693836,
+          "taskDurationMs": 43.14700000000027,
+          "inputToReadableMs": 428.8499999977648
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 28,
+          "elapsedMs": 660.325291000001,
+          "jsHeapUsedBytes": 33664140,
+          "taskDurationMs": 64.2990000000001,
+          "inputToReadableMs": 596.410000000149
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 29,
+          "elapsedMs": 497.85566700000345,
+          "jsHeapUsedBytes": 34415764,
+          "taskDurationMs": 50.12699999999981,
+          "inputToReadableMs": 430.910000000149
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 29,
+          "elapsedMs": 663.2903329999972,
+          "jsHeapUsedBytes": 40241840,
+          "taskDurationMs": 65.84900000000005,
+          "inputToReadableMs": 595.429999999702
+        }
+      ],
+      "errors": [],
+      "memoryBefore": null,
+      "memorySamples": []
+    }
+  ]
+}

@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
-} from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { Lesson } from '../../db/types';
 import { reorderLessons } from '../../db/lessonRepository';
 import { hapticStrong } from '../../utils/haptic';
@@ -15,6 +12,7 @@ export type LessonDropMarker = 'before' | 'after' | undefined;
 export interface LessonReorderInteraction {
   enabled: boolean;
   lifted: boolean;
+  offset?: { x: number; y: number };
   dropMarker: LessonDropMarker;
   registerElement: (element: HTMLButtonElement | null) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -31,6 +29,7 @@ interface DragSession {
   inputType: 'pointer' | 'touch';
   startX: number;
   startY: number;
+  slots: Map<string, DOMRect>;
   element: HTMLButtonElement;
   timer: number;
   active: boolean;
@@ -39,6 +38,8 @@ interface DragSession {
 
 interface DragState {
   lessonId: string;
+  x?: number;
+  y?: number;
   targetIndex: number;
 }
 
@@ -51,11 +52,7 @@ export function moveLessonIds(
   if (!orderedLessonIds.includes(lessonId)) return orderedLessonIds;
   const remaining = orderedLessonIds.filter((id) => id !== lessonId);
   const clampedIndex = Math.max(0, Math.min(targetIndex, remaining.length));
-  return [
-    ...remaining.slice(0, clampedIndex),
-    lessonId,
-    ...remaining.slice(clampedIndex),
-  ];
+  return [...remaining.slice(0, clampedIndex), lessonId, ...remaining.slice(clampedIndex)];
 }
 
 function sameOrder(left: string[], right: string[]): boolean {
@@ -126,7 +123,7 @@ export function useLessonPathReorder({
       for (const id of remainingIds) {
         const element = elementsRef.current.get(id);
         if (!element) continue;
-        const rect = element.getBoundingClientRect();
+        const rect = sessionRef.current?.slots.get(id) ?? element.getBoundingClientRect();
         if (clientY >= rect.top + rect.height / 2) targetIndex += 1;
       }
       return targetIndex;
@@ -187,9 +184,22 @@ export function useLessonPathReorder({
 
   const interactionFor = useCallback(
     (lessonId: string): LessonReorderInteraction => {
+      let offset = { x: 0, y: 0 };
+      const slots = sessionRef.current?.slots;
+      if (dragState && slots) {
+        if (dragState.lessonId === lessonId) {
+          offset = { x: dragState.x ?? 0, y: dragState.y ?? 0 };
+        } else {
+          const nextIds = moveLessonIds(orderedIds, dragState.lessonId, dragState.targetIndex);
+          const from = slots.get(lessonId);
+          const to = slots.get(orderedIds[nextIds.indexOf(lessonId)]);
+          if (from && to) offset = { x: to.left - from.left, y: to.top - from.top };
+        }
+      }
       const interactionEnabled = enabled && !pending;
       return {
         enabled: interactionEnabled,
+        offset,
         lifted: dragState?.lessonId === lessonId,
         dropMarker: dropMarkerByLessonId.get(lessonId),
         registerElement: (element) => {
@@ -218,12 +228,7 @@ export function useLessonPathReorder({
             const inputId = touch.identifier;
             const timer = window.setTimeout(() => {
               const session = sessionRef.current;
-              if (
-                !session ||
-                session.inputType !== 'touch' ||
-                session.inputId !== inputId
-              )
-                return;
+              if (!session || session.inputType !== 'touch' || session.inputId !== inputId) return;
               session.active = true;
               const originalIndex = orderedIds.indexOf(lessonId);
               session.targetIndex = Math.max(originalIndex, 0);
@@ -239,6 +244,9 @@ export function useLessonPathReorder({
               inputType: 'touch',
               startX: touch.clientX,
               startY: touch.clientY,
+              slots: new Map(
+                [...elementsRef.current].map(([id, node]) => [id, node.getBoundingClientRect()]),
+              ),
               element,
               timer,
               active: false,
@@ -262,7 +270,12 @@ export function useLessonPathReorder({
             }
             event.preventDefault();
             session.targetIndex = targetIndexForY(lessonId, touch.clientY);
-            setDragState({ lessonId, targetIndex: session.targetIndex });
+            setDragState({
+              lessonId,
+              targetIndex: session.targetIndex,
+              x: touch.clientX - session.startX,
+              y: touch.clientY - session.startY,
+            });
           };
           const endTouch = (event: TouchEvent) => {
             const session = sessionRef.current;
@@ -315,32 +328,18 @@ export function useLessonPathReorder({
           const inputId = event.pointerId;
           const startX = event.clientX;
           const startY = event.clientY;
-          const timer = window.setTimeout(() => {
-            const session = sessionRef.current;
-            if (
-              !session ||
-              session.inputType !== 'pointer' ||
-              session.inputId !== inputId
-            )
-              return;
-            session.active = true;
-            element.setPointerCapture?.(inputId);
-            const originalIndex = orderedIds.indexOf(lessonId);
-            session.targetIndex = Math.max(originalIndex, 0);
-            setDragState({ lessonId, targetIndex: session.targetIndex });
-            setAnnouncement(
-              `${lessonNames.get(lessonId) ?? 'Lesson'} lifted. Drag to a new position, then release.`,
-            );
-            hapticStrong();
-          }, HOLD_DELAY_MS);
+          element.setPointerCapture?.(inputId);
           sessionRef.current = {
             lessonId,
             inputId,
             inputType: 'pointer',
             startX,
             startY,
+            slots: new Map(
+              [...elementsRef.current].map(([id, node]) => [id, node.getBoundingClientRect()]),
+            ),
             element,
-            timer,
+            timer: 0,
             active: false,
             targetIndex: 0,
           };
@@ -359,12 +358,20 @@ export function useLessonPathReorder({
               event.clientX - session.startX,
               event.clientY - session.startY,
             );
-            if (distance > EARLY_MOVE_LIMIT_PX) clearSession(false);
-            return;
+            if (distance <= EARLY_MOVE_LIMIT_PX) return;
+            session.active = true;
+            setAnnouncement(
+              `${lessonNames.get(lessonId) ?? 'Lesson'} lifted. Drag to a new position, then release.`,
+            );
           }
           event.preventDefault();
           session.targetIndex = targetIndexForY(lessonId, event.clientY);
-          setDragState({ lessonId, targetIndex: session.targetIndex });
+          setDragState({
+            lessonId,
+            targetIndex: session.targetIndex,
+            x: event.clientX - session.startX,
+            y: event.clientY - session.startY,
+          });
         },
         onPointerUp: (event) => {
           const session = sessionRef.current;

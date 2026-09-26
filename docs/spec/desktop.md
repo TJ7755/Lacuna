@@ -54,7 +54,15 @@ than exposing GitHub's updater metadata as user choices.
   user chooses **Restart and install** or **Later**. Windows portable and Linux DEB update manually.
   The unsigned macOS beta also updates manually because electron-updater
   requires a signed macOS application. Those packages receive package-specific guidance and a link
-  to the beta releases page. Release-note HTML is not exposed to the renderer.
+  to the beta releases page.
+  The downloaded-update dialogue uses a symmetrical card illustration and places the
+  version in its body text. “What’s new” expands the available release notes in a bounded,
+  scrollable region; the restart actions remain outside that region. The existing GitHub
+  provider supplies Markdown or HTML notes. Only the target version's notes are retained,
+  bounded to 64,000 characters and passed through the preload's validated state. Rendering
+  sanitises HTML, omits remote media and permits only HTTP(S) note links. Missing or malformed
+  notes hide the disclosure without blocking installation. Escape and Later defer this version;
+  keyboard focus remains within the dialogue and returns to its previous control on dismissal.
 
 ### Model Context Protocol server
 

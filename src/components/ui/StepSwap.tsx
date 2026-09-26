@@ -19,17 +19,27 @@ export function stepSwapTiming(multiplier: number) {
   };
 }
 
+export function fadeLiftTiming(entering: boolean, multiplier: number) {
+  return {
+    duration: (entering ? 0.26 : 0.1) * multiplier,
+    delay: (entering ? 0.16 : 0) * multiplier,
+    ease: EASE,
+  };
+}
+
 const StepSwapSurface = forwardRef<
   HTMLDivElement,
   {
     direction: number;
+    effect: 'crossfade' | 'fade-lift';
+    multiplier: number;
     motionEnabled: boolean;
     transition: ReturnType<typeof stepSwapTiming>;
     className?: string;
     children: React.ReactNode;
   }
 >(function StepSwapSurface(
-  { direction, motionEnabled, transition, className, children },
+  { direction, effect, multiplier, motionEnabled, transition, className, children },
   ref,
 ) {
   const isPresent = useIsPresent();
@@ -37,7 +47,22 @@ const StepSwapSurface = forwardRef<
     <motion.div
       ref={ref}
       custom={direction}
-      variants={VARIANTS}
+      variants={
+        effect === 'fade-lift'
+          ? {
+              enter: { opacity: 0, y: 14 },
+              center: {
+                opacity: 1,
+                y: 0,
+                transition: fadeLiftTiming(true, multiplier),
+              },
+              exit: {
+                opacity: 0,
+                transition: fadeLiftTiming(false, multiplier),
+              },
+            }
+          : VARIANTS
+      }
       initial={motionEnabled ? 'enter' : false}
       animate={motionEnabled ? 'center' : undefined}
       exit={motionEnabled ? 'exit' : undefined}
@@ -56,7 +81,8 @@ const StepSwapSurface = forwardRef<
  * in place and must not write a transform, or `position: fixed` descendants
  * (Learn's grading sheet) would pin to this wrapper. `popLayout` keeps the
  * incoming step in flow so the panel height changes to the new content rather
- * than stacking both steps.
+ * than stacking both steps. The opt-in fade-lift effect separates the outgoing
+ * and incoming controls with a short pause, avoiding an overlapping crossfade.
  */
 export function StepSwap({
   stepKey,
@@ -64,6 +90,7 @@ export function StepSwap({
   children,
   className,
   moveFocus = false,
+  effect = 'crossfade',
 }: {
   stepKey: string;
   /** 1 = forward, -1 = back, 0 = fade only. */
@@ -72,6 +99,8 @@ export function StepSwap({
   className?: string;
   /** Focus the new step's heading or first control. For dialogs, not page scenes. */
   moveFocus?: boolean;
+  /** Fade out completely before the incoming controls lift into place. */
+  effect?: 'crossfade' | 'fade-lift';
 }) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
@@ -97,6 +126,8 @@ export function StepSwap({
         <StepSwapSurface
           key={stepKey}
           direction={direction}
+          effect={effect}
+          multiplier={multiplier}
           motionEnabled={motionEnabled}
           transition={stepSwapTiming(multiplier)}
           className={className}

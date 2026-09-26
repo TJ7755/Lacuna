@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- Replaced typed-answer reports with inline comparison: muted submitted text above
+  the answer, strikethroughs on extra words and soft highlights on missing words.
+  Matching answers appear once, without captions or ticks. Word alignment preserves
+  strictness, Markdown and cloze context; grading remains manual.
+- Kept study cards anchored during reveal and hide by reserving the larger control
+  area for both phases. Inactive controls are inert; keyboard focus returns to the
+  typing field without scrolling. The shared controls retain the visible answer label
+  and the fade-before-lift timing when combined with the desktop interaction changes.
+
+- Replaced the downloaded-update prompt with the selected illustrated dialogue: a
+  symmetrical card stack, the version in body text, and expandable release notes.
+  GitHub Markdown/HTML notes survive updater progress and the validated preload bridge;
+  unsafe markup and remote media are excluded. Missing notes do not block installation.
+  Restart remains explicit, Later defers the current version, and the prototypes were removed.
+
+- Improved desktop input and accessibility: Author-mode mouse/pen lesson drags start on
+  movement and carry the lesson, with neighbours making room; touch retains its deliberate
+  hold and keyboard reordering remains available. Automatic input mode follows the input
+  in use, while explicit preferences remain fixed. Input-mode changes wait until a pressed
+  control's click has fired, so the first touch on a mouse-operated screen is not lost.
+  Card swipes follow held pointers directly.
+- Added named card-details controls, labelled search and typed answers, accessible chart
+  data tables and stronger secondary-text contrast. Departing course pages are inert;
+  step-completion actions are immediately available. Study overlays suppress underlying
+  shortcuts, cancel pending grades and recover focus. The deliberate graded-card pause
+  and existing flip/departure timing are preserved. See the
+  [desktop validation report](performance/2026-09-26/README.md) for evidence and hardware gaps.
+
+- Study controls now fade out before the grading buttons lift in together, on desktop
+  and touch layouts. This separates Show answer from Yes instead of overlapping them.
+  Motion speed settings scale the transition; reduced motion swaps immediately.
+  Implements direction A from the `prototype/card-control-motion` design study.
+
 - Kept the installed Windows upgrade probe clear of the downloaded-update
   dialogue while it records baseline study data, then installed the same verified
   update and checked that the records survived.
