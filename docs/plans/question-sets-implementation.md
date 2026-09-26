@@ -148,6 +148,26 @@ Aggregate marks are bounded to safe integers so summaries remain exact.
 
 ## Stage 1 — persistence and compatibility design
 
+The [authored-content persistence contract](question-sets-persistence.md) defines the next
+slice. Attempt records, drafts and their detailed lifecycle remain for a subsequent slice;
+this does not mark all of Stage 1 or Stage 2 complete.
+
+### Authored-content design gate — 26 September 2026
+
+- Resumed in the isolated `Lacuna-question-sets` worktree, preserving unrelated Share
+  prototype edits in the original checkout. Merged committed `master` at `d1338cc5`
+  as `7ee987be`; the sole changelog conflict retains both sets of entries.
+- Web typecheck and 73 focused Question/route-transition tests passed after the merge.
+  Focused formatting and `git diff --check` passed.
+- T3 browser at `http://127.0.0.1:5181/`, 1280×800: fresh visitor → Start revising →
+  Share → Welcome course → Questions passed, with no console warnings/errors or
+  network errors. This is a planning/compatibility smoke check of the existing UI.
+  The new editor and storage have not passed their gates yet.
+- Reviewed aggregate identity, versions, deletion, media and backup/share/sync boundaries
+  with Sol and a separate Luna audit. The audit identified published-course lineage as
+  an additional required boundary; fresh imports alone cannot prove sharing compatibility.
+
+
 Complete this before writing a migration or adding persisted collections. Review the data shape
 against every compatibility boundary in the integration map and agree one versioning plan.
 
