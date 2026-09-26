@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useCallback, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { CourseSectionNavigation } from '../course/CourseSectionNavigation';
 import { matchCourseSection } from '../course/courseSections';
@@ -59,11 +59,32 @@ const RoutePage = forwardRef<
   }
 >(function RoutePage({ pathname, direction, multiplier, children }, ref) {
   const present = useIsPresent();
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const assignRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      pageRef.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+
+  useLayoutEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+    if (present) {
+      page.removeAttribute('aria-hidden');
+      return;
+    }
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && page.contains(focused)) focused.blur();
+    page.setAttribute('aria-hidden', 'true');
+  }, [present]);
+
   return (
     <motion.div
-      ref={ref}
+      ref={assignRef}
       inert={!present}
-      aria-hidden={!present || undefined}
       data-route-content={pathname}
       custom={direction}
       variants={ROUTE_VARIANTS}
