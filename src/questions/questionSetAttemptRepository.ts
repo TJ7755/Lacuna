@@ -35,45 +35,48 @@ export async function startQuestionSetAttempt(
   mode: QuestionSetAttemptMode,
   now = Date.now(),
 ): Promise<QuestionSetAttemptRecord> {
-  const receiptRaw = await db.questionSets.get(questionSetId);
-  if (!receiptRaw) throw new Error('Question Set not found.');
-  const receipt = parseQuestionSetRecord(receiptRaw);
-  const nodes = answerableNodes(receipt);
-  const responseKind = new Map<string, 'written' | 'calculation' | 'multiple-choice'>();
-  for (const question of receipt.questions) {
-    if (question.answer) responseKind.set(question.id, question.answer.response.kind);
-    for (const part of question.parts) {
-      if (part.answer) responseKind.set(part.id, part.answer.response.kind);
-      for (const subpart of part.subparts) {
-        if (subpart.answer) responseKind.set(subpart.id, subpart.answer.response.kind);
+  return db.transaction('rw', [db.courses, db.questionSets, db.questionSetAttempts], async () => {
+    const receiptRaw = await db.questionSets.get(questionSetId);
+    if (!receiptRaw) throw new Error('Question Set not found.');
+    const receipt = parseQuestionSetRecord(receiptRaw);
+    if (!(await db.courses.get(receipt.courseId))) throw new Error('Course not found.');
+    const nodes = answerableNodes(receipt);
+    const responseKind = new Map<string, 'written' | 'calculation' | 'multiple-choice'>();
+    for (const question of receipt.questions) {
+      if (question.answer) responseKind.set(question.id, question.answer.response.kind);
+      for (const part of question.parts) {
+        if (part.answer) responseKind.set(part.id, part.answer.response.kind);
+        for (const subpart of part.subparts) {
+          if (subpart.answer) responseKind.set(subpart.id, subpart.answer.response.kind);
+        }
       }
     }
-  }
-  const record = parseQuestionSetAttemptRecord({
-    id: makeId(),
-    courseId: receipt.courseId,
-    questionSetId,
-    receipt: clone(receipt),
-    mode,
-    status: 'answering',
-    responses: nodes.map((node) => ({
-      nodeId: node.nodeId,
-      draft: emptyResponse(responseKind.get(node.nodeId)!),
-    })),
-    decisions: [],
-    annotations: [],
-    corrections: [],
-    reflection: { reasons: [], note: '' },
-    assistance: [],
-    revealedQuestionIds: [],
-    activeNodeId: nodes[0].nodeId,
-    activeAllocationId: null,
-    revisionId: makeId(),
-    createdAt: now,
-    updatedAt: now,
+    const record = parseQuestionSetAttemptRecord({
+      id: makeId(),
+      courseId: receipt.courseId,
+      questionSetId,
+      receipt: clone(receipt),
+      mode,
+      status: 'answering',
+      responses: nodes.map((node) => ({
+        nodeId: node.nodeId,
+        draft: emptyResponse(responseKind.get(node.nodeId)!),
+      })),
+      decisions: [],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      assistance: [],
+      revealedQuestionIds: [],
+      activeNodeId: nodes[0].nodeId,
+      activeAllocationId: null,
+      revisionId: makeId(),
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.questionSetAttempts.add(record);
+    return record;
   });
-  await db.questionSetAttempts.add(record);
-  return record;
 }
 
 export async function getQuestionSetAttempt(id: string): Promise<QuestionSetAttemptRecord | null> {

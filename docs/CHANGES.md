@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed repeated Question Set attempt merges: combined evidence receives a deterministic bounded
+  revision instead of reusing a constituent revision, so subsequent sync with either source does
+  not report a false conflict or revert the selected progress. Recovery and peer sync share the
+  same merge rules. Starting an attempt now reads its Course/set and saves its receipt atomically,
+  preventing an orphan attempt if Course deletion happens at the same time.
+
 - Added the Paper learner interface for Question Sets: one answerable part at a time, tall
   written/calculation fields and multiple choice, Practice/Paper submission timing, unanswered
   confirmation, saved resume, and one self-marking criterion beside the original response.

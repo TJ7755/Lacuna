@@ -406,25 +406,28 @@ describe('Question peer merge', () => {
       receipt,
       mode: 'practice',
       revisionId: 'left',
-      updatedAt: 30,
+      updatedAt: 31,
       responses: [
         { ...baseResponses[0], submitted: baseResponses[0].draft, submittedAt: 30 },
         baseResponses[1],
       ],
       revealedQuestionIds: ['set-question-1'],
       assistance: [{ nodeId: 'set-question-1', kind: 'related-knowledge', occurredAt: 25 }],
+      reflection: { reasons: [], note: 'left state' },
     });
     const right = setAttempt({
       receipt,
       mode: 'practice',
       revisionId: 'right',
       updatedAt: 31,
+      activeNodeId: 'set-question-2',
       responses: [
         baseResponses[0],
         { ...baseResponses[1], submitted: baseResponses[1].draft, submittedAt: 31 },
       ],
       revealedQuestionIds: ['set-question-2'],
       assistance: [{ nodeId: 'set-question-2', kind: 'answer-revealed', occurredAt: 26 }],
+      reflection: { reasons: [], note: 'right state' },
     });
     const merged = mergeSnapshots(
       backup({ questionSetAttempts: [left] }),
@@ -437,6 +440,8 @@ describe('Question peer merge', () => {
     expect(merged.questionSetAttempts).toEqual(reversed.questionSetAttempts);
     expect(merged.questionSetAttempts[0]).toMatchObject({
       status: 'marking',
+      activeNodeId: 'set-question-2',
+      reflection: { note: 'right state' },
       revealedQuestionIds: ['set-question-1', 'set-question-2'],
       assistance: [
         { nodeId: 'set-question-1', kind: 'related-knowledge' },
@@ -444,5 +449,14 @@ describe('Question peer merge', () => {
       ],
     });
     expect(mergeSnapshots(merged, merged)).toEqual(merged);
+    expect(merged.questionSetAttempts[0].revisionId).toMatch(
+      /^merged-attempt:fnv1a128-[a-f0-9]{32}$/,
+    );
+    expect(
+      mergeSnapshots(merged, backup({ questionSetAttempts: [left] })).questionSetAttempts,
+    ).toEqual(merged.questionSetAttempts);
+    expect(
+      mergeSnapshots(merged, backup({ questionSetAttempts: [right] })).questionSetAttempts,
+    ).toEqual(merged.questionSetAttempts);
   });
 });

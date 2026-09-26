@@ -310,10 +310,11 @@ describe('Question Set attempt repository', () => {
       { nodeId: 'q1', kind: 'related-knowledge', occurredAt: 225 },
       231,
     );
+    const localBackup = await exportDatabase();
 
     await db.questionSetAttempts.put(base);
-    let incoming = await submitPracticeQuestion(base.id, base.revisionId, 'q2', 240);
-    incoming = await recordQuestionSetAssistance(
+    const incoming = await submitPracticeQuestion(base.id, base.revisionId, 'q2', 240);
+    await recordQuestionSetAssistance(
       incoming.id,
       incoming.revisionId,
       { nodeId: 'q2', kind: 'answer-revealed', occurredAt: 235 },
@@ -328,5 +329,16 @@ describe('Question Set attempt repository', () => {
     expect(merged.revealedQuestionIds).toEqual(['q1', 'q2']);
     expect(merged.status).toBe('marking');
     expect(merged.assistance).toHaveLength(2);
+    await importBackup(localBackup, 'merge');
+    expect(await getQuestionSetAttempt(base.id)).toEqual(merged);
+    await importBackup(backup, 'merge');
+    expect(await getQuestionSetAttempt(base.id)).toEqual(merged);
+  });
+
+  it('refuses to start an attempt for an authored set whose Course is missing', async () => {
+    const set = await setFixture();
+    await db.courses.delete(set.courseId);
+    await expect(startQuestionSetAttempt(set.id, 'practice', 200)).rejects.toThrow('Course');
+    expect(await db.questionSetAttempts.count()).toBe(0);
   });
 });

@@ -56,6 +56,7 @@ import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
+import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
 import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
@@ -71,17 +72,6 @@ function withUpdatedAt<T extends { updatedAt?: number }>(
   return typeof row.updatedAt === 'number'
     ? (row as T & { updatedAt: number })
     : { ...row, updatedAt: fallback };
-}
-
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  const row = value as Record<string, unknown>;
-  return `{${Object.keys(row)
-    .sort()
-    .filter((key) => row[key] !== undefined)
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson(row[key])}`)
-    .join(',')}}`;
 }
 
 /** Gather the whole database into a single backup object. */
@@ -726,89 +716,11 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         );
         for (const incoming of incomingQuestionSetAttempts) {
           const existing = local.get(incoming.id);
-          if (existing && canonicalJson(existing.receipt) !== canonicalJson(incoming.receipt)) {
-            throw new Error('Question Set attempt has conflicting immutable receipts.');
-          }
-          if (
-            existing &&
-            (existing.mode !== incoming.mode ||
-              existing.courseId !== incoming.courseId ||
-              existing.questionSetId !== incoming.questionSetId ||
-              existing.createdAt !== incoming.createdAt)
-          ) {
-            throw new Error('Question Set attempt has conflicting immutable identity.');
-          }
-          if (
-            existing?.revisionId === incoming.revisionId &&
-            canonicalJson(existing) !== canonicalJson(incoming)
-          ) {
-            throw new Error('Question Set attempt reuses a revision for unequal data.');
-          }
-          for (const original of existing?.responses.filter((row) => row.submitted) ?? []) {
-            const competing = incoming.responses.find(
-              (row) => row.nodeId === original.nodeId && row.submitted,
-            );
-            if (
-              competing &&
-              canonicalJson({ response: competing.submitted, at: competing.submittedAt }) !==
-                canonicalJson({ response: original.submitted, at: original.submittedAt })
-            ) {
-              throw new Error('Question Set attempt has conflicting submitted responses.');
-            }
-          }
           if (!existing) {
             await db.questionSetAttempts.put(incoming);
             continue;
           }
-          const lifecycle = { answering: 0, marking: 1, complete: 2 } as const;
-          const incomingWins =
-            lifecycle[incoming.status] > lifecycle[existing.status] ||
-            (lifecycle[incoming.status] === lifecycle[existing.status] &&
-              (incoming.updatedAt > existing.updatedAt ||
-                (incoming.updatedAt === existing.updatedAt &&
-                  incoming.revisionId > existing.revisionId)));
-          const winner = structuredClone(incomingWins ? incoming : existing);
-          const loser = incomingWins ? existing : incoming;
-          for (const original of loser.responses.filter((row) => row.submitted)) {
-            const target = winner.responses.find((row) => row.nodeId === original.nodeId)!;
-            if (!target.submitted) {
-              target.submitted = structuredClone(original.submitted);
-              target.submittedAt = original.submittedAt;
-              target.draft = structuredClone(original.submitted!);
-            }
-          }
-          const revealed = new Set([
-            ...existing.revealedQuestionIds,
-            ...incoming.revealedQuestionIds,
-          ]);
-          winner.revealedQuestionIds = winner.receipt.questions
-            .map((question) => question.id)
-            .filter((id) => revealed.has(id));
-          const assistance = new Map(
-            [...existing.assistance, ...incoming.assistance].map((event) => [
-              canonicalJson(event),
-              event,
-            ]),
-          );
-          winner.assistance = [...assistance.values()].sort(
-            (a, b) =>
-              a.occurredAt - b.occurredAt || canonicalJson(a).localeCompare(canonicalJson(b)),
-          );
-          if (
-            existing.paperSubmittedAt !== undefined &&
-            incoming.paperSubmittedAt !== undefined &&
-            existing.paperSubmittedAt !== incoming.paperSubmittedAt
-          ) {
-            throw new Error('Question Set attempt has conflicting paper submission.');
-          }
-          winner.paperSubmittedAt = existing.paperSubmittedAt ?? incoming.paperSubmittedAt;
-          const allSubmitted = winner.responses.every((response) => response.submitted);
-          if (allSubmitted && winner.status === 'answering') winner.status = 'marking';
-          if (winner.mode === 'paper' && allSubmitted) {
-            winner.revealedQuestionIds = winner.receipt.questions.map((question) => question.id);
-          }
-          winner.updatedAt = Math.max(existing.updatedAt, incoming.updatedAt);
-          await db.questionSetAttempts.put(winner);
+          await db.questionSetAttempts.put(mergeQuestionSetAttemptPair(existing, incoming));
         }
       }
       if (restoredQuestionSetIds.size > 0) {

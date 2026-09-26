@@ -182,3 +182,19 @@ Validation: actual baseline red at `0b09302d` (missing attempt codec), 219 passi
 existing v28 fixture to v29, answered and resumed a nested Biology set, submitted and annotated
 it, and exported v13 containing the attempt. Original responses remained intact beside a saved
 correction, and all 30 pre-existing Card schedules matched the stored browser baseline.
+
+
+### Follow-up merge and creation gate
+
+Attempt creation now reads its Course and set and writes its receipt within one transaction.
+Recovery and peer sync use the same attempt-pair merge. Synthesised state receives a bounded,
+deterministic revision; equal-time synthetic revisions take precedence over their source
+revisions. Same-revision unequal data remains a hard conflict.
+
+The T3 browser remerged concurrent assistance events with each original in turn: both retained
+identical combined evidence and the selected active part. The combined revision was 56 characters;
+no ancestry list or response content is embedded in the identifier.
+
+Validation: three expected failures were captured on `fb71b403` before these fixes (missing-Course
+creation, peer revision reuse and recovery remerge conflict). The updated backend gate passes
+220 tests across 11 suites and web typechecking.
