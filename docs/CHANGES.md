@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Implemented the Paper Question Set authoring interface: real set/draft library, nested
+  questions and parts, separate Question/Mark scheme/Links steps, written/calculation/MCQ
+  formats, manual concept and related-card linking, lesson/exam selection, described images,
+  local autosave and validated Save set. Existing individual Questions remain accessible.
+  Author preview shows source context and response layouts without recording learner evidence.
+  Recorded set practice and self-marking remain a subsequent implementation stage.
+
 - Added serial Question Set authoring sessions: edits made during a save are retained,
   stale edits require explicit recovery, and unchanged publication preserves the existing
   content revision. Diagram assets and their draft references are committed together;

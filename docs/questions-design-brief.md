@@ -2,11 +2,11 @@
 
 **Date:** 26 September 2026
 
-**Status:** Proposed design; no application behaviour implemented by this brief.
+**Status:** Paper direction selected; authoring implementation has begun.
 
-Implementation has started with the pure domain foundation. The
+The Paper authoring interface now uses real drafts and saved sets. The
 [implementation checklist](plans/question-sets-implementation.md) records completed
-slices and remaining work; the interface described here is not yet available.
+slices and remaining work; recorded set practice, marking and analytics are not yet available.
 
 This is the consolidated design proposal for question sets, authoring, self-marking,
 card connections and exam preparation. The [research note](question-sets-research-2026-09-26.md)

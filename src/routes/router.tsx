@@ -28,6 +28,8 @@ import {
   loadQuestionEditor,
   loadQuestionLearnMode,
   loadQuestionsPage,
+  loadQuestionSetEditor,
+  loadQuestionSetOverview,
   loadSearchPage,
   loadSequenceEditor,
   loadSettings,
@@ -59,6 +61,8 @@ const CoursePath = lazy(loadCoursePath);
 const LessonView = lazy(loadLessonView);
 const CardsPage = lazy(loadCardsPage);
 const QuestionsPage = lazy(loadQuestionsPage);
+const QuestionSetEditor = lazy(loadQuestionSetEditor);
+const QuestionSetOverview = lazy(loadQuestionSetOverview);
 const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
@@ -116,6 +120,8 @@ export const router = createHashRouter([
             path: 'course/:courseId/questions',
             element: courseAccessRoute(lazyRoute(QuestionsPage)),
           },
+          { path: 'course/:courseId/question-sets/:setId/edit', element: courseAccessRoute(lazyRoute(QuestionSetEditor)) },
+          { path: 'course/:courseId/question-sets/:setId', element: courseAccessRoute(lazyRoute(QuestionSetOverview)) },
           {
             path: 'course/:courseId/questions/new',
             element: courseAccessRoute(lazyRoute(QuestionEditor)),

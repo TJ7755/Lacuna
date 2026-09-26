@@ -13,3 +13,8 @@ it('keeps announcing known pages', async () => {
   await waitFor(() => expect(document.title).toBe('Share · Lacuna'));
   unmount();
 });
+
+it('names the question set editor', async () => {
+  render(<RouteAnnouncement pathname="/course/biology/question-sets/cells/edit" />);
+  expect(await screen.findByText('Edit question set')).toBeInTheDocument();
+});
