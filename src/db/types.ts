@@ -17,6 +17,7 @@ import type {
   QuestionDefinition,
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -1159,8 +1160,8 @@ export interface SyncState {
 
 /** Shape of an exported/imported backup file. */
 export interface BackupFile {
-  /** v12 uses a new marker so older readers reject rather than silently drop Question Sets. */
-  app: 'lacuna' | 'lacuna-v12';
+  /** New markers make older readers reject collections they cannot preserve. */
+  app: 'lacuna' | 'lacuna-v12' | 'lacuna-v13';
   version: number;
   exportedAt: number;
   /** Pre-v22 Deck rows. Current exports omit this; a non-empty array is refused. */
@@ -1173,6 +1174,8 @@ export interface BackupFile {
   questionAttempts?: QuestionAttempt[];
   /** Authored question-set content. Required from backup/snapshot version 12. */
   questionSets?: QuestionSetRecord[];
+  /** Personal authored-set attempts. Required from backup/snapshot version 13. */
+  questionSetAttempts?: QuestionSetAttemptRecord[];
   /** Durable AI teaching context. Optional so existing v11 backups remain valid. */
   agentMemories?: AgentMemory[];
   /** Canonical review events when exported from schema v20 or later. */

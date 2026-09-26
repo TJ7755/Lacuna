@@ -158,3 +158,27 @@ live-upload interval.
 
 The primary agent owns the UI redesign. No delegated UI implementation is included in
 this slice, and work stops before the authoring interface.
+
+
+## Personal attempt storage implemented — 26 September 2026
+
+Schema v29 adds `questionSetAttempts`. Backup and peer sync now emit envelope v13 with the
+`lacuna-v13` marker and required attempt collection; historical v12 inputs normalise with no
+set attempts. Course sharing remains authored-content-only.
+
+The attempt repository creates the full immutable receipt before rendering. Response drafts
+are mutable until whole-question Practice submission or whole-set Paper submission. Submitted
+originals cannot be replaced; corrections, comments, allocation decisions and reflection live
+separately. Revision-ID compare-and-swap protects each write. Zero is an explicit award;
+unsure and absent decisions remain unresolved. Assistance is append-only.
+
+Peer and recovery merges reject conflicting receipts, identities, original responses and
+same-revision unequal payloads. Lifecycle cannot regress. Compatible submitted originals,
+reveals and assistance are retained across concurrent progress. Retained receipts keep their
+media reachable after deletion of the authored set; Course deletion and undo include attempts.
+
+Validation: actual baseline red at `0b09302d` (missing attempt codec), 219 passing tests across
+11 backend suites, including populated v28-to-v29 upgrade. Browser origin 5183 upgraded the
+existing v28 fixture to v29, answered and resumed a nested Biology set, submitted and annotated
+it, and exported v13 containing the attempt. Original responses remained intact beside a saved
+correction, and all 30 pre-existing Card schedules matched the stored browser baseline.

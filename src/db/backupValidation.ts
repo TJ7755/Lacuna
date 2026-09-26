@@ -17,7 +17,7 @@ const optionalCollections = Object.fromEntries(
 export const backupSchema = z
   .looseObject({
     ...optionalCollections,
-    app: z.enum(['lacuna', 'lacuna-v12']),
+    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13']),
     version: z.number().int().positive(),
     exportedAt: z.number().finite(),
     decks: z.array(z.looseObject({})).optional(),
@@ -40,15 +40,19 @@ export const backupSchema = z
     // database version rather than a backup version.
     const legacyRawSnapshot =
       backup.app === 'lacuna' && backup.version >= 22 && backup.version <= 28;
-    // v12 changed the app id so older builds refuse files they would silently truncate.
+    // From v12 each version has its own app id, so older builds refuse files they
+    // would silently truncate.
     const supported =
-      backup.app === 'lacuna' ? backup.version <= 11 || legacyRawSnapshot : backup.version === 12;
+      backup.app === 'lacuna'
+        ? backup.version <= 11 || legacyRawSnapshot
+        : backup.app === `lacuna-v${backup.version}`;
     if (!supported)
       context.addIssue({ code: 'custom', path: ['version'], message: 'Unsupported version' });
     if (backup.version >= 11 && !(legacyRawSnapshot && backup.version < 24))
       for (const key of ['concepts', 'questions', 'questionConcepts', 'questionAttempts'])
         require(key, 11);
     if (backup.version >= 12 && !legacyRawSnapshot) require('questionSets', 12);
+    if (backup.version >= 13 && !legacyRawSnapshot) require('questionSetAttempts', 13);
   });
 
 export function backupIsValid(data: unknown): data is BackupFile {

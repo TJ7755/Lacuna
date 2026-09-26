@@ -4,6 +4,7 @@ import { db } from './schema';
 import { createCourse, createLesson } from './repository';
 import { createConcept, createFixedQuestion, startQuestionAttempt } from '../questions/repository';
 import { createQuestionSet } from '../questions/questionSetRepository';
+import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 import { assetUrl, storeImageBlob } from './assets';
 import { buildCourseFile, decodeCourseFile, withCourseFileAssets } from './courseFile';
 import { importSharePayload } from './share';
@@ -80,6 +81,7 @@ describe('course files with authored Question Sets', () => {
       },
       100,
     );
+    await startQuestionSetAttempt(sourceSet.id, 'paper', 110);
 
     const file = await decodeCourseFile(await buildCourseFile(course.id));
     if (file.payload.v !== 4) throw new Error('Expected a v4 course payload.');
@@ -116,5 +118,6 @@ describe('course files with authored Question Sets', () => {
     ).toContain(assetUrl(image.hash));
     expect(await db.assets.get(image.hash)).toBeDefined();
     expect(await db.questionAttempts.count()).toBe(0);
+    expect(await db.questionSetAttempts.count()).toBe(0);
   });
 });

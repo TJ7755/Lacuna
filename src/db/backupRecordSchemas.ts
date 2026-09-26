@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
+import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 
 export const text = z.string();
 export const id = text.min(1);
@@ -363,4 +364,5 @@ export const recordSchemas = {
   }),
   tombstones: object({ table: id, recordId: id, deletedAt: number }),
   questionSets: codec(parseQuestionSetRecord, 'Invalid question set'),
+  questionSetAttempts: codec(parseQuestionSetAttemptRecord, 'Invalid question set attempt'),
 };

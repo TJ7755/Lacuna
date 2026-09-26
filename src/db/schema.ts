@@ -61,6 +61,7 @@ import type {
   QuestionDefinition,
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import {
   reviewActivityProjectionMiddleware,
   type ReviewActivityRow,
@@ -158,6 +159,7 @@ class LacunaDatabase extends Dexie {
   questionConcepts!: Table<QuestionConceptSet, string>;
   questionAttempts!: Table<QuestionAttempt, string>;
   questionSets!: Table<QuestionSetRecord, string>;
+  questionSetAttempts!: Table<QuestionSetAttemptRecord, string>;
   agentMemories!: Table<AgentMemory, string>;
 
   constructor() {
@@ -1297,6 +1299,11 @@ class LacunaDatabase extends Dexie {
     this.version(28).stores({
       questionSets: 'id, courseId, *lessonIds, *assessmentIds, updatedAt',
     });
+
+    // Version 29: personal authored Question Set attempts retain complete content receipts.
+    this.version(29).stores({
+      questionSetAttempts: 'id, courseId, questionSetId, status, updatedAt',
+    });
   }
 }
 
@@ -1511,8 +1518,8 @@ export async function readAllDataFromVersion(
   );
 
   const payload: BackupFile = {
-    app: schemaVersion < 24 ? 'lacuna' : 'lacuna-v12',
-    version: schemaVersion < 24 ? schemaVersion : 12,
+    app: schemaVersion < 24 ? 'lacuna' : schemaVersion < 29 ? 'lacuna-v12' : 'lacuna-v13',
+    version: schemaVersion < 24 ? schemaVersion : schemaVersion < 29 ? 12 : 13,
     exportedAt: Date.now(),
     decks: (raw.data['decks'] ?? []) as LegacyDeck[],
     cards: (raw.data['cards'] ?? []) as Card[],
@@ -1542,6 +1549,7 @@ export async function readAllDataFromVersion(
     questionConcepts: (raw.data['questionConcepts'] ?? []) as QuestionConceptSet[],
     questionAttempts: (raw.data['questionAttempts'] ?? []) as QuestionAttempt[],
     questionSets: (raw.data['questionSets'] ?? []) as QuestionSetRecord[],
+    questionSetAttempts: (raw.data['questionSetAttempts'] ?? []) as QuestionSetAttemptRecord[],
     lineageIdMappings: (raw.data['lineageIdMappings'] ?? []) as LineageIdMapping[],
     pendingMergeReviews: (raw.data['pendingMergeReviews'] ?? []) as PendingMergeReview[],
     agentMemories: (raw.data['agentMemories'] ?? []) as AgentMemory[],
