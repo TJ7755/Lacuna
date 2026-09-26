@@ -2,18 +2,11 @@
 
 ## Unreleased
 
-- Refined the selected update-prompt prototype (B): moved the version into body
-  text, centred a symmetrical card illustration, and added expandable notes from
-  the published 0.2.11 release. Documented the production updater integration needed.
-
-- Aligned typed-answer reveals with ordinary study cards: the formatted answer appears
-  once, with the submitted answer beneath a quiet divider. Replaced the duplicate
-  red/green word comparison with a small match indicator that respects answer strictness;
-  grading remains manual. Long submissions wrap and retain line breaks.
-
-- Added a throwaway HTML comparison of three desktop update prompts on the
-  `design/update-prompt-prototypes` branch: compact dialogue, illustrated panel and
-  non-blocking notice. Production update behaviour is unchanged.
+- Replaced the downloaded-update prompt with the selected illustrated dialogue: a
+  symmetrical card stack, the version in body text, and expandable release notes.
+  GitHub Markdown/HTML notes survive updater progress and the validated preload bridge;
+  unsafe markup and remote media are excluded. Missing notes do not block installation.
+  Restart remains explicit, Later defers the current version, and the prototypes were removed.
 
 - Added offline `.lacuna` course files to Share. Files include referenced images, audio and
   occlusion diagrams once each, without personal study history. File imports preview before

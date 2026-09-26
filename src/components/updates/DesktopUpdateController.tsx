@@ -1,8 +1,7 @@
-import { ModalBackdrop } from '../ui/ModalBackdrop';
+import { UpdateReadyDialog } from './UpdateReadyDialog';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useDesktopUpdater } from '../../electron/useDesktopUpdater';
 import { formatUpdateBytes } from '../../electron/updatePresentation';
 
@@ -47,7 +46,9 @@ export function DesktopUpdateController() {
 
   return (
     <UpdateReadyDialog
+      key={availableVersion}
       version={availableVersion}
+      releaseNotes={state.releaseNotes}
       onInstall={() => void restartAndInstall()}
       onLater={() => setLaterVersion(availableVersion)}
     />
@@ -93,51 +94,6 @@ function UpdateProgressNotice({
           </p>
         </>
       )}
-    </div>
-  );
-}
-
-function UpdateReadyDialog({
-  version,
-  onInstall,
-  onLater,
-}: {
-  version: string;
-  onInstall: () => void;
-  onLater: () => void;
-}) {
-  const trapRef = useFocusTrap(true, { autoFocusSelector: '[data-update-install]' });
-
-  return (
-    <div
-      ref={trapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Update ready"
-      className="fixed inset-0 z-[70] flex items-center justify-center p-5"
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape') return;
-        event.preventDefault();
-        onLater();
-      }}
-    >
-      <ModalBackdrop shade={45} />
-      <div className="relative w-full max-w-md rounded-2xl border border-line-strong bg-surface p-6 shadow-2xl shadow-black/20">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">Update ready</p>
-        <h2 className="mt-2 font-display text-2xl tracking-tight">Restart to update Lacuna</h2>
-        <p className="mt-3 text-sm leading-6 text-ink-soft">
-          Version {version} has finished downloading. Lacuna will close, install the update and
-          reopen.
-        </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onLater}>
-            Later
-          </Button>
-          <Button data-update-install variant="primary" onClick={onInstall}>
-            Restart and install
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -101,6 +101,9 @@ function safeUpdateState(value: unknown): UpdateState | undefined {
     ...(typeof item.availableVersion === 'string'
       ? { availableVersion: item.availableVersion }
       : {}),
+    ...(typeof item.releaseNotes === 'string' && item.releaseNotes.length <= 64_000
+      ? { releaseNotes: item.releaseNotes }
+      : {}),
     ...(typeof item.manualReason === 'string'
       ? { manualReason: item.manualReason as ManualUpdateReason }
       : {}),
