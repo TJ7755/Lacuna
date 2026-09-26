@@ -110,6 +110,9 @@ For layout assertions inside the app shell's scrollable `main`, add `main.scroll
 to viewport bounding boxes before comparing positions. Playwright can scroll a
 control into view while clicking, without changing the content's layout.
 
+The app shell disables text selection globally. New plain-text panels that support highlighting
+must opt into `select-text`; DOM selection tests without the real stylesheet miss this.
+
 In Recharts composed charts, a Scatter's own data can replace the chart-level data
 used for axis hover selection. Use reference dots for fixed annotations; chart
 interaction tests must retain the real Recharts components to catch this.

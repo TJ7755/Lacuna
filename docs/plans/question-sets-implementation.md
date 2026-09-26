@@ -418,12 +418,12 @@ No numerical exam forecast or classifier has been added.
   originating entry point and preserve library filter/scroll state.
 - [x] Keep self-marked results labelled as such; show unresolved decisions as provisional and
   completion separately from score. Repeating creates a new attempt.
-- [ ] Add tests for close/reopen resume, Paper reveal timing, dependency groups, answer snapshot
+- [x] Add tests for close/reopen resume, Paper reveal timing, dependency groups, answer snapshot
   immutability, assisted exposure, annotation persistence and zero-mark completed attempts.
 - [ ] Run touch and browser evidence on supported web targets and packaged desktop as applicable;
   specifically check focus, selection-based annotation, enlarged diagrams and long answers on
   narrow screens.
-- [ ] Record the learner-flow browser gate and commit the validated slice.
+- [x] Record the learner-flow browser gate and commit the validated slice.
 
 Exit condition: an attempt can be answered, left, resumed, self-marked, annotated and completed
 without loss or accidental conversion of unknown/unsure to zero.
@@ -461,6 +461,7 @@ Evidence:
 - Desktop answering: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiub4td-f65692aa.png`.
 - Desktop marking: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiudwld-838142e5.png`.
 - Narrow marking: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiuejtp-925f67de.png`.
+- Narrow answering: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiuj6w3-cffaf79a.png`.
 
 Remaining Stage 4 release checks: enlarged-diagram interaction, supported-browser/touch and
 packaged desktop checks, cold offline validation, and preserving future path/exam entry context
