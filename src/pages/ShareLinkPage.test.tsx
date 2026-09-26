@@ -179,7 +179,7 @@ it('leaves the link untracked when the imported course came from elsewhere', asy
   expect(getCourseIdForShare(SHARE_ID)).toBeNull();
 });
 
-it('leaves the link untracked when no manifest is published', async () => {
+it('blocks the import when the manifest is missing so the course stays trackable', async () => {
   const bytes = new TextEncoder().encode('{"format":"lacuna-course"}');
   stubFetch(
     new Response(bytes, {
@@ -190,8 +190,41 @@ it('leaves the link untracked when no manifest is published', async () => {
   );
   await seedTrackedCourse('biology', LINEAGE_ID);
   open(SHARE_ID);
+  expect(await screen.findByText('This link is incomplete')).toBeInTheDocument();
+  expect(screen.getByText(/update details are missing/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Add to my courses' })).not.toBeInTheDocument();
+  expect(mocks.importShare).not.toHaveBeenCalled();
+  expect(getCourseIdForShare(SHARE_ID)).toBeNull();
+});
+
+it('recovers tracking after the manifest returns', async () => {
+  const bytes = new TextEncoder().encode('{"format":"lacuna-course"}');
+  const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+    const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (href.includes('/meta')) return notFoundResponse();
+    return new Response(bytes, {
+      status: 200,
+      headers: { 'Content-Type': 'application/octet-stream', ETag: '"t1"' },
+    });
+  });
+  vi.stubGlobal('fetch', fetchImpl);
+  await seedTrackedCourse('biology', LINEAGE_ID);
+  open(SHARE_ID);
+  expect(await screen.findByText('This link is incomplete')).toBeInTheDocument();
+
+  fetchImpl.mockImplementation(async (input: string | URL | Request) => {
+    const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (href.includes('/meta')) return manifestResponse(LINEAGE_ID);
+    return new Response(bytes, {
+      status: 200,
+      headers: { 'Content-Type': 'application/octet-stream', ETag: '"t1"' },
+    });
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByText('Shared biology')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
-  await waitFor(() => expect(mocks.importShare).toHaveBeenCalled());
-  expect(getCourseIdForShare(SHARE_ID)).toBeNull();
+  await waitFor(() => expect(mocks.importShare).toHaveBeenCalledWith({ v: 2 }));
+  expect(JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')).toEqual({
+    [SHARE_ID]: 'biology',
+  });
 });

@@ -14,10 +14,14 @@ import { confirmShareImport } from '../shareLinks/linkStore';
 type ShareLinkState =
   | { status: 'loading' }
   | { status: 'unavailable'; message: string }
-  | { status: 'ready'; file: File; shareId: string; expectedLineageId: string | null };
+  | { status: 'incomplete'; message: string }
+  | { status: 'ready'; file: File; shareId: string; expectedLineageId: string };
 
 const UNAVAILABLE_MESSAGE =
   'This link is invalid or has been removed. Ask the teacher for a fresh link.';
+
+const INCOMPLETE_MESSAGE =
+  'The link loaded, but its update details are missing. Check your connection, then try again — importing now would miss future teacher updates.';
 
 /**
  * Student entry point for teacher share links (`/#/s/<code>`). The published
@@ -52,21 +56,38 @@ export function ShareLinkPage() {
           setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
           return;
         }
-        // The manifest names the lineage this link serves. It is best-effort:
-        // without it the import still proceeds, but the link is left untracked
-        // rather than risk associating it with a different course below.
-        let expectedLineageId: string | null = null;
+        // The manifest names the lineage this link serves. Without it the
+        // import cannot be tracked: the payload alone does not prove it is
+        // the linked course, and an untracked import would permanently miss
+        // teacher updates. Show an incomplete state with a retry instead —
+        // importing stays available once the manifest verifies.
+        let manifestSlot;
         try {
-          const manifestSlot = await getShareBytes({
+          manifestSlot = await getShareBytes({
             relayUrl: DEFAULT_RELAY_URL,
             shareId,
             slot: 'meta',
           });
-          if (manifestSlot && !cancelled) {
-            expectedLineageId = parseShareManifest(manifestSlot.bytes).lineageId;
-          }
+        } catch (error) {
+          if (cancelled) return;
+          setState({
+            status: 'unavailable',
+            message: error instanceof Error ? error.message : UNAVAILABLE_MESSAGE,
+          });
+          return;
+        }
+        if (cancelled) return;
+        if (!manifestSlot) {
+          setState({ status: 'incomplete', message: INCOMPLETE_MESSAGE });
+          return;
+        }
+        let expectedLineageId: string;
+        try {
+          expectedLineageId = parseShareManifest(manifestSlot.bytes).lineageId;
         } catch {
-          expectedLineageId = null;
+          if (cancelled) return;
+          setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
+          return;
         }
         if (cancelled) return;
         setState({
@@ -116,13 +137,29 @@ export function ShareLinkPage() {
             </Link>
           </div>
         </section>
-      ) : (
+      ) : state.status === 'ready' ? (
         <SharedCourseImport
           initialFile={state.file}
           onImported={(courseId) => {
             void confirmShareImport(state.shareId, state.expectedLineageId, courseId);
           }}
         />
+      ) : (
+        <section className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="mb-1 font-display text-xl">This link is incomplete</h2>
+          <p className="mb-5 text-sm text-ink-soft">{state.message}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setAttempt((count) => count + 1)}>
+              Try again
+            </Button>
+            <Link
+              to="/share"
+              className="inline-flex min-h-10 items-center rounded-xl px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-ink/5"
+            >
+              Back to Share
+            </Link>
+          </div>
+        </section>
       )}
     </div>
   );
