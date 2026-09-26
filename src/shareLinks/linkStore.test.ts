@@ -1,6 +1,10 @@
+import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '../db/schema';
+import type { Course } from '../db/types';
 import {
   clearShareImport,
+  confirmShareImport,
   getCourseIdForShare,
   getShareIdForCourse,
   recordShareImport,
@@ -9,8 +13,17 @@ import {
 const SHARE_A = 'a'.repeat(32);
 const SHARE_B = 'b'.repeat(32);
 
-beforeEach(() => {
+function trackedCourse(id: string, lineageId: string): Course {
+  return {
+    id,
+    distributedCopy: { lineageId, revision: 1, locked: true, autoAcceptUpdates: false },
+  } as Course;
+}
+
+beforeEach(async () => {
   localStorage.clear();
+  await db.delete();
+  await db.open();
 });
 
 describe('share link store', () => {
@@ -63,5 +76,29 @@ describe('share link store', () => {
     expect(getCourseIdForShare(SHARE_A)).toBeNull();
     recordShareImport(SHARE_A, 'course-1');
     expect(getCourseIdForShare(SHARE_A)).toBe('course-1');
+  });
+});
+
+describe('confirmShareImport', () => {
+  it('records the link when the course carries the expected lineage', async () => {
+    await db.courses.put(trackedCourse('course-1', 'lineage-1'));
+    expect(await confirmShareImport(SHARE_A, 'lineage-1', 'course-1')).toBe(true);
+    expect(getCourseIdForShare(SHARE_A)).toBe('course-1');
+  });
+
+  it('leaves the mapping untouched for a different course', async () => {
+    await db.courses.put(trackedCourse('course-1', 'lineage-1'));
+    await db.courses.put(trackedCourse('course-2', 'lineage-2'));
+    recordShareImport(SHARE_A, 'course-1');
+    expect(await confirmShareImport(SHARE_A, 'lineage-1', 'course-2')).toBe(false);
+    expect(getCourseIdForShare(SHARE_A)).toBe('course-1');
+  });
+
+  it('records nothing without an expected lineage or a matching course', async () => {
+    await db.courses.put(trackedCourse('course-1', 'lineage-1'));
+    expect(await confirmShareImport(SHARE_A, null, 'course-1')).toBe(false);
+    expect(await confirmShareImport(SHARE_A, 'lineage-1', 'missing')).toBe(false);
+    expect(await confirmShareImport('short', 'lineage-1', 'course-1')).toBe(false);
+    expect(getCourseIdForShare(SHARE_A)).toBeNull();
   });
 });

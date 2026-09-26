@@ -2,7 +2,9 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
+import { sha256Blob } from '../db/assets';
 import type { ShareLesson, SharePayloadV2 } from '../db/share';
+import type { BackupAsset } from '../db/types';
 import { importLineageFirstTime } from '../db/mergeImport';
 import { recordShareImport } from './linkStore';
 import { pollShareUpdates } from './polling';
@@ -160,6 +162,83 @@ describe('pollShareUpdates', () => {
     });
     expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
     expect(await db.pendingMergeReviews.where('courseId').equals(course.id).count()).toBe(0);
+  });
+
+  it('stores bundled media when a polled update carries new images', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    recordShareImport(SHARE_ID, course.id);
+    const imageBytes = new TextEncoder().encode('new-diagram');
+    const hash = await sha256Blob(new Blob([imageBytes], { type: 'image/png' }));
+    const mediaCard = {
+      id: 'card-1',
+      k: 0 as const,
+      f: `![Diagram](lacuna-asset://${hash})`,
+      b: 'The basic unit of life.',
+    };
+    const revised = coursePayload({
+      rv: 2,
+      at: 2000,
+      lessons: [lessonOne({ cards: [mediaCard] })],
+    });
+    const asset: BackupAsset = {
+      hash,
+      data: Buffer.from(imageBytes).toString('base64'),
+      mimeType: 'image/png',
+      kind: 'image',
+      createdAt: 1500,
+    };
+    const fileText = JSON.stringify({
+      format: 'lacuna-course',
+      version: 1,
+      payload: revised,
+      assets: [asset],
+    });
+    const { fetchImpl } = shareFetch(manifestBytes(2), fileText);
+
+    const results = await pollShareUpdates({ fetchImpl, throttleMs: 0 });
+
+    expect(results[0]?.status).toBe('updated');
+    expect(await db.assets.get(hash)).toMatchObject({ hash, mimeType: 'image/png' });
+    // The front change itself queues for review (auto-accept is off), but the
+    // queued content already references the stored asset, so accepting the
+    // update resolves its media instead of a placeholder.
+    const review = await db.pendingMergeReviews.where('courseId').equals(course.id).first();
+    const queued = review?.diff.updates.cards.find((update) => update.id === 'card-1');
+    expect(queued?.front).toContain(`lacuna-asset://${hash}`);
+  });
+
+  it('does not let a slow older poll roll back a newer merged revision', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    recordShareImport(SHARE_ID, course.id);
+    let releaseRev2!: () => void;
+    const rev2Gate = new Promise<void>((resolve) => {
+      releaseRev2 = resolve;
+    });
+    const rev2Payload = courseFileText(
+      coursePayload({ rv: 2, at: 2000, lessons: [lessonOne({ n: 'Rev two' })] }),
+    );
+    const rev3Payload = courseFileText(
+      coursePayload({ rv: 3, at: 3000, lessons: [lessonOne({ n: 'Rev three' })] }),
+    );
+    const rev2 = shareFetch(manifestBytes(2), rev2Payload);
+    const rev3 = shareFetch(manifestBytes(3), rev3Payload);
+    const gatedPayload = vi.fn(async (input: string | URL | Request) => {
+      const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const response = await rev2.fetchImpl(href);
+      if (href.endsWith('/payload')) await rev2Gate;
+      return response;
+    });
+
+    const slowOld = pollShareUpdates({ fetchImpl: gatedPayload, throttleMs: 0 });
+    const fastNew = await pollShareUpdates({ fetchImpl: rev3.fetchImpl, throttleMs: 0 });
+    releaseRev2();
+    const [staleResult] = await slowOld;
+
+    expect(fastNew[0]).toMatchObject({ status: 'updated', revision: 3 });
+    expect(staleResult).toMatchObject({ status: 'up-to-date', revision: 3 });
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(3);
+    const review = await db.pendingMergeReviews.where('courseId').equals(course.id).first();
+    expect(review?.revision).toBe(3);
   });
 
   it('skips mappings with no local course or no shared copy', async () => {

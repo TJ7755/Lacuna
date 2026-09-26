@@ -1,5 +1,5 @@
 import { db } from '../db/schema';
-import { decodeCourseFile } from '../db/courseFile';
+import { decodeCourseFile, withCourseFileAssets } from '../db/courseFile';
 import { isLineagePayload, mergeLineageUpdate } from '../db/mergeImport';
 import { DEFAULT_RELAY_URL, getShareBytes, parseShareManifest } from './client';
 import { listShareImports } from './linkStore';
@@ -198,8 +198,21 @@ async function pollOneCourse(
       return { courseId, shareId, status: 'skipped', reason: 'Payload is not a lineage update.' };
     }
 
+    // A slow fetch can return after a newer revision already merged: re-read
+    // the local revision and stand down when this manifest is stale, so an
+    // older poll can never roll the course (or its pending review) backwards.
+    const fresh = await db.courses.get(course.id);
+    const freshRevision = fresh?.distributedCopy?.revision ?? 0;
+    if (!fresh?.distributedCopy || manifest.revision <= freshRevision) {
+      writeLastPollAt(shareId, context.nowFn());
+      return { courseId, shareId, status: 'up-to-date', revision: freshRevision };
+    }
+
     try {
-      await mergeLineageUpdate(course.id, file.payload);
+      // Media rides inside the course file, so persist its assets alongside
+      // the merge exactly as the manual importer does — otherwise an update
+      // carrying new images or audio leaves broken references behind.
+      await withCourseFileAssets(file, () => mergeLineageUpdate(course.id, file.payload));
     } catch (error) {
       return { courseId, shareId, status: 'failed', reason: failureReason(error) };
     }

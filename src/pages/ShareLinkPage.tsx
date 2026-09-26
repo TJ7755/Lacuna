@@ -3,13 +3,18 @@ import { Link, useParams } from 'react-router-dom';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { Button } from '../components/ui/Button';
-import { DEFAULT_RELAY_URL, getShareBytes, parseShareCode } from '../shareLinks/client';
-import { recordShareImport } from '../shareLinks/linkStore';
+import {
+  DEFAULT_RELAY_URL,
+  getShareBytes,
+  parseShareCode,
+  parseShareManifest,
+} from '../shareLinks/client';
+import { confirmShareImport } from '../shareLinks/linkStore';
 
 type ShareLinkState =
   | { status: 'loading' }
   | { status: 'unavailable'; message: string }
-  | { status: 'ready'; file: File; shareId: string };
+  | { status: 'ready'; file: File; shareId: string; expectedLineageId: string | null };
 
 const UNAVAILABLE_MESSAGE =
   'This link is invalid or has been removed. Ask the teacher for a fresh link.';
@@ -47,9 +52,27 @@ export function ShareLinkPage() {
           setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
           return;
         }
+        // The manifest names the lineage this link serves. It is best-effort:
+        // without it the import still proceeds, but the link is left untracked
+        // rather than risk associating it with a different course below.
+        let expectedLineageId: string | null = null;
+        try {
+          const manifestSlot = await getShareBytes({
+            relayUrl: DEFAULT_RELAY_URL,
+            shareId,
+            slot: 'meta',
+          });
+          if (manifestSlot && !cancelled) {
+            expectedLineageId = parseShareManifest(manifestSlot.bytes).lineageId;
+          }
+        } catch {
+          expectedLineageId = null;
+        }
+        if (cancelled) return;
         setState({
           status: 'ready',
           shareId,
+          expectedLineageId,
           file: new File([toArrayBuffer(result.bytes)], 'shared-course.lacuna', {
             type: 'application/json',
           }),
@@ -96,7 +119,9 @@ export function ShareLinkPage() {
       ) : (
         <SharedCourseImport
           initialFile={state.file}
-          onImported={(courseId) => recordShareImport(state.shareId, courseId)}
+          onImported={(courseId) => {
+            void confirmShareImport(state.shareId, state.expectedLineageId, courseId);
+          }}
         />
       )}
     </div>

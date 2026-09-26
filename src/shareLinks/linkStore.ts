@@ -1,3 +1,4 @@
+import { db } from '../db/schema';
 import { SHARE_ID_RE } from './client';
 
 const STORAGE_KEY = 'lacuna.shareImports';
@@ -76,4 +77,28 @@ export function clearShareImport(shareId: string): void {
   const mapping = readMapping();
   delete mapping[shareId];
   writeMapping(mapping);
+}
+
+/**
+ * Associate a share link with its imported course, but only when the course
+ * is the one the link served. The link page embeds the full importer, so a
+ * visitor can import a different course there (a pasted code or file);
+ * recording that under the route's share id would untrack the linked course
+ * and aim polling at a stranger. Returns whether the link was recorded.
+ */
+export async function confirmShareImport(
+  shareId: string,
+  expectedLineageId: string | null,
+  courseId: string,
+): Promise<boolean> {
+  if (!SHARE_ID_RE.test(shareId) || !courseId || !expectedLineageId) return false;
+  let lineage: string | undefined;
+  try {
+    lineage = (await db.courses.get(courseId))?.distributedCopy?.lineageId;
+  } catch {
+    return false;
+  }
+  if (lineage !== expectedLineageId) return false;
+  recordShareImport(shareId, courseId);
+  return true;
 }

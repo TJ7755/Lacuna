@@ -229,7 +229,13 @@ deployable as static files with no server rewrites.
   it (throttled to hourly per link, failing soft offline); a newer revision
   fetches the payload and runs the existing `mergeLineageUpdate`, so updates
   surface through the established review badge and student-wins policy. No new
-  badge or merge path was added.
+  badge or merge path was added. The merge runs inside `withCourseFileAssets`,
+  so bundled media is stored with the update exactly as on manual import; a
+  payload whose manifest went stale mid-fetch is skipped rather than merged,
+  so a slow older poll can never roll back a newer revision. A link tracks
+  only the course it served: imports are recorded after verifying the
+  course's lineage against the link's manifest, so a different course
+  imported on the same page neither untracks the link nor attracts its polls.
 
 ### Course sharing — share codes (`src/db/share.ts`, `SharePage`, `/share`)
 
