@@ -1,12 +1,18 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CardImportDialog } from '../components/import/CardImportDialog';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { ImportDestination, useImportDestination } from '../components/import/ImportDestination';
 import { importCardsToDestination } from '../db/cardImport';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
-import { UploadIcon, CardsIcon, FileTextIcon, ShareIcon } from '../components/ui/icons';
+import {
+  UploadIcon,
+  CardsIcon,
+  FileTextIcon,
+  ShareIcon,
+  ChevronLeftIcon,
+} from '../components/ui/icons';
 import './ImportPage.css';
 
 type Source = 'lacuna' | 'anki' | 'text';
@@ -40,16 +46,21 @@ export function ImportPage() {
 
   return (
     <div className="import-page mx-auto max-w-6xl px-6 py-10 md:px-10">
-      <Link to="/" className="text-sm text-ink-soft hover:text-ink">
-        All courses
-      </Link>
-      <header className="mb-8 mt-6 flex items-center justify-between gap-4">
+      <header className="mb-8">
+        <div className="mb-3 flex min-h-11 items-center">
+          {source && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={reset}
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
+            >
+              <ChevronLeftIcon width={16} height={16} />
+              Back
+            </button>
+          )}
+        </div>
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">Import</h1>
-        {source && (
-          <Button variant="ghost" disabled={busy} onClick={reset}>
-            Change source
-          </Button>
-        )}
       </header>
       {!source ? (
         <>

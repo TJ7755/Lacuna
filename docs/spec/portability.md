@@ -45,7 +45,9 @@ app:
 **Import** beside **New course** on Courses opens a dedicated screen. Choose a Lacuna
 course (file, share code or QR), an Anki package, or text/spreadsheet cards. Dropping
 or choosing a file selects its import path automatically. The welcome import link
-opens the same screen. New course remains focused on creating an empty course.
+opens the same screen. Each selected import path uses the editors’ muted left-chevron Back control above
+the title. Its navigation row stays reserved on the chooser so the heading and content
+do not shift when moving between import paths. New course remains focused on creating an empty course.
 
 The screen reuses the card import dialogue's input and review components inline.
 After reviewing content, choose a new course with an explicit study target, a new

@@ -192,3 +192,23 @@ it('reads a text file before configuring a new course with an exam target', asyn
     ),
   );
 });
+
+it('keeps the import chooser free of redundant course navigation', () => {
+  open();
+  expect(screen.queryByRole('link', { name: 'All courses' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+});
+
+it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
+  'returns from %s to the import chooser with Back without writing',
+  async (source) => {
+    open();
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(source) }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+    expect(screen.getByText('Drop a file here')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    expect(mocks.importCards).not.toHaveBeenCalled();
+    expect(mocks.importShare).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  },
+);

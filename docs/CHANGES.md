@@ -11,7 +11,9 @@
   input and review UI inline, with destination and study-target choices during review.
   Existing lessons and new lessons/courses use the same atomic import writer. Shared
   course files, codes and QR imports reuse the Share workflow and open the imported
-  course. New course now handles empty course creation only.
+  course. New course now handles empty course creation only. Back navigation matches
+  the existing editors, with a reserved navigation row keeping headings and content
+  stationary across import paths.
 
 ## 0.2.11 beta — offline course files, authoring and study improvements
 
