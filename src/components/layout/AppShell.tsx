@@ -413,9 +413,11 @@ function AppShellLayout() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
           >
-            <Suspense fallback={null}>
-              <SharingAnnouncement />
-            </Suspense>
+            <ErrorBoundary fallback={null}>
+              <Suspense fallback={null}>
+                <SharingAnnouncement />
+              </Suspense>
+            </ErrorBoundary>
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
                 <RouteTransitions

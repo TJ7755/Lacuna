@@ -48,13 +48,20 @@ it('honours dismissal in another tab', () => {
 });
 
 it('still renders and dismisses when storage is unavailable', () => {
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+  const initial = mount();
+  initial.unmount();
+  const getItem = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
     throw new Error('Unavailable');
   });
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+  const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
     throw new Error('Unavailable');
   });
-  mount();
+  const unavailable = mount();
   fireEvent.click(screen.getByRole('button', { name: 'Dismiss announcement' }));
+  expect(screen.queryByRole('region', { name: 'New sharing features' })).toBeNull();
+  unavailable.unmount();
+  mount();
+  expect(getItem).toHaveBeenCalled();
+  expect(setItem).toHaveBeenCalled();
   expect(screen.queryByRole('region', { name: 'New sharing features' })).toBeNull();
 });

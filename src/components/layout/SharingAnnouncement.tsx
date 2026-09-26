@@ -4,12 +4,14 @@ import { CloseIcon, ShareIcon } from '../ui/icons';
 import './SharingAnnouncement.css';
 
 const dismissalKey = 'lacuna-sharing-announcement-v1-dismissed';
+let dismissedThisVisit = false;
 
 function isDismissed() {
   try {
-    return localStorage.getItem(dismissalKey) === '1';
+    dismissedThisVisit = localStorage.getItem(dismissalKey) === '1';
+    return dismissedThisVisit;
   } catch {
-    return false;
+    return dismissedThisVisit;
   }
 }
 
@@ -24,11 +26,12 @@ export function SharingAnnouncement() {
   }, []);
 
   function dismiss() {
+    dismissedThisVisit = true;
     setDismissed(true);
     try {
       localStorage.setItem(dismissalKey, '1');
     } catch {
-      // Dismiss for this visit even when browser storage is unavailable.
+      // The in-memory state keeps dismissal across shell remounts.
     }
   }
 

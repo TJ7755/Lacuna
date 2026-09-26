@@ -7,7 +7,10 @@
   and remembers dismissal per browser/device. The action opens Share with the
   share-link button highlighted; course selection and publishing remain explicit.
   Removed the comparison designs and development-only prototype controls. The
-  announcement loads separately to preserve the initial JavaScript budget.
+  announcement loads separately to preserve the initial JavaScript budget. Its
+  assets are precached for offline starts, load failures leave the app usable,
+  dismissal survives shell remounts when storage is blocked, and the layout fits
+  the space beside the desktop sidebar.
 
 - Added share links for classroom distribution: the Share page publishes a course
   to the relay and shows one stable link (plus a scannable QR of the link) that
