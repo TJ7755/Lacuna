@@ -26,6 +26,12 @@ containers and light/dark themes. Use cards to group related material, without b
 every sentence or filling the screen with large status tiles. Content takes precedence
 over scheduling terminology and metadata.
 
+**Interaction priority:** keep the interface minimal and clutter-free, with one active
+task at a time. Writing a question, defining its marks, linking concepts, answering
+and self-marking are distinct steps. Show secondary navigation and settings on demand;
+do not put all the fields and controls on screen simultaneously. Preserve the source
+material needed for the current task so simplicity does not become constant context loss.
+
 ## 2. Content and evidence
 
 | Element | Responsibility |
@@ -64,8 +70,9 @@ every time they return from a linked card.
 
 ## 4. Questions library
 
-Use a compact header with the title **Questions**, followed by search and optional
-lesson/exam filters. Avoid explanatory paragraphs about internal scheduling.
+Use a compact header with the title **Questions** and search. Put optional lesson/exam
+filters behind a Filters control and show selected filters only when active. Avoid
+explanatory paragraphs about internal scheduling.
 
 In **Study**, place one compact **Continue practice** row above the set list when an
 unfinished session exists. Otherwise show a relevant **Start practice** recommendation
@@ -105,10 +112,12 @@ group, not after each tiny subpart. Keep authored order within such groups.
 
 ### Layout
 
-On wide screens, use a narrow question outline on the left and a readable document
-editor in the centre. Selecting a question or part opens it in the editor. Linking
-details open in a secondary panel on demand, rather than occupying a permanent third
-column. The header contains the set title, saved state, **Preview** and **Done**.
+On wide screens, use a readable document editor for one selected question or part.
+A collapsible outline provides navigation; it does not need to stay visible while
+writing. The header contains the set title, saved state, **Preview** and **Done**.
+The active editor step is **Question**, **Mark scheme** or **Links**. Switching steps
+preserves drafts. Show one step at a time; do not stack their complete forms or add a
+permanent third column for metadata. Lesson and exam settings open on demand.
 
 On smaller screens, the outline becomes a **Questions** drawer and settings open as a
 sheet. Editing itself stays in one column. No horizontal scrolling through form panels.
@@ -138,9 +147,10 @@ Calculations retain access to mathematical notation and existing numeric content
 
 ### Mark scheme and allocation editor
 
-Each answerable part has **Question** and **Mark scheme** editing sections, with a
-learner preview available without leaving the workspace. The scheme is hidden from
-students until marking begins.
+Each answerable part has separate **Question** and **Mark scheme** editor steps, with
+a learner preview available without leaving the workspace. In Mark scheme, expand
+one allocation for editing and show the others as compact summaries. The scheme is
+hidden from students until marking begins.
 
 An allocation row contains:
 
@@ -194,10 +204,14 @@ Use a focused study layout. The top bar contains Back, the set title, question p
 and save state. The question, diagrams and answer area dominate the screen. Keep a
 compact question navigator available without making it compete with the question.
 
-Render the complete current question and its parts as a readable document. Show marks
-beside each answerable part. Shared context stays readily accessible; on desktop it can
-sit beside the responses when space permits, and on mobile above them with a **View
-source** action for quick reopening. Diagrams can be enlarged without losing an answer.
+Render one active answerable part at a time, with its number, available marks and
+required parent context. Previous/Next navigation and an optional question drawer
+provide access to other parts without displaying all answer fields at once. In Paper
+mode the same navigation allows returning to answers before submission. Shared context
+stays readily accessible; on desktop it can sit beside the response when needed, and
+on mobile above it with a **View source** action for quick reopening. Diagrams can be
+enlarged without losing an answer. Keep dependent-part submission and feedback rules
+even though their answer fields are presented one at a time.
 
 Written responses use a tall, expanding multiline field: approximately six visible
 lines initially, with more room for extended responses. Do not force long answers into
@@ -217,9 +231,12 @@ blocking the learner from obtaining help.
 
 ## 8. Self-marking screen
 
-On desktop, place the original response beside the mark scheme. On small screens, place
-the answer and the current criterion in the same vertical flow. Do not require repeated
-navigation between separate pages to compare one answer with one criterion.
+Show one active marking criterion at a time, with its marks control and the original
+response. On desktop the response and current criterion can sit side by side; on small
+screens they share one vertical flow. Keep the overall criterion list and full scheme
+behind an optional overview. Show compact progress and allow returning to earlier
+decisions. Do not require repeated navigation between separate pages to compare an
+answer with its current criterion.
 
 For each allocation:
 
@@ -348,6 +365,11 @@ resume after leaving; concept links; unchanged card scheduling evidence; version
 attempts after author edits; and export/import with diagrams and relationships intact.
 Behaviour changes require the repository's red-to-green regression evidence, plus browser
 checks of the author, learner, keyboard and mobile flows.
+
+Every UI gate must include saved desktop and narrow-screen screenshots shared in the
+chat. Capture the active task, not only the overview: authoring, answering and marking
+must each demonstrate a clear primary action and secondary controls kept out of the way.
+Label existing-interface baseline screenshots separately from newly implemented screens.
 
 Jev and other automatic link classifiers are deferred beyond version one.
 Classroom assignment collection, teacher marking queues, AI marking, freehand handwriting,

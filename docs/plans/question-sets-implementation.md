@@ -17,6 +17,9 @@ any earlier assumption that a non-UI stage could skip browser checks.
   preview when available. For a domain-only or planning slice, smoke-test the current
   app and relevant existing flows; describe that scope without claiming new UI coverage.
 - For UI gates, exercise the changed workflow, keyboard access and a narrow viewport.
+  Save desktop and narrow-screen screenshots and share them in the chat. Check that
+  each screen presents one active task with secondary controls collapsed; label legacy
+  baseline screenshots separately from the new interface.
   For persistence gates, include relevant save/reload and recovery/import behaviour in
   the browser, in addition to automated database tests.
 - Record the tested revision or exact working-tree scope, URL/build, viewport, actions,
@@ -74,7 +77,7 @@ These are current seams to extend; inspect surrounding code and tests again befo
 | Search, MCP and AI contracts | `src/db/search.ts`, `src/mcp/contracts/questions.ts`, `src/mcp/tools/questions.ts` and its `definitions.ts` / `concepts.ts` modules; new discriminated types must not make existing clients misread legacy Questions |
 | UI conventions and browser evidence | `docs/frontend-design.md`, `docs/WEBSITE_TEST_CHECKLIST.md`, `tests/e2e/`; include keyboard, screen-reader, narrow viewport, touch and offline checks where the relevant flow changes |
 
-## Stage 0 — bounded pure-domain slice (browser gate pending)
+## Stage 0 — bounded pure-domain slice (complete)
 
 The first authorised slice establishes only the in-memory model and invariants. It is deliberately
 not persistence, migration or UI. Its current seam is `src/questions/questionSets.ts`, exporting
@@ -91,7 +94,7 @@ not persistence, migration or UI. Its current seam is `src/questions/questionSet
   unsure/unmarked states, and one-time total accounting.
 - [x] Run the targeted test and web typecheck. Record actual commands/results in the change
   report; do not mark this stage complete based only on the types compiling.
-- [ ] Complete and record the foundation browser smoke check, then commit this slice.
+- [x] Complete and record the foundation browser smoke check, then commit this slice.
 
 Exit condition: pure domain rules can be exercised without opening Dexie, constructing a React
 screen or invoking FSRS. Do not expand this stage with new storage or a generic schema framework.
@@ -118,10 +121,26 @@ Branch: `feat/question-sets`; starting revision:
   of the new module returned valid content, a provisional unmarked summary and a
   complete zero-mark summary as expected. This tests the domain in the browser and
   existing navigation, not a new question-set UI.
-- The browser gate remains pending: clicking New Question retains focus inside the
-  outgoing hidden page and emits an `aria-hidden` warning. This is being corrected
-  separately from the domain foundation. The React Router warning from direct hash
-  navigation did not recur through the visible Back link.
+- Browser testing found retained focus in the departing Questions page when opening
+  New Question. A separate route-transition fix releases focus before setting
+  `aria-hidden`, preserving animation timing. Its regression was red before the fix
+  and green afterwards, including normal/reduced motion; 11 transition tests and the
+  web typecheck passed. The React Router warning from direct hash navigation did not
+  recur through the visible Back link.
+- Final T3 retest in a fresh tab on the same local build: New Question → visible
+  Questions Back link passed at 1280×800 and 390×844, with no console warnings/errors,
+  no network errors and no narrow-screen overflow. No content was saved. Gate passed.
+  This remains evidence for the existing Questions UI and the domain foundation,
+  not the planned question-set editor.
+- Planning committed as `94820d93`; domain foundation committed as `b1832ab4`.
+  Incidental route-focus fix committed separately as `f1f05847`.
+
+Browser screenshots (local T3 artefacts):
+
+- [Desktop editor](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mui7lp8e-0af68bd7.png)
+- [Desktop library](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mui7lt8y-1683a416.png)
+- [Narrow editor](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mui7m1kx-9ca13b0f.png)
+- [Narrow library](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mui7m68j-5d2cb684.png)
 
 The validator accepts typed values; it is not an untrusted JSON parser. The storage
 stage must add runtime parsing before using it at import, sync or repository boundaries.
@@ -197,6 +216,8 @@ than squeezing a paper hierarchy into the current single-question form.
   search/filters, continue practice, status, marks and compact set rows.
 - [ ] Add the title-first authoring workspace, outline, document editor and narrow-screen drawer
   described in the brief. Save local drafts with clear Saving/Saved/Retry states.
+- [ ] Present Question, Mark scheme and Links as separate steps, with one active part
+  and one expanded allocation at a time. Keep outline and set settings on demand.
 - [ ] Add question/part/subpart editing with stable IDs, automatic labels, keyboard reorder,
   context-only nodes, answer formats and shared Markdown/media source material.
 - [ ] Add mark-scheme and author-defined allocation editing, including partial marks, alternatives,
@@ -227,6 +248,9 @@ learner view do not expose the scheme; author preview can exercise the full mark
 - [ ] Implement side-by-side desktop answer/scheme and a single-flow small-screen marking view.
   Decisions must support zero through maximum, partial credit where configured, and a distinct
   Unsure state without defaulting to zero/full marks.
+- [ ] Show one active answerable part during answering and one active criterion during
+  marking, preserving parent context and dependent-part feedback rules. Capture both
+  states in desktop and narrow-screen gate screenshots.
 - [ ] Add accessible text highlighting, comments and Add note controls. Keep annotations separate
   from the original answer. Pen drawing is out of scope.
 - [ ] Add optional multi-reason reflection and a separate corrections area; neither silently
