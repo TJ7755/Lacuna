@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added the Paper learner interface for Question Sets: one answerable part at a time, tall
+  written/calculation fields and multiple choice, Practice/Paper submission timing, unanswered
+  confirmation, saved resume, and one self-marking criterion beside the original response.
+  Added highlights/comments, separate corrections and optional reflection, related-card assistance
+  recording, explicit zero/unsure/unmarked decisions, provisional results and attempt history.
+  Serial saves retain queued work through failures and drain edits made during slow writes.
+
 - Added durable personal Question Set attempts in schema v29 and backup/sync v13. Each attempt
   retains its authored questions, diagrams and mark scheme, immutable submitted answers,
   separate corrections and annotations, self-marking decisions and resume position. Practice

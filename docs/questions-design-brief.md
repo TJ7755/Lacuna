@@ -377,3 +377,15 @@ automatic paper extraction and grade-boundary predictions are outside this propo
 Generated variants remain a secondary existing capability. This document defines proposed
 product behaviour; it does not authorise unrelated implementation or claim that the combined
 forecast has already been scientifically validated.
+
+
+### Learner implementation status — 26 September 2026
+
+The selected Paper direction now covers real learner attempts as well as authoring. Learners
+start Practice or Paper, answer one part at a time, resume saved progress and self-mark one
+criterion at a time. Original responses, highlights/comments, corrections and reflection remain
+separate. Explicit zero, unsure and unmarked decisions have different meanings; unresolved scores
+are provisional. Related-card help is recorded before it is shown. Attempts are personal and
+portable through backup/sync, excluded from Course sharing, and do not write Card FSRS states.
+Path/exam entry points and the combined exam-performance view are later gates, not claims made
+by this interface. No classifier or automatic marking has been added.

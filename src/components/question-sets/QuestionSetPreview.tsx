@@ -3,6 +3,7 @@ import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
 import type { QuestionSet } from '../../questions/questionSets';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
+import { QuestionSetAnswer } from './QuestionSetAnswer';
 
 /** Shared answerable-content renderer. Preview responses never become learner evidence. */
 export function QuestionSetPreview({
@@ -20,71 +21,15 @@ export function QuestionSetPreview({
   const active = answerable[index] ?? answerable[0];
   if (!active) return <p className="qs-muted">Add an answerable question or part to preview it.</p>;
   const answer = active.node.answer!;
-  const label = [
-    ...active.parentIds.map((id) => nodes.find((n) => n.id === id)!.label),
-    active.label,
-  ].join(' ');
   const value = responses[active.id] ?? (answer.response.kind === 'multiple-choice' ? [] : '');
   return (
     <article className="qs-paper">
-      <header className="qs-part-bar">
-        <h2>{label}</h2>
-        <span className="qs-muted">
-          {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
-        </span>
-      </header>
-      {active.parentIds.map((id) => (
-        <section className="qs-source" key={id}>
-          <MarkdownView source={nodes.find((n) => n.id === id)!.node.prompt} />
-        </section>
-      ))}
-      <MarkdownView source={active.node.prompt} />
-      {answer.response.kind === 'multiple-choice' ? (
-        <fieldset className="mt-6">
-          <legend className="qs-muted">
-            {answer.response.selection === 'single' ? 'Choose one answer' : 'Choose all that apply'}
-          </legend>
-          {answer.response.options.map((o, i) => (
-            <label key={o.id} className="qs-check">
-              <input
-                type={
-                  answer.response.kind === 'multiple-choice' &&
-                  answer.response.selection === 'single'
-                    ? 'radio'
-                    : 'checkbox'
-                }
-                name={active.id}
-                checked={Array.isArray(value) && value.includes(o.id)}
-                onChange={() =>
-                  setResponses({
-                    ...responses,
-                    [active.id]:
-                      answer.response.kind === 'multiple-choice' &&
-                      answer.response.selection === 'single'
-                        ? [o.id]
-                        : Array.isArray(value) && value.includes(o.id)
-                          ? value.filter((v) => v !== o.id)
-                          : [...(Array.isArray(value) ? value : []), o.id],
-                  })
-                }
-              />
-              <span>
-                {String.fromCharCode(65 + i)}. <MarkdownView source={o.content} />
-              </span>
-            </label>
-          ))}
-        </fieldset>
-      ) : (
-        <label className="qs-field">
-          {answer.response.kind === 'calculation' ? 'Your working and answer' : 'Your answer'}
-          <textarea
-            className="qs-preview-answer"
-            rows={7}
-            value={typeof value === 'string' ? value : ''}
-            onChange={(e) => setResponses({ ...responses, [active.id]: e.target.value })}
-          />
-        </label>
-      )}
+      <QuestionSetAnswer
+        content={content}
+        nodeId={active.id}
+        value={value}
+        onChange={(next) => setResponses({ ...responses, [active.id]: next })}
+      />
       {authorPreview && (
         <>
           <button className="qs-back" onClick={() => setScheme(!scheme)}>
