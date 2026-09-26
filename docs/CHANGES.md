@@ -3,6 +3,7 @@
 ## 0.2.11 beta — offline course files, authoring and study improvements
 
 - Fixed packaged release checks timing out when the window already has its route title.
+- Explicitly validated inspector callbacks in the installed-upgrade probe before invocation.
 
 - Added offline `.lacuna` course files to Share. Files include referenced images, audio and
   occlusion diagrams once each, without personal study history. File imports preview before

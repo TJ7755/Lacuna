@@ -50,7 +50,7 @@ export async function launchInstalledElectron(executablePath, profile) {
     inspector.addEventListener('message', event => {
       const message = JSON.parse(event.data);
       const callback = pending.get(message.id);
-      if (!callback) return;
+      if (typeof callback !== 'function') return;
       pending.delete(message.id);
       callback(message);
     });
