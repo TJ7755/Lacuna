@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added related Question Sets to lesson pages, exam details and expanded Cards through existing
+  lesson/assessment/Concept links. Practice preserves its entry route; returning to an exam
+  reopens its details. These links never alter Card scheduling or create duplicate concepts.
+
 - Replaced the native Question Set image input with a compact chooser, selected-image preview
   and filename. Description and insertion controls appear only after selection; clearing or
   inserting returns focus to the chooser. Verified insertion and narrow-screen layout in-browser.

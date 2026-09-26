@@ -120,6 +120,84 @@ export async function listQuestionSets(courseId: string): Promise<QuestionSetRec
     .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id));
 }
 
+function sortQuestionSets(records: QuestionSetRecord[]): QuestionSetRecord[] {
+  return records.sort(
+    (left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id),
+  );
+}
+
+/** Current authored sets linked directly to one Lesson. */
+export async function listQuestionSetsForLesson(
+  courseId: string,
+  lessonId: string,
+): Promise<QuestionSetRecord[]> {
+  const records = await db.questionSets.where('lessonIds').equals(lessonId).toArray();
+  return sortQuestionSets(
+    records.filter((record) => record.courseId === courseId).map(parseQuestionSetRecord),
+  );
+}
+
+/** Current authored sets linked directly to one Assessment. */
+export async function listQuestionSetsForAssessment(
+  courseId: string,
+  assessmentId: string,
+): Promise<QuestionSetRecord[]> {
+  const records = await db.questionSets.where('assessmentIds').equals(assessmentId).toArray();
+  return sortQuestionSets(
+    records.filter((record) => record.courseId === courseId).map(parseQuestionSetRecord),
+  );
+}
+
+export type QuestionSetConceptRole = 'target' | 'prerequisite' | 'either';
+
+function questionSetHasConcept(
+  set: QuestionSet,
+  conceptId: string,
+  role: QuestionSetConceptRole,
+): boolean {
+  const answers: QuestionAnswer[] = [];
+  for (const question of set.questions) {
+    if (question.answer) answers.push(question.answer);
+    for (const part of question.parts) {
+      if (part.answer) answers.push(part.answer);
+      for (const subpart of part.subparts) if (subpart.answer) answers.push(subpart.answer);
+    }
+  }
+  return answers.some(
+    (answer) =>
+      (role !== 'target' && answer.prerequisiteConceptIds.includes(conceptId)) ||
+      (role !== 'prerequisite' &&
+        answer.allocations.some((allocation) => allocation.targetConceptIds.includes(conceptId))),
+  );
+}
+
+/** Current authored sets which assess or require one existing Concept. */
+export async function listQuestionSetsForConcept(
+  courseId: string,
+  conceptId: string,
+  role: QuestionSetConceptRole = 'either',
+): Promise<QuestionSetRecord[]> {
+  const records = await db.questionSets.where('courseId').equals(courseId).toArray();
+  return sortQuestionSets(
+    records
+      .map(parseQuestionSetRecord)
+      .filter((record) => questionSetHasConcept(record, conceptId, role)),
+  );
+}
+
+/** Follow a Card's existing Concept link to related authored sets. */
+export async function listQuestionSetsForCard(
+  courseId: string,
+  cardId: string,
+  role: QuestionSetConceptRole = 'either',
+): Promise<QuestionSetRecord[]> {
+  return db.transaction('r', [db.cards, db.questionSets], async () => {
+    const card = await db.cards.get(cardId);
+    if (!card || card.courseId !== courseId || !card.conceptId) return [];
+    return listQuestionSetsForConcept(courseId, card.conceptId, role);
+  });
+}
+
 export interface UpdateQuestionSetOptions {
   /** Reject an autosave based on an older aggregate revision. */
   expectedContentRevisionId: string;

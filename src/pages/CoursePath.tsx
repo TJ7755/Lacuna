@@ -4,7 +4,7 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { usePendingMergeReview } from '../state/useCourseData';
 import { useCourseStudyFlowRecords } from '../state/useCourseStudyFlowRecords';
@@ -72,7 +72,8 @@ export function CoursePath() {
     assessment?: CourseAssessment;
     defaultAfterLessonId?: string | null;
   } | null>(null);
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(() => searchParams.get('exam'));
 
   const records = useCourseStudyFlowRecords(courseId);
   const course = records?.course;
@@ -293,7 +294,14 @@ export function CoursePath() {
             lessons={lessons}
             cards={courseCards}
             links={lessonLinks}
-            onClose={() => setSelectedAssessmentId(null)}
+            onClose={() => {
+              setSelectedAssessmentId(null);
+              if (searchParams.has('exam')) {
+                const next = new URLSearchParams(searchParams);
+                next.delete('exam');
+                setSearchParams(next, { replace: true });
+              }
+            }}
             onRevise={() =>
               navigate(
                 `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,

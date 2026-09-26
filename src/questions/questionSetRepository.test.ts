@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse } from '../db/repository';
+import { createLessonCard } from '../db/cardRepository';
 import { deleteCourse, restoreCourse, snapshotCourse } from '../db/courseRepository';
 import { createCourseAssessment, deleteCourseAssessment } from '../db/assessmentRepository';
 import { createLesson, deleteLesson, restoreLesson, snapshotLesson } from '../db/lessonRepository';
@@ -11,6 +12,10 @@ import {
   createQuestionSet,
   deleteQuestionSet,
   getQuestionSet,
+  listQuestionSetsForAssessment,
+  listQuestionSetsForCard,
+  listQuestionSetsForConcept,
+  listQuestionSetsForLesson,
   listQuestionSets,
   updateQuestionSet,
 } from './questionSetRepository';
@@ -215,5 +220,29 @@ describe('Question-set repository', () => {
     const afterCourseUndo = (await getQuestionSet(created.id))!;
     expect(afterCourseUndo.contentVersion).toBe(5);
     expect(await db.tombstones.get(['questionSets', created.id])).toBeUndefined();
+  });
+
+  it('discovers current sets through Lesson, Assessment, Concept role, and Card links', async () => {
+    const { course, lesson, assessment, concept } = await fixture();
+    const prerequisite = await createConcept(course.id, 'Cell membrane');
+    const linked = content(course.id, lesson.id, assessment.id, concept.id);
+    linked.questions[0].answer!.prerequisiteConceptIds = [prerequisite.id];
+    const created = await createQuestionSet(linked, 1_000);
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Nucleus', 'Control');
+    await db.cards.update(card.id, { conceptId: concept.id });
+
+    expect(await listQuestionSetsForLesson(course.id, lesson.id)).toEqual([created]);
+    expect(await listQuestionSetsForAssessment(course.id, assessment.id)).toEqual([created]);
+    expect(await listQuestionSetsForConcept(course.id, concept.id, 'target')).toEqual([created]);
+    expect(await listQuestionSetsForConcept(course.id, concept.id, 'prerequisite')).toEqual([]);
+    expect(await listQuestionSetsForConcept(course.id, prerequisite.id, 'prerequisite')).toEqual([
+      created,
+    ]);
+    expect(await listQuestionSetsForCard(course.id, card.id, 'target')).toEqual([created]);
+
+    const other = await createCourse('Chemistry');
+    expect(await listQuestionSetsForLesson(other.id, lesson.id)).toEqual([]);
+    expect(await listQuestionSetsForAssessment(other.id, assessment.id)).toEqual([]);
+    expect(await listQuestionSetsForCard(other.id, card.id)).toEqual([]);
   });
 });
