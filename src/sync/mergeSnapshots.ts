@@ -48,6 +48,7 @@ import type {
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
 import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
@@ -840,78 +841,7 @@ function mergeQuestionSetAttempts(
       merged.set(incoming.id, incoming);
       continue;
     }
-    if (canonicalJson(existing.receipt) !== canonicalJson(incoming.receipt)) {
-      throw new Error(`Question Set attempt ${incoming.id} has conflicting immutable receipts.`);
-    }
-    if (
-      existing.mode !== incoming.mode ||
-      existing.courseId !== incoming.courseId ||
-      existing.questionSetId !== incoming.questionSetId ||
-      existing.createdAt !== incoming.createdAt
-    ) {
-      throw new Error(`Question Set attempt ${incoming.id} has conflicting immutable identity.`);
-    }
-    if (
-      existing.revisionId === incoming.revisionId &&
-      canonicalJson(existing) !== canonicalJson(incoming)
-    ) {
-      throw new Error(`Question Set attempt ${incoming.id} reuses a revision for unequal data.`);
-    }
-    const submitted = (attempt: QuestionSetAttemptRecord) =>
-      attempt.responses
-        .filter((row) => row.submitted !== undefined)
-        .map(({ nodeId, submitted, submittedAt }) => ({ nodeId, submitted, submittedAt }));
-    for (const original of submitted(existing)) {
-      const competing = submitted(incoming).find((row) => row.nodeId === original.nodeId);
-      if (competing && canonicalJson(competing) !== canonicalJson(original)) {
-        throw new Error(`Question Set attempt ${incoming.id} has conflicting submitted responses.`);
-      }
-    }
-    const lifecycle = { answering: 0, marking: 1, complete: 2 } as const;
-    const incomingWins =
-      lifecycle[incoming.status] > lifecycle[existing.status] ||
-      (lifecycle[incoming.status] === lifecycle[existing.status] &&
-        (incoming.updatedAt > existing.updatedAt ||
-          (incoming.updatedAt === existing.updatedAt &&
-            incoming.revisionId > existing.revisionId)));
-    const winner = structuredClone(incomingWins ? incoming : existing);
-    const loser = incomingWins ? existing : incoming;
-    for (const original of loser.responses.filter((row) => row.submitted)) {
-      const target = winner.responses.find((row) => row.nodeId === original.nodeId)!;
-      if (!target.submitted) {
-        target.submitted = structuredClone(original.submitted);
-        target.submittedAt = original.submittedAt;
-        target.draft = structuredClone(original.submitted!);
-      }
-    }
-    const revealed = new Set([...existing.revealedQuestionIds, ...incoming.revealedQuestionIds]);
-    winner.revealedQuestionIds = winner.receipt.questions
-      .map((question) => question.id)
-      .filter((id) => revealed.has(id));
-    const assistance = new Map(
-      [...existing.assistance, ...incoming.assistance].map((event) => [
-        canonicalJson(event),
-        event,
-      ]),
-    );
-    winner.assistance = [...assistance.values()].sort(
-      (a, b) => a.occurredAt - b.occurredAt || canonicalJson(a).localeCompare(canonicalJson(b)),
-    );
-    if (
-      existing.paperSubmittedAt !== undefined &&
-      incoming.paperSubmittedAt !== undefined &&
-      existing.paperSubmittedAt !== incoming.paperSubmittedAt
-    ) {
-      throw new Error(`Question Set attempt ${incoming.id} has conflicting paper submission.`);
-    }
-    winner.paperSubmittedAt = existing.paperSubmittedAt ?? incoming.paperSubmittedAt;
-    const allSubmitted = winner.responses.every((response) => response.submitted);
-    if (allSubmitted && winner.status === 'answering') winner.status = 'marking';
-    if (winner.mode === 'paper' && allSubmitted) {
-      winner.revealedQuestionIds = winner.receipt.questions.map((question) => question.id);
-    }
-    winner.updatedAt = Math.max(existing.updatedAt, incoming.updatedAt);
-    merged.set(incoming.id, winner);
+    merged.set(incoming.id, mergeQuestionSetAttemptPair(existing, incoming));
   }
   return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
