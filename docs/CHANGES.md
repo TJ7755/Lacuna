@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Aligned typed-answer reveals with ordinary study cards: the formatted answer appears
+  once, with the submitted answer beneath a quiet divider. Replaced the duplicate
+  red/green word comparison with a small match indicator that respects answer strictness;
+  grading remains manual. Long submissions wrap and retain line breaks.
+
+- Added a throwaway HTML comparison of three desktop update prompts on the
+  `design/update-prompt-prototypes` branch: compact dialogue, illustrated panel and
+  non-blocking notice. Production update behaviour is unchanged.
+
 - Added offline `.lacuna` course files to Share. Files include referenced images, audio and
   occlusion diagrams once each, without personal study history. File imports preview before
   confirmation and retain published-course update handling. Missing or corrupt media is
