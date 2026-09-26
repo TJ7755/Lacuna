@@ -379,10 +379,18 @@ export interface CourseRecord {
    * at least once. Distinct from `distributedCopy` — this course is the
    * lineage's origin, not a copy of it (Arc 7 §7.2). `shareId` is the stable
    * relay capability id behind the `/#/s/<code>` link, present once the
-   * course has been published to a share link; it is public (it appears in
-   * the URL) and needs no migration, like the rest of this object.
+   * course has been published to a share link; `shareRevision` is the
+   * revision actually uploaded there (a plain publish can move `revision`
+   * ahead of it). Both are public (the id appears in the URL) and need no
+   * migration, like the rest of this object.
    */
-  distribution?: { lineageId: string; revision: number; publishedAt: number; shareId?: string };
+  distribution?: {
+    lineageId: string;
+    revision: number;
+    publishedAt: number;
+    shareId?: string;
+    shareRevision?: number;
+  };
 }
 
 /** A student's distributed-copy tracking on an imported `Course` (Arc 7 §7.2). */

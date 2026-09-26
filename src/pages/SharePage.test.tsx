@@ -4,6 +4,7 @@ import { decodeShare, importSharePayload } from '../db/share';
 import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
 import { SharePage } from './SharePage';
+import { ShareLinkNeedsReplacementError } from '../shareLinks/publish';
 import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
 
@@ -109,10 +110,24 @@ vi.mock('../db/export', () => ({
 
 const mockPublishShareLink = vi.fn();
 const mockUnpublishShareLink = vi.fn();
-vi.mock('../shareLinks/publish', () => ({
-  publishShareLink: (...args: unknown[]) => mockPublishShareLink(...args),
-  unpublishShareLink: (...args: unknown[]) => mockUnpublishShareLink(...args),
-  SHARE_PAYLOAD_MAX_BYTES: 4 * 1024 * 1024,
+vi.mock('../shareLinks/publish', () => {
+  class ShareLinkNeedsReplacementError extends Error {
+    constructor(message = 'This link was created on another device.') {
+      super(message);
+      this.name = 'ShareLinkNeedsReplacementError';
+    }
+  }
+  return {
+    publishShareLink: (...args: unknown[]) => mockPublishShareLink(...args),
+    unpublishShareLink: (...args: unknown[]) => mockUnpublishShareLink(...args),
+    ShareLinkNeedsReplacementError,
+    SHARE_PAYLOAD_MAX_BYTES: 4 * 1024 * 1024,
+  };
+});
+
+const mockReadShareCredentials = vi.fn();
+vi.mock('../shareLinks/credentials', () => ({
+  readShareCredentials: (...args: unknown[]) => mockReadShareCredentials(...args),
 }));
 
 vi.mock('../components/ui/icons', () => ({
@@ -201,6 +216,11 @@ beforeEach(() => {
   mockMergeLineageUpdate.mockReset();
   mockPublishShareLink.mockReset();
   mockUnpublishShareLink.mockReset();
+  mockReadShareCredentials.mockReset();
+  mockReadShareCredentials.mockResolvedValue({
+    relayUrl: 'https://relay.example',
+    writeToken: 'a'.repeat(64),
+  });
 });
 
 describe('SharePage', () => {
@@ -410,6 +430,113 @@ describe('SharePage', () => {
     fireEvent.click(screen.getByText('Create share link'));
     await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Too large.', 'negative'));
     expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument();
+  });
+
+  it('shows the unmanaged box when the link was created elsewhere and replaces it on confirm', async () => {
+    const shareId = 'e'.repeat(32);
+    const linked: Course = {
+      ...mockCourse,
+      distribution: {
+        lineageId: 'lineage-1',
+        revision: 2,
+        publishedAt: Date.now() - 60_000,
+        shareId,
+      },
+    };
+    mockCourses = [linked];
+    mockSummaries = { [linked.id]: mockSummary };
+    mockReadShareCredentials.mockResolvedValue(null);
+    const replacementId = 'f'.repeat(32);
+    mockPublishShareLink.mockResolvedValue({ shareId: replacementId, revision: 2, byteSize: 128 });
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    await screen.findByText(/created on another device/);
+    expect(
+      screen.getByText(/Publishing here creates a new link; the old link stays live until it expires/),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, replace it' }));
+    await waitFor(() =>
+      expect(mockPublishShareLink).toHaveBeenCalledWith(linked.id, { replaceLink: true }),
+    );
+    await screen.findByText('Share link · revision 2');
+    expect(screen.getByLabelText('Share link')).toHaveValue(
+      `${window.location.origin}/#/s/${replacementId}`,
+    );
+  });
+
+  it('surfaces the unmanaged state when publishing needs replacement', async () => {
+    const shareId = 'b'.repeat(32);
+    const linked: Course = {
+      ...mockCourse,
+      distribution: {
+        lineageId: 'lineage-1',
+        revision: 2,
+        publishedAt: Date.now() - 60_000,
+        shareId,
+      },
+    };
+    mockCourses = [linked];
+    mockSummaries = { [linked.id]: mockSummary };
+    mockPublishShareLink.mockRejectedValue(
+      new ShareLinkNeedsReplacementError('This link was created on another device.'),
+    );
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    await screen.findByText('Share link · revision 2');
+    fireEvent.click(screen.getByText(/Republish link/));
+    await screen.findByText(/created on another device/);
+    await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
+    expect(mockNotify).toHaveBeenCalledWith(
+      'This link was created on another device.',
+      'negative',
+    );
+  });
+
+  it('ignores a stale share-link completion after switching courses', async () => {
+    const courseA: Course = { ...mockCourse, id: 'course-a', name: 'Course A' };
+    const courseB: Course = { ...mockCourse, id: 'course-b', name: 'Course B' };
+    mockCourses = [courseA, courseB];
+    mockSummaries = { [courseA.id]: mockSummary, [courseB.id]: mockSummary };
+    let resolvePublish!: (value: { shareId: string; revision: number; byteSize: number }) => void;
+    mockPublishShareLink.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePublish = resolve;
+      }),
+    );
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Course A'));
+    fireEvent.click(screen.getByText('Create share link'));
+    fireEvent.click(screen.getByText('Course B'));
+    await act(async () => {
+      resolvePublish({ shareId: 'a'.repeat(32), revision: 1, byteSize: 128 });
+    });
+    await waitFor(() => expect(mockPublishShareLink).toHaveBeenCalledWith(courseA.id));
+    expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Share link · revision/)).not.toBeInTheDocument();
+  });
+
+  it('shows the uploaded revision and a behind hint when the course has moved on', async () => {
+    const shareId = 'c'.repeat(32);
+    const linked = {
+      ...mockCourse,
+      distribution: {
+        lineageId: 'lineage-1',
+        revision: 5,
+        publishedAt: Date.now() - 60_000,
+        shareId,
+        shareRevision: 3,
+      },
+    } as unknown as Course;
+    mockCourses = [linked];
+    mockSummaries = { [linked.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    await screen.findByText('Share link · revision 3');
+    expect(
+      screen.getByText(/The course is at revision 5 — republish the link to upload it\./),
+    ).toBeInTheDocument();
   });
 
   it('shows a media-placeholder warning and identifies affected cards', () => {

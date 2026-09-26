@@ -8,7 +8,7 @@ import {
   createHandler,
 } from '../src/relay.js';
 import { cleanupExpiredShares } from '../src/shares.js';
-import { MemoryStore } from '../src/store.js';
+import { MemoryStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
 const MINT_SECRET = 'test-relay-mint-secret';
@@ -191,6 +191,57 @@ describe('course share links', () => {
     expect((await ctx.handle(getShareRequest(ctx.shareId, 'meta'))).status).toBe(404);
   });
 
+  it('revokes a share deleted mid-upload: the paused PUT answers 404 and leaves no readable orphan', async () => {
+    const store = new ShareUploadRaceStore();
+    const handle = createHandler(store);
+    const minted = await handle(
+      new Request('http://relay.test/shares', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
+      }),
+    );
+    expect(minted.status).toBe(201);
+    const { shareId, writeToken } = (await minted.json()) as {
+      shareId: string;
+      writeToken: string;
+    };
+
+    let releasePut!: () => void;
+    let putEnteredResolve!: () => void;
+    const putEntered = new Promise<void>((resolve) => {
+      putEnteredResolve = resolve;
+    });
+    const putReleased = new Promise<void>((resolve) => {
+      releasePut = resolve;
+    });
+    store.gatePayloadPut(async () => {
+      putEnteredResolve();
+      await putReleased;
+    });
+
+    const payload = new TextEncoder().encode('{"format":"lacuna-course"}');
+    const putPromise = handle(
+      putShareRequest(shareId, 'payload', writeToken, EMPTY_SLOT_ETAG, payload),
+    );
+    await putEntered;
+
+    const deleted = await handle(
+      new Request(`http://relay.test/shares/${shareId}`, {
+        method: 'DELETE',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${writeToken}` },
+      }),
+    );
+    expect(deleted.status).toBe(204);
+
+    releasePut();
+    const putResult = await putPromise;
+    expectCors(putResult);
+    expect(putResult.status).toBe(404);
+
+    expect((await handle(getShareRequest(shareId, 'payload'))).status).toBe(404);
+    expect((await handle(getShareRequest(shareId, 'meta'))).status).toBe(404);
+  });
+
   it('rate-limits public share minting per IP', async () => {
     vi.stubEnv('RELAY_MINT_SECRET', MINT_SECRET);
     const store = new MemoryStore();
@@ -309,4 +360,21 @@ function expectCors(res: Response, origin = ORIGIN): void {
   expect(res.headers.get('Access-Control-Allow-Headers')?.toLowerCase()).toContain('if-match');
   expect(res.headers.get('Access-Control-Expose-Headers')).toMatch(/ETag/i);
   expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('cross-origin');
+}
+
+class ShareUploadRaceStore extends MemoryStore {
+  private payloadGate: (() => Promise<void>) | null = null;
+
+  gatePayloadPut(gate: () => Promise<void>): void {
+    this.payloadGate = gate;
+  }
+
+  override async put(key: string, body: Uint8Array, opts: PutOptions) {
+    if (key.startsWith('shares/') && key.endsWith('/payload') && this.payloadGate) {
+      const gate = this.payloadGate;
+      this.payloadGate = null;
+      await gate();
+    }
+    return super.put(key, body, opts);
+  }
 }

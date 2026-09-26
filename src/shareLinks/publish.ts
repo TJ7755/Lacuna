@@ -24,6 +24,24 @@ export const SHARE_PAYLOAD_MAX_BYTES = 4 * 1024 * 1024;
 export interface PublishShareLinkOptions {
   relayUrl?: string;
   fetchImpl?: typeof fetch;
+  /**
+   * Mint a fresh share id even when the course already has one. Only set
+   * after the teacher explicitly accepts replacing a link managed elsewhere
+   * (see ShareLinkNeedsReplacementError) — otherwise republishes reuse the
+   * stable id so existing links keep working.
+   */
+  replaceLink?: boolean;
+}
+
+/** The course already has a share link whose write credentials live elsewhere. */
+export class ShareLinkNeedsReplacementError extends Error {
+  constructor(
+    message = 'This course already has a share link managed on another device. ' +
+      'Replacing it here creates a new link; the old link stays live until it expires.',
+  ) {
+    super(message);
+    this.name = 'ShareLinkNeedsReplacementError';
+  }
 }
 
 export interface PublishShareLinkResult {
@@ -61,79 +79,73 @@ export async function unpublishShareLink(
   const shareId = course.distribution?.shareId;
   if (!shareId) return;
   const credentials = await readShareCredentials(shareId);
-  if (credentials) {
-    try {
-      await deleteShare({
-        relayUrl: credentials.relayUrl,
-        shareId,
-        writeToken: credentials.writeToken,
-        fetchImpl: options.fetchImpl,
-      });
-    } catch (err) {
-      const gone =
-        err instanceof ShareLinkError && (err.status === 404 || err.status === 401);
-      if (!gone) throw err;
-    }
-    await forgetShareCredentials(shareId);
+  if (!credentials) {
+    throw new Error(
+      'This device cannot manage this share link (its write credentials are missing). ' +
+        'The link stays live; stop sharing from the device that created it.',
+    );
   }
+  try {
+    await deleteShare({
+      relayUrl: credentials.relayUrl,
+      shareId,
+      writeToken: credentials.writeToken,
+      fetchImpl: options.fetchImpl,
+    });
+  } catch (err) {
+    // 404 means the relay copy is already gone, so local state can be
+    // cleared. Anything else — a 401 rejection included — leaves the link
+    // potentially live, so local state is kept and the failure is reported
+    // rather than confirmed.
+    if (!(err instanceof ShareLinkError && err.status === 404)) throw err;
+  }
+  await forgetShareCredentials(shareId);
   await clearCourseShareId(courseId);
 }
 
 /**
- * Publish (or republish) a course to its stable share link. The revision
- * counter bumps first so the packed payload carries the new revision, then
- * the course file and its polling manifest are uploaded. The first publish
- * mints the share id and remembers the write token on this device;
- * republishes reuse both, so the link never changes.
+ * Publish (or republish) a course to its stable share link. The course file
+ * is built once for a size check before the revision counter moves, so an
+ * oversized course fails without consuming a revision; it is built again
+ * after the bump so the uploaded payload carries the new revision. The share
+ * id and write credentials are only recorded after both uploads succeed, so
+ * a failed first publish leaves no dead link behind. A republish reuses both,
+ * so the link never changes — unless the id belongs to another device, which
+ * requires explicit replacement rather than a silent fork.
  */
 export async function publishShareLink(
   courseId: string,
   options: PublishShareLinkOptions = {},
 ): Promise<PublishShareLinkResult> {
   const relayUrl = options.relayUrl ?? DEFAULT_RELAY_URL;
+  const preflight = await db.courses.get(courseId);
+  if (!preflight) throw new Error('The course could not be found.');
+  assertSharePayloadSize(new TextEncoder().encode(await buildCourseFile(courseId)).byteLength);
+
   const distribution = await publishCourse(courseId);
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('The course could not be found.');
 
-  const text = await buildCourseFile(courseId);
-  const bytes = new TextEncoder().encode(text);
-  assertSharePayloadSize(bytes.byteLength);
-
   let shareId = course.distribution?.shareId;
   let credentials = shareId ? await readShareCredentials(shareId) : null;
+  if (shareId && !credentials && !options.replaceLink) {
+    throw new ShareLinkNeedsReplacementError();
+  }
   if (!shareId || !credentials) {
     const minted = await mintShare(relayUrl, options.fetchImpl);
     shareId = minted.shareId;
-    await setCourseShareId(courseId, shareId);
     credentials = { relayUrl, writeToken: minted.writeToken };
-    await writeShareCredentials(shareId, credentials);
   }
 
+  const text = await buildCourseFile(courseId);
+  const bytes = new TextEncoder().encode(text);
   const putOptions = {
     relayUrl: credentials.relayUrl,
     shareId,
     writeToken: credentials.writeToken,
     fetchImpl: options.fetchImpl,
   };
-  try {
-    const put = await putShareBytes({
-      ...putOptions,
-      slot: 'payload',
-      bytes,
-      ifMatch: credentials.payloadGeneration ?? '"0"',
-    });
-    credentials = { ...credentials, payloadGeneration: put.generation };
-  } catch (err) {
-    if (!(err instanceof StaleShareGenerationError)) throw err;
-    const current = await getShareBytes({ ...putOptions, slot: 'payload' });
-    const put = await putShareBytes({
-      ...putOptions,
-      slot: 'payload',
-      bytes,
-      ifMatch: current?.generation ?? '"0"',
-    });
-    credentials = { ...credentials, payloadGeneration: put.generation };
-  }
+  const payloadGeneration = await putSlot(putOptions, 'payload', bytes, credentials.payloadGeneration);
 
   const manifest: ShareManifest = {
     v: 1,
@@ -143,13 +155,53 @@ export async function publishShareLink(
     byteSize: bytes.byteLength,
     courseName: course.name,
   };
-  const metaPut = await putShareBytes({
-    ...putOptions,
-    slot: 'meta',
-    bytes: new TextEncoder().encode(JSON.stringify(manifest)),
-    ifMatch: credentials.metaGeneration ?? '"0"',
-  });
-  await writeShareCredentials(shareId, { ...credentials, metaGeneration: metaPut.generation });
+  const metaGeneration = await putSlot(
+    putOptions,
+    'meta',
+    new TextEncoder().encode(JSON.stringify(manifest)),
+    credentials.metaGeneration,
+  );
+
+  // Credentials first, link id second: a crash between the two leaves an
+  // invisible orphan (swept by relay expiry, never shown to anyone) rather
+  // than a visible link this device can no longer manage.
+  await writeShareCredentials(shareId, { ...credentials, payloadGeneration, metaGeneration });
+  await setCourseShareId(courseId, shareId, distribution.revision);
 
   return { shareId, revision: distribution.revision, byteSize: bytes.byteLength };
+}
+
+interface PutSlotOptions {
+  relayUrl: string;
+  shareId: string;
+  writeToken: string;
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * Upload one share slot with compare-and-swap, recovering once from a stale
+ * generation by re-reading the current one. Both payload and manifest share
+ * this path: without the retry, one conflicting write would wedge all future
+ * publishes behind a 412.
+ */
+async function putSlot(
+  putOptions: PutSlotOptions,
+  slot: 'payload' | 'meta',
+  bytes: Uint8Array,
+  generation: string | undefined,
+): Promise<string> {
+  try {
+    const put = await putShareBytes({ ...putOptions, slot, bytes, ifMatch: generation ?? '"0"' });
+    return put.generation;
+  } catch (err) {
+    if (!(err instanceof StaleShareGenerationError)) throw err;
+    const current = await getShareBytes({ ...putOptions, slot });
+    const retry = await putShareBytes({
+      ...putOptions,
+      slot,
+      bytes,
+      ifMatch: current?.generation ?? '"0"',
+    });
+    return retry.generation;
+  }
 }

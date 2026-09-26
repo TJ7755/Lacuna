@@ -1,14 +1,16 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
-import { createCourse } from '../db/courseRepository';
+import { readSyncState } from '../db/mutationStamp';
+import { createCourse, createLesson, createNote } from '../db/repository';
 import {
   assertSharePayloadSize,
   publishShareLink,
   SHARE_PAYLOAD_MAX_BYTES,
+  ShareLinkNeedsReplacementError,
   unpublishShareLink,
 } from './publish';
-import { readShareCredentials } from './credentials';
+import { forgetShareCredentials, readShareCredentials } from './credentials';
 
 const RELAY_URL = 'https://relay.example';
 const SHARE_ID = 'a'.repeat(32);
@@ -59,6 +61,7 @@ describe('publishShareLink', () => {
       { slot: 'meta', ifMatch: '"0"' },
     ]);
     expect((await db.courses.get(course.id))?.distribution?.shareId).toBe(SHARE_ID);
+    expect((await db.courses.get(course.id))?.distribution?.shareRevision).toBe(1);
     expect(await readShareCredentials(SHARE_ID)).toMatchObject({ writeToken: WRITE_TOKEN });
 
     const manifestBody = (relay.fetchImpl.mock.calls.find(([url]) =>
@@ -79,6 +82,131 @@ describe('publishShareLink', () => {
       { slot: 'payload', ifMatch: '"t1"' },
       { slot: 'meta', ifMatch: '"t2"' },
     ]);
+    expect((await db.courses.get(course.id))?.distribution?.shareRevision).toBe(2);
+  });
+
+  it('refuses an oversized course without consuming a revision', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Heavy');
+    await createNote(lesson.id, 'Big note', `x${'y'.repeat(4_300_000)}`);
+    const relay = relayFetch();
+
+    await expect(
+      publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl: relay.fetchImpl as typeof fetch }),
+    ).rejects.toThrow(/course file instead/);
+    expect(await db.courses.get(course.id)).not.toHaveProperty('distribution');
+    expect(relay.mintCount()).toBe(0);
+  });
+
+  it('leaves no link behind when the first upload fails', async () => {
+    const course = await createCourse('Biology');
+    const failing = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const target = String(url);
+      if (target === `${RELAY_URL}/shares` && init?.method === 'POST') {
+        return new Response(JSON.stringify({ shareId: SHARE_ID, writeToken: WRITE_TOKEN }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ error: 'unavailable' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    await expect(
+      publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl: failing as typeof fetch }),
+    ).rejects.toThrow();
+    expect((await db.courses.get(course.id))?.distribution).not.toHaveProperty('shareId');
+    expect((await readSyncState())?.shareLinks).toBeUndefined();
+  });
+
+  it('requires explicit replacement when the link belongs to another device', async () => {
+    const course = await createCourse('Biology');
+    const relay = relayFetch();
+    const fetchImpl = relay.fetchImpl as typeof fetch;
+    await publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl });
+    await forgetShareCredentials(SHARE_ID);
+
+    await expect(publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl })).rejects.toThrow(
+      ShareLinkNeedsReplacementError,
+    );
+    expect(relay.mintCount()).toBe(1);
+    expect((await db.courses.get(course.id))?.distribution?.shareId).toBe(SHARE_ID);
+  });
+
+  it('mints a fresh link when replacement is accepted', async () => {
+    const course = await createCourse('Biology');
+    const replacementId = 'c'.repeat(32);
+    let mints = 0;
+    const fetchImpl = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const target = String(url);
+      if (target === `${RELAY_URL}/shares` && init?.method === 'POST') {
+        mints += 1;
+        const shareId = mints === 1 ? SHARE_ID : replacementId;
+        return new Response(JSON.stringify({ shareId, writeToken: WRITE_TOKEN }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(null, { status: 204, headers: { ETag: '"t1"' } });
+    });
+    const fetchWithReplacement = fetchImpl as typeof fetch;
+    await publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl: fetchWithReplacement });
+    await forgetShareCredentials(SHARE_ID);
+
+    const replaced = await publishShareLink(course.id, {
+      relayUrl: RELAY_URL,
+      fetchImpl: fetchWithReplacement,
+      replaceLink: true,
+    });
+
+    expect(replaced.shareId).toBe(replacementId);
+    expect((await db.courses.get(course.id))?.distribution?.shareId).toBe(replacementId);
+    expect(await readShareCredentials(replacementId)).toMatchObject({ writeToken: WRITE_TOKEN });
+  });
+
+  it('retries a stale manifest generation against the current one', async () => {
+    const course = await createCourse('Biology');
+    let metaPuts = 0;
+    const fetchImpl = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const target = String(url);
+      if (target === `${RELAY_URL}/shares` && init?.method === 'POST') {
+        return new Response(JSON.stringify({ shareId: SHARE_ID, writeToken: WRITE_TOKEN }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (target.endsWith('/payload') && init?.method === 'PUT') {
+        return new Response(null, { status: 204, headers: { ETag: '"t1"' } });
+      }
+      if (target.endsWith('/meta') && init?.method === 'GET') {
+        return new Response(new Uint8Array([1]), { status: 200, headers: { ETag: '"tm-live"' } });
+      }
+      if (target.endsWith('/meta') && init?.method === 'PUT') {
+        metaPuts += 1;
+        if (metaPuts === 1) {
+          return new Response(JSON.stringify({ error: 'precondition failed' }), {
+            status: 412,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(null, { status: 204, headers: { ETag: '"tm2"' } });
+      }
+      throw new Error(`unexpected request ${init?.method} ${target}`);
+    });
+
+    const result = await publishShareLink(course.id, {
+      relayUrl: RELAY_URL,
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    expect(result.revision).toBe(1);
+    const metaIfMatches = fetchImpl.mock.calls
+      .filter(([url, init]) => String(url).endsWith('/meta') && (init as RequestInit)?.method === 'PUT')
+      .map(([, init]) => ((init as RequestInit).headers as Record<string, string>)['If-Match']);
+    expect(metaIfMatches).toEqual(['"0"', '"tm-live"']);
+    expect((await readShareCredentials(SHARE_ID))?.metaGeneration).toBe('"tm2"');
   });
 
   it('retries a stale payload generation against the current one', async () => {
@@ -165,6 +293,37 @@ describe('unpublishShareLink', () => {
     const course = await createCourse('Biology');
     await expect(unpublishShareLink(course.id)).resolves.toBeUndefined();
     await expect(unpublishShareLink('missing')).rejects.toThrow('could not be found');
+  });
+
+  it('keeps local state when the relay rejects deletion', async () => {
+    const course = await createCourse('Biology');
+    const relay = relayFetch();
+    const fetchImpl = relay.fetchImpl as typeof fetch;
+    await publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl });
+
+    const rejected = async () =>
+      new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    await expect(
+      unpublishShareLink(course.id, { fetchImpl: rejected as typeof fetch }),
+    ).rejects.toThrow('unauthorized');
+
+    expect((await db.courses.get(course.id))?.distribution?.shareId).toBe(SHARE_ID);
+    expect(await readShareCredentials(SHARE_ID)).toMatchObject({ writeToken: WRITE_TOKEN });
+  });
+
+  it('refuses to unpublish when this device cannot manage the link', async () => {
+    const course = await createCourse('Biology');
+    const relay = relayFetch();
+    await publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl: relay.fetchImpl as typeof fetch });
+    await forgetShareCredentials(SHARE_ID);
+
+    await expect(
+      unpublishShareLink(course.id, { fetchImpl: relay.fetchImpl as typeof fetch }),
+    ).rejects.toThrow(/cannot manage/);
+    expect((await db.courses.get(course.id))?.distribution?.shareId).toBe(SHARE_ID);
   });
 });
 

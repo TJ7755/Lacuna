@@ -134,6 +134,12 @@ async function getShareSlot(
     return shareJson(404, request, { error: 'not found' });
   }
 
+  // A slot without its auth object is an orphan left by a delete that raced
+  // an upload. Knowledge of the share id alone must never serve it.
+  if (!(await store.get(shareAuthKey(id)))) {
+    return shareJson(404, request, { error: 'not found' });
+  }
+
   const stored = await store.get(shareSlotKey(id, slot));
   if (!stored) {
     return shareJson(404, request, { error: 'not found' });
@@ -205,6 +211,14 @@ async function putShareSlot(
 
   if (!written.ok) {
     return shareJson(412, request, { error: 'precondition failed' });
+  }
+
+  // A DELETE may have swept the group after this upload passed its checks.
+  // Share ids are 128-bit random and never reused, so sweeping the group
+  // here cannot harm a legitimate share; it removes the orphan just written.
+  if (!(await store.get(shareAuthKey(id)))) {
+    await sweepShare(store, id);
+    return shareJson(404, request, { error: 'not found' });
   }
 
   let etag = written.etag;
