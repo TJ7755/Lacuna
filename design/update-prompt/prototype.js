@@ -5,7 +5,7 @@ const directions = {
   ],
   B: [
     'Drawn return',
-    'A small amber path makes the restart feel like leaving and returning. More character, with a larger footprint.',
+    'Selected direction. A centred drawing, the version in the body text, and release notes available on demand.',
   ],
   C: [
     'At your pace',
@@ -15,12 +15,14 @@ const directions = {
 const restartIcon =
   '<div class="restart-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9a7.5 7.5 0 1 0 .3 6M19 4v5h-5"/></svg></div>';
 const drawing =
-  '<div class="art" aria-hidden="true"><svg viewBox="0 0 180 220" fill="none"><path d="M44 164C5 119 48 40 109 55c59 15 53 91 12 104" stroke="#d9902b" stroke-width="3" stroke-linecap="round" stroke-dasharray="3 8"/><path d="m123 145-5 16 17-3" stroke="#d9902b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="53" y="80" width="76" height="96" rx="9" transform="rotate(-10 53 80)" fill="var(--surface)" stroke="currentColor" stroke-width="1.8"/><rect x="62" y="74" width="76" height="96" rx="9" transform="rotate(6 62 74)" fill="var(--surface)" stroke="currentColor" stroke-width="1.8"/><path d="m82 123 10 11 23-25" stroke="#d9902b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M78 149h25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>';
+  '<div class="art" aria-hidden="true"><svg viewBox="0 0 180 220" fill="none"><circle cx="90" cy="110" r="76" stroke="#d9902b" stroke-width="1.8"/><rect x="62" y="52" width="56" height="100" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.6"/><rect x="54" y="62" width="72" height="100" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.6"/><rect x="46" y="72" width="88" height="100" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.8"/><path d="M90 133V101m-13 13 13-13 13 13" stroke="#d9902b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M74 151h32" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>';
+// Summarised from the published v0.2.11 release, not a live updater connection.
+const releaseNotes = `<details class="release-notes"><summary>What’s new<span aria-hidden="true">+</span></summary><div class="notes-content" tabindex="0" role="region" aria-label="Changes in version 0.2.11"><ul><li>Share complete courses offline, including images and audio.</li><li>Preview imported cards, add reverse cards and keep your draft with Undo.</li><li>Choose typed answers for individual lessons or cards.</li><li>Improved study transitions, completion reports and Practice progress.</li><li>Built-in hosted AI and stronger recovery, offline loading and installation checks.</li></ul><a href="https://github.com/TJ7755/Lacuna/releases/tag/v0.2.11" target="_blank" rel="noopener noreferrer">Full release notes <span aria-hidden="true">↗</span></a></div></details>`;
 const actions =
   '<div class="actions"><button class="secondary" data-action="later">Later</button><button class="primary" data-action="restart">Restart Lacuna</button></div>';
 const stage = document.querySelector('#stage');
-let variant = new URLSearchParams(location.search).get('variant') || 'A';
-if (!(variant in directions)) variant = 'A';
+let variant = new URLSearchParams(location.search).get('variant') || 'B';
+if (!(variant in directions)) variant = 'B';
 function render() {
   const [name, rationale] = directions[variant];
   document.querySelector('#variant-label').textContent = `${variant} / ${name}`;
@@ -31,7 +33,7 @@ function render() {
   if (variant === 'A')
     stage.innerHTML = `<div class="veil"></div><section class="prompt compact" role="dialog" aria-label="Update ready">${restartIcon}${version}<h2>Ready to update.</h2><p>Restart Lacuna to install the update.<br>It will reopen automatically.</p>${actions}</section>`;
   if (variant === 'B')
-    stage.innerHTML = `<div class="veil"></div><section class="prompt illustrated" role="dialog" aria-label="Update ready">${drawing}<div class="copy">${version}<h2>Ready when<br>you are.</h2><p>The update has downloaded.<br>Restart to install and return.</p>${actions}</div></section>`;
+    stage.innerHTML = `<div class="veil"></div><section class="prompt illustrated" role="dialog" aria-label="Update ready">${drawing}<div class="copy"><h2>Ready when<br>you are.</h2><p>Lacuna 0.2.11 is ready to install.<br>Restart to update and reopen.</p>${releaseNotes}${actions}</div></section>`;
   if (variant === 'C')
     stage.innerHTML = `<section class="prompt notice" aria-label="Update ready"><button class="close" data-action="later" aria-label="Dismiss update notice">&times;</button>${version}<h2>An update is ready.</h2><p>Restart to install. Lacuna will reopen<br>when it’s ready.</p>${actions}</section>`;
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Refined the selected update-prompt prototype (B): moved the version into body
+  text, centred a symmetrical card illustration, and added expandable notes from
+  the published 0.2.11 release. Documented the production updater integration needed.
+
 - Aligned typed-answer reveals with ordinary study cards: the formatted answer appears
   once, with the submitted answer beneath a quiet divider. Replaced the duplicate
   red/green word comparison with a small match indicator that respects answer strictness;
