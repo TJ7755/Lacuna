@@ -1,0 +1,4677 @@
+{
+  "completed": true,
+  "measuredAt": "2026-09-26T07:10:54.883Z",
+  "label": "desktop-audit-diagnostics",
+  "platform": "darwin",
+  "arch": "arm64",
+  "totalMemoryBytes": 25769803776,
+  "logicalCpus": 10,
+  "cpu": "Apple M5",
+  "browser": "153.0.8010.12",
+  "repetitions": 1,
+  "burstReviews": 10,
+  "rates": [
+    1
+  ],
+  "smoke": true,
+  "mode": "quick",
+  "diagnostics": true,
+  "traced": false,
+  "persistentProfile": null,
+  "productionIndexBytes": 4479,
+  "timingMethod": "Host wall clock: action through asserted visible result and two animation frames; includes Playwright overhead.",
+  "limitations": "Headless Chromium; CPU throttling affects renderer execution, not an entire low-end CPU/GPU/storage system. JavaScript heap is not total application RAM. Linux memory includes OS, browser and runner.",
+  "runs": [
+    {
+      "rate": 1,
+      "counts": {
+        "courses": 1,
+        "lessons": 2,
+        "cards": 200,
+        "reviews": 4000
+      },
+      "samples": [
+        {
+          "name": "dashboard-load",
+          "iteration": 0,
+          "elapsedMs": 473.68899999999996,
+          "lag": {
+            "start": 4.1099999994039536,
+            "frames": [
+              0.2250000005960464,
+              16.65,
+              16.660000000000004,
+              16.669999999999995,
+              16.665000000000006,
+              16.664999999999992,
+              16.67,
+              16.659999999999997,
+              16.670000000000016,
+              16.664999999999992,
+              16.664999999999992,
+              33.33500000000001,
+              16.664999999999992,
+              16.659999999999997,
+              16.670000000000016,
+              16.670000000000016,
+              16.664999999999964,
+              16.660000000000025,
+              16.670000000000016,
+              16.664999999999964,
+              16.66500000000002,
+              16.664999999999964,
+              16.670000000000016,
+              16.66500000000002,
+              16.664999999999964,
+              16.66500000000002,
+              16.66500000000002,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [],
+            "transactions": [
+              {
+                "stores": [
+                  "agentMemories",
+                  "appState",
+                  "assets",
+                  "backups",
+                  "cards",
+                  "concepts",
+                  "courseAssessments",
+                  "coursePerformance",
+                  "courses",
+                  "lessonCardExposures",
+                  "lessonCards",
+                  "lessonCompletions",
+                  "lessons",
+                  "lineageIdMappings",
+                  "noteAnnotations",
+                  "notes",
+                  "occlusions",
+                  "pendingMergeReviews",
+                  "practiceMilestones",
+                  "practiceNodes",
+                  "questionAttempts",
+                  "questionConcepts",
+                  "questions",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "revisionPlans",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sequences",
+                  "sessionHistory",
+                  "tombstones",
+                  "userPerformance"
+                ],
+                "mode": "readonly",
+                "start": 73.66500000283122,
+                "duration": 3.6149999983608723,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 76.57000000029802,
+                "duration": 1.205000001937151,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courses"
+                ],
+                "mode": "readwrite",
+                "start": 77.5,
+                "duration": 1.4600000008940697,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "tombstones"
+                ],
+                "mode": "readwrite",
+                "start": 78.53500000014901,
+                "duration": 1.8650000020861626,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 79.5,
+                "duration": 0.9800000004470348,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 80.9700000025332,
+                "duration": 3.0599999986588955,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 83.86500000208616,
+                "duration": 19.08999999985099,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "appState"
+                ],
+                "mode": "readonly",
+                "start": 101.29000000283122,
+                "duration": 21.559999998658895,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "pendingMergeReviews"
+                ],
+                "mode": "readonly",
+                "start": 111.52500000223517,
+                "duration": 11.32999999821186,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards",
+                  "courseAssessments",
+                  "coursePerformance",
+                  "courses",
+                  "lessonCardExposures",
+                  "lessonCards",
+                  "lessonCompletions",
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 112.10999999940395,
+                "duration": 11.800000000745058,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "backups"
+                ],
+                "mode": "readonly",
+                "start": 122.3150000013411,
+                "duration": 2.4100000001490116,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "appState"
+                ],
+                "mode": "readonly",
+                "start": 123.05499999970198,
+                "duration": 1.6850000023841858,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 123.3450000025332,
+                "duration": 35.61499999836087,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 123.37000000104308,
+                "duration": 35.605000000447035,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 123.40000000223517,
+                "duration": 35.57999999821186,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 123.42000000178814,
+                "duration": 35.57000000029802,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "notes"
+                ],
+                "mode": "readonly",
+                "start": 123.43500000238419,
+                "duration": 35.564999997615814,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCards"
+                ],
+                "mode": "readonly",
+                "start": 123.45500000193715,
+                "duration": 35.54499999806285,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCardExposures"
+                ],
+                "mode": "readonly",
+                "start": 123.48000000044703,
+                "duration": 35.53000000119209,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCompletions"
+                ],
+                "mode": "readonly",
+                "start": 123.49500000104308,
+                "duration": 35.51500000059605,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "practiceNodes"
+                ],
+                "mode": "readonly",
+                "start": 123.51500000059605,
+                "duration": 35.50499999895692,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "practiceMilestones"
+                ],
+                "mode": "readonly",
+                "start": 123.54000000283122,
+                "duration": 35.48499999940395,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments"
+                ],
+                "mode": "readonly",
+                "start": 123.55499999970198,
+                "duration": 35.475000001490116,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sequences"
+                ],
+                "mode": "readonly",
+                "start": 123.58000000193715,
+                "duration": 35.45499999821186,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "occlusions"
+                ],
+                "mode": "readonly",
+                "start": 123.60000000149012,
+                "duration": 35.440000001341105,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "revisionPlans"
+                ],
+                "mode": "readonly",
+                "start": 123.62000000104308,
+                "duration": 35.42500000074506,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewHistory"
+                ],
+                "mode": "readonly",
+                "start": 123.65000000223517,
+                "duration": 35.42499999701977,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingUnits"
+                ],
+                "mode": "readonly",
+                "start": 123.67000000178814,
+                "duration": 35.41000000014901,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "coursePerformance"
+                ],
+                "mode": "readonly",
+                "start": 123.6900000013411,
+                "duration": 35.394999999552965,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingPerformance"
+                ],
+                "mode": "readonly",
+                "start": 123.70500000193715,
+                "duration": 35.37999999895692,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "tombstones"
+                ],
+                "mode": "readonly",
+                "start": 123.72500000149012,
+                "duration": 35.36499999836087,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "concepts"
+                ],
+                "mode": "readonly",
+                "start": 123.75500000268221,
+                "duration": 35.349999997764826,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "questions"
+                ],
+                "mode": "readonly",
+                "start": 123.76999999955297,
+                "duration": 35.42500000074506,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "questionConcepts"
+                ],
+                "mode": "readonly",
+                "start": 123.79000000283122,
+                "duration": 35.41499999910593,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "questionAttempts"
+                ],
+                "mode": "readonly",
+                "start": 123.80499999970198,
+                "duration": 35.41000000014901,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lineageIdMappings"
+                ],
+                "mode": "readonly",
+                "start": 123.82000000029802,
+                "duration": 35.394999999552965,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "pendingMergeReviews"
+                ],
+                "mode": "readonly",
+                "start": 123.83999999985099,
+                "duration": 35.38500000163913,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "agentMemories"
+                ],
+                "mode": "readonly",
+                "start": 123.85500000044703,
+                "duration": 35.42500000074506,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewActivity"
+                ],
+                "mode": "readonly",
+                "start": 124.06000000238419,
+                "duration": 38.67499999701977,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "backups"
+                ],
+                "mode": "readwrite",
+                "start": 149.07499999925494,
+                "duration": 48.360000003129244,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingPerformance"
+                ],
+                "mode": "readonly",
+                "start": 158.7550000026822,
+                "duration": 48.9049999974668,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "backups"
+                ],
+                "mode": "readonly",
+                "start": 197.57499999925494,
+                "duration": 17.950000002980232,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "appState"
+                ],
+                "mode": "readonly",
+                "start": 215.01000000163913,
+                "duration": 3.814999997615814,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 575,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 14405816,
+          "taskDurationMs": 238.87
+        },
+        {
+          "name": "global-search",
+          "iteration": 0,
+          "elapsedMs": 417.04287499999987,
+          "lag": {
+            "start": 486.26500000059605,
+            "frames": [
+              1.3599999994039536,
+              16.670000000000016,
+              16.66500000000002,
+              16.664999999999964,
+              66.66499999999996,
+              33.33000000000004,
+              33.335000000000036,
+              49.995000000000005,
+              33.33499999999992,
+              33.33000000000004,
+              50,
+              33.335000000000036,
+              16.659999999999968
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.7250000014901161,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.530000001192093,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.530000001192093,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5350000001490116,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5350000001490116,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5350000001490116,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 1.5400000028312206,
+                "durationMs": 120
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 1.550000000745058,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 2.394999999552965,
+                "durationMs": 120
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 2.855000000447035,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 2.9200000017881393,
+                "durationMs": 120
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 3,
+                "durationMs": 120
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 3.125,
+                "durationMs": 120
+              },
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.0949999988079071,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3799999989569187,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.41999999806284904,
+                "durationMs": 40
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.41999999806284904,
+                "durationMs": 40
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.42500000074505806,
+                "durationMs": 40
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.4699999988079071,
+                "durationMs": 40
+              },
+              {
+                "name": "beforeinput",
+                "inputDelayMs": 0,
+                "durationMs": 96
+              },
+              {
+                "name": "input",
+                "inputDelayMs": 0.2199999988079071,
+                "durationMs": 96
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "courseAssessments",
+                  "courses",
+                  "lessons",
+                  "notes",
+                  "questions"
+                ],
+                "mode": "readonly",
+                "start": 135.86499999836087,
+                "duration": 3.185000002384186,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 603,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 23345348,
+          "taskDurationMs": 159.68599999999998
+        },
+        {
+          "name": "course-open",
+          "iteration": 0,
+          "elapsedMs": 351.9721670000001,
+          "lag": {
+            "start": 935.8650000020862,
+            "frames": [
+              1.7499999979138465,
+              33.325000000000045,
+              16.664999999999964,
+              16.66999999999996,
+              16.665000000000077,
+              16.669999999999845,
+              49.99500000000012,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.66500000000019,
+              16.664999999999964,
+              16.669999999999845,
+              16.66500000000019,
+              16.669999999999845,
+              16.664999999999964
+            ],
+            "longTasks": [
+              {
+                "start": 101.22499999776483,
+                "duration": 59
+              }
+            ],
+            "events": [
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.4049999974668026,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5049999989569187,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5099999979138374,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5099999979138374,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5150000005960464,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5150000005960464,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5199999995529652,
+                "durationMs": 48
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.5249999985098839,
+                "durationMs": 48
+              },
+              {
+                "name": "pointerout",
+                "inputDelayMs": 1.3850000016391277,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 4.625,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 4.625,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 4.625,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 4.625,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.670000001788139,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.670000001788139,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.675000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.675000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.675000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.675000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.675000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 4.675000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 4.679999999701977,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 4.745000001043081,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 5.274999998509884,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 5.4849999994039536,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 5.925000000745058,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 5.975000001490116,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 6.009999997913837,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 85.45499999821186,
+                "duration": 6.3150000013411045,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 85.83999999985099,
+                "duration": 7.669999998062849,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards",
+                  "courseAssessments",
+                  "coursePerformance",
+                  "courses",
+                  "lessonCardExposures",
+                  "lessonCards",
+                  "lessonCompletions",
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 85.98999999836087,
+                "duration": 9.515000000596046,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewActivity"
+                ],
+                "mode": "readonly",
+                "start": 95.61999999731779,
+                "duration": 3.605000000447035,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingPerformance"
+                ],
+                "mode": "readonly",
+                "start": 96.09999999776483,
+                "duration": 67.08000000193715,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 97.48499999940395,
+                "duration": 67.55499999970198,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "pendingMergeReviews"
+                ],
+                "mode": "readonly",
+                "start": 97.64999999850988,
+                "duration": 67.76500000059605,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 165.1549999974668,
+                "duration": 3.1799999997019768,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 165.25499999895692,
+                "duration": 3.099999997764826,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "practiceNodes"
+                ],
+                "mode": "readonly",
+                "start": 165.29999999701977,
+                "duration": 3.060000002384186,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "practiceMilestones"
+                ],
+                "mode": "readonly",
+                "start": 165.35999999940395,
+                "duration": 3.2899999991059303,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewHistory"
+                ],
+                "mode": "readonly",
+                "start": 168.22999999672174,
+                "duration": 82.17000000178814,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCards"
+                ],
+                "mode": "readonly",
+                "start": 248.28999999910593,
+                "duration": 2.2399999983608723,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCompletions"
+                ],
+                "mode": "readonly",
+                "start": 248.48999999836087,
+                "duration": 2.105000000447035,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingPerformance"
+                ],
+                "mode": "readonly",
+                "start": 248.63999999687076,
+                "duration": 1.9649999998509884,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCardExposures"
+                ],
+                "mode": "readonly",
+                "start": 248.4349999986589,
+                "duration": 15.71000000089407,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 308,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 24183136,
+          "taskDurationMs": 202.17799999999997
+        },
+        {
+          "name": "cards-open",
+          "iteration": 0,
+          "elapsedMs": 644.8445000000002,
+          "lag": {
+            "start": 1293.605000000447,
+            "frames": [
+              10.654999999552956,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.660000000000082,
+              16.669999999999845,
+              16.66500000000019,
+              16.664999999999964,
+              16.669999999999845,
+              16.66500000000019,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.660000000000082,
+              16.669999999999845,
+              16.664999999999964,
+              16.66500000000019,
+              16.664999999999964,
+              16.669999999999845,
+              16.66500000000019,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.6449999995529652,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0100000016391277,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0100000016391277,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0100000016391277,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 3.0150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0650000013411045,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 3.0700000002980232,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 3.074999999254942,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 3.149999998509884,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 3.774999998509884,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 5.094999998807907,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 5.3900000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 6.135000001639128,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 6.169999998062849,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 56.980000000447035,
+                "duration": 1.8700000010430813,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 248.58500000089407,
+                "duration": 1.119999997317791,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 248.71000000089407,
+                "duration": 1.0099999979138374,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 248.375,
+                "duration": 1.5799999982118607,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sequences"
+                ],
+                "mode": "readonly",
+                "start": 249.21000000089407,
+                "duration": 0.8799999989569187,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "occlusions"
+                ],
+                "mode": "readonly",
+                "start": 249.2800000011921,
+                "duration": 0.8200000002980232,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingUnits"
+                ],
+                "mode": "readonly",
+                "start": 249.39499999955297,
+                "duration": 1.8700000010430813,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingUnits"
+                ],
+                "mode": "readonly",
+                "start": 250,
+                "duration": 1.7149999998509884,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 251.44999999925494,
+                "duration": 33.92000000178814,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 251.55000000074506,
+                "duration": 33.894999999552965,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 251.60999999940395,
+                "duration": 40.83000000193715,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 251.67999999970198,
+                "duration": 40.82499999925494,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 14,
+            "domElements": 920,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 40242796,
+          "taskDurationMs": 236.27900000000002
+        },
+        {
+          "name": "cards-search",
+          "iteration": 0,
+          "elapsedMs": 61.61029099999996,
+          "lag": {
+            "start": 1943.230000000447,
+            "frames": [
+              11.009999999552974,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "beforeinput",
+                "inputDelayMs": 0,
+                "durationMs": 24
+              },
+              {
+                "name": "input",
+                "inputDelayMs": 0.125,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 1,
+            "domElements": 353,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 18500496,
+          "taskDurationMs": 42.19200000000001
+        },
+        {
+          "name": "study-open",
+          "iteration": 0,
+          "elapsedMs": 864.4387080000001,
+          "lag": {
+            "start": 2007.6500000022352,
+            "frames": [
+              13.249999997764917,
+              16.669999999999845,
+              16.660000000000082,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.66000000000031,
+              16.669999999999618,
+              16.66500000000042,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.670000000000073,
+              33.32999999999993,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.2200000025331974,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2800000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2800000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2800000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2800000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2800000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.2800000011920929,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 9.58499999716878,
+                "duration": 1.7349999994039536,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 11.889999996870756,
+                "duration": 1.5600000023841858,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 11.979999996721745,
+                "duration": 1.4850000031292439,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sequences"
+                ],
+                "mode": "readonly",
+                "start": 12.754999998956919,
+                "duration": 0.7199999988079071,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "occlusions"
+                ],
+                "mode": "readonly",
+                "start": 12.814999997615814,
+                "duration": 0.6649999991059303,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 11.764999996870756,
+                "duration": 1.8650000020861626,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingUnits"
+                ],
+                "mode": "readonly",
+                "start": 12.875,
+                "duration": 3.0899999998509884,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingUnits"
+                ],
+                "mode": "readonly",
+                "start": 14.644999999552965,
+                "duration": 4.274999998509884,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 18.639999996870756,
+                "duration": 12.095000002533197,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 18.769999999552965,
+                "duration": 12.004999998956919,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 18.814999997615814,
+                "duration": 12.004999998956919,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 18.87999999895692,
+                "duration": 11.964999999850988,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 225.98499999940395,
+                "duration": 0.6999999992549419,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 531.429999999702,
+                "duration": 1.844999998807907,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 533.3449999988079,
+                "duration": 2.2650000005960464,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 533.4249999970198,
+                "duration": 2.2000000029802322,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments"
+                ],
+                "mode": "readonly",
+                "start": 533.5,
+                "duration": 2.1299999989569187,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "practiceNodes"
+                ],
+                "mode": "readonly",
+                "start": 533.5249999985099,
+                "duration": 2.2399999983608723,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewHistory"
+                ],
+                "mode": "readonly",
+                "start": 535.5449999980628,
+                "duration": 55.190000001341105,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCards"
+                ],
+                "mode": "readonly",
+                "start": 590.1849999986589,
+                "duration": 0.5700000002980232,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessonCardExposures"
+                ],
+                "mode": "readonly",
+                "start": 590.2749999985099,
+                "duration": 3.844999998807907,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "schedulingUnits"
+                ],
+                "mode": "readonly",
+                "start": 593.4699999988079,
+                "duration": 1.2650000005960464,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "coursePerformance"
+                ],
+                "mode": "readonly",
+                "start": 593.769999999553,
+                "duration": 1.0249999985098839,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "lessons"
+                ],
+                "mode": "readonly",
+                "start": 594.6849999986589,
+                "duration": 36.92500000074506,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewHistory"
+                ],
+                "mode": "readonly",
+                "start": 595.2249999977648,
+                "duration": 36.83000000193715,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 254,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 47321604,
+          "taskDurationMs": 206.1839999999999
+        },
+        {
+          "name": "answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 511.8265830000005,
+          "lag": {
+            "start": 2876.72500000149,
+            "frames": [
+              10.809999998509738,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.66000000000031,
+              16.670000000000073,
+              16.664999999999964,
+              16.669999999999618,
+              16.66500000000042,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.15000000223517418,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.33000000193715096,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.33000000193715096,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.33000000193715096,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.33000000193715096,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.33000000193715096,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3500000014901161,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3500000014901161,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3500000014901161,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3500000014901161,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.35500000044703484,
+                "durationMs": 32
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.5650000013411045,
+                "durationMs": 32
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.6050000004470348,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.125,
+                "durationMs": 32
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.5099999979138374,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.675000000745058,
+                "durationMs": 32
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.8099999986588955,
+                "durationMs": 32
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.8350000008940697,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.05000000074505806,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.17999999970197678,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerleave",
+                "inputDelayMs": 0.35500000044703484,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.35500000044703484,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.375,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.380000002682209,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.38500000163912773,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.4150000028312206,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 344.8099999986589,
+                "duration": 2.4149999991059303,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 346.95499999821186,
+                "duration": 0.6750000007450581,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "notes"
+                ],
+                "mode": "readonly",
+                "start": 347.44999999925494,
+                "duration": 0.20499999821186066,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "occlusions"
+                ],
+                "mode": "readonly",
+                "start": 347.589999999851,
+                "duration": 0.3399999998509884,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "questions"
+                ],
+                "mode": "readonly",
+                "start": 347.7249999977648,
+                "duration": 0.375,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "questionAttempts"
+                ],
+                "mode": "readonly",
+                "start": 347.8699999973178,
+                "duration": 0.3100000023841858,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "assets"
+                ],
+                "mode": "readonly",
+                "start": 348.04499999806285,
+                "duration": 0.1850000023841858,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 336,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 49117300,
+          "taskDurationMs": 40.499000000000066,
+          "inputToReadableMs": 428.91999999806285
+        },
+        {
+          "name": "review-next-card",
+          "iteration": 0,
+          "elapsedMs": 677.8812500000004,
+          "lag": {
+            "start": 3394.125,
+            "frames": [
+              10.054999999999836,
+              16.664999999999964,
+              16.66500000000042,
+              16.669999999999618,
+              16.664999999999964,
+              16.66500000000042,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.66500000000042,
+              16.669999999999618,
+              16.664999999999964,
+              16.670000000000073,
+              16.66000000000031,
+              16.669999999999618,
+              16.66500000000042,
+              16.669999999999618,
+              16.664999999999964,
+              16.66500000000042,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.12000000104308128,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.26500000059604645,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2850000001490116,
+                "durationMs": 32
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.4050000011920929,
+                "durationMs": 32
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.4400000013411045,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.1050000004470348,
+                "durationMs": 32
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.4349999986588955,
+                "durationMs": 32
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.4950000010430813,
+                "durationMs": 32
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.5850000008940697,
+                "durationMs": 32
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.6100000031292439,
+                "durationMs": 32
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 426.964999999851,
+                "duration": 10.71000000089407,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 438.1000000014901,
+                "duration": 15.064999997615814,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 453.08000000193715,
+                "duration": 0.3449999988079071,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewHistory"
+                ],
+                "mode": "readonly",
+                "start": 453.3449999988079,
+                "duration": 1.9400000013411045,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "cards"
+                ],
+                "mode": "readonly",
+                "start": 453.51999999955297,
+                "duration": 1.8100000023841858,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "reviewActivity",
+                  "reviewHistory",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 455.375,
+                "duration": 0.7149999998509884,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 263,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 35312684,
+          "taskDurationMs": 64.84999999999985,
+          "inputToReadableMs": 612.964999999851
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 0,
+          "elapsedMs": 495.2745839999998,
+          "lag": {
+            "start": 4077.019999999553,
+            "frames": [
+              10.465000000447162,
+              16.669999999999618,
+              16.664999999999964,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.665000000000873,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.669999999999163,
+              16.664999999999964,
+              16.660000000000764,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.664999999999964,
+              16.670000000000073
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.1599999964237213,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3099999986588955,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.32999999821186066,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.44999999925494194,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.48499999940395355,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.9700000025331974,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.2149999998509884,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.4100000001490116,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.4849999994039536,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.5049999989569187,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 36229944,
+          "taskDurationMs": 32.59100000000004,
+          "inputToReadableMs": 429.76999999955297
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 0,
+          "elapsedMs": 661.6237079999992,
+          "lag": {
+            "start": 4577.219999998808,
+            "frames": [
+              10.245000001192238,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.665000000000873,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.16499999910593033,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.29499999806284904,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3149999976158142,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.41999999806284904,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.45499999821186066,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.2699999995529652,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.375,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.4399999976158142,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.4649999998509884,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 426.61000000312924,
+                "duration": 5.25,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 432.0950000025332,
+                "duration": 16.24499999731779,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 448.45000000298023,
+                "duration": 0.5,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 263,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 42988492,
+          "taskDurationMs": 59.934999999999846,
+          "inputToReadableMs": 596.714999999851
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 1,
+          "elapsedMs": 494.5209169999998,
+          "lag": {
+            "start": 5243.025000002235,
+            "frames": [
+              11.07999999776439,
+              16.665000000000873,
+              16.669999999999163,
+              16.664999999999964,
+              16.665000000000873,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.1549999974668026,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.2799999974668026,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.29499999806284904,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.4100000001490116,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.4450000002980232,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.8250000029802322,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.0750000029802322,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.324999999254942,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.4299999997019768,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.4450000002980232,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 43765568,
+          "taskDurationMs": 33.42599999999996,
+          "inputToReadableMs": 428.964999999851
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 1,
+          "elapsedMs": 664.2737500000003,
+          "lag": {
+            "start": 5741.820000000298,
+            "frames": [
+              12.264999999702013,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.660000000000764,
+              16.669999999999163,
+              16.665000000000873,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.1850000023841858,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3049999997019768,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3200000002980232,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.4350000023841858,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.4699999988079071,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.9100000001490116,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.1700000017881393,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.2400000020861626,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.2950000017881393,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.3100000023841858,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 428.1200000010431,
+                "duration": 5.195000000298023,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 433.51500000059605,
+                "duration": 15.359999999403954,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 449.0100000016391,
+                "duration": 0.35999999940395355,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 263,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 50512496,
+          "taskDurationMs": 52.759,
+          "inputToReadableMs": 597.0499999970198
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 2,
+          "elapsedMs": 493.59633399999984,
+          "lag": {
+            "start": 6411.914999999106,
+            "frames": [
+              8.810000000894433,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.670000000000073,
+              16.659999999999854,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.19500000029802322,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.36500000208616257,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.38500000163912773,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.5700000002980232,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.6350000016391277,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.4100000001490116,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 2.1649999991059303,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 2.4100000001490116,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 2.5,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 2.519999999552965,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 51299772,
+          "taskDurationMs": 47.722000000000044,
+          "inputToReadableMs": 426.4700000025332
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 2,
+          "elapsedMs": 659.2860830000009,
+          "lag": {
+            "start": 6912.195000000298,
+            "frames": [
+              8.509999999701904,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.665000000000873,
+              16.664999999999964,
+              16.669999999999163,
+              16.665000000000873,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.659999999999854
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.13999999687075615,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.2749999985098839,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.29999999701976776,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.41999999806284904,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.44999999925494194,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.0400000028312206,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.300000000745058,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.3399999998509884,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.3999999985098839,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.4149999991059303,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 425.1000000014901,
+                "duration": 9.429999999701977,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 435.2600000016391,
+                "duration": 20.16000000014901,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 455.58000000193715,
+                "duration": 0.6599999964237213,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 28705616,
+          "taskDurationMs": 85.55400000000013,
+          "inputToReadableMs": 594.375
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 3,
+          "elapsedMs": 494.7542910000011,
+          "lag": {
+            "start": 7576.754999998957,
+            "frames": [
+              10.590000001043336,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.14000000059604645,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3099999986588955,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.32499999925494194,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.45499999821186066,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.494999997317791,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.3350000008940697,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.705000001937151,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.9799999967217445,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 2.0599999986588955,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 2.0849999971687794,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 29613044,
+          "taskDurationMs": 47.110999999999905,
+          "inputToReadableMs": 429.3500000014901
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 3,
+          "elapsedMs": 659.9799999999996,
+          "lag": {
+            "start": 8077.85000000149,
+            "frames": [
+              9.474999998509702,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.664999999999964,
+              16.664999999999964,
+              16.670000000000073,
+              16.660000000000764,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.1850000023841858,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.5100000016391277,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.625,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.9750000014901161,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 1.0350000001490116,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.7249999977648258,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 2.0599999986588955,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 2.1849999986588955,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 2.25,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 2.2650000005960464,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 425.9599999971688,
+                "duration": 7.365000002086163,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 433.60999999940395,
+                "duration": 16.894999999552965,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 450.6499999985099,
+                "duration": 0.38500000163912773,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 36068072,
+          "taskDurationMs": 58.46499999999999,
+          "inputToReadableMs": 595.4699999988079
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 4,
+          "elapsedMs": 496.4395000000004,
+          "lag": {
+            "start": 8742.414999999106,
+            "frames": [
+              11.550000000894215,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.14500000327825546,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.33000000193715096,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3450000025331974,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.4700000025331974,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.5100000016391277,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.955000001937151,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.2149999998509884,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.324999999254942,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.3849999979138374,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.3999999985098839,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 36972408,
+          "taskDurationMs": 51.891999999999825,
+          "inputToReadableMs": 429.9950000010431
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 4,
+          "elapsedMs": 660.5019169999996,
+          "lag": {
+            "start": 9244.900000002235,
+            "frames": [
+              9.044999997764535,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.14000000059604645,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3099999986588955,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.32999999821186066,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.6149999983608723,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.6550000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.3200000002980232,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.625,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.7599999979138374,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.8499999977648258,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.8649999983608723,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 425.429999999702,
+                "duration": 9.359999999403954,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 435.1299999989569,
+                "duration": 16.265000000596046,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 451.5349999964237,
+                "duration": 0.5100000016391277,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 43211940,
+          "taskDurationMs": 54.093999999999866,
+          "inputToReadableMs": 596.6549999974668
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 5,
+          "elapsedMs": 511.02050000000054,
+          "lag": {
+            "start": 9920.795000001788,
+            "frames": [
+              16.45999999821106,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.11500000208616257,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.33500000089406967,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.35500000044703484,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.5949999988079071,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.6299999989569187,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.25,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.530000001192093,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.6950000002980232,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.7450000010430813,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.7600000016391277,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 44061408,
+          "taskDurationMs": 46.70600000000014,
+          "inputToReadableMs": 430.339999999851
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 5,
+          "elapsedMs": 659.9714169999988,
+          "lag": {
+            "start": 10445.10000000149,
+            "frames": [
+              8.79499999851032,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.16499999910593033,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.33500000089406967,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.35500000044703484,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.5,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.5300000011920929,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.6349999979138374,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.905000001192093,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 2.0299999974668026,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 2.0849999971687794,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 2.094999998807907,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 425.2099999971688,
+                "duration": 8.29500000178814,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 433.8449999988079,
+                "duration": 16.385000001639128,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 450.38499999791384,
+                "duration": 0.505000002682209,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 50286488,
+          "taskDurationMs": 52.68600000000001,
+          "inputToReadableMs": 596.3799999989569
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 6,
+          "elapsedMs": 495.70116699999926,
+          "lag": {
+            "start": 11109.199999999255,
+            "frames": [
+              11.335000000744913,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.670000000000073
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.1600000001490116,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.48499999940395355,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.5099999979138374,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.7549999989569187,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.7899999991059303,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.3799999989569187,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.625,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.8149999976158142,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.875,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.8949999995529652,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 27300740,
+          "taskDurationMs": 48.26200000000003,
+          "inputToReadableMs": 428.33000000193715
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 6,
+          "elapsedMs": 668.251624999999,
+          "lag": {
+            "start": 11619.545000001788,
+            "frames": [
+              0.9749999982122972,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.660000000001673,
+              16.669999999998254,
+              16.665000000000873,
+              16.665000000000873,
+              16.669999999998254,
+              16.665000000000873,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.11500000208616257,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.28999999910593033,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.3100000023841858,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.4400000013411045,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.4950000010430813,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.9749999977648258,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.2300000004470348,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.3399999998509884,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.3949999995529652,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.4100000001490116,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 434.00999999791384,
+                "duration": 7.679999999701977,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 441.9749999977648,
+                "duration": 17.845000002533197,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 460.00999999791384,
+                "duration": 0.42500000074505806,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 26442744,
+          "taskDurationMs": 53.50500000000014,
+          "inputToReadableMs": 597.285000000149
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 7,
+          "elapsedMs": 496.95987500000047,
+          "lag": {
+            "start": 12291.175000000745,
+            "frames": [
+              12.644999999254651,
+              16.665000000000873,
+              16.670000000000073,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.14000000059604645,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3049999997019768,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.32499999925494194,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.4299999997019768,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.46000000089406967,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.9499999992549419,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.1950000002980232,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.3850000016391277,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.449999999254942,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.469999998807907,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 27326864,
+          "taskDurationMs": 47.81400000000002,
+          "inputToReadableMs": 429.625
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 7,
+          "elapsedMs": 662.639709000001,
+          "lag": {
+            "start": 12792.445000000298,
+            "frames": [
+              11.35499999970125,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.665000000000873,
+              16.669999999998254,
+              16.665000000000873,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.11000000312924385,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.24000000208616257,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.26000000163912773,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.35500000044703484,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.39000000059604645,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.8399999998509884,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.074999999254942,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.1799999997019768,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.2349999994039536,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.25,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 426.804999999702,
+                "duration": 9.109999999403954,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 436.3449999988079,
+                "duration": 21.24500000104308,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 457.76999999955297,
+                "duration": 0.5899999998509884,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 34157112,
+          "taskDurationMs": 56.28900000000003,
+          "inputToReadableMs": 597.730000000447
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 8,
+          "elapsedMs": 495.8151660000003,
+          "lag": {
+            "start": 13459.734999999404,
+            "frames": [
+              10.705000000596556,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.664999999999054,
+              16.670000000000073,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.14000000059604645,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.33500000089406967,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.375,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.5350000001490116,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.5750000029802322,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.380000002682209,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.7149999998509884,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.9349999986588955,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 2.0049999989569187,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 2.0299999974668026,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 35038084,
+          "taskDurationMs": 49.8059999999998,
+          "inputToReadableMs": 428.10999999940395
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 8,
+          "elapsedMs": 660.2875000000004,
+          "lag": {
+            "start": 13961.26000000164,
+            "frames": [
+              9.164999998360145,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.665000000000873,
+              16.669999999998254,
+              16.665000000000873,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.12999999895691872,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.25999999791383743,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.2749999985098839,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.38499999791383743,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.41499999910593033,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 0.955000001937151,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.2300000004470348,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.3399999998509884,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.3949999995529652,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.4100000001490116,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 425.6899999976158,
+                "duration": 9.775000002235174,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 435.8799999989569,
+                "duration": 21.114999998360872,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 457.14000000059605,
+                "duration": 0.6449999995529652,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 26578140,
+          "taskDurationMs": 69.11999999999985,
+          "inputToReadableMs": 597.0699999965727
+        },
+        {
+          "name": "burst-answer-reveal",
+          "iteration": 9,
+          "elapsedMs": 495.7664999999997,
+          "lag": {
+            "start": 14625.719999998808,
+            "frames": [
+              11.345000001192602,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.659999999999854,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.14999999850988388,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3500000014901161,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.36499999836087227,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.48499999940395355,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.5150000005960464,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.080000001937151,
+                "durationMs": 16
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.3650000020861626,
+                "durationMs": 16
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.4349999986588955,
+                "durationMs": 16
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.4899999983608723,
+                "durationMs": 16
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.5199999995529652,
+                "durationMs": 16
+              }
+            ],
+            "transactions": [],
+            "mountedCardRows": 0,
+            "domElements": 345,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 27464936,
+          "taskDurationMs": 46.146999999999935,
+          "inputToReadableMs": 428.70499999821186
+        },
+        {
+          "name": "burst-review-next-card",
+          "iteration": 9,
+          "elapsedMs": 661.7542080000003,
+          "lag": {
+            "start": 15126.559999998659,
+            "frames": [
+              10.480000001341978,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054,
+              16.670000000000073,
+              16.659999999999854,
+              16.670000000000073,
+              16.665000000000873,
+              16.664999999999054,
+              16.665000000000873,
+              16.670000000000073,
+              16.664999999999054,
+              16.665000000000873,
+              16.664999999999054
+            ],
+            "longTasks": [],
+            "events": [
+              {
+                "name": "pointerout",
+                "inputDelayMs": 0.16499999910593033,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerover",
+                "inputDelayMs": 0.3499999977648258,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerenter",
+                "inputDelayMs": 0.375,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseout",
+                "inputDelayMs": 0.5149999968707561,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseover",
+                "inputDelayMs": 0.5549999997019768,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerdown",
+                "inputDelayMs": 1.199999999254942,
+                "durationMs": 24
+              },
+              {
+                "name": "mousedown",
+                "inputDelayMs": 1.469999998807907,
+                "durationMs": 24
+              },
+              {
+                "name": "pointerup",
+                "inputDelayMs": 1.5899999998509884,
+                "durationMs": 24
+              },
+              {
+                "name": "mouseup",
+                "inputDelayMs": 1.6600000001490116,
+                "durationMs": 24
+              },
+              {
+                "name": "click",
+                "inputDelayMs": 1.675000000745058,
+                "durationMs": 24
+              }
+            ],
+            "transactions": [
+              {
+                "stores": [
+                  "cards",
+                  "coursePerformance",
+                  "courses",
+                  "reviewActivity",
+                  "reviewHistory",
+                  "schedulingPerformance",
+                  "schedulingUnits",
+                  "sessionHistory"
+                ],
+                "mode": "readwrite",
+                "start": 426.3150000013411,
+                "duration": 8.125,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "courseAssessments",
+                  "courses"
+                ],
+                "mode": "readonly",
+                "start": 434.80500000342727,
+                "duration": 19.299999997019768,
+                "outcome": "complete"
+              },
+              {
+                "stores": [
+                  "sessionHistory"
+                ],
+                "mode": "readonly",
+                "start": 454.2800000011921,
+                "duration": 0.5650000013411045,
+                "outcome": "complete"
+              }
+            ],
+            "mountedCardRows": 0,
+            "domElements": 272,
+            "visibility": "visible",
+            "motionSpeed": "normal",
+            "reducedMotion": false
+          },
+          "jsHeapUsedBytes": 33978236,
+          "taskDurationMs": 58.03599999999997,
+          "inputToReadableMs": 597.3650000020862
+        }
+      ],
+      "errors": [],
+      "memoryBefore": null,
+      "memorySamples": []
+    }
+  ]
+}

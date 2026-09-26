@@ -107,8 +107,6 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  animation: study-content-arrive calc(420ms * var(--step-motion)) calc(880ms * var(--step-motion))
-    both;
 }
 .study-transition-actions button {
   /* Keep the shared Button hover scale from moving labels during the arrow reveal. */

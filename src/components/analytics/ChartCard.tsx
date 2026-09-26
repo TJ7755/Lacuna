@@ -7,6 +7,7 @@ import { StudyDrawing } from '../ui/StudyDrawing';
 /** A titled container giving every chart a consistent frame and empty state. */
 export function ChartCard({
   title,
+  data,
   description,
   empty,
   emptyMessage,
@@ -17,6 +18,7 @@ export function ChartCard({
   compactEmpty = false,
 }: {
   title: string;
+  data?: { columns: string[]; rows: (string | number)[][] };
   description?: string;
   empty?: boolean;
   emptyMessage?: string;
@@ -31,7 +33,7 @@ export function ChartCard({
   const m = speedMultiplier(motionSpeed);
   const d = delay ?? 0;
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <section className="min-w-0 rounded-2xl border border-line bg-surface p-5">
       <header className="mb-4">
         <h3 className="font-display text-xl tracking-tight">{title}</h3>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
@@ -66,6 +68,43 @@ export function ChartCard({
         >
           {children}
         </motion.div>
+      )}
+      {!empty && data && data.rows.length > 0 && (
+        <details className="mt-4 border-t border-line pt-3 text-sm">
+          <summary className="w-fit cursor-pointer rounded text-ink-soft focus-visible:outline-2 focus-visible:outline-accent">
+            View data
+          </summary>
+          <div
+            className="mt-3 max-h-80 overflow-auto"
+            tabIndex={0}
+            role="region"
+            aria-label={`${title} data`}
+          >
+            <table className="w-full text-left tabular-nums">
+              <caption className="sr-only">{title}</caption>
+              <thead>
+                <tr>
+                  {data.columns.map((column) => (
+                    <th key={column} scope="col" className="px-3 py-2 font-medium">
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map((row, index) => (
+                  <tr key={index} className="border-t border-line">
+                    {row.map((value, cell) => (
+                      <td key={cell} className="px-3 py-2 text-ink-soft">
+                        {value}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
       )}
     </section>
   );

@@ -136,3 +136,10 @@ button click breaks first-use export/import after the user goes offline.
 Keep cards around related content; fewer nested boxes does not mean flat pages. Landing scenes
 should have one or two focal points, brief copy, flat bright illustrations and concrete calendar
 examples. Historical plans are evidence of past intent, not an active implementation queue.
+
+
+## Deliberate study pacing
+
+The prompter explicitly values the graded-card departure and inter-card pause as delightful
+(26 September 2026). Preserve that timing when improving desktop throughput; make controls
+and cancellation reliable around it instead of treating the pause as a performance defect.

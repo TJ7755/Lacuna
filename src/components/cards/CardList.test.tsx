@@ -174,6 +174,20 @@ function openAddMenu() {
 }
 
 describe('CardList', () => {
+  it('provides a named details control and keeps the covered swipe tray inert', async () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    const details = screen.getByRole('button', {
+      name: 'Card details: What is the capital of France?',
+    });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    expect(container.querySelector('[data-card-swipe-tray]')).toHaveAttribute('inert');
+    fireEvent.click(details);
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
+  });
+
   it('renders empty state when no cards', () => {
     const onNewCard = vi.fn();
     const onEditCard = vi.fn();

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Improved desktop input and accessibility: Author-mode mouse/pen lesson drags start on
+  movement and carry the lesson, with neighbours making room; touch retains its deliberate
+  hold and keyboard reordering remains available. Automatic input mode follows the input
+  in use, while explicit preferences remain fixed. Card swipes follow held pointers directly.
+- Added named card-details controls, labelled search and typed answers, accessible chart
+  data tables and stronger secondary-text contrast. Departing course pages are inert;
+  step-completion actions are immediately available. Study overlays suppress underlying
+  shortcuts, cancel pending grades and recover focus. The deliberate graded-card pause
+  and existing flip/departure timing are preserved. See the
+  [desktop validation report](performance/2026-09-26/README.md) for evidence and hardware gaps.
+
 - Added offline `.lacuna` course files to Share. Files include referenced images, audio and
   occlusion diagrams once each, without personal study history. File imports preview before
   confirmation and retain published-course update handling. Missing or corrupt media is

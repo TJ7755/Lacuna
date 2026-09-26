@@ -72,6 +72,11 @@ function Harness({
             onClickCapture={interaction.onClickCapture}
             onClick={() => onOpen(lesson.id)}
             onKeyDown={interaction.onKeyDown}
+            style={{
+              transform: interaction.offset
+                ? `translate(${interaction.offset.x}px, ${interaction.offset.y}px)`
+                : undefined,
+            }}
             data-lifted={interaction.lifted || undefined}
             data-drop-marker={interaction.dropMarker}
           >
@@ -107,37 +112,49 @@ describe('useLessonPathReorder', () => {
     hapticStrong.mockClear();
   });
 
-  it('activates after a hold and persists the lesson-only drop position', async () => {
-    render(<Harness />);
+  it.each(['mouse', 'pen'])(
+    'starts a %s drag on movement without waiting for a hold',
+    async (pointerType) => {
+      render(<Harness />);
+      const first = screen.getByRole('button', { name: 'One' });
+      const second = screen.getByRole('button', { name: 'Two' });
+      [first, second, screen.getByRole('button', { name: 'Three' })].forEach((element, index) => {
+        vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+          left: 0,
+          top: index * 100,
+          width: 56,
+          height: 56,
+          right: 56,
+          bottom: index * 100 + 56,
+        } as DOMRect);
+      });
+      fireEvent.pointerDown(first, {
+        pointerType,
+        button: 0,
+        pointerId: 7,
+        clientX: 10,
+        clientY: 10,
+      });
+      expect(first).not.toHaveAttribute('data-lifted');
+      fireEvent.pointerMove(first, { pointerType, pointerId: 7, clientX: 30, clientY: 250 });
+      expect(first).toHaveAttribute('data-lifted', 'true');
+      expect(first).toHaveStyle({ transform: 'translate(20px, 240px)' });
+      expect(second).toHaveStyle({ transform: 'translate(0px, -100px)' });
+      await act(async () => fireEvent.pointerUp(first, { pointerId: 7 }));
+      expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-3', 'lesson-1']);
+    },
+  );
+
+  it('keeps a stationary press available as a normal click', async () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
     const first = screen.getByRole('button', { name: 'One' });
-
-    fireEvent.pointerDown(first, { button: 0, pointerId: 7, clientX: 10, clientY: 10 });
-    await act(async () => vi.advanceTimersByTime(350));
-    expect(hapticStrong).toHaveBeenCalledOnce();
-
-    await act(async () => {
-      fireEvent.pointerMove(first, { pointerId: 7, clientX: 10, clientY: 100 });
-      fireEvent.pointerUp(first, { pointerId: 7, clientX: 10, clientY: 100 });
-      await Promise.resolve();
-    });
-    expect(reorderLessons).toHaveBeenCalledWith('course-1', [
-      'lesson-2',
-      'lesson-3',
-      'lesson-1',
-    ]);
-    expect(screen.getByText('One moved to position 3 of 3.')).toBeInTheDocument();
-  });
-
-  it('cancels a hold when the pointer moves before activation', async () => {
-    render(<Harness />);
-    const first = screen.getByRole('button', { name: 'One' });
-
     fireEvent.pointerDown(first, { button: 0, pointerId: 8, clientX: 0, clientY: 0 });
-    fireEvent.pointerMove(first, { pointerId: 8, clientX: 20, clientY: 0 });
     await act(async () => vi.advanceTimersByTime(350));
-    fireEvent.pointerUp(first, { pointerId: 8, clientX: 20, clientY: 0 });
-
-    expect(hapticStrong).not.toHaveBeenCalled();
+    expect(first).not.toHaveAttribute('data-lifted');
+    fireEvent.pointerUp(first, { pointerId: 8 });
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
     expect(reorderLessons).not.toHaveBeenCalled();
   });
 
@@ -146,7 +163,7 @@ describe('useLessonPathReorder', () => {
     render(<Harness onOpen={onOpen} />);
     const first = screen.getByRole('button', { name: 'One' });
     fireEvent.pointerDown(first, { button: 0, pointerId: 10, clientX: 0, clientY: 0 });
-    await act(async () => vi.advanceTimersByTime(350));
+    fireEvent.pointerMove(first, { pointerId: 10, clientX: 0, clientY: 20 });
 
     expect(first).toHaveAttribute('data-lifted', 'true');
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -209,11 +226,7 @@ describe('useLessonPathReorder', () => {
 
     expect(dragMove.defaultPrevented).toBe(true);
     expect(hapticStrong).toHaveBeenCalledOnce();
-    expect(reorderLessons).toHaveBeenCalledWith('course-1', [
-      'lesson-2',
-      'lesson-3',
-      'lesson-1',
-    ]);
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-3', 'lesson-1']);
   });
 
   it('clears lifted and drop state on pointer cancellation', async () => {
@@ -244,11 +257,7 @@ describe('useLessonPathReorder', () => {
       });
       await Promise.resolve();
     });
-    expect(reorderLessons).toHaveBeenCalledWith('course-1', [
-      'lesson-2',
-      'lesson-1',
-      'lesson-3',
-    ]);
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1', 'lesson-3']);
     expect(screen.getByText('Two moved to position 1 of 3.')).toBeInTheDocument();
   });
 

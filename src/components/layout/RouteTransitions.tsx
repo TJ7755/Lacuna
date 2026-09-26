@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { forwardRef, type ReactNode } from 'react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { CourseSectionNavigation } from '../course/CourseSectionNavigation';
 import { matchCourseSection } from '../course/courseSections';
 
@@ -35,24 +35,48 @@ export function RouteTransitions({
           AnimatePresence supplies the latest direction to the departing page too. */}
       <div className={section ? 'relative overflow-x-clip' : 'relative min-h-full'}>
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
-          <motion.div
+          <RoutePage
             key={pathname}
-            data-route-content={pathname}
-            custom={direction}
-            variants={ROUTE_VARIANTS}
-            initial={multiplier > 0 ? 'enter' : false}
-            animate={multiplier > 0 ? 'center' : undefined}
-            exit={multiplier > 0 ? 'exit' : undefined}
-            transition={{
-              duration: (direction === 0 ? 0.18 : 0.3) * multiplier,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="min-h-full w-full"
+            pathname={pathname}
+            direction={direction}
+            multiplier={multiplier}
           >
             {children}
-          </motion.div>
+          </RoutePage>
         </AnimatePresence>
       </div>
     </>
   );
 }
+
+const RoutePage = forwardRef<
+  HTMLDivElement,
+  {
+    pathname: string;
+    direction: number;
+    multiplier: number;
+    children: ReactNode;
+  }
+>(function RoutePage({ pathname, direction, multiplier, children }, ref) {
+  const present = useIsPresent();
+  return (
+    <motion.div
+      ref={ref}
+      inert={!present}
+      aria-hidden={!present || undefined}
+      data-route-content={pathname}
+      custom={direction}
+      variants={ROUTE_VARIANTS}
+      initial={multiplier > 0 ? 'enter' : false}
+      animate={multiplier > 0 ? 'center' : undefined}
+      exit={multiplier > 0 ? 'exit' : undefined}
+      transition={{
+        duration: (direction === 0 ? 0.18 : 0.3) * multiplier,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      className="min-h-full w-full"
+    >
+      {children}
+    </motion.div>
+  );
+});

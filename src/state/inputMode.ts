@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 export type InputMode = 'keyboard' | 'touch' | 'auto';
 
@@ -6,9 +6,54 @@ const KEY = 'lacuna.inputMode';
 const FONT_SCALE_KEY = 'lacuna-font-scale';
 const FONT_SCALE_USER_SET_KEY = 'lacuna-font-scale-user-set';
 
-function isTouchDevice(): boolean {
-  if (typeof window === 'undefined') return false;
-  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+type ResolvedInput = 'keyboard' | 'touch';
+let activeInput: ResolvedInput | undefined;
+const inputListeners = new Set<() => void>();
+
+function setActiveInput(next: ResolvedInput) {
+  if (next === activeInput) return;
+  activeInput = next;
+  inputListeners.forEach((listener) => listener());
+}
+
+function onPointer(event: PointerEvent) {
+  if (event.pointerType === 'mouse') setActiveInput('keyboard');
+  else if (
+    event.type === 'pointerdown' &&
+    (event.pointerType === 'touch' || event.pointerType === 'pen')
+  ) {
+    setActiveInput('touch');
+  }
+}
+
+function onKeyboard(event: KeyboardEvent) {
+  if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) setActiveInput('keyboard');
+}
+
+function subscribeToInput(listener: () => void) {
+  inputListeners.add(listener);
+  if (inputListeners.size === 1) {
+    window.addEventListener('pointerdown', onPointer, true);
+    window.addEventListener('pointermove', onPointer, true);
+    window.addEventListener('keydown', onKeyboard, true);
+  }
+  return () => {
+    inputListeners.delete(listener);
+    if (inputListeners.size === 0) {
+      window.removeEventListener('pointerdown', onPointer, true);
+      window.removeEventListener('pointermove', onPointer, true);
+      window.removeEventListener('keydown', onKeyboard, true);
+    }
+  };
+}
+
+function automaticInput(): ResolvedInput {
+  return (
+    activeInput ??
+    (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+      ? 'touch'
+      : 'keyboard')
+  );
 }
 
 export function readInputMode(): InputMode {
@@ -18,7 +63,7 @@ export function readInputMode(): InputMode {
 }
 
 export function resolveInputMode(mode: InputMode): 'keyboard' | 'touch' {
-  if (mode === 'auto') return isTouchDevice() ? 'touch' : 'keyboard';
+  if (mode === 'auto') return automaticInput();
   return mode;
 }
 
@@ -69,5 +114,6 @@ export function useInputMode(): [InputMode, (mode: InputMode) => void] {
 /** Whether the current resolved input mode is touch-first. */
 export function useIsTouchMode(): boolean {
   const [mode] = useInputMode();
-  return resolveInputMode(mode) === 'touch';
+  const automatic = useSyncExternalStore(subscribeToInput, automaticInput, () => 'keyboard');
+  return (mode === 'auto' ? automatic : mode) === 'touch';
 }
