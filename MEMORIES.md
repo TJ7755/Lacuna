@@ -78,6 +78,9 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+The app shell disables text selection globally. New plain-text panels that support highlighting
+must opt into `select-text`; DOM selection tests without the real stylesheet miss this.
+
 In Recharts composed charts, a Scatter's own data can replace the chart-level data
 used for axis hover selection. Use reference dots for fixed annotations; chart
 interaction tests must retain the real Recharts components to catch this.
