@@ -14,7 +14,6 @@
   and a link only tracks the course it served. Links are capped at 4 MB
   per payload to stay within free-tier function limits — larger courses keep the
   manual course file. Teachers can stop sharing a link, which deletes the relay
-<<<<<<< HEAD
   copy while imported student copies keep working; stopping reports failure
   rather than success when the relay copy cannot be confirmed gone. A course
   whose link was created on another device asks for explicit replacement
@@ -23,9 +22,7 @@
   links expire with the relay's existing inactivity window. The Review updates
   entry now also appears for single-lesson courses, which previously bypassed
   it by rendering the lesson view directly. Unreachable relay hosts report a
-  readable connection error instead of a bare fetch failure. Poll merges store
-  bundled media with the update, stale polls cannot roll back newer revisions,
-  and a link only tracks the course it served (verified by lineage).
+  readable connection error instead of a bare fetch failure.
 
 - Forgetting-curve tooltips now show a readable date and predicted recall percentage.
   Review markers no longer disrupt hover selection, keeping the highlighted point

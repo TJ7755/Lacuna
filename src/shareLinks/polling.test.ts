@@ -113,6 +113,26 @@ describe('pollShareUpdates', () => {
     expect(review?.revision).toBe(2);
   });
 
+  it('stands down when the payload and manifest name different revisions', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    recordShareImport(SHARE_ID, course.id);
+    // Publish uploads the payload before the manifest, so a poll can read a
+    // new payload beside the old manifest: merging it would apply an update
+    // the manifest never announced.
+    const { fetchImpl } = shareFetch(
+      manifestBytes(1),
+      courseFileText(coursePayload({ rv: 2, at: 2000, lessons: [lessonOne({ n: 'Unannounced' })] })),
+    );
+
+    const results = await pollShareUpdates({ fetchImpl, throttleMs: 0 });
+
+    expect(results).toEqual([
+      { courseId: course.id, shareId: SHARE_ID, status: 'up-to-date', revision: 1 },
+    ]);
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).count()).toBe(0);
+  });
+
   it('leaves an up-to-date course alone without fetching the payload', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     recordShareImport(SHARE_ID, course.id);

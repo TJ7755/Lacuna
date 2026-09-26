@@ -197,6 +197,18 @@ async function pollOneCourse(
       writeLastPollAt(shareId, now);
       return { courseId, shareId, status: 'skipped', reason: 'Payload is not a lineage update.' };
     }
+    if (file.payload.rv !== manifest.revision) {
+      // Publish uploads the payload before the manifest, so a poll can read a
+      // newer payload beside an older manifest (or vice versa). Merging either
+      // half would apply an update the teacher never announced; stand down and
+      // let the next poll read a consistent pair.
+      return {
+        courseId,
+        shareId,
+        status: 'up-to-date',
+        revision: localRevision,
+      };
+    }
 
     // A slow fetch can return after a newer revision already merged: re-read
     // the local revision and stand down when this manifest is stale, so an
