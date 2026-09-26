@@ -2,12 +2,11 @@
 
 ## Unreleased
 
-- Added a development-only sharing announcement comparison on branch
-  `prototype/sharing-announcement`. Run `bun run prototype:sharing` and open
-  `/#/?variant=A` (or B/C). The floating controls compare a quiet strip, an
-  illustrated invitation and an editorial field note within the existing app.
-  Dismissal is remembered using a prototype-only browser key; Show again resets
-  it. No production announcement is enabled until a design is selected.
+- Added the sharing announcement across the app, using the illustrated invitation
+  design. It stays visible until dismissed or its Explore sharing link is followed,
+  and remembers dismissal per browser/device. The action opens Share with the
+  share-link button highlighted; course selection and publishing remain explicit.
+  Removed the comparison designs and development-only prototype controls.
 
 - Added share links for classroom distribution: the Share page publishes a course
   to the relay and shows one stable link (plus a scannable QR of the link) that
