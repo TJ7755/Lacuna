@@ -562,3 +562,18 @@ without calibration. Future work can revisit these with separate evidence and de
   unchanged Card records. Existing CardList/LessonView/CoursePath suites: 72 passing.
 - This completes the entry-point slice only. Persisted optional Practice Qs path activities,
   sharing controls and release portability checks remain open; no new path schema was improvised.
+
+### Descriptive evidence gate — 26 September 2026
+
+- The set overview now offers a collapsed Practice evidence panel. All/first-recorded/repeated
+  partitions show sample and assistance counts, earned/available marks, explicit unresolved
+  marks, and Knowledge/Application/Exam execution (plus Mixed when present).
+- Historical totals use pinned receipts and submitted originals only. No corrections, drafts,
+  multi-concept duplication or FSRS writes enter the calculation. Current target/prerequisite
+  coverage is available in the pure summary API; coverage-gap UI remains to implement.
+- Actual missing-module red captured before implementation. Panel tests: 3 passing; pure
+  evidence tests: 4 passing. Question Set/learner regression group: 93 passing across 19 files.
+- Browser checked collapsed entry, all/first/repeated filters against retained real attempts,
+  explicit unresolved totals and 390px layout without horizontal overflow. Full web/server/
+  Electron typechecks, focused lint and production asset build pass.
+- This completes per-set descriptive totals only, not the whole analytics/release stage.

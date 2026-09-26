@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added an on-demand Practice evidence panel to Question Set overviews. It separates first
+  recorded and repeated attempts, shows self-marked totals and marking dimensions, and keeps
+  unresolved marks explicit. Only submitted originals enter denominators; pinned receipts
+  preserve historical marks, corrections do not replace evidence, and multi-concept criteria
+  are counted once. This is descriptive evidence, not a calibrated exam forecast.
+
 - Added related Question Sets to lesson pages, exam details and expanded Cards through existing
   lesson/assessment/Concept links. Practice preserves its entry route; returning to an exam
   reopens its details. These links never alter Card scheduling or create duplicate concepts.

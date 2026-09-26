@@ -1,3 +1,4 @@
+import { QuestionSetEvidencePanel } from '../components/question-sets/QuestionSetEvidencePanel';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
@@ -122,6 +123,7 @@ export function QuestionSetOverview() {
           </div>
         </section>
       )}
+      <QuestionSetEvidencePanel content={content} attempts={attempts} />
       <details>
         <summary className="qs-back">Browse questions</summary>
         <section className="qs-paper">
