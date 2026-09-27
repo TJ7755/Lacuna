@@ -37,7 +37,9 @@ history is authoritative. Legacy Deck/Folder types still serve historical upgrad
 the live stores are gone. Do not collapse the migration chain.
 
 Load dynamically imported validators before opening a Dexie transaction: a first module
-load can outlive the transaction and leave earlier writes committed.
+load can outlive the transaction and leave earlier writes committed. Per-card async
+validation awaits inside a transaction can also commit prematurely, even with no payload;
+validate once before the transaction and skip re-validation within it.
 
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.

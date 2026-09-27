@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed text imports to a new course failing with “Transaction committed too early”.
+  Card validation now runs before the import transaction and is skipped within it,
+  so larger plain-text batches commit atomically with their new course and lesson.
+
 - Suppressed the global keyboard-focus indicator on the study card container, which
   is focused programmatically as a return point and had shown an orange frame
   around the whole study column.
