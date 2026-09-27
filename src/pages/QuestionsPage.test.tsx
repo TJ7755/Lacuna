@@ -105,7 +105,7 @@ describe('QuestionsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Individual questions' })).toBeInTheDocument();
     expect(screen.getByText('Primary skill practised: Solving quadratics')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /All due/ })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Build batch prompt' }));
