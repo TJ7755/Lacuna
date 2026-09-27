@@ -1,0 +1,145 @@
+.qs-path-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.qs-path-panel {
+  position: relative;
+  width: min(460px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
+  border: 1px solid hsl(var(--line));
+  border-radius: 18px;
+  background: hsl(var(--paper));
+  color: hsl(var(--ink));
+  box-shadow: 0 20px 60px #0003;
+}
+.qs-path-panel header {
+  padding: 20px 24px;
+  border-bottom: 1px solid hsl(var(--line));
+  font-size: 22px;
+}
+.qs-path-fields {
+  display: grid;
+  gap: 22px;
+  padding: 24px;
+}
+.qs-path-fields label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.qs-path-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 8px;
+  background: hsl(var(--surface-raised));
+}
+.qs-path-fields p {
+  font-size: 13px;
+  color: hsl(var(--ink-soft));
+}
+.qs-path-fields > div {
+  flex-wrap: wrap;
+}
+.qs-path-fields > div > span {
+  flex-basis: 100%;
+}
+.qs-path-panel footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid hsl(var(--line));
+}
+
+.qs-path-activity {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.qs-path-activity-slot {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+.qs-path-activity-surface {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px dashed hsl(var(--accent) / 0.5);
+  color: hsl(var(--accent-ink));
+  background: hsl(var(--surface-raised));
+}
+.qs-path-activity-surface[data-expanded='true'] {
+  z-index: 10;
+  box-shadow: 0 10px 28px #0002;
+}
+.qs-path-activity-link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: inherit;
+  min-height: 44px;
+}
+.qs-path-activity-surface:has(:focus-visible) {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 4px;
+}
+.qs-path-activity-surface[data-expanded='true'] .qs-path-activity-link {
+  padding: 10px 12px 4px;
+}
+.qs-path-activity small {
+  font-size: 11px;
+  white-space: nowrap;
+  color: hsl(var(--ink-soft));
+}
+.qs-path-activity strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.qs-path-activity-actions {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 6px;
+}
+.qs-path-activity-actions > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  max-width: 105px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qs-path-activity-caption {
+  max-width: 7rem;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: hsl(var(--ink-soft));
+}

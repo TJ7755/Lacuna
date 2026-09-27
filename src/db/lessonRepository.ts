@@ -38,6 +38,7 @@ import type {
   LessonCompletion,
   Note,
   NoteAnnotation,
+  QuestionSetPracticeNode,
   SchedulingPerformance,
   SchedulingUnitRecord,
   Sequence,
@@ -128,6 +129,7 @@ export interface LessonSnapshot {
   schedulingUnit?: SchedulingUnitRecord;
   schedulingPerformance?: SchedulingPerformance;
   questionSets: QuestionSetRecord[];
+  questionSetPracticeNodes: QuestionSetPracticeNode[];
 }
 
 /** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
@@ -146,6 +148,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     schedulingUnit,
     schedulingPerformance,
     questionSets,
+    practiceNodes,
   ] = await Promise.all([
     db.notes.where('lessonId').equals(id).toArray(),
     db.lessonCards.where('lessonId').equals(id).toArray(),
@@ -157,6 +160,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     db.schedulingUnits.get(id),
     db.schedulingPerformance.get(id),
     db.questionSets.where('lessonIds').equals(id).toArray(),
+    db.practiceNodes.where('courseId').equals(lesson.courseId).toArray(),
   ]);
   const noteIds = notes.map((note) => note.id);
   const [noteAnnotations, sessionHistory, reviewHistory] = await Promise.all([
@@ -185,6 +189,10 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     ...(schedulingUnit ? { schedulingUnit } : {}),
     ...(schedulingPerformance ? { schedulingPerformance } : {}),
     questionSets,
+    questionSetPracticeNodes: practiceNodes.filter(
+      (node): node is QuestionSetPracticeNode =>
+        node.type === 'question-set' && node.afterLessonId === id && !!node.questionSetId,
+    ),
   };
 }
 
@@ -211,6 +219,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.schedulingUnits,
         db.schedulingPerformance,
         db.questionSets,
+        db.practiceNodes,
         db.tombstones,
       ],
       async (tx) => {
@@ -236,6 +245,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           db.sequences.bulkPut(snapshot.sequences),
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
+          db.practiceNodes.bulkPut(snapshot.questionSetPracticeNodes ?? []),
           snapshot.schedulingUnit
             ? db.schedulingUnits.put(snapshot.schedulingUnit)
             : Promise.resolve(),
@@ -244,6 +254,11 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
             : Promise.resolve(),
         ]);
         await clearTombstone(tx, 'lessons', snapshot.lesson.id);
+        await clearTombstones(
+          tx,
+          'practiceNodes',
+          (snapshot.questionSetPracticeNodes ?? []).map((node) => node.id),
+        );
         await clearTombstones(
           tx,
           'notes',
@@ -346,6 +361,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.lessonCompletions,
       db.cards,
       db.questionSets,
+      db.practiceNodes,
       db.sequences,
       db.sessionHistory,
       db.courseAssessments,
@@ -402,6 +418,13 @@ export async function deleteLesson(id: string): Promise<void> {
       }
       await removeLessonSchedulingUnit(id);
       await removeQuestionSetLessonReference(lesson.courseId, id, now);
+      const questionSetPracticeNodes = (await db.practiceNodes.where('courseId').equals(lesson.courseId).toArray()).filter(
+        (node) => node.type === 'question-set' && node.afterLessonId === id,
+      );
+      for (const node of questionSetPracticeNodes) {
+        await db.practiceNodes.delete(node.id);
+        await recordTombstone(tx, 'practiceNodes', node.id, Math.max(now, node.updatedAt + 1));
+      }
       await db.lessons.delete(id);
       await recordTombstone(tx, 'lessons', id);
       await recordTombstones(tx, 'notes', noteIds);

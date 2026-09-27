@@ -336,10 +336,11 @@ export function CoursePath() {
   );
 
   // Single-lesson branch (addendum E): render the lesson view directly rather than
-  // showing a one-item path. No redirect — this is a rendering branch. The
+  // showing a one-item path. A question-set activity makes this a multi-step path.
+  // No redirect — this is a rendering branch. The
   // course header (and its review entry point) is bypassed here, so a pending
   // merge review gets the same entry above the lesson.
-  if (lessons.length === 1) {
+  if (lessons.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set')) {
     return (
       <>
         {!archived && pendingUpdate && (

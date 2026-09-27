@@ -23,6 +23,7 @@ import {
 } from './questionSetRepository';
 import { createQuestionSetDraft, createEmptyQuestionSetDraft, loadQuestionSetDraft, saveQuestionSetDraft } from './questionSetDrafts';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
+import { createQuestionSetPracticeNode } from '../db/practiceNodeRepository';
 import type { QuestionSet } from './questionSets';
 
 function content(
@@ -192,6 +193,7 @@ describe('Question-set repository', () => {
     const original = content(course.id, lesson.id, assessment.id, concept.id);
     original.questions[0].prompt = `Name this: ![figure](${assetUrl(receiptHash)})`;
     const created = await createQuestionSet(original, 1_000);
+    const pathNode = await createQuestionSetPracticeNode(course.id, created.id, lesson.id);
     const attempt = await startQuestionSetAttempt(created.id, 'practice', 1_100);
     const draft = createQuestionSetDraft(original, created.contentRevisionId);
     draft.content.questions[0].prompt = `Changed: ![figure](${assetUrl(draftHash)})`;
@@ -204,6 +206,8 @@ describe('Question-set repository', () => {
     });
 
     expect(await db.questionSets.get(created.id)).toBeUndefined();
+    expect(await db.practiceNodes.get(pathNode.id)).toBeUndefined();
+    expect(await db.tombstones.get(['practiceNodes', pathNode.id])).toBeDefined();
     expect(await loadQuestionSetDraft(course.id, created.id)).toBeNull();
     expect(await db.tombstones.get(['questionSets', created.id])).toMatchObject({ deletedAt: 2_000 });
     expect((await db.questionSetAttempts.get(attempt.id))?.receipt.questions[0].prompt).toContain(receiptHash);

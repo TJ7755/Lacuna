@@ -53,6 +53,7 @@ import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
 } from '../questions/questionSetMerge';
+import { assertQuestionSetPracticeNodeReferences } from '../db/questionSetPracticeNode';
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
@@ -71,7 +72,7 @@ const NEVER_REVIEWED = {
 
 /** A current snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 13;
+  version: 14;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -250,6 +251,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     courseAssessments,
     questionState.concepts,
   );
+  assertQuestionSetPracticeNodeReferences(practiceNodes, courses, lessons, questionSets, practiceMilestones);
   // Detached lineage state carries deletion receipts (see detachCourse): honour them here
   // so a peer snapshot cannot resurrect a severed registry or its queued review.
   // Lineage mappings carry no updatedAt, so any tombstone for the id wins outright.
@@ -320,8 +322,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     .sort(compareTombstones);
 
   return {
-    app: 'lacuna-v13',
-    version: 13,
+    app: 'lacuna-v14',
+    version: 14,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),
@@ -583,6 +585,14 @@ function mergeLineageMappings(
       questionSetRevisions: records(
         existing.questionSetRevisions ?? {},
         incoming.questionSetRevisions ?? {},
+      ),
+      questionSetPracticeNodeIds: union(
+        existing.questionSetPracticeNodeIds ?? [],
+        incoming.questionSetPracticeNodeIds ?? [],
+      ),
+      questionSetPracticeNodeSnapshots: records(
+        existing.questionSetPracticeNodeSnapshots ?? {},
+        incoming.questionSetPracticeNodeSnapshots ?? {},
       ),
       sequenceIds: union(existing.sequenceIds, incoming.sequenceIds),
       occlusionIds: union(existing.occlusionIds ?? [], incoming.occlusionIds ?? []),

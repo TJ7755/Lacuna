@@ -61,7 +61,7 @@ import type {
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
-import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4 } from './share';
+import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
 import type {
   Card,
   CardType,
@@ -86,10 +86,10 @@ import type {
 } from '../questions/types';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
-import { applyLineageQuestionSets } from '../questions/questionSetLineage';
+import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes } from '../questions/questionSetLineage';
 
 /** Narrowed view of the fields this module reads off a decoded course share payload. */
-type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4) & {
+type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5) & {
   li: string;
   rv: number;
 };
@@ -342,6 +342,7 @@ const MERGE_TABLES = [
   db.questionConcepts,
   db.questionAttempts,
   db.questionSets,
+  db.practiceNodes,
   db.lessonCards,
   db.lessonCardExposures,
   db.lessonCompletions,
@@ -1006,7 +1007,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await applySequences(payload, course.id, lessonIdByIndex, mapping);
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
     await applyLineageQuestions(payload, course.id, mapping);
-    if (payload.v === 4) await applyLineageQuestionSets(payload, course.id, mapping);
+    if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, course.id, mapping);
+    if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
 
@@ -1221,7 +1223,8 @@ export async function mergeLineageUpdate(
       }
     }
     await applyLineageQuestions(payload, courseId, mapping);
-    if (payload.v === 4) await applyLineageQuestionSets(payload, courseId, mapping);
+    if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, courseId, mapping);
+    if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 
     // 6. Revision + mapping bookkeeping.

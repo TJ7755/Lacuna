@@ -13,6 +13,7 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import { LessonNode, type LessonNodeDetail } from './LessonNode';
 import { CheckpointNode } from './CheckpointNode';
 import { PracticeNode } from './PracticeNode';
+import { QuestionSetPathActivity } from './QuestionSetPathActivity';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 
 interface PathNodeViewProps {
@@ -93,6 +94,8 @@ export function PathNodeView({
           authoring={authoring}
         />
       );
+    case 'practice-question-set':
+      return <QuestionSetPathActivity node={node} authoring={authoring && !archivedInspection} />;
     case 'practice-auto':
     case 'practice-manual':
       return (

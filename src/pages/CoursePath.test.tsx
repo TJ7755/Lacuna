@@ -17,6 +17,7 @@ import type {
   PendingMergeReview,
   PracticeMilestone,
   PracticeNode,
+  QuestionSetPracticeNode,
 } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { practiceScopeVersion } from '../course/studyPools';
@@ -77,6 +78,24 @@ vi.mock('react-router-dom', async () => {
 vi.mock('dexie-react-hooks', () => ({
   useLiveQuery: (querier: () => unknown) => {
     const source = Function.prototype.toString.call(querier);
+    if (source.includes('listQuestionSetAttempts')) {
+      return {
+        content: {
+          id: 'question-set-1',
+          courseId: 'course-1',
+          title: 'Question set',
+          lessonIds: [],
+          assessmentIds: [],
+          contentVersion: 1,
+          contentRevisionId: 'content-1',
+          createdAt: 1,
+          updatedAt: 1,
+          questions: [],
+        },
+        attempt: null,
+        exam: undefined,
+      };
+    }
     if (source.includes('lessonCardExposures')) return live.exposures;
     if (source.includes('lessonCompletions')) return live.completions;
     if (source.includes('practiceMilestones')) return live.milestones;
@@ -298,6 +317,29 @@ describe('CoursePath Study mode', () => {
     }];
     renderPage();
     expect(screen.getByRole('button', { name: /Zoned exam 1 January 2027/ })).toBeInTheDocument();
+  });
+
+  it('shows a one-lesson course as a path when it contains a Practice Qs activity', () => {
+    mockLessons = [lesson1];
+    const activity: QuestionSetPracticeNode = {
+      id: 'question-set-activity-1',
+      courseId: course.id,
+      type: 'question-set',
+      name: 'Practice Qs',
+      questionSetId: 'question-set-1',
+      afterLessonId: lesson1.id,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    mockPracticeNodes = [activity];
+
+    renderPage();
+
+    expect(screen.getByRole('link', { name: /Practice Qs Question set/ })).toHaveAttribute(
+      'href',
+      `/course/${course.id}/question-sets/${activity.questionSetId}`,
+    );
+    expect(mockLessonViewProps).not.toHaveBeenCalled();
   });
 
   it('opens an assessment deep link after the CoursePath is already mounted', async () => {

@@ -84,7 +84,9 @@ must cover candidate snapshotting and merging as well as import.
 
 Older readers accept unfamiliar numeric backup versions. V12 therefore uses the `lacuna-v12`
 marker so they reject rather than discard sets. V13 uses `lacuna-v13` for personal
-set attempts; keep old markers as historical input formats, never emit new collections under them. Historical pre-migration files used schema
+set attempts; V14 uses `lacuna-v14` for Question Set path activities in the existing practice-node
+collection. Keep old markers as historical input formats, never emit new collections or row
+variants under them. Historical pre-migration files used schema
 numbers; raw v22/v23 still need the legacy Question adapter before current normalisation.
 
 ## Local Electron commands
