@@ -69,7 +69,13 @@ export function CoursePath() {
     defaultAfterLessonId?: string | null;
   } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(() => searchParams.get('exam'));
+  const selectedAssessmentId = searchParams.get('exam');
+  const setSelectedAssessmentId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('exam', id);
+    else next.delete('exam');
+    setSearchParams(next, { replace: true });
+  };
 
   const records = useCourseStudyFlowRecords(courseId);
   const course = records?.course;
@@ -295,11 +301,6 @@ export function CoursePath() {
             links={lessonLinks}
             onClose={() => {
               setSelectedAssessmentId(null);
-              if (searchParams.has('exam')) {
-                const next = new URLSearchParams(searchParams);
-                next.delete('exam');
-                setSearchParams(next, { replace: true });
-              }
             }}
             onRevise={() =>
               navigate(
