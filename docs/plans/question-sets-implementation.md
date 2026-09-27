@@ -675,3 +675,12 @@ correct Course without publishing it. No horizontal overflow in the narrow layou
 Author media paste/drop and assessment-linked published lineage remain separate outstanding
 work. Practice Qs path activities are being developed as a coordinated domain/portability gate;
 that in-progress work is not covered by this author-management gate.
+
+
+### Incidental exam navigation fix — 27 September 2026
+
+Opening an exam URL while CoursePath was mounted changed the query without opening its sheet.
+Selection now derives from the route query. The new mounted-route test failed before the fix;
+31 CoursePath tests passed after it. Desktop browser clicked the in-progress Practice Qs exam
+link on the same route and opened Final exam details. This fixes the existing route independently
+of the new path activity transport. Screenshot: [exam details](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujh6d3b-b3def5a5.png).

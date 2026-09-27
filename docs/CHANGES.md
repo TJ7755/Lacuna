@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed exam deep links opened while the course path is already mounted: the details sheet now
+  follows the route query instead of reading it only on initial mount.
+
 - Added compact author actions for Question Sets: course sharing with preselection, and confirmed
   removal of the saved set and local draft. Revision checks prevent deleting edits made elsewhere;
   read-only courses reject removal. Previous attempts and their media remain available through a

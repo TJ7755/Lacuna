@@ -2,7 +2,7 @@ import { CourseSectionNavigation } from '../components/course/CourseSectionNavig
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CoursePath } from './CoursePath';
 import { ToastProvider } from '../components/ui/Toast';
@@ -288,6 +288,38 @@ beforeEach(() => {
 });
 
 describe('CoursePath Study mode', () => {
+  it('opens an assessment deep link after the CoursePath is already mounted', async () => {
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1']}>
+        <ToastProvider>
+          <Link to="/course/course-1?exam=assessment-1">Open path assessment link</Link>
+          <Routes>
+            <Route path="/course/:courseId" element={<CoursePath />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Open path assessment link' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Paper 1 details' })).toBeInTheDocument();
+  });
+
   it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
     mockCourse = {
       ...course,
