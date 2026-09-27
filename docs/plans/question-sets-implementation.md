@@ -22,8 +22,8 @@ Desktop and 390px browser gates passed. This is not a packaged or cold-offline r
 
 **V1 remains incomplete. Next stages, in order:**
 
-1. Finish learner navigation/media: enlarge diagrams without losing answers; retain library
-   search/filter and scroll through entry/return. Lesson/exam return is already implemented.
+1. Learner navigation/media completed on 27 September: diagram enlargement and library
+   search/scroll return are implemented; see the dated browser gate below.
 2. Finish author management: set removal confirmation using the existing tombstone/receipt
    repository, sharing entry points using existing Course transport, and required media authoring
    affordances. Do not invent a second sharing format. Assessment-linked published-course
@@ -615,3 +615,32 @@ without calibration. Future work can revisit these with separate evidence and de
   explicit unresolved totals and 390px layout without horizontal overflow. Full web/server/
   Electron typechecks, focused lint and production asset build pass.
 - This completes per-set descriptive totals only, not the whole analytics/release stage.
+
+
+## Learner navigation and diagrams gate — 27 September 2026
+
+Implemented opt-in image enlargement in the shared Markdown renderer; Question Set prompts,
+options, schemes and previews use it. The viewer fits a diagram or shows its actual size,
+traps keyboard focus, closes with Escape and returns focus. It leaves the response mounted.
+Multiple-choice controls and image buttons have separate label targets, preserving selection;
+read-only marking keeps image access. Authored image links retain their original navigation.
+
+Library search is URL-backed (`q`), and editor/overview/attempt links carry the existing
+validated return context. Shared scroll restoration waits for content and scopes library
+positions by course/query. No content schema or scheduling change.
+
+Validation: baseline image and library regressions failed before implementation. 68 tests
+across Markdown, Question Set components, learner, navigation and return helpers passed after
+implementation. Web typecheck and focused lint passed. Browser on `127.0.0.1:5183`, desktop
+1280×800 and narrow 390×844: typed response persisted through image open, keyboard close and
+save; focus returned to the diagram; no horizontal overflow. Editor return retained `q=Cells`;
+a 390×400 viewport proved 140px library scroll restoration. Library-to-attempt return also
+preserves the query. A stale development server stopped during setup; restarted it and reloaded
+before final verification. These checks do not establish cold-offline or packaged readiness.
+
+Screenshots:
+- [Desktop diagram viewer](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgie17-41f08502.png)
+- [Narrow diagram viewer](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgie79-4e6d7e7c.png)
+
+Next: author set removal and existing Course sharing access, then the separately scoped path
+activity/portability gate. The overall V1 checklist remains incomplete.

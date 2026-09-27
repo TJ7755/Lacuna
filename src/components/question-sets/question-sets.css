@@ -448,3 +448,23 @@
     flex-direction: column;
   }
 }
+
+.qs-option {
+  position: relative;
+}
+.qs-option-target {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+.qs-option > input,
+.qs-option-content {
+  position: relative;
+}
+.qs-option-content {
+  pointer-events: none;
+}
+.qs-option-content button,
+.qs-option-content a {
+  pointer-events: auto;
+}

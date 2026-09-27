@@ -42,8 +42,8 @@ export function QuestionSetPreview({
                   <p className="qs-kicker">
                     Criterion {i + 1} · {a.maxMarks} {a.maxMarks === 1 ? 'mark' : 'marks'}
                   </p>
-                  <MarkdownView source={a.criterion} />
-                  {a.explanation && <MarkdownView source={a.explanation} />}
+                  <MarkdownView enlargeImages source={a.criterion} />
+                  {a.explanation && <MarkdownView enlargeImages source={a.explanation} />}
                 </section>
               ))}
             </div>

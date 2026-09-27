@@ -44,7 +44,11 @@ export function QuestionSetOverview() {
       <div className="qs-between">
         <h1>{content.title}</h1>
         {canEditLessons(course) && resolveLessonViewMode(course) === 'edit' && !course.archived && (
-          <Link className="qs-back" to={`/course/${courseId}/question-sets/${setId}/edit`}>
+          <Link
+            className="qs-back"
+            state={origin}
+            to={`/course/${courseId}/question-sets/${setId}/edit`}
+          >
             Edit set →
           </Link>
         )}
@@ -135,7 +139,7 @@ export function QuestionSetOverview() {
                   {nodeMarks(n.node)} {nodeMarks(n.node) === 1 ? 'mark' : 'marks'}
                 </span>
               </div>
-              <MarkdownView source={n.node.prompt} />
+              <MarkdownView enlargeImages source={n.node.prompt} />
             </section>
           ))}
         </section>

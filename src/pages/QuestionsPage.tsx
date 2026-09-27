@@ -1,5 +1,6 @@
+import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
 import { useCourse } from '../state/useCourseData';
@@ -19,7 +20,19 @@ export function QuestionsPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const course = useCourse(courseId);
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
+  const setSearch = (value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set('q', value);
+    else next.delete('q');
+    setParams(next, { replace: true });
+  };
+  const origin = {
+    questionSetReturnTo: location.pathname + location.search,
+    questionSetReturnLabel: 'Back to Questions',
+  };
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const data = useLiveQuery(async () => {
@@ -35,6 +48,10 @@ export function QuestionsPage() {
       return { sets: [], drafts: [], legacy: 0, error: String(cause) };
     }
   }, [courseId]);
+  const root = useQuestionSetScroll(
+    `question-set-library-scroll:${courseId}:${search}`,
+    !!course && !!data,
+  );
   if (!course || !data) return <p className="p-8 text-ink-soft">Loading Questions…</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
   const draftIds = new Set(data.drafts.map((d) => d.content.id));
@@ -51,7 +68,9 @@ export function QuestionsPage() {
       const draft = createEmptyQuestionSetDraft(course.id, makeId());
       draft.content.questions = [{ id: makeId(), prompt: '', parts: [] }];
       await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
-      await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`);
+      await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`, {
+        state: origin,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not create a set.');
     } finally {
@@ -59,7 +78,7 @@ export function QuestionsPage() {
     }
   };
   return (
-    <div className="qs-library">
+    <div ref={root} className="qs-library">
       <header className="qs-library-header">
         <div>
           <p className="qs-kicker">{course.name}</p>
@@ -92,6 +111,7 @@ export function QuestionsPage() {
           <Link
             className="qs-set-row"
             key={content.id}
+            state={origin}
             to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
           >
             <div>

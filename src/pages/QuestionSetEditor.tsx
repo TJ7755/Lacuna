@@ -1,5 +1,6 @@
+import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { db, makeId } from '../db/schema';
 import { referencedAssetHashesInValues } from '../db/assets';
 import { createEmptyQuestionSetDraft, saveQuestionSetDraft } from '../questions/questionSetDrafts';
@@ -50,6 +51,7 @@ export function QuestionSetEditor() {
 function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
   const { session, snapshot, loadError, blocker } = useQuestionSetEditor(courseId, setId);
   const navigate = useNavigate();
+  const origin = questionSetReturn(useLocation().state, courseId);
   const activeKey = `question-set-active:${courseId}:${setId}`;
   const [activeId, setActive] = useState(() => sessionStorage.getItem(activeKey) ?? '');
   const setActiveId = (id: string) => {
@@ -65,7 +67,10 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
   if (loadError)
     return (
       <div className="qs-editor">
-        <Link className="qs-back" to={`/course/${courseId}/questions`}>
+        <Link
+          className="qs-back"
+          to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
+        >
           ← Questions
         </Link>
         <p role="alert" className="qs-error">
@@ -139,7 +144,10 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
       if (assets.some((asset) => !asset))
         throw new Error('An image is missing. Add it again before saving the set.');
       await session.publish();
-      await navigate(`/course/${courseId}/question-sets/${setId}`, { replace: true });
+      await navigate(`/course/${courseId}/question-sets/${setId}`, {
+        replace: true,
+        state: origin,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save the set.');
     }
@@ -155,7 +163,10 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
     <div className="qs-editor">
       <header className="qs-editor-header">
         <div className="qs-editor-title">
-          <Link className="qs-back" to={`/course/${courseId}/questions`}>
+          <Link
+            className="qs-back"
+            to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
+          >
             ← Question sets
           </Link>
           <input
@@ -205,7 +216,9 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
                     title: `${content.title} (copy)`,
                   };
                   await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
-                  await navigate(`/course/${courseId}/question-sets/${draft.content.id}/edit`);
+                  await navigate(`/course/${courseId}/question-sets/${draft.content.id}/edit`, {
+                    state: origin,
+                  });
                 } catch (cause) {
                   setError(String(cause));
                 }
