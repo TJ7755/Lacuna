@@ -1,6 +1,13 @@
-# Lacuna — version 0.2.12
+# Lacuna — version 0.2.13
 
 ## Unreleased
+
+## 0.2.13 beta — course overview, website and import fix
+
+- Updated the Windows installed-upgrade gate to use the verified v0.2.12 baseline,
+  so the v0.2.13 release is tested against the latest published version.
+- Stabilised the browser lesson-drag assertion by waiting for the neighbouring
+  lesson's motion to finish, without relaxing the movement it requires.
 
 - Fixed text imports to a new course failing with “Transaction committed too early”.
   Card validation now runs before the import transaction and is skipped within it,

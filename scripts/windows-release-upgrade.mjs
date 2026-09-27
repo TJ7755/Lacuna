@@ -12,12 +12,12 @@ assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows r
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
 const baseline = path.resolve(process.argv[2]);
 assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'),
-  '89f19b6830c6d079c5d1684b90cfe97d59e260ecdfeaecf4bb4689a3f2d25598');
+  'e2128ecab966808f2674c84e6c7bef67db77cb9aa354fc57ce4c8a52c3ba8a19');
 const root = await mkdtemp(path.join(tmpdir(), 'lacuna-release-upgrade-'));
 const directory = path.join(root, 'application');
 const profile = path.join(root, 'profile');
 const executablePath = path.join(directory, 'Lacuna.exe');
-const report = { baseline: '0.2.11', target: version, stages: [] };
+const report = { baseline: '0.2.12', target: version, stages: [] };
 let application;
 const server = createServer(async (request, response) => {
   const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
@@ -46,7 +46,7 @@ async function open(expectedVersion) {
   application = await launchInstalledElectron(executablePath, profile);
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
   assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
-  if (expectedVersion === '0.2.11') {
+  if (expectedVersion === '0.2.12') {
     await application.evaluate(({ app }, url) => {
       const { createRequire } = process.getBuiltinModule('node:module');
       const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
@@ -83,7 +83,7 @@ async function snapshot(page) {
 
 try {
   await install(baseline);
-  let page = await open('0.2.11');
+  let page = await open('0.2.12');
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
   await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
     { timeout: 180_000 }).toBe('downloaded');
