@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { installHostedFontLinks, registerProductionServiceWorker } from './webBootstrap';
+import { installSimpleAnalytics, installHostedFontLinks, registerProductionServiceWorker } from './webBootstrap';
 
 describe('hosted web bootstrap', () => {
   it('does not request hosted fonts from a packaged app origin', () => {
@@ -65,3 +66,38 @@ function fakeDocument(): { document: Document; links: HTMLLinkElement[] } {
   } as unknown as Document;
   return { document, links };
 }
+
+
+describe('Simple Analytics bootstrap', () => {
+  it('loads the asynchronous script once on the production website', () => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    const options = { targetDocument, isProduction: true, origin: 'https://getlacuna.app' };
+    installSimpleAnalytics(options);
+    installSimpleAnalytics(options);
+    const scripts = targetDocument.querySelectorAll('script');
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0].src).toBe('https://scripts.simpleanalyticscdn.com/latest.js');
+    expect(scripts[0].async).toBe(true);
+    expect(scripts[0].crossOrigin).toBe('anonymous');
+    expect(scripts[0].hasAttribute('data-collect-dnt')).toBe(false);
+  });
+
+  it.each([
+    [false, 'https://getlacuna.app'],
+    [true, 'http://localhost:5173'],
+    [true, 'https://preview.vercel.app'],
+    [true, 'app://lacuna'],
+    [true, 'file://'],
+  ])('does not load analytics with production=%s on %s', (isProduction, origin) => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    installSimpleAnalytics({ targetDocument, isProduction, origin });
+    expect(targetDocument.querySelector('script')).toBeNull();
+  });
+
+  it('allows the script and collection endpoint through the web CSP', () => {
+    const html = readFileSync('index.html', 'utf8');
+    expect(html).toMatch(/script-src[^;]*https:\/\/scripts.simpleanalyticscdn.com/);
+    expect(html).toMatch(/connect-src[^;]*https:\/\/queue.simpleanalyticscdn.com/);
+    expect(html).toMatch(/img-src[^;]*https:\/\/queue.simpleanalyticscdn.com/);
+  });
+});

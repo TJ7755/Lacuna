@@ -5,10 +5,11 @@ import { Analytics } from '@vercel/analytics/react';
 import './index.css';
 import { App } from './App';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
-import { installHostedFontLinks, registerProductionServiceWorker } from './webBootstrap';
+import { installHostedFontLinks, installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
 
 installStaleChunkRecovery();
 installHostedFontLinks();
+installSimpleAnalytics();
 void registerProductionServiceWorker();
 
 async function clearDevelopmentPwaState(): Promise<void> {
