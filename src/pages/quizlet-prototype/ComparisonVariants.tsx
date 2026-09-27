@@ -1,3 +1,4 @@
+import { ExamReadinessHistory } from './ExamReadinessHistory';
 import { ExamReadiness, ExamSteps } from './ExamReadiness';
 import { useState } from 'react';
 import { ComparisonTable } from './ComparisonTable';
@@ -47,7 +48,7 @@ export function ProductStory() {
           <Cta>Plan my revision</Cta>
           <ExamSteps />
         </div>
-        <ExamReadiness />
+        <ExamReadinessHistory />
       </section>
       <ProofStrip />
       <section id="inside" className="qc-section">

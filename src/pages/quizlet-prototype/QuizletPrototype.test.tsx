@@ -10,6 +10,14 @@ function open(variant = 'A') {
     </MemoryRouter>,
   );
 }
+it('shows the review history and today’s decision in A’s exam graph', () => {
+  open('A');
+  const graph = screen.getByRole('img', { name: /Predicted recall/ });
+  expect(within(graph).getByText('14 days ago')).toBeInTheDocument();
+  expect(within(graph).getByText('Review today')).toBeInTheDocument();
+  expect(within(graph).getByText('0%')).toBeInTheDocument();
+  expect(graph.querySelector('.qc-recall-history')).toBeInTheDocument();
+});
 it('cycles between three complete comparison journeys', () => {
   open();
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Remember it on exam day.');

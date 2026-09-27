@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Selected comparison prototype A for further work. Its recall chart now includes
+  modelled review history, review-time jumps, a labelled 0–100% scale and a separate
+  future projection, replacing the isolated pair of near-flat forecast curves.
+
 - Put exam-day readiness at the start of all three comparison prototypes. Interactive
   SVGs use the existing FSRS forward projections to show how an example card review
   changes predicted recall at different exam horizons and why review gain matters.

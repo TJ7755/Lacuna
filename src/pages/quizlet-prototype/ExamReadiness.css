@@ -163,6 +163,19 @@
 .qc-recall-point-muted {
   fill: hsl(var(--ink-soft));
 }
+.qc-recall-history {
+  fill: none;
+  stroke: hsl(var(--accent));
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.qc-forecast-area {
+  fill: hsl(var(--accent) / 0.035);
+}
+.qc-today-line {
+  stroke: hsl(var(--ink-faint));
+  stroke-dasharray: 2 4;
+}
 .qc-readiness-queue {
   margin: 15px 24px 18px;
   display: grid;

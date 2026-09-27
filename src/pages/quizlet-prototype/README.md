@@ -1,8 +1,7 @@
 # Quizlet comparison prototypes
 
-Throwaway design exploration on `prototype/quizlet-comparison`. Decision pending:
-which complete page best explains the differences with visual evidence, useful
-interactions and minimal prose within each section?
+Design exploration on `prototype/quizlet-comparison`. **A is the selected direction.**
+Further iterations apply to A; B and C remain available as earlier alternatives.
 
 Run `bun run dev`, then open `http://localhost:5173/#/prototype/quizlet?variant=A`.
 The floating bar and left/right arrow keys cycle between the designs. Text inputs,
@@ -15,7 +14,9 @@ radio controls and screenshot dialogues retain their normal keyboard behaviour.
 - **C — The interactive explorer:** exam-day recall forecast first, followed by
   selectable study priorities, practice examples and the full comparison.
 
-Every hero explains the exam objective. The example forecast calls the existing
+Every hero explains the exam objective. A now builds example review histories using
+`applyReview`, plots the real forgetting curve between review events, and separates
+history from the projection after today. The other variants' example forecast calls the existing
 `rAtExam` and `rAtExamIfReviewedNow` functions with default FSRS parameters and three
 illustrative memory states. The date selector changes the horizon; topic buttons
 change the displayed card. Values describe predicted card recall, not exam marks.
