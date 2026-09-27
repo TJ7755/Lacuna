@@ -10,7 +10,8 @@
   panel, reduced motion disables Add resizing, lesson labels travel with dragged
   nodes, and practice editing retains a 44px touch target. Browser identity checks
   now assert the chosen Fraunces overview title; visual documentation matches the
-  selected design.
+  selected design. Author-mode practice stops reserve space for the edit target
+  even when names wrap, with connectors spanning the extra space.
 
 - Aligned Study and Practice Now on one row. Cards, Questions, Analytics and course
   Settings now share Path's 1190px frame and responsive gutters, including loading

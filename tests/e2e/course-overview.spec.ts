@@ -103,16 +103,22 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
 });
 
 
-test('practice editing keeps a 44px touch target', async ({ page }) => {
+test('practice editing keeps an unobstructed 44px touch target with a long name', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
   await enterFreshLacuna(page);
   await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('button', { name: 'Author mode' }).click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Practice', exact: true }).click();
+  const name = 'Practice with a long name covering several lines';
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
+  await page.getByRole('combobox', { name: 'Position on the path' }).selectOption('');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const edit = page.getByRole('button', { name: 'Edit Practice', exact: true });
+  const edit = page.getByRole('button', { name: `Edit ${name}`, exact: true });
   await expect(edit).toBeVisible();
   const bounds = await edit.boundingBox();
   expect(bounds!.width).toBeGreaterThanOrEqual(44);
   expect(bounds!.height).toBeGreaterThanOrEqual(44);
+  const next = await page.locator('.course-practice + .course-stop .course-node').first().boundingBox();
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(next!.y);
 });

@@ -133,6 +133,9 @@
   align-items: flex-start;
   padding-left: calc(50% - 48px);
 }
+.course-practice:has(.course-edit-practice) {
+  height: 138px;
+}
 .course-stop:nth-child(even) {
   padding-left: calc(50% - 10px);
 }
@@ -201,7 +204,7 @@
   left: calc(50% - 26px);
   top: 43px;
   width: 38px;
-  height: 52px;
+  height: calc(100% - 42px);
   fill: none;
   stroke: hsl(var(--line-strong));
   stroke-width: 1.5;
