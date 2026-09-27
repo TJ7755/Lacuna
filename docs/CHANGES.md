@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed text imports to a new course failing with “Transaction committed too early”.
+  Card validation now runs before the import transaction and is skipped within it,
+  so larger plain-text batches commit atomically with their new course and lesson.
+
 - Prerendered the homepage landing content into `dist/index.html` at build time,
   with canonical/social metadata, so crawlers see the hero, product sections and
   links without JavaScript. First-visit browsers hydrate the same landing tree

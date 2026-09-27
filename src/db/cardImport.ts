@@ -37,10 +37,17 @@ async function validateDrafts(cards: ParsedCard[]) {
 }
 
 /** Extend bulk creation with reverse presentations, preserving each pair's Concept. */
-export async function createImportedCards(unitId: string, cards: ParsedCard[], reverse = false) {
-  await validateDrafts(cards);
+export async function createImportedCards(
+  unitId: string,
+  cards: ParsedCard[],
+  reverse = false,
+  skipValidation = false,
+) {
+  if (!skipValidation) await validateDrafts(cards);
   return db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
-    const originals = await createCards(unitId, cards);
+    // Validation already ran before the transaction, so skip it here to keep
+    // the transaction free of non-database awaits.
+    const originals = await createCards(unitId, cards, { skipValidation: true });
     const reverses = reverse
       ? await createCards(
           unitId,
@@ -52,6 +59,7 @@ export async function createImportedCards(unitId: string, cards: ParsedCard[], r
             answerMode: card.answerMode,
             conceptId: card.conceptId,
           })),
+          { skipValidation: true },
         )
       : [];
     return [...originals, ...reverses];
@@ -108,7 +116,9 @@ export async function importCardsToDestination(
       ],
       async () => {
         const target = await resolveTarget();
-        await createImportedCards(target, content.cards, content.reverse);
+        // Drafts were validated before the transaction; skipping re-validation
+        // keeps non-database work out of the transaction scope.
+        await createImportedCards(target, content.cards, content.reverse, true);
       },
     );
   }

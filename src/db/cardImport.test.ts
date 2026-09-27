@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCourse } from './courseRepository';
-import { importCardsToDestination } from './cardImport';
+import { createCards } from './cardRepository';
+import { createImportedCards, importCardsToDestination } from './cardImport';
 
 beforeEach(async () => {
   await db.delete();
@@ -133,5 +134,70 @@ it('imports Anki scheduling into a newly named lesson', async () => {
     difficulty: 3,
     reps: 4,
     lapses: 1,
+  });
+});
+
+describe('premature commit avoidance', () => {
+  // Dexie throws PrematureCommitError when non-database work runs inside a
+  // transaction. The import keeps validation before the transaction and skips
+  // re-validation within it, so a larger plain-text batch to a new exam course
+  // (the reported 24-card failure) commits atomically.
+  it('imports 24 plain cards to a new exam course without an early commit', async () => {
+    const cards = Array.from({ length: 24 }, (_, index) => ({
+      type: 'front_back' as const,
+      front: `si j'avais le choix ${index + 1}`,
+      back: `if I had the choice ${index + 1}`,
+    }));
+    const result = await importCardsToDestination(
+      {
+        kind: 'course',
+        title: 'French vocabulary',
+        options: { schedulingMode: 'exam', examDate: Date.now() + 9_000_000, timeZone: 'Europe/London' },
+      },
+      { kind: 'text', cards, reverse: false },
+    );
+    expect(result.count).toBe(24);
+    expect(await db.courses.count()).toBe(1);
+    expect(await db.lessons.count()).toBe(1);
+    expect(await db.cards.count()).toBe(24);
+    expect((await db.courses.get(result.courseId))?.name).toBe('French vocabulary');
+  });
+
+  // These two checks fail on the merge base, where the skip flag is ignored
+  // and validation still runs inside the transaction scope.
+  it('skips bulk validation when the caller has already validated', async () => {
+    const course = await createCourse('Skip validation', { schedulingMode: 'steady' });
+    const invalid = { kind: 'invalid' } as never;
+    await expect(
+      createCards(
+        course.id,
+        [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
+      ),
+    ).rejects.toThrow();
+    const created = await createCards(
+      course.id,
+      [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
+      { skipValidation: true },
+    );
+    expect(created).toHaveLength(1);
+  });
+
+  it('skips import validation within the card transaction when requested', async () => {
+    const course = await createCourse('Skip import validation', { schedulingMode: 'steady' });
+    const invalid = { kind: 'invalid' } as never;
+    await expect(
+      createImportedCards(
+        course.id,
+        [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
+        false,
+      ),
+    ).rejects.toThrow();
+    const created = await createImportedCards(
+      course.id,
+      [{ type: 'front_back', front: 'bonjour', back: 'hello', payload: invalid }],
+      false,
+      true,
+    );
+    expect(created).toHaveLength(1);
   });
 });

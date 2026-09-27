@@ -91,7 +91,10 @@ export async function createCard(
   opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload' | 'answerMode'> & { conceptId?: string },
 ): Promise<Card> {
   try {
-    await assertValidCardPayload(type, opts?.payload);
+    // Avoid a non-database await inside a caller's transaction when there is
+    // nothing to validate; IndexedDB may otherwise commit prematurely.
+    if (opts?.payload !== undefined && opts?.payload !== null)
+      await assertValidCardPayload(type, opts.payload);
     return await db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
       const unit = await db.schedulingUnits.get(deckId);
       const courseId = opts?.courseId === undefined ? unit?.courseId : opts.courseId;
@@ -169,10 +172,18 @@ export async function createCards(
     answerMode?: AnswerMode;
     conceptId?: string;
   }[],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null },
+  opts?: { courseId?: string | null; primaryLessonId?: string | null; skipValidation?: boolean },
 ): Promise<Card[]> {
   try {
-    for (const draft of drafts) await assertValidCardPayload(draft.type, draft.payload);
+    // Skip validation entirely when the caller has already validated before
+    // opening a transaction. Awaiting per-card validation inside a transaction
+    // can let IndexedDB commit prematurely (Dexie PrematureCommitError).
+    if (
+      !opts?.skipValidation &&
+      drafts.some((draft) => draft.payload !== undefined && draft.payload !== null)
+    ) {
+      for (const draft of drafts) await assertValidCardPayload(draft.type, draft.payload);
+    }
     return await db.transaction('rw', [db.cards, db.schedulingUnits, db.concepts], async () => {
       const unit = await db.schedulingUnits.get(deckId);
       const courseId = opts?.courseId === undefined ? unit?.courseId : opts.courseId;
