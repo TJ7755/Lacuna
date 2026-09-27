@@ -109,7 +109,9 @@ test('mouse lesson dragging carries the lesson and moves its neighbour aside', a
   const held = await first.boundingBox();
   expect(held!.x + held!.width / 2 - x).toBeCloseTo(20, 0);
   expect(held!.y + held!.height / 2 - y).toBeCloseTo(endY - y, 0);
-  expect((await lessons.nth(1).boundingBox())!.y).toBeLessThan(neighbour.y);
+  await expect
+    .poll(async () => (await lessons.nth(1).boundingBox())!.y)
+    .toBeLessThan(neighbour.y);
   const labelHeld = await label.boundingBox();
   expect(labelHeld!.x - labelStart!.x).toBeCloseTo(held!.x - start.x, 0);
   expect(labelHeld!.y - labelStart!.y).toBeCloseTo(held!.y - start.y, 0);
