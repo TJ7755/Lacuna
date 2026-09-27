@@ -6,8 +6,8 @@
 
 - Updated the Windows installed-upgrade gate to use the verified v0.2.12 baseline,
   so the v0.2.13 release is tested against the latest published version.
-- Stabilised the browser lesson-drag assertion by waiting for the neighbouring
-  lesson's motion to finish, without relaxing the movement it requires.
+- Stabilised the browser lesson-drag check by moving the pointer through the
+  path and waiting for the neighbouring lesson to move, as the gesture requires.
 
 - Fixed text imports to a new course failing with “Transaction committed too early”.
   Card validation now runs before the import transaction and is skipped within it,
