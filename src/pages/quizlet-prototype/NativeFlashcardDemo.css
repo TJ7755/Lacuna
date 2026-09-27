@@ -1,0 +1,75 @@
+.qc-native-demo {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 470px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 18px;
+  overflow: hidden;
+  background: hsl(var(--paper));
+}
+.qc-native-formats {
+  background: hsl(var(--accent-soft));
+  padding: 32px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qc-native-formats button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  min-height: 52px;
+  padding: 13px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.qc-native-formats button[aria-pressed='true'] {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--line));
+  box-shadow: 0 3px 12px hsl(var(--ink) / 0.05);
+}
+.qc-native-formats .qc-arrow {
+  width: 15px;
+  height: 15px;
+  flex-basis: 15px;
+}
+.qc-native-stage {
+  padding: 60px 45px 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+/* Preserve the study renderer's own type and spacing inside the marketing page. */
+.qc-page .qc-native-stage p {
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+@media (max-width: 760px) {
+  .qc-native-demo {
+    grid-template-columns: 1fr;
+  }
+  .qc-native-formats {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 12px;
+    gap: 5px;
+  }
+  .qc-native-formats button {
+    white-space: nowrap;
+    padding: 10px 13px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+  .qc-native-formats .qc-arrow {
+    display: none;
+  }
+  .qc-native-stage {
+    padding: 30px 18px;
+    min-height: 410px;
+  }
+}

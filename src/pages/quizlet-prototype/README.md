@@ -23,17 +23,23 @@ change the displayed card. Values describe predicted card recall, not exam marks
 No learner data is read or saved. The model assumptions are available in a disclosure.
 
 Each design includes twelve filterable comparison rows with expandable detail, four
-real product captures, five practice examples, online/offline and scheduling examples,
+real product captures, interactive practice, online/offline and scheduling examples,
 a text-transfer preview using Lacuna's existing parser, cost, choice guidance and FAQs.
 Quizlet source links accompany claims. See `comparison-research.md` for the factual
 basis and `captures/README.md` for screenshot provenance.
 
-Practice examples are illustrative. The hero forecast uses the real memory model
+A embeds the production FlipCard, StudyControls and StudyCardTransition components
+with example recall, cloze, sequence and typed-answer cards. Answers stay in local
+component state; no study records are written. Its comparison puts exam scheduling
+first, keeps product headings visible and reveals source links with expanded details.
+B and C retain their earlier illustrative practice panels.
+
+Practice content is illustrative. The hero forecast uses the real memory model
 with example cards; it is not a learner’s personalised revision plan. No results are saved.
 The existing theme and accent apply to page components; screenshots retain the
 appearance of the app at capture time. Reduced motion and a pause control are supported.
 The route and its assets are development-only and excluded from production bundles.
 
 Round one is preserved at commit `ed63e3aa`. Round two supersedes it. No public page
-has been selected or published. Keep the prototype branch as the design record and
+has been published; A is selected for further development. Keep the prototype branch as the design record and
 implement the selected direction separately from the discarded alternatives.

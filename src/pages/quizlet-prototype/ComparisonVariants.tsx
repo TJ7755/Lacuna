@@ -1,6 +1,8 @@
+import { NativeFlashcardDemo } from './NativeFlashcardDemo';
 import { ExamReadinessHistory } from './ExamReadinessHistory';
 import { ExamReadiness, ExamSteps } from './ExamReadiness';
 import { useState } from 'react';
+import { ComparisonMatrix } from './ComparisonMatrix';
 import { ComparisonTable } from './ComparisonTable';
 import { ProductScreen, ProductTour, type ScreenKey } from './ProductTour';
 import { ExamLens, LearningLab } from './LearningLab';
@@ -14,13 +16,13 @@ import {
 } from './DecisionSections';
 import { Arrow, Closing, Cta, Jump, ProofStrip, SectionHeading } from './PrototypeUi';
 
-function ComparisonSection() {
+function ComparisonSection({ visual = false }: { visual?: boolean }) {
   return (
     <section id="compare" className="qc-section">
       <SectionHeading title="The details make the difference.">
         Both have flashcards and spaced repetition. Here’s where the experience changes.
       </SectionHeading>
-      <ComparisonTable />
+      {visual ? <ComparisonMatrix /> : <ComparisonTable />}
     </section>
   );
 }
@@ -78,11 +80,11 @@ export function ProductStory() {
       </section>
       <section id="practice" className="qc-section">
         <SectionHeading title="Don’t just recognise it. Work with it.">
-          Try recalling a fact, filling a gap, naming a part, ordering steps and applying an idea.
+          Flip a card, fill a gap or recall the next step.
         </SectionHeading>
-        <LearningLab />
+        <NativeFlashcardDemo />
       </section>
-      <ComparisonSection />
+      <ComparisonSection visual />
       <AccessSection />
       <MigrationSection />
       <FitSection />

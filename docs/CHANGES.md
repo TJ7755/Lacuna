@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reworked comparison prototype A with an exam-first visual comparison, sticky
+  product headings, category filters and expandable evidence. Replaced its imitation
+  practice panel with the production flashcard renderer and controls for recall,
+  cloze, sequences and typed answers. Demo answers do not alter study records.
+
 - Selected comparison prototype A for further work. Its recall chart now includes
   modelled review history, review-time jumps, a labelled 0–100% scale and a separate
   future projection, replacing the isolated pair of near-flat forecast curves.

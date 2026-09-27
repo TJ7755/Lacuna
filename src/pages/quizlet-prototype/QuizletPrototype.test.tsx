@@ -112,3 +112,31 @@ it.each(['A', 'B', 'C'])('puts exam scheduling in the opening section of %s', (v
       .getAttribute('aria-label'),
   ).not.toBe(before);
 });
+
+it('embeds the study card renderer in A and reveals a real card face', async () => {
+  open('A');
+  const practice = document.getElementById('practice')!;
+  const reveal = within(practice).getAllByRole('button', { name: 'Show answer' });
+  fireEvent.click(reveal.find((button) => button.tagName === 'BUTTON')!);
+  expect(await within(practice).findByRole('button', { name: 'Hide answer' })).toBeInTheDocument();
+  expect(practice.querySelector('[data-study-face="back"]')).toHaveTextContent(
+    'biological catalyst',
+  );
+  fireEvent.click(within(practice).getByRole('button', { name: 'Cloze' }));
+  expect(practice.querySelector('[data-study-face="front"]')).toHaveTextContent('[...]');
+});
+
+it('puts exam scheduling first in A’s comparison and keeps evidence available', () => {
+  open('A');
+  const table = screen.getByRole('table', { name: 'Lacuna and Quizlet feature comparison' });
+  const firstFeature = within(table).getAllByRole('rowheader')[0];
+  expect(firstFeature).toHaveTextContent('Study direction');
+  fireEvent.click(within(firstFeature).getByRole('button'));
+  expect(within(table).getByRole('link', { name: 'Quizlet source' })).toHaveAttribute(
+    'href',
+    expect.stringContaining('Studying-with-Learn'),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Moving over' }));
+  expect(within(table).getByText('Bringing your sets')).toBeInTheDocument();
+  expect(within(table).queryByText('Study direction')).not.toBeInTheDocument();
+});
