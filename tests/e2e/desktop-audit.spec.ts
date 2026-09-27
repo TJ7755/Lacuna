@@ -105,7 +105,7 @@ test('mouse lesson dragging carries the lesson and moves its neighbour aside', a
   const endY = neighbour.y + neighbour.height + 10;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x + 20, endY, { steps: 5 });
+  await page.mouse.move(x + 20, endY);
   const held = await first.boundingBox();
   expect(held!.x + held!.width / 2 - x).toBeCloseTo(20, 0);
   expect(held!.y + held!.height / 2 - y).toBeCloseTo(endY - y, 0);

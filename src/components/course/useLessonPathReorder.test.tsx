@@ -46,10 +46,12 @@ function Harness({
   enabled = true,
   onError = vi.fn(),
   onOpen = vi.fn(),
+  registerRefs = true,
 }: {
   enabled?: boolean;
   onError?: (message: string) => void;
   onOpen?: (lessonId: string) => void;
+  registerRefs?: boolean;
 }) {
   const reorder = useLessonPathReorder({
     courseId: 'course-1',
@@ -64,7 +66,7 @@ function Harness({
         return (
           <button
             key={lesson.id}
-            ref={interaction.registerElement}
+            ref={registerRefs ? interaction.registerElement : null}
             onPointerDown={interaction.onPointerDown}
             onPointerMove={interaction.onPointerMove}
             onPointerUp={interaction.onPointerUp}
@@ -144,6 +146,39 @@ describe('useLessonPathReorder', () => {
       expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-3', 'lesson-1']);
     },
   );
+
+  it('uses captured lesson positions when refs detach during a pointer drag', async () => {
+    const { rerender } = render(<Harness />);
+    const first = screen.getByRole('button', { name: 'One' });
+    const second = screen.getByRole('button', { name: 'Two' });
+    [first, second, screen.getByRole('button', { name: 'Three' })].forEach((element, index) => {
+      vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        top: index * 100,
+        width: 56,
+        height: 56,
+        right: 56,
+        bottom: index * 100 + 56,
+      } as DOMRect);
+    });
+    fireEvent.pointerDown(first, {
+      pointerType: 'mouse',
+      button: 0,
+      pointerId: 7,
+      clientX: 10,
+      clientY: 10,
+    });
+    rerender(<Harness registerRefs={false} />);
+    fireEvent.pointerMove(first, {
+      pointerType: 'mouse',
+      pointerId: 7,
+      clientX: 30,
+      clientY: 150,
+    });
+    expect(second).toHaveStyle({ transform: 'translate(0px, -100px)' });
+    await act(async () => fireEvent.pointerUp(first, { pointerId: 7 }));
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1', 'lesson-3']);
+  });
 
   it('keeps a stationary press available as a normal click', async () => {
     const onOpen = vi.fn();
