@@ -1,6 +1,8 @@
-# Lacuna — version 0.2.12
+# Lacuna — version 0.2.13
 
 ## Unreleased
+
+## 0.2.13 beta — course overview, website and import fix
 
 - Fixed text imports to a new course failing with “Transaction committed too early”.
   Card validation now runs before the import transaction and is skipped within it,
