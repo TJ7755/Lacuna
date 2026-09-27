@@ -65,8 +65,8 @@ export default function QuizletPrototype() {
         {index === 0 ? <ProductStory /> : index === 1 ? <DecisionGuide /> : <InteractiveExplorer />}
       </main>
       <footer className="qc-footer">
-        <span>Lacuna / A different way to revise.</span>
-        <span>Independent comparison. Not affiliated with Quizlet.</span>
+        <span>Lacuna</span>
+        <span>Not affiliated with Quizlet.</span>
       </footer>
       {import.meta.env.DEV && (
         <nav className="qc-switcher" aria-label="Prototype variants">

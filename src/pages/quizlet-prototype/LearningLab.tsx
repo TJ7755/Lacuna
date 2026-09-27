@@ -21,27 +21,20 @@ export function LearningLab() {
     <div className="qc-learning-lab">
       <div className="qc-lab-navigation">
         <div>
-          <span className="qc-kicker">TRY A DIFFERENT KIND OF RECALL</span>
           <h3>
             One idea.
             <br />
             Five ways in.
           </h3>
-          <p>
-            Knowing a definition is useful.
-            <br />
-            Using it asks something different.
-          </p>
         </div>
         <div className="qc-lab-modes" aria-label="Practice examples">
-          {modes.map((item, i) => (
+          {modes.map((item) => (
             <button
               key={item}
               aria-label={item}
               aria-pressed={mode === item}
               onClick={() => chooseMode(item)}
             >
-              <span>0{i + 1}</span>
               {item}
               <Arrow />
             </button>
@@ -49,14 +42,9 @@ export function LearningLab() {
         </div>
       </div>
       <div className="qc-lab-stage">
-        <div className="qc-lab-meta">
-          <span>BIOLOGY / ENZYMES</span>
-          <span>Interactive example</span>
-        </div>
         <div className="qc-lab-content" key={mode}>
           {mode === 'Recall' && (
             <>
-              <span className="qc-card-label">BRING IT TO MIND</span>
               <h4>
                 What does an
                 <br />
@@ -75,7 +63,6 @@ export function LearningLab() {
           )}
           {mode === 'Cloze' && (
             <>
-              <span className="qc-card-label">FILL THE GAP</span>
               <h4>
                 Enzymes lower
                 <br />
@@ -95,7 +82,6 @@ export function LearningLab() {
           )}
           {mode === 'Image labels' && (
             <>
-              <span className="qc-card-label">NAME WHAT YOU SEE</span>
               <svg
                 className="qc-enzyme"
                 viewBox="0 0 500 245"
@@ -125,7 +111,6 @@ export function LearningLab() {
           )}
           {mode === 'Sequence' && (
             <>
-              <span className="qc-card-label">PUT THE STEPS IN ORDER</span>
               <h4>
                 How does an
                 <br />
@@ -164,7 +149,6 @@ export function LearningLab() {
           )}
           {mode === 'Application' && (
             <>
-              <span className="qc-card-label">EXPLAIN THE CHANGE</span>
               <h4>Why can high temperatures stop an enzyme working?</h4>
               <div className="qc-answers" role="radiogroup" aria-label="Enzyme application answer">
                 {[
@@ -203,12 +187,6 @@ export function LearningLab() {
             </>
           )}
         </div>
-        <div className="qc-lab-footer">
-          <span className="qc-brand-dot" />
-          {mode === 'Application'
-            ? 'Questions have their own progress and schedule.'
-            : 'Illustrative practice. No study results are saved.'}
-        </div>
       </div>
     </div>
   );
@@ -219,7 +197,6 @@ export function ExamLens() {
   return (
     <div className="qc-exam-lens">
       <div className="qc-exam-controls">
-        <span className="qc-kicker">A TARGET THAT MEANS SOMETHING</span>
         <div className="qc-segmented">
           <button aria-pressed={exam} onClick={() => setExam(true)}>
             Exam date
@@ -267,7 +244,6 @@ export function ExamLens() {
         ))}
       </div>
       <div className="qc-exam-bottom">
-        <span>{exam ? 'Exam-focused scheduling' : 'Long-term retention'}</span>
         <p>
           {exam
             ? 'Review priorities work towards recall on your assessment date.'

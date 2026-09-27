@@ -168,28 +168,6 @@
   font-size: 13px;
   min-height: 44px;
 }
-.qc-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 10px;
-  letter-spacing: 0.13em;
-  font-weight: 600;
-  margin-bottom: 30px;
-}
-.qc-kicker {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-  color: hsl(var(--accent-ink));
-  margin-bottom: 19px;
-}
-.qc-kicker b {
-  font-weight: 400;
-  opacity: 0.6;
-  margin-right: 7px;
-}
 .qc-section {
   padding: 92px var(--qc-gutter);
 }
@@ -270,20 +248,11 @@
   background: hsl(var(--accent-soft));
   overflow: hidden;
 }
-.qc-closing .qc-eyebrow {
-  justify-content: center;
-}
 .qc-closing h2 {
   font-size: clamp(60px, 7.5vw, 108px);
 }
-.qc-closing p {
-  margin: 25px 0;
-}
-.qc-closing small {
-  display: block;
-  margin-top: 19px;
-  color: hsl(var(--ink-soft));
-  font-size: 10px;
+.qc-closing .qc-button {
+  margin-top: 30px;
 }
 .qc-closing-mark {
   position: absolute;

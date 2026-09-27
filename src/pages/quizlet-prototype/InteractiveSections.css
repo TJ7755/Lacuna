@@ -32,10 +32,6 @@
   font-size: 13px;
   text-align: left;
 }
-.qc-lab-modes button > span {
-  font-size: 9px;
-  color: hsl(var(--accent-ink));
-}
 .qc-lab-modes .qc-arrow {
   margin-left: auto;
   width: 15px;
@@ -56,15 +52,6 @@
   padding: 27px 35px 22px;
   min-height: 600px;
 }
-.qc-lab-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: hsl(var(--ink-faint));
-  font-size: 9px;
-  letter-spacing: 0.05em;
-}
 .qc-lab-content {
   flex: 1;
   display: flex;
@@ -73,11 +60,6 @@
   justify-content: center;
   padding: 35px 10px;
   gap: 24px;
-}
-.qc-card-label {
-  font-size: 9px;
-  letter-spacing: 0.11em;
-  color: hsl(var(--ink-faint));
 }
 .qc-lab-content h4 {
   font-size: 34px;
@@ -97,15 +79,6 @@
 }
 .qc-lab-content > p {
   font-size: 12px;
-}
-.qc-lab-footer {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  padding-top: 16px;
-  border-top: 1px solid hsl(var(--line));
-  font-size: 9px;
-  color: hsl(var(--ink-faint));
 }
 .qc-cloze {
   background: hsl(var(--accent-soft));
@@ -190,11 +163,6 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-}
-.qc-exam-controls .qc-kicker {
-  font-size: 8px;
-  max-width: 120px;
-  line-height: 1.8;
 }
 .qc-exam-controls .qc-segmented button {
   font-size: 10px;

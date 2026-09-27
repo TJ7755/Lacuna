@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Removed decorative subtitles, section numbering, comparison metadata, screenshot
+  captions and redundant feature pills across all three comparison prototypes.
+
 - Replaced all four comparison-prototype screenshots with native 2880 × 1920
   Retina captures and added an image-resolution regression check, keeping text
   sharp in the large product previews and expanded viewer.

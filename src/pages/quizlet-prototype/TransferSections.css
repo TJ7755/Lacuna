@@ -4,10 +4,6 @@
   align-items: center;
   gap: 12px;
 }
-.qc-offline-header .qc-kicker {
-  margin: 0;
-  font-size: 8px;
-}
 .qc-connection {
   display: flex;
   align-items: center;

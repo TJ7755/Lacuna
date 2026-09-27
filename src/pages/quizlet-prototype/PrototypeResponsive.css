@@ -53,15 +53,6 @@
   .qc-split-heading > p {
     max-width: none;
   }
-  .qc-eyebrow {
-    font-size: 8px;
-    line-height: 1.7;
-    margin-bottom: 22px;
-  }
-  .qc-kicker {
-    font-size: 9px;
-    margin-bottom: 15px;
-  }
   .qc-button {
     padding: 15px 19px;
     font-size: 12px;
@@ -106,36 +97,6 @@
   .qc-hero-product .qc-product-screen {
     transform: none;
   }
-  .qc-orbit-stamp {
-    width: 84px;
-    height: 84px;
-    right: -9px;
-    top: -30px;
-  }
-  .qc-orbit-stamp > span {
-    font-size: 6px;
-  }
-  .qc-orbit-stamp b {
-    font-size: 11px;
-    margin-top: 4px;
-  }
-  .qc-orbit-stamp svg {
-    width: 42px;
-    height: 22px;
-  }
-  .qc-floating-chip {
-    left: -5px;
-    bottom: -12px;
-    font-size: 9px;
-    padding: 10px 13px;
-  }
-  .qc-product-screen figcaption {
-    padding: 9px;
-    font-size: 7px;
-  }
-  .qc-product-screen figcaption > span:last-child {
-    display: none;
-  }
   .qc-window-bar {
     height: 34px;
     padding-inline: 10px;
@@ -156,24 +117,6 @@
     padding: 13px 4px;
     font-size: 10px;
   }
-  .qc-tour-tabs button > span {
-    font-size: 8px;
-  }
-  .qc-tour-caption {
-    grid-template-columns: 1fr;
-    gap: 20px;
-    padding-top: 23px;
-  }
-  .qc-tour-caption h3 {
-    font-size: 22px;
-  }
-  .qc-tour-caption p {
-    font-size: 12px;
-  }
-  .qc-tour-caption ul {
-    font-size: 11px;
-    gap: 8px;
-  }
   .qc-schedule-section {
     grid-template-columns: 1fr;
     gap: 32px;
@@ -185,10 +128,6 @@
     flex-direction: row;
     align-items: center;
     gap: 10px;
-  }
-  .qc-exam-controls .qc-kicker {
-    max-width: 95px;
-    font-size: 7px;
   }
   .qc-exam-controls .qc-segmented {
     gap: 0;
@@ -256,9 +195,6 @@
     font-size: 9px;
     min-height: 43px;
   }
-  .qc-lab-modes button > span {
-    font-size: 7px;
-  }
   .qc-lab-modes .qc-arrow {
     display: none;
   }
@@ -275,13 +211,6 @@
   }
   .qc-lab-content > p {
     font-size: 11px;
-  }
-  .qc-lab-meta {
-    font-size: 8px;
-  }
-  .qc-lab-footer {
-    font-size: 8px;
-    line-height: 1.6;
   }
   .qc-answer {
     font-size: 12px;

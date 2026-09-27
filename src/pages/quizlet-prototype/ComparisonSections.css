@@ -47,18 +47,6 @@
   width: 100%;
   height: auto;
 }
-.qc-product-screen figcaption {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 11px 17px;
-  border-top: 1px solid hsl(var(--line));
-  font-size: 9px;
-  color: hsl(var(--ink-soft));
-}
-.qc-product-screen figcaption > span:last-child {
-  margin-left: auto;
-}
 .qc-image-dialog {
   position: fixed;
   inset: 0;
@@ -88,10 +76,6 @@
   width: 100%;
   height: auto;
 }
-.qc-image-dialog p {
-  margin: 12px 0 0;
-  font-size: 12px;
-}
 .qc-tour-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -110,39 +94,9 @@
     color 0.2s,
     border-color 0.2s;
 }
-.qc-tour-tabs button > span {
-  font-size: 10px;
-  opacity: 0.6;
-}
 .qc-tour-tabs button[aria-pressed='true'] {
   border-bottom-color: hsl(var(--accent));
   color: hsl(var(--ink));
-}
-.qc-tour-caption {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 40px;
-  padding: 30px 0 0;
-}
-.qc-tour-caption h3 {
-  font-size: 24px;
-}
-.qc-tour-caption p {
-  font-size: 13px;
-  margin-top: 10px;
-}
-.qc-tour-caption ul {
-  display: grid;
-  gap: 8px;
-  font-size: 12px;
-  color: hsl(var(--ink-soft));
-  list-style: none;
-  margin: 0;
-}
-.qc-tour-caption li::before {
-  content: '↳';
-  margin-right: 12px;
-  color: hsl(var(--accent-ink));
 }
 .qc-table-toolbar {
   display: flex;

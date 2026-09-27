@@ -77,31 +77,9 @@ export function Header() {
     </header>
   );
 }
-export function Eyebrow({ children = 'LACUNA / QUIZLET' }: { children?: ReactNode }) {
-  return (
-    <div className="qc-eyebrow">
-      <span className="qc-brand-dot" />
-      {children}
-    </div>
-  );
-}
-export function SectionHeading({
-  number,
-  eyebrow,
-  title,
-  children,
-}: {
-  number?: string;
-  eyebrow: string;
-  title: string;
-  children?: ReactNode;
-}) {
+export function SectionHeading({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="qc-section-heading">
-      <span className="qc-kicker">
-        {number && <b>{number} / </b>}
-        {eyebrow}
-      </span>
       <h2>{title}</h2>
       {children && <p>{children}</p>}
     </div>
@@ -143,15 +121,12 @@ export function Closing() {
       <div className="qc-closing-mark" aria-hidden="true">
         <LacunaIcon />
       </div>
-      <Eyebrow>YOUR NEXT CHAPTER</Eyebrow>
       <h2>
         Make space
         <br />
         for what sticks.
       </h2>
-      <p>Start with one lesson. See how it feels.</p>
       <Cta>Open Lacuna</Cta>
-      <small>Free core revision · No account · In beta</small>
     </section>
   );
 }

@@ -47,10 +47,6 @@ export function Portability() {
         </article>
       </div>
       <div className="qc-transfer-demo">
-        <div className="qc-lab-meta">
-          <span>TRY A TEXT TRANSFER</span>
-          <span>Nothing is saved</span>
-        </div>
         <label htmlFor="qc-import-example">Example terms and definitions</label>
         <textarea
           id="qc-import-example"
@@ -61,7 +57,6 @@ export function Portability() {
         />
         <div className="qc-transfer-arrow">
           <Arrow down />
-          <span>Live preview</span>
         </div>
         <div className="qc-transfer-preview" aria-live="polite">
           <strong>
@@ -90,7 +85,6 @@ export function OfflinePanel() {
   return (
     <div className="qc-offline-panel">
       <div className="qc-offline-header">
-        <span className="qc-kicker">LOCAL-FIRST, BY DESIGN</span>
         <button
           className="qc-connection"
           aria-pressed={offline}
@@ -149,7 +143,6 @@ export function OfflinePanel() {
 export function CostPanel() {
   return (
     <div className="qc-cost-panel">
-      <span className="qc-kicker">THE COST OF GETTING STARTED</span>
       <div className="qc-price">
         <span>£</span>0<small>for core revision</small>
       </div>
@@ -183,12 +176,7 @@ export function FitGuide() {
   return (
     <div className="qc-fit-guide">
       <article>
-        <span className="qc-kicker">CHOOSE LACUNA IF…</span>
-        <h3>
-          You want to build
-          <br />
-          your own study routine.
-        </h3>
+        <h3>Lacuna</h3>
         <ul>
           <li>You’re working towards an exam date.</li>
           <li>You want lessons, notes and practice together.</li>
@@ -198,12 +186,7 @@ export function FitGuide() {
         <Cta />
       </article>
       <article>
-        <span className="qc-kicker">QUIZLET MAY FIT BETTER IF…</span>
-        <h3>
-          You want a library
-          <br />
-          and a classroom community.
-        </h3>
+        <h3>Quizlet</h3>
         <ul>
           <li>Finding existing public sets is your starting point.</li>
           <li>You need live classroom games.</li>
@@ -220,10 +203,9 @@ export function FitGuide() {
 export function Faq() {
   return (
     <div className="qc-faq-list">
-      {faqs.map(([question, answer], i) => (
+      {faqs.map(([question, answer]) => (
         <details key={question}>
           <summary>
-            <span>{String(i + 1).padStart(2, '0')}</span>
             {question}
             <b aria-hidden="true">+</b>
           </summary>
@@ -239,11 +221,7 @@ export function SourceNotes() {
       <summary>
         Sources & comparison notes <span>27 September 2026 +</span>
       </summary>
-      <p>
-        This is an independent comparison by Lacuna. Quizlet features are described from its help
-        centre; plans and availability can change. Product screenshots show Lacuna’s built-in
-        example course. Interactive examples are demonstrations, not learner results.
-      </p>
+      <p>Quizlet features are described from its help centre; plans and availability can change.</p>
       <div>
         {Object.entries(sources).map(([key, source]) => (
           <a key={key} href={source.url} target="_blank" rel="noreferrer">
@@ -257,11 +235,7 @@ export function SourceNotes() {
 export function AccessSection() {
   return (
     <section id="access" className="qc-section">
-      <SectionHeading
-        number="04"
-        eyebrow="ACCESS & OWNERSHIP"
-        title="A little less between you and revision."
-      >
+      <SectionHeading title="A little less between you and revision.">
         Core study is free. Your work stays on your device.
       </SectionHeading>
       <div className="qc-access-grid">
@@ -274,7 +248,7 @@ export function AccessSection() {
 export function MigrationSection() {
   return (
     <section id="switch" className="qc-section">
-      <SectionHeading number="05" eyebrow="MOVING OVER" title="Keep the work. Change the workflow.">
+      <SectionHeading title="Keep the work. Change the workflow.">
         Start with a set you created. Check a few cards before moving more.
       </SectionHeading>
       <Portability />
@@ -284,7 +258,7 @@ export function MigrationSection() {
 export function FaqSection() {
   return (
     <section id="questions" className="qc-section qc-faq-section">
-      <SectionHeading eyebrow="BEFORE YOU SWITCH" title="The useful questions." />
+      <SectionHeading title="The useful questions." />
       <Faq />
       <SourceNotes />
     </section>

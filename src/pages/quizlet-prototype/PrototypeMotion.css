@@ -101,9 +101,6 @@
     flex-direction: column;
     gap: 4px;
   }
-  .qc-exam-controls .qc-kicker {
-    max-width: none;
-  }
   .qc-access-grid {
     gap: 15px;
   }

@@ -32,6 +32,23 @@ it('cycles between three complete comparison journeys', () => {
     'More than a set of flashcards.',
   );
 });
+it.each(['A', 'B', 'C'])('keeps decorative labels out of prototype %s', (variant) => {
+  open(variant);
+  expect(
+    document.querySelector(
+      '.qc-eyebrow, .qc-kicker, .qc-guide-byline, .qc-verdict-pills, .qc-orbit-stamp, .qc-floating-chip, .qc-tour-caption, .qc-lab-meta, .qc-lab-footer, figcaption',
+    ),
+  ).toBeNull();
+  expect(
+    screen.queryByText(
+      /A practical comparison|Independent comparison|real app views|The short version|Actual app|Captured 27 Sep/i,
+    ),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+  expect(
+    screen.getByRole('table', { name: 'Lacuna and Quizlet feature comparison' }),
+  ).toBeInTheDocument();
+});
 it('filters the comparison without losing source evidence', () => {
   open('B');
   fireEvent.click(screen.getByRole('button', { name: 'Moving over' }));

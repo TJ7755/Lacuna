@@ -182,6 +182,10 @@ button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
 
+Comparison pages should not narrate their own design. Avoid decorative overlines,
+section numbers, feature-count badges, redundant pills and captions such as
+“Actual app”. Use headings, product evidence and functional controls directly.
+
 Avoid “daily limits” in marketing copy: the prompter reads it as a possible paywall.
 Describe user-chosen study pacing directly instead (27 September 2026).
 

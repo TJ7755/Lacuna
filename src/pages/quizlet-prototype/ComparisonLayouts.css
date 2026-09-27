@@ -3,9 +3,6 @@
   padding: 85px var(--qc-gutter) 70px;
   background: radial-gradient(ellipse at 50% 68%, hsl(var(--accent) / 0.06), transparent 63%);
 }
-.qc-story-hero > .qc-eyebrow {
-  justify-content: center;
-}
 .qc-story-hero > p {
   margin: 26px auto;
   max-width: 470px;
@@ -26,52 +23,6 @@
   box-shadow: 0 30px 80px hsl(var(--ink) / 0.09);
   transform: perspective(1600px) rotateX(3deg);
   transform-origin: bottom;
-}
-.qc-orbit-stamp {
-  position: absolute;
-  top: -32px;
-  right: -55px;
-  width: 135px;
-  height: 135px;
-  z-index: 2;
-  border-radius: 50%;
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-fg));
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  transform: rotate(12deg);
-  box-shadow: 0 8px 20px hsl(var(--accent) / 0.15);
-}
-.qc-orbit-stamp > span {
-  font-size: 8px;
-  letter-spacing: 0.12em;
-}
-.qc-orbit-stamp b {
-  font-size: 17px;
-  margin-top: 8px;
-  font-weight: 500;
-}
-.qc-orbit-stamp svg {
-  width: 65px;
-  height: 32px;
-  margin-top: 4px;
-}
-.qc-floating-chip {
-  position: absolute;
-  left: -35px;
-  bottom: 45px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 15px 22px;
-  background: hsl(var(--surface));
-  border: 1px solid hsl(var(--line));
-  box-shadow: 0 8px 22px hsl(var(--ink) / 0.09);
-  border-radius: 9px;
-  font-size: 12px;
-  transform: rotate(-3deg);
 }
 .qc-schedule-section {
   display: grid;
@@ -97,11 +48,6 @@
   display: flex;
   gap: 16px;
 }
-.qc-feature-points b {
-  font-size: 10px;
-  font-weight: 400;
-  color: hsl(var(--accent-ink));
-}
 .qc-guide-layout {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
@@ -120,17 +66,6 @@
   display: flex;
   flex-direction: column;
 }
-.qc-guide-index > p {
-  font-family: var(--font-brand);
-  font-size: 31px;
-  line-height: 1.2;
-  color: hsl(var(--ink));
-  letter-spacing: -0.03em;
-  margin-bottom: 30px;
-}
-.qc-guide-index > p em {
-  color: hsl(var(--accent-ink));
-}
 .qc-guide-index nav {
   display: grid;
   gap: 3px;
@@ -146,19 +81,11 @@
 .qc-guide-index nav button:hover {
   color: hsl(var(--accent-ink));
 }
-.qc-guide-index nav span {
-  font-size: 8px;
-  opacity: 0.6;
-}
 .qc-index-end {
   margin-top: auto;
   display: grid;
   gap: 13px;
   padding-top: 20px;
-}
-.qc-index-end > span {
-  font-size: 9px;
-  color: hsl(var(--ink-faint));
 }
 .qc-index-end .qc-button {
   font-size: 12px;
@@ -194,15 +121,6 @@
   font-size: 14px;
   max-width: 430px;
 }
-.qc-guide-byline {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  border-top: 1px solid hsl(var(--line));
-  padding-top: 18px;
-  font-size: 9px;
-  color: hsl(var(--ink-faint));
-}
 .qc-guide-verdict {
   padding: 28px;
   border-radius: 8px;
@@ -220,18 +138,6 @@
 }
 .qc-guide-verdict p {
   font-size: 12px;
-}
-.qc-verdict-pills {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-top: 25px;
-}
-.qc-verdict-pills span {
-  font-size: 9px;
-  padding: 6px 9px;
-  border: 1px solid hsl(var(--accent) / 0.2);
-  border-radius: 30px;
 }
 .qc-guide-body .qc-comparison th,
 .qc-guide-body .qc-comparison td {
@@ -260,16 +166,6 @@
   font-size: 11px;
   gap: 9px;
   padding-inline: 7px;
-}
-.qc-guide-body .qc-tour-caption {
-  grid-template-columns: 1fr;
-  gap: 18px;
-}
-.qc-guide-body .qc-tour-caption ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  font-size: 10px;
 }
 .qc-editorial-note {
   margin-top: 25px;
@@ -387,10 +283,6 @@
   border-radius: 8px;
   margin-bottom: 9px;
 }
-.qc-priority-options > button > span {
-  font-size: 9px;
-  color: hsl(var(--accent-ink));
-}
 .qc-priority-options b {
   font-size: 13px;
   font-weight: 500;
@@ -410,13 +302,6 @@
 .qc-priority-options [aria-pressed='true'] .qc-arrow {
   opacity: 1;
 }
-.qc-priority-foot {
-  margin-top: auto;
-  font-size: 12px;
-  line-height: 1.6;
-  color: hsl(var(--ink-soft));
-  padding: 40px 13px 10px;
-}
 .qc-priority-result {
   padding: 30px;
   min-width: 0;
@@ -427,20 +312,8 @@
 }
 .qc-priority-copy p {
   font-size: 12px;
-  margin-top: 15px;
+  margin: 15px 0 24px;
   max-width: 490px;
-}
-.qc-priority-copy > div {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin: 20px 0 25px;
-}
-.qc-priority-copy > div > span {
-  font-size: 9px;
-  border-radius: 20px;
-  border: 1px solid hsl(var(--line));
-  padding: 6px 10px;
 }
 .qc-priority-result .qc-product-screen {
   border-radius: 7px;

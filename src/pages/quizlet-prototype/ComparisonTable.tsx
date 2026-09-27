@@ -17,7 +17,6 @@ export function ComparisonTable() {
             </button>
           ))}
         </div>
-        <span>{rows.length} points of comparison</span>
       </div>
       <div
         className="qc-table-scroll"
@@ -30,11 +29,9 @@ export function ComparisonTable() {
             <tr>
               <th scope="col">What matters to you</th>
               <th scope="col">
-                <span className="qc-brand-dot" /> Lacuna <small>Exam-focused, local-first</small>
+                <span className="qc-brand-dot" /> Lacuna
               </th>
-              <th scope="col">
-                Quizlet <small>Sets, study tools & community</small>
-              </th>
+              <th scope="col">Quizlet</th>
             </tr>
           </thead>
           <tbody>

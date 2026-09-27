@@ -11,8 +11,6 @@
     padding: 18px var(--qc-gutter);
     border-bottom: 1px solid hsl(var(--line));
   }
-  .qc-guide-index > .qc-kicker,
-  .qc-guide-index > p,
   .qc-index-end {
     display: none;
   }
@@ -40,9 +38,6 @@
   .qc-guide-hero > p {
     font-size: 13px;
   }
-  .qc-guide-byline {
-    font-size: 8px;
-  }
   .qc-guide-verdict {
     padding: 24px;
     margin-bottom: 45px;
@@ -68,10 +63,6 @@
     font-size: 9px;
     gap: 6px;
     padding-inline: 3px;
-  }
-  .qc-guide-body .qc-tour-caption ul {
-    display: grid;
-    gap: 8px;
   }
   .qc-guide-body .qc-lab-navigation {
     display: block;
@@ -120,9 +111,6 @@
   .qc-priority-options b {
     font-size: 12px;
   }
-  .qc-priority-foot {
-    display: none;
-  }
   .qc-priority-result {
     padding: 23px 17px;
   }
@@ -131,10 +119,6 @@
   }
   .qc-priority-copy p {
     font-size: 12px;
-  }
-  .qc-priority-copy > div > span {
-    font-size: 8px;
-    padding: 5px 8px;
   }
   .qc-priority-result .qc-window-bar {
     font-size: 7px;
@@ -164,8 +148,5 @@
   .qc-exam-controls {
     flex-direction: column;
     align-items: flex-start;
-  }
-  .qc-exam-controls .qc-kicker {
-    max-width: none;
   }
 }
