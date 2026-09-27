@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Put exam-day readiness at the start of all three comparison prototypes. Interactive
+  SVGs use the existing FSRS forward projections to show how an example card review
+  changes predicted recall at different exam horizons and why review gain matters.
+
 - Removed decorative subtitles, section numbering, comparison metadata, screenshot
   captions and redundant feature pills across all three comparison prototypes.
 

@@ -11,6 +11,7 @@ import './ComparisonLayouts.css';
 import './PrototypeMotion.css';
 import './PrototypeResponsive.css';
 import './PrototypeLayoutResponsive.css';
+import './ExamReadiness.css';
 
 const variants = ['A', 'B', 'C'];
 const names = ['The product story', 'The decision guide', 'The interactive explorer'];

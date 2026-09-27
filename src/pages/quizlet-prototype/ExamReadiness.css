@@ -1,0 +1,387 @@
+.qc-exam-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: 5vw;
+  padding: 55px var(--qc-gutter) 65px;
+  text-align: left;
+}
+.qc-exam-hero h1 {
+  font-size: clamp(48px, 5.5vw, 80px);
+  line-height: 1.02;
+  text-wrap: initial;
+}
+.qc-exam-pitch > p {
+  margin: 24px 0;
+  max-width: 440px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.qc-exam-steps {
+  list-style: none;
+  padding: 0;
+  margin: 30px 0 0;
+  display: grid;
+  gap: 19px;
+}
+.qc-exam-steps li {
+  position: relative;
+  padding-left: 21px;
+  border-left: 1px solid hsl(var(--line-strong));
+}
+.qc-exam-steps li::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--accent));
+}
+.qc-exam-steps strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+.qc-exam-steps span {
+  display: block;
+  margin-top: 4px;
+  color: hsl(var(--ink-soft));
+  font-size: 12px;
+  line-height: 1.5;
+}
+.qc-readiness {
+  min-width: 0;
+  border: 1px solid hsl(var(--line-strong));
+  border-radius: 14px;
+  background: hsl(var(--surface));
+  box-shadow: 0 18px 65px hsl(var(--ink) / 0.07);
+  overflow: hidden;
+}
+.qc-readiness-date {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 23px;
+  background: hsl(var(--accent-soft));
+  border-bottom: 1px solid hsl(var(--line));
+}
+.qc-readiness-date > svg {
+  color: hsl(var(--accent-ink));
+  flex-shrink: 0;
+}
+.qc-readiness-date label {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.qc-readiness-date select {
+  margin-left: auto;
+  border: 1px solid hsl(var(--line-strong));
+  border-radius: 6px;
+  padding: 9px 12px;
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.qc-readiness-chart {
+  padding: 20px 15px 0;
+}
+.qc-recall-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 0 12px 17px;
+}
+.qc-recall-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: hsl(var(--ink-soft));
+}
+.qc-recall-key i {
+  width: 17px;
+  height: 3px;
+  background: hsl(var(--accent));
+}
+.qc-recall-key span:last-child i {
+  height: 0;
+  background: none;
+  border-top: 2px dashed hsl(var(--ink-soft));
+}
+.qc-readiness-chart > svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.qc-chart-grid {
+  stroke: hsl(var(--line));
+  stroke-width: 1;
+}
+.qc-exam-line {
+  stroke: hsl(var(--accent-ink));
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.qc-recall-with,
+.qc-recall-without {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+.qc-recall-with {
+  stroke: hsl(var(--accent));
+  stroke-dasharray: 1;
+  animation: qc-recall-draw 650ms ease-out both;
+}
+.qc-recall-without {
+  stroke: hsl(var(--ink-soft));
+  stroke-dasharray: 4 6;
+  stroke-width: 2;
+}
+.qc-chart-axis {
+  fill: hsl(var(--ink-soft));
+  font-size: 12px;
+}
+.qc-chart-exam,
+.qc-chart-value {
+  fill: hsl(var(--accent-ink));
+  font-size: 14px;
+  font-weight: 600;
+}
+.qc-chart-value-muted {
+  fill: hsl(var(--ink-soft));
+  font-size: 13px;
+}
+.qc-recall-point {
+  fill: hsl(var(--accent));
+}
+.qc-recall-point-muted {
+  fill: hsl(var(--ink-soft));
+}
+.qc-readiness-queue {
+  margin: 15px 24px 18px;
+  display: grid;
+  gap: 7px;
+}
+.qc-readiness-queue button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 0.7fr 55px 65px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.qc-readiness-queue button[aria-pressed='true'] {
+  background: hsl(var(--accent-soft));
+  border-color: hsl(var(--accent) / 0.25);
+}
+.qc-readiness-queue b {
+  font-weight: 500;
+  text-align: right;
+  color: hsl(var(--accent-ink));
+}
+.qc-gain-track {
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: hsl(var(--ink) / 0.07);
+}
+.qc-gain-track i {
+  display: block;
+  height: 100%;
+  background: hsl(var(--accent));
+  border-radius: inherit;
+  transition: width 250ms ease;
+}
+.qc-queue-order {
+  text-align: right;
+  font-size: 10px;
+  color: hsl(var(--ink-soft));
+}
+.qc-readiness-method {
+  padding: 13px 24px;
+  border-top: 1px solid hsl(var(--line));
+}
+.qc-readiness-method summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: hsl(var(--ink-soft));
+}
+.qc-readiness-method p {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.qc-guide-hero.qc-exam-hero {
+  grid-template-columns: 1fr;
+  gap: 22px;
+  padding: 38px 0;
+}
+.qc-guide-hero.qc-exam-hero h1 {
+  font-size: clamp(43px, 4.5vw, 66px);
+}
+.qc-guide-hero .qc-exam-pitch > p {
+  max-width: 650px;
+  margin: 18px 0 0;
+}
+.qc-guide-hero .qc-readiness {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr;
+}
+.qc-guide-hero .qc-readiness-date,
+.qc-guide-hero .qc-readiness-method {
+  grid-column: 1 / -1;
+}
+.qc-guide-hero .qc-readiness-date {
+  padding: 14px 20px;
+}
+.qc-guide-hero .qc-readiness-queue {
+  margin: 18px 18px 18px 0;
+  align-content: center;
+}
+.qc-guide-hero .qc-readiness-queue button {
+  grid-template-columns: 1fr 55px;
+  gap: 5px;
+}
+.qc-guide-hero .qc-gain-track {
+  display: none;
+}
+.qc-guide-hero .qc-queue-order {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+.qc-guide-hero .qc-exam-steps {
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 0;
+  gap: 15px;
+}
+.qc-guide-hero .qc-exam-steps strong {
+  font-size: 12px;
+}
+.qc-guide-hero .qc-exam-steps span {
+  font-size: 11px;
+}
+@keyframes qc-recall-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (max-width: 1100px) {
+  .qc-exam-hero {
+    gap: 30px;
+  }
+  .qc-readiness-queue button {
+    gap: 7px;
+    grid-template-columns: 1fr 0.5fr 45px;
+  }
+  .qc-queue-order {
+    display: none;
+  }
+  .qc-guide-hero .qc-readiness {
+    grid-template-columns: 1fr;
+  }
+  .qc-guide-hero .qc-readiness-chart {
+    max-width: 500px;
+    margin: auto;
+    width: 100%;
+  }
+  .qc-guide-hero .qc-readiness-queue {
+    margin: 5px 18px 15px;
+  }
+  .qc-guide-hero .qc-readiness-queue button {
+    grid-template-columns: 1fr 0.7fr 55px;
+  }
+  .qc-guide-hero .qc-gain-track {
+    display: block;
+  }
+}
+@media (max-width: 760px) {
+  .qc-exam-hero,
+  .qc-guide-hero.qc-exam-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 30px var(--qc-gutter) 40px;
+    gap: 20px;
+  }
+  .qc-guide-hero.qc-exam-hero {
+    padding-inline: 0;
+  }
+  .qc-exam-pitch {
+    display: contents;
+  }
+  .qc-exam-hero h1,
+  .qc-guide-hero.qc-exam-hero h1 {
+    font-size: clamp(40px, 10vw, 65px);
+    order: 0;
+  }
+  .qc-exam-pitch > p,
+  .qc-guide-hero .qc-exam-pitch > p {
+    order: 1;
+    margin: 0;
+    font-size: 13px;
+  }
+  .qc-readiness {
+    order: 2;
+  }
+  .qc-exam-pitch > .qc-button {
+    order: 3;
+    align-self: start;
+  }
+  .qc-exam-steps,
+  .qc-guide-hero .qc-exam-steps {
+    order: 4;
+    margin-top: 5px;
+    grid-template-columns: 1fr;
+  }
+  .qc-readiness-date {
+    padding: 14px;
+    gap: 10px;
+  }
+  .qc-readiness-date label {
+    font-size: 23px;
+  }
+  .qc-readiness-date select {
+    padding: 7px;
+    font-size: 12px;
+  }
+  .qc-readiness-chart {
+    padding: 16px 7px 0;
+  }
+  .qc-recall-key {
+    gap: 7px;
+    padding-bottom: 12px;
+  }
+  .qc-recall-key span {
+    font-size: 9px;
+  }
+  .qc-readiness-queue {
+    margin: 8px 10px 12px;
+  }
+  .qc-readiness-queue button {
+    font-size: 11px;
+    padding: 10px;
+  }
+  .qc-readiness-method {
+    padding: 12px 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qc-recall-with {
+    animation: none;
+  }
+  .qc-gain-track i {
+    transition: none;
+  }
+}

@@ -12,9 +12,7 @@ function open(variant = 'A') {
 }
 it('cycles between three complete comparison journeys', () => {
   open();
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-    'More than a set of flashcards.',
-  );
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Remember it on exam day.');
   expect(
     screen.getByRole('table', { name: 'Lacuna and Quizlet feature comparison' }),
   ).toBeInTheDocument();
@@ -23,14 +21,14 @@ it('cycles between three complete comparison journeys', () => {
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Next prototype' }));
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-    'A different way to get ready.',
+    'Your exam date changes what you study today.',
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Next prototype' }));
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Find your way to ready.');
   fireEvent.click(screen.getByRole('button', { name: 'Next prototype' }));
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-    'More than a set of flashcards.',
+    'Know it when exam day arrives.',
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Next prototype' }));
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Remember it on exam day.');
 });
 it.each(['A', 'B', 'C'])('keeps decorative labels out of prototype %s', (variant) => {
   open(variant);
@@ -69,7 +67,9 @@ it('previews pasted cards and leaves arrow keys available in the input', () => {
   expect(screen.getByText('2 cards ready to preview')).toBeInTheDocument();
   expect(screen.getByText('Cell division')).toBeInTheDocument();
   fireEvent.keyDown(input, { key: 'ArrowRight' });
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Find your way to ready.');
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+    'Know it when exam day arrives.',
+  );
   fireEvent.change(input, { target: { value: '' } });
   expect(screen.getByText('Add a term and definition to see the preview.')).toBeInTheDocument();
 });
@@ -85,4 +85,22 @@ it('lets the visitor try application practice and switch priorities', () => {
   fireEvent.click(screen.getByRole('radio', { name: 'The active site changes shape' }));
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }));
   expect(screen.getByText(/Correct. High temperatures/)).toBeInTheDocument();
+});
+
+it.each(['A', 'B', 'C'])('puts exam scheduling in the opening section of %s', (variant) => {
+  open(variant);
+  const hero = screen.getByRole('heading', { level: 1 }).closest('section')!;
+  expect(within(hero).getByRole('combobox', { name: 'Example exam date' })).toBeInTheDocument();
+  expect(within(hero).getByText('Review where it helps most.')).toBeInTheDocument();
+  const before = within(hero)
+    .getByRole('img', { name: /Predicted recall/ })
+    .getAttribute('aria-label');
+  fireEvent.change(within(hero).getByRole('combobox', { name: 'Example exam date' }), {
+    target: { value: '7' },
+  });
+  expect(
+    within(hero)
+      .getByRole('img', { name: /Predicted recall/ })
+      .getAttribute('aria-label'),
+  ).not.toBe(before);
 });

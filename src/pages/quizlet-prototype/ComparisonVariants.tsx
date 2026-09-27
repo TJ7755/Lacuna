@@ -1,3 +1,4 @@
+import { ExamReadiness, ExamSteps } from './ExamReadiness';
 import { useState } from 'react';
 import { ComparisonTable } from './ComparisonTable';
 import { ProductScreen, ProductTour, type ScreenKey } from './ProductTour';
@@ -33,21 +34,20 @@ function FitSection() {
 export function ProductStory() {
   return (
     <>
-      <section className="qc-story-hero">
-        <h1>
-          More than a set <br />
-          of <em>flashcards.</em>
-        </h1>
-        <p>Give your revision a home, a rhythm and a date to work towards.</p>
-        <div className="qc-hero-actions">
-          <Cta>Start revising</Cta>
-          <Jump to="inside" className="qc-text-button">
-            Take a closer look <Arrow down />
-          </Jump>
+      <section className="qc-story-hero qc-exam-hero">
+        <div className="qc-exam-pitch">
+          <h1>
+            Remember it
+            <br /> on <em>exam day.</em>
+          </h1>
+          <p>
+            Lacuna schedules revision around the day you need it. It prioritises the cards a review
+            can help most by your exam.
+          </p>
+          <Cta>Plan my revision</Cta>
+          <ExamSteps />
         </div>
-        <div className="qc-hero-product">
-          <ProductScreen />
-        </div>
+        <ExamReadiness />
       </section>
       <ProofStrip />
       <section id="inside" className="qc-section">
@@ -117,12 +117,19 @@ export function DecisionGuide() {
         </div>
       </aside>
       <div className="qc-guide-body">
-        <section className="qc-guide-hero">
-          <h1>
-            A different way <br />
-            to <em>get ready.</em>
-          </h1>
-          <p>Quizlet or Lacuna? Start with what you need from your revision.</p>
+        <section className="qc-guide-hero qc-exam-hero">
+          <div className="qc-exam-pitch">
+            <h1>
+              Your exam date changes
+              <br /> <em>what you study today.</em>
+            </h1>
+            <p>
+              Choose when you need to remember it. Lacuna prioritises reviews by their predicted
+              benefit on exam day.
+            </p>
+          </div>
+          <ExamReadiness />
+          <ExamSteps />
         </section>
         <section id="verdict" className="qc-guide-verdict">
           <div>
@@ -200,17 +207,20 @@ export function InteractiveExplorer() {
   const selected = priorities[priority];
   return (
     <>
-      <section className="qc-explorer-hero">
-        <div>
+      <section className="qc-explorer-hero qc-exam-hero">
+        <div className="qc-exam-pitch">
           <h1>
-            Find your way <br />
-            to <em>ready.</em>
+            Know it when
+            <br /> <em>exam day arrives.</em>
           </h1>
+          <p>
+            Move the exam date. See how predicted recall changes, and why some cards deserve your
+            time before others.
+          </p>
+          <Cta>Set my exam date</Cta>
+          <ExamSteps />
         </div>
-        <div className="qc-explorer-intro">
-          <p>A course, an exam, a little more confidence in what you know.</p>
-          <Cta>Try Lacuna</Cta>
-        </div>
+        <ExamReadiness />
       </section>
       <section className="qc-priority-stage" aria-label="Choose a study priority">
         <div className="qc-priority-options">

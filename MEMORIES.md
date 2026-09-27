@@ -182,6 +182,9 @@ button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
 
+Exam-day readiness is the primary comparison-page message. Show the exam target and
+how it affects review priorities in the first viewport, not below a general product hero.
+
 Comparison pages should not narrate their own design. Avoid decorative overlines,
 section numbers, feature-count badges, redundant pills and captions such as
 “Actual app”. Use headings, product evidence and functional controls directly.
