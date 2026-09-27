@@ -174,4 +174,14 @@ describe('App initialisation', () => {
     await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/download/');
   });
+  it.each(['share', 'import'])(
+    'preserves a first visit to %s from the comparison page',
+    async (route) => {
+      dependencies.isFirstRun.mockResolvedValue(true);
+      window.location.hash = `#/${route}`;
+      render(<App />);
+      await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+      expect(window.location.hash).toBe(`#/${route}`);
+    },
+  );
 });

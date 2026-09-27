@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+- Promoted the selected comparison design to `/compare/quizlet/` with build-time
+  HTML rendering, canonical/social metadata, sitemap and robots discovery. Added
+  a landing-page link and preserved direct sharing/import entry for new visitors.
+  The study app retains hash routing and offline support; discarded comparison
+  variants remain in the prototype branch.
+  Added factual website/application structured data and an explicit comparison
+  heading so search engines can identify the site and page purpose without extra copy.
+
+- Expanded comparison A with paired course-structure, memory and import-history
+  diagrams. Added a teachers section demonstrating account-free course sharing,
+  individual student progress and updates through the same course link.
+
+- Reworked comparison prototype A with an exam-first visual comparison, sticky
+  product headings, category filters and expandable evidence. Replaced its imitation
+  practice panel with the production flashcard renderer and controls for recall,
+  cloze, sequences and typed answers. Demo answers do not alter study records.
+
+- Selected comparison prototype A for further work. Its recall chart now includes
+  modelled review history, review-time jumps, a labelled 0–100% scale and a separate
+  future projection, replacing the isolated pair of near-flat forecast curves.
+
+- Put exam-day readiness at the start of all three comparison prototypes. Interactive
+  SVGs use the existing FSRS forward projections to show how an example card review
+  changes predicted recall at different exam horizons and why review gain matters.
+
+- Removed decorative subtitles, section numbering, comparison metadata, screenshot
+  captions and redundant feature pills across all three comparison prototypes.
+
+- Replaced all four comparison-prototype screenshots with native 2880 × 1920
+  Retina captures and added an image-resolution regression check, keeping text
+  sharp in the large product previews and expanded viewer.
+
+- Expanded the three development-only Quizlet comparison prototypes into complete
+  pages with real product captures, twelve sourced comparison points, interactive
+  practice and import examples, offline/cost guidance, switching advice and FAQs.
+  The designs retain theme support and reduced motion. No public page is published;
+  the design decision remains pending on `prototype/quizlet-comparison`.
+
 - Added the asynchronous Simple Analytics script on production `getlacuna.app`,
   with the required web CSP permissions and CORS loading for cross-origin isolation.
   Development, preview and desktop sessions do not load it. Do Not Track remains

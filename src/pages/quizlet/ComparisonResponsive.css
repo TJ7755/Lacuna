@@ -1,0 +1,251 @@
+@media (max-width: 760px) {
+  .qc-page {
+    --qc-gutter: 6vw;
+  }
+  .qc-page h1 {
+    font-size: clamp(53px, 11.8vw, 86px);
+  }
+  .qc-page h2 {
+    font-size: 36px;
+  }
+  .qc-page h3 {
+    font-size: 25px;
+  }
+  .qc-page p {
+    font-size: 13px;
+  }
+  .qc-nav {
+    height: 70px;
+    gap: 15px;
+  }
+  .qc-nav nav {
+    display: none;
+  }
+  .qc-nav .qc-button {
+    font-size: 11px;
+    gap: 14px;
+    padding: 11px 13px;
+  }
+  .qc-brand {
+    font-size: 23px;
+  }
+  .qc-brand > svg {
+    width: 25px;
+    height: 25px;
+  }
+  .qc-page section[id] {
+    scroll-margin-top: 90px;
+  }
+  .qc-section {
+    padding-block: 60px;
+  }
+  .qc-section-heading {
+    margin-bottom: 27px;
+  }
+  .qc-section-heading p {
+    margin-top: 17px;
+  }
+  .qc-split-heading {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-bottom: 30px;
+  }
+  .qc-split-heading > p {
+    max-width: none;
+  }
+  .qc-button {
+    padding: 15px 19px;
+    font-size: 12px;
+    gap: 22px;
+  }
+  .qc-proof-strip {
+    grid-template-columns: 1fr;
+    padding-block: 8px;
+  }
+  .qc-proof-strip > div {
+    justify-content: flex-start;
+    gap: 25px;
+    padding: 19px 8px;
+    border-right: 0;
+    border-bottom: 1px solid hsl(var(--line));
+  }
+  .qc-proof-strip strong {
+    font-size: 28px;
+    min-width: 110px;
+  }
+  .qc-proof-strip span {
+    font-size: 11px;
+  }
+  .qc-story-hero {
+    padding-top: 48px;
+    padding-bottom: 40px;
+  }
+  .qc-story-hero > p {
+    font-size: 13px;
+    margin-block: 24px;
+  }
+  .qc-window-bar {
+    height: 34px;
+    padding-inline: 10px;
+    font-size: 8px;
+  }
+  .qc-window-bar > span:first-child {
+    display: none;
+  }
+  .qc-product-screen {
+    border-radius: 8px;
+  }
+  .qc-tour-tabs {
+    margin-bottom: 18px;
+  }
+  .qc-tour-tabs button {
+    flex-direction: column;
+    gap: 7px;
+    padding: 13px 4px;
+    font-size: 10px;
+  }
+  .qc-schedule-section {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .qc-exam-lens {
+    padding: 24px 20px;
+  }
+  .qc-exam-controls {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .qc-exam-controls .qc-segmented {
+    gap: 0;
+    padding: 2px;
+  }
+  .qc-exam-controls .qc-segmented button {
+    padding: 7px;
+    font-size: 8px;
+  }
+  .qc-exam-heading h3 {
+    font-size: 30px;
+  }
+  .qc-review-timeline {
+    margin-top: 20px;
+  }
+  .qc-review-stop {
+    width: 70px;
+  }
+  .qc-review-stop > span {
+    width: 33px;
+    height: 33px;
+    font-size: 10px;
+  }
+  .qc-review-stop b {
+    font-size: 9px;
+  }
+  .qc-review-stop.stop-3 > span {
+    width: 45px;
+    height: 55px;
+    font-size: 21px;
+  }
+  .qc-review-stop.stop-0 {
+    left: 8%;
+  }
+  .qc-exam-bottom p {
+    font-size: 11px;
+  }
+  .qc-exam-bottom small {
+    font-size: 8px;
+  }
+  .qc-access-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .qc-cost-panel,
+  .qc-offline-panel {
+    padding: 27px 24px;
+  }
+  .qc-cost-panel h3,
+  .qc-offline-panel h3 {
+    font-size: 29px;
+  }
+  .qc-price {
+    font-size: 110px;
+  }
+  .qc-price small {
+    font-size: 10px;
+  }
+  .qc-fit-guide {
+    grid-template-columns: 1fr;
+  }
+  .qc-fit-guide article {
+    padding: 30px 25px;
+  }
+  .qc-fit-guide h3 {
+    font-size: 29px;
+  }
+  .qc-fit-guide ul {
+    font-size: 12px;
+  }
+  .qc-portability {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .qc-transfer-steps article {
+    padding-bottom: 25px;
+    margin-bottom: 25px;
+    gap: 16px;
+  }
+  .qc-transfer-steps h3 {
+    font-size: 22px;
+  }
+  .qc-transfer-steps p {
+    font-size: 12px;
+  }
+  .qc-transfer-demo {
+    padding: 20px;
+  }
+  .qc-transfer-demo textarea {
+    font-size: 9px;
+  }
+  .qc-transfer-preview > div {
+    font-size: 9px;
+  }
+  .qc-faq-section {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .qc-faq-list summary {
+    font-size: 13px;
+    padding: 22px 0;
+  }
+  .qc-faq-list p {
+    font-size: 12px;
+    padding-inline: 22px 10px;
+  }
+  .qc-source-notes {
+    padding: 18px;
+  }
+  .qc-source-notes summary {
+    flex-direction: column;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .qc-source-notes > div {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .qc-closing {
+    padding-block: 70px;
+  }
+  .qc-closing h2 {
+    font-size: 62px;
+  }
+  .qc-closing-mark {
+    width: 270px;
+  }
+  .qc-footer {
+    font-size: 9px;
+    flex-direction: column;
+    gap: 9px;
+    padding-block: 25px;
+  }
+}

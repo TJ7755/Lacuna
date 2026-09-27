@@ -18,17 +18,39 @@
     />
     <!-- Keep the relay, hosted AI and video origins in step with src/sync/pairingConfig.ts and
          electron/securityPolicy.ts. -->
-    <title>Lacuna — Revision built around exam day</title>
-    <meta name="description" content="Learn with connected lessons, flashcards and exam-focused spaced repetition. Free core revision, no account needed." />
-    <link rel="canonical" href="https://getlacuna.app/" />
+    <title>Lacuna vs Quizlet — Flashcards built around exam day</title>
+    <meta
+      name="description"
+      content="Compare Lacuna and Quizlet: exam-focused revision, connected lessons, native flashcards and account-free course sharing for teachers."
+    />
+    <link rel="canonical" href="https://getlacuna.app/compare/quizlet/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Lacuna vs Quizlet — Ready for exam day" />
+    <meta
+      property="og:description"
+      content="Compare exam-focused revision, connected lessons and account-free course sharing."
+    />
+    <meta property="og:url" content="https://getlacuna.app/compare/quizlet/" />
+    <meta name="twitter:card" content="summary" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "@id": "https://getlacuna.app/#website",
-        "name": "Lacuna",
-        "url": "https://getlacuna.app/",
-        "inLanguage": "en-GB"
+        "@type": "WebPage",
+        "@id": "https://getlacuna.app/compare/quizlet/#webpage",
+        "name": "Lacuna vs Quizlet",
+        "url": "https://getlacuna.app/compare/quizlet/",
+        "description": "Compare Lacuna and Quizlet: exam-focused revision, connected lessons, native flashcards and account-free course sharing for teachers.",
+        "inLanguage": "en-GB",
+        "isPartOf": { "@id": "https://getlacuna.app/#website" },
+        "about": {
+          "@type": "WebApplication",
+          "@id": "https://getlacuna.app/#application",
+          "name": "Lacuna",
+          "url": "https://getlacuna.app/",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web",
+          "description": "Revision with connected lessons, flashcards, exam-focused spaced repetition and account-free course sharing."
+        }
       }
     </script>
     <script>
@@ -48,7 +70,7 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root"><!--public-page--></div>
+    <script type="module" src="/src/pages/quizlet/entry-client.tsx"></script>
   </body>
 </html>

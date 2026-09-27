@@ -76,6 +76,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+The collaborative preview's saved screenshots are downsampled to 1280 pixels wide.
+Do not use those exports as large product-page assets; use native device-scale
+captures when authorised. A Retina viewport alone does not preserve Retina output.
+
 Motion layout scaling on a shrinking container can magnify exiting children when
 `AnimatePresence` removes them from flow. For compact expanding controls, keep text
 at fixed dimensions and resize the isolated surface; verify text bounds mid-animation.
@@ -170,13 +174,25 @@ desktop AI uses local IPC. See [engineering notes](docs/maintenance/engineering-
 
 ## Bundle changes can break offline use
 
-Hash routing needs no server catch-all: missing hashed assets must remain 404. Derive the
+The study app uses hash routing; public SEO pages have separate HTML entries. Do not
+let the PWA app-shell fallback intercept `/compare/` or sitemap/robots requests.
+Missing hashed assets must remain 404. Derive the
 app-shell precache from emitted imports and rerun cold offline Cards reload after bundle changes.
 Workers must use the ID and share-codec utilities without importing database initialisation.
 Course-file operations must load with the Share route: deferring their module until the first
 button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
+
+Exam-day readiness is the primary comparison-page message. Show the exam target and
+how it affects review priorities in the first viewport, not below a general product hero.
+
+Comparison pages should not narrate their own design. Avoid decorative overlines,
+section numbers, feature-count badges, redundant pills and captions such as
+“Actual app”. Use headings, product evidence and functional controls directly.
+
+Avoid “daily limits” in marketing copy: the prompter reads it as a possible paywall.
+Describe user-chosen study pacing directly instead (27 September 2026).
 
 Use “course” for the path and its progress labels; “curriculum” is not a separate
 user-facing concept (prompter, 27 September 2026).

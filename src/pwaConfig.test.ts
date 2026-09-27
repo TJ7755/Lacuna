@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import config, { pwaInjectRegister, workbox } from '../vite.config';
 import {
   collectAppShellScripts,
+  collectAppShellStyles,
   collectOfflineCardsDependencies,
 } from '../scripts/app-shell-precache';
 
@@ -11,7 +12,7 @@ describe('service-worker asset caching', () => {
   });
 
   it('keeps optional CSS out of the install-time application shell', () => {
-    expect(workbox.globPatterns).toContain('assets/index-*.css');
+    expect(workbox.globPatterns).not.toContain('assets/*.css');
     expect(workbox.globPatterns).not.toContain('**/*.{html,css,ico,png,svg}');
   });
 
@@ -182,4 +183,42 @@ describe('service-worker asset caching', () => {
       'assets/[name]-[hash][extname]',
     );
   });
+});
+
+it('keeps comparison navigation and assets out of the app shell', () => {
+  expect(
+    collectAppShellScripts([
+      {
+        fileName: 'assets/quizlet-PUBLIC01.js',
+        isEntry: true,
+        imports: ['assets/marketing-PUBLIC02.js'],
+      },
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/marketing-PUBLIC02.js', isEntry: false, imports: [] },
+    ]),
+  ).toEqual(['assets/app-ENTRY001.js']);
+  expect(
+    workbox.navigateFallbackDenylist.some((pattern) => pattern.test('/compare/quizlet/')),
+  ).toBe(true);
+  expect(workbox.globIgnores).toContain('compare/**');
+});
+
+it('precaches CSS from the app entry graph even when it is shared with public pages', () => {
+  expect(
+    collectAppShellStyles([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      {
+        fileName: 'assets/shared-SHARED01.js',
+        isEntry: false,
+        imports: [],
+        viteMetadata: { importedCss: new Set(['assets/shared-SHARED01.css']) },
+      },
+      {
+        fileName: 'assets/quizlet-PUBLIC01.js',
+        isEntry: true,
+        imports: [],
+        viteMetadata: { importedCss: new Set(['assets/quizlet-PUBLIC01.css']) },
+      },
+    ]),
+  ).toEqual(['assets/shared-SHARED01.css']);
 });

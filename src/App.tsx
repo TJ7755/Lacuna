@@ -117,10 +117,9 @@ const DesktopUpdateController = lazy(() => import('./components/updates/DesktopU
   .then((module) => ({ default: module.DesktopUpdateController })));
 
 function isPublicEntry(hash: string): boolean {
-  // A teacher share link must open for a brand-new student: a first-run
-  // redirect to the landing page would otherwise discard the linked course
-  // before its preview ever renders.
-  return /^#\/(?:welcome|landing|download|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
+  // Public links and comparison CTAs must preserve a new visitor’s destination
+  // through first-run setup, including course sharing and material import.
+  return /^#\/(?:welcome|landing|download|share|import|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
 }
 
 export function App() {

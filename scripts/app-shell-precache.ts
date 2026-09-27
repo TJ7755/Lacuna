@@ -2,7 +2,9 @@ import type { Plugin, Rolldown, ResolvedConfig } from 'vite';
 import type { VitePluginPWAAPI } from 'vite-plugin-pwa';
 
 type OutputChunk = Rolldown.OutputChunk;
-type StaticChunk = Pick<OutputChunk, 'fileName' | 'imports' | 'isEntry'>;
+type StaticChunk = Pick<OutputChunk, 'fileName' | 'imports' | 'isEntry'> & {
+  viteMetadata?: { importedCss: Set<string> };
+};
 
 function collectStaticImports(chunks: readonly StaticChunk[], root: StaticChunk): string[] {
   const byFileName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
@@ -20,7 +22,7 @@ function collectStaticImports(chunks: readonly StaticChunk[], root: StaticChunk)
 }
 
 export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[] {
-  const entry = chunks.find((chunk) => chunk.isEntry);
+  const entry = chunks.find((chunk) => chunk.isEntry && /^assets\/app-/.test(chunk.fileName));
   if (!entry) throw new Error('Could not find the application entry for shell precaching.');
   // This shell component loads before worker control, so runtime caching can miss it.
   const announcements = chunks.filter((chunk) =>
@@ -31,6 +33,18 @@ export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[]
       ...collectStaticImports(chunks, entry),
       ...announcements.flatMap((announcement) => collectStaticImports(chunks, announcement)),
     ]),
+  ];
+}
+
+/** CSS names change when a second HTML entry creates shared chunks. */
+export function collectAppShellStyles(chunks: readonly StaticChunk[]): string[] {
+  const scripts = new Set(collectAppShellScripts(chunks));
+  return [
+    ...new Set(
+      chunks
+        .filter((chunk) => scripts.has(chunk.fileName))
+        .flatMap((chunk) => [...(chunk.viteMetadata?.importedCss ?? [])]),
+    ),
   ];
 }
 
@@ -64,7 +78,7 @@ export function appShellPrecachePlugin(): Plugin {
       const chunks = Object.values(bundle).filter(
         (entry): entry is OutputChunk => entry.type === 'chunk',
       );
-      const eagerFiles = collectAppShellScripts(chunks);
+      const eagerFiles = [...collectAppShellScripts(chunks), ...collectAppShellStyles(chunks)];
       const cardsDependencies = collectOfflineCardsDependencies(chunks);
 
       pwa.extendManifestEntries((entries) => [

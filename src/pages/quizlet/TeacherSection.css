@@ -1,0 +1,223 @@
+.qc-teachers-intro {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 70px;
+  align-items: end;
+  margin-bottom: 38px;
+}
+.qc-teachers-intro h2 {
+  max-width: 640px;
+}
+.qc-teachers-intro p {
+  max-width: 380px;
+}
+.qc-teachers-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  border: 1px solid hsl(var(--line));
+  border-radius: 18px;
+  overflow: hidden;
+}
+.qc-teachers-copy {
+  padding: 44px;
+  background: hsl(var(--surface));
+}
+.qc-teachers-copy h3 {
+  max-width: 300px;
+  margin-bottom: 18px;
+}
+.qc-teachers-options {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid hsl(var(--line));
+  margin-top: 30px;
+}
+.qc-teachers-options button {
+  padding: 12px 0;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  color: hsl(var(--ink-soft));
+}
+.qc-teachers-options button[aria-pressed='true'] {
+  border-color: hsl(var(--accent));
+  color: hsl(var(--ink));
+}
+.qc-teachers-detail {
+  min-height: 160px;
+  padding: 24px 0;
+}
+.qc-teachers-detail strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.qc-teachers-detail p {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.qc-teachers-flow {
+  background: hsl(var(--accent-soft));
+  padding: 44px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: hsl(var(--accent-ink));
+}
+.qc-teacher-course {
+  width: 86%;
+  align-self: center;
+  border: 1px solid hsl(var(--accent) / 0.2);
+  border-radius: 12px;
+  padding: 22px;
+  background: hsl(var(--surface));
+  box-shadow: 0 8px 25px hsl(var(--ink) / 0.04);
+}
+.qc-teacher-course-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qc-teacher-course strong {
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.qc-teacher-lessons {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0 16px;
+  padding-left: 12px;
+  border-left: 1px solid hsl(var(--line-strong));
+  font-size: 12px;
+}
+.qc-teacher-new-lesson {
+  color: hsl(var(--accent-ink));
+  font-weight: 600;
+}
+.qc-teacher-material {
+  font-size: 10px;
+  color: hsl(var(--ink-soft));
+  padding-top: 12px;
+  border-top: 1px solid hsl(var(--line));
+}
+.qc-teacher-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 0;
+  font-size: 12px;
+}
+.qc-teacher-link > span {
+  font-size: 22px;
+}
+.qc-teacher-link strong {
+  font-weight: 500;
+}
+.qc-teacher-students {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding-top: 20px;
+  position: relative;
+}
+.qc-teacher-students::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16%;
+  right: 16%;
+  border-top: 1px solid hsl(var(--accent) / 0.4);
+}
+.qc-teacher-student {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+  background: hsl(var(--surface));
+  padding: 15px 5px;
+  border: 1px solid hsl(var(--accent) / 0.2);
+  border-radius: 9px;
+  text-align: center;
+}
+.qc-teacher-student::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  top: -21px;
+  border-left: 1px solid hsl(var(--accent) / 0.4);
+}
+.qc-teacher-student svg {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 5px;
+}
+.qc-teacher-student strong {
+  font-weight: 500;
+  font-size: 12px;
+}
+.qc-teacher-student span,
+.qc-teacher-student small {
+  font-size: 9px;
+  color: hsl(var(--ink-soft));
+}
+.qc-teachers-flow > p {
+  font-size: 12px;
+  text-align: center;
+  margin-top: 22px;
+  color: hsl(var(--accent-ink));
+}
+.qc-teachers-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 36px;
+  padding-top: 32px;
+}
+.qc-teachers-facts strong {
+  font-weight: 500;
+  font-size: 15px;
+}
+.qc-teachers-facts p {
+  margin-top: 10px;
+  font-size: 13px;
+}
+@media (max-width: 850px) {
+  .qc-teachers-intro {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .qc-teachers-panel {
+    grid-template-columns: 1fr;
+  }
+  .qc-teachers-copy {
+    padding: 30px;
+  }
+  .qc-teachers-detail {
+    min-height: 125px;
+  }
+  .qc-teachers-flow {
+    padding: 32px 24px;
+  }
+}
+@media (max-width: 640px) {
+  .qc-teachers-copy {
+    padding: 24px;
+  }
+  .qc-teachers-facts {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .qc-teachers-flow {
+    padding: 30px 14px;
+  }
+  .qc-teacher-course {
+    width: 100%;
+    padding: 18px;
+  }
+  .qc-teacher-students {
+    gap: 7px;
+  }
+  .qc-teacher-student {
+    padding: 12px 4px;
+  }
+}

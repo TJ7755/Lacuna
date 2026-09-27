@@ -437,3 +437,15 @@ courses continue to render their lesson directly.
 
 The comparison prototypes are archived on `prototype/course-fieldnotes` at
 `236b0b6cf8b438463d246d83f4e6e738e73e3348`; they are not shipped.
+
+### Public comparison page
+
+`/compare/quizlet/` is a separate public HTML entry with build-time React rendering,
+canonical and social metadata, and client hydration. It does not initialise or seed
+study data. Its interactive examples use component-local state and the real card
+renderer, import parser and memory model. The landing footer links to it.
+
+The public sitemap lists the homepage and comparison URL; robots.txt advertises the
+sitemap. Study routes remain hash-based and are not sitemap entries. Direct sharing
+and import links preserve their destination through first-run setup. The service
+worker excludes public comparison paths from the app-shell navigation fallback.

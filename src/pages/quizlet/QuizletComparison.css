@@ -1,0 +1,301 @@
+.qc-page {
+  --qc-width: 1180px;
+  --qc-gutter: max(6vw, calc((100vw - var(--qc-width)) / 2));
+  background: hsl(var(--paper));
+  color: hsl(var(--ink));
+  font-family: 'Instrument Sans', sans-serif;
+  min-height: 100dvh;
+  padding-bottom: 95px;
+  overflow: clip;
+}
+.qc-page *,
+.qc-page *::before,
+.qc-page *::after {
+  box-sizing: border-box;
+}
+.qc-page h1,
+.qc-page h2,
+.qc-page h3,
+.qc-page h4,
+.qc-page p,
+.qc-page figure {
+  margin: 0;
+}
+.qc-page h1 {
+  font-size: clamp(58px, 8.4vw, 122px);
+  line-height: 0.96;
+  letter-spacing: -0.065em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.qc-page h1 em {
+  font-style: normal;
+  color: hsl(var(--accent-ink));
+}
+.qc-page h2 {
+  font-size: clamp(34px, 4.2vw, 59px);
+  line-height: 1.06;
+  letter-spacing: -0.05em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.qc-page h3 {
+  font-size: 27px;
+  letter-spacing: -0.035em;
+  line-height: 1.17;
+  font-weight: 500;
+}
+.qc-page p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: hsl(var(--ink-soft));
+}
+.qc-page button,
+.qc-page a {
+  -webkit-tap-highlight-color: transparent;
+}
+.qc-page button {
+  cursor: pointer;
+  font-family: inherit;
+}
+.qc-page button:disabled {
+  cursor: default;
+}
+.qc-page :focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 5px;
+}
+.qc-page section[id] {
+  scroll-margin-top: 110px;
+}
+.qc-page .qc-arrow {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+.qc-arrow-down {
+  transform: rotate(90deg);
+}
+.qc-brand-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--accent));
+  flex-shrink: 0;
+}
+.qc-nav {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  height: 85px;
+  padding: 0 var(--qc-gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: hsl(var(--paper) / 0.98);
+  border-bottom: 1px solid hsl(var(--line));
+}
+.qc-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.06em;
+}
+.qc-brand > svg {
+  width: 30px;
+  height: 30px;
+  color: hsl(var(--accent));
+}
+.qc-nav nav {
+  display: flex;
+  gap: 30px;
+  font-size: 12px;
+  color: hsl(var(--ink-soft));
+}
+.qc-nav .qc-button {
+  padding: 12px 17px;
+  font-size: 12px;
+}
+.qc-button {
+  display: inline-flex;
+  gap: 30px;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 7px;
+  padding: 17px 23px;
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-fg));
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  border: 1px solid transparent;
+}
+.qc-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px hsl(var(--accent) / 0.15);
+}
+.qc-button:active {
+  transform: scale(0.97);
+}
+.qc-button-secondary {
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  border-color: hsl(var(--line));
+}
+.qc-section {
+  padding: 92px var(--qc-gutter);
+}
+.qc-section-heading {
+  max-width: 780px;
+  margin-bottom: 40px;
+}
+.qc-section-heading p {
+  margin-top: 22px;
+  max-width: 600px;
+}
+.qc-split-heading {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 80px;
+  align-items: end;
+  margin-bottom: 42px;
+}
+.qc-split-heading .qc-section-heading {
+  margin: 0;
+}
+.qc-split-heading > p {
+  max-width: 355px;
+  padding-bottom: 3px;
+}
+.qc-proof-strip {
+  margin: 0 var(--qc-gutter);
+  padding: 34px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-block: 1px solid hsl(var(--line));
+}
+.qc-proof-strip > div {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  justify-content: center;
+  border-right: 1px solid hsl(var(--line));
+}
+.qc-proof-strip > div:last-child {
+  border: 0;
+}
+.qc-proof-strip strong {
+  font-size: 31px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+.qc-proof-strip span {
+  color: hsl(var(--ink-soft));
+  font-size: 11px;
+  line-height: 1.6;
+}
+.qc-segmented {
+  display: inline-flex;
+  padding: 4px;
+  gap: 3px;
+  border-radius: 8px;
+  background: hsl(var(--ink) / 0.045);
+}
+.qc-segmented button {
+  padding: 10px 14px;
+  min-height: 36px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: hsl(var(--ink-soft));
+  white-space: nowrap;
+}
+.qc-segmented button[aria-pressed='true'] {
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  box-shadow: 0 1px 4px hsl(var(--ink) / 0.07);
+}
+.qc-closing {
+  position: relative;
+  text-align: center;
+  padding: 115px var(--qc-gutter) 95px;
+  border-top: 1px solid hsl(var(--line));
+  background: hsl(var(--accent-soft));
+  overflow: hidden;
+}
+.qc-closing h2 {
+  font-size: clamp(60px, 7.5vw, 108px);
+}
+.qc-closing .qc-button {
+  margin-top: 30px;
+}
+.qc-closing-mark {
+  position: absolute;
+  right: -5%;
+  bottom: -20%;
+  width: 420px;
+  transform: rotate(-15deg);
+  color: hsl(var(--accent) / 0.08);
+  pointer-events: none;
+}
+.qc-closing-mark svg {
+  width: 100%;
+  height: auto;
+}
+.qc-footer {
+  padding: 30px var(--qc-gutter);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 10px;
+  color: hsl(var(--ink-soft));
+}
+.qc-fineprint {
+  font-size: 11px !important;
+  line-height: 1.6 !important;
+}
+.qc-public {
+  padding-bottom: 0;
+}
+
+.qc-story-hero {
+  text-align: center;
+  padding: 85px var(--qc-gutter) 70px;
+  background: radial-gradient(ellipse at 50% 68%, hsl(var(--accent) / 0.06), transparent 63%);
+}
+.qc-story-hero > p {
+  margin: 26px auto;
+  max-width: 470px;
+  font-size: 16px;
+}
+.qc-schedule-section {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: center;
+  gap: 70px;
+  background: hsl(var(--ink) / 0.025);
+  border-block: 1px solid hsl(var(--line));
+}
+.qc-schedule-section .qc-section-heading {
+  margin-bottom: 24px;
+}
+.qc-schedule-section > div > p {
+  font-size: 14px;
+}
+.qc-feature-points {
+  display: grid;
+  gap: 18px;
+  margin-top: 30px;
+}
+.qc-feature-points span {
+  font-size: 12px;
+  display: flex;
+  gap: 16px;
+}

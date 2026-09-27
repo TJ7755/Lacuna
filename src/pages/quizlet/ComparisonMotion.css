@@ -1,0 +1,77 @@
+.qc-page main {
+  animation: qc-enter 0.45s both;
+}
+.qc-tour-panel {
+  animation: qc-enter 0.35s both;
+}
+.qc-timeline-draw {
+  stroke-dasharray: 800;
+  animation: qc-draw 5s ease-in-out infinite;
+}
+@keyframes qc-enter {
+  from {
+    opacity: 0.2;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes qc-draw {
+  0% {
+    stroke-dashoffset: 800;
+  }
+  70%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes qc-packet {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(49px);
+  }
+}
+.qc-paused *,
+.qc-paused *::after {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .qc-page *,
+  .qc-page *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (max-width: 1100px) {
+  .qc-page {
+    --qc-gutter: 5vw;
+  }
+  .qc-schedule-section {
+    gap: 35px;
+  }
+  .qc-exam-controls {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .qc-access-grid {
+    gap: 15px;
+  }
+  .qc-cost-panel,
+  .qc-offline-panel {
+    padding: 26px;
+  }
+  .qc-offline-header {
+    flex-wrap: wrap;
+  }
+  .qc-portability {
+    gap: 30px;
+  }
+  .qc-fit-guide article {
+    padding: 30px;
+  }
+}
