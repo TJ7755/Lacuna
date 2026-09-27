@@ -202,6 +202,7 @@ const mockSummary: CourseSummary = {
 };
 
 beforeEach(() => {
+  Reflect.deleteProperty(window, 'electronAPI');
   mockNotify.mockClear();
   vi.mocked(importSharePayload).mockClear();
   vi.mocked(downloadTextFile).mockClear();
@@ -435,7 +436,8 @@ describe('SharePage', () => {
     expect(screen.getByRole('button', { name: 'Create share link' })).not.toHaveClass('ring-accent');
   });
 
-  it('creates a share link for the selected course', async () => {
+  it.each([false, true])('creates a share link for the selected course (desktop: %s)', async (desktop) => {
+    Object.defineProperty(window, 'electronAPI', { configurable: true, value: { isElectron: desktop } });
     const shareId = 'a'.repeat(32);
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
@@ -447,7 +449,7 @@ describe('SharePage', () => {
     await screen.findByText('Share link · revision 1');
     expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id);
     expect(screen.getByLabelText('Share link')).toHaveValue(
-      `${window.location.origin}/#/s/${shareId}`,
+      `${desktop ? 'https://getlacuna.app' : window.location.origin}/#/s/${shareId}`,
     );
     expect(
       screen.getByText(/Send the link itself, or just the code after the final slash/),

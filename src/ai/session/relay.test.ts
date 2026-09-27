@@ -60,7 +60,7 @@ describe('relay AI session connection lifecycle', () => {
       error: {
         kind: 'unavailable',
         message:
-          'Lacuna could not reach the relay. Check that this network permits lacuna-relay.vercel.app.',
+          'Lacuna could not reach the relay. Check that this network permits relay.getlacuna.app.',
       },
     });
   });

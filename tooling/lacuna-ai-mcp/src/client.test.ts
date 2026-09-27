@@ -1047,3 +1047,7 @@ describe('TerminalAiClient', () => {
     expect(now).toBe(1_000);
   });
 });
+
+it('uses the custom relay domain by default', () => {
+  expect(DEFAULT_AI_RELAY_URL).toBe('https://relay.getlacuna.app');
+});

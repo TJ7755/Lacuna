@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { createHostedTransport, HOSTED_SERVICE_ORIGIN } from './hostedTransport';
+import { createHostedTransport } from './hostedTransport';
 
 afterEach(() => {
   Reflect.deleteProperty(window, 'electronAPI');
@@ -30,6 +30,6 @@ it('uses the deployed service from Lacuna’s packaged Electron renderer', async
 
   await createHostedTransport(fetcher as typeof fetch).exchange('test-access-code');
 
-  expect(fetcher).toHaveBeenCalledWith(`${HOSTED_SERVICE_ORIGIN}/api/ai/session`,
+  expect(fetcher).toHaveBeenCalledWith('https://getlacuna.app/api/ai/session',
     expect.objectContaining({ method: 'POST' }));
 });

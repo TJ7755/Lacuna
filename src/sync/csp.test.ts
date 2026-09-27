@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { allowRelayConnect } from './csp';
 
@@ -47,4 +48,12 @@ describe('allowRelayConnect', () => {
     metaElement().remove();
     expect(() => allowRelayConnect('https://relay.example')).not.toThrow();
   });
+});
+
+it('ships web access to the new relay and retained legacy relay', () => {
+  const html = readFileSync('index.html', 'utf8');
+  const connect = /connect-src ([^;]+);/.exec(html)?.[1].split(/\s+/);
+  expect(connect).toEqual(expect.arrayContaining([
+    'https://relay.getlacuna.app', 'https://lacuna-relay.vercel.app', 'https://getlacuna.app',
+  ]));
 });

@@ -1,4 +1,4 @@
-export const DEFAULT_RELAY_URL = 'https://lacuna-relay.vercel.app';
+export const DEFAULT_RELAY_URL = 'https://relay.getlacuna.app';
 export const MIN_RECOVERY_PASSPHRASE_LENGTH = 16;
 
 /** Return a user-facing validation message, or null when the passphrase is acceptable. */

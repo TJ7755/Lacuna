@@ -52,6 +52,11 @@ failures look impossible. When e2e results defy the current source, check
 
 ## Share-link state
 
+Keep `lacuna-relay.vercel.app` serving the same relay as `relay.getlacuna.app`, without
+redirects: saved pairings and share write credentials contain the original URL. New
+defaults do not rewrite those records. Browser study data also stays with its original
+app origin; changing DNS does not move IndexedDB data.
+
 `publishCourse` rebuilds `Course.distribution` from scratch: any new field on
 that object must be carried over there, or republishing wipes it (this already
 bit `shareId`). Teacher share write tokens live in sync state, never on the

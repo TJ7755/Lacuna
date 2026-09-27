@@ -12,7 +12,7 @@ class FakeAiClient implements TerminalAiToolClient {
   readonly connect = vi.fn(
     async (_code: string, relayUrl: string | undefined, _identity: AiClientIdentity) => ({
       sessionId: 'ABCDEFGHJKMNPQRSTVW2',
-      relayUrl: relayUrl ?? 'https://lacuna-relay.vercel.app',
+      relayUrl: relayUrl ?? 'https://relay.getlacuna.app',
       expiresAt: 90_000,
       [FakeAiClient.connectionAuth]: { terminalToken: 'must-not-leak' },
     }),
@@ -75,7 +75,7 @@ describe('Lacuna AI MCP server', () => {
     expect(result.isError).not.toBe(true);
     expect(result.structuredContent).toEqual({
       sessionId: 'ABCDEFGHJKMNPQRSTVW2',
-      relayUrl: 'https://lacuna-relay.vercel.app',
+      relayUrl: 'https://relay.getlacuna.app',
       expiresAt: 90_000,
     });
     expect(Object.getOwnPropertySymbols(result.structuredContent ?? {})).toHaveLength(0);

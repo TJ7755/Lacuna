@@ -51,11 +51,17 @@ join either by scanning an explicit QR capability (with a copyable `LACUNA-SYNC-
 it) or by entering the relay URL, channel id and recovery passphrase. The QR carries the relay
 origin, channel id, write token and channel key; the mint secret is never persisted or included.
 Recovery passphrases must contain at least 16 characters. The default relay
-(`https://lacuna-relay.vercel.app`) mints without a mint secret (rate-limited 10/hour/IP, 429);
+(`https://relay.getlacuna.app`) mints without a mint secret (rate-limited 10/hour/IP, 429);
 a private relay still requires its `RELAY_MINT_SECRET` behind the Advanced disclosure. Settings
 exposes last successful sync, encrypted/plaintext snapshot sizes, the last error, a deliberate Sync
 now action, local unpairing and a separately confirmed channel purge. The dashboard shows a
 `Synced … · Open sync` pill polling the same state.
+
+The custom relay domain aliases the original Vercel relay and Blob store. Saved pairings
+and share write credentials retain their original relay URL; the legacy endpoint stays
+available without redirecting API traffic. Course share codes identify the same published
+objects under either hostname. Desktop share URLs use `https://getlacuna.app/#/s/<code>`;
+web share URLs use the current origin, including preview deployments.
 
 P7 makes sync automatic without re-asking the passphrase. `src/sync/triggers.ts`
 (`installSyncTriggers` from `src/App.tsx`) debounces and single-flights a pull on window focus /

@@ -6,6 +6,14 @@ Lacuna is a local-first revision app built around FSRS-6. Organise material into
 lessons and notes, then practise recall Cards towards an exam date. A separate Questions
 mode supports automatically marked application problems with independent evidence and scheduling.
 
+Use Lacuna at [getlacuna.app](https://getlacuna.app). Browser study data is local to each
+origin: moving from the previous Vercel address requires exporting a full backup there
+and importing it at the new address. The previous address remains available.
+
+Device sync, published course links and external web AI use
+`https://relay.getlacuna.app`. Desktop share links open `https://getlacuna.app`;
+share codes are unchanged. Existing saved sync pairings keep their relay address.
+
 Study data lives in IndexedDB without an account. Optional device sync and external web AI use
 encrypted relay payloads; external desktop AI connects through a local companion. Built-in AI sends
 selected conversation and tool content to a hosted model. Export a full JSON backup from

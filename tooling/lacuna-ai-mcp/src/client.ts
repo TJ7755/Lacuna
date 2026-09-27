@@ -10,7 +10,7 @@ import {
   type RelayToolResponse,
 } from '../../../src/ai/relayProtocol.js';
 
-export const DEFAULT_AI_RELAY_URL = 'https://lacuna-relay.vercel.app';
+export const DEFAULT_AI_RELAY_URL = 'https://relay.getlacuna.app';
 const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
 const APPROVAL_RETRY_INTERVAL_MS = 500;
