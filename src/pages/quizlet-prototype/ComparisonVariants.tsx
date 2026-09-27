@@ -1,3 +1,4 @@
+import { TeacherSection } from './TeacherSection';
 import { NativeFlashcardDemo } from './NativeFlashcardDemo';
 import { ExamReadinessHistory } from './ExamReadinessHistory';
 import { ExamReadiness, ExamSteps } from './ExamReadiness';
@@ -85,6 +86,7 @@ export function ProductStory() {
         <NativeFlashcardDemo />
       </section>
       <ComparisonSection visual />
+      <TeacherSection />
       <AccessSection />
       <MigrationSection />
       <FitSection />

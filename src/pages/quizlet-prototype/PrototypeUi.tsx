@@ -61,7 +61,7 @@ export function Jump({
     </button>
   );
 }
-export function Header() {
+export function Header({ teachers = false }: { teachers?: boolean }) {
   return (
     <header className="qc-nav">
       <Link to="/welcome" className="qc-brand">
@@ -71,7 +71,7 @@ export function Header() {
       <nav aria-label="Page sections">
         <Jump to="compare">Compare</Jump>
         <Jump to="inside">Inside Lacuna</Jump>
-        <Jump to="switch">Switching</Jump>
+        {teachers ? <Jump to="teachers">For teachers</Jump> : <Jump to="switch">Switching</Jump>}
       </nav>
       <Cta>Open Lacuna</Cta>
     </header>

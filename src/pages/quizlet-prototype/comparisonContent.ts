@@ -1,4 +1,8 @@
 export const sources = {
+  folders: {
+    label: 'Folders',
+    url: 'https://help.quizlet.com/hc/en-ca/articles/360030986151-Organizing-study-content-with-folders',
+  },
   repetition: {
     label: 'Spaced repetition',
     url: 'https://help.quizlet.com/hc/en-au/articles/48324742264077-Studying-with-Spaced-Repetition',

@@ -140,3 +140,57 @@ it('puts exam scheduling first in A’s comparison and keeps evidence available'
   expect(within(table).getByText('Bringing your sets')).toBeInTheDocument();
   expect(within(table).queryByText('Study direction')).not.toBeInTheDocument();
 });
+
+it('shows course structure and memory diagrams in A without implying Quizlet lacks recall tracking', () => {
+  open('A');
+  const table = screen.getByRole('table', { name: 'Lacuna and Quizlet feature comparison' });
+  expect(within(table).getAllByRole('rowheader')[1]).toHaveTextContent('Organising material');
+  expect(
+    within(table).getByRole('img', { name: 'Lacuna: course, lessons, notes, cards and questions' }),
+  ).toHaveTextContent('Questions');
+  expect(
+    within(table).getByRole('img', { name: 'Quizlet: folders organise sets and Study Guides' }),
+  ).toHaveTextContent('folder');
+  expect(
+    within(table).getByRole('img', {
+      name: 'Lacuna: review history updates a card’s memory model and next review',
+    }),
+  ).toHaveTextContent('Memory model');
+  expect(
+    within(table).getByRole('img', { name: 'Quizlet: recall ratings inform scheduled reviews' }),
+  ).toHaveTextContent('Recall rating');
+  fireEvent.click(screen.getByRole('button', { name: 'Moving over' }));
+  expect(
+    within(table).getByRole('img', { name: 'Lacuna: imported cards build a new review history' }),
+  ).toBeInTheDocument();
+  expect(
+    within(table).getByRole('img', {
+      name: 'Quizlet: text export includes terms and definitions, not review history',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    within(table).queryByRole('img', {
+      name: 'Lacuna: course, lessons, notes, cards and questions',
+    }),
+  ).not.toBeInTheDocument();
+});
+
+it('explains account-free course sharing for teachers in A', () => {
+  open('A');
+  const teachers = screen.getByRole('region', {
+    name: 'For teachers. A course link, not a class of logins.',
+  });
+  expect(within(teachers).getByText('No teacher or student accounts')).toBeInTheDocument();
+  expect(
+    within(teachers).getByRole('img', {
+      name: 'One teacher shares a course link; each student keeps their own study progress',
+    }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(teachers).getByRole('button', { name: 'Course updates' }));
+  expect(within(teachers).getByText('Republish to the same link')).toBeInTheDocument();
+  expect(within(teachers).getByText('Existing review history is preserved')).toBeInTheDocument();
+  expect(within(teachers).getByRole('link', { name: 'Open course sharing' })).toHaveAttribute(
+    'href',
+    '/share',
+  );
+});

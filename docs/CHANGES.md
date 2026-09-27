@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Expanded comparison A with paired course-structure, memory and import-history
+  diagrams. Added a teachers section demonstrating account-free course sharing,
+  individual student progress and updates through the same course link.
+
 - Reworked comparison prototype A with an exam-first visual comparison, sticky
   product headings, category filters and expandable evidence. Replaced its imitation
   practice panel with the production flashcard renderer and controls for recall,

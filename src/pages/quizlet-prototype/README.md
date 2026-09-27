@@ -32,6 +32,9 @@ A embeds the production FlipCard, StudyControls and StudyCardTransition componen
 with example recall, cloze, sequence and typed-answer cards. Answers stay in local
 component state; no study records are written. Its comparison puts exam scheduling
 first, keeps product headings visible and reveals source links with expanded details.
+Paired diagrams explain course/lesson structure, memory tracking and imported review
+history. The teachers section illustrates account-free sharing and course updates;
+its toggle is local and does not publish a course.
 B and C retain their earlier illustrative practice panels.
 
 Practice content is illustrative. The hero forecast uses the real memory model

@@ -1,0 +1,215 @@
+.qc-feature-diagram {
+  margin-top: 26px;
+  color: hsl(var(--ink-soft));
+  font-size: 12px;
+  line-height: 1.4;
+}
+.qc-feature-diagram-lacuna {
+  color: hsl(var(--accent-ink));
+}
+.qc-feature-diagram strong {
+  font-weight: 500;
+}
+.qc-feature-diagram small {
+  font-size: 10px;
+  font-weight: 400;
+  color: hsl(var(--ink-soft));
+}
+.qc-diagram-root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid hsl(var(--line));
+  padding-bottom: 12px;
+  font-weight: 500;
+}
+.qc-diagram-root svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.qc-diagram-branches {
+  margin: 0 0 0 10px;
+  padding: 16px 0 0 20px;
+  border-left: 1px solid hsl(var(--line-strong));
+  display: grid;
+  gap: 14px;
+}
+.qc-diagram-branches > div {
+  position: relative;
+}
+.qc-diagram-branches > div::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: -21px;
+  width: 20px;
+  border-top: 1px solid hsl(var(--line-strong));
+}
+.qc-diagram-lesson,
+.qc-diagram-set {
+  border: 1px solid hsl(var(--line));
+  background: hsl(var(--surface));
+  border-radius: 8px;
+  padding: 12px;
+}
+.qc-diagram-lesson > strong {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px;
+}
+.qc-diagram-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid hsl(var(--line));
+  font-size: 10px;
+}
+.qc-diagram-set {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.qc-diagram-set strong small {
+  display: block;
+  margin-top: 3px;
+}
+.qc-diagram-stack,
+.qc-diagram-page {
+  display: block;
+  width: 18px;
+  height: 23px;
+  flex: 0 0 18px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  position: relative;
+  opacity: 0.7;
+}
+.qc-diagram-stack {
+  box-shadow:
+    -3px 3px 0 hsl(var(--surface)),
+    -4px 4px 0 currentColor;
+}
+.qc-diagram-stack::after,
+.qc-diagram-page::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 4px;
+  width: 8px;
+  border-top: 1px solid currentColor;
+}
+.qc-diagram-page::after {
+  height: 6px;
+  border-bottom: 1px solid currentColor;
+}
+.qc-diagram-history {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.qc-diagram-history svg {
+  width: 48%;
+  min-width: 90px;
+  height: 28px;
+}
+.qc-diagram-down {
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+  padding: 8px 0;
+  opacity: 0.6;
+}
+.qc-diagram-model {
+  text-align: center;
+  border: 1px solid hsl(var(--line));
+  border-radius: 8px;
+  padding: 15px 8px;
+  background: hsl(var(--surface));
+}
+.qc-diagram-model span,
+.qc-diagram-transfer-end span {
+  display: block;
+  margin-top: 4px;
+  color: hsl(var(--ink-soft));
+  font-size: 10px;
+}
+.qc-diagram-next {
+  text-align: center;
+  font-size: 11px;
+}
+.qc-diagram-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: hsl(var(--surface));
+  padding: 18px 10px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 8px;
+}
+.qc-diagram-file small {
+  display: block;
+  margin-top: 4px;
+}
+.qc-diagram-transfer-end {
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .qc-feature-diagram {
+    font-size: 11px;
+    margin-top: 18px;
+  }
+  .qc-diagram-branches {
+    margin-left: 4px;
+    padding-left: 10px;
+    gap: 12px;
+  }
+  .qc-diagram-branches > div::before {
+    left: -11px;
+    width: 10px;
+  }
+  .qc-diagram-lesson,
+  .qc-diagram-set {
+    padding: 10px 8px;
+  }
+  .qc-diagram-lesson > strong {
+    display: block;
+  }
+  .qc-diagram-lesson > strong small {
+    display: block;
+    margin-top: 2px;
+  }
+  .qc-diagram-set {
+    gap: 8px;
+  }
+  .qc-diagram-resources {
+    gap: 5px;
+    flex-direction: column;
+  }
+  .qc-diagram-history svg {
+    width: 100%;
+  }
+  .qc-diagram-file {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+.qc-diagram-course-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 16px;
+  border-top: 1px solid hsl(var(--line));
+  padding-top: 12px;
+}
+.qc-diagram-course-progress span {
+  font-size: 10px;
+  color: hsl(var(--ink-soft));
+}

@@ -61,7 +61,7 @@ export default function QuizletPrototype() {
       ref={root}
       className={`qc-page qc-variant-${variants[index]} ${paused ? 'qc-paused' : ''}`}
     >
-      <Header />
+      <Header teachers={index === 0} />
       <main key={index}>
         {index === 0 ? <ProductStory /> : index === 1 ? <DecisionGuide /> : <InteractiveExplorer />}
       </main>

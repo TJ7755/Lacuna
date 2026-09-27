@@ -7,6 +7,8 @@ round explores three complete journeys, keeping copy short within each section.
 
 Quizlet primary sources:
 
+- [Folders](https://help.quizlet.com/hc/en-ca/articles/360030986151-Organizing-study-content-with-folders): groups study content, supports tags and can be added to classes. The structure diagram must not imply that Quizlet only has isolated sets.
+
 - [Spaced repetition](https://help.quizlet.com/hc/en-au/articles/48324742264077-Studying-with-Spaced-Repetition): recall ratings, scheduled returns, website availability.
 - [Learn](https://help.quizlet.com/hc/en-au/articles/360030986971-Studying-with-Learn): personalised paths, question types, account requirement, subscription and classroom exceptions.
 - [Study modes](https://help.quizlet.com/hc/en-au/articles/360030841732-Studying-on-Quizlet): flashcards, diagrams, AI practice tests, Study Guides, Expert Solutions and classroom games.
@@ -32,3 +34,15 @@ view, experiment with recall formats and a live import preview, then inspect evi
 All three use the same verified facts, with different layouts and content ordering.
 Screenshots show the current running app's built-in example course, without fabricated
 review outcomes. Other diagrams are labelled illustrations, not predictions.
+
+## Course continuity and teacher sharing
+
+A illustrates course-wide lesson and review tracking, verified against
+`src/pages/CourseAnalytics.tsx` and `src/state/useCourseData.ts`. It does not claim
+that Quizlet has no memory tracking or no way to study multiple sets.
+
+Teacher sharing follows `src/shareLinks/publish.ts`, `src/pages/SharePage.tsx`,
+`src/db/share.ts` and `src/db/mergeImport.ts`: links and QR codes distribute course
+material, excluding personal scheduling/history. Republishing reuses the link;
+updates to retained cards preserve student review state. Large payloads use course
+files. Sharing does not provide a teacher gradebook.
