@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Suppressed the global keyboard-focus indicator on the study card container, which
+  is focused programmatically as a return point and had shown an orange frame
+  around the whole study column.
 - Prerendered the homepage landing content into `dist/index.html` at build time,
   with canonical/social metadata, so crawlers see the hero, product sections and
   links without JavaScript. First-visit browsers hydrate the same landing tree

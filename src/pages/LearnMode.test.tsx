@@ -120,6 +120,26 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
   });
 
+  it('does not paint a focus ring on the programmatic study container', async () => {
+    const course = await createCourse('Focus ring');
+    const lesson = await createLesson(course.id, 'Focus lesson');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Focus question', 'Answer');
+    render(
+      <ThemeProvider><ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+          <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
+        </MemoryRouter>
+      </ToastProvider></ThemeProvider>,
+    );
+    expect(await findStudyFaceText('Focus question')).toBeInTheDocument();
+    // The study container is focused programmatically as a return point after
+    // overlays close, so it must suppress the global :focus-visible indicator.
+    // Otherwise an orange frame appears around the whole study column.
+    expect(screen.getByRole('main', { name: 'Study card' })).toHaveClass(
+      'focus-visible:shadow-none',
+    );
+  });
+
   beforeEach(async () => {
     await Promise.all([
       db.courses.clear(),
