@@ -12,7 +12,7 @@ assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows r
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
 const baseline = path.resolve(process.argv[2]);
 assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'),
-  '89f19b6830c6d079c5d1684b90b1cfe97d59e260ecdfeaecf4bb4689a3f2d25598');
+  '89f19b6830c6d079c5d1684b90cfe97d59e260ecdfeaecf4bb4689a3f2d25598');
 const root = await mkdtemp(path.join(tmpdir(), 'lacuna-release-upgrade-'));
 const directory = path.join(root, 'application');
 const profile = path.join(root, 'profile');
