@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Practice evidence now shows current concept coverage, missing evidence, unresolved marking and
+  attempt status. Changed question/source text, response options or marking criteria cannot reuse
+  historical marks as current coverage. Fully unresolved marks display “Not marked yet”; totals
+  include resolved marks only. An unfinished attempt offers a direct resume/marking action.
+
 - Question Set authors can paste or drop a diagram into the question workspace, describe it and
   add an optional caption. Images and their prompt references use the existing atomic draft save;
   selection previews remain local until added, and ordinary text paste remains unchanged.

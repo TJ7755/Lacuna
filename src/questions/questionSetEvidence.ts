@@ -18,6 +18,11 @@ export interface QuestionSetEvidencePartition {
   assisted: number;
   marks: EvidenceMarks;
   dimensions: Record<AssessmentDimension, EvidenceMarks>;
+  currentTargetEvidence: {
+    markedConceptIds: string[];
+    unresolvedConceptIds: string[];
+    missingConceptIds: string[];
+  };
 }
 
 export interface QuestionSetEvidenceBySet {
@@ -59,17 +64,35 @@ function emptyPartition(): QuestionSetEvidencePartition {
     dimensions: Object.fromEntries(
       DIMENSIONS.map((dimension) => [dimension, emptyMarks()]),
     ) as Record<AssessmentDimension, EvidenceMarks>,
+    currentTargetEvidence: {
+      markedConceptIds: [],
+      unresolvedConceptIds: [],
+      missingConceptIds: [],
+    },
   };
 }
 
-function answersIn(set: QuestionSetRecord): Array<{ nodeId: string; answer: QuestionAnswer }> {
+function answersIn(
+  set: QuestionSetRecord,
+): Array<{ nodeId: string; answer: QuestionAnswer; prompts: string[] }> {
   return set.questions.flatMap((question) => {
-    const answers: Array<{ nodeId: string; answer: QuestionAnswer }> = [];
-    if (question.answer) answers.push({ nodeId: question.id, answer: question.answer });
+    const answers: Array<{ nodeId: string; answer: QuestionAnswer; prompts: string[] }> = [];
+    if (question.answer)
+      answers.push({ nodeId: question.id, answer: question.answer, prompts: [question.prompt] });
     for (const part of question.parts) {
-      if (part.answer) answers.push({ nodeId: part.id, answer: part.answer });
+      if (part.answer)
+        answers.push({
+          nodeId: part.id,
+          answer: part.answer,
+          prompts: [question.prompt, part.prompt],
+        });
       for (const subpart of part.subparts) {
-        if (subpart.answer) answers.push({ nodeId: subpart.id, answer: subpart.answer });
+        if (subpart.answer)
+          answers.push({
+            nodeId: subpart.id,
+            answer: subpart.answer,
+            prompts: [question.prompt, part.prompt, subpart.prompt],
+          });
       }
     }
     return answers;
@@ -117,6 +140,54 @@ function addCoverage(set: QuestionSetRecord, targets: Set<string>, prerequisites
   }
 }
 
+function addCurrentTargetEvidence(
+  partition: QuestionSetEvidencePartition,
+  current: QuestionSetRecord | undefined,
+  attempts: readonly QuestionSetAttemptRecord[],
+) {
+  if (!current) return;
+  const targets = new Set<string>();
+  const marked = new Set<string>();
+  const unresolved = new Set<string>();
+  const currentAnswers = new Map(answersIn(current).map((entry) => [entry.nodeId, entry]));
+  for (const { answer } of currentAnswers.values()) {
+    for (const allocation of answer.allocations) {
+      allocation.targetConceptIds.forEach((id) => targets.add(id));
+    }
+  }
+  for (const attempt of attempts) {
+    const submitted = new Set(
+      attempt.responses.filter((response) => response.submitted).map((response) => response.nodeId),
+    );
+    const decisions = new Map(
+      attempt.decisions.map((decision) => [decision.allocationId, decision]),
+    );
+    for (const { nodeId, answer, prompts } of answersIn(attempt.receipt)) {
+      if (!submitted.has(nodeId)) continue;
+      const currentEntry = currentAnswers.get(nodeId);
+      if (!currentEntry || JSON.stringify(prompts) !== JSON.stringify(currentEntry.prompts))
+        continue;
+      const currentAnswer = currentEntry.answer;
+      if (JSON.stringify(answer.response) !== JSON.stringify(currentAnswer.response)) continue;
+      for (const allocation of answer.allocations) {
+        const currentAllocation = currentAnswer.allocations.find(
+          (item) => item.id === allocation.id,
+        );
+        if (!currentAllocation || JSON.stringify(allocation) !== JSON.stringify(currentAllocation))
+          continue;
+        const destination =
+          decisions.get(allocation.id)?.status === 'awarded' ? marked : unresolved;
+        allocation.targetConceptIds.forEach((id) => destination.add(id));
+      }
+    }
+  }
+  partition.currentTargetEvidence = {
+    markedConceptIds: [...marked].sort(),
+    unresolvedConceptIds: [...unresolved].filter((id) => !marked.has(id)).sort(),
+    missingConceptIds: [...targets].filter((id) => !marked.has(id) && !unresolved.has(id)).sort(),
+  };
+}
+
 /** Pure descriptive evidence. It never projects marks into Card scheduling state. */
 export function summariseQuestionSetEvidence(input: {
   courseId: string;
@@ -152,6 +223,10 @@ export function summariseQuestionSetEvidence(input: {
         addAttempt(result.all, attempt);
         addAttempt(index === 0 ? result.firstRecorded : result.repeated, attempt);
       });
+      const current = currentById.get(questionSetId);
+      addCurrentTargetEvidence(result.all, current, rows);
+      addCurrentTargetEvidence(result.firstRecorded, current, rows.slice(0, 1));
+      addCurrentTargetEvidence(result.repeated, current, rows.slice(1));
       return result;
     });
   return {

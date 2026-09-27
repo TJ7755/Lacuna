@@ -745,3 +745,21 @@ the browser; OS clipboard and physical drag hardware were not exercised.
 
 - [Narrow image selection and caption](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhvpy7-66ff2f22.png)
 - [Desktop saved caption](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhwar2-dc0f67c2.png)
+
+
+## Evidence completion gate — 27 September 2026
+
+Expanded the existing disclosure with current-target concept coverage (marked, unresolved,
+missing), attempt states and an evidence-supported resume/marking action. Concepts are counted
+once. Awarded zero counts as recorded evidence, never as mastery. Current coverage requires
+matching leaf and ancestor prompt text, response options and allocation content; old receipts
+remain visible as historical marks but cannot fill changed-content gaps. Totals use resolved
+marks only; fully unmarked partitions say “Not marked yet”. No FSRS mutation or forecast.
+
+Regression tests failed for missing coverage, changed prompt context and hidden no-attempt
+state before implementation. 12 evidence model/UI tests pass; web typecheck and focused lint
+pass. Browser `127.0.0.1:5183`, 1280×800 and 390×844: expanded coverage, changed all/repeated
+filters, verified unresolved evidence, and followed Resume attempt back to the saved response.
+No horizontal overflow. Evidence remains collapsed by default.
+
+- [Desktop evidence](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhz1d2-0f3ef213.png)
