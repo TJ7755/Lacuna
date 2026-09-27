@@ -22,6 +22,7 @@ import {
 } from '../course/assessmentPractice';
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
+import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
@@ -337,10 +338,11 @@ export function CoursePath() {
   );
 
   // Single-lesson branch (addendum E): render the lesson view directly rather than
-  // showing a one-item path. No redirect — this is a rendering branch. The
+  // showing a one-item path. A question-set activity makes this a multi-step path.
+  // No redirect — this is a rendering branch. The
   // course header (and its review entry point) is bypassed here, so a pending
   // merge review gets the same entry above the lesson.
-  if (lessons.length === 1) {
+  if (lessons.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set')) {
     return (
       <>
         {pendingUpdate && (
@@ -538,6 +540,7 @@ export function CoursePath() {
               <PlusIcon width={16} height={16} />
               Add practice
             </Button>
+            <AddQuestionSetPractice courseId={course.id} afterLessonId={lastLesson?.id} />
             <Button
               variant="secondary"
               size="sm"

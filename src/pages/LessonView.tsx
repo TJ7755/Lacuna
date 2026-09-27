@@ -1,3 +1,4 @@
+import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. The
 // second half renders in one of two workspace modes, resolved by
@@ -205,6 +206,7 @@ export function LessonView({
               Add practice
             </Button>
           )}
+          <AddQuestionSetPractice courseId={courseId} afterLessonId={lesson.id} />
           {onAddCheckpoint && (
             <Button variant="secondary" size="sm" onClick={onAddCheckpoint}>
               <PlusIcon width={16} height={16} />

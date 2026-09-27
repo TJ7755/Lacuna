@@ -84,7 +84,7 @@ describe('course files with authored Question Sets', () => {
     await startQuestionSetAttempt(sourceSet.id, 'paper', 110);
 
     const file = await decodeCourseFile(await buildCourseFile(course.id));
-    if (file.payload.v !== 4) throw new Error('Expected a v4 course payload.');
+    if (file.payload.v !== 5) throw new Error('Expected a v5 course payload.');
     expect(file.payload.questionSets).toHaveLength(1);
     expect(file.assets.map((asset) => asset.hash)).toEqual([image.hash]);
 

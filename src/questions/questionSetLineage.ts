@@ -1,9 +1,10 @@
 import { db } from '../db/schema';
-import type { SharePayloadV4 } from '../db/share';
+import type { SharePayloadV4, SharePayloadV5 } from '../db/share';
 import type { LineageIdMapping } from '../db/types';
 import { parseQuestionSetRecord } from './questionSetCodec';
+import { parseQuestionSetPracticeNode } from '../db/questionSetPracticeNode';
 
-type QuestionSetLineagePayload = SharePayloadV4 & { li: string; rv: number };
+type QuestionSetLineagePayload = (SharePayloadV4 | SharePayloadV5) & { li: string; rv: number };
 
 export async function applyLineageQuestionSets(
   payload: QuestionSetLineagePayload,
@@ -100,5 +101,71 @@ export async function applyLineageQuestionSets(
   mapping.questionSetIds = [...incomingIds];
   mapping.questionSetRevisions = Object.fromEntries(
     payload.questionSets.map((set) => [set.id, set.contentRevisionId]),
+  );
+}
+
+/** Apply authored path placement with the same adopted IDs and local-edit guard as sets. */
+export async function applyLineageQuestionSetPracticeNodes(
+  payload: SharePayloadV5 & { li: string; rv: number },
+  courseId: string,
+  mapping: LineageIdMapping,
+): Promise<void> {
+  const incoming = payload.questionSetPracticeNodes;
+  const lessonIds = new Set(payload.lessons.flatMap((lesson) => lesson.i ? [lesson.i] : []));
+  const setIds = new Set(payload.questionSets.map((set) => set.id));
+  const previousIds = new Set(mapping.questionSetPracticeNodeIds ?? []);
+  const previousSnapshots = mapping.questionSetPracticeNodeSnapshots ?? {};
+  const snapshotOf = (node: { questionSetId: string; afterLessonId: string; name: string }) => ({
+    questionSetId: node.questionSetId,
+    afterLessonId: node.afterLessonId,
+    name: node.name,
+  });
+  const unchanged = (node: { questionSetId?: string; afterLessonId?: string; name: string }, id: string) =>
+    JSON.stringify(snapshotOf({
+      questionSetId: node.questionSetId ?? '',
+      afterLessonId: node.afterLessonId ?? '',
+      name: node.name,
+    })) === JSON.stringify(previousSnapshots[id]);
+  const incomingIds = new Set(incoming.map((node) => node.id));
+  for (const id of previousIds) {
+    if (incomingIds.has(id)) continue;
+    const existing = await db.practiceNodes.get(id);
+    if (existing && !unchanged(existing, id)) {
+      throw new Error('A locally edited Question Set activity conflicts with this published update.');
+    }
+    if (existing) {
+      await db.practiceNodes.delete(id);
+      await db.tombstones.put({
+        table: 'practiceNodes', recordId: id,
+        deletedAt: Math.max(payload.at, existing.updatedAt + 1),
+      });
+    }
+  }
+  for (const raw of incoming) {
+    const node = parseQuestionSetPracticeNode({ ...raw, courseId });
+    if (!lessonIds.has(node.afterLessonId) || !setIds.has(node.questionSetId)) {
+      throw new Error('A shared Question Set activity has a missing Set or Lesson.');
+    }
+    const existing = await db.practiceNodes.get(node.id);
+    const tombstone = await db.tombstones.get(['practiceNodes', node.id]);
+    if (previousIds.has(node.id) && !existing && tombstone) {
+      throw new Error('A locally deleted Question Set activity conflicts with this published update.');
+    }
+    if (existing && existing.courseId !== courseId) {
+      throw new Error('A shared Question Set activity ID belongs to another Course.');
+    }
+    if (existing && (!previousIds.has(node.id) || !unchanged(existing, node.id))) {
+      throw new Error('A locally edited Question Set activity conflicts with this published update.');
+    }
+    await db.practiceNodes.put({
+      ...node,
+      createdAt: existing?.createdAt ?? payload.at,
+      updatedAt: Math.max(payload.at, existing?.updatedAt ?? 0, (tombstone?.deletedAt ?? -1) + 1),
+    });
+    if (tombstone) await db.tombstones.delete(['practiceNodes', node.id]);
+  }
+  mapping.questionSetPracticeNodeIds = [...incomingIds];
+  mapping.questionSetPracticeNodeSnapshots = Object.fromEntries(
+    incoming.map((node) => [node.id, snapshotOf(node)]),
   );
 }

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4 } from './share';
+import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
 import type { Course } from './types';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
@@ -126,6 +126,19 @@ function questionPayloadV4(overrides: Partial<SharePayloadV4> = {}): SharePayloa
         updatedAt: 1_000,
       },
     ],
+    ...overrides,
+  };
+}
+
+function questionPayloadV5(overrides: Partial<SharePayloadV5> = {}): SharePayloadV5 {
+  return {
+    ...questionPayloadV4(),
+    v: 5,
+    questionSetPracticeNodes: [{
+      id: 'activity-quadratics', courseId: 'teacher-course', type: 'question-set',
+      name: 'Practice Qs', questionSetId: 'set-quadratics', afterLessonId: 'lesson-questions',
+      createdAt: 1_000, updatedAt: 1_000,
+    }],
     ...overrides,
   };
 }
@@ -526,6 +539,44 @@ describe('mergeImport: v4 Question Set lineage', () => {
     await mergeLineageUpdate(course.id, questionPayloadV4({ at: 2_000, rv: 2, questionSets: [] }));
     expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
     expect(await db.tombstones.get(['questionSets', 'set-quadratics'])).toBeDefined();
+  });
+});
+
+describe('mergeImport: v5 Question Set path activity lineage', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('adopts placements, applies teacher changes and removes untouched activities', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV5());
+    expect(await db.practiceNodes.get('activity-quadratics')).toMatchObject({
+      courseId: course.id, questionSetId: 'set-quadratics', afterLessonId: 'lesson-questions',
+    });
+    const updated = questionPayloadV5({
+      at: 2_000, rv: 2,
+      questionSetPracticeNodes: [{
+        ...questionPayloadV5().questionSetPracticeNodes[0], name: 'Past paper practice',
+        updatedAt: 2_000,
+      }],
+    });
+    await mergeLineageUpdate(course.id, updated);
+    expect((await db.practiceNodes.get('activity-quadratics'))?.name).toBe('Past paper practice');
+    await mergeLineageUpdate(course.id, questionPayloadV5({
+      at: 3_000, rv: 3, questionSetPracticeNodes: [],
+    }));
+    expect(await db.practiceNodes.get('activity-quadratics')).toBeUndefined();
+    expect(await db.tombstones.get(['practiceNodes', 'activity-quadratics'])).toBeDefined();
+  });
+
+  it('rejects a local placement edit without partial teacher changes', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV5());
+    await db.practiceNodes.update('activity-quadratics', { name: 'Learner edit' });
+    await expect(mergeLineageUpdate(course.id, questionPayloadV5({
+      at: 2_000, rv: 2,
+    }))).rejects.toThrow('locally edited Question Set activity');
+    expect((await db.practiceNodes.get('activity-quadratics'))?.name).toBe('Learner edit');
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
   });
 });
 

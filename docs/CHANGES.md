@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added optional Practice Qs activities anchored after a lesson. Authors choose an existing set
+  and can move or remove the activity without deleting its content or attempts. Compact path
+  nodes reveal progress, exam links and editing on hover or keyboard focus; touch first reveals
+  the details. Question progress remains separate from Card mastery and FSRS.
+- Backup v14 and Course share v5 preserve these activities, including fresh-import identity
+  remapping, published lineage updates, sync, deletion and lesson undo. Shared courses exclude
+  personal attempts; backup readers reject malformed activity rows without throwing.
+
 - Fixed exam deep links opened while the course path is already mounted: the details sheet now
   follows the route query instead of reading it only on initial mount.
 

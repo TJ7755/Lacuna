@@ -189,7 +189,7 @@ describe('mergeSnapshots', () => {
     const b = backup({ exportedAt: 20 });
     const merged = expectPeerProperties(a, b);
     expect(merged.exportedAt).toBe(20);
-    expect(merged.version).toBe(13);
+    expect(merged.version).toBe(14);
     expect(merged.userPerformance).toEqual([]);
   });
 

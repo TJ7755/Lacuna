@@ -61,8 +61,12 @@ import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
 } from '../questions/questionSetMerge';
+import {
+  assertQuestionSetPracticeNodeReferences,
+  parseQuestionSetPracticeNode,
+} from './questionSetPracticeNode';
 
-export const BACKUP_VERSION = 13;
+export const BACKUP_VERSION = 14;
 export const MAX_BACKUP_FILE_BYTES = 200 * 1024 * 1024;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
@@ -152,7 +156,7 @@ export async function exportDatabase(): Promise<BackupFile> {
   ).forEach((hash) => referencedHashes.add(hash));
   const assets = await assetsForBackup([...referencedHashes]);
   return {
-    app: 'lacuna-v13',
+    app: 'lacuna-v14',
     version: BACKUP_VERSION,
     exportedAt: Date.now(),
     cards: projectedCards,
@@ -259,12 +263,27 @@ export function validateBackup(data: unknown): data is BackupFile {
             return false;
           }
         })));
+  const hasQuestionSetPracticeNodes =
+    (b.version !== 14 || Array.isArray(b.practiceNodes)) &&
+    (b.practiceNodes === undefined ||
+      (Array.isArray(b.practiceNodes) &&
+        b.practiceNodes.every((node) => {
+          if (!node || typeof node !== 'object') return false;
+          if (node.type !== 'question-set') return true;
+          try {
+            parseQuestionSetPracticeNode(node);
+            return true;
+          } catch {
+            return false;
+          }
+        })));
   return (
     ((b.app === 'lacuna' &&
       typeof b.version === 'number' &&
       (b.version <= 11 || isLegacyRawSnapshot)) ||
       (b.app === 'lacuna-v12' && b.version === 12) ||
-      (b.app === 'lacuna-v13' && b.version === 13)) &&
+      (b.app === 'lacuna-v13' && b.version === 13) ||
+      (b.app === 'lacuna-v14' && b.version === 14)) &&
     typeof b.version === 'number' &&
     (b.version <= BACKUP_VERSION || isLegacyRawSnapshot) &&
     (b.decks === undefined || Array.isArray(b.decks)) &&
@@ -273,6 +292,7 @@ export function validateBackup(data: unknown): data is BackupFile {
     hasCurrentQuestionCollections &&
     hasCurrentQuestionSets &&
     hasCurrentQuestionSetAttempts &&
+    hasQuestionSetPracticeNodes &&
     Array.isArray(b.assets) &&
     Array.isArray(b.sessionHistory) &&
     Array.isArray(b.userPerformance) &&
@@ -453,6 +473,13 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     backup.lessons ?? [],
     courseAssessments,
     incomingQuestions.concepts,
+  );
+  assertQuestionSetPracticeNodeReferences(
+    backup.practiceNodes ?? [],
+    courses,
+    backup.lessons ?? [],
+    incomingQuestionSets,
+    backup.practiceMilestones ?? [],
   );
   const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
     backup.reviewHistory ?? [],

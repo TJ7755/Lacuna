@@ -255,7 +255,7 @@ describe('Question Set attempt repository', () => {
     const set = await setFixture();
     const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
     const backup = await exportDatabase();
-    expect(backup.app).toBe('lacuna-v13');
+    expect(backup.app).toBe('lacuna-v14');
     expect(backup.questionSetAttempts).toEqual([attempt]);
     await db.questionSetAttempts.clear();
     await importBackup(backup, 'replace');

@@ -28,9 +28,9 @@ Desktop and 390px browser gates passed. This is not a packaged or cold-offline r
    repository, sharing entry points using existing Course transport, and required media authoring
    affordances. Do not invent a second sharing format. Assessment-linked published-course
    lineage support remains restricted and must be resolved or explicitly scoped before release.
-3. Add optional Practice Qs path activities as one persistence gate, including schema, codecs,
-   sharing/remapping, sync, deletion and milestones. Related lesson links already exist but do
-   not replace the promised path activity.
+3. Optional Practice Qs path activities completed on 27 September, including compact hover/focus
+   disclosure, exact lesson anchoring, sharing/remapping, backup, sync and deletion/undo. See the
+   dated gate below; published assessment-linked sharing remains separate outstanding work.
 4. Finish evidence presentation: coverage gaps and unknown evidence; inspect whether useful
    recommendations are supported. The per-set marks panel is complete, but it does not expose
    every coverage/status value from the summary API. Numeric exam forecasts stay outside v1.
@@ -513,7 +513,7 @@ These depend on the persistence work and can then proceed in parallel UI slices.
 
 - [ ] Publish/import a set through existing course sharing, assigning fresh local identities where
   required and leaving learner attempts private. Include required referenced media in `.lacourse`.
-- [ ] Add an optional **Practice Qs** path activity after a lesson by extending existing path and
+- [x] Add an optional **Practice Qs** path activity after a lesson by extending existing path and
   practice-node models. Preserve stable activity IDs and existing Path completion behaviour.
 - [x] Show related sets from the lesson and assessment detail views, and support return to the
   original path/lesson/exam entry point after practice.
@@ -684,3 +684,46 @@ Selection now derives from the route query. The new mounted-route test failed be
 31 CoursePath tests passed after it. Desktop browser clicked the in-progress Practice Qs exam
 link on the same route and opened Final exam details. This fixes the existing route independently
 of the new path activity transport. Screenshot: [exam details](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujh6d3b-b3def5a5.png).
+
+
+## Practice Qs path and portability gate — 27 September 2026
+
+Added a Question Set variant to the existing practice-node model. Activities anchor to an exact
+lesson identity and follow its order; they do not create Card milestones or write FSRS states.
+Author controls add a saved set, move its anchor or remove the activity. Single-lesson courses
+show the full path when an activity exists. Progress uses answerable parts from the latest pinned
+attempt receipt, with answered and fully marked counts kept separate.
+
+The first tall activity layout was rejected by the prompter. The final node occupies a 56px slot
+with a caption; hover or keyboard focus expands it in place to reveal progress, the linked exam
+and author action. Escape collapses it. Touch first reveals details; a subsequent tap opens the
+set. Reduced motion uses the existing preference. Text stays clipped during expansion instead
+of wrapping outside the surface. Opening and closing the editor preserves keyboard focus.
+
+Backup/sync emit v14 (`lacuna-v14`); previous formats remain readable. Course share v5 includes
+only authored Question Set activities. Fresh imports remap activity, set and lesson identities;
+published lineage tracks activity changes and conflicts. Set/lesson removal and lesson undo
+preserve consistency. No Dexie table/index change is required. Assessment-linked published sets
+remain restricted; this gate does not remove that separate limitation.
+
+Validation: new backend tests failed before the APIs/variant existed; the compact disclosure
+regression failed against the tall implementation. 286 backend tests and 39 UI/progress tests
+passed. Full web/server/Electron typechecks, focused lint, diff checks and production asset build
+passed. The build retains existing Vite configuration/chunk warnings.
+
+Browser: development server `127.0.0.1:5183`, desktop 1280×800 and narrow 390×844. Created an
+activity through the author dialog, followed it to the learner overview and opened the exam
+sheet. Exported/decoded/imported a real `.lacourse` through the production APIs: v5 included its
+image, remapped all activity references and imported no personal attempts. The imported path
+and overview rendered correctly. Exported v14 backup validated and self-merge retained both
+activities and all four attempts. Whole-database replace restore was covered by automated tests,
+not performed on the preview database. Keyboard expansion, Escape, editor dismissal and focus
+return passed; the path retained its 79px layout footprint while expanded. No horizontal overflow.
+Touch pointer events were simulated; this is not physical-device touch or packaged/offline sign-off.
+
+- [Compact desktop path](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhe55p-b33bde7b.png)
+- [Expanded desktop activity](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhknbe-e2f849ff.png)
+- [Expanded narrow activity](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhkryc-99f6e5fc.png)
+
+V1 remains incomplete. Media paste/drop, assessment-linked published lineage, coverage/unknown
+presentation and the outstanding release checks remain on the checkpoint above.

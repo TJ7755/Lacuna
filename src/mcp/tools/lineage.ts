@@ -126,7 +126,10 @@ function assertQuestionSetLineagePreviewSupported(
   payload: Awaited<ReturnType<typeof decodeShare>>,
   mapping: LineageIdMapping,
 ): void {
-  if ((payload.v === 4 && payload.questionSets.length > 0) || (mapping.questionSetIds?.length ?? 0) > 0) {
+  if (((payload.v === 4 || payload.v === 5) && payload.questionSets.length > 0) ||
+      (mapping.questionSetIds?.length ?? 0) > 0 ||
+      (payload.v === 5 && payload.questionSetPracticeNodes.length > 0) ||
+      (mapping.questionSetPracticeNodeIds?.length ?? 0) > 0) {
     throw new McpToolException({
       kind: 'validation',
       message: 'Lineage preview and apply do not yet support authored Question Sets.',

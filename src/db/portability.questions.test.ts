@@ -199,8 +199,8 @@ describe('Question backup portability', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(13);
-    expect(backup.app).toBe('lacuna-v13');
+    expect(backup.version).toBe(14);
+    expect(backup.app).toBe('lacuna-v14');
     expect(backup.concepts).toEqual([CONCEPT]);
     expect(backup.questions).toHaveLength(1);
     expect(backup.questionConcepts).toEqual([LINKS]);

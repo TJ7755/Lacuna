@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { BACKUP_VERSION, exportDatabase, importBackup, validateBackup } from './portability';
+import { exportDatabase, importBackup, validateBackup } from './portability';
 import { defaultFsrsParameters } from '../fsrs/params';
 import type { BackupFile, Tombstone } from './types';
 
@@ -14,7 +14,7 @@ async function reset() {
 function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
     app: 'lacuna-v12',
-    version: BACKUP_VERSION,
+    version: 12,
     exportedAt: 1,
     cards: [],
     assets: [],
@@ -32,7 +32,7 @@ function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
 describe('backup tombstones', () => {
   beforeEach(reset);
 
-  it('round-trips tombstones at version 12', async () => {
+  it('round-trips tombstones at the current version', async () => {
     const tombstones: Tombstone[] = [
       { table: 'cards', recordId: 'card-gone', deletedAt: 50 },
       { table: 'courses', recordId: 'course-gone', deletedAt: 60 },
@@ -40,7 +40,7 @@ describe('backup tombstones', () => {
     await db.tombstones.bulkPut(tombstones);
 
     const backup = await exportDatabase();
-    expect(backup.version).toBe(12);
+    expect(backup.version).toBe(14);
     expect(backup.tombstones).toEqual(expect.arrayContaining(tombstones));
     expect(validateBackup(backup)).toBe(true);
 
