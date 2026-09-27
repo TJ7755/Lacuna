@@ -3,6 +3,26 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const pagePath = 'dist/compare/quizlet/index.html';
+test('public pages describe their identity and comparison intent without invented ratings', () => {
+  const schema = (path) => {
+    const html = readFileSync(path, 'utf8');
+    const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    assert.ok(match, `${path} needs structured data`);
+    return JSON.parse(match[1]);
+  };
+  const site = schema('dist/index.html');
+  assert.equal(site['@type'], 'WebSite');
+  assert.equal(site.name, 'Lacuna');
+  assert.equal(site.url, 'https://getlacuna.app/');
+  const comparison = schema(pagePath);
+  assert.equal(comparison['@type'], 'WebPage');
+  assert.equal(comparison.name, 'Lacuna vs Quizlet');
+  assert.equal(comparison.isPartOf['@id'], site['@id']);
+  assert.equal(comparison.about['@type'], 'WebApplication');
+  assert.equal(comparison.about.name, 'Lacuna');
+  assert.ok(!('aggregateRating' in comparison.about));
+  assert.match(readFileSync(pagePath, 'utf8'), /<h2[^>]*>Lacuna vs Quizlet\.<\/h2>/);
+});
 test('comparison ships crawlable HTML, metadata and resolved assets', () => {
   assert.ok(existsSync(pagePath), 'The comparison must be a built public HTML page');
   const html = readFileSync(pagePath, 'utf8');

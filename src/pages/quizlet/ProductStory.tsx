@@ -11,7 +11,7 @@ import { Closing, Cta, ProofStrip, SectionHeading } from './ComparisonUi';
 function ComparisonSection() {
   return (
     <section id="compare" className="qc-section">
-      <SectionHeading title="The details make the difference.">
+      <SectionHeading title="Lacuna vs Quizlet.">
         Both have flashcards and spaced repetition. Here’s where the experience changes.
       </SectionHeading>
       <ComparisonMatrix />

@@ -7,6 +7,8 @@
   a landing-page link and preserved direct sharing/import entry for new visitors.
   The study app retains hash routing and offline support; discarded comparison
   variants remain in the prototype branch.
+  Added factual website/application structured data and an explicit comparison
+  heading so search engines can identify the site and page purpose without extra copy.
 
 - Expanded comparison A with paired course-structure, memory and import-history
   diagrams. Added a teachers section demonstrating account-free course sharing,
