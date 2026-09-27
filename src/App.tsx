@@ -16,6 +16,7 @@ import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
+import { consumeLandingHandover } from './landingHandover';
 import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
@@ -173,8 +174,15 @@ export function App() {
 
         // A genuinely fresh browser opens on the landing page; anyone with
         // existing data goes straight to the app they know. Decided before
-        // seeding, because the seed itself creates a course.
-        if ((await isFirstRun()) && !isPublicEntry(window.location.hash)) {
+        // seeding, because the seed itself creates a course. Visitors arriving
+        // from the prerendered landing page explicitly chose to enter, so the
+        // handover skips the bounce back to the welcome route.
+        const enteredFromLanding = consumeLandingHandover();
+        if (
+          (await isFirstRun()) &&
+          !isPublicEntry(window.location.hash) &&
+          !enteredFromLanding
+        ) {
           window.location.hash = '#/welcome';
         }
 
