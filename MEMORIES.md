@@ -56,6 +56,10 @@ build without rebuilding — code changes silently stop taking effect and
 failures look impossible. When e2e results defy the current source, check
 `lsof -i :4173` and kill leftovers before trusting another run.
 
+Packaging while Vite dev is running can trigger full-page reloads as generated release HTML
+changes. Stop the dev server or use production preview for concurrent packaging/browser gates;
+otherwise transient form state can disappear during a check.
+
 ## Share-link state
 
 Keep `lacuna-relay.vercel.app` serving the same relay as `relay.getlacuna.app`, without
