@@ -97,4 +97,32 @@ describe('Question Set path activity portability', () => {
       mergeSnapshots(backup, { ...backup, practiceNodes: [{ ...node, afterLessonId: 'missing' }] }),
     ).toThrow('Lesson');
   });
+
+  it('preserves published assessment lineage metadata through backup and peer merge', async () => {
+    const course = await createCourse('Lineage course');
+    const assessment = (await db.courseAssessments.where('courseId').equals(course.id).first())!;
+    const { updatedAt: _updatedAt, ...snapshot } = assessment;
+    const mapping = {
+      id: 'assessment-lineage', courseId: course.id,
+      lessonIds: [], noteIds: [], cardIds: [], sequenceIds: [],
+      lessonSnapshots: {}, noteSnapshots: {}, cardSnapshots: {},
+      assessmentIds: [assessment.id], assessmentSnapshots: { [assessment.id]: snapshot },
+    };
+    await db.lineageIdMappings.put(mapping);
+    const backup = await exportDatabase();
+    expect(validateBackup(backup)).toBe(true);
+    expect(validateBackup({ ...backup, lineageIdMappings: [{ ...mapping,
+      assessmentSnapshots: { [assessment.id]: { ...snapshot, kind: 'wrong' } },
+    }] })).toBe(false);
+    await db.lineageIdMappings.clear();
+    await importBackup(backup, 'replace');
+    expect(await db.lineageIdMappings.get(mapping.id)).toEqual(mapping);
+
+    const merged = mergeSnapshots(
+      { ...backup, lineageIdMappings: [{ ...mapping, assessmentIds: [], assessmentSnapshots: {} }] },
+      backup,
+    );
+    expect(merged.lineageIdMappings?.[0].assessmentIds).toEqual([assessment.id]);
+    expect(merged.lineageIdMappings?.[0].assessmentSnapshots?.[assessment.id]).toEqual(snapshot);
+  });
 });

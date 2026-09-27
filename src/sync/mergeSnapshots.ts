@@ -586,6 +586,11 @@ function mergeLineageMappings(
         existing.questionSetRevisions ?? {},
         incoming.questionSetRevisions ?? {},
       ),
+      assessmentIds: union(existing.assessmentIds ?? [], incoming.assessmentIds ?? []),
+      assessmentSnapshots: records(
+        existing.assessmentSnapshots ?? {},
+        incoming.assessmentSnapshots ?? {},
+      ),
       questionSetPracticeNodeIds: union(
         existing.questionSetPracticeNodeIds ?? [],
         incoming.questionSetPracticeNodeIds ?? [],

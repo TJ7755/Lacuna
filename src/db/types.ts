@@ -1253,6 +1253,9 @@ export interface LineageIdMapping {
   questionSetIds?: string[];
   /** Last teacher-authored revision imported for each set, used to detect local edits. */
   questionSetRevisions?: Record<string, string>;
+  /** Adopted published assessments and their last imported authored content. */
+  assessmentIds?: string[];
+  assessmentSnapshots?: Record<string, Omit<CourseAssessment, 'updatedAt'>>;
   /** Adopted optional Question Set path activity IDs from v5 shares. */
   questionSetPracticeNodeIds?: string[];
   /** Last imported authored placement, used to reject local edits on update. */

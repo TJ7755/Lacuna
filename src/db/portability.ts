@@ -12,6 +12,7 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
+  LineageIdMapping,
   Note,
   Occlusion,
   PracticeNode,
@@ -28,6 +29,7 @@ import type {
   AgentMemory,
 } from './types';
 import { isAgentMemory } from './agentMemoryRecord';
+import { validateAssessmentStructure } from './assessmentRepository';
 import {
   mergeReviewHistoryEntries,
   projectCardsForStorage,
@@ -210,6 +212,27 @@ export async function downloadBackup(): Promise<void> {
 }
 
 /** Validate that an unknown parsed object is a Lacuna backup file. */
+function validLineageAssessmentFields(mapping: LineageIdMapping): boolean {
+  if (!mapping || typeof mapping !== 'object') return false;
+  const ids = mapping.assessmentIds;
+  const snapshots = mapping.assessmentSnapshots;
+  if (ids !== undefined &&
+    (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string' || id.length === 0) ||
+      new Set(ids).size !== ids.length)) return false;
+  if (snapshots === undefined) return true;
+  if (!snapshots || typeof snapshots !== 'object' || Array.isArray(snapshots)) return false;
+  return Object.entries(snapshots).every(([id, value]) => {
+    if (!value || typeof value !== 'object' || value.id !== id ||
+      value.courseId !== mapping.courseId) return false;
+    try {
+      validateAssessmentStructure({ ...value, updatedAt: 0 } as CourseAssessment);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function validateBackup(data: unknown): data is BackupFile {
   if (typeof data !== 'object' || data === null) return false;
   const b = data as Partial<BackupFile>;
@@ -297,6 +320,9 @@ export function validateBackup(data: unknown): data is BackupFile {
     Array.isArray(b.sessionHistory) &&
     Array.isArray(b.userPerformance) &&
     (b.tombstones === undefined || Array.isArray(b.tombstones)) &&
+    (b.lineageIdMappings === undefined ||
+      (Array.isArray(b.lineageIdMappings) &&
+        b.lineageIdMappings.every(validLineageAssessmentFields))) &&
     (b.agentMemories === undefined ||
       (Array.isArray(b.agentMemories) && b.agentMemories.every(isAgentMemory)))
   );

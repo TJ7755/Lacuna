@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Published course updates now import and track assessment-linked Question Sets. Assessment
+  identities and final dates survive updates, backup and peer sync. Local assessment edits,
+  deletions and retained local set links cause an atomic conflict instead of silent replacement;
+  learner attempt receipts and Card scheduling remain unchanged.
+
 - Practice evidence now shows current concept coverage, missing evidence, unresolved marking and
   attempt status. Changed question/source text, response options or marking criteria cannot reuse
   historical marks as current coverage. Fully unresolved marks display “Not marked yet”; totals
