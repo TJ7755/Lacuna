@@ -11,7 +11,7 @@ import { motionTransition } from '../ui/motion';
 
 interface CourseHeaderProps {
   /** e.g. "Exam 12 July 2026". */
-  eyebrow: string;
+  eyebrow?: string;
   /** Emphasises the schedule row for an imminent exam. */
   examUrgent?: boolean;
   title: string;
@@ -79,12 +79,7 @@ export function CourseHeader({
   }
 
   return (
-    <header
-      className={cn(
-        'relative py-6 md:py-8',
-        className,
-      )}
-    >
+    <header className={cn('relative py-6 md:py-8', className)}>
       <div className="relative">
         <div className="mb-5 flex min-w-0 items-center gap-2">
           <AnimatePresence initial={false} mode="popLayout">
@@ -142,17 +137,19 @@ export function CourseHeader({
           )}
         </div>
         {children && <div className="flex flex-wrap gap-x-8 gap-y-4">{children}</div>}
-        <div
-          role="group"
-          aria-label="Study schedule"
-          className={cn(
-            'mt-6 flex items-center gap-2 border-t border-line pt-4 text-sm',
-            examUrgent ? 'text-accent' : 'text-ink-soft',
-          )}
-        >
-          <CalendarIcon width={16} height={16} aria-hidden="true" />
-          {eyebrow}
-        </div>
+        {eyebrow && (
+          <div
+            role="group"
+            aria-label="Study schedule"
+            className={cn(
+              'mt-6 flex items-center gap-2 border-t border-line pt-4 text-sm',
+              examUrgent ? 'text-accent' : 'text-ink-soft',
+            )}
+          >
+            <CalendarIcon width={16} height={16} aria-hidden="true" />
+            {eyebrow}
+          </div>
+        )}
       </div>
     </header>
   );

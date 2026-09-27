@@ -211,13 +211,13 @@ course with exactly one lesson skips the path entirely and renders that lesson d
 (`src/components/course/CourseHeader.tsx`, with stat primitives in `CourseHeaderStat.tsx`
 and `MasteryRing.tsx`): exam eyebrow (pulses when the exam is within three days, via the
 `exam-pulse` animation), display title, and a row of stat blocks each carrying a plain-language
-one-line descriptor so distinct metrics can't be conflated. Curriculum position ("Lesson X of
+one-line descriptor so distinct metrics can't be conflated. Course position ("Lesson X of
 N") is a pacing metric, kept visually and semantically separate from mastery (mean predicted
 FSRS retention, shown as a ring rather than a bar) and from due-today (a live count of cards a
 session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
 same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
-Curriculum locking controls study progression, not authoring. In Study mode, locked lesson
+Course locking controls study progression, not authoring. In Study mode, locked lesson
 nodes remain inert; in Author mode, they retain their locked appearance and status but open the
 ordinary lesson authoring view. Author mode also enables direct path reordering: mouse and pen
 drags start after 8 px of movement; touch requires a 350 ms hold, leaving early movement free
@@ -251,7 +251,7 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. Generic entry names the next curriculum step, labels a lesson ready to begin **Start**
+routes. Generic entry names the next course step, labels a lesson ready to begin **Start**
 when no due review competes with it, and otherwise offers due review separately. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
@@ -284,7 +284,7 @@ review time crosses the course's near/far threshold, or when they are the last r
 opportunity for an urgent assessment intersecting that exact Practice context. An unrelated
 assessment never tightens the threshold. Zero-eligible and low-workload nodes remain latent
 and non-gating; they remain visible in Author mode. Completed manual checkpoints remain visible
-as curriculum history. Automatic Practice is conductor scheduling machinery and is not
+as course history. Automatic Practice is conductor scheduling machinery and is not
 rendered as a separate path diamond.
 
 Assessment revision uses the selected short-term model when its frozen coefficients and card
@@ -339,7 +339,7 @@ Cards (12)
 ```
 
 The lesson header adopts the same `CourseHeader` cockpit, scoped to the lesson's own cards
-(mastery and due-today only — no curriculum-position stat, since a single lesson has no
+(mastery and due-today only — no course-position stat, since a single lesson has no
 pacing sequence of its own). Study dispatch is course-level rather than duplicated here.
 Notes and cards sit below a divider as a visually quieter section (smaller
 headings, subtle entrance animation respecting `useMotionSpeed`), which renders in one of two
@@ -415,3 +415,25 @@ editor and course settings add a sticky bottom action bar.
 
 
 [Specification index](../SPEC.md)
+
+### Course overview (Fieldnotes)
+
+Multi-lesson courses use a compact winding path and selected lesson companion.
+Selecting a lesson updates the companion; Open lesson enters its existing workspace.
+Locked lessons explain the release condition and remain closed in Study mode;
+authors and archived inspection retain their existing access. Practice nodes select
+an actionable companion, while checkpoint nodes and the assessment list open the
+existing assessment editor or details sheet according to workspace mode.
+
+Author mode offers one Add control that expands in place into Lesson, Practice and
+Checkpoint. Lesson creation and import reuse the existing form; practice and
+checkpoint choices open their existing editors. Escape and outside presses collapse
+Add, and cancelling an editor returns focus to it. Drag and Alt+Arrow reordering
+remain available. The shared course navigation stays mounted across section changes.
+All five course sections and their navigation share a 1190px frame with the same
+responsive gutters. The overview uses two columns on desktop and stacks on narrow
+screens; selecting a lesson there brings its companion into view. Single-lesson
+courses continue to render their lesson directly.
+
+The comparison prototypes are archived on `prototype/course-fieldnotes` at
+`236b0b6cf8b438463d246d83f4e6e738e73e3348`; they are not shipped.

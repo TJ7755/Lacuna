@@ -151,7 +151,7 @@ describe('Settings', () => {
   it('selects the course card progress metric', () => {
     render(<Settings />);
 
-    expect(screen.getByRole('button', { name: 'Curriculum progress' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Course progress' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

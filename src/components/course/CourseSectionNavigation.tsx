@@ -1,3 +1,4 @@
+import { COURSE_PAGE_FRAME } from './coursePageLayout';
 import { useCourse } from '../../state/useCourseData';
 import { CoursePageNavigation } from './CoursePageNavigation';
 
@@ -7,7 +8,7 @@ export function CourseSectionNavigation({ courseId }: { courseId: string }) {
   const archived = course?.archived === true;
 
   return (
-    <div className="mx-auto mb-4 max-w-3xl px-6 pt-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} mb-4 pt-8`}>
       <CoursePageNavigation
         courseId={courseId}
         course={course ?? undefined}

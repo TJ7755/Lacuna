@@ -21,6 +21,7 @@ export interface HeaderStatsProps {
   /** Lesson progress within a course — omit on LessonView, which has no path. */
   lessonProgress?: { reached: number; total: number };
   className?: string;
+  compact?: boolean;
 }
 
 function Stat({
@@ -28,12 +29,21 @@ function Stat({
   value,
   label,
   accent = false,
+  compact = false,
 }: {
   icon: React.ReactNode;
   value: string;
   label: string;
   accent?: boolean;
+  compact?: boolean;
 }) {
+  if (compact)
+    return (
+      <span>
+        <strong>{value}</strong>
+        {label}
+      </span>
+    );
   return (
     <div
       className={cn(
@@ -57,10 +67,11 @@ export function HeaderStats({
   unseenCount,
   lessonProgress,
   className,
+  compact = false,
 }: HeaderStatsProps) {
   const [{ statPills }] = useCourseHeaderSettings();
 
-  if (totalCards === 0) {
+  if (totalCards === 0 && !compact) {
     return (
       <p className={cn('max-w-prose text-sm text-ink-soft', className)}>
         No cards yet — add some to start mapping this memory.
@@ -74,9 +85,10 @@ export function HeaderStats({
   const available: Partial<Record<CourseStatId, React.ReactNode>> = {
     due: (
       <Stat
+        compact={compact}
         key="due"
         icon={<HourglassIcon width={15} height={15} />}
-        value={dueCount === 0 ? 'Nothing' : String(dueCount)}
+        value={dueCount === 0 && !compact ? 'Nothing' : String(dueCount)}
         label="due now"
         accent={dueCount > 0}
       />
@@ -84,6 +96,7 @@ export function HeaderStats({
     unmapped:
       unseenCount > 0 ? (
         <Stat
+          compact={compact}
           key="unmapped"
           icon={<CompassIcon width={15} height={15} />}
           value={String(unseenCount)}
@@ -92,6 +105,7 @@ export function HeaderStats({
       ) : undefined,
     mastery: (
       <Stat
+        compact={compact}
         key="mastery"
         icon={<GaugeIcon width={15} height={15} />}
         value={`${masteryPct}%`}
@@ -100,6 +114,7 @@ export function HeaderStats({
     ),
     exam: (
       <Stat
+        compact={compact}
         key="exam"
         icon={<CalendarClockIcon width={15} height={15} />}
         value={
@@ -122,6 +137,7 @@ export function HeaderStats({
     ),
     lessons: lessonProgress ? (
       <Stat
+        compact={compact}
         key="lessons"
         icon={<MilestoneIcon width={15} height={15} />}
         value={`${lessonProgress.reached} of ${lessonProgress.total}`}
@@ -136,6 +152,7 @@ export function HeaderStats({
     .filter((pill): pill is React.ReactNode => pill !== undefined);
 
   if (pills.length === 0) return null;
+  if (compact) return <div className={cn('course-metrics', className)}>{pills}</div>;
 
   // From sm upwards, keyed grid columns keep rows evenly balanced (e.g. 3+2, not a 4+1
   // orphan) without squeezing labels.

@@ -252,7 +252,7 @@ export function CourseCard({
           <div
             className="flex h-2 gap-1"
             role="progressbar"
-            aria-label="Curriculum progress"
+            aria-label="Course progress"
             aria-valuenow={completedLessonCount}
             aria-valuemin={0}
             aria-valuemax={lessonCount}
@@ -283,7 +283,7 @@ export function CourseCard({
             height={8}
             label={
               metric === 'curriculum'
-                ? 'Curriculum progress'
+                ? 'Course progress'
                 : metric === 'coverage'
                   ? 'Card coverage'
                   : "Today's workload"

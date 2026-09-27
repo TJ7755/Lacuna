@@ -32,7 +32,7 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 Dashboard and course/lesson headings sit directly on the page without decorative panel
 frames. Course cards and functional grouping retain their boundaries. Empty-course and
 session-report states use small amber SVG line drawings in the landing page’s illustration
-style, without changing their controls or motion. The curriculum places up to three distinct study
+style, without changing their controls or motion. The course places up to three distinct study
 scenes beside alternate lesson stops; completed lessons tint their scene amber. Curved SVG
 strokes connect stops, with amber indicating completed stretches. Analytics empty
 states use drawings appropriate to their subject, while populated charts remain clear.
@@ -158,9 +158,12 @@ keyboard shortcuts on keyboard).
 
 ### 3.5 Layout grid & surfaces
 
-- Content is centred in a max-width column per page (dashboard `max-w-6xl`, course path/course
-  settings `max-w-2xl`, lesson view `max-w-3xl`, editor `max-w-4xl`, learn/report/search
-  `max-w-3xl`) with responsive horizontal padding (`px-6 md:px-10`).
+- Content is centred in a max-width frame per page: dashboard `max-w-6xl`; course overview
+  Cards, Questions, Analytics, Settings and persistent course navigation 1190px;
+  lesson view `max-w-3xl`;
+  editor `max-w-4xl`; learn/report/search `max-w-3xl`. Horizontal padding responds to
+  screen width. The course overview pairs a compact winding path with a lesson companion
+  on desktop and stacks those surfaces below 900px. All surfaces inherit Settings colours.
 - Cards/sections: `rounded-2xl border border-line bg-surface p-5/6`, soft black shadows on
   hover.
 - Pills/chips: `rounded-full border` with accent-soft active state.

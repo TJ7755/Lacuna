@@ -2,6 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -13,7 +14,6 @@ import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
 import {
@@ -25,26 +25,22 @@ import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
-import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmentsStrip';
-import { AddLessonControl } from '../components/course/AddLessonControl';
-import { PathNodeWithLine, lockHintFor } from '../components/course/CoursePathSegment';
+import { lockHintFor } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { HeaderStats } from '../components/course/HeaderStats';
+import { MS_PER_DAY } from '../fsrs/params';
+import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
+import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
-import { PlayIcon, PlusIcon } from '../components/ui/icons';
+import { PlayIcon } from '../components/ui/icons';
 
 import { updateCourse } from '../db/courseRepository';
 import { isLessonAuthoringMode } from '../course/lessonViewMode';
-import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
-import type {
-  Card,
-  CourseAssessment,
-  PracticeNode,
-} from '../db/types';
+import type { Card, CourseAssessment, PracticeNode } from '../db/types';
 
 const LazyLessonView = lazy(() =>
   import('./LessonView').then((module) => ({ default: module.LessonView })),
@@ -93,7 +89,10 @@ export function CoursePath() {
     if (!records) return undefined;
     if (!records.course) return null;
     return computeCourseSummaries(
-      [records.course], records.lessons, records.cards, records.assessments,
+      [records.course],
+      records.lessons,
+      records.cards,
+      records.assessments,
     )[records.course.id];
   }, [records]);
   const pendingUpdate = usePendingMergeReview(courseId);
@@ -365,13 +364,7 @@ export function CoursePath() {
   // Release-date map for the "locked" hint (see lockHintFor below) — only
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
-  // The single next-up lesson gets the "you are here" halo (see LessonNode):
-  // the first lesson node on the path still in 'available' status.
-  const currentLessonNode = visibleNodes.find(
-    (n) => n.nodeType === 'lesson' && n.status === 'available',
-  );
-  const currentNodeId = currentLessonNode?.id;
-  // Curriculum position (addendum J): counts non-extension lessons reached.
+  // Course position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.
   const { reached, total } = pathPosition(visibleNodes);
 
@@ -380,7 +373,7 @@ export function CoursePath() {
   // due now); mastery is passed in
   // from the course-level summary (extension-lesson cards already excluded
   // there).
-  const { nearestExam, examUrgent, mastery, dueCardCount } = courseHeaderStats(
+  const { nearestExam, mastery, dueCardCount } = courseHeaderStats(
     course,
     assessments,
     courseCards,
@@ -390,7 +383,7 @@ export function CoursePath() {
   );
   const masteryPct = Math.round(mastery * 100);
 
-  // Hover detail for a lesson node's expanding squircle (see LessonNode).
+  // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
     const cards = lessonCardsById.get(lessonId) ?? [];
     return {
@@ -401,33 +394,10 @@ export function CoursePath() {
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
-  const unseenCount = courseCards.filter((c) => c.lastReviewed === null || c.state === 0).length;
-
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
-
-      {/* A single upcoming assessment is already named by the card's eyebrow and counted
-          by its days-to-go pill, so the strip would be a third copy of one date. It earns
-          its row only when there is a choice of assessment to select between. */}
-      {!archived && assessments.length > 1 && (
-        <UpcomingAssessmentsStrip
-          assessments={assessments}
-          now={now}
-          onSelect={setSelectedAssessmentId}
-          className="mb-3"
-        />
-      )}
-
-      {/* Header — title, a row of labelled stats (HeaderStats), and the
-          Study action. */}
+    <div className={`${COURSE_PAGE_FRAME} course-overview`}>
       <CourseHeader
-        className="mb-12"
-        eyebrow={
-          nearestExam === undefined
-            ? 'Steady retention'
-            : `Exam ${formatDate(nearestExam, course.timeZone)}`
-        }
-        examUrgent={examUrgent}
+        className="course-overview-header"
         title={course.name}
         onRename={
           authoring
@@ -446,8 +416,9 @@ export function CoursePath() {
         }
         renameLabel="course"
       >
-        <div className="min-w-0 max-w-full">
+        <div className="course-header-actions">
           <HeaderStats
+            compact
             dueCount={dueCardCount}
             masteryPct={masteryPct}
             daysToExam={
@@ -456,214 +427,76 @@ export function CoursePath() {
                 : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
             }
             totalCards={courseCards.length}
-            unseenCount={unseenCount}
+            unseenCount={
+              courseCards.filter((card) => card.lastReviewed === null || card.state === 0).length
+            }
             lessonProgress={{ reached, total }}
           />
-          {archived ? (
-            <ArchivedCourseRestoreNotice />
-          ) : (
-            <div className="mt-6 flex flex-wrap items-center gap-4">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => {
-                  // Raises the study sheet rather than navigating: the choice is one tap
-                  // to open and one to dismiss, and dismissing leaves this page in place.
-                  openStudySheet(courseId);
-                }}
-              >
+          {!archived && (
+            <div className="course-study-actions">
+              <Button variant="primary" onClick={() => openStudySheet(courseId)}>
                 <PlayIcon width={18} height={18} />
                 Study
               </Button>
               <Button
-                variant="secondary"
-                size="lg"
+                variant="ghost"
+                size="sm"
                 disabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0}
                 onClick={() => navigate(`/course/${courseId}/study?review=due`)}
               >
                 Practice Now
               </Button>
-              {pendingUpdate && (
-                <Link
-                  to={`/course/${courseId}/updates`}
-                  className="inline-flex min-h-11 items-center rounded-lg bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
-                >
-                  Review updates
-                </Link>
-              )}
-              {/* The due count already leads the stats above, so this line
-                  only speaks when there is something the pills don't say. */}
-              {(courseCards.length === 0 || dueCardCount === 0) && (
-                <p className="text-sm text-ink-faint">
-                  {courseCards.length === 0
-                    ? 'Add cards to begin studying.'
-                    : 'Nothing due right now.'}
-                </p>
-              )}
             </div>
           )}
-
         </div>
       </CourseHeader>
-
-      {/* Curriculum — the ordered path with practice nodes, unlock rules and
-          insertion points. */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl">Curriculum</h2>
-        {authoring && (
-          <div
-            role="group"
-            aria-label="Add to path"
-            className="flex flex-wrap items-center justify-end gap-2"
-          >
-            <AddLessonControl
-              courseId={course.id}
-              lessonCount={lessons.length}
-              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
-            />
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setPracticeEditor({ defaultPosition: lastLesson?.orderIndex })}
-            >
-              <PlusIcon width={16} height={16} />
-              Add practice
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null })}
-            >
-              <PlusIcon width={16} height={16} />
-              Add checkpoint
-            </Button>
-          </div>
+      <div className="course-progress-row">
+        <span>
+          {reached} / {total} lessons reached
+        </span>
+        {pendingUpdate && (
+          <Link to={`/course/${courseId}/updates`} className="text-accent underline">
+            Review updates
+          </Link>
         )}
       </div>
-      <p id="lesson-path-reorder-instructions" className="sr-only">
-        In Author mode, drag this lesson to reorder; with touch, hold first. Alternatively, press Alt and the up
-        or down arrow key.
-      </p>
-      <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {lessonReorder.announcement}
-      </div>
-      {visibleNodes.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
-          {authoring && (
-            <p className="text-xs text-ink-faint">Use the path actions above to begin.</p>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center">
-          {visibleNodes.map((node, i) => (
-            <PathNodeWithLine
-              key={node.id}
-              node={node}
-              index={i}
-              isLast={i === visibleNodes.length - 1}
-              current={!archived && node.id === currentNodeId}
-              lockHint={
-                node.nodeType === 'lesson'
-                  ? lockHintFor(course, node.lesson.id, effectiveDates)
-                  : undefined
-              }
-              lessonDetail={
-                node.nodeType === 'lesson' ? detailForLesson(node.lesson.id) : undefined
-              }
-              onLessonClick={(lessonId) => navigate(`/course/${courseId}/lesson/${lessonId}`)}
-              archivedInspection={archived}
-              practiceProgress={
-                node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
-                  ? practiceProgressByKey.get(node.nodeKey)
-                  : undefined
-              }
-              practiceAssessment={
-                node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
-                  ? practiceProgressByKey.get(node.nodeKey)?.assessment
-                  : undefined
-              }
-              onPracticeClick={
-                archived
-                  ? undefined
-                  : (practiceNode) =>
-                      navigate(
-                        `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
-                      )
-              }
-              onPracticeAssessmentClick={
-                archived
-                  ? undefined
-                  : (assessmentId) =>
-                      navigate(
-                        `/course/${courseId}/study?assessmentId=${encodeURIComponent(assessmentId)}`,
-                      )
-              }
-              onCheckpointClick={
-                archived
-                  ? undefined
-                  : (assessmentId) => {
-                      const assessment = assessments.find((item) => item.id === assessmentId);
-                      if (!assessment) return;
-                      if (authoring) {
-                        setAssessmentEditor({ assessment });
-                      } else {
-                        setSelectedAssessmentId(assessmentId);
-                      }
-                    }
-              }
-              onPracticeEdit={
-                authoring
-                  ? (pn) => pn.practiceNode && setPracticeEditor({ node: pn.practiceNode })
-                  : undefined
-              }
-              authoring={authoring}
-              lessonReorder={
-                !archived && node.nodeType === 'lesson'
-                  ? lessonReorder.interactionFor(node.lesson.id)
-                  : undefined
-              }
-            />
-          ))}
-        </div>
-      )}
-
+      {archived && <ArchivedCourseRestoreNotice />}
+      <CourseOverview
+        courseId={course.id}
+        nodes={visibleNodes}
+        lessonCount={lessons.length}
+        assessments={assessments}
+        timeZone={course.timeZone}
+        authoring={authoring}
+        archived={archived}
+        announcement={lessonReorder.announcement}
+        reorderFor={lessonReorder.interactionFor}
+        detailForLesson={detailForLesson}
+        lockHint={(id) => lockHintFor(course, id, effectiveDates)}
+        practiceProgress={practiceProgressByKey}
+        onLessonOpen={(id) => navigate(`/course/${courseId}/lesson/${id}`)}
+        onLessonCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+        onPracticeOpen={(node) =>
+          navigate(`/course/${courseId}/study?practiceNode=${encodeURIComponent(node.nodeKey)}`)
+        }
+        onPracticeEdit={(node) =>
+          node.practiceNode && setPracticeEditor({ node: node.practiceNode })
+        }
+        onAssessmentPractise={(id) =>
+          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(id)}`)
+        }
+        onAssessmentOpen={(id) => {
+          const assessment = assessments.find((item) => item.id === id);
+          if (!assessment || archived) return;
+          if (authoring) setAssessmentEditor({ assessment });
+          else setSelectedAssessmentId(id);
+        }}
+        onAdd={(kind) => {
+          if (kind === 'practice') setPracticeEditor({ defaultPosition: lastLesson?.orderIndex });
+          else setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null });
+        }}
+      />
       {pathEditors}
-    </div>
-  );
-}
-
-function CoursePathSkeleton() {
-  return (
-    <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
-      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
-      <div className="mb-10 rounded-2xl border border-line bg-surface p-6 md:p-8">
-        <div className="mb-1 h-3 w-40 animate-pulse rounded bg-ink/10" />
-        <div className="mb-5 h-10 w-64 animate-pulse rounded bg-ink/10 md:w-80" />
-        <div className="flex flex-wrap gap-8">
-          <div>
-            <div className="mb-1 h-2.5 w-28 animate-pulse rounded bg-ink/10" />
-            <div className="h-4 w-20 animate-pulse rounded bg-ink/10" />
-          </div>
-          <div>
-            <div className="mb-1 h-2.5 w-16 animate-pulse rounded bg-ink/10" />
-            <div className="h-4 w-12 animate-pulse rounded bg-ink/10" />
-          </div>
-          <div>
-            <div className="mb-1 h-2.5 w-16 animate-pulse rounded bg-ink/10" />
-            <div className="h-4 w-16 animate-pulse rounded bg-ink/10" />
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-col items-center">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex flex-col items-center">
-            <div className="h-14 w-14 animate-pulse rounded-full bg-ink/10" />
-            <div className="mt-2 h-3 w-16 animate-pulse rounded bg-ink/10" />
-            {i < 3 && <div className="my-1 h-8 w-1 animate-pulse rounded-full bg-ink/10" />}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

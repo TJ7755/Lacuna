@@ -3,6 +3,7 @@
 // Route: /course/:courseId/cards
 // British English throughout.
 
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -106,7 +107,7 @@ export function CardsPage() {
   const noMatches = !isEmpty && lessonsWithCards.length === 0 && unassigned.length === 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
       {/* Header */}
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <div>
@@ -338,7 +339,7 @@ function UnassignedBucket({
 
 function CardsPageSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
       <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
       <div className="mb-8 flex items-center justify-between">
         <div className="h-10 w-64 animate-pulse rounded bg-ink/10" />

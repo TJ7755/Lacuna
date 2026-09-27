@@ -394,6 +394,10 @@ are beyond its scope, as stated in the automation boundary above.
 
 ## 4. Dashboard and course lifecycle
 
+- [x] The compact course path selects a lesson companion; Open lesson reaches its real workspace.
+- [x] Author mode Add expands at its own corner; Lesson creates a persisted lesson, and checkpoint
+      cancellation restores focus. Dismissing Add does not scale or move its text.
+
 - [ ] The dashboard empty state offers course creation.
 - [x] New course validation rejects a blank name and accepts a valid name and exam date.
 - [x] Created courses appear once and open from both the card and sidebar.
@@ -427,7 +431,7 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Practice Now sits beside Study, starts course-wide ad-hoc practice when eligible and is
       disabled when there is no eligible reached material.
 - [ ] Review today in the default sidebar opens the cross-course review session.
-- [ ] Study mode renders the curriculum without authoring controls.
+- [ ] Study mode renders the course without authoring controls.
 - [ ] Edit mode exposes lesson authoring and existing practice-node editing controls.
 - [ ] Add a lesson at the beginning, middle and end; each appears in the intended order.
 - [ ] Rename, reorder and delete a disposable lesson; cancellation and Undo behave as labelled.
@@ -643,7 +647,7 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] The conductor remains mounted across lesson notes, card study, step transition and continuation.
 - [ ] A manual practice milestone persists resumable progress and completes once.
 - [ ] Completed manual practice remains visible on the path; auto-practice does not become a gating
-      curriculum milestone.
+      course milestone.
 - [ ] Assessment coverage respects prefix/custom lessons, exclusions and unavailable material.
 - [ ] Create an assessment revision plan with a deadline and per-day budgets.
 - [ ] A revision window serves model-ranked eligible cards within its time budget.

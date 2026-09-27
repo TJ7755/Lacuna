@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const COURSE_SECTIONS = [
-  { label: 'Path', heading: 'Curriculum' },
+  { label: 'Path', heading: 'Course' },
   { label: 'Cards', heading: 'Cards' },
   { label: 'Questions', heading: 'Questions' },
   { label: 'Analytics', heading: 'Analytics' },
@@ -9,7 +9,7 @@ const COURSE_SECTIONS = [
 ] as const;
 
 for (const width of [390, 1000, 1920]) {
-  test(`course page frames and titles stay aligned with Path at ${width}px`, async ({
+  test(`course navigation stays aligned and section titles remain stable at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
@@ -31,6 +31,10 @@ for (const width of [390, 1000, 1920]) {
         };
       });
     const baseline = await measure();
+    const pathTitle = await page.locator('main h1').boundingBox();
+    const pathSurface = await page.locator('.course-paper').boundingBox();
+    expect(Math.abs(pathTitle!.x - pathSurface!.x)).toBeLessThanOrEqual(1);
+    let sectionTitle: { titleX: number; titleY: number } | undefined;
     await page.screenshot({ path: testInfo.outputPath('Path.png') });
     for (const section of COURSE_SECTIONS.slice(1)) {
       await page
@@ -44,15 +48,17 @@ for (const width of [390, 1000, 1920]) {
         .poll(
           async () => {
             const actual = await measure();
+            sectionTitle ??= { titleX: actual.titleX, titleY: actual.titleY };
+            const expected = { ...baseline, ...sectionTitle };
             return Math.max(
-              ...Object.keys(baseline).map((key) =>
+              ...Object.keys(expected).map((key) =>
                 Math.abs(
-                  actual[key as keyof typeof actual] - baseline[key as keyof typeof baseline],
+                  actual[key as keyof typeof actual] - expected[key as keyof typeof expected],
                 ),
               ),
             );
           },
-          { message: `${section.label} must retain Path's frame, back link and title position` },
+          { message: `${section.label} must retain the navigation frame and the section title position` },
         )
         .toBeLessThanOrEqual(1);
       await expect(page.getByText('Post-instruction practice', { exact: true })).toHaveCount(0);
@@ -117,7 +123,7 @@ test('course navigation stays mounted while switching sections in both direction
       .click();
     await expect(
       page
-        .getByRole('heading', { name: label === 'Path' ? 'Curriculum' : label, exact: true })
+        .getByRole('heading', { name: label === 'Path' ? 'Course' : label, exact: true })
         .first(),
     ).toBeVisible();
     expect(await navigation!.evaluate((element) => element.isConnected)).toBe(true);
@@ -202,16 +208,16 @@ async function openSeededCourse(page: Page): Promise<void> {
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
   await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Curriculum', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
 }
 
-test('course controls use rounded rectangles and schedule metadata sits below the actions', async ({
+test('course controls stay compact and assessments sit beside the path', async ({
   page,
 }) => {
   await openSeededCourse(page);
   const navigation = page.locator('nav[aria-label="Course sections"]:visible');
   const study = page.getByRole('button', { name: 'Study', exact: true });
-  const schedule = page.getByRole('group', { name: 'Study schedule' });
+  const schedule = page.getByRole('region', { name: 'Assessments' });
   await expect(schedule).toBeVisible();
   await expect(page.getByText(/^Next:/)).toHaveCount(0);
   const radius = await study.evaluate((element) => getComputedStyle(element).borderRadius);
@@ -239,7 +245,7 @@ test('dragging the course selection previews then opens the released section', a
   );
   await page.mouse.up();
   await expect(page).toHaveURL(/\/cards$/);
-  await expect(page.getByRole('heading', { name: 'Curriculum', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toHaveCount(0);
   await expect(navigation).toHaveCount(1);
   await expect(navigation.getByRole('link', { name: 'Cards', exact: true })).toHaveAttribute(
     'aria-current',

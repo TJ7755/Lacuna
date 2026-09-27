@@ -60,3 +60,14 @@ describe('HeaderStats', () => {
     expect(screen.queryByText('unmapped')).not.toBeInTheDocument();
   });
 });
+
+it('keeps the saved visibility and order in the compact course header', () => {
+  writeCourseHeaderSettings({ statPills: [
+    { id: 'exam', label: 'Exam', visible: true },
+    { id: 'mastery', label: 'Mastery', visible: true },
+    { id: 'due', label: 'Due', visible: false },
+  ] });
+  const { container } = render(<HeaderStats compact dueCount={7} masteryPct={68} daysToExam={4} totalCards={20} unseenCount={3} />);
+  expect(container.querySelector('.course-metrics')?.textContent).toBe('4days to go68%mastery');
+  expect(screen.queryByText('7')).not.toBeInTheDocument();
+});
