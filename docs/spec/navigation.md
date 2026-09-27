@@ -438,7 +438,15 @@ courses continue to render their lesson directly.
 The comparison prototypes are archived on `prototype/course-fieldnotes` at
 `236b0b6cf8b438463d246d83f4e6e738e73e3348`; they are not shipped.
 
-### Public comparison page
+### Public pages
+
+The homepage `/` serves prerendered landing markup inside the application shell
+document so crawlers see the hero, product sections and links without JavaScript.
+A first-visit browser hydrates that markup as a standalone landing entry without
+initialising or seeding study data; any navigation into an in-app hash route
+hands over to the full study app. Returning browsers (seeded storage), in-app
+hash routes and the packaged desktop app boot the study app directly. The
+homepage carries canonical, social and website structured-data metadata.
 
 `/compare/quizlet/` is a separate public HTML entry with build-time React rendering,
 canonical and social metadata, and client hydration. It does not initialise or seed

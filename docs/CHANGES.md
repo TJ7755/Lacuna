@@ -5,6 +5,11 @@
 - Suppressed the global keyboard-focus indicator on the study card container, which
   is focused programmatically as a return point and had shown an orange frame
   around the whole study column.
+- Prerendered the homepage landing content into `dist/index.html` at build time,
+  with canonical/social metadata, so crawlers see the hero, product sections and
+  links without JavaScript. First-visit browsers hydrate the same landing tree
+  and hand over to the study app on in-app navigation; returning browsers, hash
+  routes and desktop boot the app directly with no behaviour change.
 
 - Promoted the selected comparison design to `/compare/quizlet/` with build-time
   HTML rendering, canonical/social metadata, sitemap and robots discovery. Added
