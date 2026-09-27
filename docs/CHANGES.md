@@ -2,9 +2,11 @@
 
 ## Unreleased
 
-- Added three development-only Quizlet comparison prototypes with a URL variant
-  switcher, interactive SVG/CSS illustrations, sourced comparison tables and reduced
-  motion support. The design decision remains pending on `prototype/quizlet-comparison`.
+- Expanded the three development-only Quizlet comparison prototypes into complete
+  pages with real product captures, twelve sourced comparison points, interactive
+  practice and import examples, offline/cost guidance, switching advice and FAQs.
+  The designs retain theme support and reduced motion. No public page is published;
+  the design decision remains pending on `prototype/quizlet-comparison`.
 
 - Added the asynchronous Simple Analytics script on production `getlacuna.app`,
   with the required web CSP permissions and CORS loading for cross-origin isolation.

@@ -1,23 +1,31 @@
 # Quizlet comparison prototypes
 
-Throwaway design exploration on `prototype/quizlet-comparison`. Decision pending: which
-composition best explains Lacuna with minimal prose, animated graphics and a comparison table?
+Throwaway design exploration on `prototype/quizlet-comparison`. Decision pending:
+which complete page best explains the differences with visual evidence, useful
+interactions and minimal prose within each section?
 
 Run `bun run dev`, then open `http://localhost:5173/#/prototype/quizlet?variant=A`.
-The floating bar and left/right arrow keys cycle through all three versions:
+The floating bar and left/right arrow keys cycle between the designs. Text inputs,
+radio controls and screenshot dialogues retain their normal keyboard behaviour.
 
-- **A — The countdown:** exam-led split hero, interactive calendar illustration and table.
-- **B — Side by side:** shared flashcard foundations beside a connected course diagram.
-- **C — The bigger picture:** interactive notes, recall, application and review walkthrough.
+- **A — The product story:** oversized product reveal, real screen tour, scheduling
+  and practice chapters, comparison, access, migration, candid trade-offs and FAQs.
+- **B — The decision guide:** persistent chapter index, concise verdict and comparison
+  first, followed by product evidence and practical details in an editorial layout.
+- **C — The interactive explorer:** choose a study priority to change the opening
+  product view, try five practice formats and explore the full comparison below.
 
-Graphics use HTML, CSS and SVG. Examples are illustrative, not live learner data or
-scheduler predictions. Interactions remain in memory. Existing theme and accent tokens
-apply; reduced motion and a pause control are supported. The route is development-only.
+Each design includes twelve filterable comparison rows with expandable detail, four
+real product captures, five practice examples, online/offline and scheduling examples,
+a text-transfer preview using Lacuna's existing parser, cost, choice guidance and FAQs.
+Quizlet source links accompany claims. See `comparison-research.md` for the factual
+basis and `captures/README.md` for screenshot provenance.
 
-The comparison acknowledges Quizlet's spaced repetition, documented at
-https://help.quizlet.com/hc/en-au/articles/48324742264077-Studying-with-Spaced-Repetition.
-Learn and offline claims link directly to Quizlet's help pages in the table.
-Sources checked 27 September 2026. This is not published SEO content.
+Examples are illustrative, not scheduler predictions. No study results are saved.
+The existing theme and accent apply to page components; screenshots retain the
+appearance of the app at capture time. Reduced motion and a pause control are supported.
+The route and its assets are development-only and excluded from production bundles.
 
-Select a direction before implementing the public page. Preserve this branch as the
-prototype record; do not merge the discarded variants into production.
+Round one is preserved at commit `ed63e3aa`. Round two supersedes it. No public page
+has been selected or published. Keep the prototype branch as the design record and
+implement the selected direction separately from the discarded alternatives.

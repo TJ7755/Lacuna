@@ -1,0 +1,468 @@
+@media (max-width: 760px) {
+  .qc-page {
+    --qc-gutter: 6vw;
+  }
+  .qc-page h1 {
+    font-size: clamp(53px, 11.8vw, 86px);
+  }
+  .qc-page h2 {
+    font-size: 36px;
+  }
+  .qc-page h3 {
+    font-size: 25px;
+  }
+  .qc-page p {
+    font-size: 13px;
+  }
+  .qc-nav {
+    height: 70px;
+    gap: 15px;
+  }
+  .qc-nav nav {
+    display: none;
+  }
+  .qc-nav .qc-button {
+    font-size: 11px;
+    gap: 14px;
+    padding: 11px 13px;
+  }
+  .qc-brand {
+    font-size: 23px;
+  }
+  .qc-brand > svg {
+    width: 25px;
+    height: 25px;
+  }
+  .qc-page section[id] {
+    scroll-margin-top: 90px;
+  }
+  .qc-section {
+    padding-block: 60px;
+  }
+  .qc-section-heading {
+    margin-bottom: 27px;
+  }
+  .qc-section-heading p {
+    margin-top: 17px;
+  }
+  .qc-split-heading {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-bottom: 30px;
+  }
+  .qc-split-heading > p {
+    max-width: none;
+  }
+  .qc-eyebrow {
+    font-size: 8px;
+    line-height: 1.7;
+    margin-bottom: 22px;
+  }
+  .qc-kicker {
+    font-size: 9px;
+    margin-bottom: 15px;
+  }
+  .qc-button {
+    padding: 15px 19px;
+    font-size: 12px;
+    gap: 22px;
+  }
+  .qc-hero-actions {
+    gap: 17px;
+  }
+  .qc-hero-actions .qc-text-button {
+    font-size: 11px;
+    gap: 8px;
+  }
+  .qc-proof-strip {
+    grid-template-columns: 1fr;
+    padding-block: 8px;
+  }
+  .qc-proof-strip > div {
+    justify-content: flex-start;
+    gap: 25px;
+    padding: 19px 8px;
+    border-right: 0;
+    border-bottom: 1px solid hsl(var(--line));
+  }
+  .qc-proof-strip strong {
+    font-size: 28px;
+    min-width: 110px;
+  }
+  .qc-proof-strip span {
+    font-size: 11px;
+  }
+  .qc-story-hero {
+    padding-top: 48px;
+    padding-bottom: 40px;
+  }
+  .qc-story-hero > p {
+    font-size: 13px;
+    margin-block: 24px;
+  }
+  .qc-hero-product {
+    margin: 48px 0 0;
+  }
+  .qc-hero-product .qc-product-screen {
+    transform: none;
+  }
+  .qc-orbit-stamp {
+    width: 84px;
+    height: 84px;
+    right: -9px;
+    top: -30px;
+  }
+  .qc-orbit-stamp > span {
+    font-size: 6px;
+  }
+  .qc-orbit-stamp b {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .qc-orbit-stamp svg {
+    width: 42px;
+    height: 22px;
+  }
+  .qc-floating-chip {
+    left: -5px;
+    bottom: -12px;
+    font-size: 9px;
+    padding: 10px 13px;
+  }
+  .qc-product-screen figcaption {
+    padding: 9px;
+    font-size: 7px;
+  }
+  .qc-product-screen figcaption > span:last-child {
+    display: none;
+  }
+  .qc-window-bar {
+    height: 34px;
+    padding-inline: 10px;
+    font-size: 8px;
+  }
+  .qc-window-bar > span:first-child {
+    display: none;
+  }
+  .qc-product-screen {
+    border-radius: 8px;
+  }
+  .qc-tour-tabs {
+    margin-bottom: 18px;
+  }
+  .qc-tour-tabs button {
+    flex-direction: column;
+    gap: 7px;
+    padding: 13px 4px;
+    font-size: 10px;
+  }
+  .qc-tour-tabs button > span {
+    font-size: 8px;
+  }
+  .qc-tour-caption {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding-top: 23px;
+  }
+  .qc-tour-caption h3 {
+    font-size: 22px;
+  }
+  .qc-tour-caption p {
+    font-size: 12px;
+  }
+  .qc-tour-caption ul {
+    font-size: 11px;
+    gap: 8px;
+  }
+  .qc-schedule-section {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .qc-exam-lens {
+    padding: 24px 20px;
+  }
+  .qc-exam-controls {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .qc-exam-controls .qc-kicker {
+    max-width: 95px;
+    font-size: 7px;
+  }
+  .qc-exam-controls .qc-segmented {
+    gap: 0;
+    padding: 2px;
+  }
+  .qc-exam-controls .qc-segmented button {
+    padding: 7px;
+    font-size: 8px;
+  }
+  .qc-exam-heading h3 {
+    font-size: 30px;
+  }
+  .qc-review-timeline {
+    margin-top: 20px;
+  }
+  .qc-review-stop {
+    width: 70px;
+  }
+  .qc-review-stop > span {
+    width: 33px;
+    height: 33px;
+    font-size: 10px;
+  }
+  .qc-review-stop b {
+    font-size: 9px;
+  }
+  .qc-review-stop.stop-3 > span {
+    width: 45px;
+    height: 55px;
+    font-size: 21px;
+  }
+  .qc-review-stop.stop-0 {
+    left: 8%;
+  }
+  .qc-exam-bottom p {
+    font-size: 11px;
+  }
+  .qc-exam-bottom small {
+    font-size: 8px;
+  }
+  .qc-learning-lab {
+    grid-template-columns: 1fr;
+  }
+  .qc-lab-navigation {
+    padding: 26px 22px;
+  }
+  .qc-lab-navigation h3 {
+    font-size: 34px;
+  }
+  .qc-lab-navigation h3 br {
+    display: none;
+  }
+  .qc-lab-navigation p {
+    font-size: 12px;
+    margin-top: 12px;
+  }
+  .qc-lab-modes {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    margin-top: 22px;
+  }
+  .qc-lab-modes button {
+    padding: 12px 7px;
+    gap: 5px;
+    font-size: 9px;
+    min-height: 43px;
+  }
+  .qc-lab-modes button > span {
+    font-size: 7px;
+  }
+  .qc-lab-modes .qc-arrow {
+    display: none;
+  }
+  .qc-lab-stage {
+    padding: 20px;
+    min-height: 445px;
+  }
+  .qc-lab-content {
+    padding: 28px 0;
+    gap: 22px;
+  }
+  .qc-lab-content h4 {
+    font-size: 29px;
+  }
+  .qc-lab-content > p {
+    font-size: 11px;
+  }
+  .qc-lab-meta {
+    font-size: 8px;
+  }
+  .qc-lab-footer {
+    font-size: 8px;
+    line-height: 1.6;
+  }
+  .qc-answer {
+    font-size: 12px;
+    min-height: 55px;
+  }
+  .qc-answers label {
+    font-size: 11px;
+    padding: 12px;
+  }
+  .qc-sequence-choices button {
+    font-size: 9px;
+    padding: 8px 10px;
+  }
+  .qc-enzyme {
+    height: 170px;
+  }
+  .qc-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .qc-table-toolbar .qc-segmented {
+    justify-content: space-between;
+  }
+  .qc-table-toolbar .qc-segmented button {
+    font-size: 9px;
+    padding: 9px 8px;
+  }
+  .qc-table-toolbar > span {
+    font-size: 9px;
+  }
+  .qc-comparison th,
+  .qc-comparison td {
+    padding: 16px 10px;
+    font-size: 10px;
+  }
+  .qc-comparison th:first-child {
+    width: 29%;
+  }
+  .qc-comparison thead th {
+    font-size: 17px;
+    padding: 20px 10px;
+  }
+  .qc-comparison thead th:first-child {
+    font-size: 9px;
+  }
+  .qc-comparison thead small {
+    font-size: 8px;
+  }
+  .qc-comparison th button {
+    gap: 6px;
+  }
+  .qc-comparison th button > span {
+    font-size: 13px;
+  }
+  .qc-comparison td a {
+    font-size: 8px;
+  }
+  .qc-table-foot {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 9px;
+  }
+  .qc-row-detail td {
+    font-size: 11px;
+    padding: 18px;
+  }
+  .qc-access-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .qc-cost-panel,
+  .qc-offline-panel {
+    padding: 27px 24px;
+  }
+  .qc-cost-panel h3,
+  .qc-offline-panel h3 {
+    font-size: 29px;
+  }
+  .qc-price {
+    font-size: 110px;
+  }
+  .qc-price small {
+    font-size: 10px;
+  }
+  .qc-fit-guide {
+    grid-template-columns: 1fr;
+  }
+  .qc-fit-guide article {
+    padding: 30px 25px;
+  }
+  .qc-fit-guide h3 {
+    font-size: 29px;
+  }
+  .qc-fit-guide ul {
+    font-size: 12px;
+  }
+  .qc-portability {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .qc-transfer-steps article {
+    padding-bottom: 25px;
+    margin-bottom: 25px;
+    gap: 16px;
+  }
+  .qc-transfer-steps h3 {
+    font-size: 22px;
+  }
+  .qc-transfer-steps p {
+    font-size: 12px;
+  }
+  .qc-transfer-demo {
+    padding: 20px;
+  }
+  .qc-transfer-demo textarea {
+    font-size: 9px;
+  }
+  .qc-transfer-preview > div {
+    font-size: 9px;
+  }
+  .qc-faq-section {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .qc-faq-list summary {
+    font-size: 13px;
+    padding: 22px 0;
+  }
+  .qc-faq-list p {
+    font-size: 12px;
+    padding-inline: 22px 10px;
+  }
+  .qc-source-notes {
+    padding: 18px;
+  }
+  .qc-source-notes summary {
+    flex-direction: column;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .qc-source-notes > div {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .qc-closing {
+    padding-block: 70px;
+  }
+  .qc-closing h2 {
+    font-size: 62px;
+  }
+  .qc-closing-mark {
+    width: 270px;
+  }
+  .qc-footer {
+    font-size: 9px;
+    flex-direction: column;
+    gap: 9px;
+    padding-block: 25px;
+  }
+  .qc-switcher {
+    bottom: 10px;
+    gap: 0;
+    padding: 5px;
+    max-width: calc(100vw - 16px);
+  }
+  .qc-switcher > span {
+    min-width: 0;
+    width: 187px;
+  }
+  .qc-switcher b {
+    font-size: 10px;
+  }
+  .qc-switcher small {
+    font-size: 7px;
+  }
+  .qc-switcher button {
+    min-width: 32px;
+  }
+  .qc-switcher .qc-pause {
+    padding-inline: 8px;
+    font-size: 8px;
+  }
+}

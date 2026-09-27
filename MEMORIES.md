@@ -178,6 +178,9 @@ button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
 
+Avoid “daily limits” in marketing copy: the prompter reads it as a possible paywall.
+Describe user-chosen study pacing directly instead (27 September 2026).
+
 Use “course” for the path and its progress labels; “curriculum” is not a separate
 user-facing concept (prompter, 27 September 2026).
 
