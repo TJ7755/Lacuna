@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Question Set authoring now follows set details, question text, marking, optional knowledge
+  links and review. Nested parts show their parent introductions; question lists expose
+  readiness and direct edits. Mark totals derive from marking points. This is a paused,
+  browser-tested checkpoint awaiting prompter UX review; see
+  `docs/plans/question-sets-authoring-handover.md`.
+
 - Published course updates now import and track assessment-linked Question Sets. Assessment
   identities and final dates survive updates, backup and peer sync. Local assessment edits,
   deletions and retained local set links cause an atomic conflict instead of silent replacement;

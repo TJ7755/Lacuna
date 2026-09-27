@@ -1,11 +1,14 @@
-import { QuestionSetPanel } from './QuestionSetPanel';
-import { QuestionSetChoices } from './QuestionSetChoices';
 import { useState } from 'react';
 import { makeId } from '../../db/schema';
-import type { AssessmentDimension, QuestionAnswer } from '../../questions/questionSets';
+import type {
+  AssessmentDimension,
+  MarkAllocation,
+  QuestionAnswer,
+} from '../../questions/questionSets';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
+import { QuestionSetChoices } from './QuestionSetChoices';
 import { dimensionNames } from './presentation';
 
 export function QuestionSetSchemeEditor({
@@ -18,123 +21,108 @@ export function QuestionSetSchemeEditor({
   const [activeId, setActiveId] = useState(answer.allocations[0]?.id);
   const [removing, setRemoving] = useState(false);
   const active = answer.allocations.find((a) => a.id === activeId) ?? answer.allocations[0];
-  const allocated = answer.allocations.reduce((sum, a) => sum + a.maxMarks, 0);
-  const update = (changes: Partial<NonNullable<typeof active>>) =>
+  const commit = (allocations: MarkAllocation[]) =>
     onChange({
       ...answer,
-      allocations: answer.allocations.map((a) => (a.id === active?.id ? { ...a, ...changes } : a)),
+      allocations,
+      maxMarks: allocations.reduce((sum, allocation) => sum + allocation.maxMarks, 0),
     });
+  const update = (changes: Partial<MarkAllocation>) =>
+    commit(answer.allocations.map((a) => (a.id === active?.id ? { ...a, ...changes } : a)));
   return (
     <section aria-label="Mark scheme">
-      <label className="qs-field">
-        Total marks for this part
-        <input
-          type="number"
-          min="1"
-          step="1"
-          value={answer.maxMarks || ''}
-          onChange={(e) => onChange({ ...answer, maxMarks: Number(e.target.value) })}
-        />
-      </label>
-      <p className="qs-muted" role={allocated !== answer.maxMarks ? 'status' : undefined}>
-        {allocated} of {answer.maxMarks} marks allocated
-        {allocated !== answer.maxMarks ? ' — totals must match before saving the set.' : ''}
+      <p className="qs-flow-total">
+        Total: {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
       </p>
-      {answer.allocations.map((a, i) => (
-        <button
-          className="qs-criterion-row"
-          key={a.id}
-          aria-expanded={active?.id === a.id}
-          onClick={() => {
-            setActiveId(a.id);
-            setRemoving(false);
-          }}
-        >
-          <span>{i + 1}</span>
-          <span>{a.criterion || 'New criterion'}</span>
-          <span>
-            {a.maxMarks} {a.maxMarks === 1 ? 'mark' : 'marks'}
-          </span>
-        </button>
-      ))}
+      {answer.allocations.length > 1 && (
+        <nav className="qs-actions mb-5" aria-label="Marking points">
+          {answer.allocations.map((allocation, i) => (
+            <Button
+              key={allocation.id}
+              aria-pressed={active?.id === allocation.id}
+              onClick={() => {
+                setActiveId(allocation.id);
+                setRemoving(false);
+              }}
+            >
+              Marking point {i + 1}
+            </Button>
+          ))}
+        </nav>
+      )}
       {active && (
-        <div className="qs-criterion-editor" key={active.id}>
+        <div key={active.id}>
           <MarkdownEditor
-            key={`${active.id}-criterion`}
-            label="What earns the marks?"
+            label="What earns these marks?"
             ariaLabel="Marking criterion"
             value={active.criterion}
             onChange={(criterion) => update({ criterion })}
+            minRows={4}
+            allowImages={false}
+            layout="tabs"
+            compactToolbar
+          />
+          <label className="qs-field">
+            Marks for this point
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={active.maxMarks || ''}
+              onChange={(event) => update({ maxMarks: Number(event.target.value) })}
+            />
+          </label>
+          <QuestionSetChoices
+            label="What does this point assess?"
+            value={active.dimension}
+            onChange={(value) => update({ dimension: value as AssessmentDimension })}
+            options={Object.entries(dimensionNames).map(([value, label]) => ({ value, label }))}
+          />
+          <p className="qs-muted mb-5">
+            Knowledge: recall a fact. Application: use an idea. Exam technique: communicate,
+            calculate or follow the question’s requirements.
+          </p>
+          <MarkdownEditor
+            label="Marking guidance (optional)"
+            ariaLabel="Marking guidance"
+            value={active.explanation ?? ''}
+            onChange={(explanation) => update({ explanation })}
             minRows={3}
             allowImages={false}
             layout="tabs"
             compactToolbar
           />
-          <div className="qs-fields">
-            <label className="qs-field">
-              Marks
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={active.maxMarks || ''}
-                onChange={(e) => update({ maxMarks: Number(e.target.value) })}
-              />
-            </label>
-            <QuestionSetChoices
-              label="Assesses"
-              value={active.dimension}
-              onChange={(value) => update({ dimension: value as AssessmentDimension })}
-              options={Object.entries(dimensionNames).map(([value, label]) => ({ value, label }))}
-            />
-          </div>
-          <QuestionSetPanel title="Alternatives and marking guidance">
-            <MarkdownEditor
-              key={`${active.id}-explanation`}
-              ariaLabel="Marking guidance"
-              value={active.explanation ?? ''}
-              onChange={(explanation) => update({ explanation })}
-              minRows={3}
-              allowImages={false}
-              layout="tabs"
-              compactToolbar
-            />
-          </QuestionSetPanel>
           {removing ? (
             <ConfirmInline
-              message="Remove this criterion?"
+              message="Remove this marking point?"
               confirmLabel="Remove"
               onConfirm={() => {
-                onChange({
-                  ...answer,
-                  allocations: answer.allocations.filter((a) => a.id !== active.id),
-                });
+                commit(answer.allocations.filter((a) => a.id !== active.id));
                 setRemoving(false);
               }}
               onCancel={() => setRemoving(false)}
             />
           ) : (
-            <button className="qs-back" onClick={() => setRemoving(true)}>
-              Remove criterion
-            </button>
+            answer.allocations.length > 1 && (
+              <Button variant="ghost" onClick={() => setRemoving(true)}>
+                Remove marking point
+              </Button>
+            )
           )}
         </div>
       )}
       <Button
-        variant="secondary"
+        className="mt-5"
         onClick={() => {
           const id = makeId();
-          onChange({
-            ...answer,
-            allocations: [
-              ...answer.allocations,
-              { id, criterion: '', maxMarks: 1, dimension: 'knowledge', targetConceptIds: [] },
-            ],
-          });
+          commit([
+            ...answer.allocations,
+            { id, criterion: '', maxMarks: 1, dimension: 'knowledge', targetConceptIds: [] },
+          ]);
           setActiveId(id);
         }}
       >
-        Add criterion
+        Add marking point
       </Button>
     </section>
   );

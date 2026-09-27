@@ -68,7 +68,6 @@ export function QuestionsPage() {
     setError('');
     try {
       const draft = createEmptyQuestionSetDraft(course.id, makeId());
-      draft.content.questions = [{ id: makeId(), prompt: '', parts: [] }];
       await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
       await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`, {
         state: origin,
