@@ -22,7 +22,7 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
   const multiplier = speedMultiplier(speed);
   const reduced = multiplier === 0;
   const transition = reduced
-    ? { duration: 0.1 }
+    ? { duration: 0 }
     : { type: 'spring' as const, visualDuration: 0.3 * multiplier, bounce: 0 };
 
   useEffect(() => {

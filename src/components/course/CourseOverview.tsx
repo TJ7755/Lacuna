@@ -60,9 +60,10 @@ export function CourseOverview(props: CourseOverviewProps) {
     // On a narrow screen the companion follows the path; bring the selected
     // content into view rather than leaving the tap's result below the fold.
     if (window.matchMedia('(max-width: 900px)').matches) {
-      requestAnimationFrame(() =>
-        detailRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' }),
-      );
+      requestAnimationFrame(() => {
+        detailRef.current?.focus({ preventScroll: true });
+        detailRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      });
     }
   }
 
@@ -208,7 +209,14 @@ export function CourseOverview(props: CourseOverviewProps) {
                       )}
                     </span>
                   </motion.button>
-                  <div className="course-node-label">
+                  <motion.div
+                    className="course-node-label"
+                    style={{
+                      x: reorder?.offset?.x ?? 0,
+                      y: reorder?.offset?.y ?? 0,
+                      zIndex: reorder?.lifted ? 30 : undefined,
+                    }}
+                  >
                     <strong>{name}</strong>
                     <span>
                       {lesson
@@ -227,7 +235,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                         <EditIcon width={14} height={14} />
                       </button>
                     )}
-                  </div>
+                  </motion.div>
                   {reorder?.dropMarker && (
                     <div
                       aria-hidden="true"
@@ -242,7 +250,7 @@ export function CourseOverview(props: CourseOverviewProps) {
       </section>
       <aside>
         {selected && (
-          <div className="course-companion" ref={detailRef}>
+          <div className="course-companion" ref={detailRef} tabIndex={-1}>
             <CourseNodeDetail key={selected.id} node={selected} {...props} />
           </div>
         )}
@@ -262,7 +270,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                   <small>
                     {assessment.examDate === undefined
                       ? 'Steady retention'
-                      : formatDate(assessment.examDate, props.timeZone)}
+                      : formatDate(assessment.examDate, assessment.timeZone ?? props.timeZone)}
                   </small>
                 </span>
               </button>

@@ -454,7 +454,7 @@ export function CoursePath() {
         <span>
           {reached} / {total} lessons reached
         </span>
-        {pendingUpdate && (
+        {!archived && pendingUpdate && (
           <Link to={`/course/${courseId}/updates`} className="text-accent underline">
             Review updates
           </Link>

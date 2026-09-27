@@ -288,6 +288,18 @@ beforeEach(() => {
 });
 
 describe('CoursePath Study mode', () => {
+  it('displays checkpoint dates in the assessment time zone', () => {
+    mockCourse = { ...course, timeZone: 'Europe/London' };
+    mockAssessments = [{
+      id: 'assessment-zone', courseId: course.id, kind: 'checkpoint', name: 'Zoned exam',
+      examDate: Date.UTC(2027, 0, 2, 1), timeZone: 'America/Los_Angeles',
+      afterLessonId: lesson1.id, coverageMode: 'prefix', excludedCardIds: [],
+      createdAt: 0, updatedAt: 0,
+    }];
+    renderPage();
+    expect(screen.getByRole('button', { name: /Zoned exam 1 January 2027/ })).toBeInTheDocument();
+  });
+
   it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
     mockCourse = {
       ...course,
@@ -346,7 +358,8 @@ describe('CoursePath Study mode', () => {
     expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
   });
 
-  it('links to the updates review from the multi-lesson header when an update is pending', () => {
+  it.each([false, true])('only exposes pending updates on active multi-lesson courses (archived=%s)', (archived) => {
+    mockCourse = { ...course, archived };
     mockPendingMerge = {
       id: 'review-1',
       courseId: 'course-1',
@@ -363,6 +376,10 @@ describe('CoursePath Study mode', () => {
 
     renderPage();
 
+    if (archived) {
+      expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
+      return;
+    }
     expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
       'href',
       '/course/course-1/updates',

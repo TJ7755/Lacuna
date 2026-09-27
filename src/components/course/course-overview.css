@@ -327,8 +327,8 @@
 }
 
 .course-edit-practice {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 44px;
+  min-height: 44px;
   display: inline-grid;
   place-items: center;
   color: hsl(var(--ink-soft));

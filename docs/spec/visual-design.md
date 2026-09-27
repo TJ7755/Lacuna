@@ -22,7 +22,7 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   negative letter-spacing. Page titles are `text-4xl`/`text-5xl`.
 - **Body (`font-body`, Instrument Sans):** all running text, weight 400. The font is bundled
   locally and shared with the landing page.
-- **Brand (`font-brand`, Fraunces):** the Lacuna wordmark.
+- **Brand (`font-brand`, Fraunces):** the Lacuna wordmark and the Fieldnotes course overview title.
 - **Mono (`font-mono`, JetBrains Mono):** code, and `.tabular` numerals (progress %, stats,
   streak, timers) via `font-variant-numeric: tabular-nums`.
 - Eyebrow labels are small uppercase with wide tracking (`tracking-[0.18em]`,
@@ -32,10 +32,10 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 Dashboard and course/lesson headings sit directly on the page without decorative panel
 frames. Course cards and functional grouping retain their boundaries. Empty-course and
 session-report states use small amber SVG line drawings in the landing page’s illustration
-style, without changing their controls or motion. The course places up to three distinct study
-scenes beside alternate lesson stops; completed lessons tint their scene amber. Curved SVG
-strokes connect stops, with amber indicating completed stretches. Analytics empty
-states use drawings appropriate to their subject, while populated charts remain clear.
+style, without changing their controls or motion. The course overview uses a compact winding
+path without decorative study scenes. Neutral curved SVG strokes connect stops; completed
+lesson nodes use the configured accent. Analytics empty states use drawings appropriate to
+their subject, while populated charts remain clear.
 
 ### 3.3 Motion language
 

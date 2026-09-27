@@ -64,3 +64,55 @@ test('Add returns to its own corner without enlarging its disappearing text', as
   await page.getByRole('textbox', { name: 'Name' }).press('Escape');
   await expect(add).toBeFocused();
 });
+
+
+test('narrow-screen keyboard selection moves focus to the selected lesson', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await enterFreshLacuna(page);
+  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  const stop = page.getByRole('button', { name: 'Scheduling philosophy', exact: true });
+  await stop.focus();
+  await stop.press('Enter');
+  await expect(page.locator('.course-companion')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Open lesson', exact: true })).toBeFocused();
+});
+
+test('reduced motion changes Add dimensions without interpolating', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('button', { name: 'Author mode' }).click();
+  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
+  const samples = await page.evaluate(async () => {
+    const surface = document.querySelector<HTMLElement>('.course-add-surface')!;
+    const trigger = document.querySelector<HTMLButtonElement>('.course-add-trigger')!;
+    const widths: number[] = [];
+    for (let toggle = 0; toggle < 2; toggle++) {
+      trigger.click();
+      for (let frame = 0; frame < 12; frame++) {
+        await new Promise(requestAnimationFrame);
+        widths.push(surface.getBoundingClientRect().width);
+      }
+    }
+    return widths;
+  });
+  expect(samples).toContain(216);
+  expect(samples.at(-1)).toBe(68);
+  expect(samples.every((width) => Math.abs(width - 68) < 1 || Math.abs(width - 216) < 1)).toBe(true);
+});
+
+
+test('practice editing keeps a 44px touch target', async ({ page }) => {
+  await enterFreshLacuna(page);
+  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('button', { name: 'Practice', exact: true }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const edit = page.getByRole('button', { name: 'Edit Practice', exact: true });
+  await expect(edit).toBeVisible();
+  const bounds = await edit.boundingBox();
+  expect(bounds!.width).toBeGreaterThanOrEqual(44);
+  expect(bounds!.height).toBeGreaterThanOrEqual(44);
+});
