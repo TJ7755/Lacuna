@@ -1,11 +1,11 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { LazyMotion, domAnimation } from 'motion/react';
-import { Analytics } from '@vercel/analytics/react';
 import './index.css';
-import { App } from './App';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
 import { installHostedFontLinks, installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import { renderApp } from './appRoot';
+
+// Mirrors the private FLAG_KEY in src/db/seed.ts. Kept as a literal so the
+// landing decision below never pulls the database into the initial module graph.
+const SEED_FLAG_KEY = 'lacuna-seeded';
 
 installStaleChunkRecovery();
 installHostedFontLinks();
@@ -30,19 +30,35 @@ async function clearDevelopmentPwaState(): Promise<void> {
   }
 }
 
-function renderApp(): void {
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <LazyMotion features={domAnimation}>
-        <App />
-        {__VERCEL_ANALYTICS_ENABLED__ && <Analytics />}
-      </LazyMotion>
-    </StrictMode>,
-  );
+/** First-visit browsers hydrate the prerendered landing page; the packaged app,
+ * in-app hash routes and returning browsers boot the study app directly. */
+function shouldHydrateLanding(): boolean {
+  if (window.electronAPI?.isElectron) return false;
+  if (window.location.hash.length > 1) return false;
+  try {
+    // A previous start seeded the example course, so this browser already knows
+    // the app: skip the marketing flash and go straight to the dashboard.
+    if (localStorage.getItem(SEED_FLAG_KEY)) return false;
+  } catch {
+    // Storage may be unavailable; fall through to the prerender check.
+  }
+  return !!document.getElementById('root')?.querySelector('.landing-page');
+}
+
+function start(): void {
+  if (!import.meta.env.DEV && shouldHydrateLanding()) {
+    // Keep the landing chunk out of the application shell: it loads only for
+    // the prerendered first visit, never for dashboard starts.
+    void import('./pages/landing/entry-client').then(({ hydrateLanding }) =>
+      hydrateLanding(),
+    );
+    return;
+  }
+  renderApp();
 }
 
 if (import.meta.env.DEV) {
-  void clearDevelopmentPwaState().finally(renderApp);
+  void clearDevelopmentPwaState().finally(start);
 } else {
-  renderApp();
+  start();
 }

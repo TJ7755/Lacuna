@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Prerendered the homepage landing content into `dist/index.html` at build time,
+  with canonical/social metadata, so crawlers see the hero, product sections and
+  links without JavaScript. First-visit browsers hydrate the same landing tree
+  and hand over to the study app on in-app navigation; returning browsers, hash
+  routes and desktop boot the app directly with no behaviour change.
+
 - Promoted the selected comparison design to `/compare/quizlet/` with build-time
   HTML rendering, canonical/social metadata, sitemap and robots discovery. Added
   a landing-page link and preserved direct sharing/import entry for new visitors.

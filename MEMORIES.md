@@ -182,6 +182,12 @@ Workers must use the ID and share-codec utilities without importing database ini
 Course-file operations must load with the Share route: deferring their module until the first
 button click breaks first-use export/import after the user goes offline.
 
+Build-time prerendering of a hash-routed page needs a browser shim: the landing
+tree reads `window` and `localStorage` during render, so its server entry installs
+happy-dom globals and restores them afterwards. Hash-router navigation uses
+`pushState` and never fires `hashchange`; handover code must also watch the
+history methods and `popstate`.
+
 ## Product restraint
 
 Exam-day readiness is the primary comparison-page message. Show the exam target and
