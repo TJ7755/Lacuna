@@ -727,3 +727,21 @@ Touch pointer events were simulated; this is not physical-device touch or packag
 
 V1 remains incomplete. Media paste/drop, assessment-linked published lineage, coverage/unknown
 presentation and the outstanding release checks remain on the checkpoint above.
+
+
+## Media authoring completion gate — 27 September 2026
+
+Question/source workspace accepts image paste and file drop, using the existing compact chooser
+for preview, description and optional caption. One image is accepted at a time; normal text paste
+is untouched. Captions are stored as editable prompt Markdown below the image. The existing
+session saves asset and reference atomically, preserving draft conflict/retry behaviour.
+
+New paste/drop UI tests failed before implementation. 20 image/session/editor tests pass;
+web typecheck and focused lint pass. Browser `127.0.0.1:5183`, 390×844 and 1280×800: pasted a
+stored PNG into Question text, entered description/caption, added it, and reloaded to verify the
+saved draft and rendered caption. Dropping a PNG opened the same preview; Remove selection
+cleared it without inserting. No narrow overflow. Clipboard/drop payloads were dispatched in
+the browser; OS clipboard and physical drag hardware were not exercised.
+
+- [Narrow image selection and caption](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhvpy7-66ff2f22.png)
+- [Desktop saved caption](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhwar2-dc0f67c2.png)

@@ -242,7 +242,7 @@ describe('Question Set draft session', () => {
     expect(session.getSnapshot().phase).toBe('disposed');
   });
 
-  it('persists an uploaded image and its Markdown reference in one save', async () => {
+  it.each(['', 'Figure 1. Cell membrane'])('persists an uploaded image and caption %s in one save', async (caption) => {
     const initial = createEmptyQuestionSetDraft('course', 'set');
     initial.content.questions = [{ id: 'q1', prompt: 'Stem', parts: [] }];
     const operations = storage();
@@ -266,6 +266,7 @@ describe('Question Set draft session', () => {
       'q1',
       new File(['image'], 'cell.png', { type: 'image/png' }),
       'Cell membrane',
+      caption,
     );
 
     expect(url).toBe(`lacuna-asset://${asset.hash}`);
@@ -274,7 +275,7 @@ describe('Question Set draft session', () => {
         content: expect.objectContaining({
           questions: [
             expect.objectContaining({
-              prompt: `Stem\n\n![Cell membrane](lacuna-asset://${asset.hash})`,
+              prompt: `Stem\n\n![Cell membrane](lacuna-asset://${asset.hash})${caption ? `\n\n${caption}` : ''}`,
             }),
           ],
         }),
