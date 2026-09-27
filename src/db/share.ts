@@ -1272,9 +1272,6 @@ export async function buildCourseSharePayload(
   });
 
   const conceptIds = new Set(concepts.map((concept) => concept.id));
-  if (distribution && questionSets.some((set) => set.assessmentIds.length > 0)) {
-    throw new Error('Published courses cannot yet share Question Sets linked to assessments.');
-  }
   for (const card of courseCards) {
     if (!conceptIds.has(card.conceptId)) {
       throw new Error(`Card ${card.id} references a missing Concept.`);

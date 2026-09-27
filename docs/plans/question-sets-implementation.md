@@ -763,3 +763,23 @@ filters, verified unresolved evidence, and followed Resume attempt back to the s
 No horizontal overflow. Evidence remains collapsed by default.
 
 - [Desktop evidence](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhz1d2-0f3ef213.png)
+
+
+## Assessment-linked publication completion gate — 27 September 2026
+
+Published v4/v5 Course imports adopt assessments before validating Question Set links. Updates
+track assessment identities and content snapshots, retain local edits/deletions as conflicts,
+validate references, hydrate the final date and preserve learner receipts. Removing an assessment
+still referenced by a local authored set rolls back the update. Backup and peer merge retain the
+new mapping fields. Existing authored course transport is reused; no external publishing occurred.
+
+New linked-import tests failed against the old rejection guard. 142 focused backend tests passed;
+the combined final set of 357 tests across 41 files and all web/server/Electron typechecks passed.
+Browser `127.0.0.1:5183`: imported a v5 published Biology fixture through the production importer,
+started an attempt, applied a revision with a changed title/exam date, and verified the linked ID
+and byte-for-byte unchanged attempt. The updated learner overview and retained attempt rendered.
+Then exported the actual preview database and replace-restored it: all five attempts were identical,
+five authored sets and the assessment lineage mapping survived. This exercises the real browser
+IndexedDB restore path in addition to automated long-answer/media/privacy tests.
+
+- [Updated published set after restore](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muji32fw-251ab3b3.png)

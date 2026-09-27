@@ -19,11 +19,8 @@
  * create case: `db.sequences.put` on an id with no existing row is an insert, and its
  * internal diff against zero existing cards is all-creates.
  *
- * Deliberately out of scope for this task (not part of `LineageIdMapping`'s tracked
- * entity kinds, §7.2): course-level assessments and question-bank cards. A lineage
- * payload's `exams`/`bankCards` are not touched here; only lessons, notes, cards and
- * sequences are lineage-tracked. This mirrors §7.9 Task 5's brief, which scopes id
- * adoption to "lessons/notes/cards" only.
+ * Question-bank cards remain outside lineage tracking. Published assessment
+ * identities are adopted with Question Sets so their links survive updates.
  *
  * This module uses Dexie directly (never edits `src/db/repository.ts`, owned by a
  * concurrent Arc 7 task) but does import its existing, unmodified exports for creates,
@@ -87,6 +84,8 @@ import type {
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes } from '../questions/questionSetLineage';
+import { applyLineageAssessments } from './assessmentLineage';
+import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 
 /** Narrowed view of the fields this module reads off a decoded course share payload. */
 type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5) & {
@@ -371,6 +370,8 @@ function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
     questionIds: [],
     questionSetIds: [],
     questionSetRevisions: {},
+    assessmentIds: [],
+    assessmentSnapshots: {},
     sequenceIds: [],
     occlusionIds: [],
     lessonSnapshots: {},
@@ -1007,6 +1008,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await applySequences(payload, course.id, lessonIdByIndex, mapping);
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
     await applyLineageQuestions(payload, course.id, mapping);
+    if (payload.v === 4 || payload.v === 5) await applyLineageAssessments(payload, course.id, mapping, true);
     if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, course.id, mapping);
     if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
@@ -1018,7 +1020,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await clearTombstone(tx, 'lineageIdMappings', payload.li);
     await db.pendingMergeReviews.where('courseId').equals(course.id).delete();
 
-    return { course };
+    const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    return { course: hydrateCourse(course, finalAssessmentForCourse(course.id, assessments)) };
   });
 }
 
@@ -1223,6 +1226,7 @@ export async function mergeLineageUpdate(
       }
     }
     await applyLineageQuestions(payload, courseId, mapping);
+    if (payload.v === 4 || payload.v === 5) await applyLineageAssessments(payload, courseId, mapping);
     if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, courseId, mapping);
     if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);

@@ -11,12 +11,8 @@ export async function applyLineageQuestionSets(
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<void> {
-  if (payload.questionSets.some((set) => set.assessmentIds.length > 0)) {
-    throw new Error(
-      'Published-course updates cannot yet import Question Sets linked to assessments.',
-    );
-  }
   const lessonIds = new Set(payload.lessons.flatMap((lesson) => (lesson.i ? [lesson.i] : [])));
+  const assessmentIds = new Set((await db.courseAssessments.where('courseId').equals(courseId).toArray()).map((assessment) => assessment.id));
   const conceptIds = new Set(payload.concepts.map((concept) => concept.id));
   const previousIds = new Set(mapping.questionSetIds ?? []);
   const previousRevisions = mapping.questionSetRevisions ?? {};
@@ -47,6 +43,9 @@ export async function applyLineageQuestionSets(
     const record = parseQuestionSetRecord({ ...raw, courseId });
     if (record.lessonIds.some((id) => !lessonIds.has(id))) {
       throw new Error('A lineage Question Set references a missing Lesson.');
+    }
+    if (record.assessmentIds.some((id) => !assessmentIds.has(id))) {
+      throw new Error('A lineage Question Set references a missing Assessment.');
     }
     const referencedConceptIds = record.questions.flatMap((question) => [
       ...(question.answer
@@ -97,6 +96,12 @@ export async function applyLineageQuestionSets(
       ),
     });
     if (tombstone) await db.tombstones.delete(['questionSets', record.id]);
+  }
+  const currentSets = await db.questionSets.where('courseId').equals(courseId).toArray();
+  for (const set of currentSets) {
+    if (set.assessmentIds.some((id) => !assessmentIds.has(id))) {
+      throw new Error('A local Question Set still links to a removed Assessment.');
+    }
   }
   mapping.questionSetIds = [...incomingIds];
   mapping.questionSetRevisions = Object.fromEntries(
