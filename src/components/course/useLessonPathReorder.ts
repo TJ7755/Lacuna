@@ -121,9 +121,9 @@ export function useLessonPathReorder({
       const remainingIds = orderedIds.filter((id) => id !== lessonId);
       let targetIndex = 0;
       for (const id of remainingIds) {
-        const element = elementsRef.current.get(id);
-        if (!element) continue;
-        const rect = sessionRef.current?.slots.get(id) ?? element.getBoundingClientRect();
+        const rect =
+          sessionRef.current?.slots.get(id) ?? elementsRef.current.get(id)?.getBoundingClientRect();
+        if (!rect) continue;
         if (clientY >= rect.top + rect.height / 2) targetIndex += 1;
       }
       return targetIndex;
