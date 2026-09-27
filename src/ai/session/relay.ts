@@ -583,7 +583,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
         } catch (error) {
           if (error instanceof TypeError) {
             return unavailable(
-              'Lacuna could not reach the relay. Check that this network permits lacuna-relay.vercel.app.',
+              'Lacuna could not reach the relay. Check that this network permits relay.getlacuna.app.',
             );
           }
           return internal('The terminal pairing session could not be created.');

@@ -31,7 +31,7 @@ bun run test:e2e:electron-package
 
 Settings → AI offers **Built-in AI** alongside the existing external AI client. Built-in AI uses
 the existing sidebar on web and Electron. An issued beta access code is required. The web app
-calls its own `/api/ai/` functions; Electron calls `https://lacuna-beta-one.vercel.app/api/ai/`.
+calls its own `/api/ai/` functions; Electron calls `https://getlacuna.app/api/ai/`.
 Some managed networks may block that host. Ordinary study remains available when the AI service
 or network is unavailable. Messages and selected tool content travel over HTTPS to the hosted
 provider; the local transcript, study database, tool execution and write approvals stay on the

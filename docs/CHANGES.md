@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Connected `getlacuna.app` to the existing Vercel production project with HTTPS
+  and a permanent redirect from `www.getlacuna.app`.
+  Kept the previous Vercel address available so existing browser users can export
+  their local study data before moving to the new domain.
+
+- Moved the default sync/share/AI relay and AI companion to `relay.getlacuna.app`.
+  Desktop share links and hosted AI now use `getlacuna.app`; web share links retain
+  their current origin so previews remain usable. The new relay domain aliases the
+  existing production project and Blob store, preserving share codes and data.
+  Existing saved relay addresses remain valid, including the desktop CSP and CORS
+  exception for the legacy relay. Updated web/Electron test fixtures and deployment docs.
+
 - Hid the pre-existing unusable update-review link on archived single-lesson courses;
   restoring the course makes pending updates accessible again.
 

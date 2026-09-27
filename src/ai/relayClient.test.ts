@@ -32,7 +32,7 @@ describe('browser AI relay client', () => {
       browserToken: BROWSER_TOKEN,
       expiresAt: 100,
     });
-    expect(fetchImpl).toHaveBeenCalledWith(`${DEFAULT_RELAY_URL}/ai/sessions`, {
+    expect(fetchImpl).toHaveBeenCalledWith('https://relay.getlacuna.app/ai/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ browserPublicKey: PUBLIC_KEY }),

@@ -8,7 +8,7 @@ import { resolvePackagedExecutable } from '../../scripts/electron-performance/ex
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(import.meta.url);
-const service = 'https://lacuna-beta-one.vercel.app';
+const service = 'https://getlacuna.app';
 
 test('Electron connects to the hosted service and shows its streamed reply', async () => {
   test.skip(process.platform !== 'darwin' && process.platform !== 'win32');

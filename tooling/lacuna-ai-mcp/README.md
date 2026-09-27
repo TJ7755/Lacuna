@@ -67,5 +67,5 @@ input digest and requested course name; destructive actions use the same exact-c
 consume their approval once. Stop blocks later tool calls as well as replies. Successful writes
 return a structured receipt built from the repository result.
 
-The default relay is `https://lacuna-relay.vercel.app`. A custom relay may be supplied to
+The default relay is `https://relay.getlacuna.app`. A custom relay may be supplied to
 `lacuna.connect`; plain HTTP is accepted only for loopback development.

@@ -5,7 +5,7 @@ import { MemoryStore } from '../../../relay/src/store.js';
 import { TerminalAiClient } from '../../../tooling/lacuna-ai-mcp/src/client.js';
 import { HttpTerminalRelayTransport } from '../../../tooling/lacuna-ai-mcp/src/relayTransport.js';
 
-const RELAY_URL = 'https://lacuna-relay.vercel.app';
+const RELAY_URL = 'https://relay.getlacuna.app';
 const PAIRING_CODE_RE = /\b[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}\b/;
 
 export interface BrowserPutRecord {

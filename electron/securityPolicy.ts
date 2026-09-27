@@ -3,11 +3,12 @@ export type RendererEnvironment = 'development' | 'production';
 export const VITE_RENDERER_ORIGIN = 'http://localhost:5173';
 export const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
-const DEFAULT_SYNC_RELAY_ORIGIN = 'https://lacuna-relay.vercel.app';
-const HOSTED_AI_ORIGIN = 'https://lacuna-beta-one.vercel.app';
+// Existing saved pairings retain the legacy endpoint. Both names serve the same relay.
+const SYNC_RELAY_ORIGINS = new Set(['https://relay.getlacuna.app', 'https://lacuna-relay.vercel.app']);
+const HOSTED_AI_ORIGIN = 'https://getlacuna.app';
 const ALLOWED_MEDIA_TYPES = new Set(['audio', 'video']);
 const PRODUCTION_RENDERER_CSP =
-  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app https://lacuna-beta-one.vercel.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;";
+  "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com;";
 
 export type ElectronResponseHeaders = Record<string, string[]>;
 
@@ -22,7 +23,7 @@ function setResponseHeader(
   headers[name] = values;
 }
 
-/** Add trusted-renderer security headers and repair CORS only for Lacuna's exact relay. */
+/** Add trusted-renderer security headers and repair CORS only for Lacuna's exact relay origins. */
 export function addElectronSecurityHeaders(
   responseUrl: string,
   responseHeaders: ElectronResponseHeaders,
@@ -41,10 +42,10 @@ export function addElectronSecurityHeaders(
 
   if (environment === 'production') {
     try {
-      if (new URL(responseUrl).origin === DEFAULT_SYNC_RELAY_ORIGIN) {
+      if (SYNC_RELAY_ORIGINS.has(new URL(responseUrl).origin)) {
         // Some managed-device proxies strip a custom-scheme CORS value from the
         // otherwise valid relay response. The renderer is already confined to
-        // APP_RENDERER_ORIGIN, so repair only this one trusted relay boundary.
+        // APP_RENDERER_ORIGIN, so repair only these trusted relay origins.
         setResponseHeader(headers, 'Access-Control-Allow-Origin', [APP_RENDERER_ORIGIN]);
         setResponseHeader(headers, 'Access-Control-Allow-Methods', [
           'GET, PUT, POST, DELETE, OPTIONS',

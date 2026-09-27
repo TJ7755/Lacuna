@@ -5,6 +5,23 @@ A private sync and AI-session mailbox. Sync channels store two opaque blobs — 
 directional encrypted mailboxes. The relay never receives a private ECDH key and cannot decrypt
 conversation content.
 
+Production is available at `https://relay.getlacuna.app`, attached to the existing
+`lacuna-relay` Vercel project and its private Blob store. The legacy
+`https://lacuna-relay.vercel.app` endpoint remains an alias, without a redirect,
+for saved sync pairings, older app versions and stored share write credentials.
+Adding the domain does not move or recreate channels, published shares or AI sessions.
+
+Name.com DNS (configured 27 September 2026, TTL 300):
+
+| Host | Type | Answer | Vercel destination |
+| --- | --- | --- | --- |
+| apex (blank host) | A | `216.150.1.1` | `lacuna` production |
+| `www` | CNAME | `1569694c36fe1c59.vercel-dns-017.com` | 308 redirect to `getlacuna.app` |
+| `relay` | CNAME | `da5705de4c43a022.vercel-dns-017.com` | `lacuna-relay` production |
+
+Vercel provisions HTTPS for each domain. Use the current project Domains settings
+as the authority if Vercel changes these DNS targets.
+
 Knowledge of the channel id is the read capability. Writes need the bearer
 token minted with the channel. Creating a channel needs a separate shared
 secret (`RELAY_MINT_SECRET`). `ETag` / `If-Match` is what stops two devices

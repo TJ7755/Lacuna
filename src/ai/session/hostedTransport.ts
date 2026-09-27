@@ -1,7 +1,7 @@
 import { decodeHostedEvents, type HostedEvent, type HostedRequest } from '../hostedProtocol';
 
 export const HOSTED_ACCESS_STORAGE_KEY = 'lacuna.aiHostedAccess';
-export const HOSTED_SERVICE_ORIGIN = 'https://lacuna-beta-one.vercel.app';
+export const HOSTED_SERVICE_ORIGIN = 'https://getlacuna.app';
 
 export interface HostedTransport {
   exchange(credential: string, signal?: AbortSignal): Promise<{ token: string; expiresAt: number }>;

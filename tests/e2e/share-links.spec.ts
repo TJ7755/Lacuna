@@ -4,7 +4,7 @@ import { MemoryStore } from '../../relay/src/store.js';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { addLessonCard, editOnlyCard } from './fixtures/syncConvergence';
 
-const RELAY_URL = 'https://lacuna-relay.vercel.app';
+const RELAY_URL = 'https://relay.getlacuna.app';
 
 /** Serve the real relay handler from memory, so the spec exercises the wire protocol. */
 async function installShareRelay(
