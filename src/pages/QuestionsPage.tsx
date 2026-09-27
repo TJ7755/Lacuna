@@ -1,3 +1,5 @@
+import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQuestionSetAttempts';
+import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -82,7 +84,7 @@ export function QuestionsPage() {
       <header className="qs-library-header">
         <div>
           <p className="qs-kicker">{course.name}</p>
-          <h1>Questions</h1>
+          <h1 tabIndex={-1}>Questions</h1>
         </div>
         {author && (
           <Button onClick={() => void create()} disabled={creating}>
@@ -108,22 +110,44 @@ export function QuestionsPage() {
       )}
       <section className="qs-set-list" aria-label="Question sets">
         {rows.map(({ content, draft }) => (
-          <Link
-            className="qs-set-row"
-            key={content.id}
-            state={origin}
-            to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
-          >
-            <div>
-              <h2>{content.title || 'Untitled set'}</h2>
-              <p>
-                {content.questions.length}{' '}
-                {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
-                {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
-              </p>
-            </div>
-            <span>{draft ? 'Draft' : author ? 'Edit →' : 'View →'}</span>
-          </Link>
+          <div className="qs-library-row" key={content.id}>
+            <Link
+              className="qs-set-row"
+              state={origin}
+              to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
+            >
+              <div>
+                <h2>{content.title || 'Untitled set'}</h2>
+                <p>
+                  {content.questions.length}{' '}
+                  {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
+                  {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+                </p>
+              </div>
+              <span>{draft ? 'Draft' : author ? 'Edit →' : 'View →'}</span>
+            </Link>
+            {author && (
+              <QuestionSetLibraryActions
+                courseId={course.id}
+                setId={content.id}
+                title={content.title || 'Untitled set'}
+                contentRevisionId={
+                  data.sets.find((set) => set.id === content.id)?.contentRevisionId ?? null
+                }
+                draftRevisionId={
+                  data.drafts.find((row) => row.content.id === content.id)?.draftRevisionId ?? null
+                }
+                onRemoved={() =>
+                  requestAnimationFrame(() => {
+                    (
+                      root.current?.querySelector<HTMLElement>('input[type="search"]') ??
+                      root.current?.querySelector<HTMLElement>('h1')
+                    )?.focus();
+                  })
+                }
+              />
+            )}
+          </div>
         ))}
         {rows.length === 0 && (
           <div className="qs-empty">
@@ -139,6 +163,7 @@ export function QuestionsPage() {
           </div>
         )}
       </section>
+      <RemovedQuestionSetAttempts courseId={course.id} />
       {data.legacy > 0 && (
         <details className="qs-legacy">
           <summary>Individual questions · {data.legacy}</summary>

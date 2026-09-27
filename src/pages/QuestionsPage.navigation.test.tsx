@@ -31,6 +31,9 @@ vi.mock('../state/useCourseData', () => ({
   }),
 }));
 vi.mock('../course/lessonViewMode', () => ({ resolveLessonViewMode: () => 'read' }));
+vi.mock('../components/question-sets/RemovedQuestionSetAttempts', () => ({
+  RemovedQuestionSetAttempts: () => null,
+}));
 vi.mock('../questions/questionSetDrafts', () => ({
   createEmptyQuestionSetDraft: vi.fn(),
   listQuestionSetDrafts: vi.fn(),
