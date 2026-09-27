@@ -58,3 +58,27 @@ export async function registerProductionServiceWorker(
     return false;
   }
 }
+
+
+/** Keep website analytics out of desktop, development and preview sessions. */
+export function installSimpleAnalytics({
+  targetDocument = document,
+  isProduction = import.meta.env.PROD,
+  origin = window.location.origin,
+}: {
+  targetDocument?: Document;
+  isProduction?: boolean;
+  origin?: string;
+} = {}): void {
+  if (!isProduction || origin !== 'https://getlacuna.app') return;
+
+  const source = 'https://scripts.simpleanalyticscdn.com/latest.js';
+  if (targetDocument.querySelector(`script[src="${source}"]`)) return;
+
+  const script = targetDocument.createElement('script');
+  script.src = source;
+  script.async = true;
+  // Use CORS so the hosted site's cross-origin isolation permits this script.
+  script.crossOrigin = 'anonymous';
+  targetDocument.body.append(script);
+}

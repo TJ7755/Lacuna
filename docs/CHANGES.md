@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added the asynchronous Simple Analytics script on production `getlacuna.app`,
+  with the required web CSP permissions and CORS loading for cross-origin isolation.
+  Development, preview and desktop sessions do not load it. Do Not Track remains
+  respected; no noscript tracker or extra dependency is added.
+
 - Connected `getlacuna.app` to the existing Vercel production project with HTTPS
   and a permanent redirect from `www.getlacuna.app`.
   Kept the previous Vercel address available so existing browser users can export
