@@ -1,7 +1,13 @@
 import { clearTombstone, recordTombstone } from '../db/mutationStamp';
 import { scheduleAssetGc } from '../db/assets';
 import { db, makeId } from '../db/schema';
+import { canEditLessons } from '../course/lessonViewMode';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
+import {
+  deleteQuestionSetDraft,
+  loadQuestionSetDraft,
+  QuestionSetDraftConflictError,
+} from './questionSetDrafts';
 import { validateQuestionSet, type QuestionAnswer, type QuestionSet } from './questionSets';
 
 export class QuestionSetRevisionConflictError extends Error {
@@ -250,6 +256,53 @@ export async function deleteQuestionSet(id: string, now = Date.now()): Promise<v
     return true;
   });
   if (deleted) scheduleAssetGc();
+}
+
+/** Remove exactly the authored revisions shown to the user, including a local draft. */
+export async function removeAuthoredQuestionSet(
+  courseId: string,
+  setId: string,
+  options: {
+    expectedContentRevisionId: string | null;
+    expectedDraftRevisionId: string | null;
+    now?: number;
+  },
+): Promise<void> {
+  const removed = await db.transaction(
+    'rw',
+    [db.courses, db.questionSets, db.appState, db.tombstones],
+    async (tx) => {
+      const course = await db.courses.get(courseId);
+      if (!course || course.archived || !canEditLessons(course)) {
+        throw new Error('This Course is read-only.');
+      }
+      const record = await db.questionSets.get(setId);
+      if (record && record.courseId !== courseId) throw new Error('Question Set Course mismatch.');
+      if ((record?.contentRevisionId ?? null) !== options.expectedContentRevisionId) {
+        throw new QuestionSetRevisionConflictError();
+      }
+      const draft = await loadQuestionSetDraft(courseId, setId);
+      if ((draft?.draftRevisionId ?? null) !== options.expectedDraftRevisionId) {
+        throw new QuestionSetDraftConflictError();
+      }
+      if (draft) {
+        await deleteQuestionSetDraft(courseId, setId, {
+          expectedDraftRevisionId: draft.draftRevisionId,
+        });
+      }
+      if (record) {
+        await db.questionSets.delete(setId);
+        await recordTombstone(
+          tx,
+          'questionSets',
+          setId,
+          Math.max(options.now ?? Date.now(), record.updatedAt + 1),
+        );
+      }
+      return Boolean(record || draft);
+    },
+  );
+  if (removed) scheduleAssetGc();
 }
 
 async function removeReferenceFromQuestionSets(

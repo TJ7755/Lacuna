@@ -93,6 +93,23 @@ export async function listQuestionSetAttempts(
     .sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id));
 }
 
+/** Attempts whose authored set has been removed, scoped to the owning Course. */
+export async function listRemovedQuestionSetAttempts(
+  courseId: string,
+): Promise<QuestionSetAttemptRecord[]> {
+  return db.transaction('r', [db.questionSets, db.questionSetAttempts], async () => {
+    const [sets, attempts] = await Promise.all([
+      db.questionSets.where('courseId').equals(courseId).toArray(),
+      db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
+    ]);
+    const liveSetIds = new Set(sets.map((set) => set.id));
+    return attempts
+      .filter((attempt) => !liveSetIds.has(attempt.questionSetId))
+      .map(parseQuestionSetAttemptRecord)
+      .sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id));
+  });
+}
+
 async function mutate(
   id: string,
   expectedRevisionId: string,

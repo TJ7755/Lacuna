@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added compact author actions for Question Sets: course sharing with preselection, and confirmed
+  removal of the saved set and local draft. Revision checks prevent deleting edits made elsewhere;
+  read-only courses reject removal. Previous attempts and their media remain available through a
+  collapsed library history and the removed set's overview, using their original content receipts.
+
 - Question Set diagrams can open in a keyboard-accessible viewer with fit/actual-size controls,
   including submitted responses and mark schemes. Closing restores focus without changing an
   answer or selecting an image's multiple-choice option. Authored image links retain navigation.

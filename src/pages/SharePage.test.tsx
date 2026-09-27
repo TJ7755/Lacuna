@@ -224,6 +224,20 @@ beforeEach(() => {
 });
 
 describe('SharePage', () => {
+  it('preselects the requested course from a valid courseId query', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockSearchParams = new URLSearchParams(`courseId=${mockCourse.id}`);
+
+    render(<SharePage />);
+
+    expect(screen.getByRole('button', { name: /Test Course/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Save course file' })).toBeEnabled();
+  });
+
   it('ignores a slow code read after a newer file preview', async () => {
     let finish!: (payload: Awaited<ReturnType<typeof decodeShare>>) => void;
     vi.mocked(decodeShare).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));

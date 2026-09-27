@@ -1,3 +1,4 @@
+import { QuestionSetAttemptList } from '../components/question-sets/QuestionSetAttemptList';
 import { QuestionSetEvidencePanel } from '../components/question-sets/QuestionSetEvidencePanel';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -7,7 +8,6 @@ import {
   listQuestionSetAttempts,
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
-import { summariseSelfMarking } from '../questions/questionSets';
 import type { QuestionSetAttemptMode } from '../questions/questionSetAttempts';
 import '../components/question-sets/question-set-practice.css';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -30,6 +30,23 @@ export function QuestionSetOverview() {
   const attempts = useLiveQuery(() => listQuestionSetAttempts(setId!), [setId], []);
   const content = useLiveQuery(() => getQuestionSet(setId!), [setId]);
   if (content === undefined || !course) return <p className="p-8">Loading question set…</p>;
+  const retainedAttempts = attempts.filter((attempt) => attempt.courseId === courseId);
+  if (!content && retainedAttempts.length)
+    return (
+      <div className="qs-overview">
+        <Link
+          className="qs-back"
+          to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
+        >
+          ← {origin?.questionSetReturnLabel ?? 'Question sets'}
+        </Link>
+        <h1>{retainedAttempts[0].receipt.title}</h1>
+        <p className="qs-muted mb-8">
+          This set has been removed. Your saved attempts remain available.
+        </p>
+        <QuestionSetAttemptList attempts={retainedAttempts} origin={origin} />
+      </div>
+    );
   if (!content || content.courseId !== courseId)
     return (
       <p className="p-8">
@@ -97,34 +114,7 @@ export function QuestionSetOverview() {
       {attempts.length > 0 && (
         <section className="qs-history">
           <h2>Your attempts</h2>
-          <div className="qs-set-list">
-            {attempts.map((attempt) => {
-              const result = summariseSelfMarking(attempt.receipt, attempt.decisions);
-              return (
-                <Link
-                  className="qs-set-row"
-                  key={attempt.id}
-                  state={origin}
-                  to={`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`}
-                >
-                  <div>
-                    <p>
-                      {attempt.mode === 'paper' ? 'Paper' : 'Practice'} ·{' '}
-                      {new Date(attempt.createdAt).toLocaleDateString('en-GB')}
-                    </p>
-                    <p>
-                      {attempt.status === 'complete'
-                        ? `${result.total.awarded} / ${result.total.available} · self-marked`
-                        : attempt.status === 'marking'
-                          ? 'Ready to mark'
-                          : 'In progress'}
-                    </p>
-                  </div>
-                  <span>{attempt.status === 'complete' ? 'Review' : 'Continue'} →</span>
-                </Link>
-              );
-            })}
-          </div>
+          <QuestionSetAttemptList attempts={attempts} origin={origin} />
         </section>
       )}
       <QuestionSetEvidencePanel content={content} attempts={attempts} />

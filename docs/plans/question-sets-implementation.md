@@ -644,3 +644,34 @@ Screenshots:
 
 Next: author set removal and existing Course sharing access, then the separately scoped path
 activity/portability gate. The overall V1 checklist remains incomplete.
+
+
+## Author removal and sharing entry gate — 27 September 2026
+
+Added a small More disclosure per author library row, with Share course and confirmed Remove
+set. Sharing opens the existing Course transport with the current course selected; no new
+sharing format or external publication is performed by opening it. Removal compares the saved
+and draft revisions captured when confirmation opens, checks Course editing rights, and removes
+both atomically with a saved-content tombstone. Personal attempts and receipt assets survive.
+Removed sets' attempts are discoverable in a collapsed library section and remain available in
+their original overview/learner routes. There is no new-attempt action for removed content.
+
+Baseline tests failed for the missing removal/listing APIs, action component and share-query
+preselection. Repository tests cover stale revisions, read-only courses, drafts, tombstones,
+retained attempts and image garbage collection. UI tests cover cancellation, pending duplicate
+clicks, failure/retry, and sharing preselection. Targeted validation and browser checks passed.
+
+Browser: `127.0.0.1:5183`, 1280×800 and 390×844. Created a dedicated removal fixture using the
+real repository, with a draft and attempt. Cancel restored focus; changing the draft while the
+confirmation was open blocked removal. Reopening confirmation then removed both set and draft,
+kept its attempt/image, and wrote the tombstone. The removed attempt remained usable after a
+fresh navigation; its title returned to a retained-history overview. Library sharing selected the
+correct Course without publishing it. No horizontal overflow in the narrow layouts.
+
+- [Desktop removal confirmation](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgrixv-6d0b10bc.png)
+- [Narrow removal confirmation](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgrsay-0e3f63ed.png)
+- [Retained attempts](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgwmk2-71f8703a.png)
+
+Author media paste/drop and assessment-linked published lineage remain separate outstanding
+work. Practice Qs path activities are being developed as a coordinated domain/portability gate;
+that in-progress work is not covered by this author-management gate.

@@ -6,6 +6,7 @@ import { deleteCourse, restoreCourse, snapshotCourse } from '../db/courseReposit
 import { createCourseAssessment, deleteCourseAssessment } from '../db/assessmentRepository';
 import { createLesson, deleteLesson, restoreLesson, snapshotLesson } from '../db/lessonRepository';
 import { db } from '../db/schema';
+import { assetUrl, collectOrphanedAssets } from '../db/assets';
 import { createConcept, deleteConcept } from './repository';
 import { parseQuestionSetRecord } from './questionSetCodec';
 import {
@@ -17,8 +18,11 @@ import {
   listQuestionSetsForConcept,
   listQuestionSetsForLesson,
   listQuestionSets,
+  removeAuthoredQuestionSet,
   updateQuestionSet,
 } from './questionSetRepository';
+import { createQuestionSetDraft, createEmptyQuestionSetDraft, loadQuestionSetDraft, saveQuestionSetDraft } from './questionSetDrafts';
+import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import type { QuestionSet } from './questionSets';
 
 function content(
@@ -175,6 +179,69 @@ describe('Question-set repository', () => {
     );
     expect(restored.updatedAt).toBe(2_001);
     expect(await db.tombstones.get(['questionSets', created.id])).toBeUndefined();
+  });
+
+  it('atomically removes authored content and draft while retaining attempts and receipt media', async () => {
+    const { course, lesson, assessment, concept } = await fixture();
+    const receiptHash = 'a'.repeat(64);
+    const draftHash = 'b'.repeat(64);
+    await db.assets.bulkPut([receiptHash, draftHash].map((hash) => ({
+      hash, blob: new Uint8Array([1]), mimeType: 'image/png', kind: 'image' as const,
+      width: 1, height: 1, createdAt: 1,
+    })));
+    const original = content(course.id, lesson.id, assessment.id, concept.id);
+    original.questions[0].prompt = `Name this: ![figure](${assetUrl(receiptHash)})`;
+    const created = await createQuestionSet(original, 1_000);
+    const attempt = await startQuestionSetAttempt(created.id, 'practice', 1_100);
+    const draft = createQuestionSetDraft(original, created.contentRevisionId);
+    draft.content.questions[0].prompt = `Changed: ![figure](${assetUrl(draftHash)})`;
+    const savedDraft = await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
+
+    await removeAuthoredQuestionSet(course.id, created.id, {
+      expectedContentRevisionId: created.contentRevisionId,
+      expectedDraftRevisionId: savedDraft.draftRevisionId,
+      now: 2_000,
+    });
+
+    expect(await db.questionSets.get(created.id)).toBeUndefined();
+    expect(await loadQuestionSetDraft(course.id, created.id)).toBeNull();
+    expect(await db.tombstones.get(['questionSets', created.id])).toMatchObject({ deletedAt: 2_000 });
+    expect((await db.questionSetAttempts.get(attempt.id))?.receipt.questions[0].prompt).toContain(receiptHash);
+    await collectOrphanedAssets();
+    expect(await db.assets.get(receiptHash)).toBeDefined();
+    expect(await db.assets.get(draftHash)).toBeUndefined();
+  });
+
+  it('refuses stale or read-only removal without deleting draft or content', async () => {
+    const { course, lesson, assessment, concept } = await fixture();
+    const created = await createQuestionSet(content(course.id, lesson.id, assessment.id, concept.id));
+    const draft = await saveQuestionSetDraft(createQuestionSetDraft(created, created.contentRevisionId), {
+      expectedDraftRevisionId: null,
+    });
+    const options = { expectedContentRevisionId: created.contentRevisionId, expectedDraftRevisionId: draft.draftRevisionId };
+    await expect(removeAuthoredQuestionSet(course.id, created.id, {
+      ...options, expectedDraftRevisionId: 'stale',
+    })).rejects.toThrow('changed in another window');
+    await expect(removeAuthoredQuestionSet(course.id, created.id, {
+      ...options, expectedContentRevisionId: 'stale',
+    })).rejects.toThrow('changed since it was opened');
+    await db.courses.update(course.id, { archived: true });
+    await expect(removeAuthoredQuestionSet(course.id, created.id, options)).rejects.toThrow('read-only');
+    await db.courses.update(course.id, { archived: false, distributedCopy: { locked: true, lineageId: 'lineage', revision: 1, autoAcceptUpdates: false } });
+    await expect(removeAuthoredQuestionSet(course.id, created.id, options)).rejects.toThrow('read-only');
+    expect(await db.questionSets.get(created.id)).toBeDefined();
+    expect(await loadQuestionSetDraft(course.id, created.id)).toEqual(draft);
+
+    const draftOnly = await saveQuestionSetDraft(createEmptyQuestionSetDraft(course.id, 'new-set'), {
+      expectedDraftRevisionId: null,
+    });
+    await db.courses.update(course.id, { distributedCopy: undefined });
+    await removeAuthoredQuestionSet(course.id, 'new-set', {
+      expectedContentRevisionId: null,
+      expectedDraftRevisionId: draftOnly.draftRevisionId,
+    });
+    expect(await loadQuestionSetDraft(course.id, 'new-set')).toBeNull();
+    expect(await db.tombstones.get(['questionSets', 'new-set'])).toBeUndefined();
   });
 
   it('preserves reference integrity across Concept, Lesson, Assessment, and Course deletion', async () => {
