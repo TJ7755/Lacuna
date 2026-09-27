@@ -89,6 +89,9 @@ describe('PathNodeView Question Set activity', () => {
     expect(screen.queryByRole('link', { name: 'Cell exam' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit activity' })).not.toBeInTheDocument();
 
+    fireEvent.pointerEnter(screen.getByText('Cell structure'), { pointerType: 'mouse' });
+    expect(screen.queryByText('No attempts yet')).not.toBeInTheDocument();
+
     const activityLink = screen.getByRole('link', { name: /Practice Qs Cell structure/ });
     fireEvent.focus(activityLink);
 

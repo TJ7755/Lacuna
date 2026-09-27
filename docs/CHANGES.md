@@ -518,3 +518,9 @@
 ## Earlier history
 
 See [changes through v0.2.7](archive/changes-through-0.2.7.md) for the complete earlier record.
+
+### Questions review — practice-node consistency (27 September 2026)
+
+Practice Qs now uses the lesson node's circular resting shape, 200px detail width and spring timing. Its fixed-width text fades in without reflowing through the expanding surface. Only the node itself triggers pointer expansion; the caption no longer opens it. Exam and author actions remain available alongside keyboard focus, Escape and touch reveal.
+
+Validation: caption-hover regression failed before the handler change and passes afterwards; both path activity tests pass. T3 browser recording verified interrupting expansion and returning to the exact centre (56px resting width, 200px expanded width, zero centre shift). Recording was needed to restore animation-frame delivery in the preview host.
