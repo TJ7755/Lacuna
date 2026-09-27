@@ -1,6 +1,8 @@
-# Lacuna — version 0.2.11
+# Lacuna — version 0.2.12
 
 ## Unreleased
+
+## 0.2.12 beta — course links and desktop improvements
 
 - Added the sharing announcement across the app, using the illustrated invitation
   design. It stays visible until dismissed or its Explore sharing link is followed,
