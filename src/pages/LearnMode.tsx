@@ -511,7 +511,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               tabIndex={-1}
               aria-label="Study card"
               className={
-                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center outline-none ' +
+                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center outline-none focus-visible:shadow-none ' +
                 'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
                 'pt-8 md:pt-12 ' +
                 (isTouchMode && !suppressClassicGrading
