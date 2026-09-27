@@ -71,7 +71,9 @@ export function QuestionSetMarking({
             {response.selectedOptionIds.length ? (
               format.options
                 .filter((option) => response.selectedOptionIds.includes(option.id))
-                .map((option) => <MarkdownView key={option.id} source={option.content} />)
+                .map((option) => (
+                  <MarkdownView enlargeImages key={option.id} source={option.content} />
+                ))
             ) : (
               <p>No answer submitted.</p>
             )}
@@ -213,11 +215,11 @@ export function QuestionSetMarking({
       </section>
       <section className="qs-marking-criterion">
         <p className="qs-kicker">Mark scheme · {dimensionNames[allocation.dimension]}</p>
-        <MarkdownView source={allocation.criterion} />
+        <MarkdownView enlargeImages source={allocation.criterion} />
         {allocation.explanation && (
           <details className="qs-correction">
             <summary>Explanation</summary>
-            <MarkdownView source={allocation.explanation} />
+            <MarkdownView enlargeImages source={allocation.explanation} />
           </details>
         )}
         <label className="qs-field">

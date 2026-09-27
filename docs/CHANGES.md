@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Question Set diagrams can open in a keyboard-accessible viewer with fit/actual-size controls,
+  including submitted responses and mark schemes. Closing restores focus without changing an
+  answer or selecting an image's multiple-choice option. Authored image links retain navigation.
+- Question Set library searches now live in the URL. Opening an editor or learner attempt and
+  returning preserves the search and library scroll position, scoped to the course and query.
+
 - Added an on-demand Practice evidence panel to Question Set overviews. It separates first
   recorded and repeated attempts, shows self-marked totals and marking dimensions, and keeps
   unresolved marks explicit. Only submitted originals enter denominators; pinned receipts
