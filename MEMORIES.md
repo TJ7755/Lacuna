@@ -71,6 +71,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+Motion layout scaling on a shrinking container can magnify exiting children when
+`AnimatePresence` removes them from flow. For compact expanding controls, keep text
+at fixed dimensions and resize the isolated surface; verify text bounds mid-animation.
+
 For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
 to viewport bounding boxes before comparing positions. Playwright can scroll a
 control into view while clicking, without changing the content's layout.
@@ -168,6 +172,12 @@ Course-file operations must load with the Share route: deferring their module un
 button click breaks first-use export/import after the user goes offline.
 
 ## Product restraint
+
+Use “course” for the path and its progress labels; “curriculum” is not a separate
+user-facing concept (prompter, 27 September 2026).
+
+Layout prototypes must honour the configured accent and light/dark theme. Exploring
+composition does not authorise alternate colour palettes (prompter, 27 September 2026).
 
 Keep cards around related content; fewer nested boxes does not mean flat pages. Landing scenes
 should have one or two focal points, brief copy, flat bright illustrations and concrete calendar

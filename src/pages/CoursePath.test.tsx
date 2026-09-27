@@ -231,9 +231,9 @@ function showCompletedPractice() {
   ];
 }
 
-function renderPage() {
+function renderPage(search = '') {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1']}>
+    <MemoryRouter initialEntries={[`/course/course-1${search}`]}>
       <ToastProvider>
         <Routes>
           <Route
@@ -288,6 +288,18 @@ beforeEach(() => {
 });
 
 describe('CoursePath Study mode', () => {
+  it('displays checkpoint dates in the assessment time zone', () => {
+    mockCourse = { ...course, timeZone: 'Europe/London' };
+    mockAssessments = [{
+      id: 'assessment-zone', courseId: course.id, kind: 'checkpoint', name: 'Zoned exam',
+      examDate: Date.UTC(2027, 0, 2, 1), timeZone: 'America/Los_Angeles',
+      afterLessonId: lesson1.id, coverageMode: 'prefix', excludedCardIds: [],
+      createdAt: 0, updatedAt: 0,
+    }];
+    renderPage();
+    expect(screen.getByRole('button', { name: /Zoned exam 1 January 2027/ })).toBeInTheDocument();
+  });
+
   it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
     mockCourse = {
       ...course,
@@ -309,10 +321,12 @@ describe('CoursePath Study mode', () => {
     expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open lesson' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
     const previouslyLockedLesson = screen.getByRole('button', { name: 'Dynamics' });
     expect(previouslyLockedLesson).not.toHaveAttribute('aria-disabled');
     fireEvent.click(previouslyLockedLesson);
+    fireEvent.click(screen.getByRole('button', { name: 'Open lesson' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
@@ -344,7 +358,8 @@ describe('CoursePath Study mode', () => {
     expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
   });
 
-  it('links to the updates review from the multi-lesson header when an update is pending', () => {
+  it.each([false, true])('only exposes pending updates on active multi-lesson courses (archived=%s)', (archived) => {
+    mockCourse = { ...course, archived };
     mockPendingMerge = {
       id: 'review-1',
       courseId: 'course-1',
@@ -361,13 +376,18 @@ describe('CoursePath Study mode', () => {
 
     renderPage();
 
+    if (archived) {
+      expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
+      return;
+    }
     expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
       'href',
       '/course/course-1/updates',
     );
   });
 
-  it('links to the updates review above a single-lesson course when an update is pending', () => {
+  it.each([false, true])('only exposes pending updates on active single-lesson courses (archived=%s)', (archived) => {
+    mockCourse = { ...course, archived };
     mockLessons = [lesson1];
     mockPendingMerge = {
       id: 'review-1',
@@ -385,6 +405,10 @@ describe('CoursePath Study mode', () => {
 
     renderPage();
 
+    if (archived) {
+      expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
+      return;
+    }
     expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
       'href',
       '/course/course-1/updates',
@@ -437,7 +461,7 @@ describe('CoursePath Study mode', () => {
     } else {
       expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
-      expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
+      expect(screen.getByText('due now')).toHaveTextContent('0due now');
       expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
     }
   });
@@ -533,7 +557,8 @@ describe('CoursePath Author mode', () => {
 
   it('creates manual practice from the path', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add practice' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Practice' }));
     expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -548,7 +573,8 @@ describe('CoursePath Author mode', () => {
 
   it('creates a checkpoint from the path', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
     expect(screen.getByRole('dialog', { name: 'Add checkpoint' })).toBeInTheDocument();
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();
@@ -570,9 +596,10 @@ describe('CoursePath Author mode', () => {
 
   it('restores the Add checkpoint control after cancelling checkpoint creation', async () => {
     renderPage();
-    const opener = screen.getByRole('button', { name: 'Add checkpoint' });
+    const opener = screen.getByRole('button', { name: 'Add' });
     opener.focus();
     fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -582,9 +609,10 @@ describe('CoursePath Author mode', () => {
 
   it('restores the Add checkpoint control after closing checkpoint creation with Escape', async () => {
     renderPage();
-    const opener = screen.getByRole('button', { name: 'Add checkpoint' });
+    const opener = screen.getByRole('button', { name: 'Add' });
     opener.focus();
     fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
 
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();
@@ -595,7 +623,8 @@ describe('CoursePath Author mode', () => {
 
   it('keeps Tab trapped in the checkpoint editor when its date picker is open', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
     fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
 
     const done = screen.getByRole('button', { name: 'Done' });
@@ -752,7 +781,8 @@ describe('CoursePath Author mode', () => {
   it('creates a lesson from an empty path', async () => {
     mockLessons = [];
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lesson' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
 
     await waitFor(() => {
@@ -763,7 +793,8 @@ describe('CoursePath Author mode', () => {
 
   it('creates a lesson from a populated path', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lesson' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
 
     await waitFor(() => {
@@ -783,4 +814,65 @@ describe('CoursePath Author mode', () => {
       expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { name: 'Further mechanics' });
     });
   });
+});
+
+
+describe('CoursePath overview', () => {
+  it('selects a lesson without navigating, then opens the selected lesson', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Dynamics' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: 'Dynamics' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open lesson' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
+  });
+
+  it('expands Add in place and creates a real lesson through its existing form', async () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    renderPage();
+    const add = screen.getByRole('button', { name: 'Add' });
+    fireEvent.click(add);
+    expect(add).toHaveAttribute('aria-expanded', 'true');
+    const options = screen.getByRole('group', { name: 'Add to course' });
+    expect(add.parentElement).toContainElement(options);
+    fireEvent.click(screen.getByRole('button', { name: 'Lesson' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), { target: { value: 'Energy' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
+    await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
+  });
+  it('shows the lock reason without opening an unreached lesson in Study mode', () => {
+    mockCourse = { ...course, unlockMode: 'semi-linear' };
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
+    expect(screen.getByText(/Unlocks once the lesson before it is complete/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lesson locked' })).toBeDisabled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('retains keyboard lesson reordering in Author mode', async () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    mockReorderLessons.mockResolvedValue(undefined);
+    renderPage();
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Dynamics' }), { key: 'ArrowUp', altKey: true });
+    await waitFor(() => expect(mockReorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']));
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('dismisses Add with Escape or an outside press and restores its focus', () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    renderPage();
+    const add = screen.getByRole('button', { name: 'Add' });
+    fireEvent.click(add);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(add).toHaveAttribute('aria-expanded', 'false');
+    expect(add).toHaveFocus();
+    expect(screen.queryByRole('group', { name: 'Add to course' })).not.toBeInTheDocument();
+    fireEvent.click(add);
+    fireEvent.pointerDown(document.body);
+    expect(add).toHaveAttribute('aria-expanded', 'false');
+    expect(mockCreateLesson).not.toHaveBeenCalled();
+  });
+
 });

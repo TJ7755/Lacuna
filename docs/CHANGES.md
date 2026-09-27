@@ -2,6 +2,41 @@
 
 ## Unreleased
 
+- Hid the pre-existing unusable update-review link on archived single-lesson courses;
+  restoring the course makes pending updates accessible again.
+
+- Corrected assessment time zones and hid unavailable archived update links in the
+  course overview. Narrow-screen selection now moves keyboard focus to its detail
+  panel, reduced motion disables Add resizing, lesson labels travel with dragged
+  nodes, and practice editing retains a 44px touch target. Browser identity checks
+  now assert the chosen Fraunces overview title; visual documentation matches the
+  selected design. Author-mode practice stops reserve space for the edit target
+  even when names wrap, with connectors spanning the extra space.
+
+- Aligned Study and Practice Now on one row. Cards, Questions, Analytics and course
+  Settings now share Path's 1190px frame and responsive gutters, including loading
+  states, so switching tabs preserves the content edges.
+
+- Replaced the multi-lesson course overview with the chosen Fieldnotes design:
+  a compact winding path, selected lesson companion and actionable assessments.
+  Study, practice, lesson creation/import, checkpoint editing, course renaming and
+  lesson reordering use their existing persistence and navigation flows. Locked
+  lessons, archived inspection, single-lesson courses and shared-course authoring
+  restrictions retain their existing rules. Statistics retain the saved visibility
+  and order; colours inherit the configured accent and light/dark theme.
+  Add expands from its own corner into Lesson, Practice and Checkpoint, with fixed
+  text dimensions preventing the previous dismissal enlargement. Motion honours
+  reduced motion and the configured speed. Regression coverage includes selection,
+  creation, reordering, authoring gates, focus restoration and browser text geometry.
+
+- Renamed user-facing “Curriculum” wording to “Course” across the path, course-card
+  progress, Settings and help, retaining saved preference compatibility.
+  Removed the comparison routes and switcher after selection. The five prototypes
+  and their design notes are archived on `prototype/course-fieldnotes`
+  (`236b0b6cf8b438463d246d83f4e6e738e73e3348`); A won for its compact winding
+  path and selected lesson companion, with redundant subtitles and the travelling
+  selection ring removed during refinement.
+
 ## 0.2.12 beta — course links and desktop improvements
 
 - Added the sharing announcement across the app, using the illustrated invitation

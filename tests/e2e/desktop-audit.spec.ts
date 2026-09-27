@@ -97,6 +97,8 @@ test('mouse lesson dragging carries the lesson and moves its neighbour aside', a
   const firstName = await first.getAttribute('aria-label');
   const start = await first.boundingBox();
   const neighbour = await lessons.nth(1).boundingBox();
+  const label = first.locator('..').locator('.course-node-label');
+  const labelStart = await label.boundingBox();
   if (!start || !neighbour || !firstName) throw new Error('Lesson bounds missing');
   const x = start.x + start.width / 2;
   const y = start.y + start.height / 2;
@@ -108,6 +110,9 @@ test('mouse lesson dragging carries the lesson and moves its neighbour aside', a
   expect(held!.x + held!.width / 2 - x).toBeCloseTo(20, 0);
   expect(held!.y + held!.height / 2 - y).toBeCloseTo(endY - y, 0);
   expect((await lessons.nth(1).boundingBox())!.y).toBeLessThan(neighbour.y);
+  const labelHeld = await label.boundingBox();
+  expect(labelHeld!.x - labelStart!.x).toBeCloseTo(held!.x - start.x, 0);
+  expect(labelHeld!.y - labelStart!.y).toBeCloseTo(held!.y - start.y, 0);
   await page.mouse.up();
   await expect(lessons.nth(1)).toHaveAttribute('aria-label', firstName);
 });

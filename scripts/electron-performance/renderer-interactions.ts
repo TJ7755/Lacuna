@@ -106,7 +106,7 @@ async function installBrowserProbe(page: Page, scenario: InteractionScenario): P
           return dialog !== null && input === document.activeElement;
         }
         if (measuredScenario === 'settings') return headingExists(1, 'Settings');
-        return headingExists(2, 'Curriculum');
+        return headingExists(2, 'Course');
       };
       const check = () => {
         if (state.inputAt === null) return;

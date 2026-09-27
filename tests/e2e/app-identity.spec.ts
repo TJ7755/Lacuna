@@ -32,7 +32,7 @@ for (const theme of ['light', 'dark'] as const) {
         level: 1,
       });
       await expect(course).toBeVisible();
-      await expect(course).toHaveCSS('font-family', /Instrument Sans/);
+      await expect(course).toHaveCSS('font-family', /Fraunces/);
       await expect(course.locator('xpath=ancestor::header')).toHaveCSS('border-top-width', '0px');
       await page.getByRole('button', { name: 'Author mode', exact: true }).click();
       await page.getByRole('button', { name: 'Rename course', exact: true }).click();

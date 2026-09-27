@@ -1,6 +1,7 @@
 // Course-scoped analytics page.
 // Route: /course/:courseId/analytics
 
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -20,7 +21,7 @@ import { buildQuestionAnalytics } from '../questions/analytics';
 
 function CourseAnalyticsSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
       <div className="mb-8 space-y-3">
         <div className="h-10 w-56 animate-pulse rounded bg-ink/10" />
       </div>
@@ -89,7 +90,7 @@ export function CourseAnalytics() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
       <motion.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

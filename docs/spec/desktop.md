@@ -140,7 +140,7 @@ ids, roles and fractional coordinates are the whole agent-facing contract, which
 agent-authored SVG diagram plus coordinates a text-only workflow.
 
 The shipped surface deliberately excludes raw FSRS-state writes, review recording, backup/share
-operations, note annotations and most curriculum-structure mutation. Streamable HTTP, a web
+operations, note annotations and most course-structure mutation. Streamable HTTP, a web
 companion process, durable client identity and plugin extension points remain deferred.
 
 These exclusions describe the shipped contract, not an instruction to bolt future operations onto

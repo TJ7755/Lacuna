@@ -70,6 +70,7 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
   await openSeededDashboard(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
   await page.getByRole('button', { name: 'Core concepts & rendering' }).click();
+  await page.getByRole('button', { name: 'Open lesson', exact: true }).click();
   const navigation = page.getByRole('navigation', { name: 'Course sections' });
   await expect(navigation.getByRole('link', { name: 'Path' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Cards' })).toBeVisible();
@@ -146,13 +147,14 @@ test('opens an archived course as read-only content', async ({ page }) => {
   await archivedLesson.focus();
   await expect(archivedLesson).toBeFocused();
   await archivedLesson.press('Enter');
+  await page.getByRole('button', { name: 'Open lesson', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Core concepts & rendering' })).toBeVisible();
   await expect(page.locator('[data-lesson-workspace-mode="study"]')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Author mode' })).toHaveCount(0);
 
   await page.goto(`/#/course/${courseId}/cards`);
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/?$`));
-  await expect(page.getByRole('heading', { name: 'Curriculum' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Course' })).toBeVisible();
 });
 
 test('downloads a full backup from recovery settings', async ({ page }) => {

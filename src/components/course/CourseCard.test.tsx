@@ -64,7 +64,7 @@ describe('CourseCard metrics', () => {
     const card = cardButton();
 
     expect(card.getByText('1 of 3 complete')).toBeInTheDocument();
-    expect(card.getByRole('progressbar', { name: 'Curriculum progress' })).toHaveAttribute(
+    expect(card.getByRole('progressbar', { name: 'Course progress' })).toHaveAttribute(
       'aria-valuenow',
       '1',
     );

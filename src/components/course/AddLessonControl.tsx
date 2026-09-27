@@ -15,6 +15,8 @@ export interface AddLessonControlProps {
   courseId: string;
   /** Current lessons, used to suggest the next default name. */
   lessonCount: number;
+  initiallyOpen?: boolean;
+  onCancel?: () => void;
   /** Called after a lesson is created successfully. */
   onCreated?: (lesson: Lesson) => void;
 }
@@ -23,9 +25,15 @@ export interface AddLessonControlProps {
  * Inline add-lesson form with a toggle button. Used on the course path, in lesson
  * management settings, and on single-lesson course views where the path is hidden.
  */
-export function AddLessonControl({ courseId, lessonCount, onCreated }: AddLessonControlProps) {
+export function AddLessonControl({
+  courseId,
+  lessonCount,
+  onCreated,
+  initiallyOpen = false,
+  onCancel,
+}: AddLessonControlProps) {
   const { notify } = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [name, setName] = useState(() => defaultLessonName(lessonCount));
   const [importingCards, setImportingCards] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,6 +46,7 @@ export function AddLessonControl({ courseId, lessonCount, onCreated }: AddLesson
   function cancel() {
     setOpen(false);
     setName(defaultLessonName(lessonCount));
+    onCancel?.();
   }
 
   async function save() {
@@ -93,7 +102,7 @@ export function AddLessonControl({ courseId, lessonCount, onCreated }: AddLesson
             className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent disabled:opacity-40"
           />
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
             size="sm"

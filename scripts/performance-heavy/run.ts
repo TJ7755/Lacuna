@@ -370,7 +370,7 @@ try {
         await measure('course-open', iteration, async () => {
           await page.getByText('Heavy course 0', { exact: true }).first().click();
           await expect(
-            page.getByRole('heading', { name: 'Curriculum', exact: true }),
+            page.getByRole('heading', { name: 'Course', exact: true }),
           ).toBeVisible();
           await expect(
             page.getByRole('button', { name: 'Heavy lesson 0', exact: true }),
