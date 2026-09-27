@@ -117,7 +117,15 @@ export function QuestionSetOverview() {
           <QuestionSetAttemptList attempts={attempts} origin={origin} />
         </section>
       )}
-      <QuestionSetEvidencePanel content={content} attempts={attempts} />
+      <QuestionSetEvidencePanel
+        content={content}
+        attempts={attempts}
+        onResume={(attempt) =>
+          navigate(`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`, {
+            state: origin,
+          })
+        }
+      />
       <details>
         <summary className="qs-back">Browse questions</summary>
         <section className="qs-paper">

@@ -211,4 +211,163 @@ describe('Question Set descriptive evidence', () => {
     ]);
     expect(summary.coverage).toEqual({ targetConceptIds: [], prerequisiteConceptIds: [] });
   });
+
+  it('shows current target concepts with marked, unresolved and missing evidence per attempt partition', () => {
+    const current = set();
+    current.questions[0].answer!.allocations.push({
+      id: 'a3',
+      criterion: 'New',
+      maxMarks: 1,
+      dimension: 'knowledge',
+      targetConceptIds: ['concept-c'],
+    });
+    const first = attempt({
+      status: 'complete',
+      responses: [
+        {
+          nodeId: 'q1',
+          draft: { kind: 'written', text: 'First' },
+          submitted: { kind: 'written', text: 'First' },
+          submittedAt: 11,
+        },
+      ],
+      decisions: [{ allocationId: 'a1', status: 'awarded', marks: 0 }],
+    });
+    const repeated = attempt({
+      id: 'attempt-2',
+      createdAt: 20,
+      updatedAt: 20,
+      receipt: current,
+      responses: [
+        {
+          nodeId: 'q1',
+          draft: { kind: 'written', text: 'Second' },
+          submitted: { kind: 'written', text: 'Second' },
+          submittedAt: 21,
+        },
+      ],
+      decisions: [
+        { allocationId: 'a1', status: 'awarded', marks: 0 },
+        { allocationId: 'a2', status: 'unsure' },
+      ],
+    });
+    const row = summariseQuestionSetEvidence({
+      courseId: 'course-1',
+      currentSets: [current],
+      attempts: [repeated, first],
+    }).sets[0];
+    expect(row.firstRecorded.currentTargetEvidence).toEqual({
+      markedConceptIds: ['concept-a', 'concept-b'],
+      unresolvedConceptIds: [],
+      missingConceptIds: ['concept-c'],
+    });
+    expect(row.repeated.currentTargetEvidence).toEqual({
+      markedConceptIds: ['concept-a', 'concept-b'],
+      unresolvedConceptIds: ['concept-c'],
+      missingConceptIds: [],
+    });
+    expect(row.all.currentTargetEvidence).toEqual(row.repeated.currentTargetEvidence);
+  });
+
+  it('keeps unsure current targets distinct from missing and rejects changed allocation content', () => {
+    const current = set();
+    const old = set();
+    old.questions[0].answer!.allocations[0].criterion = 'Old meaning';
+    const submitted = {
+      nodeId: 'q1',
+      draft: { kind: 'written' as const, text: 'Answer' },
+      submitted: { kind: 'written' as const, text: 'Answer' },
+      submittedAt: 11,
+    };
+    const row = summariseQuestionSetEvidence({
+      courseId: 'course-1',
+      currentSets: [current],
+      attempts: [
+        attempt({
+          receipt: old,
+          responses: [submitted],
+          decisions: [
+            { allocationId: 'a1', status: 'awarded', marks: 1 },
+            { allocationId: 'a2', status: 'unsure' },
+          ],
+        }),
+      ],
+    }).sets[0];
+    expect(row.all.currentTargetEvidence).toEqual({
+      markedConceptIds: [],
+      unresolvedConceptIds: ['concept-a'],
+      missingConceptIds: ['concept-b'],
+    });
+  });
+
+  it('does not carry marks across a changed parent prompt or response options', () => {
+    const current = set();
+    current.questions[0].answer = undefined;
+    current.questions[0].parts = [
+      {
+        id: 'part-1',
+        prompt: 'Part prompt',
+        subparts: [
+          {
+            id: 'leaf-1',
+            prompt: 'Leaf prompt',
+            answer: {
+              maxMarks: 1,
+              prerequisiteConceptIds: [],
+              response: {
+                kind: 'multiple-choice',
+                selection: 'single',
+                options: [
+                  { id: 'x', content: 'Current' },
+                  { id: 'y', content: 'Other' },
+                ],
+                correctOptionIds: ['x'],
+              },
+              allocations: [
+                {
+                  id: 'leaf-allocation',
+                  criterion: 'Identify',
+                  maxMarks: 1,
+                  dimension: 'knowledge',
+                  targetConceptIds: ['leaf-concept'],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ];
+    const old = structuredClone(current);
+    old.questions[0].prompt = 'Different shared source';
+    const oldOptions = structuredClone(current);
+    const oldAnswer = oldOptions.questions[0].parts[0].subparts[0].answer!;
+    if (oldAnswer.response.kind === 'multiple-choice')
+      oldAnswer.response.options[0].content = 'Old option';
+    const submitted = {
+      nodeId: 'leaf-1',
+      draft: { kind: 'multiple-choice' as const, selectedOptionIds: ['x'] },
+      submitted: { kind: 'multiple-choice' as const, selectedOptionIds: ['x'] },
+      submittedAt: 11,
+    };
+    const marked = [{ allocationId: 'leaf-allocation', status: 'awarded' as const, marks: 1 }];
+    const row = summariseQuestionSetEvidence({
+      courseId: 'course-1',
+      currentSets: [current],
+      attempts: [
+        attempt({ receipt: old, responses: [submitted], decisions: marked }),
+        attempt({
+          id: 'attempt-2',
+          createdAt: 20,
+          receipt: oldOptions,
+          responses: [submitted],
+          decisions: marked,
+        }),
+      ],
+    }).sets[0];
+    expect(row.all.currentTargetEvidence).toEqual({
+      markedConceptIds: [],
+      unresolvedConceptIds: [],
+      missingConceptIds: ['leaf-concept'],
+    });
+  });
 });

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { QuestionSetEvidencePanel } from './QuestionSetEvidencePanel';
@@ -91,9 +91,12 @@ function attempt(
 }
 
 describe('QuestionSetEvidencePanel', () => {
-  it('renders nothing without recorded attempts', () => {
-    const { container } = render(<QuestionSetEvidencePanel content={content()} attempts={[]} />);
-    expect(container).toBeEmptyDOMElement();
+  it('shows unknown coverage without treating absent attempts as failure', () => {
+    render(<QuestionSetEvidencePanel content={content()} attempts={[]} />);
+    fireEvent.click(screen.getByText('Practice evidence'));
+    expect(screen.getByText('No marked evidence yet.')).toBeInTheDocument();
+    expect(screen.getByText('2 without submitted evidence')).toBeInTheDocument();
+    expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
   });
 
   it('shows self-marked totals, unresolved marks, dimensions, and assistance', () => {
@@ -121,7 +124,7 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.getByText(/self-marked/i)).toBeInTheDocument();
     expect(screen.getByText(/2 attempts/i)).toBeInTheDocument();
     expect(screen.getByText(/1 assisted/i)).toBeInTheDocument();
-    expect(screen.getByText('4 / 8')).toBeInTheDocument();
+    expect(screen.getByText('4 / 6')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
     expect(within(recordedMarks!).getByText(/2 marks unresolved/i)).toBeInTheDocument();
@@ -151,7 +154,7 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.getByRole('option', { name: 'Repeated' })).toBeInTheDocument();
 
     fireEvent.change(select, { target: { value: 'first' } });
-    expect(screen.getByText('1 / 4')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByText('0 / 1')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
@@ -161,4 +164,30 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.getByText('3 / 4')).toBeInTheDocument();
     expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument();
   });
+});
+
+it('offers marking only for an unfinished attempt in this set', () => {
+  const row = attempt('mark-me', 20, []);
+  const onResume = vi.fn();
+  render(<QuestionSetEvidencePanel content={content()} attempts={[row]} onResume={onResume} />);
+  fireEvent.click(screen.getByText('Practice evidence'));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue marking' }));
+  expect(onResume).toHaveBeenCalledWith(row);
+  expect(screen.getAllByText('Not marked yet')).toHaveLength(4);
+  expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Attempts' }), {
+    target: { value: 'repeated' },
+  });
+  expect(screen.queryByRole('button', { name: 'Continue marking' })).not.toBeInTheDocument();
+});
+
+it('does not recommend a completed or unrelated attempt', () => {
+  const row = attempt('complete', 20, [], { status: 'complete' });
+  const unrelated = attempt('other', 30, [], { questionSetId: 'other-set' });
+  render(
+    <QuestionSetEvidencePanel content={content()} attempts={[row, unrelated]} onResume={vi.fn()} />,
+  );
+  fireEvent.click(screen.getByText('Practice evidence'));
+  expect(screen.queryByRole('button', { name: 'Continue marking' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Resume attempt' })).not.toBeInTheDocument();
 });
