@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createCourse } from '../../db/repository';
@@ -86,7 +86,7 @@ describe('RemovedQuestionSetAttempts', () => {
     );
     render(<RouterProvider router={router} />);
 
-    expect(await screen.findByText('Attempts from removed sets · 1')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Attempts from removed sets · 1' }));
     const title = await screen.findByRole('heading', { name: 'Cell structure' });
     const link = title.closest('a');
     expect(link).toHaveAttribute(

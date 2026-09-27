@@ -36,11 +36,8 @@ beforeEach(() => {
 describe('QuestionSetLibraryActions', () => {
   it('cancels removal without calling the repository', () => {
     renderActions();
-    expect(screen.getByText('More').closest('summary')).toHaveAttribute(
-      'aria-label',
-      'Options for Cell structure',
-    );
-    fireEvent.click(screen.getByText('More'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Options for Cell structure' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove set' }));
 
     expect(screen.getByText('Remove this set? Saved attempts will remain.')).toBeInTheDocument();
@@ -54,7 +51,7 @@ describe('QuestionSetLibraryActions', () => {
     let finish!: () => void;
     mocks.remove.mockReturnValueOnce(new Promise<void>((resolve) => (finish = resolve)));
     const { onRemoved } = renderActions();
-    fireEvent.click(screen.getByText('More'));
+    fireEvent.click(screen.getByRole('button', { name: 'Options for Cell structure' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove set' }));
     const confirm = screen.getByRole('button', { name: 'Remove set' });
     fireEvent.click(confirm);
@@ -76,7 +73,7 @@ describe('QuestionSetLibraryActions', () => {
     mocks.remove.mockRejectedValueOnce(new Error('The set changed in another tab.'));
     mocks.remove.mockResolvedValueOnce(undefined);
     const { onRemoved } = renderActions();
-    fireEvent.click(screen.getByText('More'));
+    fireEvent.click(screen.getByRole('button', { name: 'Options for Cell structure' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove set' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove set' }));
 

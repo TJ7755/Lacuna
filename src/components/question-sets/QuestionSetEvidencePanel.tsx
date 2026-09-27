@@ -1,3 +1,5 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
+import { QuestionSetChoices } from './QuestionSetChoices';
 import { useMemo, useState } from 'react';
 import { Button } from '../ui/Button';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
@@ -73,20 +75,18 @@ export function QuestionSetEvidencePanel({
     ['mixed', 'Mixed'],
   ] as const;
   return (
-    <details className="qs-history">
-      <summary className="qs-back">Practice evidence</summary>
+    <QuestionSetPanel title="Practice evidence" className="qs-history">
       <div className="mt-6 space-y-6">
-        <label className="qs-field max-w-sm">
-          Attempts
-          <select
-            value={partition}
-            onChange={(event) => setPartition(event.target.value as typeof partition)}
-          >
-            <option value="all">All attempts</option>
-            <option value="first">First recorded</option>
-            <option value="repeated">Repeated</option>
-          </select>
-        </label>
+        <QuestionSetChoices
+          label="Attempts"
+          value={partition}
+          onChange={(value) => setPartition(value as typeof partition)}
+          options={[
+            { value: 'all', label: 'All attempts' },
+            { value: 'first', label: 'First recorded' },
+            { value: 'repeated', label: 'Repeated' },
+          ]}
+        />
         <p className="qs-muted">
           Self-marked · {selected.attempts} {selected.attempts === 1 ? 'attempt' : 'attempts'} ·{' '}
           {selected.assisted} assisted
@@ -158,6 +158,6 @@ export function QuestionSetEvidencePanel({
           Repeated attempts are practice evidence, not an exam forecast.
         </p>
       </div>
-    </details>
+    </QuestionSetPanel>
   );
 }

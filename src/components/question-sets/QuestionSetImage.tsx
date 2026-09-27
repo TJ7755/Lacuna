@@ -11,7 +11,6 @@ export function QuestionSetImage({
   nodeId: string;
   children?: ReactNode;
 }) {
-  const detailsRef = useRef<HTMLDetailsElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,7 +41,6 @@ export function QuestionSetImage({
     const images = Array.from(files).filter((candidate) => candidate.type.startsWith('image/'));
     if (!images.length) return false;
     if (busy) return true;
-    if (detailsRef.current) detailsRef.current.open = true;
     if (images.length > 1) {
       setError('Add one image at a time.');
       return true;
@@ -68,15 +66,16 @@ export function QuestionSetImage({
           event.preventDefault();
           event.stopPropagation();
           if (!receive(event.dataTransfer.files)) {
-            if (detailsRef.current) detailsRef.current.open = true;
             setError('Choose an image file.');
           }
         }
       }}
     >
       {children}
-      <details ref={detailsRef} className="qs-image-form">
-        <summary>Add a diagram or image</summary>
+      <section
+        aria-label="Add a diagram or image"
+        className={`qs-image-form ${file ? 'qs-image-form-selected' : ''}`}
+      >
         <input
           ref={inputRef}
           type="file"
@@ -90,7 +89,7 @@ export function QuestionSetImage({
             if (!receive([next])) setError('Choose an image file.');
           }}
         />
-        <p className="qs-muted">Choose, paste or drop an image.</p>
+
         <div className="qs-image-choice">
           {file && preview && (
             <img className="qs-image-thumb" src={preview} alt="Selected image preview" />
@@ -114,6 +113,7 @@ export function QuestionSetImage({
             </div>
           </div>
         </div>
+        {!file && <p className="qs-muted">Or paste or drop an image.</p>}
         {file && (
           <>
             <label className="qs-field">
@@ -162,7 +162,7 @@ export function QuestionSetImage({
             {error}
           </p>
         )}
-      </details>
+      </section>
     </div>
   );
 }

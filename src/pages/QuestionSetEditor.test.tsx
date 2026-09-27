@@ -1,4 +1,6 @@
 import 'fake-indexeddb/auto';
+import { createFixedQuestion } from '../questions/repository.authoring';
+import { createConcept } from '../questions/repository.concepts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -60,6 +62,43 @@ describe('Paper question set authoring', () => {
       db.cards.clear(),
       db.courseAssessments.clear(),
     ]);
+  });
+  it('uses the shared question navigator and opens set links as a separate editing section', async () => {
+    const course = await setup();
+    open(course.id);
+    await screen.findByLabelText('Question text');
+    fireEvent.click(screen.getByRole('button', { name: 'Lessons and exams' }));
+    expect(screen.getByRole('heading', { name: 'Lessons and exams' })).toBeVisible();
+    expect(screen.queryByLabelText('Question text')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Q1 · Untitled' }));
+    expect(screen.getByLabelText('Question text')).toBeVisible();
+  });
+  it('does not repeat the course name above Questions', async () => {
+    const course = await setup();
+    open(course.id, 'questions');
+    await screen.findByRole('heading', { name: 'Questions' });
+    expect(screen.queryByText('Biology')).not.toBeInTheDocument();
+  });
+  it('opens individual questions in their own view and returns to the set library', async () => {
+    const course = await setup();
+    const concept = await createConcept(course.id, 'Cell size');
+    await createFixedQuestion({
+      courseId: course.id,
+      name: 'Cell calculation',
+      prompt: 'Calculate the size.',
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '3' } },
+      explanation: 'Divide by magnification.',
+      targetConceptId: concept.id,
+      prerequisiteConceptIds: [],
+    });
+    open(course.id, 'questions');
+    fireEvent.click(await screen.findByRole('link', { name: /Individual questions/ }));
+    expect(await screen.findByRole('heading', { name: 'Individual questions' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Questions' })).not.toBeInTheDocument();
+    expect(screen.getByText('Cell calculation')).toBeVisible();
+    fireEvent.click(screen.getByRole('link', { name: '← Question sets' }));
+    expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
+    expect(screen.queryByText('Cell calculation')).not.toBeInTheDocument();
   });
   it('autosaves incomplete work, validates marking and publishes the real document', async () => {
     const course = await setup();
@@ -126,7 +165,7 @@ describe('Paper question set authoring', () => {
     const course = await setup();
     open(course.id);
     await screen.findByLabelText('Question text');
-    fireEvent.change(screen.getByLabelText('Response'), { target: { value: 'multiple-choice' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Multiple choice' }));
     fireEvent.change(screen.getByLabelText('Option 1', { exact: true }), {
       target: { value: 'Ionic bonding' },
     });
@@ -141,7 +180,7 @@ describe('Paper question set authoring', () => {
       if (response?.kind === 'multiple-choice')
         expect(response.correctOptionIds).toEqual([response.options[0].id]);
     });
-    fireEvent.change(screen.getByLabelText('Response'), { target: { value: 'written' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Written answer' }));
     expect(screen.getByText('Remove the existing answer options?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByLabelText('Option 1', { exact: true })).toHaveValue('Ionic bonding');

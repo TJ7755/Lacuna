@@ -1,3 +1,5 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
+import { QuestionSetChoices } from './QuestionSetChoices';
 import { useState } from 'react';
 import { makeId } from '../../db/schema';
 import type { AssessmentDimension, QuestionAnswer } from '../../questions/questionSets';
@@ -64,7 +66,9 @@ export function QuestionSetSchemeEditor({
             value={active.criterion}
             onChange={(criterion) => update({ criterion })}
             minRows={3}
-            allowImages={false} layout="tabs" compactToolbar
+            allowImages={false}
+            layout="tabs"
+            compactToolbar
           />
           <div className="qs-fields">
             <label className="qs-field">
@@ -77,31 +81,25 @@ export function QuestionSetSchemeEditor({
                 onChange={(e) => update({ maxMarks: Number(e.target.value) })}
               />
             </label>
-            <label className="qs-field">
-              Assesses
-              <select
-                value={active.dimension}
-                onChange={(e) => update({ dimension: e.target.value as AssessmentDimension })}
-              >
-                {Object.entries(dimensionNames).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <QuestionSetChoices
+              label="Assesses"
+              value={active.dimension}
+              onChange={(value) => update({ dimension: value as AssessmentDimension })}
+              options={Object.entries(dimensionNames).map(([value, label]) => ({ value, label }))}
+            />
           </div>
-          <details>
-            <summary className="qs-back">Alternatives and marking guidance</summary>
+          <QuestionSetPanel title="Alternatives and marking guidance">
             <MarkdownEditor
               key={`${active.id}-explanation`}
               ariaLabel="Marking guidance"
               value={active.explanation ?? ''}
               onChange={(explanation) => update({ explanation })}
               minRows={3}
-              allowImages={false} layout="tabs" compactToolbar
+              allowImages={false}
+              layout="tabs"
+              compactToolbar
             />
-          </details>
+          </QuestionSetPanel>
           {removing ? (
             <ConfirmInline
               message="Remove this criterion?"

@@ -811,3 +811,19 @@ run electron:build:mac`. Launched the packaged executable with an isolated tempo
 Logs included macOS DNS/sandbox-extension warnings; no packaged UI or screen-reader validation
 is claimed. No release, signing, remote publication or PR was performed. Physical touch,
 interactive packaged Question Sets and real cross-device relay remain explicit release checks.
+
+## UI review gate — 27 September 2026
+
+Prompter review requested consistency with the rest of Lacuna, removal of dropdowns, and proper legacy-question navigation.
+
+- [x] Match Practice Qs hover footprint and spring to lesson nodes; caption must not activate hover.
+- [x] Remove the repeated course caption; align library width with Cards.
+- [x] Use shared Settings navigation for authoring, with visible controls on narrow screens.
+- [x] Fix checkbox sizing; unify card radii; restore accent primary actions.
+- [x] Make image insertion directly available.
+- [x] Replace question-set select/disclosure controls with visible choices and focused secondary panels.
+- [x] Give individual questions a separate view with a return to the set library.
+- [x] Browser-test desktop/narrow layouts, retained state, explicit-zero/unresolved marks, panel focus, and interrupted path expansion; capture screenshots and a motion recording.
+- [x] 61 focused tests, web typecheck, focused lint and production build.
+
+Screenshots from this gate are in the thread's browser artefacts. User visual review remains ongoing. Existing physical-device, screen-reader, packaged-workflow and real peer-sync release checks remain open.

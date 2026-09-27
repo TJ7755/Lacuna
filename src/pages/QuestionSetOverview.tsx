@@ -1,3 +1,5 @@
+import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
+import { QuestionSetChoices } from '../components/question-sets/QuestionSetChoices';
 import { QuestionSetAttemptList } from '../components/question-sets/QuestionSetAttemptList';
 import { QuestionSetEvidencePanel } from '../components/question-sets/QuestionSetEvidencePanel';
 import { questionSetReturn } from '../questions/questionSetNavigation';
@@ -75,16 +77,15 @@ export function QuestionSetOverview() {
         {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
       </p>
       <div className="qs-start">
-        <label className="qs-field">
-          Session
-          <select
-            value={mode}
-            onChange={(event) => setMode(event.target.value as QuestionSetAttemptMode)}
-          >
-            <option value="practice">Practice — feedback after each question</option>
-            <option value="paper">Paper — feedback at the end</option>
-          </select>
-        </label>
+        <QuestionSetChoices
+          label="Session"
+          value={mode}
+          onChange={(value) => setMode(value as QuestionSetAttemptMode)}
+          options={[
+            { value: 'practice', label: 'Practice — feedback after each question' },
+            { value: 'paper', label: 'Paper — feedback at the end' },
+          ]}
+        />
         <Button
           variant="primary"
           disabled={starting || course.archived}
@@ -126,8 +127,7 @@ export function QuestionSetOverview() {
           })
         }
       />
-      <details>
-        <summary className="qs-back">Browse questions</summary>
+      <QuestionSetPanel title="Browse questions">
         <section className="qs-paper">
           {flattenQuestionSet(content).map((n) => (
             <section key={n.id} className="qs-source" style={{ marginLeft: n.depth * 12 }}>
@@ -141,7 +141,7 @@ export function QuestionSetOverview() {
             </section>
           ))}
         </section>
-      </details>
+      </QuestionSetPanel>
     </div>
   );
 }

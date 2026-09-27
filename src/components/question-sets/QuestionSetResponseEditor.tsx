@@ -1,3 +1,4 @@
+import { QuestionSetChoices } from './QuestionSetChoices';
 import { useState } from 'react';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { makeId } from '../../db/schema';
@@ -16,37 +17,36 @@ export function QuestionSetResponseEditor({
   const change = (next: QuestionResponse) => onChange({ ...answer, response: next });
   return (
     <section aria-label="Response format">
-      <label className="qs-field">
-        Response
-        <select
-          value={response.kind}
-          onChange={(e) => {
-            const kind = e.target.value as QuestionResponse['kind'];
-            const next: QuestionResponse =
-              kind === 'multiple-choice'
-                ? {
-                    kind,
-                    selection: 'single',
-                    options: [
-                      { id: makeId(), content: '' },
-                      { id: makeId(), content: '' },
-                    ],
-                    correctOptionIds: [],
-                  }
-                : { kind };
-            if (
-              response.kind === 'multiple-choice' &&
-              response.options.some((option) => option.content.trim())
-            )
-              setPending(next);
-            else change(next);
-          }}
-        >
-          <option value="written">Written answer</option>
-          <option value="multiple-choice">Multiple choice</option>
-          <option value="calculation">Calculation</option>
-        </select>
-      </label>
+      <QuestionSetChoices
+        label="Response"
+        value={response.kind}
+        onChange={(value) => {
+          const kind = value as QuestionResponse['kind'];
+          const next: QuestionResponse =
+            kind === 'multiple-choice'
+              ? {
+                  kind,
+                  selection: 'single',
+                  options: [
+                    { id: makeId(), content: '' },
+                    { id: makeId(), content: '' },
+                  ],
+                  correctOptionIds: [],
+                }
+              : { kind };
+          if (
+            response.kind === 'multiple-choice' &&
+            response.options.some((option) => option.content.trim())
+          )
+            setPending(next);
+          else change(next);
+        }}
+        options={[
+          { value: 'written', label: 'Written answer' },
+          { value: 'multiple-choice', label: 'Multiple choice' },
+          { value: 'calculation', label: 'Calculation' },
+        ]}
+      />
       {pending && (
         <ConfirmInline
           message="Remove the existing answer options?"
@@ -60,22 +60,21 @@ export function QuestionSetResponseEditor({
       )}
       {response.kind === 'multiple-choice' && (
         <>
-          <label className="qs-field">
-            Selection
-            <select
-              value={response.selection}
-              onChange={(e) =>
-                change({
-                  ...response,
-                  selection: e.target.value as 'single' | 'multiple',
-                  correctOptionIds: [],
-                })
-              }
-            >
-              <option value="single">Choose one</option>
-              <option value="multiple">Choose several</option>
-            </select>
-          </label>
+          <QuestionSetChoices
+            label="Selection"
+            value={response.selection}
+            onChange={(value) =>
+              change({
+                ...response,
+                selection: value as 'single' | 'multiple',
+                correctOptionIds: [],
+              })
+            }
+            options={[
+              { value: 'single', label: 'Choose one' },
+              { value: 'multiple', label: 'Choose several' },
+            ]}
+          />
           <p className="qs-muted">
             Select the correct option{response.selection === 'multiple' ? 's' : ''}. Learners still
             mark their own work.

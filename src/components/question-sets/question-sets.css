@@ -1,7 +1,8 @@
+@import './question-set-controls.css';
+
 .qs-library,
-.qs-editor,
 .qs-overview {
-  max-width: 1050px;
+  max-width: 768px;
   margin: auto;
   padding: 32px 40px 110px;
   color: hsl(var(--ink));
@@ -18,7 +19,8 @@
   margin-bottom: 32px;
 }
 .qs-library h1 {
-  font-size: 38px;
+  font-family: var(--font-display);
+  font-size: 48px;
   letter-spacing: -1px;
 }
 .qs-kicker {
@@ -35,7 +37,7 @@
   margin: 24px 0;
 }
 .qs-search input,
-.qs-field input,
+.qs-field input:not([type='checkbox']):not([type='radio']),
 .qs-field select,
 .qs-field textarea {
   display: block;
@@ -51,7 +53,7 @@
 }
 .qs-set-list {
   border: 1px solid hsl(var(--line));
-  border-radius: 14px;
+  border-radius: 16px;
   background: hsl(var(--surface-raised));
   overflow: hidden;
 }
@@ -67,7 +69,7 @@
   border: 0;
 }
 .qs-set-row:hover {
-  background: hsl(var(--ink) / 0.025);
+  background: hsl(var(--accent-soft));
 }
 .qs-set-row h2 {
   font-size: 21px;
@@ -167,10 +169,11 @@
 .qs-paper {
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--line));
-  border-radius: 4px;
-  max-width: 800px;
+  border-radius: 16px;
+  width: 100%;
+  min-width: 0;
   margin: auto;
-  padding: 34px 42px;
+  padding: 28px;
   box-shadow: 0 3px 12px #00000003;
 }
 .qs-part-bar {
@@ -209,7 +212,7 @@
   padding: 22px;
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--line));
-  border-radius: 12px;
+  border-radius: 16px;
   margin: 18px 0;
 }
 .qs-settings summary {
@@ -224,7 +227,15 @@
   margin: 12px 0;
   min-height: 32px;
 }
-.qs-check input {
+.qs-check input[type='checkbox'],
+.qs-option input[type='checkbox'],
+.qs-option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  flex: 0 0 18px;
+  padding: 0;
+  margin: 0;
   accent-color: hsl(var(--accent));
 }
 .qs-source {
@@ -249,7 +260,7 @@
 .qs-outline {
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--line));
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 14px;
   margin: 12px 0;
 }
@@ -328,8 +339,9 @@
 .qs-image-form {
   margin: 20px 0;
   padding: 16px;
-  border: 1px dashed hsl(var(--line));
+  border: 0;
   border-radius: 8px;
+  background: hsl(var(--surface));
 }
 .qs-image-form summary {
   font-size: 12px;
@@ -424,7 +436,7 @@
   display: flex;
   align-items: center;
   gap: 18px;
-  margin-top: 18px;
+  margin-top: 0;
 }
 .qs-image-thumb {
   width: 96px;
@@ -521,4 +533,15 @@
 .qs-library-options-panel > div > span {
   flex-basis: 100%;
   margin-bottom: 8px;
+}
+
+.qs-editor {
+  margin: auto;
+  padding: 32px 40px 110px;
+  color: hsl(var(--ink));
+}
+@media (max-width: 700px) {
+  .qs-editor {
+    padding: 20px 16px 100px;
+  }
 }

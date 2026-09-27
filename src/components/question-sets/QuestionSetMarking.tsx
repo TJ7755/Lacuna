@@ -1,3 +1,5 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
+import { QuestionSetChoices } from './QuestionSetChoices';
 import { useRef, useState } from 'react';
 import type {
   QuestionSetAttemptRecord,
@@ -177,8 +179,7 @@ export function QuestionSetMarking({
             </button>
           </div>
         ))}
-        <details className="qs-correction" open={correction ? true : undefined}>
-          <summary>Correction</summary>
+        <QuestionSetPanel title="Correction" className="qs-correction">
           <label className="qs-field">
             Correction
             <textarea
@@ -211,48 +212,44 @@ export function QuestionSetMarking({
               Cancel correction
             </Button>
           )}
-        </details>
+        </QuestionSetPanel>
       </section>
       <section className="qs-marking-criterion">
         <p className="qs-kicker">Mark scheme · {dimensionNames[allocation.dimension]}</p>
         <MarkdownView enlargeImages source={allocation.criterion} />
         {allocation.explanation && (
-          <details className="qs-correction">
-            <summary>Explanation</summary>
+          <QuestionSetPanel title="Explanation" className="qs-correction">
             <MarkdownView enlargeImages source={allocation.explanation} />
-          </details>
+          </QuestionSetPanel>
         )}
-        <label className="qs-field">
-          Marks awarded
-          <select
-            value={
-              decision?.status === 'awarded'
-                ? String(decision.marks)
-                : decision?.status === 'unsure'
-                  ? 'unsure'
-                  : ''
-            }
-            disabled={busy || attempt.status === 'complete'}
-            onChange={(event) => {
-              const value = event.target.value;
-              onDecision(
-                value === ''
-                  ? null
-                  : value === 'unsure'
-                    ? { allocationId: allocation.id, status: 'unsure' }
-                    : { allocationId: allocation.id, status: 'awarded', marks: Number(value) },
-              );
-            }}
-          >
-            <option value="">Not marked</option>
-            {Array.from({ length: allocation.maxMarks + 1 }, (_, marks) => (
-              <option key={marks} value={marks}>
-                {marks} / {allocation.maxMarks}
-              </option>
-            ))}
-            <option value="unsure">Unsure</option>
-          </select>
-        </label>
+        <QuestionSetChoices
+          label="Marks awarded"
+          value={
+            decision?.status === 'awarded'
+              ? String(decision.marks)
+              : decision?.status === 'unsure'
+                ? 'unsure'
+                : ''
+          }
+          disabled={busy || attempt.status === 'complete'}
+          onChange={(value) => {
+            onDecision(
+              value === ''
+                ? null
+                : value === 'unsure'
+                  ? { allocationId: allocation.id, status: 'unsure' }
+                  : { allocationId: allocation.id, status: 'awarded', marks: Number(value) },
+            );
+          }}
+          options={[
+            { value: '', label: 'Not marked' },
+            ...Array.from({ length: allocation.maxMarks + 1 }, (_, marks) => ({
+              value: String(marks),
+              label: `${marks} / ${allocation.maxMarks}`,
+            })),
+            { value: 'unsure', label: 'Unsure' },
+          ]}
+        />
         <p className="qs-muted">
           Self-marked{decision?.status === 'unsure' ? ' · needs another look' : ''}
         </p>
