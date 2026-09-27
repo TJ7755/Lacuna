@@ -16,6 +16,8 @@ function routeLabel(pathname: string): string {
     '/method': 'The method',
     '/learn': 'Practice',
   };
+  if (import.meta.env.DEV && pathname === '/prototype/quizlet')
+    return 'Quizlet comparison prototype';
   if (pages[pathname]) return pages[pathname];
 
   const segments = pathname.split('/').filter(Boolean);
