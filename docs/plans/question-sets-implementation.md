@@ -827,3 +827,12 @@ Prompter review requested consistency with the rest of Lacuna, removal of dropdo
 - [x] 61 focused tests, web typecheck, focused lint and production build.
 
 Screenshots from this gate are in the thread's browser artefacts. User visual review remains ongoing. Existing physical-device, screen-reader, packaged-workflow and real peer-sync release checks remain open.
+
+
+## Ordered authoring flow checkpoint — 27 September 2026
+
+Prompter feedback rejected the Settings-rail authoring layout as lacking a clear journey.
+The ordered flow supersedes that layout. Implementation, research, verification, open UX
+questions and local continuation details are recorded in
+[the pause handover](question-sets-authoring-handover.md). Work is paused at the prompter’s
+request; this checkpoint is not UX acceptance or a declaration that V1 is signed off.

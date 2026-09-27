@@ -57,15 +57,14 @@ export function QuestionSetLinksEditor({
     ) ?? [];
   return (
     <section aria-label="Atomic concept links">
-      <h3>Atomic concepts</h3>
       <QuestionSetChoices
-        label="Link to"
+        label="Choose a marking point"
         value={target}
         onChange={(value) => setTarget(value)}
         options={[
           ...answer.allocations.map((a, i) => ({
             value: a.id,
-            label: `Criterion ${i + 1}: ${a.criterion.slice(0, 60) || 'Untitled'}`,
+            label: `Marking point ${i + 1}: ${a.criterion.slice(0, 60) || 'Untitled'}`,
           })),
           { value: 'prerequisite', label: 'Prerequisite knowledge' },
         ]}

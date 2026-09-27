@@ -25,7 +25,9 @@ export function QuestionSetSettings({
     });
   return (
     <section className="qs-settings">
-      <h2>Lessons and exams</h2>
+      <h2>
+        Lessons and exams <span className="qs-muted">Optional</span>
+      </h2>
       <div className="qs-fields">
         <fieldset className="qs-field">
           <legend>Lessons</legend>

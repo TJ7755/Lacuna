@@ -1,11 +1,11 @@
-import { SectionRail } from '../components/ui/SectionRail';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { QuestionSetQuestionStep } from '../components/question-sets/QuestionSetQuestionStep';
+import { QuestionSetContents, nodeLabel } from '../components/question-sets/QuestionSetContents';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { db, makeId } from '../db/schema';
 import { referencedAssetHashesInValues } from '../db/assets';
-import { createEmptyQuestionSetDraft, saveQuestionSetDraft } from '../questions/questionSetDrafts';
+import { QuestionSetDraftFeedback } from '../components/question-sets/QuestionSetDraftFeedback';
 import { useCourse } from '../state/useCourseData';
 import { canEditLessons } from '../course/lessonViewMode';
 import {
@@ -18,25 +18,19 @@ import {
 } from '../questions/questionSetAuthoring';
 import { validateQuestionSet, type QuestionAnswer } from '../questions/questionSets';
 import { useQuestionSetEditor } from '../components/question-sets/useQuestionSetEditor';
-import { QuestionSetSchemeEditor } from '../components/question-sets/QuestionSetSchemeEditor';
-import { QuestionSetResponseEditor } from '../components/question-sets/QuestionSetResponseEditor';
-import { QuestionSetLinksEditor } from '../components/question-sets/QuestionSetLinksEditor';
 import { QuestionSetSettings } from '../components/question-sets/QuestionSetSettings';
-import { QuestionSetImage } from '../components/question-sets/QuestionSetImage';
 import { QuestionSetPreview } from '../components/question-sets/QuestionSetPreview';
 import {
   emptyAnswer,
-  nodeMarks,
   questionSetMarks,
   issueMessage,
 } from '../components/question-sets/presentation';
-import { QuestionSetPromptEditor } from '../components/question-sets/QuestionSetPromptEditor';
-import { MarkdownView } from '../components/markdown/MarkdownView';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
 import '../components/question-sets/question-sets.css';
+import '../components/question-sets/question-set-flow.css';
 
-type Step = 'Question' | 'Mark scheme' | 'Links';
+type Step = 'setup' | 'contents' | 'question' | 'marks' | 'links' | 'review' | 'preview';
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
@@ -54,22 +48,24 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
   const { session, snapshot, loadError, blocker } = useQuestionSetEditor(courseId, setId);
   const navigate = useNavigate();
   const origin = questionSetReturn(useLocation().state, courseId);
-  const activeKey = `question-set-active:${courseId}:${setId}`;
-  const [activeId, setActive] = useState(() => sessionStorage.getItem(activeKey) ?? '');
-  const setActiveId = (id: string) => {
-    sessionStorage.setItem(activeKey, id);
-    setActive(id);
-  };
-  const [step, setStep] = useState<Step>('Question');
-  const [setLinks, setSetLinks] = useState(false);
-  const [motionSpeed] = useMotionSpeed();
-  const [preview, setPreview] = useState(false);
+  const [activeId, setActiveId] = useState('');
+  const [selectedStep, setStep] = useState<Step | null>(null);
+  const step = selectedStep ?? (snapshot?.draft?.content.title.trim() ? 'contents' : 'setup');
+  useEffect(() => {
+    if (selectedStep === null && snapshot?.draft)
+      setStep(snapshot.draft.content.title.trim() ? 'contents' : 'setup');
+  }, [snapshot, selectedStep]);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.closest('header')?.scrollIntoView?.({ block: 'start' });
+  }, [step, activeId]);
   const [error, setError] = useState('');
   const [showIssues, setShowIssues] = useState(false);
   const [confirm, setConfirm] = useState<{ message: string; run: () => void } | null>(null);
   if (loadError)
     return (
-      <div className="qs-editor">
+      <div className="qs-editor qs-flow">
         <Link
           className="qs-back"
           to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
@@ -86,17 +82,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
   const nodes = flattenQuestionSet(content);
   const active = nodes.find((n) => n.id === activeId) ?? nodes[0];
   const children = active ? nodes.filter((n) => n.parentIds.at(-1) === active.id) : [];
-  const siblings = active
-    ? nodes.filter(
-        (n) => n.depth === active.depth && n.parentIds.join('/') === active.parentIds.join('/'),
-      )
-    : [];
-  const siblingIndex = siblings.findIndex((n) => n.id === active?.id);
-  const label = active
-    ? [...active.parentIds.map((id) => nodes.find((n) => n.id === id)!.label), active.label].join(
-        ' ',
-      )
-    : '';
+  const label = active ? nodeLabel(nodes, active) : '';
   const issues = validateQuestionSet(content);
   const busy = snapshot.phase === 'publishing' || snapshot.phase === 'loading';
   const mutate = (run: () => void) => {
@@ -118,25 +104,78 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
       return next;
     });
     setActiveId(id);
-    setStep('Question');
-    setSetLinks(false);
+    setStep('question');
   };
-  const addChild = () => {
-    if (!active) return;
-    const run = () => mutate(() => add([...active.parentIds, active.id]));
-    if (active.node.answer)
+  const addChild = (parents: string[], stayOnParent = false) => {
+    const parent = nodes.find((node) => node.id === parents.at(-1));
+    const run = () =>
+      mutate(() => {
+        add(parents);
+        if (stayOnParent && parent) setActiveId(parent.id);
+      });
+    if (parent?.node.answer?.allocations.length)
       setConfirm({
         message:
-          'Make this shared source material? Its answer format and mark scheme will be removed.',
+          'Make this an introduction for separate parts? Its answer format and mark scheme will be removed. The question text and images will stay.',
         run,
       });
     else run();
   };
-  const chooseStep = (next: Step) => {
-    if (!active) return;
-    if (next !== 'Question' && !active.node.answer)
-      mutate(() => session.update((s) => updateQuestionSetNodeAnswer(s, active.id, emptyAnswer())));
-    setStep(next);
+  const openQuestion = (id: string) => {
+    setActiveId(id);
+    setStep('question');
+    setShowIssues(false);
+    setError('');
+  };
+  const nextFromQuestion = () => {
+    if (!active?.node.prompt.trim()) {
+      setError('Write the question before continuing.');
+      return;
+    }
+    setError('');
+    if (children.length) {
+      openQuestion(children[0].id);
+      return;
+    }
+    const answer = active.node.answer ?? emptyAnswer();
+    if (
+      answer.response.kind === 'multiple-choice' &&
+      (answer.response.options.some((option) => !option.content.trim()) ||
+        !answer.response.correctOptionIds.length)
+    ) {
+      setError('Complete the answer options and select the correct answer before continuing.');
+      return;
+    }
+    if (!answer.allocations.length)
+      updateAnswer({
+        ...answer,
+        allocations: [
+          {
+            id: makeId(),
+            criterion: '',
+            maxMarks: answer.maxMarks || 1,
+            dimension: 'knowledge',
+            targetConceptIds: [],
+          },
+        ],
+      });
+    setStep('marks');
+  };
+  const nextFromMarks = () => {
+    const answer = active?.node.answer;
+    if (
+      !answer ||
+      !answer.allocations.length ||
+      answer.allocations.some(
+        (a) => !a.criterion.trim() || !Number.isSafeInteger(a.maxMarks) || a.maxMarks < 1,
+      ) ||
+      answer.maxMarks !== answer.allocations.reduce((sum, a) => sum + a.maxMarks, 0)
+    ) {
+      setError('Describe what earns each mark and use positive whole numbers.');
+      return;
+    }
+    setError('');
+    setStep('links');
   };
   const publish = async () => {
     setShowIssues(true);
@@ -163,7 +202,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
         ? String(snapshot.error)
         : '');
   return (
-    <div className="qs-editor">
+    <div className="qs-editor qs-flow">
       <header className="qs-editor-header">
         <div className="qs-editor-title">
           <Link
@@ -172,14 +211,24 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
           >
             ← Question sets
           </Link>
-          <input
-            className="qs-title"
-            aria-label="Set title"
-            placeholder="Untitled question set"
-            value={content.title}
-            disabled={busy}
-            onChange={(e) => mutate(() => session.update((s) => ({ ...s, title: e.target.value })))}
-          />
+          {step !== 'setup' && <p className="qs-muted">{content.title}</p>}
+          <h1 ref={heading} tabIndex={-1}>
+            {step === 'setup'
+              ? content.title
+                ? 'Set details'
+                : 'Create a question set'
+              : step === 'contents'
+                ? 'Questions in this set'
+                : step === 'question'
+                  ? `Write ${label}`
+                  : step === 'marks'
+                    ? `Mark scheme for ${label}`
+                    : step === 'links'
+                      ? `Link knowledge to ${label}`
+                      : step === 'review'
+                        ? 'Review your question set'
+                        : 'Student preview'}
+          </h1>
           <p className="qs-status" role="status">
             {snapshot.phase === 'error'
               ? 'Could not save'
@@ -191,72 +240,20 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
             · {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
           </p>
         </div>
-        <div className="qs-actions">
-          <Button variant="secondary" onClick={() => setPreview(!preview)}>
-            {preview ? 'Back to editor' : 'Preview'}
-          </Button>
-          <Button variant="primary" disabled={busy} onClick={() => void publish()}>
-            Save set
-          </Button>
-        </div>
       </header>
       {message && (
-        <div role="alert" className="qs-error">
-          <p>
-            {snapshot.conflictSource === 'published'
-              ? 'The saved set has changed elsewhere. Your draft is preserved. Keep it as a separate set to avoid overwriting those changes.'
-              : message}
-          </p>
-          {snapshot.conflictSource === 'published' && (
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                try {
-                  const draft = createEmptyQuestionSetDraft(courseId, makeId());
-                  draft.content = {
-                    ...content,
-                    id: draft.content.id,
-                    title: `${content.title} (copy)`,
-                  };
-                  await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
-                  await navigate(`/course/${courseId}/question-sets/${draft.content.id}/edit`, {
-                    state: origin,
-                  });
-                } catch (cause) {
-                  setError(String(cause));
-                }
-              }}
-            >
-              Keep as a new set
-            </Button>
-          )}
-          <div className="qs-actions">
-            {!snapshot.conflictSource && (
-              <Button
-                variant="secondary"
-                onClick={() => void session.retry().catch(() => undefined)}
-              >
-                Retry save
-              </Button>
-            )}
-            {snapshot.conflictSource !== 'published' && (
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  setConfirm({
-                    message: 'Discard unsaved edits and load the stored draft?',
-                    run: () => {
-                      void session.load({ discardLocalChanges: true }).catch(() => undefined);
-                      setError('');
-                    },
-                  })
-                }
-              >
-                Reload draft
-              </Button>
-            )}
-          </div>
-        </div>
+        <QuestionSetDraftFeedback
+          message={message}
+          snapshot={snapshot}
+          session={session}
+          content={content}
+          courseId={courseId}
+          setError={setError}
+          setConfirm={setConfirm}
+          onCopied={(id) =>
+            void navigate(`/course/${courseId}/question-sets/${id}/edit`, { state: origin })
+          }
+        />
       )}
       {blocker.state === 'blocked' && (
         <div className="qs-error">
@@ -290,200 +287,171 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
           </ul>
         </div>
       )}
-      {preview ? (
-        <>
-          <p className="qs-muted mb-5">Author preview · answers are not saved as practice.</p>
-          <QuestionSetPreview content={content} authorPreview />
-        </>
-      ) : (
-        <fieldset disabled={busy || snapshot.requiresReload}>
-          <div className="qs-editor-layout">
-            <div className="qs-editor-main">
-              <div className="qs-toolbar">
-                {!setLinks && active && children.length === 0 && (
-                  <div className="qs-step-tabs" role="tablist" aria-label="Editing step">
-                    {(['Question', 'Mark scheme', 'Links'] as Step[]).map((s) => (
-                      <button
-                        key={s}
-                        role="tab"
-                        aria-selected={step === s}
-                        onClick={() => chooseStep(s)}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {setLinks ? (
-                <QuestionSetSettings
-                  content={content}
-                  onChange={(next) => mutate(() => session.update(() => next))}
+      <fieldset disabled={busy || snapshot.requiresReload} className="qs-flow-body">
+        {(['question', 'marks', 'links'] as Step[]).includes(step) && (
+          <ol className="qs-flow-progress" aria-label="Question editing progress">
+            {(['question', 'marks', 'links'] as const).map((item, index) => (
+              <li key={item} aria-current={step === item ? 'step' : undefined}>
+                <span>{index + 1}</span>
+                {item === 'question'
+                  ? 'Question'
+                  : item === 'marks'
+                    ? 'Mark scheme'
+                    : 'Linked knowledge'}
+              </li>
+            ))}
+          </ol>
+        )}
+        {step === 'setup' && (
+          <>
+            <section className="qs-paper">
+              <label className="qs-field">
+                Set title
+                <input
+                  value={content.title}
+                  placeholder="Name this question set"
+                  onChange={(event) =>
+                    mutate(() => session.update((set) => ({ ...set, title: event.target.value })))
+                  }
                 />
-              ) : (
-                <>
-                  {active ? (
-                    <article className="qs-paper">
-                      <header className="qs-part-bar">
-                        <h2>{label}</h2>
-                        <span className="qs-muted">
-                          {children.length
-                            ? 'Shared source'
-                            : `${nodeMarks(active.node)} ${nodeMarks(active.node) === 1 ? 'mark' : 'marks'}`}
-                        </span>
-                      </header>
-                      {active.parentIds.map((id) => (
-                        <section className="qs-source" key={id}>
-                          <p className="qs-muted mb-3">
-                            Source · {nodes.find((n) => n.id === id)!.label}
-                          </p>
-                          <MarkdownView source={nodes.find((n) => n.id === id)!.node.prompt} />
-                        </section>
-                      ))}
-                      {step === 'Question' || children.length > 0 ? (
-                        <>
-                          <QuestionSetImage
-                            key={`${active.id}-image`}
-                            session={session}
-                            nodeId={active.id}
-                          >
-                            <QuestionSetPromptEditor
-                              key={`${active.id}-prompt`}
-                              shared={children.length > 0}
-                              value={active.node.prompt}
-                              onChange={(prompt) =>
-                                mutate(() =>
-                                  session.update((s) =>
-                                    updateQuestionSetNodePrompt(s, active.id, prompt),
-                                  ),
-                                )
-                              }
-                            />
-                          </QuestionSetImage>
-                          {children.length === 0 && (
-                            <QuestionSetResponseEditor
-                              key={active.id}
-                              answer={active.node.answer ?? emptyAnswer()}
-                              onChange={updateAnswer}
-                            />
-                          )}
-                        </>
-                      ) : step === 'Mark scheme' ? (
-                        <QuestionSetSchemeEditor
-                          key={active.id}
-                          answer={active.node.answer ?? emptyAnswer()}
-                          onChange={updateAnswer}
-                        />
-                      ) : (
-                        <QuestionSetLinksEditor
-                          key={active.id}
-                          courseId={courseId}
-                          answer={active.node.answer ?? emptyAnswer()}
-                          onChange={updateAnswer}
-                        />
-                      )}
-                      <footer className="qs-node-tools">
-                        {active.depth < 2 && (
-                          <Button variant="secondary" onClick={addChild}>
-                            {active.depth === 0 ? 'Add part' : 'Add subpart'}
-                          </Button>
-                        )}
-                        <Button
-                          variant="secondary"
-                          disabled={siblingIndex <= 0}
-                          onClick={() =>
-                            mutate(() =>
-                              session.update((s) =>
-                                moveQuestionSetNode(s, active.id, siblingIndex - 1),
-                              ),
-                            )
-                          }
-                        >
-                          Move up
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          disabled={siblingIndex >= siblings.length - 1}
-                          onClick={() =>
-                            mutate(() =>
-                              session.update((s) =>
-                                moveQuestionSetNode(s, active.id, siblingIndex + 1),
-                              ),
-                            )
-                          }
-                        >
-                          Move down
-                        </Button>
-                        <button
-                          className="qs-back"
-                          onClick={() =>
-                            setConfirm({
-                              message: `Remove ${label} and all its content?`,
-                              run: () =>
-                                mutate(() => {
-                                  session.update((s) => removeQuestionSetNode(s, active.id));
-                                  setActiveId('');
-                                  setStep('Question');
-                                }),
-                            })
-                          }
-                        >
-                          Remove
-                        </button>
-                        {children.length === 0 && step === 'Question' && (
-                          <Button variant="primary" onClick={() => chooseStep('Mark scheme')}>
-                            Define marks →
-                          </Button>
-                        )}
-                      </footer>
-                    </article>
-                  ) : (
-                    <div className="qs-empty">
-                      <p>No questions in this set.</p>
-                      <Button onClick={() => mutate(() => add([]))}>Add question</Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="qs-editor-navigation">
-              <SectionRail
-                compact
-                sections={[
-                  ...nodes.map((n) => ({
-                    id: n.id,
-                    label: `${[...n.parentIds.map((id) => nodes.find((parent) => parent.id === id)!.label), n.label].join(' ')} · ${
-                      n.node.prompt
-                        .replace(/!\[.*?\]\(.*?\)/g, '')
-                        .trim()
-                        .slice(0, 45) || 'Untitled'
-                    }`,
-                  })),
-                  { id: 'set-links', label: 'Lessons and exams' },
-                ]}
-                activeSection={setLinks ? 'set-links' : (active?.id ?? '')}
-                onNavigate={(id) => {
-                  setSetLinks(id === 'set-links');
-                  if (id !== 'set-links') {
-                    setActiveId(id);
-                    setStep('Question');
+              </label>
+              <p className="qs-muted">Group questions for a lesson, topic or practice paper.</p>
+              <QuestionSetSettings
+                content={content}
+                onChange={(next) => mutate(() => session.update(() => next))}
+              />
+            </section>
+            <footer className="qs-flow-footer">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  if (!content.title.trim()) setError('Give this set a title.');
+                  else {
+                    setError('');
+                    setStep('contents');
                   }
                 }}
-                motionMultiplier={speedMultiplier(motionSpeed)}
-              />
-              <Button
-                className="mt-3 w-full"
-                onClick={() => {
-                  setSetLinks(false);
-                  mutate(() => add([]));
-                }}
               >
-                Add question
+                Continue to questions
+              </Button>
+            </footer>
+          </>
+        )}
+        {(step === 'contents' || step === 'review') && (
+          <>
+            <div className="qs-flow-set-summary">
+              <span>
+                {content.questions.length}{' '}
+                {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
+                {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+              </span>
+              <Button variant="ghost" onClick={() => setStep('setup')}>
+                Edit set details
               </Button>
             </div>
-          </div>
-        </fieldset>
-      )}
+            {step === 'review' && (
+              <p className="qs-muted mb-5">
+                Check the questions and mark schemes before making this set available for practice.
+              </p>
+            )}
+            <QuestionSetContents
+              content={content}
+              review={step === 'review'}
+              onEdit={openQuestion}
+              onAdd={(parents) => (parents.length ? addChild(parents) : mutate(() => add([])))}
+              onMove={(id, index) =>
+                mutate(() => session.update((set) => moveQuestionSetNode(set, id, index)))
+              }
+              onRemove={(id) =>
+                setConfirm({
+                  message: `Remove ${nodeLabel(
+                    nodes,
+                    nodes.find((n) => n.id === id)!,
+                  )} and all its parts?`,
+                  run: () => mutate(() => session.update((set) => removeQuestionSetNode(set, id))),
+                })
+              }
+            />
+            <footer className="qs-flow-footer">
+              {step === 'contents' ? (
+                <Button
+                  variant="primary"
+                  disabled={!content.questions.length}
+                  onClick={() => {
+                    setShowIssues(true);
+                    setStep('review');
+                  }}
+                >
+                  Review set
+                </Button>
+              ) : (
+                <>
+                  <Button onClick={() => setStep('contents')}>Back to questions</Button>
+                  <Button onClick={() => setStep('preview')}>Preview as student</Button>
+                  <Button variant="primary" onClick={() => void publish()}>
+                    Save set
+                  </Button>
+                </>
+              )}
+            </footer>
+          </>
+        )}
+        {active && (step === 'question' || step === 'marks' || step === 'links') && (
+          <>
+            <QuestionSetQuestionStep
+              step={step}
+              active={active}
+              nodes={nodes}
+              session={session}
+              courseId={courseId}
+              onPrompt={(prompt) =>
+                mutate(() =>
+                  session.update((set) => updateQuestionSetNodePrompt(set, active.id, prompt)),
+                )
+              }
+              onAnswer={updateAnswer}
+              onSplit={() => addChild([...active.parentIds, active.id], true)}
+            />
+            <footer className="qs-flow-footer">
+              <Button
+                onClick={() => {
+                  setError('');
+                  setStep(step === 'marks' ? 'question' : step === 'links' ? 'marks' : 'contents');
+                }}
+              >
+                {step === 'question' ? 'Back to questions' : 'Back'}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={
+                  step === 'question'
+                    ? nextFromQuestion
+                    : step === 'marks'
+                      ? nextFromMarks
+                      : () => setStep('contents')
+                }
+              >
+                {step === 'question'
+                  ? children.length
+                    ? 'Continue to first part'
+                    : 'Continue to mark scheme'
+                  : step === 'marks'
+                    ? 'Continue to linked knowledge'
+                    : 'Done — back to questions'}
+              </Button>
+            </footer>
+          </>
+        )}
+        {step === 'preview' && (
+          <>
+            <p className="qs-muted mb-5">Preview only. Your answers here are not recorded.</p>
+            <QuestionSetPreview content={content} authorPreview />
+            <footer className="qs-flow-footer">
+              <Button onClick={() => setStep('review')}>Back to review</Button>
+            </footer>
+          </>
+        )}
+      </fieldset>
     </div>
   );
 }
