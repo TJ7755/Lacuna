@@ -20,9 +20,10 @@ document. `bun run build` renders the React landing tree into
 - `src/main.tsx` hydrates only for unseeded browsers on a hashless web URL.
   Seeded browsers, in-app hashes and the packaged app boot the study app
   directly; crawlers never run the script and keep the static HTML.
-- The exam calendar stamps build-time dates, so its date labels carry
-  `suppressHydrationWarning` and refresh on hydration.
+- The exam calendar stamps build-time dates into the prerender. Its date labels
+  carry `suppressHydrationWarning` for the first client render and recompute
+  for today after mount.
 
 Validation: `bun run build:assets && node --test scripts/public-pages.test.mjs`.
-Browser checks live in `tests/e2e/landing-preview.spec.ts`; the existing offline
+Browser checks live in `tests/e2e/landing-prerender.spec.ts`; the existing offline
 reload test covers the app shell after this change.

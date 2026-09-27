@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarRecall } from './CalendarRecall';
 import { EXAM_DAY, planCalendar, SLOT_HOURS } from './calendarProjection';
 import './ExamPriorityExample.css';
@@ -6,15 +6,23 @@ import './ExamPriorityExample.css';
 const label = (date: Date) => date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
 export function ExamPriorityExample() {
+  // The prerender stamps build-time dates; recompute after mount so the
+  // hydrated page shows this week. The first client render still uses the
+  // state initialiser, which is why the date labels below suppress the
+  // expected hydration warning.
+  const [today, setToday] = useState(() => Date.now());
+  useEffect(() => {
+    setToday(Date.now());
+  }, []);
   const dates = useMemo(
     () =>
       Array.from({ length: 7 }, (_, day) => {
-        const date = new Date();
+        const date = new Date(today);
         date.setHours(12, 0, 0, 0);
         date.setDate(date.getDate() + day);
         return date;
       }),
-    [],
+    [today],
   );
   const [available, setAvailable] = useState<number[]>([4, 9, 17]);
   const sessions = useMemo(() => planCalendar(available), [available]);
