@@ -4,6 +4,9 @@
 
 ## 0.2.13 beta — course overview, website and import fix
 
+- Updated the Windows installed-upgrade gate to use the verified v0.2.12 baseline,
+  so the v0.2.13 release is tested against the latest published version.
+
 - Fixed text imports to a new course failing with “Transaction committed too early”.
   Card validation now runs before the import transaction and is skipped within it,
   so larger plain-text batches commit atomically with their new course and lesson.
