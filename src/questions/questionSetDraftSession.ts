@@ -188,7 +188,7 @@ export class QuestionSetDraftSession {
     }, this.debounceMs);
   }
 
-  async insertImage(nodeId: string, file: File, alt: string): Promise<string> {
+  async insertImage(nodeId: string, file: File, alt: string, caption = ''): Promise<string> {
     if (!alt.trim()) throw new Error('Describe the image before adding it.');
     this.assertEditable();
     const asset = await this.prepareImage(file);
@@ -202,7 +202,7 @@ export class QuestionSetDraftSession {
       return updateQuestionSetNodePrompt(
         content,
         nodeId,
-        `${node.prompt}${separator}![${safeAlt}](${url})`,
+        `${node.prompt}${separator}![${safeAlt}](${url})${caption.trim() ? `\n\n${caption.trim()}` : ''}`,
       );
     });
     await this.flush();

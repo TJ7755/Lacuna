@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Question Set authors can paste or drop a diagram into the question workspace, describe it and
+  add an optional caption. Images and their prompt references use the existing atomic draft save;
+  selection previews remain local until added, and ordinary text paste remains unchanged.
+
 - Added optional Practice Qs activities anchored after a lesson. Authors choose an existing set
   and can move or remove the activity without deleting its content or attempts. Compact path
   nodes reveal progress, exam links and editing on hover or keyboard focus; touch first reveals

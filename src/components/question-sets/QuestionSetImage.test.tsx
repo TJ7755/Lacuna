@@ -30,3 +30,37 @@ it('uses a named image chooser and only asks for a description after selection',
   );
   expect(input.value).toBe('');
 });
+
+it.each(['paste', 'drop'])(
+  'previews a %s image before saving it with its caption',
+  async (kind) => {
+    const insertImage = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <QuestionSetImage session={{ insertImage } as unknown as QuestionSetDraftSession} nodeId="q1">
+        <textarea aria-label="Question text" />
+      </QuestionSetImage>,
+    );
+    const file = new File(['image'], 'cell.png', { type: 'image/png' });
+    const target = screen.getByRole('textbox', { name: 'Question text' });
+    if (kind === 'paste') fireEvent.paste(target, { clipboardData: { files: [file] } });
+    else fireEvent.drop(target, { dataTransfer: { files: [file] } });
+    expect(container.querySelector('details')).toHaveAttribute('open');
+    expect(screen.getByText('cell.png')).toBeInTheDocument();
+    expect(insertImage).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Image description'), {
+      target: { value: 'Cell diagram' },
+    });
+    fireEvent.change(screen.getByLabelText('Caption (optional)'), {
+      target: { value: 'Figure 1. A plant cell.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add image' }));
+    await waitFor(() =>
+      expect(insertImage).toHaveBeenCalledWith(
+        'q1',
+        file,
+        'Cell diagram',
+        'Figure 1. A plant cell.',
+      ),
+    );
+  },
+);

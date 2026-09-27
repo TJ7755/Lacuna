@@ -361,21 +361,18 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
               ))}
               {step === 'Question' || children.length > 0 ? (
                 <>
-                  <QuestionSetPromptEditor
-                    key={`${active.id}-prompt`}
-                    shared={children.length > 0}
-                    value={active.node.prompt}
-                    onChange={(prompt) =>
-                      mutate(() =>
-                        session.update((s) => updateQuestionSetNodePrompt(s, active.id, prompt)),
-                      )
-                    }
-                  />
-                  <QuestionSetImage
-                    key={`${active.id}-image`}
-                    session={session}
-                    nodeId={active.id}
-                  />
+                  <QuestionSetImage key={`${active.id}-image`} session={session} nodeId={active.id}>
+                    <QuestionSetPromptEditor
+                      key={`${active.id}-prompt`}
+                      shared={children.length > 0}
+                      value={active.node.prompt}
+                      onChange={(prompt) =>
+                        mutate(() =>
+                          session.update((s) => updateQuestionSetNodePrompt(s, active.id, prompt)),
+                        )
+                      }
+                    />
+                  </QuestionSetImage>
                   {children.length === 0 && (
                     <QuestionSetResponseEditor
                       key={active.id}
