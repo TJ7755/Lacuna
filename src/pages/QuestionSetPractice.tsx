@@ -1,3 +1,4 @@
+import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useEffect, useRef, useState } from 'react';
@@ -221,8 +222,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
             ? `Criterion ${criterionIndex + 1} of ${criteria.length}`
             : `Part ${index + 1} of ${nodes.length}`}
         </span>
-        <details>
-          <summary>All parts</summary>
+        <QuestionSetPanel title="All parts" closeOnSelect>
           <nav className="qs-outline" aria-label="Question parts">
             {nodes.map((node) => (
               <button
@@ -241,7 +241,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
               </button>
             ))}
           </nav>
-        </details>
+        </QuestionSetPanel>
       </div>
       <article className={`qs-paper ${marking ? 'qs-paper-marking' : ''}`}>
         {marking ? (
@@ -257,8 +257,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
               </span>
             </header>
-            <details className="qs-question-context">
-              <summary>Question and source</summary>
+            <QuestionSetPanel title="Question and source" className="qs-question-context">
               <QuestionSetAnswer
                 content={attempt.receipt}
                 nodeId={active.id}
@@ -266,7 +265,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 onChange={() => {}}
                 readOnly
               />
-            </details>
+            </QuestionSetPanel>
             {criterion && (
               <QuestionSetMarking
                 key={active.id}

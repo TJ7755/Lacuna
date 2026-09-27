@@ -79,15 +79,15 @@ export function QuestionsPage() {
       setCreating(false);
     }
   };
+  if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
     <div ref={root} className="qs-library">
       <header className="qs-library-header">
         <div>
-          <p className="qs-kicker">{course.name}</p>
           <h1 tabIndex={-1}>Questions</h1>
         </div>
         {author && (
-          <Button onClick={() => void create()} disabled={creating}>
+          <Button variant="primary" onClick={() => void create()} disabled={creating}>
             {creating ? 'Creating…' : 'New question set'}
           </Button>
         )}
@@ -165,10 +165,12 @@ export function QuestionsPage() {
       </section>
       <RemovedQuestionSetAttempts courseId={course.id} />
       {data.legacy > 0 && (
-        <details className="qs-legacy">
-          <summary>Individual questions · {data.legacy}</summary>
-          <LegacyQuestionsPage />
-        </details>
+        <Link
+          className="qs-legacy-link"
+          to={`?view=individual${search ? `&q=${encodeURIComponent(search)}` : ''}`}
+        >
+          Individual questions <span>{data.legacy} →</span>
+        </Link>
       )}
     </div>
   );

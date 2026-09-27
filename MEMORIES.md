@@ -191,3 +191,10 @@ examples. Historical plans are evidence of past intent, not an active implementa
 The prompter explicitly values the graded-card departure and inter-card pause as delightful
 (26 September 2026). Preserve that timing when improving desktop throughput; make controls
 and cancellation reliable around it instead of treating the pause as a performance defect.
+
+## T3 preview frame delivery
+
+A visible preview can stop delivering `requestAnimationFrame` callbacks while DOM interaction still works;
+Motion transitions then appear frozen and screenshots can time out. Starting a T3 preview recording
+restored frame delivery during Questions review. Check frame delivery before treating this as an app
+animation defect, and stop the recording after verification.

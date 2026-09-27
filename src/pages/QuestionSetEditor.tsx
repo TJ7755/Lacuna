@@ -1,3 +1,5 @@
+import { SectionRail } from '../components/ui/SectionRail';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -59,7 +61,8 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
     setActive(id);
   };
   const [step, setStep] = useState<Step>('Question');
-  const [outline, setOutline] = useState(false);
+  const [setLinks, setSetLinks] = useState(false);
+  const [motionSpeed] = useMotionSpeed();
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState('');
   const [showIssues, setShowIssues] = useState(false);
@@ -116,7 +119,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
     });
     setActiveId(id);
     setStep('Question');
-    setOutline(false);
+    setSetLinks(false);
   };
   const addChild = () => {
     if (!active) return;
@@ -192,7 +195,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
           <Button variant="secondary" onClick={() => setPreview(!preview)}>
             {preview ? 'Back to editor' : 'Preview'}
           </Button>
-          <Button disabled={busy} onClick={() => void publish()}>
+          <Button variant="primary" disabled={busy} onClick={() => void publish()}>
             Save set
           </Button>
         </div>
@@ -294,162 +297,191 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
         </>
       ) : (
         <fieldset disabled={busy || snapshot.requiresReload}>
-          <QuestionSetSettings
-            content={content}
-            onChange={(next) => mutate(() => session.update(() => next))}
-          />
-          <div className="qs-toolbar">
-            <button
-              className="qs-back"
-              aria-expanded={outline}
-              onClick={() => setOutline(!outline)}
-            >
-              Questions · {content.questions.length} ▾
-            </button>
-            {active && children.length === 0 && (
-              <div className="qs-step-tabs" role="tablist" aria-label="Editing step">
-                {(['Question', 'Mark scheme', 'Links'] as Step[]).map((s) => (
-                  <button
-                    key={s}
-                    role="tab"
-                    aria-selected={step === s}
-                    onClick={() => chooseStep(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
+          <div className="qs-editor-layout">
+            <div className="qs-editor-main">
+              <div className="qs-toolbar">
+                {!setLinks && active && children.length === 0 && (
+                  <div className="qs-step-tabs" role="tablist" aria-label="Editing step">
+                    {(['Question', 'Mark scheme', 'Links'] as Step[]).map((s) => (
+                      <button
+                        key={s}
+                        role="tab"
+                        aria-selected={step === s}
+                        onClick={() => chooseStep(s)}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {outline && (
-            <nav className="qs-outline" aria-label="Question outline">
-              {nodes.map((n) => (
-                <button
-                  key={n.id}
-                  aria-current={active?.id === n.id}
-                  style={{ paddingLeft: 12 + n.depth * 18 }}
-                  onClick={() => {
-                    setActiveId(n.id);
-                    setStep('Question');
-                    setOutline(false);
-                  }}
-                >
-                  {n.label} ·{' '}
-                  {n.node.prompt.replace(/!\[.*?\]\(.*?\)/g, 'Diagram').slice(0, 65) || 'Untitled'}
-                </button>
-              ))}
-              <Button variant="secondary" onClick={() => mutate(() => add([]))}>
-                Add question
-              </Button>
-            </nav>
-          )}
-          {active ? (
-            <article className="qs-paper">
-              <header className="qs-part-bar">
-                <h2>{label}</h2>
-                <span className="qs-muted">
-                  {children.length
-                    ? 'Shared source'
-                    : `${nodeMarks(active.node)} ${nodeMarks(active.node) === 1 ? 'mark' : 'marks'}`}
-                </span>
-              </header>
-              {active.parentIds.map((id) => (
-                <details className="qs-source" key={id} open={step === 'Question'}>
-                  <summary>Source · {nodes.find((n) => n.id === id)!.label}</summary>
-                  <MarkdownView source={nodes.find((n) => n.id === id)!.node.prompt} />
-                </details>
-              ))}
-              {step === 'Question' || children.length > 0 ? (
-                <>
-                  <QuestionSetImage key={`${active.id}-image`} session={session} nodeId={active.id}>
-                    <QuestionSetPromptEditor
-                      key={`${active.id}-prompt`}
-                      shared={children.length > 0}
-                      value={active.node.prompt}
-                      onChange={(prompt) =>
-                        mutate(() =>
-                          session.update((s) => updateQuestionSetNodePrompt(s, active.id, prompt)),
-                        )
-                      }
-                    />
-                  </QuestionSetImage>
-                  {children.length === 0 && (
-                    <QuestionSetResponseEditor
-                      key={active.id}
-                      answer={active.node.answer ?? emptyAnswer()}
-                      onChange={updateAnswer}
-                    />
-                  )}
-                </>
-              ) : step === 'Mark scheme' ? (
-                <QuestionSetSchemeEditor
-                  key={active.id}
-                  answer={active.node.answer ?? emptyAnswer()}
-                  onChange={updateAnswer}
+              {setLinks ? (
+                <QuestionSetSettings
+                  content={content}
+                  onChange={(next) => mutate(() => session.update(() => next))}
                 />
               ) : (
-                <QuestionSetLinksEditor
-                  key={active.id}
-                  courseId={courseId}
-                  answer={active.node.answer ?? emptyAnswer()}
-                  onChange={updateAnswer}
-                />
+                <>
+                  {active ? (
+                    <article className="qs-paper">
+                      <header className="qs-part-bar">
+                        <h2>{label}</h2>
+                        <span className="qs-muted">
+                          {children.length
+                            ? 'Shared source'
+                            : `${nodeMarks(active.node)} ${nodeMarks(active.node) === 1 ? 'mark' : 'marks'}`}
+                        </span>
+                      </header>
+                      {active.parentIds.map((id) => (
+                        <section className="qs-source" key={id}>
+                          <p className="qs-muted mb-3">
+                            Source · {nodes.find((n) => n.id === id)!.label}
+                          </p>
+                          <MarkdownView source={nodes.find((n) => n.id === id)!.node.prompt} />
+                        </section>
+                      ))}
+                      {step === 'Question' || children.length > 0 ? (
+                        <>
+                          <QuestionSetImage
+                            key={`${active.id}-image`}
+                            session={session}
+                            nodeId={active.id}
+                          >
+                            <QuestionSetPromptEditor
+                              key={`${active.id}-prompt`}
+                              shared={children.length > 0}
+                              value={active.node.prompt}
+                              onChange={(prompt) =>
+                                mutate(() =>
+                                  session.update((s) =>
+                                    updateQuestionSetNodePrompt(s, active.id, prompt),
+                                  ),
+                                )
+                              }
+                            />
+                          </QuestionSetImage>
+                          {children.length === 0 && (
+                            <QuestionSetResponseEditor
+                              key={active.id}
+                              answer={active.node.answer ?? emptyAnswer()}
+                              onChange={updateAnswer}
+                            />
+                          )}
+                        </>
+                      ) : step === 'Mark scheme' ? (
+                        <QuestionSetSchemeEditor
+                          key={active.id}
+                          answer={active.node.answer ?? emptyAnswer()}
+                          onChange={updateAnswer}
+                        />
+                      ) : (
+                        <QuestionSetLinksEditor
+                          key={active.id}
+                          courseId={courseId}
+                          answer={active.node.answer ?? emptyAnswer()}
+                          onChange={updateAnswer}
+                        />
+                      )}
+                      <footer className="qs-node-tools">
+                        {active.depth < 2 && (
+                          <Button variant="secondary" onClick={addChild}>
+                            {active.depth === 0 ? 'Add part' : 'Add subpart'}
+                          </Button>
+                        )}
+                        <Button
+                          variant="secondary"
+                          disabled={siblingIndex <= 0}
+                          onClick={() =>
+                            mutate(() =>
+                              session.update((s) =>
+                                moveQuestionSetNode(s, active.id, siblingIndex - 1),
+                              ),
+                            )
+                          }
+                        >
+                          Move up
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          disabled={siblingIndex >= siblings.length - 1}
+                          onClick={() =>
+                            mutate(() =>
+                              session.update((s) =>
+                                moveQuestionSetNode(s, active.id, siblingIndex + 1),
+                              ),
+                            )
+                          }
+                        >
+                          Move down
+                        </Button>
+                        <button
+                          className="qs-back"
+                          onClick={() =>
+                            setConfirm({
+                              message: `Remove ${label} and all its content?`,
+                              run: () =>
+                                mutate(() => {
+                                  session.update((s) => removeQuestionSetNode(s, active.id));
+                                  setActiveId('');
+                                  setStep('Question');
+                                }),
+                            })
+                          }
+                        >
+                          Remove
+                        </button>
+                        {children.length === 0 && step === 'Question' && (
+                          <Button variant="primary" onClick={() => chooseStep('Mark scheme')}>
+                            Define marks →
+                          </Button>
+                        )}
+                      </footer>
+                    </article>
+                  ) : (
+                    <div className="qs-empty">
+                      <p>No questions in this set.</p>
+                      <Button onClick={() => mutate(() => add([]))}>Add question</Button>
+                    </div>
+                  )}
+                </>
               )}
-              <footer className="qs-node-tools">
-                {active.depth < 2 && (
-                  <Button variant="secondary" onClick={addChild}>
-                    {active.depth === 0 ? 'Add part' : 'Add subpart'}
-                  </Button>
-                )}
-                <Button
-                  variant="secondary"
-                  disabled={siblingIndex <= 0}
-                  onClick={() =>
-                    mutate(() =>
-                      session.update((s) => moveQuestionSetNode(s, active.id, siblingIndex - 1)),
-                    )
-                  }
-                >
-                  Move up
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={siblingIndex >= siblings.length - 1}
-                  onClick={() =>
-                    mutate(() =>
-                      session.update((s) => moveQuestionSetNode(s, active.id, siblingIndex + 1)),
-                    )
-                  }
-                >
-                  Move down
-                </Button>
-                <button
-                  className="qs-back"
-                  onClick={() =>
-                    setConfirm({
-                      message: `Remove ${label} and all its content?`,
-                      run: () =>
-                        mutate(() => {
-                          session.update((s) => removeQuestionSetNode(s, active.id));
-                          setActiveId('');
-                          setStep('Question');
-                        }),
-                    })
-                  }
-                >
-                  Remove
-                </button>
-                {children.length === 0 && step === 'Question' && (
-                  <Button onClick={() => chooseStep('Mark scheme')}>Define marks →</Button>
-                )}
-              </footer>
-            </article>
-          ) : (
-            <div className="qs-empty">
-              <p>No questions in this set.</p>
-              <Button onClick={() => mutate(() => add([]))}>Add question</Button>
             </div>
-          )}
+            <div className="qs-editor-navigation">
+              <SectionRail
+                compact
+                sections={[
+                  ...nodes.map((n) => ({
+                    id: n.id,
+                    label: `${[...n.parentIds.map((id) => nodes.find((parent) => parent.id === id)!.label), n.label].join(' ')} · ${
+                      n.node.prompt
+                        .replace(/!\[.*?\]\(.*?\)/g, '')
+                        .trim()
+                        .slice(0, 45) || 'Untitled'
+                    }`,
+                  })),
+                  { id: 'set-links', label: 'Lessons and exams' },
+                ]}
+                activeSection={setLinks ? 'set-links' : (active?.id ?? '')}
+                onNavigate={(id) => {
+                  setSetLinks(id === 'set-links');
+                  if (id !== 'set-links') {
+                    setActiveId(id);
+                    setStep('Question');
+                  }
+                }}
+                motionMultiplier={speedMultiplier(motionSpeed)}
+              />
+              <Button
+                className="mt-3 w-full"
+                onClick={() => {
+                  setSetLinks(false);
+                  mutate(() => add([]));
+                }}
+              >
+                Add question
+              </Button>
+            </div>
+          </div>
         </fieldset>
       )}
     </div>

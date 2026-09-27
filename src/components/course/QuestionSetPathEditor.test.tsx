@@ -56,7 +56,11 @@ async function fixture() {
   return { course, firstLesson, secondLesson, set };
 }
 
-function activity(courseId: string, questionSetId: string, afterLessonId: string): QuestionSetPracticeNode {
+function activity(
+  courseId: string,
+  questionSetId: string,
+  afterLessonId: string,
+): QuestionSetPracticeNode {
   return {
     id: 'activity-1',
     courseId,
@@ -74,8 +78,12 @@ describe('QuestionSetPathEditor', () => {
     db.close();
     await db.delete();
     await db.open();
-    vi.mocked(createQuestionSetPracticeNode).mockReset().mockResolvedValue({} as QuestionSetPracticeNode);
-    vi.mocked(updateQuestionSetPracticeNode).mockReset().mockResolvedValue({} as QuestionSetPracticeNode);
+    vi.mocked(createQuestionSetPracticeNode)
+      .mockReset()
+      .mockResolvedValue({} as QuestionSetPracticeNode);
+    vi.mocked(updateQuestionSetPracticeNode)
+      .mockReset()
+      .mockResolvedValue({} as QuestionSetPracticeNode);
     vi.mocked(deleteQuestionSetPracticeNode).mockReset().mockResolvedValue(undefined);
   });
   afterEach(cleanup);
@@ -92,9 +100,9 @@ describe('QuestionSetPathEditor', () => {
     );
 
     expect(await screen.findByRole('dialog', { name: 'Add Practice Qs' })).toBeInTheDocument();
-    await screen.findByRole('option', { name: 'Cell structure' });
-    fireEvent.change(screen.getByLabelText('Question set'), { target: { value: set.id } });
-    fireEvent.change(screen.getByLabelText('After lesson'), { target: { value: secondLesson.id } });
+    await screen.findByRole('radio', { name: 'Cell structure' });
+    fireEvent.click(screen.getByRole('radio', { name: 'Cell structure' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Tissues' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add to path' }));
 
     await waitFor(() =>
@@ -116,9 +124,9 @@ describe('QuestionSetPathEditor', () => {
     render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
 
     expect(await screen.findByRole('dialog', { name: 'Edit Practice Qs' })).toBeInTheDocument();
-    await screen.findByRole('option', { name: 'Cell structure' });
-    const setSelect = screen.getByLabelText('Question set');
-    expect(setSelect).toHaveValue(set.id);
+    await screen.findByRole('radio', { name: 'Cell structure' });
+    const setSelect = screen.getByRole('radio', { name: 'Cell structure' });
+    expect(setSelect).toBeChecked();
     expect(setSelect).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove activity' }));
@@ -126,10 +134,10 @@ describe('QuestionSetPathEditor', () => {
       screen.getByText('Remove this activity? The question set and attempts will remain.'),
     ).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
-    expect(setSelect).toHaveValue(set.id);
+    expect(setSelect).toBeChecked();
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('After lesson'), { target: { value: secondLesson.id } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Tissues' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, secondLesson.id),

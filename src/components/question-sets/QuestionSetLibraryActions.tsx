@@ -1,3 +1,4 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { removeAuthoredQuestionSet } from '../../questions/questionSetRepository';
@@ -19,7 +20,7 @@ export function QuestionSetLibraryActions({
   draftRevisionId: string | null;
   onRemoved: () => void;
 }) {
-  const root = useRef<HTMLDetailsElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const pending = useRef(false);
   const [confirmation, setConfirmation] = useState<{
     expectedContentRevisionId: string | null;
@@ -50,20 +51,12 @@ export function QuestionSetLibraryActions({
     }
   };
   return (
-    <details
-      ref={root}
+    <QuestionSetPanel
+      title={`Options for ${title}`}
+      triggerLabel="Options"
       className="qs-library-options"
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape' || busy) return;
-        event.stopPropagation();
-        setConfirmation(null);
-        setError('');
-        if (root.current) root.current.open = false;
-        root.current?.querySelector('summary')?.focus();
-      }}
     >
-      <summary aria-label={`Options for ${title}`}>More</summary>
-      <div className="qs-library-options-panel">
+      <div ref={root}>
         {busy ? (
           <p role="status">Removing…</p>
         ) : confirmation ? (
@@ -99,6 +92,6 @@ export function QuestionSetLibraryActions({
           </p>
         )}
       </div>
-    </details>
+    </QuestionSetPanel>
   );
 }

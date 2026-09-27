@@ -24,8 +24,8 @@ export function QuestionSetSettings({
         : [...content[key], id],
     });
   return (
-    <details className="qs-settings">
-      <summary>Lessons and exams</summary>
+    <section className="qs-settings">
+      <h2>Lessons and exams</h2>
       <div className="qs-fields">
         <fieldset className="qs-field">
           <legend>Lessons</legend>
@@ -59,6 +59,6 @@ export function QuestionSetSettings({
           {data?.exams.length === 0 && <p className="qs-muted">No exams in this course.</p>}
         </fieldset>
       </div>
-    </details>
+    </section>
   );
 }

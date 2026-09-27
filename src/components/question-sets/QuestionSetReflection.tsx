@@ -1,3 +1,4 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
 import { useState } from 'react';
 import type {
   QuestionSetAttemptReflection,
@@ -27,10 +28,7 @@ export function QuestionSetReflection({
 }) {
   const [note, setNote] = useState(value.note);
   return (
-    <details className="qs-reflection">
-      <summary>
-        What would you change? <span className="qs-muted">Optional</span>
-      </summary>
+    <QuestionSetPanel title="What would you change?" className="qs-reflection">
       <fieldset>
         <legend className="sr-only">Reflection reasons</legend>
         {(Object.entries(reasons) as [QuestionSetReflectionReason, string][]).map(
@@ -85,6 +83,6 @@ export function QuestionSetReflection({
           Cancel reflection
         </Button>
       )}
-    </details>
+    </QuestionSetPanel>
   );
 }

@@ -1,3 +1,4 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useLocation } from 'react-router-dom';
 import { listRemovedQuestionSetAttempts } from '../../questions/questionSetAttemptRepository';
@@ -8,8 +9,10 @@ export function RemovedQuestionSetAttempts({ courseId }: { courseId: string }) {
   const attempts = useLiveQuery(() => listRemovedQuestionSetAttempts(courseId), [courseId], []);
   if (!attempts.length) return null;
   return (
-    <details className="qs-history">
-      <summary className="qs-back">Attempts from removed sets · {attempts.length}</summary>
+    <QuestionSetPanel
+      title={`Attempts from removed sets · ${attempts.length}`}
+      className="qs-history"
+    >
       <QuestionSetAttemptList
         attempts={attempts}
         showTitles
@@ -18,6 +21,6 @@ export function RemovedQuestionSetAttempts({ courseId }: { courseId: string }) {
           questionSetReturnLabel: 'Back to Questions',
         }}
       />
-    </details>
+    </QuestionSetPanel>
   );
 }

@@ -11,7 +11,7 @@ it('uses a named image chooser and only asks for a description after selection',
       nodeId="q1"
     />,
   );
-  fireEvent.click(screen.getByText('Add a diagram or image'));
+  expect(container.querySelector('details')).toBeNull();
   expect(screen.getByRole('button', { name: 'Choose image' })).toBeInTheDocument();
   expect(screen.queryByLabelText('Image description')).not.toBeInTheDocument();
   const input = container.querySelector('input[type="file"]') as HTMLInputElement;
@@ -35,7 +35,7 @@ it.each(['paste', 'drop'])(
   'previews a %s image before saving it with its caption',
   async (kind) => {
     const insertImage = vi.fn().mockResolvedValue(undefined);
-    const { container } = render(
+    render(
       <QuestionSetImage session={{ insertImage } as unknown as QuestionSetDraftSession} nodeId="q1">
         <textarea aria-label="Question text" />
       </QuestionSetImage>,
@@ -44,7 +44,7 @@ it.each(['paste', 'drop'])(
     const target = screen.getByRole('textbox', { name: 'Question text' });
     if (kind === 'paste') fireEvent.paste(target, { clipboardData: { files: [file] } });
     else fireEvent.drop(target, { dataTransfer: { files: [file] } });
-    expect(container.querySelector('details')).toHaveAttribute('open');
+    expect(screen.getByLabelText('Image description')).toBeVisible();
     expect(screen.getByText('cell.png')).toBeInTheDocument();
     expect(insertImage).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Image description'), {

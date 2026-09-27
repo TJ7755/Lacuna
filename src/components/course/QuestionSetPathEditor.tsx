@@ -1,3 +1,4 @@
+import { QuestionSetChoices } from '../question-sets/QuestionSetChoices';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -14,6 +15,7 @@ import { ConfirmInline } from '../ui/ConfirmInline';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { PlusIcon } from '../ui/icons';
 import './question-set-path.css';
+import '../question-sets/question-sets.css';
 
 export function AddQuestionSetPractice({
   courseId,
@@ -105,43 +107,23 @@ export function QuestionSetPathEditor({
           <h2>{node ? 'Edit Practice Qs' : 'Add Practice Qs'}</h2>
         </header>
         <div className="qs-path-fields">
-          <label>
-            Question set
-            <select
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') event.stopPropagation();
-              }}
-              value={setId}
-              disabled={busy || !!node}
-              onChange={(event) => setSetId(event.target.value)}
-            >
-              <option value="">Choose a set</option>
-              {data?.sets.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          <QuestionSetChoices
+            label="Question set"
+            value={setId}
+            disabled={busy || !!node}
+            onChange={setSetId}
+            options={data?.sets.map((set) => ({ value: set.id, label: set.title })) ?? []}
+          />
           {data?.sets.length === 0 && <p>Save a question set before adding it to the path.</p>}
-          <label>
-            After lesson
-            <select
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') event.stopPropagation();
-              }}
-              value={lessonId}
-              disabled={busy}
-              onChange={(event) => setLessonId(event.target.value)}
-            >
-              <option value="">Choose a lesson</option>
-              {data?.lessons.map((lesson) => (
-                <option key={lesson.id} value={lesson.id}>
-                  {lesson.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <QuestionSetChoices
+            label="After lesson"
+            value={lessonId}
+            disabled={busy}
+            onChange={setLessonId}
+            options={
+              data?.lessons.map((lesson) => ({ value: lesson.id, label: lesson.name })) ?? []
+            }
+          />
           {error && (
             <p role="alert" className="text-negative">
               {error}

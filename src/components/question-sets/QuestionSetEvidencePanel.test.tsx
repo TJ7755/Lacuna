@@ -148,19 +148,18 @@ describe('QuestionSetEvidencePanel', () => {
     render(<QuestionSetEvidencePanel content={content()} attempts={[repeated, first]} />);
     fireEvent.click(screen.getByText('Practice evidence'));
 
-    const select = screen.getByRole('combobox', { name: 'Attempts' });
-    expect(screen.getByRole('option', { name: 'All attempts' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'First recorded' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Repeated' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'All attempts' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'First recorded' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Repeated' })).toBeInTheDocument();
 
-    fireEvent.change(select, { target: { value: 'first' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'First recorded' }));
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByText('0 / 1')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
     expect(within(recordedMarks!).getByText(/2 marks unresolved/i)).toBeInTheDocument();
 
-    fireEvent.change(select, { target: { value: 'repeated' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Repeated' }));
     expect(screen.getByText('3 / 4')).toBeInTheDocument();
     expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument();
   });
@@ -175,9 +174,7 @@ it('offers marking only for an unfinished attempt in this set', () => {
   expect(onResume).toHaveBeenCalledWith(row);
   expect(screen.getAllByText('Not marked yet')).toHaveLength(4);
   expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
-  fireEvent.change(screen.getByRole('combobox', { name: 'Attempts' }), {
-    target: { value: 'repeated' },
-  });
+  fireEvent.click(screen.getByRole('radio', { name: 'Repeated' }));
   expect(screen.queryByRole('button', { name: 'Continue marking' })).not.toBeInTheDocument();
 });
 

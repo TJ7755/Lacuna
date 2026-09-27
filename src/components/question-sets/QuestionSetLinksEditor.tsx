@@ -1,3 +1,5 @@
+import { QuestionSetPanel } from './QuestionSetPanel';
+import { QuestionSetChoices } from './QuestionSetChoices';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
@@ -56,17 +58,18 @@ export function QuestionSetLinksEditor({
   return (
     <section aria-label="Atomic concept links">
       <h3>Atomic concepts</h3>
-      <label className="qs-field">
-        Link to
-        <select value={target} onChange={(e) => setTarget(e.target.value)}>
-          {answer.allocations.map((a, i) => (
-            <option key={a.id} value={a.id}>
-              Criterion {i + 1}: {a.criterion.slice(0, 60) || 'Untitled'}
-            </option>
-          ))}
-          <option value="prerequisite">Prerequisite knowledge</option>
-        </select>
-      </label>
+      <QuestionSetChoices
+        label="Link to"
+        value={target}
+        onChange={(value) => setTarget(value)}
+        options={[
+          ...answer.allocations.map((a, i) => ({
+            value: a.id,
+            label: `Criterion ${i + 1}: ${a.criterion.slice(0, 60) || 'Untitled'}`,
+          })),
+          { value: 'prerequisite', label: 'Prerequisite knowledge' },
+        ]}
+      />
       <label className="qs-field">
         Search concepts or cards
         <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -82,22 +85,18 @@ export function QuestionSetLinksEditor({
             />
             {c.name}
           </label>
-          <details className="qs-card-preview">
-            <summary className="qs-back">
-              Related cards · {data?.cards.filter((card) => card.conceptId === c.id).length ?? 0}
-            </summary>
+          <QuestionSetPanel title="Related cards" className="qs-card-preview">
             {data?.cards
               .filter((card) => card.conceptId === c.id)
               .map((card) => (
                 <div key={card.id} className="qs-card-preview">
                   <MarkdownView source={card.front} />
-                  <details>
-                    <summary className="qs-back">Show answer</summary>
+                  <section className="mt-3 border-t border-line pt-3" aria-label="Card answer">
                     <MarkdownView source={card.back} />
-                  </details>
+                  </section>
                 </div>
               ))}
-          </details>
+          </QuestionSetPanel>
         </div>
       ))}
       {!matches.length && <p className="qs-muted">No matching concepts or cards.</p>}
