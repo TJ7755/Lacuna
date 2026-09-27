@@ -174,13 +174,14 @@ describe('App initialisation', () => {
     await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/download/');
   });
-  it('opens a development comparison prototype on a first visit', async () => {
-    window.location.hash = '#/prototype/quizlet?variant=C';
-    dependencies.isFirstRun.mockResolvedValue(true);
-    dependencies.seedIfFirstRun.mockClear();
-    render(<App />);
-    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
-    expect(window.location.hash).toBe('#/prototype/quizlet?variant=C');
-  });
-
+  it.each(['share', 'import'])(
+    'preserves a first visit to %s from the comparison page',
+    async (route) => {
+      dependencies.isFirstRun.mockResolvedValue(true);
+      window.location.hash = `#/${route}`;
+      render(<App />);
+      await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+      expect(window.location.hash).toBe(`#/${route}`);
+    },
+  );
 });

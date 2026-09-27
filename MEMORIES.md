@@ -174,7 +174,9 @@ desktop AI uses local IPC. See [engineering notes](docs/maintenance/engineering-
 
 ## Bundle changes can break offline use
 
-Hash routing needs no server catch-all: missing hashed assets must remain 404. Derive the
+The study app uses hash routing; public SEO pages have separate HTML entries. Do not
+let the PWA app-shell fallback intercept `/compare/` or sitemap/robots requests.
+Missing hashed assets must remain 404. Derive the
 app-shell precache from emitted imports and rerun cold offline Cards reload after bundle changes.
 Workers must use the ID and share-codec utilities without importing database initialisation.
 Course-file operations must load with the Share route: deferring their module until the first

@@ -5,7 +5,7 @@ import { FlipCard } from '../learn/FlipCard';
 import { StudyControls } from '../learn/StudyControls';
 import { StudyCardTransition, type StudyCardTransitionHandle } from '../learn/StudyCardTransition';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { Arrow } from './PrototypeUi';
+import { Arrow } from './ComparisonUi';
 import './NativeFlashcardDemo.css';
 
 const formats = ['Recall', 'Cloze', 'Sequence', 'Type an answer'] as const;

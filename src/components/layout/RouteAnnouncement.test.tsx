@@ -19,8 +19,3 @@ it('announces the removed share prototype as a missing page', async () => {
   await waitFor(() => expect(document.title).toBe('Page not found · Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Page not found');
 });
-
-it('announces the development comparison prototype', async () => {
-  render(<RouteAnnouncement pathname="/prototype/quizlet" />);
-  await waitFor(() => expect(document.title).toBe('Quizlet comparison prototype · Lacuna'));
-});

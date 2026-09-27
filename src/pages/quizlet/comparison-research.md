@@ -1,9 +1,9 @@
 # Comparison page design research — 27 September 2026
 
-The first prototypes lacked enough evidence and depth to support a decision. This
-round explores three complete journeys, keeping copy short within each section.
+Evidence for the public comparison. Recheck linked product documentation when
+changing claims, especially plan availability and study modes.
 
-## Claims used in the prototypes
+## Product claims
 
 Quizlet primary sources:
 
@@ -22,22 +22,9 @@ Core revision is free without an account; hosted AI is separate beta access. Opt
 sync/sharing needs the network. Offline study needs downloaded app assets/material.
 No automatic Quizlet URL import or transfer of Quizlet review history is promised.
 
-## Three new directions
-
-A: Product story — full-width product reveal, capability chapters, interactive recall
-and application, comparison, migration, candid trade-offs, FAQ.
-B: Decision guide — editorial two-column layout, sticky chapter index, comparison-led
-hierarchy, product evidence, practical switching information.
-C: Interactive field guide — choose a study priority, explore the relevant product
-view, experiment with recall formats and a live import preview, then inspect evidence.
-
-All three use the same verified facts, with different layouts and content ordering.
-Screenshots show the current running app's built-in example course, without fabricated
-review outcomes. Other diagrams are labelled illustrations, not predictions.
-
 ## Course continuity and teacher sharing
 
-A illustrates course-wide lesson and review tracking, verified against
+The page illustrates course-wide lesson and review tracking, verified against
 `src/pages/CourseAnalytics.tsx` and `src/state/useCourseData.ts`. It does not claim
 that Quizlet has no memory tracking or no way to study multiple sets.
 

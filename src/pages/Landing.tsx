@@ -55,6 +55,7 @@ export function Landing() {
             GitHub
           </a>
           <Link to="/method">The method</Link>
+          <a href={window.electronAPI?.isElectron ? 'https://getlacuna.app/compare/quizlet/' : '/compare/quizlet/'}>Lacuna vs Quizlet</a>
         </div>
       </footer>
     </div>

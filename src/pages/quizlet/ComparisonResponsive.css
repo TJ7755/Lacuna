@@ -58,13 +58,6 @@
     font-size: 12px;
     gap: 22px;
   }
-  .qc-hero-actions {
-    gap: 17px;
-  }
-  .qc-hero-actions .qc-text-button {
-    font-size: 11px;
-    gap: 8px;
-  }
   .qc-proof-strip {
     grid-template-columns: 1fr;
     padding-block: 8px;
@@ -90,12 +83,6 @@
   .qc-story-hero > p {
     font-size: 13px;
     margin-block: 24px;
-  }
-  .qc-hero-product {
-    margin: 48px 0 0;
-  }
-  .qc-hero-product .qc-product-screen {
-    transform: none;
   }
   .qc-window-bar {
     height: 34px;
@@ -167,116 +154,6 @@
   }
   .qc-exam-bottom small {
     font-size: 8px;
-  }
-  .qc-learning-lab {
-    grid-template-columns: 1fr;
-  }
-  .qc-lab-navigation {
-    padding: 26px 22px;
-  }
-  .qc-lab-navigation h3 {
-    font-size: 34px;
-  }
-  .qc-lab-navigation h3 br {
-    display: none;
-  }
-  .qc-lab-navigation p {
-    font-size: 12px;
-    margin-top: 12px;
-  }
-  .qc-lab-modes {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
-    margin-top: 22px;
-  }
-  .qc-lab-modes button {
-    padding: 12px 7px;
-    gap: 5px;
-    font-size: 9px;
-    min-height: 43px;
-  }
-  .qc-lab-modes .qc-arrow {
-    display: none;
-  }
-  .qc-lab-stage {
-    padding: 20px;
-    min-height: 445px;
-  }
-  .qc-lab-content {
-    padding: 28px 0;
-    gap: 22px;
-  }
-  .qc-lab-content h4 {
-    font-size: 29px;
-  }
-  .qc-lab-content > p {
-    font-size: 11px;
-  }
-  .qc-answer {
-    font-size: 12px;
-    min-height: 55px;
-  }
-  .qc-answers label {
-    font-size: 11px;
-    padding: 12px;
-  }
-  .qc-sequence-choices button {
-    font-size: 9px;
-    padding: 8px 10px;
-  }
-  .qc-enzyme {
-    height: 170px;
-  }
-  .qc-table-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .qc-table-toolbar .qc-segmented {
-    justify-content: space-between;
-  }
-  .qc-table-toolbar .qc-segmented button {
-    font-size: 9px;
-    padding: 9px 8px;
-  }
-  .qc-table-toolbar > span {
-    font-size: 9px;
-  }
-  .qc-comparison th,
-  .qc-comparison td {
-    padding: 16px 10px;
-    font-size: 10px;
-  }
-  .qc-comparison th:first-child {
-    width: 29%;
-  }
-  .qc-comparison thead th {
-    font-size: 17px;
-    padding: 20px 10px;
-  }
-  .qc-comparison thead th:first-child {
-    font-size: 9px;
-  }
-  .qc-comparison thead small {
-    font-size: 8px;
-  }
-  .qc-comparison th button {
-    gap: 6px;
-  }
-  .qc-comparison th button > span {
-    font-size: 13px;
-  }
-  .qc-comparison td a {
-    font-size: 8px;
-  }
-  .qc-table-foot {
-    flex-direction: column;
-    gap: 6px;
-    font-size: 9px;
-  }
-  .qc-row-detail td {
-    font-size: 11px;
-    padding: 18px;
   }
   .qc-access-grid {
     grid-template-columns: 1fr;
@@ -370,28 +247,5 @@
     flex-direction: column;
     gap: 9px;
     padding-block: 25px;
-  }
-  .qc-switcher {
-    bottom: 10px;
-    gap: 0;
-    padding: 5px;
-    max-width: calc(100vw - 16px);
-  }
-  .qc-switcher > span {
-    min-width: 0;
-    width: 187px;
-  }
-  .qc-switcher b {
-    font-size: 10px;
-  }
-  .qc-switcher small {
-    font-size: 7px;
-  }
-  .qc-switcher button {
-    min-width: 32px;
-  }
-  .qc-switcher .qc-pause {
-    padding-inline: 8px;
-    font-size: 8px;
   }
 }

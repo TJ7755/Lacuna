@@ -150,24 +150,6 @@
   color: hsl(var(--ink));
   border-color: hsl(var(--line));
 }
-.qc-outline-button {
-  display: inline-flex;
-  gap: 22px;
-  align-items: center;
-  justify-content: center;
-  padding: 13px 20px;
-  border: 1px solid hsl(var(--line-strong));
-  border-radius: 7px;
-  font-size: 13px;
-  background: hsl(var(--surface));
-}
-.qc-text-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 13px;
-  min-height: 44px;
-}
 .qc-section {
   padding: 92px var(--qc-gutter);
 }
@@ -279,50 +261,41 @@
   font-size: 11px !important;
   line-height: 1.6 !important;
 }
-.qc-switcher {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px;
-  background: hsl(var(--ink));
-  color: hsl(var(--paper));
-  border: 1px solid hsl(var(--paper) / 0.2);
-  border-radius: 12px;
-  box-shadow: 0 9px 35px #0003;
+.qc-public {
+  padding-bottom: 0;
 }
-.qc-switcher button {
-  min-width: 40px;
-  min-height: 44px;
-  border-radius: 6px;
-  font-size: 20px;
-}
-.qc-switcher button:hover {
-  background: hsl(var(--paper) / 0.1);
-}
-.qc-switcher > span {
-  display: grid;
-  gap: 3px;
+
+.qc-story-hero {
   text-align: center;
-  min-width: 210px;
+  padding: 85px var(--qc-gutter) 70px;
+  background: radial-gradient(ellipse at 50% 68%, hsl(var(--accent) / 0.06), transparent 63%);
 }
-.qc-switcher small {
-  font-size: 8px;
-  letter-spacing: 0.13em;
-  opacity: 0.6;
+.qc-story-hero > p {
+  margin: 26px auto;
+  max-width: 470px;
+  font-size: 16px;
 }
-.qc-switcher b {
+.qc-schedule-section {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: center;
+  gap: 70px;
+  background: hsl(var(--ink) / 0.025);
+  border-block: 1px solid hsl(var(--line));
+}
+.qc-schedule-section .qc-section-heading {
+  margin-bottom: 24px;
+}
+.qc-schedule-section > div > p {
+  font-size: 14px;
+}
+.qc-feature-points {
+  display: grid;
+  gap: 18px;
+  margin-top: 30px;
+}
+.qc-feature-points span {
   font-size: 12px;
-  font-weight: 500;
-}
-.qc-switcher .qc-pause {
-  border-left: 1px solid hsl(var(--paper) / 0.2);
-  border-radius: 0;
-  padding-inline: 14px;
-  font-size: 10px;
-  white-space: nowrap;
+  display: flex;
+  gap: 16px;
 }

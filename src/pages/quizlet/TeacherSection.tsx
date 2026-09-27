@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Arrow } from './PrototypeUi';
+import { Arrow } from './ComparisonUi';
 import './TeacherSection.css';
 
 export function TeacherSection() {
@@ -39,9 +38,9 @@ export function TeacherSection() {
                 : 'Send it through the channels your class already uses. There is no class roster to set up in Lacuna.'}
             </p>
           </div>
-          <Link to="/share" className="qc-button">
+          <a href="/#/share" className="qc-button">
             Open course sharing <Arrow />
-          </Link>
+          </a>
         </div>
         <div
           className="qc-teachers-flow"

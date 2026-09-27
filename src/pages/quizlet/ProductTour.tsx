@@ -3,7 +3,7 @@ import course from './captures/course.png';
 import lesson from './captures/lesson.png';
 import recall from './captures/recall.png';
 import settings from './captures/settings.png';
-import { Arrow } from './PrototypeUi';
+import { Arrow } from './ComparisonUi';
 
 export const screens = [
   {

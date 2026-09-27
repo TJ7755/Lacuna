@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { parseImport } from '../../db/import';
-import { Arrow, Cta, SectionHeading } from './PrototypeUi';
+import { Arrow, Cta, SectionHeading } from './ComparisonUi';
 import { faqs, sources } from './comparisonContent';
 
 export function Portability() {
@@ -40,9 +39,9 @@ export function Portability() {
           <div>
             <h3>Give it a home.</h3>
             <p>Choose a course and lesson, then start a new review schedule.</p>
-            <Link to="/import">
+            <a href="/#/import">
               Open Lacuna’s importer <Arrow />
-            </Link>
+            </a>
           </div>
         </article>
       </div>

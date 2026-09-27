@@ -18,9 +18,20 @@
     />
     <!-- Keep the relay, hosted AI and video origins in step with src/sync/pairingConfig.ts and
          electron/securityPolicy.ts. -->
-    <title>Lacuna — Revision built around exam day</title>
-    <meta name="description" content="Learn with connected lessons, flashcards and exam-focused spaced repetition. Free core revision, no account needed." />
-    <link rel="canonical" href="https://getlacuna.app/" />
+    <title>Lacuna vs Quizlet — Flashcards built around exam day</title>
+    <meta
+      name="description"
+      content="Compare Lacuna and Quizlet: exam-focused revision, connected lessons, native flashcards and account-free course sharing for teachers."
+    />
+    <link rel="canonical" href="https://getlacuna.app/compare/quizlet/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Lacuna vs Quizlet — Ready for exam day" />
+    <meta
+      property="og:description"
+      content="Compare exam-focused revision, connected lessons and account-free course sharing."
+    />
+    <meta property="og:url" content="https://getlacuna.app/compare/quizlet/" />
+    <meta name="twitter:card" content="summary" />
     <script>
       // Apply the stored theme before first paint to avoid a flash of the wrong colour scheme.
       (function () {
@@ -38,7 +49,7 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root"><!--public-page--></div>
+    <script type="module" src="/src/pages/quizlet/entry-client.tsx"></script>
   </body>
 </html>

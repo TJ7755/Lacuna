@@ -1,21 +1,12 @@
 .qc-page main {
   animation: qc-enter 0.45s both;
 }
-.qc-tour-panel,
-.qc-lab-content,
-.qc-priority-result {
+.qc-tour-panel {
   animation: qc-enter 0.35s both;
-}
-.qc-section.qc-in-view > .qc-section-heading,
-.qc-section.qc-in-view > .qc-split-heading {
-  animation: qc-enter 0.6s both;
 }
 .qc-timeline-draw {
   stroke-dasharray: 800;
   animation: qc-draw 5s ease-in-out infinite;
-}
-.qc-substrate {
-  animation: qc-bind 4s ease-in-out infinite;
 }
 @keyframes qc-enter {
   from {
@@ -44,17 +35,6 @@
     transform: translateX(49px);
   }
 }
-@keyframes qc-bind {
-  0%,
-  15%,
-  100% {
-    transform: translateX(0);
-  }
-  50%,
-  70% {
-    transform: translateX(-131px);
-  }
-}
 .qc-paused *,
 .qc-paused *::after {
   animation-play-state: paused !important;
@@ -70,29 +50,6 @@
 @media (max-width: 1100px) {
   .qc-page {
     --qc-gutter: 5vw;
-  }
-  .qc-guide-layout {
-    grid-template-columns: 185px minmax(0, 1fr);
-    padding-inline: 25px;
-    gap: 15px;
-  }
-  .qc-guide-index {
-    padding-right: 15px;
-  }
-  .qc-guide-index nav button {
-    font-size: 10px;
-  }
-  .qc-guide-body {
-    padding-inline: 25px;
-  }
-  .qc-guide-body .qc-closing {
-    margin-inline: -25px;
-  }
-  .qc-guide-verdict > div:first-of-type {
-    grid-template-columns: 1fr;
-  }
-  .qc-guide-body .qc-lab-navigation {
-    grid-template-columns: 1fr;
   }
   .qc-schedule-section {
     gap: 35px;
@@ -112,18 +69,6 @@
     flex-wrap: wrap;
   }
   .qc-portability {
-    gap: 30px;
-  }
-  .qc-priority-stage {
-    grid-template-columns: 32% 68%;
-  }
-  .qc-priority-options {
-    padding: 25px 15px;
-  }
-  .qc-priority-result {
-    padding: 25px;
-  }
-  .qc-explorer-access {
     gap: 30px;
   }
   .qc-fit-guide article {

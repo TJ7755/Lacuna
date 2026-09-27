@@ -34,5 +34,17 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/compare/quizlet",
+      "destination": "/compare/quizlet/",
+      "permanent": true
+    },
+    {
+      "source": "/compare/quizlet/index.html",
+      "destination": "/compare/quizlet/",
+      "permanent": true
+    }
   ]
 }

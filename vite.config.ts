@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { version } from './package.json' with { type: 'json' };
 import { settingsStaticClosurePlugin } from './scripts/settings-static-closure';
+import { publicPagePrerenderPlugin } from './scripts/public-page-prerender';
 import { appShellPrecachePlugin } from './scripts/app-shell-precache';
 
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
@@ -15,10 +16,14 @@ const crossOriginIsolationHeaders = {
 export const workbox = {
   // Precache the application shell and the Cards route's shared import spine.
   // Lazy route entries and large optional assets are cached when visited.
-  globPatterns: [
-    '**/*.{html,ico,png,svg}',
-    'assets/index-*.css',
-    'assets/SharingAnnouncement-*.css',
+  globPatterns: ['**/*.{html,ico,png,svg}', 'assets/SharingAnnouncement-*.css'],
+  navigateFallbackDenylist: [/^\/compare(?:\/|$)/, /^\/(?:sitemap\.xml|robots\.txt)$/],
+  globIgnores: [
+    'compare/**',
+    'assets/course-*.png',
+    'assets/lesson-*.png',
+    'assets/recall-*.png',
+    'assets/settings-*.png',
   ],
   runtimeCaching: [
     {
@@ -91,6 +96,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     settingsStaticClosurePlugin(),
+    publicPagePrerenderPlugin(),
     appShellPrecachePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -151,11 +157,13 @@ export default defineConfig({
   },
   build: {
     rolldownOptions: {
+      input: { index: 'index.html', quizlet: 'compare/quizlet/index.html' },
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         // Give the eager application entry a distinct name so Workbox can precache
         // it and its vendor dependency without downloading every lazy JavaScript chunk.
-        entryFileNames: 'assets/app-[hash].js',
+        entryFileNames: (chunk) =>
+          chunk.name === 'index' ? 'assets/app-[hash].js' : 'assets/[name]-[hash].js',
       },
     },
   },

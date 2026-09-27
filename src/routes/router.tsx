@@ -65,9 +65,6 @@ const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Landing = lazy(loadLanding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
-const QuizletPrototype = import.meta.env.DEV
-  ? lazy(() => import('../pages/quizlet-prototype/QuizletPrototype'))
-  : null;
 
 function lazyRoute(Component: ComponentType) {
   return (
@@ -90,9 +87,6 @@ export const router = createHashRouter([
   {
     element: <RouteTransition />,
     children: [
-      ...(QuizletPrototype
-        ? [{ path: '/prototype/quizlet', element: lazyRoute(QuizletPrototype) }]
-        : []),
       {
         path: '/',
         element: <AppShell />,

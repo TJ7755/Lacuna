@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Promoted the selected comparison design to `/compare/quizlet/` with build-time
+  HTML rendering, canonical/social metadata, sitemap and robots discovery. Added
+  a landing-page link and preserved direct sharing/import entry for new visitors.
+  The study app retains hash routing and offline support; discarded comparison
+  variants remain in the prototype branch.
+
 - Expanded comparison A with paired course-structure, memory and import-history
   diagrams. Added a teachers section demonstrating account-free course sharing,
   individual student progress and updates through the same course link.

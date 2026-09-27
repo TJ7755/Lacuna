@@ -89,10 +89,7 @@ export function ExamReadinessHistory() {
                 r="3"
                 className="qc-recall-point"
               >
-                <title>
-                  Example review {Math.round((EXAMPLE_NOW - review.lastReviewed!) / MS_PER_DAY)}{' '}
-                  days ago
-                </title>
+                <title>{`Example review ${Math.round((EXAMPLE_NOW - review.lastReviewed!) / MS_PER_DAY)} days ago`}</title>
               </circle>
             ))}
           <path d="M498 28V210" className="qc-exam-line" />

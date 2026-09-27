@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { LacunaIcon } from '../../components/ui/icons';
 
 export function Arrow({ down = false }: { down?: boolean }) {
@@ -30,10 +29,10 @@ export function Cta({
   secondary?: boolean;
 }) {
   return (
-    <Link className={`qc-button ${secondary ? 'qc-button-secondary' : ''}`} to="/">
+    <a className={`qc-button ${secondary ? 'qc-button-secondary' : ''}`} href="/#/">
       {children}
       <Arrow />
-    </Link>
+    </a>
   );
 }
 export function Jump({
@@ -46,32 +45,34 @@ export function Jump({
   className?: string;
 }) {
   return (
-    <button
+    <a
+      href={`#${to}`}
       className={`qc-jump ${className}`}
-      onClick={() =>
+      onClick={(event) => {
+        event.preventDefault();
         document.getElementById(to)?.scrollIntoView({
           behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
             ? 'instant'
             : 'smooth',
           block: 'start',
-        })
-      }
+        });
+      }}
     >
       {children}
-    </button>
+    </a>
   );
 }
-export function Header({ teachers = false }: { teachers?: boolean }) {
+export function Header() {
   return (
     <header className="qc-nav">
-      <Link to="/welcome" className="qc-brand">
+      <a href="/" className="qc-brand">
         <LacunaIcon />
         Lacuna
-      </Link>
+      </a>
       <nav aria-label="Page sections">
         <Jump to="compare">Compare</Jump>
         <Jump to="inside">Inside Lacuna</Jump>
-        {teachers ? <Jump to="teachers">For teachers</Jump> : <Jump to="switch">Switching</Jump>}
+        <Jump to="teachers">For teachers</Jump>
       </nav>
       <Cta>Open Lacuna</Cta>
     </header>
