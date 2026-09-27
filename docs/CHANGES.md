@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replaced all four comparison-prototype screenshots with native 2880 × 1920
+  Retina captures and added an image-resolution regression check, keeping text
+  sharp in the large product previews and expanded viewer.
+
 - Expanded the three development-only Quizlet comparison prototypes into complete
   pages with real product captures, twelve sourced comparison points, interactive
   practice and import examples, offline/cost guidance, switching advice and FAQs.

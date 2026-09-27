@@ -76,6 +76,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+The collaborative preview's saved screenshots are downsampled to 1280 pixels wide.
+Do not use those exports as large product-page assets; use native device-scale
+captures when authorised. A Retina viewport alone does not preserve Retina output.
+
 Motion layout scaling on a shrinking container can magnify exiting children when
 `AnimatePresence` removes them from flow. For compact expanding controls, keep text
 at fixed dimensions and resize the isolated surface; verify text bounds mid-animation.

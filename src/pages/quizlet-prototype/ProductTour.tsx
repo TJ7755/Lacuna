@@ -82,8 +82,8 @@ export function ProductScreen({
         <img
           src={item.image}
           alt={item.alt}
-          width="1280"
-          height="853"
+          width="2880"
+          height="1920"
           loading={screen === 'course' ? 'eager' : 'lazy'}
         />
       </button>
