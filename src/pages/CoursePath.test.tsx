@@ -386,7 +386,8 @@ describe('CoursePath Study mode', () => {
     );
   });
 
-  it('links to the updates review above a single-lesson course when an update is pending', () => {
+  it.each([false, true])('only exposes pending updates on active single-lesson courses (archived=%s)', (archived) => {
+    mockCourse = { ...course, archived };
     mockLessons = [lesson1];
     mockPendingMerge = {
       id: 'review-1',
@@ -404,6 +405,10 @@ describe('CoursePath Study mode', () => {
 
     renderPage();
 
+    if (archived) {
+      expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
+      return;
+    }
     expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
       'href',
       '/course/course-1/updates',

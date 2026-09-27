@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Hid the pre-existing unusable update-review link on archived single-lesson courses;
+  restoring the course makes pending updates accessible again.
+
 - Corrected assessment time zones and hid unavailable archived update links in the
   course overview. Narrow-screen selection now moves keyboard focus to its detail
   panel, reduced motion disables Add resizing, lesson labels travel with dragged

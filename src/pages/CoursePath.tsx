@@ -333,7 +333,7 @@ export function CoursePath() {
   if (lessons.length === 1) {
     return (
       <>
-        {pendingUpdate && (
+        {!archived && pendingUpdate && (
           <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
             <Link
               to={`/course/${courseId}/updates`}
