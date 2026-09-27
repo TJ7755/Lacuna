@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Suppressed the global keyboard-focus indicator on the study card container, which
+  is focused programmatically as a return point and had shown an orange frame
+  around the whole study column.
+
 - Promoted the selected comparison design to `/compare/quizlet/` with build-time
   HTML rendering, canonical/social metadata, sitemap and robots discovery. Added
   a landing-page link and preserved direct sharing/import entry for new visitors.

@@ -124,6 +124,10 @@ content from the input event, excluding retained outgoing nodes and zero-opacity
 Customisable native select pickers can bubble Escape to an enclosing sheet. Stop propagation
 while the picker is open, and test the expanded menu rather than only the closed field.
 
+Programmatic focus return points (`tabIndex={-1}`) need `focus-visible:shadow-none`:
+the global `:focus-visible` rule otherwise paints an accent frame around the whole
+container when it receives focus (seen on the study card column).
+
 ## AI authority and deployment
 
 Vercel Gateway's monthly credits are separate from routes whose catalogue input and output
