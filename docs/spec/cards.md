@@ -17,13 +17,13 @@ Mermaid diagrams, wikilink (`[[Note]]`) pills and readable wrapped tables, plus
 raw HTML (for the cloze spans), inside `.prose-lacuna` styling. Memoised per card.
 
 Mermaid fences render client-side to theme-aware SVG (`securityLevel: strict`;
-bundled locally, so no CSP change) with the source kept in a collapsible section
-and the code block left readable on failure. Diagrams re-render on light/dark
-toggles via a `documentElement` class observer. Wikilinks render as
-non-navigating pills (the target note may not exist on this device) and are
-skipped inside code. Tables render inside a scrolling card wrapper. Lesson notes
-use the same engine with `allowEmbeds`; the lesson workspace is `max-w-4xl` so
-diagrams and tables stay legible.
+bundled locally and loaded lazily on first use, so no CSP change and no first-load
+cost) with the source kept in a collapsible section and the code block left readable
+on failure. Diagrams re-render on light/dark toggles via a `documentElement` class
+observer. Wikilinks render as non-navigating pills (the target note may not exist on
+this device) and are skipped inside code. Tables render inside a scrolling card
+wrapper. Lesson notes use the same engine with `allowEmbeds`; the lesson workspace
+is `max-w-4xl` so diagrams and tables stay legible.
 
 The `MarkdownView` component is backed by a bounded LRU parse cache (parsed HTML
 cached by source string, with five-minute stale eviction and an LRU fallback), so

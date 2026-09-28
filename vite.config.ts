@@ -164,38 +164,9 @@ export default defineConfig({
         // it and its vendor dependency without downloading every lazy JavaScript chunk.
         entryFileNames: (chunk) =>
           chunk.name === 'index' ? 'assets/app-[hash].js' : 'assets/[name]-[hash].js',
-        // Keep production chunks sensible: framework, charts, markdown/maths and
-        // diagrams each get their own chunk so a page that needs none of them
-        // stays light.
-        manualChunks(id) {
-          if (id.includes('/node_modules/recharts/')) return 'charts';
-          // Mermaid stays in its own lazy chunk: it loads only when a note or
-          // card actually contains a diagram, via dynamic import in
-          // src/components/markdown/mermaid.ts.
-          if (id.includes('/node_modules/mermaid/')) return 'diagrams';
-          if (
-            [
-              'react-markdown',
-              'remark-gfm',
-              'remark-math',
-              'rehype-katex',
-              'rehype-highlight',
-              'rehype-raw',
-              'katex',
-              'highlight.js',
-            ].some((packageName) => id.includes(`/node_modules/${packageName}/`))
-          ) {
-            return 'markdown';
-          }
-          if (
-            ['react', 'react-dom', 'react-router-dom', 'motion', '@babel/runtime'].some(
-              (packageName) => id.includes(`/node_modules/${packageName}/`),
-            )
-          ) {
-            return 'vendor';
-          }
-          return undefined;
-        },
+        // No manualChunks: rolldown's fine-grained splitting keeps the landing
+        // preloads small, which `perf:check` enforces. Mermaid stays lazy on its
+        // own via the dynamic import in src/components/markdown/mermaid.ts.
       },
     },
   },
