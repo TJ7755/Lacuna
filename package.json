@@ -68,7 +68,8 @@
     "nanoid": "3.3.18",
     "@emnapi/core": "1.10.0",
     "@emnapi/runtime": "1.10.0",
-    "@napi-rs/wasm-runtime": "1.2.4"
+    "@napi-rs/wasm-runtime": "1.2.4",
+    "lodash-es": "4.18.1"
   },
   "devDependencies": {
     "@ai-sdk/gateway": "^4.0.92",
