@@ -114,6 +114,7 @@
     "html5-qrcode": "^2.3.8",
     "katex": "^0.18.7",
     "mathjs": "^15.2.0",
+    "mermaid": "^12.0.0",
     "motion": "^13.4.0",
     "prettier": "^3.9.8",
     "react": "^19.3.0",

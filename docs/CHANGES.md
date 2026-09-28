@@ -1,6 +1,24 @@
-# Lacuna — version 0.2.13
+﻿# Lacuna — version 0.2.13
 
 ## Unreleased
+
+
+## Markdown diagrams and note links
+
+- Fenced ```mermaid blocks in notes and cards now render as theme-aware diagrams
+  (strict security level, bundled locally in a lazy `diagrams` chunk, so no CSP
+  change). Failures keep the source code readable, the source stays available in
+  a collapsible section, and diagrams re-render when the light/dark theme toggles.
+- Obsidian-style `[[Note name]]` and `[[target|label]]` references render as quiet
+  non-navigating pills rather than literal brackets, and are left untouched inside
+  code blocks.
+- Tables render inside a scrolling card with a semibold header row and row hover,
+  so wide revision grids stay legible on narrow screens. The lesson workspace is
+  now `max-w-4xl` so diagrams and tables have room to breathe.
+
+**Checks:** red-to-green MarkdownView, wikilink and Mermaid placeholder regressions
+(5 failing on the previous master, all passing on branch); web and Electron typecheck;
+focused lint; production build including the PWA service worker; release scenario.
 
 ## 0.2.13 beta — course overview, website and import fix
 

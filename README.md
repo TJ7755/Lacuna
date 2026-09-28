@@ -25,7 +25,7 @@ selected conversation and tool content to a hosted model. Export a full JSON bac
 - Basic, Reversed and Cloze Cards, sequences and image occlusions; optional typed recall.
 - Algorithm-free Simple Learn alongside scheduled revision.
 - Fixed Questions and generated families with worked explanations and separate schedules.
-- Markdown notes, maths, images, course search and learning analytics.
+- Markdown notes, maths, images, Mermaid diagrams, note links, course search and learning analytics.
 - Offline use after the application assets are available, full backups and optional device sync.
 - Windows, Linux and macOS desktop beta packages, with optional AI and permission-scoped MCP tools.
 

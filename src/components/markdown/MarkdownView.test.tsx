@@ -101,10 +101,85 @@ describe('MarkdownView — audio assets', () => {
   });
 
   it('defers ordinary card images until they are near the viewport', () => {
-    const { container } = render(<MarkdownView source="![Diagram](https://example.com/diagram.png)" />);
+    const { container } = render(
+      <MarkdownView source="![Diagram](https://example.com/diagram.png)" />,
+    );
     expect(container.querySelector('img')).toMatchObject({
       loading: 'lazy',
       decoding: 'async',
     });
+  });
+});
+
+describe('MarkdownView — diagrams and note links', () => {
+  it('marks mermaid fences as diagram placeholders with readable fallback', () => {
+    const { container } = render(
+      <MarkdownView source={'```mermaid\nflowchart TD\n  A-->B\n```'} allowEmbeds />,
+    );
+    const placeholder = container.querySelector('pre.lacuna-mermaid');
+    expect(placeholder).not.toBeNull();
+    expect(placeholder!.textContent).toContain('flowchart TD');
+  });
+
+  it('leaves ordinary code fences untouched', () => {
+    const { container } = render(<MarkdownView source={'```js\nconst a = 1;\n```'} allowEmbeds />);
+    expect(container.querySelector('pre.lacuna-mermaid')).toBeNull();
+    expect(container.querySelector('pre')!.textContent).toContain('const a = 1;');
+  });
+
+  it('renders [[note]] references as pills, never links', () => {
+    const { container } = render(
+      <MarkdownView source="- [[01_Peacemaking_and_the_Big_Three]]" allowEmbeds />,
+    );
+    const pill = container.querySelector('.lacuna-wikilink');
+    expect(pill).not.toBeNull();
+    expect(pill!.textContent).toBe('01_Peacemaking_and_the_Big_Three');
+    expect(container.querySelector('.lacuna-wikilink a')).toBeNull();
+    expect(container.querySelector('a')).toBeNull();
+  });
+
+  it('renders [[target|label]] with the custom label', () => {
+    const { container } = render(<MarkdownView source="See [[note-id|Custom label]]" />);
+    expect(container.querySelector('.lacuna-wikilink')!.textContent).toBe('Custom label');
+  });
+
+  it('does not rewrite wikilinks inside code blocks', () => {
+    const { container } = render(<MarkdownView source="`[[Not a link]]`" />);
+    expect(container.querySelector('.lacuna-wikilink')).toBeNull();
+  });
+
+  it('wraps tables for horizontal scrolling', () => {
+    const { container } = render(
+      <MarkdownView source={'| Date | Event |\n|---|---|\n| 1919 | Treaty |\n'} />,
+    );
+    expect(container.querySelector('.lacuna-table-wrap table')).not.toBeNull();
+  });
+
+  it('SECURITY: strips scripts hidden in wikilink labels', () => {
+    const { container } = render(<MarkdownView source="[[note|<script>alert(1)</script>]]" />);
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.innerHTML).not.toContain('<script');
+  });
+
+  it('renders the Versailles visual-index sample without raw fences or brackets', () => {
+    const sample = [
+      '# Treaty of Versailles — Visual Index',
+      '',
+      '```mermaid',
+      'flowchart TD',
+      '  A-->B',
+      '```',
+      '',
+      '| Date | Event |',
+      '|---|---|',
+      '| 28 Jun 1919 | Treaty signed |',
+      '',
+      '- [[01_Peacemaking_and_the_Big_Three]]',
+    ].join('\n');
+    const { container } = render(<MarkdownView source={sample} allowEmbeds />);
+    expect(container.querySelector('pre.lacuna-mermaid')).not.toBeNull();
+    expect(container.querySelector('.lacuna-table-wrap table')).not.toBeNull();
+    expect(container.querySelector('.lacuna-wikilink')).not.toBeNull();
+    expect(container.innerHTML).not.toContain('```mermaid');
   });
 });
