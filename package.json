@@ -61,8 +61,6 @@
     "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never"
   },
   "dependencies": {
-    "@types/dompurify": "^3.2.0",
-    "dompurify": "^3.4.16",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9"
   },
@@ -89,6 +87,7 @@
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
+    "@types/dompurify": "^3.2.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/sql.js": "^1.4.11",
@@ -103,6 +102,7 @@
     "concurrently": "^10.0.5",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
+    "dompurify": "^3.4.16",
     "electron": "^44.4.2",
     "electron-builder": "^26.16.1",
     "esbuild": "^0.28.2",

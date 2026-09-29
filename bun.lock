@@ -5,8 +5,6 @@
     "": {
       "name": "lacuna",
       "dependencies": {
-        "@types/dompurify": "^3.2.0",
-        "dompurify": "^3.4.16",
         "electron-log": "^5.4.4",
         "electron-updater": "^6.8.9",
       },
@@ -26,6 +24,7 @@
         "@tailwindcss/vite": "4.3.3",
         "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.3",
+        "@types/dompurify": "^3.2.0",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "@types/sql.js": "^1.4.11",
@@ -40,6 +39,7 @@
         "concurrently": "^10.0.5",
         "dexie": "^4.4.6",
         "dexie-react-hooks": "^4.4.0",
+        "dompurify": "^3.4.16",
         "electron": "^44.4.2",
         "electron-builder": "^26.16.1",
         "esbuild": "^0.28.2",
@@ -796,7 +796,7 @@
 
     "@types/d3-transition": ["@types/d3-transition@3.0.9", "", { "dependencies": { "@types/d3-selection": "*" } }, "sha512-uZS5shfxzO3rGlu0cC3bjmMFKsXv+SmZZcgp0KD22ts4uGXp5EVYGzu/0YdwZeKmddhcAccYtREJKkPfXkZuCg=="],
 
-    "@types/d3-zoom": ["@types/d3-zoom@3.0.8", "", { "dependencies": { "@types/d3-interpolate": "*", "@types/d3-selection": "*" } }, "sha512-iqMC4/YlFCSlO8+2Ii1GGGliCAY4XdeG748w5vQUbevlbDu0zSjH/+jojorQVBK/se0j6DUFNPBGSqD3YWYnDw=="],
+    "@types/d3-zoom": ["@types/d3-zoom@3.0.9", "", { "dependencies": { "@types/d3-interpolate": "*", "@types/d3-selection": "*" } }, "sha512-0sE1406XBYJGiqD3AusTl9ZqC//2mIXix51tbom25gDCA8ri4xnSZg28CaSE8Srl6FClqABUKfsn0qghgdepMA=="],
 
     "@types/debug": ["@types/debug@4.1.13", "", { "dependencies": { "@types/ms": "*" } }, ""],
 
@@ -1370,7 +1370,7 @@
 
     "fast-levenshtein": ["fast-levenshtein@2.0.6", "", {}, ""],
 
-    "fast-uri": ["fast-uri@3.1.6", "", {}, "sha512-7Ical1vFEMr0onbVzEDIreM22I4khW+fzyQPwvAFWBp1iwdshSZRsL4jjRvPG9JP1uiqMHRto+YU6R2/CzDz5Q=="],
+    "fast-uri": ["fast-uri@3.1.8", "", {}, "sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg=="],
 
     "fdir": ["fdir@6.5.0", "", { "peerDependencies": { "picomatch": "^3 || ^4" } }, ""],
 
