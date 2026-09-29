@@ -123,11 +123,16 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
     const renderId = `lacuna-mermaid-${Date.now().toString(36)}-${i}`;
     try {
       const result = await mermaid.render(renderId, source);
+      const clean = await sanitizeDiagramSvg(result.svg);
+      if (!clean) {
+        block.setAttribute('data-mermaid-error', 'true');
+        continue;
+      }
       const figure = document.createElement('div');
       figure.setAttribute('class', 'lacuna-mermaid-rendered');
       figure.setAttribute('role', 'img');
       figure.setAttribute('aria-label', 'Diagram');
-      figure.innerHTML = result.svg;
+      figure.innerHTML = clean;
       block.replaceChildren(figure);
       const details = document.createElement('details');
       details.setAttribute('class', 'lacuna-mermaid-source');
@@ -163,6 +168,72 @@ async function loadMermaid(): Promise<MermaidApi | null> {
     return (mod as { default?: MermaidApi }).default ?? (mod as unknown as MermaidApi);
   } catch {
     return null;
+  }
+}
+
+type SanitizerApi = {
+  sanitize: (dirty: string, config?: Record<string, unknown>) => string;
+};
+
+let sanitizer: SanitizerApi | null = null;
+
+function asSanitizer(value: unknown): SanitizerApi | null {
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as SanitizerApi).sanitize === 'function'
+  ) {
+    return value as SanitizerApi;
+  }
+  // The default export is itself callable with the sanitizer attached.
+  if (
+    typeof value === 'function' &&
+    typeof (value as unknown as SanitizerApi).sanitize === 'function'
+  ) {
+    return value as unknown as SanitizerApi;
+  }
+  return null;
+}
+
+async function loadSanitizer(): Promise<SanitizerApi | null> {
+  if (sanitizer) return sanitizer;
+  try {
+    const mod = await import('dompurify');
+    const candidate = (mod as { default?: unknown }).default ?? mod;
+    const ready = asSanitizer(candidate);
+    if (ready) {
+      sanitizer = ready;
+      return sanitizer;
+    }
+    // Unbound factory bundling: bind explicitly as a fallback.
+    if (typeof candidate === 'function' && typeof window !== 'undefined') {
+      const bound = asSanitizer(
+        (candidate as (window: Window) => unknown)(window),
+      );
+      if (bound) {
+        sanitizer = bound;
+        return sanitizer;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Scrub rendered diagram SVG before it reaches the document. Mermaid already
+ * runs at `securityLevel: strict`, but the diagram source is user-authored (and
+ * may arrive in imported decks), so the SVG is treated as untrusted input and
+ * passed through DOMPurify as defence in depth.
+ */
+export async function sanitizeDiagramSvg(dirty: string): Promise<string> {
+  const purifier = await loadSanitizer();
+  if (!purifier) return '';
+  try {
+    return purifier.sanitize(dirty);
+  } catch {
+    return '';
   }
 }
 
@@ -211,7 +282,9 @@ export async function updateMermaidTheme(container: HTMLElement): Promise<void> 
     if (!source || !figure) continue;
     try {
       const result = await mermaid.render(`lacuna-mermaid-${Date.now().toString(36)}-${i}`, source);
-      figure.innerHTML = result.svg;
+      const clean = await sanitizeDiagramSvg(result.svg);
+      if (!clean) continue;
+      figure.innerHTML = clean;
     } catch {
       // Keep the previous rendering; the source section remains available.
     }

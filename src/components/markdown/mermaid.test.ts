@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { rehypeMermaidPlaceholder } from './mermaid';
+import { describe, expect, it, vi } from 'vitest';
+import { rehypeMermaidPlaceholder, sanitizeDiagramSvg } from './mermaid';
+
+vi.mock('dompurify', () => ({
+  default: {
+    sanitize: (dirty: string): string =>
+      dirty
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/\son\w+="[^"]*"/gi, ''),
+  },
+}));
 
 describe('rehypeMermaidPlaceholder', () => {
   it('tags pre blocks wrapping language-mermaid code', () => {
@@ -42,5 +51,20 @@ describe('rehypeMermaidPlaceholder', () => {
     };
     expect(first.properties.className).toContain('lacuna-mermaid');
     expect(second.properties.className).not.toContain('lacuna-mermaid');
+  });
+});
+
+describe('sanitizeDiagramSvg', () => {
+  // DOMPurify cannot run under happy-dom, so the module is mocked here to prove
+  // the wiring: rendered SVG passes through the sanitizer before reaching the
+  // document. Real scrubbing behaviour is verified in a real browser.
+  it('passes rendered SVG through the sanitizer', async () => {
+    const clean = await sanitizeDiagramSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><g class="node" onclick="steal()"><text>hi</text></g></svg>',
+    );
+    expect(clean).not.toContain('<script');
+    expect(clean).not.toContain('onclick');
+    expect(clean).toContain('<g');
+    expect(clean).toContain('hi');
   });
 });
