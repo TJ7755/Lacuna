@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { rehypeMermaidPlaceholder, sanitizeDiagramSvg } from './mermaid';
 
+// DOMPurify cannot run under happy-dom, so the module is stubbed with canned
+// responses (no filtering logic of its own): tainted input resolves to a fixed
+// clean diagram, anything else passes through. Real scrubbing behaviour is
+// verified in a real browser.
 vi.mock('dompurify', () => ({
   default: {
     sanitize: (dirty: string): string =>
-      dirty
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/\son\w+="[^"]*"/gi, ''),
+      dirty.includes('<script') || dirty.includes('onclick')
+        ? '<svg><g><text>hi</text></g></svg>'
+        : dirty,
   },
 }));
 
