@@ -3,6 +3,12 @@
 ## Unreleased
 
 
+## Dependency audit patches
+
+- Updated transitive `brace-expansion` and `undici` entries in the root and relay
+  lockfiles to compatible patched versions after new high-severity advisories blocked
+  PR validation. Both `bun audit --audit-level=high` checks pass with no findings.
+
 ## Markdown diagrams and note links
 
 - Fenced ```mermaid blocks in notes and cards now render as theme-aware diagrams
