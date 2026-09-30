@@ -114,7 +114,8 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
 
   const mermaid = await loadMermaid();
   if (!mermaid) return;
-  if (!ensureInitialised(mermaid, mermaidThemeKey())) return;
+  const themeKey = mermaidThemeKey();
+  if (!ensureInitialised(mermaid, themeKey)) return;
 
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i] as HTMLElement;
@@ -146,6 +147,7 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
       details.appendChild(pre);
       block.appendChild(details);
       block.setAttribute('data-mermaid-rendered', 'true');
+      block.setAttribute('data-mermaid-theme', themeKey);
     } catch {
       block.setAttribute('data-mermaid-error', 'true');
     }
@@ -207,9 +209,7 @@ async function loadSanitizer(): Promise<SanitizerApi | null> {
     }
     // Unbound factory bundling: bind explicitly as a fallback.
     if (typeof candidate === 'function' && typeof window !== 'undefined') {
-      const bound = asSanitizer(
-        (candidate as (window: Window) => unknown)(window),
-      );
+      const bound = asSanitizer((candidate as (window: Window) => unknown)(window));
       if (bound) {
         sanitizer = bound;
         return sanitizer;
@@ -273,10 +273,10 @@ export async function updateMermaidTheme(container: HTMLElement): Promise<void> 
   const mermaid = await loadMermaid();
   if (!mermaid) return;
   const themeKey = mermaidThemeKey();
-  if (mermaidInitialisedFor === themeKey) return;
   if (!ensureInitialised(mermaid, themeKey)) return;
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i] as HTMLElement;
+    if (block.getAttribute('data-mermaid-theme') === themeKey) continue;
     const source = block.querySelector('.lacuna-mermaid-source code')?.textContent?.trim();
     const figure = block.querySelector('.lacuna-mermaid-rendered');
     if (!source || !figure) continue;
@@ -285,6 +285,7 @@ export async function updateMermaidTheme(container: HTMLElement): Promise<void> 
       const clean = await sanitizeDiagramSvg(result.svg);
       if (!clean) continue;
       figure.innerHTML = clean;
+      block.setAttribute('data-mermaid-theme', themeKey);
     } catch {
       // Keep the previous rendering; the source section remains available.
     }

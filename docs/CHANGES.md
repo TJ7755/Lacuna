@@ -1,4 +1,4 @@
-﻿# Lacuna — version 0.2.13
+# Lacuna — version 0.2.13
 
 ## Unreleased
 
@@ -9,7 +9,9 @@
   (strict security level, bundled locally and loaded lazily on first use, so no CSP
   change and no first-load cost). Failures keep the source code readable, the source
   stays available in a collapsible section, and diagrams re-render when the light/dark
-  theme toggles.
+  theme toggles, including when multiple views are open or another view has already
+  initialised Mermaid for the new theme. Failed theme renders retain the previous
+  diagram and can be retried.
 - Obsidian-style `[[Note name]]` and `[[target|label]]` references render as quiet
   non-navigating pills rather than literal brackets, and are left untouched inside
   code blocks.
