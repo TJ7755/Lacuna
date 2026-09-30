@@ -249,6 +249,8 @@ function ensureInitialised(mermaid: MermaidApi, themeKey: 'dark' | 'light'): boo
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
+      // SVG text survives sanitisation without allowing foreignObject HTML.
+      htmlLabels: false,
       theme: 'base',
       themeVariables: palette(themeKey === 'dark'),
       fontFamily: 'Geist, system-ui, sans-serif',

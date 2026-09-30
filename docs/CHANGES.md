@@ -11,7 +11,8 @@
   stays available in a collapsible section, and diagrams re-render when the light/dark
   theme toggles, including when multiple views are open or another view has already
   initialised Mermaid for the new theme. Failed theme renders retain the previous
-  diagram and can be retried.
+  diagram and can be retried. Diagram labels use SVG text so sanitisation retains
+  their content without allowing embedded HTML.
 - Obsidian-style `[[Note name]]` and `[[target|label]]` references render as quiet
   non-navigating pills rather than literal brackets, and are left untouched inside
   code blocks.
@@ -22,6 +23,9 @@
 **Checks:** red-to-green MarkdownView, wikilink and Mermaid placeholder regressions
 (5 failing on the previous master, all passing on branch); web and Electron typecheck;
 focused lint; production build including the PWA service worker; release scenario.
+Review follow-up: three theme regressions fail on the original PR head and pass
+with per-diagram tracking. A Chromium note-authoring regression catches labels
+removed during sanitisation and covers rendering, fallback source and theme updates.
 
 ## 0.2.13 beta — course overview, website and import fix
 
