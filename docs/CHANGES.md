@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+
+## Dependency audit patches
+
+- Updated transitive `brace-expansion` and `undici` entries in the root and relay
+  lockfiles to compatible patched versions after new high-severity advisories blocked
+  PR validation. Both `bun audit --audit-level=high` checks pass with no findings.
+
+## Markdown diagrams and note links
+
+- Fenced ```mermaid blocks in notes and cards now render as theme-aware diagrams
+  (strict security level, bundled locally and loaded lazily on first use, so no CSP
+  change and no first-load cost). Failures keep the source code readable, the source
+  stays available in a collapsible section, and diagrams re-render when the light/dark
+  theme toggles, including when multiple views are open or another view has already
+  initialised Mermaid for the new theme. Failed theme renders retain the previous
+  diagram and can be retried. Diagram labels use SVG text so sanitisation retains
+  their content without allowing embedded HTML.
+- Obsidian-style `[[Note name]]` and `[[target|label]]` references render as quiet
+  non-navigating pills rather than literal brackets, and are left untouched inside
+  code blocks.
+- Tables render inside a scrolling card with a semibold header row and row hover,
+  so wide revision grids stay legible on narrow screens. The lesson workspace is
+  now `max-w-4xl` so diagrams and tables have room to breathe.
+
+**Checks:** red-to-green MarkdownView, wikilink and Mermaid placeholder regressions
+(5 failing on the previous master, all passing on branch); web and Electron typecheck;
+focused lint; production build including the PWA service worker; release scenario.
+Review follow-up: three theme regressions fail on the original PR head and pass
+with per-diagram tracking. A Chromium note-authoring regression catches labels
+removed during sanitisation and covers rendering, fallback source and theme updates.
+
 ## 0.2.13 beta — course overview, website and import fix
 
 - Updated the Windows installed-upgrade gate to use the verified v0.2.12 baseline,

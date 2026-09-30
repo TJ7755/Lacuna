@@ -162,7 +162,7 @@ export function LessonView({
   const authoring = !archived && isLessonAuthoringMode(course);
 
   return (
-    <div className={`mx-auto max-w-3xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
+    <div className={`mx-auto max-w-4xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
       {!isInline && <CoursePageNavigation
         courseId={courseId ?? ''}
         backTo={backTo}
@@ -344,7 +344,7 @@ export function LessonView({
 
 function LessonViewSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-4xl px-6 py-8 md:px-10">
       <div className="mb-6 h-4 w-20 animate-pulse rounded bg-ink/10" />
       <div className="mb-8 flex flex-col gap-4 md:flex-row">
         <div className="h-40 flex-1 animate-pulse rounded-2xl bg-ink/10" />

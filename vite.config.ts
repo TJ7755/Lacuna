@@ -132,7 +132,7 @@ export default defineConfig({
   // Without this, navigating to a route that imports recharts/katex/highlight.js
   // froze the page for several seconds while Vite re-ran dependency optimisation.
   optimizeDeps: {
-    exclude: ['@open-spaced-repetition/binding'],
+    exclude: ['@open-spaced-repetition/binding', 'mermaid'],
     include: [
       'react',
       'react-dom',
@@ -164,6 +164,9 @@ export default defineConfig({
         // it and its vendor dependency without downloading every lazy JavaScript chunk.
         entryFileNames: (chunk) =>
           chunk.name === 'index' ? 'assets/app-[hash].js' : 'assets/[name]-[hash].js',
+        // No manualChunks: rolldown's fine-grained splitting keeps the landing
+        // preloads small, which `perf:check` enforces. Mermaid stays lazy on its
+        // own via the dynamic import in src/components/markdown/mermaid.ts.
       },
     },
   },
