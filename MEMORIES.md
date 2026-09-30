@@ -22,9 +22,10 @@ version comment on the `uses:` line for Dependabot updates.
 Use a disposable worktree for baseline tests rather than stashing unrelated work.
 Start it at the intended revision. Component tests need their own physical
 `node_modules` (a hardlink copy is suitable); symlinks can create two Vitest instances.
-On Windows, never link the main checkout's `node_modules` into the worktree with a
-junction or symlink: `git worktree remove --force` follows the link and deletes the
-target, emptying the real `node_modules`. Copy the directory instead.
+On Windows, Git for Windows versions before 2.54.0 can traverse NTFS junctions
+during `git worktree remove` and delete their targets' contents; 2.54.0 and later
+avoid this. Use a physical copy of `node_modules` to avoid older Git's cleanup
+risk and the separate Vitest-isolation issue with symlinks.
 
 ## Windows dependency installation
 
