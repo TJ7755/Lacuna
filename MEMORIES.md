@@ -70,6 +70,11 @@ course row, so they stay out of backups and course files.
 
 ## Recovery is not peer sync
 
+Backup validation must accept missing mutation timestamps and Concept identities in
+older supported exports: import backfills these. Validate before Question normalisation,
+which consumes nested revision-plan and lineage arrays before the write transaction.
+Earlier v21 scheduling projections may also lack `createdAt`; the legacy adapter rebuilds them.
+
 Replace-import deliberately preserves `db.backups`; exports deliberately omit it, so a
 pre-replacement restore point survives. Recovery merge and peer merge use different conflict
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion

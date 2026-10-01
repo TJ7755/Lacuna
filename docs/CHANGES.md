@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Backup imports now validate every represented record collection, including nested
+  review evidence, Questions, revision plans and distributed-course merge state,
+  before preprocessing or database writes. Malformed records report their field path;
+  supported older exports retain their existing migration behaviour and additive fields.
+  The 200 MB file limit and pre-v22 Deck/Folder refusal remain in place (#327).
+
 
 ## Dependency audit patches
 
