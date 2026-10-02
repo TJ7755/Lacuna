@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The hosted app now sends a `Content-Security-Policy` header with
+  `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
+  app cannot be framed by a third-party page. The header mirrors the
+  `index.html` meta policy on `connect-src` origins (#331).
+
 - Associated the new-course name field with its visible label so assistive
   technology announces “Course name” and clicking the label focuses the input (#328).
   Pinned the clock in an existing calendar keyboard test: its first-day fallback
