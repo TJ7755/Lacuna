@@ -4,6 +4,8 @@
 
 - Associated the new-course name field with its visible label so assistive
   technology announces “Course name” and clicking the label focuses the input (#328).
+  Pinned the clock in an existing calendar keyboard test: its first-day fallback
+  assertion otherwise fails when the viewed month becomes the current month.
 
 - Backup imports now validate every represented record collection, including nested
   review evidence, Questions, revision plans and distributed-course merge state,
