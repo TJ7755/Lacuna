@@ -87,6 +87,10 @@ tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
 
+DateTimePicker initially focuses the selected day, then today when its month is viewed,
+then the first day. Calendar focus tests must pin `Date.now()` when asserting that fallback;
+otherwise the same keyboard sequence changes its expected focus as the real month advances.
+
 The collaborative preview's saved screenshots are downsampled to 1280 pixels wide.
 Do not use those exports as large product-page assets; use native device-scale
 captures when authorised. A Retina viewport alone does not preserve Retina output.

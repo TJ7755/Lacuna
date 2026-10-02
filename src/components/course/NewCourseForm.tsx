@@ -1,5 +1,5 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -25,6 +25,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const navigate = useNavigate();
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input, textarea' });
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameInputId = useId();
   const datePickerRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLFieldSetElement>(null);
   const [name, setName] = useState('');
@@ -129,10 +130,11 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
 
         <div className="flex flex-col gap-5 px-6 py-6">
           <div className="flex flex-col gap-2">
-            <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <label htmlFor={nameInputId} className="text-xs uppercase tracking-[0.14em] text-ink-faint">
               Course name
             </label>
             <input
+              id={nameInputId}
               ref={nameInputRef}
               type="text"
               value={name}
