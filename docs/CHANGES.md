@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Stamped `updatedAt` when a lineage merge reassigns a card's concept, so the
+  reassignment survives the next last-write-wins peer merge instead of silently
+  reverting to the older peer row (#326).
+
 - Associated the new-course name field with its visible label so assistive
   technology announces “Course name” and clicking the label focuses the input (#328).
   Pinned the clock in an existing calendar keyboard test: its first-day fallback

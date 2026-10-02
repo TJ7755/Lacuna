@@ -399,6 +399,49 @@ describe('mergeImport: v3 Question lineage', () => {
     expect(await db.questionConcepts.get('question-quadratic')).toBeUndefined();
     expect(await db.questionAttempts.get('attempt-quadratic')).toEqual(immutableAttempt);
   });
+
+  it('stamps updatedAt when a lineage merge reassigns a card concept', async () => {
+    // Regression for #326: the concept reassignment path wrote conceptId without
+    // stampUpdatedAt, so the reassignment kept its old timestamp and could lose a
+    // later last-write-wins peer merge against an older peer row.
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const targetId = 'card-quadratic-definition';
+    const before = (await db.cards.get(targetId))!;
+    expect(before.conceptId).toBe('concept-quadratic');
+
+    // Force an old timestamp so the test fails when the reassignment does not stamp.
+    await db.cards.update(targetId, { updatedAt: 1_000 });
+    const peerUpdatedAt = 1_500;
+
+    const first = questionPayloadV3();
+    const sharedLesson = first.lessons[0];
+    const [firstCard, secondCard] = sharedLesson.cards;
+    if (!firstCard || !secondCard) throw new Error('Expected two fixture cards.');
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 5_000,
+        rv: 2,
+        concepts: [
+          { id: 'concept-quadratic', n: 'Solve a quadratic equation' },
+          { id: 'concept-linear', n: 'Solve a linear equation' },
+        ],
+        lessons: [
+          {
+            ...sharedLesson,
+            cards: [{ ...firstCard, co: 'concept-linear' }, secondCard],
+          },
+        ],
+      }),
+    );
+
+    const after = (await db.cards.get(targetId))!;
+    expect(after.conceptId).toBe('concept-linear');
+    // The reassignment must carry a fresh timestamp, otherwise a peer row with the
+    // old concept and a newer-than-1000 updatedAt would win the next LWW merge.
+    expect(after.updatedAt).toBeGreaterThan(peerUpdatedAt);
+    expect(after.updatedAt).toBeGreaterThan(1_000);
+  });
 });
 
 describe('mergeImport: merge apply', () => {
