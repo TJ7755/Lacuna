@@ -442,6 +442,42 @@ describe('mergeImport: v3 Question lineage', () => {
     expect(after.updatedAt).toBeGreaterThan(peerUpdatedAt);
     expect(after.updatedAt).toBeGreaterThan(1_000);
   });
+
+  it('never moves updatedAt backwards when reassigning a card concept', async () => {
+    // Follow-up from CodeRabbit on #326: stamping with Date.now() alone can lower
+    // updatedAt when the card timestamp runs ahead of this clock, so the stamp
+    // must exceed both values to preserve last-write-wins selection.
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const targetId = 'card-quadratic-definition';
+    const future = Date.now() + 10_000;
+    await db.cards.update(targetId, { updatedAt: future });
+
+    const first = questionPayloadV3();
+    const sharedLesson = first.lessons[0];
+    const [firstCard, secondCard] = sharedLesson.cards;
+    if (!firstCard || !secondCard) throw new Error('Expected two fixture cards.');
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 5_000,
+        rv: 2,
+        concepts: [
+          { id: 'concept-quadratic', n: 'Solve a quadratic equation' },
+          { id: 'concept-linear', n: 'Solve a linear equation' },
+        ],
+        lessons: [
+          {
+            ...sharedLesson,
+            cards: [{ ...firstCard, co: 'concept-linear' }, secondCard],
+          },
+        ],
+      }),
+    );
+
+    const after = (await db.cards.get(targetId))!;
+    expect(after.conceptId).toBe('concept-linear');
+    expect(after.updatedAt).toBeGreaterThan(future);
+  });
 });
 
 describe('mergeImport: merge apply', () => {
