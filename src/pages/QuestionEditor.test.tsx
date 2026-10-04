@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
+import type { QuestionConceptSet, QuestionDefinition } from '../questions/types';
 import { loadDraft, saveDraft } from '../utils/drafts';
 import { QuestionEditor } from './QuestionEditor';
 import {
@@ -19,11 +20,12 @@ const mocks = vi.hoisted(() => ({
   deleteQuestion: vi.fn(),
   notify: vi.fn(),
   data: undefined as CourseQuestionData | undefined,
+  record: null as { question: QuestionDefinition; conceptSet: QuestionConceptSet } | null,
 }));
 
 vi.mock('../components/questions/useQuestionData', () => ({
   useCourseQuestionData: () => mocks.data,
-  useQuestionRecord: () => null,
+  useQuestionRecord: () => mocks.record,
 }));
 
 vi.mock('../state/useCourseData', () => ({
@@ -104,6 +106,7 @@ describe('QuestionEditor', () => {
       ],
       attempts: [],
     };
+    mocks.record = null;
     mocks.createFixed.mockResolvedValue(undefined);
   });
 
@@ -334,16 +337,66 @@ describe('QuestionEditor', () => {
       'Failed definition',
     );
   });
+
+  describe('deleting a stored Question', () => {
+    const openEditor = () => {
+      mocks.record = {
+        question: {
+          id: 'question-1',
+          courseId: 'course-1',
+          kind: 'fixed',
+          name: 'Apply addition',
+          prompt: 'What is 2 + 2?',
+          payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+          explanation: 'Combine the pairs.',
+          primaryLessonId: null,
+          tags: [],
+          suspended: false,
+        } as unknown as QuestionDefinition,
+        conceptSet: {
+          questionId: 'question-1',
+          courseId: 'course-1',
+          targetConceptIds: ['concept-1'],
+          prerequisiteConceptIds: [],
+        } as unknown as QuestionConceptSet,
+      };
+      renderEditor('/course/course-1/questions/question-1');
+    };
+    const copy = 'Delete this Question definition? Its attempt evidence will be retained.';
+
+    it('asks inline and leaves the definition intact on Cancel', async () => {
+      openEditor();
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+
+      expect(await screen.findByText(copy)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(await screen.findByRole('button', { name: 'Delete' })).toBeInTheDocument();
+      expect(mocks.deleteQuestion).not.toHaveBeenCalled();
+    });
+
+    it('deletes the definition once confirmed', async () => {
+      openEditor();
+      mocks.deleteQuestion.mockResolvedValue(undefined);
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+      await screen.findByText(copy);
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+      await waitFor(() => expect(mocks.deleteQuestion).toHaveBeenCalledWith('question-1'));
+      expect(await screen.findByText('Questions list')).toBeInTheDocument();
+    });
+  });
 });
 
-function renderEditor() {
+function renderEditor(entry = '/course/course-1/questions/new') {
   const router = createMemoryRouter(
     [
       { path: '/course/:courseId/questions/new', element: <QuestionEditor /> },
+      { path: '/course/:courseId/questions/:questionId', element: <QuestionEditor /> },
       { path: '/course/:courseId/questions', element: <p>Questions list</p> },
       { path: '/away', element: <p>Other page</p> },
     ],
-    { initialEntries: ['/course/course-1/questions/new'] },
+    { initialEntries: [entry] },
   );
   render(<RouterProvider router={router} />);
   return router;

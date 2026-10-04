@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
+import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_CLEANUP_GRACE_MS, CHANNEL_TTL_MS } from './channelMaintenance.js';
 
 /**
@@ -35,16 +36,11 @@ export interface ShareCleanupResult {
   shareObjectsDeleted: number;
 }
 
-const SHARE_MINT_RATE_LIMIT = 10;
-const SHARE_MINT_WINDOW_MS = 60 * 60 * 1000;
-type RateLimitAttempts = Map<string, { count: number; resetAt: number }>;
-const shareMintAttempts: RateLimitAttempts = new Map();
-
-export function __resetShareMintRateLimitForTests(): void {
-  shareMintAttempts.clear();
-}
-
-export async function handleShareMint(store: BlobStore, request: Request): Promise<Response> {
+export async function handleShareMint(
+  store: BlobStore,
+  request: Request,
+  now: number,
+): Promise<Response> {
   if (request.method !== 'POST') {
     return shareJson(405, request, { error: 'method not allowed' });
   }
@@ -57,9 +53,10 @@ export async function handleShareMint(store: BlobStore, request: Request): Promi
   } else if (authHeader && secret === null) {
     return shareJson(401, request, { error: 'unauthorized' });
   } else if (!authHeader) {
-    const ip = getShareClientIp(request);
-    if (isShareRateLimited(ip, Date.now())) {
-      return shareJson(429, request, { error: 'too many requests' });
+    const permit = await consumeRatePermit(store, request, now, 'share-mint');
+    if (permit === 'limited') return shareJson(429, request, { error: 'too many requests' });
+    if (permit === 'unavailable') {
+      return shareJson(503, request, { error: 'rate limit unavailable' });
     }
   }
 
@@ -350,25 +347,6 @@ function authorizeShareMint(request: Request, secret: string): boolean {
     return false;
   }
   return true;
-}
-
-function getShareClientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown';
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
-  return 'unknown';
-}
-
-function isShareRateLimited(ip: string, now: number): boolean {
-  const entry = shareMintAttempts.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    shareMintAttempts.set(ip, { count: 1, resetAt: now + SHARE_MINT_WINDOW_MS });
-    return false;
-  }
-  if (entry.count >= SHARE_MINT_RATE_LIMIT) return true;
-  entry.count += 1;
-  return false;
 }
 
 function shareBearerToken(request: Request): string | null {
