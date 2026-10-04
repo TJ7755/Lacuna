@@ -7,6 +7,7 @@ export const AI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_AI_MAILBOX_BYTES = 1024 * 1024;
 const MAX_AI_JSON_BYTES = 4 * 1024;
 const GENERATION_HEADER = 'X-Lacuna-Generation';
+const PAIRING_CODE_HEADER = 'X-Lacuna-Pairing-Code';
 const SESSION_ID_RE = /^[A-HJ-KM-NP-TV-Z2-9]{20}$/;
 const PUBLIC_KEY_RE = /^[A-Za-z0-9_-]{80,100}$/;
 const TOKEN_RE = /^[0-9a-f]{64}$/;
@@ -18,7 +19,7 @@ type AiMailbox = 'browser' | 'terminal';
 export type AiRelayRoute =
   | { kind: 'ai-session-collection' }
   | { kind: 'ai-session'; id: string }
-  | { kind: 'ai-claim'; id: string }
+  | { kind: 'ai-claim'; id?: string }
   | { kind: 'ai-peer'; id: string }
   | { kind: 'ai-mailbox'; id: string; mailbox: AiMailbox }
   | { kind: 'ai-invalid' };
@@ -28,6 +29,7 @@ export function matchAiRelayPath(parts: string[]): AiRelayRoute | null {
   if (parts.length === 2 && parts[1] === 'sessions') {
     return { kind: 'ai-session-collection' };
   }
+  if (parts.length === 2 && parts[1] === 'claim') return { kind: 'ai-claim' };
   if (parts.length < 3 || parts[1] !== 's' || parts[2] === undefined) {
     return { kind: 'ai-invalid' };
   }
@@ -35,6 +37,7 @@ export function matchAiRelayPath(parts: string[]): AiRelayRoute | null {
   if (id === null) return { kind: 'ai-invalid' };
   if (parts.length === 3) return { kind: 'ai-session', id };
   if (parts.length !== 4 || parts[3] === undefined) return { kind: 'ai-invalid' };
+  // Deprecated path form (kept for installed clients): puts the pairing capability in the request path, and so in access logs.
   if (parts[3] === 'claim') return { kind: 'ai-claim', id };
   if (parts[3] === 'peer') return { kind: 'ai-peer', id };
   if (parts[3] === 'browser' || parts[3] === 'terminal') {
@@ -53,7 +56,12 @@ export async function handleAiRelayRoute(
     case 'ai-session-collection':
       return createSession(store, request, now);
     case 'ai-claim':
-      return claimSession(store, request, route.id, now);
+      return claimSession(
+        store,
+        request,
+        route.id ?? request.headers.get(PAIRING_CODE_HEADER) ?? '',
+        now,
+      );
     case 'ai-peer':
       return readPeer(store, request, route.id, now);
     case 'ai-mailbox':
@@ -106,12 +114,18 @@ async function createSession(
 async function claimSession(
   store: BlobStore,
   request: Request,
-  id: string,
+  presentedCode: string,
   now: () => number,
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, request, { error: 'method not allowed' });
+  const id = normaliseSessionId(presentedCode);
+  if (id === null) return json(404, request, { error: 'not found' });
   const stored = await liveMetadata(store, id, now);
   if (!stored) return json(404, request, { error: 'not found' });
+  // The capability is the session id, so compare it in constant time like the bearer tokens.
+  if (!equalBytes(Buffer.from(id, 'utf8'), Buffer.from(stored.metadata.sessionId, 'utf8'))) {
+    return json(404, request, { error: 'not found' });
+  }
   if (stored.metadata.terminalTokenHash) {
     return json(409, request, { error: 'session already claimed' });
   }

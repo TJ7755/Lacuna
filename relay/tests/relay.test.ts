@@ -1,12 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  CHANNEL_TTL_MS,
-  EMPTY_SLOT_ETAG,
-  MAX_BODY_BYTES,
-  __resetMintRateLimitForTests,
-  createHandler,
-} from '../src/relay.js';
+import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
 import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
@@ -14,12 +8,10 @@ const MINT_SECRET = 'test-relay-mint-secret';
 
 beforeEach(() => {
   vi.stubEnv('RELAY_MINT_SECRET', MINT_SECRET);
-  __resetMintRateLimitForTests();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  __resetMintRateLimitForTests();
 });
 
 describe('relay', () => {
@@ -632,6 +624,27 @@ describe('relay', () => {
     expectCors(limited);
     expect(limited.status).toBe(429);
     expect(await limited.json()).toEqual({ error: 'too many requests' });
+  });
+
+  it('counts channel mints per platform address despite forged x-forwarded-for prefixes', async () => {
+    vi.stubEnv('VERCEL', '1');
+    const store = new MemoryStore();
+    const mint = (forged: string) =>
+      createHandler(store)(
+        new Request('http://relay.test/channel', {
+          method: 'POST',
+          headers: {
+            Origin: ORIGIN,
+            'x-vercel-forwarded-for': '198.51.100.77',
+            'x-forwarded-for': `${forged}, 198.51.100.77`,
+          },
+        }),
+      );
+    for (let index = 0; index < 10; index += 1) {
+      expect((await mint(`203.0.113.${index}`)).status).toBe(201);
+    }
+    expect((await mint('203.0.113.200')).status).toBe(429);
+    expect(await store.list('ai-rate/channel-mint/')).toHaveLength(1);
   });
 
   it('allows public minting when RELAY_MINT_SECRET is unset or empty', async () => {

@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
 import { createApplicationMenuTemplate } from './applicationMenu.js';
+import { isTrustedRendererEvent, registerWindowControlHandlers } from './windowControls.js';
 import type { DesktopUpdater, UpdateState } from './updaterService.js';
 import {
   createApplicationShutdownHandler,
@@ -364,13 +365,7 @@ function createWindow(): void {
 }
 
 function isTrustedRendererInvoke(event: IpcMainInvokeEvent): boolean {
-  return (
-    !!mainWindow &&
-    !mainWindow.isDestroyed() &&
-    !mainWindow.webContents.isDestroyed() &&
-    event.sender === mainWindow.webContents &&
-    event.senderFrame === mainWindow.webContents.mainFrame
-  );
+  return isTrustedRendererEvent(event, mainWindow);
 }
 
 function publishUpdateState(state: UpdateState): void {
@@ -462,25 +457,7 @@ if (installationInProgress) {
     });
 
     // Window control IPC handlers for the custom titlebar.
-    ipcMain.on('window:minimize', () => {
-      mainWindow?.minimize();
-    });
-
-    ipcMain.on('window:maximize', () => {
-      if (mainWindow?.isMaximized()) {
-        mainWindow.unmaximize();
-      } else {
-        mainWindow?.maximize();
-      }
-    });
-
-    ipcMain.on('window:close', () => {
-      mainWindow?.close();
-    });
-
-    ipcMain.handle('window:isMaximized', () => {
-      return mainWindow?.isMaximized() ?? false;
-    });
+    registerWindowControlHandlers(ipcMain, () => mainWindow);
 
     // Starts the data-owning MCP bridge and authenticated local companion broker alongside
     // the renderer. The embedded stdio transport remains for legacy cold-start clients;

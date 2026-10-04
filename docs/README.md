@@ -16,7 +16,7 @@ The documents below separate current contracts from dated evidence and proposals
 | [FSRS time semantics](architecture/fsrs-time-semantics.md) | Scheduling time boundaries. |
 | [Storage compatibility](storage-v22-compatibility.md) | Supported imports and historical migration boundaries. |
 | [Scientific assessment](scientific-assessment.md) | Evidence, assumptions and limits of learning claims. |
-| [Frontend design](frontend-design.md) | UI design guidance. |
+| [Frontend design](frontend-design.md) | Third-party design skill, kept for reference. Lacuna's design specification is [visual design](spec/visual-design.md). |
 | [Desktop and AI setup](desktop.md) | Packages, updates and companion registration. |
 
 ## Maintenance
