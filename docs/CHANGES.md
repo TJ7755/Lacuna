@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Pinned `http-cache-semantics` to 4.3.0 through `overrides`. 4.2.0, pulled in by the
+  Electron download and packaging tooling, has a high-severity advisory
+  (GHSA-ch52-4w7c-c8xp) that failed the root `bun audit` gate.
+
 - The hosted app now sends a `Content-Security-Policy` header with
   `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
   app cannot be framed by a third-party page. The header mirrors the
