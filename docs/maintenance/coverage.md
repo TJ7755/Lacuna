@@ -33,3 +33,24 @@ bunx vitest run --config tests/config/vitest.risk.config.ts --coverage --maxWork
 On the baseline, all remaining 220 tests pass but the command exits with a
 coverage failure: `useLearnSession.ts` statements fall from 85.64% to 64.46%,
 below its 83% floor. Its branch, function and line floors fail too.
+
+# Critical-domain coverage gate
+
+`bun run test:coverage` gates four source files in `vitest.config.ts`. Each has its
+own threshold (`perFile`), so a weakly covered file cannot hide behind the others;
+the combined percentage is informational. Before this, aggregate thresholds let
+`lineageDiff.ts` sit at about 82% while the gate passed.
+
+The baseline was measured on commit `86a9819` with the gate's 5 test files and 128
+passing tests. Values are statements, branches, functions and lines, in that order.
+
+| Source file             | Measured baseline           | Gate floor        |
+| ----------------------- | --------------------------- | ----------------- |
+| `src/course/path.ts`    | 97.7 / 96.29 / 100 / 97.94  | 95 / 94 / 99 / 95 |
+| `src/course/unlock.ts`  | 100 / 100 / 100 / 100       | 98 / 98 / 99 / 98 |
+| `src/fsrs/session.ts`   | 96.01 / 83.95 / 100 / 97.59 | 94 / 81 / 99 / 95 |
+| `src/db/lineageDiff.ts` | 82 / 84.61 / 100 / 82.01    | 80 / 82 / 99 / 80 |
+
+To check that the gate notices a missing test file, run the `test:coverage` command
+with `--exclude src/db/lineageDiff.test.ts`. The remaining 111 tests pass, but it
+exits with a coverage failure naming `src/db/lineageDiff.ts` (0% against every floor).

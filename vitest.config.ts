@@ -8,7 +8,12 @@ export default defineConfig({
     allowOnly: !process.env.CI,
     environment: 'happy-dom',
     clearMocks: false,
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.ts', 'server/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'scripts/**/*.test.ts',
+      'server/**/*.test.ts',
+    ],
     setupFiles: ['./tests/setup.ts'],
     // One worker keeps the suite inside the memory budget of supported developer
     // machines and makes timing-sensitive component tests deterministic.
@@ -23,10 +28,11 @@ export default defineConfig({
         'src/db/lineageDiff.ts',
       ],
       thresholds: {
-        statements: 92,
-        branches: 85,
-        functions: 99,
-        lines: 92,
+        perFile: true,
+        'src/course/path.ts': { statements: 95, branches: 94, functions: 99, lines: 95 },
+        'src/course/unlock.ts': { statements: 98, branches: 98, functions: 99, lines: 98 },
+        'src/fsrs/session.ts': { statements: 94, branches: 81, functions: 99, lines: 95 },
+        'src/db/lineageDiff.ts': { statements: 80, branches: 82, functions: 99, lines: 80 },
       },
     },
   },
