@@ -42,6 +42,11 @@
   naming the operation instead of failing silently as an unhandled rejection. A failed
   Undo of those changes is reported the same way (#325).
 
+- The MCP consent prompt now ignores a course-name lookup that has been superseded by the
+  next request and shows the neutral "this course" until the current one resolves, so a slow
+  lookup can no longer label a request with the wrong course. A failed lookup is caught and
+  leaves the neutral label. (#335)
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
