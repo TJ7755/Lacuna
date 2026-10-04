@@ -11,6 +11,7 @@ import {
   ChartIcon,
   CheckIcon,
   CalendarIcon,
+  ClockIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -31,6 +32,8 @@ import type { Lesson } from '../../db/types';
 import { prefetchRoute } from '../../routes/prefetch';
 import { formatDate } from '../../utils/datetime';
 import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
+import { CourseGlyph, glyphLoad, type GlyphStatus } from '../course/CourseGlyph';
+import { forecastStatus } from '../dashboard/ForecastChart';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -50,6 +53,22 @@ interface SidebarProps {
     triggerRef: RefObject<HTMLButtonElement | null>;
   };
 }
+
+/** Display names for the primary entries; stored settings only carry order and visibility. */
+const NAV_LABELS: Record<string, string> = {
+  dashboard: 'Today',
+  search: 'Search',
+  analytics: 'Progress',
+};
+
+/** Entries that sit at the foot of the sidebar rather than at the top. */
+const FOOTER_NAV = new Set(['share', 'settings', 'help']);
+
+/** The course glyph tracks the window height so rows can give up space as they shrink. */
+const GLYPH_SIZE = 'clamp(28px, 4.6dvh, 40px)';
+
+const SHORTCUT_LABEL =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 
 /** Static (non-shared-layout) active state: the white pill, as NavItem draws it. */
 const ACTIVE_PILL = 'bg-surface font-semibold text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
@@ -87,7 +106,7 @@ function NavItem({
         className={({ isActive }) =>
           cn(
             'group relative flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
-            compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+            compact ? 'px-3 py-2 text-xs' : 'h-11 px-3 text-[15px] short:h-9 short:min-h-9',
             collapsed && 'justify-center px-0',
             isActive ? 'font-semibold text-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
           )
@@ -143,7 +162,7 @@ function ActionNavItem({
       title={collapsed ? label : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-xl text-left transition-colors duration-150',
-        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+        compact ? 'px-3 py-2 text-xs' : 'h-11 px-3 text-[15px] short:h-9 short:min-h-9',
         collapsed && 'justify-center px-0',
         active ? ACTIVE_PILL : IDLE_ITEM,
       )}
@@ -168,10 +187,10 @@ function SearchNavItem({
     <button
       type="button"
       onClick={onOpenPalette}
-      title={collapsed ? 'Quick search' : undefined}
+      title={collapsed ? 'Search' : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-xl text-left transition-colors duration-150',
-        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+        compact ? 'px-3 py-2 text-xs' : 'h-11 px-3 text-[15px] short:h-9 short:min-h-9',
         collapsed && 'justify-center px-0',
         IDLE_ITEM,
       )}
@@ -179,7 +198,16 @@ function SearchNavItem({
       <span className="shrink-0">
         <SearchIcon />
       </span>
-      {!collapsed && <span className="flex-1 truncate">Quick search</span>}
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate">Search</span>
+          {!compact && (
+            <kbd className="rounded-md border border-line-strong bg-surface px-1.5 py-px font-sans text-xs font-normal text-ink-soft">
+              {SHORTCUT_LABEL}
+            </kbd>
+          )}
+        </>
+      )}
     </button>
   );
 }
@@ -198,7 +226,7 @@ function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
       className={({ isActive }) =>
         cn(
           'flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
-          compact ? 'py-1.5 pl-9 pr-3 text-xs' : 'py-2 pl-10 pr-3 text-sm',
+          compact ? 'py-1.5 pl-9 pr-3 text-xs' : 'py-2 pl-[3.75rem] pr-3 text-sm',
           isActive ? ACTIVE_PILL : IDLE_ITEM,
         )
       }
@@ -218,9 +246,17 @@ function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
 // Course row — plain link for single-lesson courses; collapsible for multi.
 // ---------------------------------------------------------------------------
 
+export interface SidebarGlyph {
+  days: number | null;
+  recall: number;
+  status: GlyphStatus;
+  load: number;
+}
+
 const CourseRow = memo(function CourseRow({
   courseId,
   courseName,
+  glyph,
   lessons,
   details,
   expanded,
@@ -231,6 +267,7 @@ const CourseRow = memo(function CourseRow({
 }: {
   courseId: string;
   courseName: string;
+  glyph: SidebarGlyph;
   lessons: Lesson[];
   details?: SidebarDetail[];
   expanded: Set<string>;
@@ -265,11 +302,7 @@ const CourseRow = memo(function CourseRow({
             )
           }
         >
-          <CardsIcon
-            width={compact ? 14 : 16}
-            height={compact ? 14 : 16}
-            className="shrink-0 text-ink-faint"
-          />
+          <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
         </NavLink>
       </SidebarHoverCard>
     );
@@ -286,20 +319,14 @@ const CourseRow = memo(function CourseRow({
           onFocus={() => prefetchRoute(`/course/${courseId}`)}
           className={({ isActive }) =>
             cn(
-              'flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
-              compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-              isActive ? ACTIVE_PILL : IDLE_ITEM,
+              'flex items-center gap-3 rounded-xl transition-colors duration-150',
+              compact ? 'min-h-11 px-3 py-1.5 text-xs' : 'h-full min-h-11 px-3 py-1 text-[15px] short:min-h-10',
+              isActive ? ACTIVE_PILL : 'text-ink hover:bg-ink/5',
             )
           }
         >
-          <CardsIcon
-            width={compact ? 14 : 16}
-            height={compact ? 14 : 16}
-            className="shrink-0 text-ink-faint"
-          />
-          <span className="flex flex-1 items-center gap-2 min-w-0">
-            <span className="truncate">{courseName}</span>
-          </span>
+          <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
+          <span className="min-w-0 flex-1 truncate font-semibold">{courseName}</span>
         </NavLink>
       </SidebarHoverCard>
     );
@@ -307,35 +334,16 @@ const CourseRow = memo(function CourseRow({
 
   // Multi-lesson course: collapsible header with lesson list beneath.
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <div
         className={cn(
-          'group flex w-full min-h-11 items-center gap-1 rounded-xl transition-colors duration-150',
-          compact ? 'pr-3 py-1.5 text-xs' : 'pr-3 py-2 text-sm',
-          isCourseActive ? ACTIVE_PILL : IDLE_ITEM,
+          'group flex w-full items-center gap-1 rounded-xl transition-colors duration-150',
+          compact
+            ? 'min-h-11 py-1.5 pl-3 pr-1 text-xs'
+            : 'min-h-11 flex-1 py-1 pl-3 pr-1 text-[15px] short:min-h-10',
+          isCourseActive ? ACTIVE_PILL : 'text-ink hover:bg-ink/5',
         )}
       >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(courseId);
-          }}
-          aria-expanded={isExpanded}
-          aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
-          className={cn(
-            'flex shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink',
-            compact ? 'ml-1.5 h-6 w-6' : 'ml-2 h-7 w-7',
-          )}
-        >
-          <motion.span
-            animate={{ rotate: isExpanded ? 0 : -90 }}
-            transition={{ duration: 0.15 * m }}
-            className="shrink-0"
-          >
-            <ChevronDownIcon width={12} height={12} />
-          </motion.span>
-        </button>
         <SidebarHoverCard title={courseName} details={details}>
           <div
             role="link"
@@ -352,16 +360,31 @@ const CourseRow = memo(function CourseRow({
             }}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
           >
-            <CardsIcon
-              width={compact ? 14 : 16}
-              height={compact ? 14 : 16}
-              className="shrink-0 text-ink-faint"
-            />
-            <span className="flex flex-1 items-center gap-2 min-w-0">
-              <span className="truncate">{courseName}</span>
-            </span>
+            <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
+            <span className="min-w-0 flex-1 truncate font-semibold">{courseName}</span>
           </div>
         </SidebarHoverCard>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(courseId);
+          }}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-lg text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
+            compact ? 'h-6 w-6' : 'h-8 w-8',
+          )}
+        >
+          <motion.span
+            animate={{ rotate: isExpanded ? 0 : -90 }}
+            transition={{ duration: 0.15 * m }}
+            className="shrink-0"
+          >
+            <ChevronDownIcon width={12} height={12} />
+          </motion.span>
+        </button>
       </div>
 
       <AnimatePresence>
@@ -427,6 +450,89 @@ export function Sidebar({
     return map;
   }, [allLessons]);
 
+  // The glyph shares the dashboard's keep-to-schedule forecast, so a course reads
+  // the same everywhere; minutes come from today's workload forecast.
+  const glyphs = useMemo(() => {
+    const now = Date.now();
+    const today = data?.stats?.forecast?.[0];
+    const map = new Map<string, SidebarGlyph>();
+    for (const course of sidebarCourses) {
+      const forecast = data?.forecasts?.[course.id];
+      const hasExam = course.examDate !== undefined && course.examDate > now;
+      map.set(course.id, {
+        days: hasExam ? Math.ceil(((course.examDate as number) - now) / 86_400_000) : null,
+        recall: forecast?.atEnd ?? summaries?.[course.id]?.mastery ?? 0,
+        status: forecast ? forecastStatus(forecast) : hasExam ? 'ahead' : 'steady',
+        load: glyphLoad(today?.byDeck.find((slice) => slice.sourceId === course.id)?.minutes ?? 0),
+      });
+    }
+    return map;
+  }, [sidebarCourses, summaries, data?.stats, data?.forecasts]);
+
+  const visibleNav = sidebarSettings.navItems.filter((n) => n.visible);
+  const renderNavItem = (n: (typeof visibleNav)[number]) =>
+    n.id === 'search' && onOpenPalette ? (
+      <SearchNavItem
+        key={n.id}
+        onOpenPalette={onOpenPalette}
+        collapsed={collapsed}
+        compact={sidebarSettings.compactMode}
+      />
+    ) : n.id === 'today' && onOpenStudySheet ? (
+      <ActionNavItem
+        key={n.id}
+        onClick={onOpenStudySheet}
+        icon={<CardsIcon />}
+        label={n.label}
+        collapsed={collapsed}
+        compact={sidebarSettings.compactMode}
+      />
+    ) : (
+      <NavItem
+        key={n.id}
+        to={n.id === 'dashboard' ? '/' : n.id === 'today' ? '/learn' : `/${n.id}`}
+        end={n.id === 'dashboard'}
+        icon={
+          n.id === 'dashboard' ? (
+            <ClockIcon />
+          ) : n.id === 'today' ? (
+            <CardsIcon />
+          ) : n.id === 'search' ? (
+            <SearchIcon />
+          ) : n.id === 'share' ? (
+            <ShareIcon />
+          ) : n.id === 'analytics' ? (
+            <ChartIcon />
+          ) : n.id === 'settings' ? (
+            <SettingsIcon />
+          ) : n.id === 'help' ? (
+            <HelpIcon />
+          ) : (
+            <DashboardIcon />
+          )
+        }
+        label={n.id === 'search' ? 'Search content' : (NAV_LABELS[n.id] ?? n.label)}
+        collapsed={collapsed}
+        compact={sidebarSettings.compactMode}
+        details={
+          n.id === 'dashboard' && data?.stats
+            ? [
+                {
+                  icon: <FlameIcon width={14} height={14} />,
+                  label: 'Day streak',
+                  value: data.stats.streak,
+                },
+                {
+                  icon: <CheckIcon width={14} height={14} />,
+                  label: 'Reviewed today',
+                  value: data.stats.reviewedToday,
+                },
+              ]
+            : undefined
+        }
+      />
+    );
+
   function toggleCourse(id: string) {
     setExpandedCourses((prev) => {
       const next = new Set(prev);
@@ -456,7 +562,7 @@ export function Sidebar({
       <div
         className={cn(
           'flex items-center gap-3',
-          sidebarSettings.compactMode ? 'py-3' : 'py-5',
+          sidebarSettings.compactMode ? 'py-3' : 'py-[clamp(0.75rem,2.4dvh,1.25rem)]',
           collapsed ? 'justify-center px-0' : sidebarSettings.compactMode ? 'px-4' : 'px-5',
         )}
       >
@@ -487,73 +593,9 @@ export function Sidebar({
         aria-label="Primary navigation"
         className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}
       >
-        {sidebarSettings.navItems
-          .filter((n) => n.visible)
-          .map((n) =>
-            n.id === 'search' && onOpenPalette ? (
-              <SearchNavItem
-                key={n.id}
-                onOpenPalette={onOpenPalette}
-                collapsed={collapsed}
-                compact={sidebarSettings.compactMode}
-              />
-            ) : n.id === 'today' && onOpenStudySheet ? (
-              <ActionNavItem
-                key={n.id}
-                onClick={onOpenStudySheet}
-                icon={<CardsIcon />}
-                label={n.label}
-                collapsed={collapsed}
-                compact={sidebarSettings.compactMode}
-              />
-            ) : (
-              <NavItem
-                key={n.id}
-                to={n.id === 'dashboard' ? '/' : n.id === 'today' ? '/learn' : `/${n.id}`}
-                end={n.id === 'dashboard'}
-                icon={
-                  n.id === 'dashboard' ? (
-                    <DashboardIcon />
-                  ) : n.id === 'today' ? (
-                    <CardsIcon />
-                  ) : n.id === 'search' ? (
-                    <SearchIcon />
-                  ) : n.id === 'share' ? (
-                    <ShareIcon />
-                  ) : n.id === 'analytics' ? (
-                    <ChartIcon />
-                  ) : n.id === 'settings' ? (
-                    <SettingsIcon />
-                  ) : n.id === 'help' ? (
-                    <HelpIcon />
-                  ) : (
-                    <DashboardIcon />
-                  )
-                }
-                label={n.id === 'search' ? 'Search content' : n.label}
-                collapsed={collapsed}
-                compact={sidebarSettings.compactMode}
-                details={
-                  n.id === 'dashboard' && data?.stats
-                    ? [
-                        {
-                          icon: <FlameIcon width={14} height={14} />,
-                          label: 'Day streak',
-                          value: data.stats.streak,
-                        },
-                        {
-                          icon: <CheckIcon width={14} height={14} />,
-                          label: 'Reviewed today',
-                          value: data.stats.reviewedToday,
-                        },
-                      ]
-                    : undefined
-                }
-              />
-            ),
-          )}
+        {visibleNav.filter((n) => !FOOTER_NAV.has(n.id)).map(renderNavItem)}
         {aiAction && (
-          <div className="mt-2 border-t border-line pt-2">
+          <div>
             <ActionNavItem
               onClick={aiAction.onClick}
               icon={<SparklesIcon />}
@@ -572,7 +614,7 @@ export function Sidebar({
         aria-label="Courses"
         className={cn(
           'flex min-h-0 flex-1 flex-col px-3',
-          sidebarSettings.compactMode ? 'mt-3' : 'mt-6',
+          sidebarSettings.compactMode ? 'mt-3' : 'mt-[clamp(0.5rem,2.4dvh,1.5rem)]',
         )}
       >
         {!collapsed && (
@@ -601,15 +643,6 @@ export function Sidebar({
             </button>
           </motion.div>
         )}
-        <div className={cn(sidebarSettings.compactMode ? 'mb-1' : 'mb-2')}>
-          <NavItem
-            to="/archived"
-            icon={<ArchiveIcon />}
-            label="Archived"
-            collapsed={collapsed}
-            compact={sidebarSettings.compactMode}
-          />
-        </div>
         <div
           className={cn(
             'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
@@ -620,6 +653,14 @@ export function Sidebar({
             {sidebarCourses.map((course, idx) => (
               <motion.div
                 key={course.id}
+                // Rows start at the board's 56px and give up height (never below 44px)
+                // so the whole course list fits the window; an expanded course keeps
+                // its natural height.
+                className={
+                  sidebarSettings.compactMode
+                    ? undefined
+                    : 'flex min-h-11 shrink basis-14 flex-col short:min-h-10 has-[[aria-expanded=true]]:shrink-0 has-[[aria-expanded=true]]:basis-auto'
+                }
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
@@ -633,6 +674,9 @@ export function Sidebar({
                 <CourseRow
                   courseId={course.id}
                   courseName={course.name}
+                  glyph={
+                    glyphs.get(course.id) ?? { days: null, recall: 0, status: 'steady', load: 0 }
+                  }
                   lessons={lessonsByCourse.get(course.id) ?? []}
                   details={
                     sidebarSettings.showDueCounts && summaries?.[course.id]
@@ -669,6 +713,15 @@ export function Sidebar({
             ))}
           </AnimatePresence>
 
+          <div className="mt-0.5 [&_a]:text-sm [&_a]:text-ink-faint">
+            <NavItem
+              to="/archived"
+              icon={<ArchiveIcon />}
+              label="Archived"
+              collapsed={collapsed}
+              compact={sidebarSettings.compactMode}
+            />
+          </div>
           {sidebarCourses.length === 0 && !collapsed && (
             <motion.p
               initial={{ opacity: 0 }}
@@ -685,11 +738,17 @@ export function Sidebar({
         </div>
       </nav>
 
-      {/* Footer: theme toggle + collapse button */}
+      {/* Footer: Share, Settings and Help, then the theme toggle and collapse button */}
+      <nav
+        aria-label="More"
+        className={cn('flex flex-col gap-0.5 px-3 pt-2', sidebarSettings.compactMode && 'gap-0')}
+      >
+        {visibleNav.filter((n) => FOOTER_NAV.has(n.id)).map(renderNavItem)}
+      </nav>
       <div
         className={cn(
-          'flex items-center gap-2 border-t border-line px-3',
-          sidebarSettings.compactMode ? 'py-2' : 'py-3',
+          'flex items-center justify-between gap-2 px-3',
+          sidebarSettings.compactMode ? 'py-2' : 'py-3 short:py-1',
           collapsed && 'flex-col',
         )}
       >
@@ -701,16 +760,11 @@ export function Sidebar({
           className={cn(
             'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
             IDLE_ITEM,
-            sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
+            'min-h-11 min-w-11 short:min-h-9 short:min-w-9',
           )}
         >
           {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
-        {!collapsed && (
-          <span className="flex-1 text-xs text-ink-faint">
-            {resolvedTheme === 'dark' ? 'Dark mode' : 'Light mode'}
-          </span>
-        )}
         {collapseControl && (
           <button
             type="button"
@@ -720,7 +774,7 @@ export function Sidebar({
             className={cn(
               'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
               IDLE_ITEM,
-              sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
+              'min-h-11 min-w-11 short:min-h-9 short:min-w-9',
             )}
           >
             {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}

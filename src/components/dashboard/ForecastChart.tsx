@@ -57,6 +57,21 @@ function useChartSize() {
   return { ref, W: width, H: height, narrow: width < 480 };
 }
 
+/**
+ * Eases the stepped outlook into a calm curve for display: a short centred moving
+ * average that keeps the first and last points exact. A rising series stays rising.
+ */
+export function easeOutlook(values: number[], radius = 3): number[] {
+  const n = values.length;
+  return values.map((value, index) => {
+    if (index === 0 || index === n - 1) return value;
+    const reach = Math.min(radius, index, n - 1 - index);
+    let sum = 0;
+    for (let k = index - reach; k <= index + reach; k++) sum += values[k];
+    return sum / (reach * 2 + 1);
+  });
+}
+
 /** Five tidy ticks from 100% down, stepping by a round amount that reaches every value. */
 export function recallTicks(values: number[]): number[] {
   const lowest = Math.min(0.9, ...values.filter(Number.isFinite));
@@ -139,11 +154,11 @@ export function ForecastChart({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <h2 id={titleId} className="font-display text-2xl">
           Exam-day forecast
         </h2>
-        <ul className="flex flex-wrap gap-x-3 gap-y-0 text-sm sm:gap-x-4 sm:gap-y-2 text-ink-soft" aria-label="Courses">
+        <ul className="flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
           {lines.map((line) => (
             <li key={line.id}>
               <button
@@ -228,7 +243,8 @@ export function ForecastChart({
           className="stroke-line"
         />
         {lines.map((line, index) => {
-          const points = line.forecast.outlook.map((point) => ({ x: x(point.at), y: y(point.recall) }));
+          const eased = easeOutlook(line.forecast.outlook.map((point) => point.recall));
+          const points = line.forecast.outlook.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
           const last = points[points.length - 1];
           const dimmed = focus !== null && focus !== line.id;
           const delay = 0.15 + index * 0.12;

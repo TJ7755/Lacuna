@@ -32,6 +32,10 @@
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Short windows driven by a mouse or trackpad: navigation tightens so the whole
+   sidebar fits without scrolling. Touch screens keep full-size targets. */
+@custom-variant short (@media (max-height: 760px) and (pointer: fine));
+
 /* Native keyboard handling and top-layer placement, with Lacuna's colours.
    Browsers without customisable selects retain their platform picker. */
 @supports (appearance: base-select) {

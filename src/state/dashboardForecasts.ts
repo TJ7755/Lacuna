@@ -2,6 +2,37 @@ import { availableCards } from '../fsrs/eligibility';
 import { courseForecast, type CourseForecast } from '../fsrs/courseForecast';
 import type { Card, Course, Lesson } from '../db/types';
 
+const SAMPLES = 40;
+const HOUR = 3_600_000;
+
+// The forward simulation runs once per course and is reused until that course's cards,
+// exam date or target change, or the hour turns over. Navigation and the dashboard both
+// read it, and a review only recomputes the course it touched.
+const cache = new Map<string, { key: string; value: CourseForecast }>();
+
+function cacheKey(cards: readonly Card[], course: Course, now: number): string {
+  let reviewed = 0;
+  let stability = 0;
+  for (const card of cards) {
+    reviewed += card.lastReviewed ?? 0;
+    stability += card.stability ?? 0;
+  }
+  return [
+    Math.floor(now / HOUR),
+    course.examDate ?? '',
+    course.fsrsParameters?.requestRetention ?? '',
+    course.newCardsPerDay ?? '',
+    cards.length,
+    reviewed,
+    stability.toFixed(4),
+  ].join('|');
+}
+
+/** Clears the forecast cache; for tests. */
+export function clearForecastCache(): void {
+  cache.clear();
+}
+
 /**
  * Exam-day forecasts for every active course, over the same core cards the course
  * summaries use: extension-lesson cards are left out and only available cards count.
@@ -24,12 +55,16 @@ export function dashboardForecasts(
   const forecasts: Record<string, CourseForecast> = {};
   for (const course of courses) {
     if (course.archived) continue;
-    forecasts[course.id] = courseForecast(
-      availableCards(byCourse.get(course.id) ?? [], now),
-      course,
-      now,
-      { samples: 40 },
-    );
+    const courseCards = availableCards(byCourse.get(course.id) ?? [], now);
+    const key = cacheKey(courseCards, course, now);
+    const hit = cache.get(course.id);
+    if (hit && hit.key === key) {
+      forecasts[course.id] = hit.value;
+      continue;
+    }
+    const value = courseForecast(courseCards, course, now, { samples: SAMPLES });
+    cache.set(course.id, { key, value });
+    forecasts[course.id] = value;
   }
   return forecasts;
 }

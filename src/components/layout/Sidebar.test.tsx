@@ -96,7 +96,7 @@ describe('Sidebar', () => {
     mockStreak = 5;
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
     expect(screen.getByRole('link', { name: /Active course/ })).not.toHaveTextContent('7');
-    expect(screen.getByRole('link', { name: /Dashboard/ })).not.toHaveTextContent('5');
+    expect(screen.getByRole('link', { name: /Today/ })).not.toHaveTextContent('5');
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
@@ -113,7 +113,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Review today' })).toHaveAttribute('href', '/learn');
   });
 
-  it('opens Quick search without a shortcut badge', () => {
+  it('opens Search with its keyboard shortcut shown beside it', () => {
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
       value: { platform: 'darwin', isElectron: true },
@@ -124,9 +124,8 @@ describe('Sidebar', () => {
       { wrapper: MemoryRouter },
     );
 
-    const search = screen.getByRole('button', { name: /quick search/i });
-    expect(search).not.toHaveTextContent('⌘K');
-    expect(search.querySelector('kbd')).toBeNull();
+    const search = screen.getByRole('button', { name: /^Search/ });
+    expect(search.querySelector('kbd')).toHaveTextContent(/K$/);
 
     fireEvent.click(search);
     expect(onOpenPalette).toHaveBeenCalledTimes(1);

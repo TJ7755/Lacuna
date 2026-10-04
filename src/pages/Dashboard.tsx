@@ -1,6 +1,6 @@
 import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -20,7 +20,7 @@ import { CountUp } from '../components/ui/Celebration';
 import { MOTION_EASING } from '../components/ui/motion';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { dashboardForecasts, urgencyOrder } from '../state/dashboardForecasts';
+import { urgencyOrder } from '../state/dashboardForecasts';
 import { weekSummary } from '../state/weekSummary';
 import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
@@ -72,21 +72,8 @@ export function Dashboard() {
   // Archived courses are hidden from the dashboard.
   const activeCourses = useMemo(() => courses?.filter((c) => !c.archived), [courses]);
 
-  // The forecast simulates every card forward, so it follows the live data at a
-  // lower priority than the rest of the page.
-  const forecastInput = useDeferredValue(data);
-  const forecasts = useMemo(
-    () =>
-      forecastInput
-        ? dashboardForecasts(
-            forecastInput.courses,
-            forecastInput.lessons,
-            forecastInput.allCards,
-            Date.now(),
-          )
-        : undefined,
-    [forecastInput],
-  );
+  // Forecasts come with the shared course data, cached per course.
+  const forecasts = data?.forecasts;
 
   const today = stats?.forecast[0];
   const rows = useMemo<QueueRow[] | undefined>(() => {
@@ -131,7 +118,7 @@ export function Dashboard() {
   const totalMinutes = Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0);
 
   return (
-    <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-10 md:px-12">
+    <div className="max-w-[1136px] px-4 py-6 sm:px-6 sm:py-10 md:px-12">
       <h1 className="sr-only">Today</h1>
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft sm:mb-6">
         {rows && rows.length > 0 && (

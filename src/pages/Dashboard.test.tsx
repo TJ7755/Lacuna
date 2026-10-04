@@ -34,13 +34,8 @@ vi.mock('../state/motionSpeed', () => ({
 
 vi.mock('../components/dashboard/SyncStatus', () => ({ SyncStatus: () => null }));
 
+// Forecasts arrive with the shared course data; tests set them after the data.
 let mockForecasts: Record<string, unknown> = {};
-vi.mock('../state/dashboardForecasts', async () => {
-  const actual = await vi.importActual<typeof import('../state/dashboardForecasts')>(
-    '../state/dashboardForecasts',
-  );
-  return { ...actual, dashboardForecasts: () => mockForecasts };
-});
 
 vi.mock('../components/course/NewCourseForm', () => ({
   NewCourseForm: () => <div data-testid="new-course-form" />,
@@ -134,6 +129,9 @@ function setCourseData(courses: Course[] = [mockCourse], options: DataOptions = 
     lessons: [],
     allCards: [],
     summaries: options.summaries ?? {},
+    get forecasts() {
+      return mockForecasts;
+    },
     reviewActivity: options.reviewActivity ?? new Map(),
     stats: {
       reviewedToday: 0,
