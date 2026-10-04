@@ -158,4 +158,19 @@ describe('courseForecast', () => {
     expect(f.series).toHaveLength(24);
     expect(elapsed).toBeLessThan(2000);
   });
+
+  it('builds an exam-day outlook that starts at ifStopped, never falls and ends at atEnd', () => {
+    const exam = NOW + 45 * MS_PER_DAY;
+    const cards = [
+      ...Array.from({ length: 12 }, (_, i) => reviewedCard(`r${i}`, 2 + i, 1 + (i % 4))),
+      ...Array.from({ length: 6 }, (_, i) => makeCard({ id: `n${i}` })),
+    ];
+    const f = courseForecast(cards, makeCourse({ examDate: exam, newCardsPerDay: 2 }), NOW);
+    expect(f.outlook).toHaveLength(f.series.length);
+    expect(f.outlook[0].recall).toBeCloseTo(f.ifStopped, 10);
+    expect(f.outlook[f.outlook.length - 1].recall).toBeCloseTo(f.atEnd, 10);
+    for (let k = 1; k < f.outlook.length; k++) {
+      expect(f.outlook[k].recall).toBeGreaterThanOrEqual(f.outlook[k - 1].recall - 1e-9);
+    }
+  });
 });

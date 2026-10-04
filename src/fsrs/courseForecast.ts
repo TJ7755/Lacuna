@@ -37,6 +37,12 @@ export interface CourseForecast {
   ifStopped: number;
   atEnd: number;
   series: ForecastPoint[];
+  /**
+   * The exam-day (or horizon) forecast as it would stand on each sample day: mean
+   * recall at `end` given the reviews made by then. It starts at `ifStopped`, only
+   * rises as reviews land, and finishes at `atEnd`.
+   */
+  outlook: ForecastPoint[];
 }
 
 export interface CourseForecastOptions {
@@ -70,6 +76,7 @@ export function courseForecast(
   const times: number[] = [];
   for (let k = 0; k < samples; k++) times.push(now + ((end - now) * k) / (samples - 1));
   const sums = new Array<number>(samples).fill(0);
+  const outlookSums = new Array<number>(samples).fill(0);
 
   const n = cards.length;
   let currentSum = 0;
@@ -116,7 +123,10 @@ export function courseForecast(
         reviews++;
         nextReview = last + daysToTarget(stability) * MS_PER_DAY;
       }
-      if (live) sums[k] += forgettingCurve((t - last) / MS_PER_DAY, stability, decay);
+      if (live) {
+        sums[k] += forgettingCurve((t - last) / MS_PER_DAY, stability, decay);
+        outlookSums[k] += forgettingCurve((end - last) / MS_PER_DAY, stability, decay);
+      }
     }
   }
 
@@ -124,6 +134,9 @@ export function courseForecast(
   const current = mean(currentSum);
   const series: ForecastPoint[] = times.map((at, k) => ({ at, recall: mean(sums[k]) }));
   series[0] = { at: now, recall: current };
+  const ifStopped = mean(stoppedSum);
+  const outlook: ForecastPoint[] = times.map((at, k) => ({ at, recall: mean(outlookSums[k]) }));
+  outlook[0] = { at: now, recall: ifStopped };
 
   return {
     start: now,
@@ -131,8 +144,9 @@ export function courseForecast(
     hasExam,
     target,
     current,
-    ifStopped: mean(stoppedSum),
+    ifStopped,
     atEnd: series[samples - 1].recall,
     series,
+    outlook,
   };
 }
