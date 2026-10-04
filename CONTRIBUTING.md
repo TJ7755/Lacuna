@@ -92,6 +92,10 @@ on the merge base and passes on the proposed head. Do not weaken an assertion to
 Pure refactors retain relevant coverage. Documentation, dependency and CI-only changes need
 proportionate validation and a note explaining what was checked.
 
+Record each user- or maintainer-visible change as a fragment file in `docs/changes/unreleased/`
+(see its README) rather than editing `docs/CHANGES.md`, which is assembled at release time.
+`bun run changelog:check` validates fragments.
+
 Prefer one invariant or one user workflow per pull request. Agent-produced changes follow the same
 rule. State the permitted files or module ownership, and require a human to review data,
 synchronisation, AI authority, Electron security and release changes. The authoring agent cannot be
