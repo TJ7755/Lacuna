@@ -51,6 +51,11 @@ interface SidebarProps {
   };
 }
 
+/** Static (non-shared-layout) active state: the white pill, as NavItem draws it. */
+const ACTIVE_PILL = 'bg-surface font-semibold text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
+const PILL_SHADOW = 'shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
+const IDLE_ITEM = 'text-ink-soft hover:bg-ink/5 hover:text-ink';
+
 function NavItem({
   to,
   icon,
@@ -81,10 +86,10 @@ function NavItem({
         title={collapsed ? label : undefined}
         className={({ isActive }) =>
           cn(
-            'group relative flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
+            'group relative flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
             compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-            collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-            isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+            collapsed && 'justify-center px-0',
+            isActive ? 'font-semibold text-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
           )
         }
       >
@@ -92,13 +97,17 @@ function NavItem({
           <>
             {isActive && (
               <motion.span
-                layoutId="nav-active"
-                transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
+                layoutId="nav-active-pill"
+                transition={
+                  m > 0
+                    ? { type: 'spring', stiffness: 500 / m ** 2, damping: 38 / m }
+                    : { duration: 0 }
+                }
+                className={cn('absolute inset-0 z-0 rounded-xl bg-surface', PILL_SHADOW)}
               />
             )}
-            <span className="shrink-0">{icon}</span>
-            {!collapsed && <span className="truncate">{label}</span>}
+            <span className="relative z-10 shrink-0">{icon}</span>
+            {!collapsed && <span className="relative z-10 truncate">{label}</span>}
           </>
         )}
       </NavLink>
@@ -133,10 +142,10 @@ function ActionNavItem({
       aria-pressed={active}
       title={collapsed ? label : undefined}
       className={cn(
-        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
+        'group flex min-h-11 w-full items-center gap-3 rounded-xl text-left transition-colors duration-150',
         compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-        active ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+        collapsed && 'justify-center px-0',
+        active ? ACTIVE_PILL : IDLE_ITEM,
       )}
     >
       <span className="shrink-0">{icon}</span>
@@ -161,10 +170,10 @@ function SearchNavItem({
       onClick={onOpenPalette}
       title={collapsed ? 'Quick search' : undefined}
       className={cn(
-        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
+        'group flex min-h-11 w-full items-center gap-3 rounded-xl text-left transition-colors duration-150',
         compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-        'text-ink-soft hover:bg-ink/5 hover:text-ink',
+        collapsed && 'justify-center px-0',
+        IDLE_ITEM,
       )}
     >
       <span className="shrink-0">
@@ -188,9 +197,9 @@ function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
       onFocus={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
       className={({ isActive }) =>
         cn(
-          'flex min-h-10 items-center gap-3 rounded-lg transition-all duration-150',
+          'flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
           compact ? 'py-1.5 pl-9 pr-3 text-xs' : 'py-2 pl-10 pr-3 text-sm',
-          isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          isActive ? ACTIVE_PILL : IDLE_ITEM,
         )
       }
     >
@@ -250,15 +259,17 @@ const CourseRow = memo(function CourseRow({
           title={courseName}
           className={() =>
             cn(
-              'flex min-h-11 items-center justify-center rounded-lg transition-all duration-150',
+              'flex min-h-11 items-center justify-center rounded-xl transition-colors duration-150',
               compact ? 'py-1.5' : 'py-2',
-              isCourseActive
-                ? 'bg-accent-soft text-accent'
-                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+              isCourseActive ? ACTIVE_PILL : IDLE_ITEM,
             )
           }
         >
-          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
+          <CardsIcon
+            width={compact ? 14 : 16}
+            height={compact ? 14 : 16}
+            className="shrink-0 text-ink-faint"
+          />
         </NavLink>
       </SidebarHoverCard>
     );
@@ -275,16 +286,17 @@ const CourseRow = memo(function CourseRow({
           onFocus={() => prefetchRoute(`/course/${courseId}`)}
           className={({ isActive }) =>
             cn(
-              'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
+              'flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
               compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-              'hover:translate-x-0.5',
-              isActive
-                ? 'bg-accent-soft text-accent'
-                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+              isActive ? ACTIVE_PILL : IDLE_ITEM,
             )
           }
         >
-          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
+          <CardsIcon
+            width={compact ? 14 : 16}
+            height={compact ? 14 : 16}
+            className="shrink-0 text-ink-faint"
+          />
           <span className="flex flex-1 items-center gap-2 min-w-0">
             <span className="truncate">{courseName}</span>
           </span>
@@ -298,12 +310,9 @@ const CourseRow = memo(function CourseRow({
     <div>
       <div
         className={cn(
-          'group flex w-full min-h-11 items-center gap-1 rounded-lg transition-all duration-150',
+          'group flex w-full min-h-11 items-center gap-1 rounded-xl transition-colors duration-150',
           compact ? 'pr-3 py-1.5 text-xs' : 'pr-3 py-2 text-sm',
-          'hover:translate-x-0.5',
-          isCourseActive
-            ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          isCourseActive ? ACTIVE_PILL : IDLE_ITEM,
         )}
       >
         <button
@@ -343,7 +352,11 @@ const CourseRow = memo(function CourseRow({
             }}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
           >
-            <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
+            <CardsIcon
+              width={compact ? 14 : 16}
+              height={compact ? 14 : 16}
+              className="shrink-0 text-ink-faint"
+            />
             <span className="flex flex-1 items-center gap-2 min-w-0">
               <span className="truncate">{courseName}</span>
             </span>
@@ -429,7 +442,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'relative z-20 flex h-full flex-col border-r border-line bg-surface',
+        'relative z-20 flex h-full flex-col bg-chrome',
         'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
         // Grow the box by the left inset. Under border-box the padding would
         // otherwise come out of the chrome (72px / 264px), which clips the
@@ -571,8 +584,8 @@ export function Sidebar({
           >
             <span
               className={cn(
-                'uppercase tracking-[0.16em] text-ink-faint',
-                sidebarSettings.compactMode ? 'text-[10px]' : 'text-[11px]',
+                'text-[13px] font-bold text-ink-faint',
+                sidebarSettings.compactMode && 'text-xs',
               )}
             >
               Courses
@@ -686,7 +699,8 @@ export function Sidebar({
           title="Toggle colour theme"
           aria-label="Toggle colour theme"
           className={cn(
-            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+            'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
+            IDLE_ITEM,
             sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
           )}
         >
@@ -704,7 +718,8 @@ export function Sidebar({
             title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
             aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
             className={cn(
-              'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+              'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
+              IDLE_ITEM,
               sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
             )}
           >
