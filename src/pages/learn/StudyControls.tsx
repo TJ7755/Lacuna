@@ -82,7 +82,7 @@ export function StudyControls({
               <Button
                 variant="primary"
                 size="lg"
-                className="w-full max-w-[13.5rem] shadow-lg shadow-accent/15"
+                className="w-full max-w-[13.5rem]"
                 onClick={onReveal}
               >
                 Show answer

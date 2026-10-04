@@ -968,7 +968,6 @@ describe('LearnMode course/lesson scope', () => {
       await screen.findByRole('progressbar', { name: 'Session progress' }),
     ).toHaveAttribute('aria-valuenow', '0');
     expect(screen.getByText(`${expected}% predicted readiness`)).toBeInTheDocument();
-    expect(screen.getByText('0% complete')).toBeInTheDocument();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 

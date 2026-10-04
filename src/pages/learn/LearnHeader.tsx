@@ -190,44 +190,31 @@ export function LearnHeader({
       transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
       onPointerLeave={onPointerLeave}
       className={cn(
-        'left-0 right-0 top-0 z-20 border-b border-line bg-paper',
+        'left-0 right-0 top-0 z-20 bg-paper',
         'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
-      <div className="flex min-h-[72px] items-center gap-1 px-2 py-2.5 md:gap-5 md:px-6 max-md:gap-2 max-md:px-4">
-        <button
-          type="button"
-          onClick={onOpenNav}
-          aria-label="Open navigation"
-          title="Open navigation"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 max-md:hidden"
-        >
-          <MenuIcon width={18} height={18} />
-        </button>
-
+      <div className="mx-auto flex min-h-[84px] w-full max-w-[1000px] items-center gap-1 px-2 py-2.5 md:gap-4 md:px-8 max-md:gap-2 max-md:px-4">
         <div className="min-w-10 flex-1 overflow-hidden">
-          <div className="mb-1.5 flex min-w-0 items-baseline gap-1 md:mb-1">
-            <h1
-              className="truncate text-[13px] font-semibold text-ink md:text-sm"
-              title={info.title}
-            >
+          <div className="mb-2 flex min-w-0 items-baseline gap-1 text-[13px] md:text-sm">
+            <h1 className="truncate font-bold text-ink" title={info.title}>
               {info.title}
             </h1>
             {cardPosition && (
-              <span className="shrink-0 text-[13px] text-ink-soft md:hidden">· {cardPosition}</span>
+              <span className="shrink-0 text-ink-soft tabular-nums">· {cardPosition}</span>
             )}
-          </div>
-          {mode !== 'simple' && !plannedRevision && (
-            <div className="mb-1 flex flex-wrap justify-between max-md:hidden gap-x-3 text-xs tabular text-ink-faint">
-              <span>{Math.round(displayedProgress * 100)}% complete</span>
-              <span>
-                {Math.round(predictedRecall * 100)}% {singleDeck
-                  ? singleDeck.examObjective === 'securedTopics' ? 'secured' : 'predicted recall'
+            {mode !== 'simple' && !plannedRevision && (
+              <span className="ml-auto hidden shrink-0 pl-3 text-ink-soft tabular-nums md:inline">
+                {Math.round(predictedRecall * 100)}%{' '}
+                {singleDeck
+                  ? singleDeck.examObjective === 'securedTopics'
+                    ? 'secured'
+                    : 'predicted recall'
                   : 'predicted readiness'}
               </span>
-            </div>
-          )}
+            )}
+          </div>
           {info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
@@ -256,15 +243,36 @@ export function LearnHeader({
           <PomodoroTimer />
         </div>
 
+        <button
+          type="button"
+          onClick={onOpenNav}
+          aria-label="Open navigation"
+          title="Open navigation"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 max-md:hidden"
+        >
+          <MenuIcon width={18} height={18} />
+        </button>
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Card actions"
+            aria-expanded={menuOpen}
             title="Card actions"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className={cn(
+              'flex h-11 w-11 items-center justify-center rounded-full border transition-colors',
+              menuOpen
+                ? 'border-ink bg-ink text-paper'
+                : 'border-line-strong bg-surface text-ink hover:border-ink/40',
+            )}
           >
-            <MoreIcon width={18} height={18} />
+            <motion.span
+              className="inline-flex"
+              animate={{ rotate: menuOpen ? 90 : 0 }}
+              transition={{ duration: 0.28 * m, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <MoreIcon width={18} height={18} />
+            </motion.span>
           </button>
           <AnimatePresence>
             {menuOpen &&
@@ -284,11 +292,11 @@ export function LearnHeader({
                 />
               ) : (
                 <motion.div
-                  initial={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : false}
+                  initial={m > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : undefined}
-                  transition={{ duration: 0.12 * m }}
-                  className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
+                  transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
                 >
                   {current.sequenceItemId === undefined &&
                     current.occlusionRegionId === undefined && (
@@ -313,7 +321,7 @@ export function LearnHeader({
                     label="Suspend card"
                     onClick={onSuspend}
                   />
-                  <div className="border-t border-line" />
+                  <div className="mx-2 my-1.5 h-px bg-line" />
                   <MenuItem
                     icon={<FocusIcon width={16} height={16} />}
                     label={focusMode ? 'Leave focus mode' : 'Focus mode'}
@@ -361,21 +369,24 @@ export function LearnHeader({
             disabled={!canUndo}
             aria-label="Undo last answer"
             title="Undo"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink ring-1 ring-line transition-colors active:bg-ink/10 disabled:opacity-40 md:hidden"
+            className={cn(
+              'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 disabled:opacity-40',
+              !canUndo && 'md:hidden',
+            )}
           >
             <UndoIcon width={18} height={18} />
           </button>
         )}
 
-        {/* One Exit for every width: a round icon button placed first on a phone,
-            a text button at the end on larger screens. */}
+        {/* One Exit for every width, leading the row: a pill with its label, and a
+            round icon button on a phone. */}
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={onExit}
-          className="max-md:order-first max-md:h-11 max-md:w-11 max-md:bg-surface max-md:px-0 max-md:text-ink max-md:ring-1 max-md:ring-line"
+          className="order-first h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
         >
-          <CloseIcon width={18} height={18} aria-hidden="true" className="md:hidden" />
+          <CloseIcon width={16} height={16} aria-hidden="true" />
           <span className="max-md:sr-only">Exit</span>
         </Button>
       </div>
@@ -506,7 +517,7 @@ function MenuItem({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full min-h-11 items-center gap-3 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+      className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
     >
       <span className="shrink-0 text-ink-faint">{icon}</span>
       {label}
