@@ -2,10 +2,24 @@
 
 ## Unreleased
 
+- The relay's anonymous channel and share mint limits (10 per hour per address) now
+  live in the blob store, sharing the AI pairing limiter in `relay/src/rateLimit.ts`,
+  instead of per-isolate memory keyed on the first `x-forwarded-for` hop. On Vercel the
+  address is taken from `x-vercel-forwarded-for`, so a forged `x-forwarded-for` can no
+  longer reset the count, and recycling the isolate no longer clears it (#333)
+
+- The AI pairing code is no longer sent in the request path. The MCP client now claims
+  with `POST /ai/claim` and an `X-Lacuna-Pairing-Code` header, so the capability stays
+  out of platform, CDN and upstream access logs; the code is compared in constant time.
+  The relay still accepts `POST /ai/s/:code/claim` for already-installed clients and
+  that form should be removed once they have upgraded. The relay needs redeploying
+  before clients move to the new route (#332).
+
 - The critical-domain coverage gate (`bun run test:coverage`) now sets a floor per source
   file instead of aggregate thresholds, so a weakly covered file such as `lineageDiff.ts`
   (about 82%) can no longer pass on the others' average. Baselines are in
   `docs/maintenance/coverage.md`. (#330)
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
