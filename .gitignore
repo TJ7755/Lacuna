@@ -6,15 +6,9 @@ dist/
 /coverage/
 /playwright-report/
 /test-results/
-/artifacts/release-scenarios/
-/artifacts/releases/
-/artifacts/performance/
+/artifacts/
 .DS_Store
 .npmrc
-
-# Agent mailbox runtime files
-.agent-mail/*
-!.agent-mail/README.md
 
 # Electron
 /release/
@@ -23,7 +17,7 @@ electron/dist-electron/
 
 .env*
 !.env.example
-!.agent-mail/bin/
-.lmo/
-.freebuff/
 /.ai-invites/
+
+# Claude Code agent worktrees
+.claude/worktrees/

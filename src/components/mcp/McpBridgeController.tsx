@@ -62,13 +62,25 @@ async function courseLabel(courseId: string): Promise<string> {
 export function McpBridgeController() {
   const { notify } = useToast();
   const [queue, setQueue] = useState<McpConsentRequest[]>([]);
-  const [label, setLabel] = useState('this course');
+  const [resolved, setResolved] = useState<{ courseId: string; name: string } | null>(null);
   const current = queue[0];
+  const currentCourseId = current?.courseId;
+  // A resolved name is only shown for the course it was looked up for, so a
+  // slow lookup for a previous request can never label the current one.
+  const label = resolved && resolved.courseId === currentCourseId ? resolved.name : 'this course';
 
   useEffect(() => {
-    if (!current) return;
-    void courseLabel(current.courseId).then(setLabel);
-  }, [current]);
+    if (!currentCourseId) return;
+    let cancelled = false;
+    courseLabel(currentCourseId)
+      .then((name) => {
+        if (!cancelled) setResolved({ courseId: currentCourseId, name });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCourseId]);
 
   useEffect(() => {
     const mcp = window.electronAPI?.mcp;

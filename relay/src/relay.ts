@@ -1,24 +1,14 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
-import { consumeAiPairingPermit, handleAiMaintenanceRoute } from './aiMaintenance.js';
+import { handleAiMaintenanceRoute } from './aiMaintenance.js';
+import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_TTL_MS } from './channelMaintenance.js';
-import {
-  handleShareItem,
-  handleShareMint,
-  handleShareSlot,
-  __resetShareMintRateLimitForTests,
-  type ShareSlot,
-} from './shares.js';
+import { handleShareItem, handleShareMint, handleShareSlot, type ShareSlot } from './shares.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 export { CHANNEL_TTL_MS } from './channelMaintenance.js';
-export {
-  EMPTY_SHARE_ETAG,
-  SHARE_META_MAX_BYTES,
-  SHARE_PAYLOAD_MAX_BYTES,
-  __resetShareMintRateLimitForTests,
-} from './shares.js';
+export { EMPTY_SHARE_ETAG, SHARE_META_MAX_BYTES, SHARE_PAYLOAD_MAX_BYTES } from './shares.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -57,7 +47,7 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
           return await handleAiMaintenanceRoute(store, request, now());
         case 'ai-session-collection':
           if (request.method === 'POST') {
-            const permit = await consumeAiPairingPermit(store, request, now());
+            const permit = await consumeRatePermit(store, request, now(), 'pairing');
             if (permit === 'limited') {
               return json(429, request, { error: 'too many requests' });
             }
@@ -73,7 +63,7 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
         case 'ai-invalid':
           return await handleAiRelayRoute(store, request, route, now);
         case 'channel':
-          return await handleChannel(store, request);
+          return await handleChannel(store, request, now());
         case 'item':
           return await handleItem(store, request, route.id, now);
         case 'slot':
@@ -81,7 +71,7 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
         case 'slot-invalid':
           return json(400, request, { error: 'invalid slot' });
         case 'share-collection':
-          return await handleShareMint(store, request);
+          return await handleShareMint(store, request, now());
         case 'share-item':
           return await handleShareItem(store, request, route.id, now);
         case 'share-slot':
@@ -98,36 +88,7 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
   };
 }
 
-const MINT_RATE_LIMIT = 10;
-const MINT_WINDOW_MS = 60 * 60 * 1000;
-type RateLimitAttempts = Map<string, { count: number; resetAt: number }>;
-const deviceSyncMintAttempts: RateLimitAttempts = new Map();
-
-function getClientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown';
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
-  return 'unknown';
-}
-
-function isRateLimited(attempts: RateLimitAttempts, ip: string, now: number): boolean {
-  const entry = attempts.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + MINT_WINDOW_MS });
-    return false;
-  }
-  if (entry.count >= MINT_RATE_LIMIT) return true;
-  entry.count += 1;
-  return false;
-}
-
-export function __resetMintRateLimitForTests(): void {
-  deviceSyncMintAttempts.clear();
-  __resetShareMintRateLimitForTests();
-}
-
-async function handleChannel(store: BlobStore, request: Request): Promise<Response> {
+async function handleChannel(store: BlobStore, request: Request, now: number): Promise<Response> {
   if (request.method !== 'POST') {
     return json(405, request, { error: 'method not allowed' });
   }
@@ -139,10 +100,9 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
   } else if (authHeader && secret === null) {
     return json(401, request, { error: 'unauthorized' });
   } else if (!authHeader) {
-    const ip = getClientIp(request);
-    if (isRateLimited(deviceSyncMintAttempts, ip, Date.now())) {
-      return json(429, request, { error: 'too many requests' });
-    }
+    const permit = await consumeRatePermit(store, request, now, 'channel-mint');
+    if (permit === 'limited') return json(429, request, { error: 'too many requests' });
+    if (permit === 'unavailable') return json(503, request, { error: 'rate limit unavailable' });
   }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -405,7 +365,12 @@ function matchPath(pathname: string): Route | null {
   if (parts.length === 2 && parts[0] === 'shares' && parts[1] !== undefined) {
     return { kind: 'share-item', id: parts[1] };
   }
-  if (parts.length === 3 && parts[0] === 'shares' && parts[1] !== undefined && parts[2] !== undefined) {
+  if (
+    parts.length === 3 &&
+    parts[0] === 'shares' &&
+    parts[1] !== undefined &&
+    parts[2] !== undefined
+  ) {
     const slot = parts[2];
     if (slot === 'payload' || slot === 'meta') {
       return { kind: 'share-slot', id: parts[1], slot };

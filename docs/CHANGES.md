@@ -2,6 +2,51 @@
 
 ## Unreleased
 
+- The relay's anonymous channel and share mint limits (10 per hour per address) now
+  live in the blob store, sharing the AI pairing limiter in `relay/src/rateLimit.ts`,
+  instead of per-isolate memory keyed on the first `x-forwarded-for` hop. On Vercel the
+  address is taken from `x-vercel-forwarded-for`, so a forged `x-forwarded-for` can no
+  longer reset the count, and recycling the isolate no longer clears it (#333)
+
+- The AI pairing code is no longer sent in the request path. The MCP client now claims
+  with `POST /ai/claim` and an `X-Lacuna-Pairing-Code` header, so the capability stays
+  out of platform, CDN and upstream access logs; the code is compared in constant time.
+  The relay still accepts `POST /ai/s/:code/claim` for already-installed clients and
+  that form should be removed once they have upgraded. The relay needs redeploying
+  before clients move to the new route (#332).
+
+- The critical-domain coverage gate (`bun run test:coverage`) now sets a floor per source
+  file instead of aggregate thresholds, so a weakly covered file such as `lineageDiff.ts`
+  (about 82%) can no longer pass on the others' average. Baselines are in
+  `docs/maintenance/coverage.md`. (#330)
+
+- Deleting a Question definition from the Question editor now confirms inline with
+  `ConfirmInlineSwap` instead of the blocking browser `window.confirm`, keeping the
+  attempt-evidence warning copy (#337).
+- The Question editor's save bar now sits above the phone course navigation bar
+  below the `sm` breakpoint, so Delete, Save and the inline delete confirmation are no
+  longer half-covered or unclickable on phones. The overlap predates #337.
+
+- The Backups settings section now handles a failed backup-folder read: it shows a
+  negative notice instead of silently presenting a configured folder as "not
+  configured". The persistence check is annotated best-effort, and neither read sets
+  state after unmount (#336).
+
+- The titlebar window control IPC (minimise, maximise, close, maximised state) now
+  verifies the sender is the main window's main frame, reusing the updater's trust
+  check from the new `electron/windowControls.ts`. Untrusted callers are logged and
+  ignored; `window:isMaximized` rejects visibly (#334).
+
+- Bulk suspend, resume, tag, bury, reschedule and delete in the card list now catch a
+  failed write, leave select mode and the selection intact, and show a negative toast
+  naming the operation instead of failing silently as an unhandled rejection. A failed
+  Undo of those changes is reported the same way (#325).
+
+- The MCP consent prompt now ignores a course-name lookup that has been superseded by the
+  next request and shows the neutral "this course" until the current one resolves, so a slow
+  lookup can no longer label a request with the wrong course. A failed lookup is caught and
+  leaves the neutral label. (#335)
+
 - Curricular Practice now records its milestone against the same fixed lesson prefix the
   study-flow snapshot checks, while still studying the wider live pool. Previously a
   completed step stored the live-scope fingerprint, never matched, and was offered again.
@@ -34,7 +79,6 @@
   before preprocessing or database writes. Malformed records report their field path;
   supported older exports retain their existing migration behaviour and additive fields.
   The 200 MB file limit and pre-v22 Deck/Folder refusal remain in place (#327).
-
 
 ## Dependency audit patches
 
@@ -323,7 +367,6 @@ removed during sanitisation and covers rendering, fallback source and theme upda
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the
   study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
-
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.
