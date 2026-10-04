@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
 import { AssessmentDetailSheet, assessmentSheetTiming } from './AssessmentDetailSheet';
 import { CheckpointNode } from './CheckpointNode';
+import { MemoryRouter } from 'react-router-dom';
 
 const lesson: Lesson = {
   id: 'l1',
@@ -67,14 +68,16 @@ describe('checkpoint assessment details', () => {
   it('shows identity, resolved scope, exclusions and exact-assessment revision action', () => {
     const onRevise = vi.fn();
     render(
-      <AssessmentDetailSheet
-        assessment={assessment}
-        lessons={[lesson]}
-        cards={[card]}
-        links={[]}
-        onClose={vi.fn()}
-        onRevise={onRevise}
-      />,
+      <MemoryRouter>
+        <AssessmentDetailSheet
+          assessment={assessment}
+          lessons={[lesson]}
+          cards={[card]}
+          links={[]}
+          onClose={vi.fn()}
+          onRevise={onRevise}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByRole('dialog', { name: 'Paper 1 details' })).toBeInTheDocument();
     expect(screen.getByText('Atoms')).toBeInTheDocument();

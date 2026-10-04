@@ -42,7 +42,7 @@ describe('schema v27 review-activity projection', () => {
 
     await db.open();
 
-    expect(db.verno).toBe(28);
+    expect(db.verno).toBe(29);
     expect(await db.reviewHistory.get(entry.id)).toEqual(entry);
     expect(await db.reviewActivity.toArray()).toEqual([{ cardId: 'card-1', timestamps: [123] }]);
   });
@@ -57,7 +57,7 @@ describe('schema v27 review-activity projection', () => {
 
       await db.open();
 
-      expect(db.verno).toBe(28);
+      expect(db.verno).toBe(29);
       expect(await db.reviewActivity.count()).toBe(0);
     },
   );
