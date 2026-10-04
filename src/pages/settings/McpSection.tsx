@@ -7,6 +7,8 @@ import type { McpGrant } from '../../mcp/types';
 import type { McpClientConnection } from '../../mcp/connections';
 import { useCourses } from '../../state/useCourseData';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { cn } from '../../components/ui/cn';
 
 interface McpStatus {
   running: boolean;
@@ -38,7 +40,7 @@ export function McpSection() {
     ]);
     setStatus(nextStatus);
     setGrants(nextGrants);
-    setConnections(nextConnections.length > 0 ? nextConnections : nextStatus.clients ?? []);
+    setConnections(nextConnections.length > 0 ? nextConnections : (nextStatus.clients ?? []));
   }, [mcp]);
 
   const refreshWithNotice = useCallback(async () => {
@@ -69,35 +71,60 @@ export function McpSection() {
     ...(courses ?? []).map((course) => ({ id: course.id, name: course.name })),
   ];
 
-  const visibleConnections: McpClientConnection[] = connections.length > 0
-    ? connections
-    : grants.length > 0
-      ? [{ connectionId: '__embedded__', name: 'Embedded stdio client', connectedAt: 0, lastActivityAt: 0, grants }]
-      : [];
+  const visibleConnections: McpClientConnection[] =
+    connections.length > 0
+      ? connections
+      : grants.length > 0
+        ? [
+            {
+              connectionId: '__embedded__',
+              name: 'Embedded stdio client',
+              connectedAt: 0,
+              lastActivityAt: 0,
+              grants,
+            },
+          ]
+        : [];
 
-  async function setGrant(connectionId: string, courseId: string, scope: McpGrant['scope'], label: string) {
+  async function setGrant(
+    connectionId: string,
+    courseId: string,
+    scope: McpGrant['scope'],
+    label: string,
+  ) {
     try {
-      if (connectionId === '__embedded__' || !mcp!.grantConnection) await mcp!.grant(courseId, scope, label);
+      if (connectionId === '__embedded__' || !mcp!.grantConnection)
+        await mcp!.grant(courseId, scope, label);
       else await mcp!.grantConnection(connectionId, courseId, scope, label);
       await refresh();
+    } catch {
+      notify('Could not update MCP access.', 'negative');
     }
-    catch { notify('Could not update MCP access.', 'negative'); }
   }
   async function revoke(connectionId: string, courseId: string) {
     try {
       if (connectionId === '__embedded__' || !mcp!.revokeConnection) await mcp!.revoke(courseId);
       else await mcp!.revokeConnection(connectionId, courseId);
       await refresh();
+    } catch {
+      notify('Could not revoke MCP access.', 'negative');
     }
-    catch { notify('Could not revoke MCP access.', 'negative'); }
   }
   async function copyConfiguration() {
     if (!status?.companion) return;
-    const configuration = JSON.stringify({ mcpServers: { lacuna: {
-      command: status.companion.command,
-      args: status.companion.args,
-      ...(status.companion.env ? { env: status.companion.env } : {}),
-    } } }, null, 2);
+    const configuration = JSON.stringify(
+      {
+        mcpServers: {
+          lacuna: {
+            command: status.companion.command,
+            args: status.companion.args,
+            ...(status.companion.env ? { env: status.companion.env } : {}),
+          },
+        },
+      },
+      null,
+      2,
+    );
     try {
       await navigator.clipboard.writeText(configuration);
       notify('MCP client configuration copied to the clipboard.', 'positive');
@@ -107,46 +134,127 @@ export function McpSection() {
   }
 
   return (
-    <section id="settings-mcp"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-1 flex items-center gap-2 text-accent"><GridIcon width={18} height={18} /><SettingsSectionHeading className="font-display text-xl">MCP server</SettingsSectionHeading></div>
-      <p className="mb-4 text-sm text-ink-soft">Control what connected MCP clients may read or change. Access is cleared when each client disconnects.</p>
+    <SettingsCard id="settings-mcp">
+      <div className={cn('mb-1', SETTINGS_HEADING_ROW_CLASS)}>
+        <GridIcon width={18} height={18} />
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          MCP server
+        </SettingsSectionHeading>
+      </div>
+      <p className="mb-4 text-sm text-ink-soft">
+        Control what connected MCP clients may read or change. Access is cleared when each client
+        disconnects.
+      </p>
       <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm">
-        <span className={status?.running ? 'text-positive' : 'text-negative'}>{status?.running ? 'Running' : 'Stopped'}</span>
+        <span className={status?.running ? 'text-positive' : 'text-negative'}>
+          {status?.running ? 'Running' : 'Stopped'}
+        </span>
         <span className="text-ink-soft">{status?.toolCount ?? 0} tools</span>
         <span className="text-ink-faint">Surface v{status?.toolSurfaceVersion ?? 0}</span>
       </div>
-      {status?.companion && <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">MCP client configuration</div>
-          <Button variant="secondary" size="sm" onClick={() => void copyConfiguration()}>Copy</Button>
+      {status?.companion && (
+        <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">
+              MCP client configuration
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => void copyConfiguration()}>
+              Copy
+            </Button>
+          </div>
+          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink">
+            {JSON.stringify(
+              {
+                mcpServers: {
+                  lacuna: {
+                    command: status.companion.command,
+                    args: status.companion.args,
+                    ...(status.companion.env ? { env: status.companion.env } : {}),
+                  },
+                },
+              },
+              null,
+              2,
+            )}
+          </pre>
         </div>
-        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink">{JSON.stringify({ mcpServers: { lacuna: { command: status.companion.command, args: status.companion.args, ...(status.companion.env ? { env: status.companion.env } : {}) } } }, null, 2)}</pre>
-      </div>}
+      )}
       <div className="space-y-4">
-        {visibleConnections.length === 0 && <p className="rounded-xl border border-line px-4 py-3 text-sm text-ink-faint">No MCP clients connected.</p>}
-        {visibleConnections.map((connection) => <div key={connection.connectionId} className="rounded-xl border border-line p-3">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <div className="text-sm font-medium text-ink">{connection.name}{connection.version ? ` ${connection.version}` : ''}</div>
-            <div className="font-mono text-[11px] text-ink-faint">{connection.connectionId.slice(0, 8)}</div>
+        {visibleConnections.length === 0 && (
+          <p className="rounded-xl border border-line px-4 py-3 text-sm text-ink-faint">
+            No MCP clients connected.
+          </p>
+        )}
+        {visibleConnections.map((connection) => (
+          <div key={connection.connectionId} className="rounded-xl border border-line p-3">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <div className="text-sm font-medium text-ink">
+                {connection.name}
+                {connection.version ? ` ${connection.version}` : ''}
+              </div>
+              <div className="font-mono text-[11px] text-ink-faint">
+                {connection.connectionId.slice(0, 8)}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {rows.map((row) => {
+                const current = connection.grants.find((entry) => entry.courseId === row.id);
+                const lowerScope = current ? LOWER_SCOPE[current.scope] : undefined;
+                const higherScopes = current
+                  ? SCOPES.slice(SCOPES.indexOf(current.scope) + 1)
+                  : SCOPES;
+                return (
+                  <div
+                    key={row.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-ink">{row.name}</div>
+                      <div className="text-xs text-ink-faint">
+                        {current ? `${current.scope} access` : 'No access'}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {higherScopes.map((scope) => (
+                        <Button
+                          key={scope}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            void setGrant(connection.connectionId, row.id, scope, row.name)
+                          }
+                        >
+                          {scope[0].toUpperCase() + scope.slice(1)}
+                        </Button>
+                      ))}
+                      {lowerScope && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            void setGrant(connection.connectionId, row.id, lowerScope, row.name)
+                          }
+                        >
+                          Downgrade to {lowerScope}
+                        </Button>
+                      )}
+                      {current && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => void revoke(connection.connectionId, row.id)}
+                        >
+                          Revoke
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="space-y-2">
-            {rows.map((row) => {
-              const current = connection.grants.find((entry) => entry.courseId === row.id);
-              const lowerScope = current ? LOWER_SCOPE[current.scope] : undefined;
-              const higherScopes = current ? SCOPES.slice(SCOPES.indexOf(current.scope) + 1) : SCOPES;
-              return <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
-                <div className="min-w-0"><div className="truncate text-sm text-ink">{row.name}</div><div className="text-xs text-ink-faint">{current ? `${current.scope} access` : 'No access'}</div></div>
-                <div className="flex flex-wrap gap-1">
-                  {higherScopes.map((scope) => <Button key={scope} variant="ghost" size="sm" onClick={() => void setGrant(connection.connectionId, row.id, scope, row.name)}>{scope[0].toUpperCase() + scope.slice(1)}</Button>)}
-                  {lowerScope && <Button variant="ghost" size="sm" onClick={() => void setGrant(connection.connectionId, row.id, lowerScope, row.name)}>Downgrade to {lowerScope}</Button>}
-                  {current && <Button variant="secondary" size="sm" onClick={() => void revoke(connection.connectionId, row.id)}>Revoke</Button>}
-                </div>
-              </div>;
-            })}
-          </div>
-        </div>)}
+        ))}
       </div>
-    </section>
+    </SettingsCard>
   );
 }

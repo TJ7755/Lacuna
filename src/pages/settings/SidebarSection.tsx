@@ -2,21 +2,20 @@ import { Button } from '../../components/ui/Button';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon, MenuIcon } from '../../components/ui/icons';
-import { Toggle } from '../../components/ui/Toggle';
 import { DEFAULT_NAV_ITEMS, useSidebarSettings } from '../../state/sidebarSettings';
+import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 
 export function SidebarSection() {
   const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
   const visibleCount = sidebarSettings.navItems.filter((item) => item.visible).length;
 
   return (
-    <section
-      id="settings-sidebar"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-sidebar">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <MenuIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Sidebar</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          Sidebar
+        </SettingsSectionHeading>
       </div>
       <SettingToggle
         title="Show course hover details"
@@ -30,7 +29,7 @@ export function SidebarSection() {
         onChange={(checked) => setSidebarSettings({ compactMode: checked })}
       />
 
-      <div className="mt-6 border-t border-line pt-5">
+      <div className="mt-6 pt-0">
         <div className="mb-1 text-sm">Primary navigation</div>
         <p className="mb-4 text-sm text-ink-soft">
           Reorder or hide the main nav items in the sidebar. At least one item must remain visible.
@@ -71,7 +70,7 @@ export function SidebarSection() {
                   />
                 </div>
                 <span className="flex-1 text-sm text-ink">{label}</span>
-                <Toggle
+                <PillSwitch
                   checked={item.visible}
                   disabled={!canHide}
                   ariaLabel={`Show ${label}`}
@@ -96,7 +95,7 @@ export function SidebarSection() {
           </Button>
         </div>
       </div>
-    </section>
+    </SettingsCard>
   );
 }
 
@@ -112,16 +111,11 @@ function SettingToggle({
   bordered?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        'flex items-start justify-between gap-3',
-        bordered && 'mt-6 border-t border-line pt-5',
-      )}
-    >
+    <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 pt-0')}>
       <div className="min-w-0">
         <div className="text-sm">{title}</div>
       </div>
-      <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
+      <PillSwitch checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
   );
 }

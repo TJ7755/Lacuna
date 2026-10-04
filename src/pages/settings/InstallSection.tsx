@@ -3,21 +3,20 @@ import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { DesktopUpdatePanel } from './DesktopUpdatePanel';
+import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { cn } from '../../components/ui/cn';
 
 export function InstallSection() {
   return (
-    <section
-      id="settings-install"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-install">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <DownloadIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
           {window.electronAPI?.isElectron ? 'Install & updates' : 'Install'}
         </SettingsSectionHeading>
       </div>
       <InstallPanel />
-    </section>
+    </SettingsCard>
   );
 }
 
@@ -28,7 +27,11 @@ function InstallPanel() {
   if (window.electronAPI?.isElectron) return <DesktopUpdatePanel />;
 
   if (isInstalled) {
-    return <p className="text-sm text-ink-soft">Lacuna is installed on this device and can be used offline.</p>;
+    return (
+      <p className="text-sm text-ink-soft">
+        Lacuna is installed on this device and can be used offline.
+      </p>
+    );
   }
 
   // iOS cannot offer a one-tap install, so the panel teaches the gesture instead. The
@@ -38,7 +41,11 @@ function InstallPanel() {
     return (
       <p className="text-sm text-ink-soft">
         Tap{' '}
-        <IosShareIcon width={16} height={16} className="inline-block align-text-bottom text-accent" />
+        <IosShareIcon
+          width={16}
+          height={16}
+          className="inline-block align-text-bottom text-accent"
+        />
         <span className="sr-only">Share</span> in the Safari toolbar, then choose Add to Home
         Screen. Lacuna opens like any other app and works offline.
       </p>
@@ -57,7 +64,9 @@ function InstallPanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-ink-soft">Install Lacuna as a standalone app for offline access and a native-like experience.</p>
+        <p className="text-sm text-ink-soft">
+          Install Lacuna as a standalone app for offline access and a native-like experience.
+        </p>
         <Button variant="secondary" onClick={promptInstall}>
           <DownloadIcon width={18} height={18} />
           Install
@@ -72,7 +81,12 @@ function DesktopDownload({ prefix = 'On Windows, you can download' }: { prefix?:
   return (
     <p className="text-sm text-ink-soft">
       {prefix} the desktop app from the{' '}
-      <a href="https://github.com/TJ7755/Lacuna/releases" target="_blank" rel="noopener noreferrer" className="text-accent underline">
+      <a
+        href="https://github.com/TJ7755/Lacuna/releases"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-accent underline"
+      >
         GitHub releases page
       </a>
       .

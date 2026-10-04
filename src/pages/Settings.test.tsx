@@ -235,7 +235,7 @@ describe('Settings', () => {
       'Appearance & access',
       'Study behaviour',
       'Course defaults',
-      'Data safety',
+      'Your data',
       'Integrations',
     ]);
     expect(document.querySelectorAll('section[id^="settings-group-"]')).toHaveLength(5);
@@ -251,7 +251,12 @@ describe('Settings', () => {
       ],
       'settings-group-study': ['settings-study', 'settings-pomodoro'],
       'settings-group-course-defaults': ['settings-course-defaults'],
-      'settings-group-data': ['settings-sync', 'settings-export', 'settings-backups'],
+      'settings-group-data': [
+        'settings-backups',
+        'settings-data-links',
+        'settings-sync',
+        'settings-export',
+      ],
       'settings-group-integrations': ['settings-install', 'settings-ai'],
     };
 
@@ -281,7 +286,8 @@ describe('Settings', () => {
     render(<Settings />);
 
     const appearance = document.getElementById('settings-appearance');
-    expect(appearance).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+    expect(appearance).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(appearance).not.toHaveClass('border');
   });
 
   it('keeps a consistent gap after every settings group', () => {

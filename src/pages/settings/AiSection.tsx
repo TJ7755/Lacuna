@@ -1,9 +1,10 @@
 import { useAiSettings } from '../../ai/settings';
 import { SparklesIcon } from '../../components/ui/icons';
-import { Toggle } from '../../components/ui/Toggle';
 import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
 import { AiMemoryInspector } from './AiMemoryInspector';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { cn } from '../../components/ui/cn';
 
 export function AiSection() {
   const [settings, update] = useAiSettings();
@@ -15,10 +16,12 @@ export function AiSection() {
   }
 
   return (
-    <section id="settings-ai" className="mb-8 rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-1 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-ai">
+      <div className={cn('mb-1', SETTINGS_HEADING_ROW_CLASS)}>
         <SparklesIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">AI</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          AI
+        </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm leading-6 text-ink-soft">
         {settings.provider === 'hosted'
@@ -26,17 +29,26 @@ export function AiSection() {
           : 'Pair a running AI client with Lacuna using an encrypted relay. Lacuna stores no model credentials and does not choose the model or client.'}
       </p>
 
-      <fieldset className="mb-6 border-b border-line pb-5">
+      <fieldset className="mb-6">
         <legend className="mb-2 text-sm font-medium text-ink">AI connection</legend>
         <div className="flex flex-wrap gap-2">
-          {([
-            ['external', 'External AI client'],
-            ['hosted', 'Built-in AI'],
-          ] as const).map(([provider, label]) => (
-            <label key={provider} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm ${settings.provider === provider ? 'border-accent bg-accent/5 text-ink' : 'border-line text-ink-soft'}`}>
-              <input type="radio" name="ai-provider" value={provider}
+          {(
+            [
+              ['external', 'External AI client'],
+              ['hosted', 'Built-in AI'],
+            ] as const
+          ).map(([provider, label]) => (
+            <label
+              key={provider}
+              className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm ${settings.provider === provider ? 'border-accent bg-accent/5 text-ink' : 'border-line text-ink-soft'}`}
+            >
+              <input
+                type="radio"
+                name="ai-provider"
+                value={provider}
                 checked={settings.provider === provider}
-                onChange={() => update({ provider })} />
+                onChange={() => update({ provider })}
+              />
               {label}
             </label>
           ))}
@@ -52,14 +64,14 @@ export function AiSection() {
               : 'Adds desktop AI chat and short-code client pairing. Disabled by default and unavailable on mobile.'}
           </p>
         </div>
-        <Toggle
+        <PillSwitch
           checked={settings.enabled}
           onChange={(enabled) => void setEnabled(enabled)}
           ariaLabel="Enable AI"
         />
       </div>
 
-      <div className="mt-6 flex items-start justify-between gap-4 border-t border-line pt-5">
+      <div className="mt-6 flex items-start justify-between gap-4 pt-0">
         <div className="min-w-0">
           <div className="text-sm text-ink">Use misconception-first teaching</div>
           <p className="mt-1 text-sm leading-6 text-ink-soft">
@@ -67,7 +79,7 @@ export function AiSection() {
             require Lacuna&apos;s normal permission checks.
           </p>
         </div>
-        <Toggle
+        <PillSwitch
           checked={settings.misconceptionFirstEnabled}
           onChange={(misconceptionFirstEnabled) => update({ misconceptionFirstEnabled })}
           ariaLabel="Use misconception-first teaching"
@@ -75,6 +87,6 @@ export function AiSection() {
       </div>
 
       <AiMemoryInspector />
-    </section>
+    </SettingsCard>
   );
 }

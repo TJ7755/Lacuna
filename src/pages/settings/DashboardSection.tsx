@@ -1,10 +1,15 @@
 import { cn } from '../../components/ui/cn';
 import { GridIcon } from '../../components/ui/icons';
-import { Toggle } from '../../components/ui/Toggle';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric, type CourseCardMetric } from '../../state/courseCardMetric';
 import { useDashboardSort, type DashboardSort } from '../../state/dashboardSort';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
+import {
+  choiceChipClass,
+  PillSwitch,
+  SETTINGS_HEADING_ROW_CLASS,
+  SettingsCard,
+} from './SettingsUi';
 
 const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
   { key: 'recent', label: 'Recently studied' },
@@ -21,15 +26,14 @@ export function DashboardSection() {
   const [courseCardMetric, setCourseCardMetric] = useCourseCardMetric();
 
   return (
-    <section
-      id="settings-dashboard"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-dashboard">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <GridIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Dashboard</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          Dashboard
+        </SettingsSectionHeading>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="flex flex-wrap gap-2">
         {SORT_OPTIONS.map((option) => {
           const active = dashboardSort === option.key;
           return (
@@ -38,12 +42,7 @@ export function DashboardSection() {
               type="button"
               onClick={() => setDashboardSort(option.key)}
               aria-pressed={active}
-              className={cn(
-                'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                active
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-line-strong',
-              )}
+              className={choiceChipClass(active)}
             >
               {option.label}
             </button>
@@ -51,11 +50,11 @@ export function DashboardSection() {
         })}
       </div>
 
-      <div className="mt-6 border-t border-line pt-5">
+      <div className="mt-6 pt-0">
         <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
           Course progress metric
         </SettingsSubsectionHeading>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="flex flex-wrap gap-2">
           {(
             [
               { key: 'curriculum', label: 'Course progress' },
@@ -70,12 +69,7 @@ export function DashboardSection() {
                 type="button"
                 onClick={() => setCourseCardMetric(option.key)}
                 aria-pressed={active}
-                className={cn(
-                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                  active
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-ink-soft hover:border-line-strong',
-                )}
+                className={choiceChipClass(active)}
               >
                 {option.label}
               </button>
@@ -84,24 +78,24 @@ export function DashboardSection() {
         </div>
       </div>
 
-      <div className="mt-6 border-t border-line pt-5">
+      <div className="mt-6 pt-0">
         <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
           Card hover detail
         </SettingsSubsectionHeading>
         <div className="flex flex-col gap-3">
-          <Toggle
+          <PillSwitch
             id="card-detail-next-due"
             label="Next review time"
             checked={cardDetail.nextDue}
             onChange={(checked) => setCardDetail({ nextDue: checked })}
           />
-          <Toggle
+          <PillSwitch
             id="card-detail-breakdown"
             label="New, learnt and due breakdown"
             checked={cardDetail.breakdown}
             onChange={(checked) => setCardDetail({ breakdown: checked })}
           />
-          <Toggle
+          <PillSwitch
             id="card-detail-activity"
             label="Recent review activity"
             checked={cardDetail.activity}
@@ -109,6 +103,6 @@ export function DashboardSection() {
           />
         </div>
       </div>
-    </section>
+    </SettingsCard>
   );
 }

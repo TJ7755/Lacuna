@@ -1,7 +1,8 @@
 import { GaugeIcon } from '../../components/ui/icons';
-import { Toggle } from '../../components/ui/Toggle';
 import { useCourseHeaderSettings } from '../../state/courseHeaderSettings';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { cn } from '../../components/ui/cn';
 
 /**
  * Which stat pills a course header shows. Which of them read as useful depends on how
@@ -12,13 +13,12 @@ export function CourseHeaderSection() {
   const [settings, setSettings] = useCourseHeaderSettings();
 
   return (
-    <section
-      id="settings-course-header"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-course-header">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <GaugeIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Course header</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          Course header
+        </SettingsSectionHeading>
       </div>
       <div className="flex flex-col gap-2">
         {settings.statPills.map((pill) => (
@@ -27,7 +27,7 @@ export function CourseHeaderSection() {
             className="flex items-center gap-2 rounded-lg border border-line px-3 py-2"
           >
             <span className="flex-1 text-sm text-ink">{pill.label}</span>
-            <Toggle
+            <PillSwitch
               checked={pill.visible}
               ariaLabel={`Show ${pill.label}`}
               onChange={(checked) => {
@@ -41,6 +41,6 @@ export function CourseHeaderSection() {
           </div>
         ))}
       </div>
-    </section>
+    </SettingsCard>
   );
 }

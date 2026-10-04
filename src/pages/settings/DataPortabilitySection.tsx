@@ -11,6 +11,8 @@ import type { BackupFile } from '../../db/types';
 import type * as ManualMergeModule from '../../sync/manualMerge';
 import type { ManualMergeSummary, MergeDelta } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
+import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { cn } from '../../components/ui/cn';
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -132,25 +134,24 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   }
 
   return (
-    <section id="settings-export" className="rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-1 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-export">
+      <div className={cn('mb-1', SETTINGS_HEADING_ROW_CLASS)}>
         <UploadIcon width={18} height={18} />
-        <SettingsSectionHeading className="mb-1 font-display text-xl">
+        <SettingsSectionHeading className="mb-1 font-display text-xl font-semibold tracking-tight">
           Full backup and recovery
         </SettingsSectionHeading>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        A full JSON backup contains every local course, Card, Question, attempt, schedule and media
-        file. Export one to keep a copy, combine two devices, or recover this installation. Course
-        sharing and Card import are separate flows.
+        A full JSON backup holds every course, Card, Question, attempt, schedule and media file.
+        Export one to keep a copy, combine two devices or recover this installation.
       </p>
       <div className="mb-6">
         <UnifiedExportPanel heading="Export a full backup" />
       </div>
 
-      <div className="border-t border-line pt-5">
-        <SettingsSubsectionHeading className="mb-3 font-display text-lg">
-          Another device
+      <div>
+        <SettingsSubsectionHeading className="mb-3 font-display text-lg font-semibold tracking-tight">
+          Combine two devices
         </SettingsSubsectionHeading>
         <p className="mb-4 text-sm text-ink-soft">
           Combine this installation with a backup from another device. Cards, Questions and review
@@ -191,8 +192,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
         </div>
       </div>
 
-      <div className="mt-5 border-t border-line pt-5">
-        <SettingsSubsectionHeading className="mb-3 font-display text-lg">
+      <div className="mt-6">
+        <SettingsSubsectionHeading className="mb-3 font-display text-lg font-semibold tracking-tight">
           Recover this installation
         </SettingsSubsectionHeading>
         <p className="mb-4 text-sm text-ink-soft">
@@ -232,8 +233,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
             transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
             className="mt-5"
           >
-            <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
-              <SettingsSubsectionHeading className="mb-3 font-display text-lg">
+            <div className="rounded-2xl bg-paper p-5">
+              <SettingsSubsectionHeading className="mb-3 font-display text-lg font-semibold tracking-tight">
                 Full-backup recovery
               </SettingsSubsectionHeading>
               <div className="text-sm text-ink-soft">
@@ -289,6 +290,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </SettingsCard>
   );
 }

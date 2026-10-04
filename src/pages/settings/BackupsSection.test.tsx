@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackupsSection } from './BackupsSection';
 
 const mockDeleteBackup = vi.fn().mockResolvedValue(undefined);
+const mockRestoreBackup = vi.fn().mockResolvedValue(undefined);
+const mockTakeAutoBackup = vi.fn().mockResolvedValue(undefined);
 const mockNotify = vi.fn();
 const mockCheckPersistentStorage = vi.fn().mockResolvedValue(null);
 const mockRequestPersistentStorage = vi.fn();
@@ -18,8 +20,8 @@ let mockBackups = [
 
 vi.mock('../../db/backups', () => ({
   deleteBackup: (id: number) => mockDeleteBackup(id),
-  restoreBackup: vi.fn(),
-  takeAutoBackup: vi.fn(),
+  restoreBackup: (id: number) => mockRestoreBackup(id),
+  takeAutoBackup: (force?: boolean) => mockTakeAutoBackup(force),
 }));
 
 vi.mock('../../db/backupFolder', () => ({
@@ -51,6 +53,8 @@ describe('BackupsSection', () => {
     mockDeleteBackup.mockReset();
     mockDeleteBackup.mockResolvedValue(undefined);
     mockNotify.mockClear();
+    mockRestoreBackup.mockClear();
+    mockTakeAutoBackup.mockClear();
     mockCheckPersistentStorage.mockReset();
     mockCheckPersistentStorage.mockResolvedValue(null);
     mockRequestPersistentStorage.mockReset();
@@ -80,7 +84,7 @@ describe('BackupsSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete restore point' }));
     await waitFor(() => expect(mockDeleteBackup).toHaveBeenCalledWith(7));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Back up now' })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back up' })).toHaveFocus());
   });
 
   it('keeps confirmation open and reports a failed restore-point deletion', async () => {
@@ -140,13 +144,20 @@ describe('BackupsSection', () => {
   it('states the AI consequence before confirming a full restore', async () => {
     render(<BackupsSection />);
 
-    expect(
-      await screen.findByText(/local conversation is cleared only after the restore succeeds/),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    expect(
-      screen.getByText('Replace all local data, disconnect AI and restore this point?'),
-    ).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
+
+    const dialog = await screen.findByRole('alertdialog', { name: /^Go back to/ });
+    expect(dialog).toHaveTextContent(
+      'Replace all local data, disconnect AI and restore this point?',
+    );
+    expect(dialog).toHaveTextContent(
+      'local conversation is cleared only after the restore succeeds',
+    );
+    expect(mockRestoreBackup).not.toHaveBeenCalled();
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(mockRestoreBackup).toHaveBeenCalledWith(7));
   });
 
   it('does not request or show browser persistence controls in Electron', async () => {
@@ -163,7 +174,9 @@ describe('BackupsSection', () => {
 
     render(<BackupsSection />);
 
-    expect(await screen.findByRole('heading', { name: 'Automatic backups' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Everything lives on this device' }),
+    ).toBeInTheDocument();
     expect(mockCheckPersistentStorage).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Request persistence' })).not.toBeInTheDocument();
   });
@@ -186,6 +199,10 @@ describe('BackupsSection', () => {
     expect(screen.getByText('No restore points yet.')).toHaveStyle({ opacity: '0' });
     expect(screen.getByRole('list')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('list')).not.toBeInTheDocument());
+    // Let the cards finish arriving: unmounting mid-animation makes happy-dom reject.
+    await waitFor(() =>
+      expect(document.getElementById('settings-backups')).toHaveStyle({ opacity: '1' }),
+    );
   });
 
   it('brings a new restore point in through the list transition', async () => {
@@ -204,5 +221,27 @@ describe('BackupsSection', () => {
     view.rerender(<BackupsSection />);
 
     expect(screen.getAllByRole('listitem')[1]).toHaveStyle({ opacity: '0' });
+  });
+
+  it('forces a restore point when Back up is pressed and confirms with a tick', async () => {
+    render(<BackupsSection />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back up' }));
+
+    await waitFor(() => expect(mockTakeAutoBackup).toHaveBeenCalledWith(true));
+    expect(await screen.findByRole('button', { name: 'Backed up' })).toBeInTheDocument();
+    expect(screen.getByText('Backed up just now')).toBeInTheDocument();
+  });
+
+  it('shows a stale backup in warning colour and a recent one as backed up', async () => {
+    mockBackups = [
+      { id: 7, createdAt: Date.now() - 20 * 24 * 60 * 60 * 1000, deckCount: 1, cardCount: 2 },
+    ];
+    const view = render(<BackupsSection />);
+    expect(await screen.findByText(/^Last backup /)).toHaveClass('text-warning-fg');
+
+    mockBackups = [{ id: 8, createdAt: Date.now() - 60 * 60 * 1000, deckCount: 1, cardCount: 2 }];
+    view.rerender(<BackupsSection />);
+    expect(await screen.findByText(/^Backed up /)).toHaveClass('text-positive');
   });
 });
