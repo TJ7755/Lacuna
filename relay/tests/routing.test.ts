@@ -74,9 +74,9 @@ describe('parseRoute', () => {
       id: 'aabbccddeeff00112233445566778899',
       slot: 'meta',
     });
-    expect(parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899/notes')).toEqual(
-      { kind: 'share-slot-invalid' },
-    );
+    expect(
+      parseRoute('https://relay.example/shares/aabbccddeeff00112233445566778899/notes'),
+    ).toEqual({ kind: 'share-slot-invalid' });
   });
 
   it('recovers a route after a rewrite that collapses the pathname to /api', () => {

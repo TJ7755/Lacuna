@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The relay's anonymous channel and share mint limits (10 per hour per address) now
+  live in the blob store, sharing the AI pairing limiter in `relay/src/rateLimit.ts`,
+  instead of per-isolate memory keyed on the first `x-forwarded-for` hop. On Vercel the
+  address is taken from `x-vercel-forwarded-for`, so a forged `x-forwarded-for` can no
+  longer reset the count, and recycling the isolate no longer clears it (#333)
+
 - The AI pairing code is no longer sent in the request path. The MCP client now claims
   with `POST /ai/claim` and an `X-Lacuna-Pairing-Code` header, so the capability stays
   out of platform, CDN and upstream access logs; the code is compared in constant time.
