@@ -27,3 +27,6 @@ electron/dist-electron/
 .lmo/
 .freebuff/
 /.ai-invites/
+
+# Claude Code agent worktrees
+.claude/worktrees/
