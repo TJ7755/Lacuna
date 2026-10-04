@@ -5,7 +5,6 @@ import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
 import {
   useCourse,
   useLessons,
@@ -18,23 +17,24 @@ import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyt
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { buildQuestionAnalytics } from '../questions/analytics';
+import { Rise } from '../components/analytics/Arrival';
+import { KpiRow } from '../components/analytics/KpiRow';
+import { CourseForecastCard } from '../components/analytics/CourseForecastCard';
+import { reviewVolume, studyTimeSeries } from '../components/analytics/prepare';
+import { masteryFraction } from '../fsrs/progress';
 
 function CourseAnalyticsSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <div className="mb-8 space-y-3">
-        <div className="h-10 w-56 animate-pulse rounded bg-ink/10" />
+      <div className="mb-8 pt-6 md:pt-8">
+        <div className="h-11 w-56 animate-pulse rounded-lg bg-ink/10" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={i < 2 ? 'lg:col-span-2' : undefined}>
-            <div className="rounded-2xl border border-line bg-surface p-5">
-              <div className="mb-4 space-y-2">
-                <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
-              </div>
-              <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
-            </div>
-          </div>
+          <div
+            key={i}
+            className={`h-64 animate-pulse rounded-3xl bg-ink/5 ${i < 2 ? 'lg:col-span-2' : ''}`}
+          />
         ))}
       </div>
     </div>
@@ -54,6 +54,15 @@ export function CourseAnalytics() {
   const reviewHistory = useCourseReviewHistory(courseId);
   const history = useCourseSessionHistory(courseId);
   const questionData = useCourseQuestionData(courseId);
+  const figures = useMemo(() => {
+    if (!course || !cards || !reviewHistory) return null;
+    const now = Date.now();
+    return {
+      mastery: Math.round(masteryFraction(cards, course) * 100),
+      reviews: reviewVolume(cards, 30, now, reviewHistory).reduce((sum, p) => sum + p.reviews, 0),
+      minutes: studyTimeSeries(cards, 30, now, reviewHistory).reduce((sum, p) => sum + p.minutes, 0),
+    };
+  }, [course, cards, reviewHistory]);
   const questionAnalytics = useMemo(
     () =>
       questionData ? buildQuestionAnalytics(questionData.questions, questionData.attempts) : null,
@@ -90,30 +99,46 @@ export function CourseAnalytics() {
   }
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="relative mb-8 pt-6 md:pt-8"
-      >
-        <div className="relative">
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Analytics</h1>
-        </div>
-      </motion.header>
+    <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-4 pb-8 md:gap-6`}>
+      <Rise index={0} className="pt-6 md:pt-8">
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+          Analytics
+        </h1>
+      </Rise>
 
-      <QuestionAnalyticsSection analytics={questionAnalytics} />
+      {figures && (
+        <Rise index={1}>
+          <KpiRow
+            label="Summary"
+            multiplier={m}
+            items={[
+              { label: 'Mastery', value: figures.mastery, unit: '%' },
+              { label: 'Cards', value: cards.length },
+              { label: 'Reviews, 30 days', value: figures.reviews },
+              { label: 'Study time, 30 days', value: figures.minutes, unit: 'min' },
+            ]}
+          />
+        </Rise>
+      )}
 
-      <div className="mb-4">
+      <Rise index={2}>
+        <CourseForecastCard course={course} lessons={lessons} cards={cards} multiplier={m} />
+      </Rise>
+
+      <Rise index={3}>
+        <QuestionAnalyticsSection analytics={questionAnalytics} />
+      </Rise>
+
+      <Rise index={4} className="flex flex-col gap-4 md:gap-6">
         <h2 className="font-display text-2xl text-ink">Cards</h2>
-      </div>
-      <CourseAnalyticsCharts
-        course={course}
-        lessons={lessons}
-        cards={cards}
-        reviewHistory={reviewHistory}
-        history={history}
-      />
+        <CourseAnalyticsCharts
+          course={course}
+          lessons={lessons}
+          cards={cards}
+          reviewHistory={reviewHistory}
+          history={history}
+        />
+      </Rise>
     </div>
   );
 }

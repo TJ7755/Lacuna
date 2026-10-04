@@ -347,3 +347,26 @@ export function lessonBreakdown(
       };
     });
 }
+
+/** Review timestamps grouped by card, in the shape the review heatmap reads. */
+export function reviewActivityFromHistory(
+  reviewHistory: readonly ReviewHistoryEntry[],
+): Map<string, number[]> {
+  const activity = new Map<string, number[]>();
+  for (const entry of reviewHistory) {
+    const list = activity.get(entry.cardId);
+    if (list) list.push(entry.timestamp);
+    else activity.set(entry.cardId, [entry.timestamp]);
+  }
+  return activity;
+}
+
+/**
+ * Observed recall across every review, weighting each age band by its review count.
+ * Null when nothing has been reviewed, so callers can show a dash rather than 0%.
+ */
+export function overallRecall(points: readonly RetentionByAgePoint[]): number | null {
+  const total = points.reduce((sum, point) => sum + point.count, 0);
+  if (total === 0) return null;
+  return Math.round(points.reduce((sum, point) => sum + point.retention * point.count, 0) / total);
+}

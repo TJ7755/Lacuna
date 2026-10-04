@@ -1,20 +1,9 @@
 import { useMemo } from 'react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { ChartCard } from './ChartCard';
-import { FadeInView } from '../ui/FadeInView';
+import { AreaTrend, Columns } from './charts';
+import { LessonBreakdownCard } from './SeriesCards';
 import { useChartColours } from './useChartColours';
+import { FadeInView } from '../ui/FadeInView';
 import { lessonBreakdown, reviewVolume, stabilityProfile, trajectorySeries } from './prepare';
 import type { Card, Course, Lesson, SessionHistoryEntry } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
@@ -26,6 +15,9 @@ interface CourseAnalyticsProps {
   reviewHistory: ReviewHistoryEntry[];
   history: SessionHistoryEntry[];
 }
+
+/** Lets a chart card fill its grid row so neighbours line up. */
+const CELL = '[&>section]:h-full';
 
 /**
  * Course-scoped analytics: predicted exam-day trajectory, stability profile and
@@ -52,25 +44,11 @@ export function CourseAnalytics({
     () => lessonBreakdown(lessons, cards, course),
     [lessons, cards, course],
   );
-  const hasReviews = useMemo(() => reviewHistory.length > 0, [reviewHistory]);
-
-  const axisProps = {
-    stroke: c.inkFaint,
-    tick: { fill: c.inkFaint, fontSize: 11 },
-    tickLine: false,
-  };
-
-  const tooltipStyle = {
-    background: c.surface,
-    border: `1px solid ${c.line}`,
-    borderRadius: 10,
-    color: c.ink,
-    fontSize: 13,
-  } as const;
+  const hasReviews = reviewHistory.length > 0;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <FadeInView className="lg:col-span-2" delay={0} y={0}>
+    <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+      <FadeInView className={`${CELL} lg:col-span-2`} y={12}>
         <ChartCard
           title="Predicted exam-day score"
           data={{
@@ -80,106 +58,25 @@ export function CourseAnalytics({
           emptyDrawing="prediction"
           empty={trajectory.length < 2}
           emptyMessage="Study this course to start plotting your trajectory."
-          delay={0}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-              <defs>
-                <linearGradient id="courseTrajFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="label" {...axisProps} />
-              <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v) => [`${v}%`, 'Predicted']}
-                cursor={{ stroke: c.line }}
-              />
-              <Area
-                type="monotone"
-                dataKey="retrievability"
-                isAnimationActive={false}
-                stroke={c.accent}
-                strokeWidth={2}
-                fill="url(#courseTrajFill)"
-                dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
-                activeDot={{ r: 4 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <AreaTrend
+            data={trajectory}
+            xKey="label"
+            yKey="retrievability"
+            name="Predicted"
+            colour={c.accent}
+            domain={[0, 100]}
+            format={(value) => `${value}%`}
+            tickFormat={(value) => `${value}%`}
+          />
         </ChartCard>
       </FadeInView>
 
-      <FadeInView className="lg:col-span-2" delay={0.06} y={0}>
-        <ChartCard
-          title="Lesson breakdown"
-          data={{
-            columns: ['Lesson', 'Cards', 'Mastery (%)', 'Completion (%)'],
-            rows: breakdown.map((point) => [
-              point.name,
-              point.cardCount,
-              point.masteryPct,
-              point.completionPct,
-            ]),
-          }}
-          emptyDrawing="course"
-          empty={breakdown.length === 0}
-          emptyMessage="This course has no lessons yet."
-          delay={0.06}
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={breakdown} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis
-                dataKey="name"
-                {...axisProps}
-                interval={0}
-                angle={-20}
-                textAnchor="end"
-                height={50}
-              />
-              <YAxis yAxisId="pct" domain={[0, 100]} unit="%" {...axisProps} width={40} />
-              <YAxis yAxisId="cards" orientation="right" allowDecimals={false} hide />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v, name) => {
-                  if (name === 'cardCount') return [v, 'Cards'];
-                  return [`${v}%`, name === 'masteryPct' ? 'Mastery' : 'Completion'];
-                }}
-              />
-              <Bar
-                yAxisId="pct"
-                dataKey="masteryPct"
-                isAnimationActive={false}
-                fill={c.accent}
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                yAxisId="pct"
-                dataKey="completionPct"
-                isAnimationActive={false}
-                fill={c.positive}
-                radius={[4, 4, 0, 0]}
-              />
-              <Line
-                yAxisId="cards"
-                type="monotone"
-                dataKey="cardCount"
-                isAnimationActive={false}
-                stroke={c.inkFaint}
-                strokeDasharray="4 4"
-                dot={{ r: 2.5, fill: c.inkFaint, strokeWidth: 0 }}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      <FadeInView className={`${CELL} lg:col-span-2`} y={12}>
+        <LessonBreakdownCard breakdown={breakdown} />
       </FadeInView>
 
-      <FadeInView delay={0.12} y={0}>
+      <FadeInView className={CELL} y={12}>
         <ChartCard
           title="Card stability profile"
           data={{
@@ -189,29 +86,20 @@ export function CourseAnalytics({
           emptyDrawing="stability"
           empty={cards.length === 0}
           emptyMessage="Add cards to see their stability profile."
-          delay={0.12}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="range" {...axisProps} interval={0} />
-              <YAxis allowDecimals={false} {...axisProps} width={32} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v) => [v, 'Cards']}
-              />
-              <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
-                {profile.map((entry, i) => (
-                  <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <Columns
+            data={profile}
+            xKey="range"
+            yKey="count"
+            name="Cards"
+            colour={c.accent}
+            xInterval={0}
+            muted={(row) => row.range === 'New'}
+          />
         </ChartCard>
       </FadeInView>
 
-      <FadeInView delay={0.18} y={0}>
+      <FadeInView className={CELL} y={12}>
         <ChartCard
           title="Review volume"
           data={{
@@ -221,26 +109,15 @@ export function CourseAnalytics({
           emptyDrawing="activity"
           empty={!hasReviews}
           emptyMessage="Your daily review counts will appear here."
-          delay={0.18}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
-              <YAxis allowDecimals={false} {...axisProps} width={32} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v) => [v, 'Reviews']}
-              />
-              <Bar
-                dataKey="reviews"
-                isAnimationActive={false}
-                fill={c.positive}
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <Columns
+            data={volume}
+            xKey="label"
+            yKey="reviews"
+            name="Reviews"
+            colour={c.positive}
+            xInterval={6}
+          />
         </ChartCard>
       </FadeInView>
     </div>

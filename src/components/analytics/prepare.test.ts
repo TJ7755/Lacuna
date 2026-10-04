@@ -3,6 +3,8 @@ import {
   globalTrajectorySeries,
   leechCountByCourse,
   lessonBreakdown,
+  overallRecall,
+  reviewActivityFromHistory,
   reviewVolume,
   retentionByAge,
 } from './prepare';
@@ -275,5 +277,30 @@ describe('globalTrajectorySeries', () => {
     ];
     const [point] = globalTrajectorySeries(history);
     expect(point.retrievability).toBe(75);
+  });
+});
+
+describe('overallRecall', () => {
+  it('weights each age band by its review count', () => {
+    expect(
+      overallRecall([
+        { ageLabel: 'a', retention: 100, count: 1 },
+        { ageLabel: 'b', retention: 50, count: 3 },
+        { ageLabel: 'c', retention: 0, count: 0 },
+      ]),
+    ).toBe(63);
+  });
+
+  it('is null before any review', () => {
+    expect(overallRecall([{ ageLabel: 'a', retention: 0, count: 0 }])).toBeNull();
+  });
+});
+
+describe('reviewActivityFromHistory', () => {
+  it('groups review timestamps by card', () => {
+    const entry = (cardId: string, timestamp: number) => ({ cardId, timestamp }) as ReviewHistoryEntry;
+    const activity = reviewActivityFromHistory([entry('a', 1), entry('b', 2), entry('a', 3)]);
+    expect(activity.get('a')).toEqual([1, 3]);
+    expect(activity.get('b')).toEqual([2]);
   });
 });
