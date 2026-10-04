@@ -1,0 +1,1 @@
+- Added a 48px `favicon.ico` and PNG favicons, linked from the landing and comparison pages, so Google Search can show the Lacuna logo instead of a placeholder.
