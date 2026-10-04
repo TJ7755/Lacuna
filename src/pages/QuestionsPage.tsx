@@ -1,5 +1,6 @@
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
 import { useCourse } from '../state/useCourseData';
@@ -17,6 +18,7 @@ import '../components/question-sets/question-sets.css';
 
 export function QuestionsPage() {
   const { courseId } = useParams<{ courseId: string }>();
+  const [params] = useSearchParams();
   const course = useCourse(courseId);
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -35,6 +37,7 @@ export function QuestionsPage() {
       return { sets: [], drafts: [], legacy: 0, error: String(cause) };
     }
   }, [courseId]);
+  if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   if (!course || !data) return <p className="p-8 text-ink-soft">Loading Questions…</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
   const draftIds = new Set(data.drafts.map((d) => d.content.id));
@@ -59,11 +62,10 @@ export function QuestionsPage() {
     }
   };
   return (
-    <div className="qs-library">
-      <header className="qs-library-header">
+    <div className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <div>
-          <p className="qs-kicker">{course.name}</p>
-          <h1>Questions</h1>
+          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Questions</h1>
         </div>
         {author && (
           <Button onClick={() => void create()} disabled={creating}>
