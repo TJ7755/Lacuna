@@ -47,6 +47,14 @@
   lookup can no longer label a request with the wrong course. A failed lookup is caught and
   leaves the neutral label. (#335)
 
+- Curricular Practice now records its milestone against the same fixed lesson prefix the
+  study-flow snapshot checks, while still studying the wider live pool. Previously a
+  completed step stored the live-scope fingerprint, never matched, and was offered again.
+  Existing milestones are reconciled at read time with no schema change: a completed
+  record whose fingerprint equals the node's current live scope still counts as complete,
+  any other mismatch leaves the step incomplete (offered once, then rewritten correctly).
+  No review history is touched (#358).
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
