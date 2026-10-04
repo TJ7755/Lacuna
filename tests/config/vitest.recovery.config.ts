@@ -18,6 +18,7 @@ export default defineConfig({
       'src/hooks/useStorageQuotaWarning.test.ts',
       'src/db/backups.test.ts',
       'src/db/portability.test.ts',
+      'src/db/portability.questions.test.ts',
       'src/db/assets.test.ts',
     ],
     setupFiles: ['./tests/setup.ts'],
