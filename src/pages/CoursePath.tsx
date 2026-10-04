@@ -8,13 +8,14 @@ import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { usePendingMergeReview } from '../state/useCourseData';
+import { useCourseForecast } from '../state/ShellCourseData';
 import { useCourseStudyFlowRecords } from '../state/useCourseStudyFlowRecords';
 import { computeCourseSummaries } from '../state/courseSummaries';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
+import { buildPath, lessonEffectiveReleaseDates } from '../course/path';
 import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
 import {
   currentAssessmentPracticeContext,
@@ -28,13 +29,15 @@ import { AssessmentDetailSheet } from '../components/course/AssessmentDetailShee
 import { lockHintFor } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
-import { HeaderStats } from '../components/course/HeaderStats';
-import { MS_PER_DAY } from '../fsrs/params';
 import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
-import { PlayIcon } from '../components/ui/icons';
+import { CalendarIcon, CardsIcon, GaugeIcon } from '../components/ui/icons';
+import { Menu } from '../components/ui/Menu';
+import { cn } from '../components/ui/cn';
+import { forecastStatus } from '../components/dashboard/ForecastChart';
+import { formatDate, formatShortDate } from '../utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';
 import { isLessonAuthoringMode } from '../course/lessonViewMode';
@@ -96,6 +99,8 @@ export function CoursePath() {
     )[records.course.id];
   }, [records]);
   const pendingUpdate = usePendingMergeReview(courseId);
+  // The keep-to-schedule forecast, shared with Today and the sidebar.
+  const forecast = useCourseForecast(courseId);
   const archived = course?.archived === true;
   const authoring = course ? !archived && isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(
@@ -364,9 +369,6 @@ export function CoursePath() {
   // Release-date map for the "locked" hint (see lockHintFor below) — only
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
-  // Course position (addendum J): counts non-extension lessons reached.
-  // This is pacing — it has nothing to do with mastery or FSRS retention.
-  const { reached, total } = pathPosition(visibleNodes);
 
   // Header stats: nearest exam + urgency + dueCardCount use the same maths as
   // LessonView's (see courseHeaderStats — due here means scheduled reviews
@@ -381,7 +383,6 @@ export function CoursePath() {
     now,
     lessons,
   );
-  const masteryPct = Math.round(mastery * 100);
 
   // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
@@ -394,72 +395,120 @@ export function CoursePath() {
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
+  const cardTotal = courseCards.length;
+  const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
+  const status = forecast ? forecastStatus(forecast) : undefined;
+  const forecastPct = Math.round((forecast?.atEnd ?? mastery) * 100);
+  const otherWays = [
+    {
+      label: 'Practise freely',
+      description: 'Due reviews without waiting for the schedule',
+      disabled: (studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0,
+      onSelect: () => navigate(`/course/${courseId}/study?review=due`),
+    },
+    ...assessments
+      .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
+      .map((assessment) => ({
+        label: `Revise for ${assessment.name}`,
+        description: `Ready by ${formatShortDate(assessment.examDate as number, assessment.timeZone ?? course.timeZone)}`,
+        onSelect: () =>
+          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
+      })),
+    {
+      label: 'Questions',
+      description: 'Exam-style problems for this course',
+      onSelect: () => navigate(`/course/${courseId}/questions`),
+    },
+  ];
   return (
-    <div className={`${COURSE_PAGE_FRAME} course-overview`}>
-      <CourseHeader
-        className="course-overview-header"
-        title={course.name}
-        onRename={
-          authoring
-            ? async (name) => {
-                try {
-                  await updateCourse(course.id, { name });
-                } catch (error) {
-                  notify(
-                    error instanceof Error ? error.message : 'Could not rename the course.',
-                    'negative',
-                  );
-                  throw error;
+    <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-7`}>
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
+        <CourseHeader
+          className="min-w-0 flex-[1_1_320px] py-0 md:py-0"
+          title={course.name}
+          onRename={
+            authoring
+              ? async (name) => {
+                  try {
+                    await updateCourse(course.id, { name });
+                  } catch (error) {
+                    notify(
+                      error instanceof Error ? error.message : 'Could not rename the course.',
+                      'negative',
+                    );
+                    throw error;
+                  }
                 }
-              }
-            : undefined
-        }
-        renameLabel="course"
-      >
-        <div className="course-header-actions">
-          <HeaderStats
-            compact
-            dueCount={dueCardCount}
-            masteryPct={masteryPct}
-            daysToExam={
-              nearestExam === undefined
-                ? undefined
-                : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
-            }
-            totalCards={courseCards.length}
-            unseenCount={
-              courseCards.filter((card) => card.lastReviewed === null || card.state === 0).length
-            }
-            lessonProgress={{ reached, total }}
-          />
-          {!archived && (
-            <div className="course-study-actions">
-              <Button variant="primary" onClick={() => openStudySheet(courseId)}>
-                <PlayIcon width={18} height={18} />
-                Study
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0}
-                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+              : undefined
+          }
+          renameLabel="course"
+        >
+          <div className="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-ink-soft">
+            {nearestExam !== undefined && (
+              <span className="inline-flex items-center gap-2">
+                <CalendarIcon width={16} height={16} aria-hidden="true" />
+                Exam{' '}
+                <strong className="text-ink">{formatDate(nearestExam, course.timeZone)}</strong>
+              </span>
+            )}
+            <Link
+              to={`/course/${courseId}/analytics`}
+              className={cn(
+                'inline-flex items-center gap-2 hover:underline',
+                status === 'ahead'
+                  ? 'text-positive'
+                  : status === 'behind'
+                    ? 'text-warning-fg'
+                    : 'text-ink-soft',
+              )}
+              aria-label={`${forecastPct}% ${nearestExam !== undefined ? 'exam-day forecast' : 'kept fresh'}, open course analytics`}
+            >
+              <GaugeIcon width={16} height={16} aria-hidden="true" />
+              <strong>{forecastPct}%</strong>
+            </Link>
+            <span className="inline-flex items-center gap-2">
+              <CardsIcon width={16} height={16} aria-hidden="true" />
+              {cardTotal} {cardTotal === 1 ? 'card' : 'cards'} in {lessonTotal}{' '}
+              {lessonTotal === 1 ? 'lesson' : 'lessons'}
+            </span>
+          </div>
+        </CourseHeader>
+        {!archived && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              variant="primary"
+              className="min-h-12 px-[22px]"
+              onClick={() => openStudySheet(courseId)}
+            >
+              Study{dueCardCount > 0 ? ` ${dueCardCount}` : ''}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                Practice Now
-              </Button>
-            </div>
-          )}
-        </div>
-      </CourseHeader>
-      <div className="course-progress-row">
-        <span>
-          {reached} / {total} lessons reached
-        </span>
-        {!archived && pendingUpdate && (
-          <Link to={`/course/${courseId}/updates`} className="text-accent underline">
-            Review updates
-          </Link>
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </Button>
+            <Menu label="Other ways to study" items={otherWays} chevron size="md">
+              Other ways
+            </Menu>
+          </div>
         )}
       </div>
+      {!archived && pendingUpdate && (
+        <Link
+          to={`/course/${courseId}/updates`}
+          className="self-start rounded-full bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-ink"
+        >
+          Review updates
+        </Link>
+      )}
       {archived && <ArchivedCourseRestoreNotice />}
       <CourseOverview
         courseId={course.id}

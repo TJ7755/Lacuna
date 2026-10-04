@@ -48,7 +48,7 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
   return (
     <div
       ref={container}
-      className="course-add-control"
+      className="relative z-[5] h-11 w-[84px] shrink-0"
       onBlur={(event) => {
         if (
           event.relatedTarget instanceof Node &&
@@ -58,15 +58,19 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
       }}
     >
       <motion.div
-        className={`course-add-surface ${open ? 'is-open' : ''}`}
+        className={`absolute right-0 top-0 overflow-hidden border bg-surface-raised ${
+          open
+            ? 'border-transparent shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]'
+            : 'border-line-strong'
+        }`}
         // Animate this isolated surface's dimensions, never a scale inherited by its text.
         initial={false}
-        animate={{ width: open ? 216 : 68, height: open ? 186 : 44 }}
+        animate={{ width: open ? 216 : 84, height: open ? 190 : 44, borderRadius: open ? 18 : 22 }}
         transition={transition}
       >
         <motion.button
           ref={trigger}
-          className="course-button course-add-trigger"
+          className="absolute right-0 top-0 flex min-h-[42px] items-center gap-2 px-4 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]"
           type="button"
           aria-expanded={open}
           aria-controls={optionsId}
@@ -91,7 +95,7 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
                 id={optionsId}
                 role="group"
                 aria-label="Add to course"
-                className="course-add-options"
+                className="absolute right-0 top-[44px] flex w-[214px] flex-col p-1.5"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -101,7 +105,7 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
                   <motion.button
                     key={name}
                     type="button"
-                    className="course-button"
+                    className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 text-sm font-medium text-ink hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-offset-[-3px]"
                     whileTap={reduced ? undefined : { scale: 0.97 }}
                     transition={transition}
                     onClick={() => {

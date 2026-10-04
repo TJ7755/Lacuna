@@ -81,7 +81,7 @@ export function CourseHeader({
   return (
     <header className={cn('relative py-6 md:py-8', className)}>
       <div className="relative">
-        <div className="mb-5 flex min-w-0 items-center gap-2">
+        <div className="mb-2.5 flex min-w-0 items-center gap-2">
           <AnimatePresence initial={false} mode="popLayout">
             {editingTitle ? (
               <motion.input
@@ -116,7 +116,7 @@ export function CourseHeader({
                 exit={motionMultiplier > 0 ? { opacity: 0, y: -3 } : undefined}
                 transition={motionTransition('feedback', motionMultiplier)}
                 className={cn(
-                  'min-w-0 break-words font-display text-4xl tracking-tight md:text-5xl',
+                  'min-w-0 break-words font-display text-4xl leading-[1.02] tracking-[-0.04em] md:text-[44px]',
                   onRename && 'cursor-text',
                 )}
               >

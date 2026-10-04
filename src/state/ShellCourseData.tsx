@@ -164,6 +164,12 @@ export function useSidebarData(): SidebarData | undefined {
   return useShellCourseData()?.sidebar;
 }
 
+/** One course's keep-to-schedule forecast, or undefined outside the app shell. */
+export function useCourseForecast(courseId: string | undefined): CourseForecast | undefined {
+  const data = useContext(ShellCourseDataContext);
+  return courseId && data ? data.sidebar.forecasts[courseId] : undefined;
+}
+
 export function useCourseDashboardData(): CourseDashboardData | undefined {
   return useShellCourseData()?.dashboard;
 }

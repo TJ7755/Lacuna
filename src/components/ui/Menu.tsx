@@ -3,12 +3,16 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { Button } from './Button';
 import { cn } from './cn';
+import { ChevronDownIcon } from './icons';
+import { MOTION_EASING } from './motion';
 
 export interface MenuItem {
   /** Visible label. Also the accessible name, so write it as the action it performs. */
   label: string;
   onSelect: () => void;
   icon?: ReactNode;
+  /** A short second line under the label. */
+  description?: string;
   disabled?: boolean;
 }
 
@@ -20,6 +24,10 @@ interface MenuProps {
   items: MenuItem[];
   /** Which edge of the trigger the panel aligns to. */
   align?: 'start' | 'end';
+  /** Show a chevron after the trigger contents that turns as the menu opens. */
+  chevron?: boolean;
+  /** Trigger height and weight: the compact toolbar size, or a full-size control. */
+  size?: 'sm' | 'md';
   className?: string;
 }
 
@@ -29,7 +37,15 @@ interface MenuProps {
  * Deliberately minimal: one trigger, a flat list, no submenus or checkable items.
  * If a menu here ever needs those, it has outgrown this component and wants its own.
  */
-export function Menu({ children, label, items, align = 'end', className }: MenuProps) {
+export function Menu({
+  children,
+  label,
+  items,
+  align = 'end',
+  chevron = false,
+  size = 'sm',
+  className,
+}: MenuProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const [open, setOpen] = useState(false);
@@ -128,15 +144,29 @@ export function Menu({ children, label, items, align = 'end', className }: MenuP
       <Button
         ref={triggerRef}
         variant="secondary"
-        size="sm"
+        size={size}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => (open ? close(false) : setOpen(true))}
         onKeyDown={onTriggerKeyDown}
+        className={cn(
+          size === 'md' && 'min-h-12 px-5',
+          open && 'border-ink bg-ink text-paper hover:border-ink',
+        )}
       >
         {children}
+        {chevron && (
+          <motion.span
+            aria-hidden="true"
+            className="inline-flex"
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={{ duration: 0.28 * multiplier, ease: MOTION_EASING.standard }}
+          >
+            <ChevronDownIcon width={16} height={16} />
+          </motion.span>
+        )}
       </Button>
 
       <AnimatePresence>
@@ -146,18 +176,25 @@ export function Menu({ children, label, items, align = 'end', className }: MenuP
             role="menu"
             aria-label={label}
             onKeyDown={onMenuKeyDown}
-            initial={multiplier > 0 ? { opacity: 0, y: -4 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            exit={multiplier > 0 ? { opacity: 0, y: -4 } : undefined}
-            transition={{ duration: 0.12 * multiplier, ease: 'easeOut' }}
+            initial={multiplier > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={multiplier > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
+            transition={{ duration: 0.22 * multiplier, ease: MOTION_EASING.standard }}
             className={cn(
-              'absolute z-30 mt-2 min-w-56 overflow-hidden rounded-xl border border-line-strong',
-              'bg-surface-raised p-1 shadow-lg shadow-black/10',
-              align === 'end' ? 'right-0' : 'left-0',
+              'absolute z-30 mt-2 min-w-56 overflow-hidden rounded-[18px] bg-surface-raised p-1.5',
+              'shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]',
+              align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
             )}
           >
             {items.map((item, index) => (
-              <button
+              <motion.button
+                initial={multiplier > 0 ? { opacity: 0, y: -3 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.18 * multiplier,
+                  delay: (0.04 + index * 0.025) * multiplier,
+                  ease: MOTION_EASING.standard,
+                }}
                 key={item.label}
                 ref={(node) => {
                   itemRefs.current[index] = node;
@@ -172,15 +209,22 @@ export function Menu({ children, label, items, align = 'end', className }: MenuP
                 }}
                 style={{ transitionDuration: `${100 * multiplier}ms` }}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm',
+                  'flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm',
                   'text-ink transition-colors duration-100 hover:bg-ink/5',
                   'focus-visible:bg-ink/5 focus-visible:outline-none',
                   'disabled:pointer-events-none disabled:opacity-40',
                 )}
               >
                 {item.icon && <span className="text-ink-faint">{item.icon}</span>}
-                {item.label}
-              </button>
+                {item.description ? (
+                  <span className="flex flex-col">
+                    <strong className="font-bold">{item.label}</strong>
+                    <span className="text-[13px] text-ink-faint">{item.description}</span>
+                  </span>
+                ) : (
+                  item.label
+                )}
+              </motion.button>
             ))}
           </motion.div>
         )}

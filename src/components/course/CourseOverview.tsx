@@ -6,12 +6,12 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonNodeDetail } from './LessonNode';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { formatDate } from '../../utils/datetime';
+import { formatShortDate } from '../../utils/datetime';
+import { MOTION_EASING } from '../ui/motion';
+import { cn } from '../ui/cn';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
-import { Button } from '../ui/Button';
 import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
-import './course-overview.css';
 
 interface CourseOverviewProps {
   courseId: string;
@@ -38,43 +38,37 @@ interface CourseOverviewProps {
   onAdd: (kind: Exclude<CourseAddKind, 'lesson'>) => void;
 }
 
+const CARD =
+  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+const SECURE = 90;
+
+/**
+ * The course as a list of lessons in order, with checkpoints and practice stops where
+ * they fall, beside the course's assessments. Each lesson shows its number, state and a
+ * progress bar; in Author mode lessons can be dragged or moved with Alt and the arrows.
+ */
 export function CourseOverview(props: CourseOverviewProps) {
   const { nodes, authoring, archived, practiceProgress } = props;
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingLesson, setAddingLesson] = useState(false);
-  const selected =
-    nodes.find((node) => node.id === selectedId) ??
-    nodes.find((node) => node.nodeType === 'lesson' && node.status === 'available') ??
-    nodes[0];
   const [speed] = useMotionSpeed();
-  const multiplier = speedMultiplier(speed);
-  const detailRef = useRef<HTMLDivElement>(null);
+  const m = speedMultiplier(speed);
   const addRef = useRef<HTMLDivElement>(null);
   const restoreAdd = () => {
     setAddingLesson(false);
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
-
-  function select(node: PathNode) {
-    setSelectedId(node.id);
-    // On a narrow screen the companion follows the path; bring the selected
-    // content into view rather than leaving the tap's result below the fold.
-    if (window.matchMedia('(max-width: 900px)').matches) {
-      requestAnimationFrame(() => {
-        detailRef.current?.focus({ preventScroll: true });
-        detailRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-      });
-    }
-  }
+  let lessonNumber = 0;
 
   return (
-    <div className="course-overview-grid">
-      <section className="course-paper" aria-labelledby="course-path-heading">
-        <div className="course-section-heading">
-          <div>
-            <h2 id="course-path-heading">Course</h2>
-            <span>{props.lessonCount} lessons</span>
-          </div>
+    <div className="flex flex-wrap items-start gap-6">
+      <section
+        className={cn(CARD, 'min-w-0 flex-[2_1_520px] px-5 pb-3 pt-6 md:px-7 md:pt-7')}
+        aria-labelledby="course-path-heading"
+      >
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 id="course-path-heading" className="font-display text-[22px]">
+            Lessons
+          </h2>
           {authoring && (
             <div ref={addRef}>
               <AddCourseControl
@@ -87,7 +81,7 @@ export function CourseOverview(props: CourseOverviewProps) {
           )}
         </div>
         {authoring && addingLesson && (
-          <div className="mt-4">
+          <div className="mb-3">
             <AddLessonControl
               initiallyOpen
               courseId={props.courseId}
@@ -107,236 +101,251 @@ export function CourseOverview(props: CourseOverviewProps) {
         {nodes.length === 0 ? (
           <p className="py-12 text-center text-sm text-ink-soft">This course has no lessons yet.</p>
         ) : (
-          <div className="course-path" aria-label="Course path">
+          <ol className="m-0 list-none p-0" aria-label="Course path">
             {nodes.map((node, index) => {
+              const arrive = {
+                initial: m > 0 ? { opacity: 0, y: 10 } : false,
+                animate: { opacity: 1, y: 0 },
+                transition: {
+                  duration: 0.42 * m,
+                  delay: Math.min(index, 8) * 0.04 * m,
+                  ease: MOTION_EASING.emphasised,
+                },
+              } as const;
+
+              if (node.nodeType === 'checkpoint') {
+                const date = node.assessment.examDate;
+                return (
+                  <motion.li key={node.id} {...arrive} className="my-1.5 ml-[18px]">
+                    <div className="flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm">
+                      <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
+                      <button
+                        type="button"
+                        disabled={archived}
+                        onClick={() => props.onAssessmentOpen(node.assessment.id)}
+                        aria-label={`${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${node.assessment.name}`}
+                        className="min-h-11 flex-1 text-left"
+                      >
+                        <strong className="font-bold">{node.assessment.name}</strong>
+                        {date !== undefined && (
+                          <span className="text-ink-faint">
+                            {' · '}
+                            {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)}
+                          </span>
+                        )}
+                      </button>
+                      {!archived && (
+                        <button
+                          type="button"
+                          onClick={() => props.onAssessmentPractise(node.assessment.id)}
+                          className="min-h-11 px-1 font-bold text-accent-ink hover:underline"
+                        >
+                          Revise
+                        </button>
+                      )}
+                    </div>
+                  </motion.li>
+                );
+              }
+
               const lesson = node.nodeType === 'lesson' ? node : undefined;
-              const checkpoint = node.nodeType === 'checkpoint' ? node : undefined;
               const practice =
                 node.nodeType === 'practice-manual' || node.nodeType === 'practice-auto'
                   ? node
                   : undefined;
               const progress = practice ? practiceProgress.get(practice.nodeKey) : undefined;
-              const name = nodeName(node);
+              const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
               const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
               const reorder = lesson && authoring ? props.reorderFor(lesson.lesson.id) : undefined;
-              const label = checkpoint
-                ? `${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${name}`
-                : practice
-                  ? `Manual practice: ${name}, ${Math.round((progress?.fraction ?? 0) * 100)}% secured`
-                  : lesson?.status === 'locked' && authoring
-                    ? `${name}, locked for study`
-                    : name;
+              if (lesson) lessonNumber += 1;
+              const name = lesson
+                ? lesson.lesson.name
+                : (practice?.practiceNode?.name ?? 'Practice');
+              const pct = lesson
+                ? (detail?.masteryPct ?? 0)
+                : Math.round((progress?.fraction ?? 0) * 100);
+              const done = status === 'completed';
+              const locked = status === 'locked';
+              const state = lesson
+                ? locked
+                  ? (props.lockHint(lesson.lesson.id) ?? 'Locked')
+                  : done && pct >= SECURE
+                    ? 'Secure'
+                    : `${detail?.cardCount ?? 0} cards${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
+                : `${pct}% secured`;
+              const label = practice
+                ? `Manual practice: ${name}, ${pct}% secured`
+                : locked && authoring
+                  ? `${name}, locked for study`
+                  : name;
+              const open = () => {
+                if (lesson) props.onLessonOpen(lesson.lesson.id);
+                else if (practice) props.onPracticeOpen(practice);
+              };
+
               return (
-                <div
-                  className={`course-stop ${status} ${checkpoint ? 'course-checkpoint' : practice ? 'course-practice' : ''}`}
-                  key={node.id}
-                >
-                  {index < nodes.length - 1 && (
-                    <svg
-                      className="course-connector"
-                      viewBox="0 0 100 100"
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        vectorEffect="non-scaling-stroke"
-                        d={
-                          index % 2
-                            ? 'M 100 0 C 180 40, -80 60, 0 100'
-                            : 'M 0 0 C -80 40, 180 60, 100 100'
-                        }
-                      />
-                    </svg>
-                  )}
+                <motion.li key={node.id} {...arrive} className="relative flex flex-col">
                   <motion.button
                     ref={reorder?.registerElement}
                     type="button"
-                    className={`course-node ${selected?.id === node.id ? 'selected' : ''}`}
                     aria-label={label}
-                    aria-pressed={selected?.id === node.id}
                     aria-describedby={
                       reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined
                     }
                     aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
                     aria-roledescription={reorder?.enabled ? 'sortable lesson' : undefined}
-                    title={
-                      lesson?.status === 'locked' ? props.lockHint(lesson.lesson.id) : undefined
-                    }
+                    title={locked && lesson ? props.lockHint(lesson.lesson.id) : undefined}
+                    disabled={locked && !authoring && !archived}
                     onPointerDown={reorder?.onPointerDown}
                     onPointerMove={reorder?.onPointerMove}
                     onPointerUp={reorder?.onPointerUp}
                     onPointerCancel={reorder?.onPointerCancel}
                     onClickCapture={reorder?.onClickCapture}
                     onKeyDown={reorder?.onKeyDown}
-                    onClick={() =>
-                      checkpoint && !archived
-                        ? props.onAssessmentOpen(checkpoint.assessment.id)
-                        : select(node)
-                    }
+                    onClick={open}
                     style={{
                       x: reorder?.offset?.x ?? 0,
                       y: reorder?.offset?.y ?? 0,
                       zIndex: reorder?.lifted ? 30 : undefined,
                     }}
-                    whileTap={multiplier ? { scale: 0.97 } : undefined}
-                    transition={{ type: 'spring', visualDuration: 0.25 * multiplier, bounce: 0 }}
+                    whileTap={m ? { scale: 0.99 } : undefined}
+                    className={cn(
+                      'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
+                      'hover:bg-ink/[0.03] disabled:cursor-default',
+                      reorder?.lifted &&
+                        'bg-surface shadow-[0_18px_40px_-20px_hsl(var(--ink)/0.45)]',
+                    )}
                   >
-                    <span className="course-node-face">
-                      {checkpoint ? (
-                        <FlagIcon />
-                      ) : practice ? (
-                        <CardsIcon />
-                      ) : status === 'completed' ? (
-                        <CheckIcon />
-                      ) : status === 'locked' ? (
-                        <svg
-                          width="17"
-                          height="17"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          aria-hidden="true"
-                        >
-                          <rect x="5" y="10" width="14" height="11" rx="3" />
-                          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                        </svg>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 text-sm font-bold tabular-nums',
+                        done
+                          ? 'border-positive bg-positive text-surface'
+                          : locked
+                            ? 'border-line-strong bg-surface text-ink-faint'
+                            : 'border-ink bg-surface text-ink',
+                      )}
+                    >
+                      {practice ? (
+                        <CardsIcon width={16} height={16} />
+                      ) : done && pct >= SECURE ? (
+                        <CheckIcon width={16} height={16} />
                       ) : (
-                        String(
-                          nodes.slice(0, index + 1).filter((item) => item.nodeType === 'lesson')
-                            .length,
-                        ).padStart(2, '0')
+                        lessonNumber
                       )}
                     </span>
-                  </motion.button>
-                  <motion.div
-                    className="course-node-label"
-                    style={{
-                      x: reorder?.offset?.x ?? 0,
-                      y: reorder?.offset?.y ?? 0,
-                      zIndex: reorder?.lifted ? 30 : undefined,
-                    }}
-                  >
-                    <strong>{name}</strong>
-                    <span>
-                      {lesson
-                        ? `${props.detailForLesson(lesson.lesson.id).cardCount} cards${lesson.lesson.isExtension ? ' · Extension' : ''}`
-                        : checkpoint
-                          ? 'Checkpoint'
-                          : 'Practice'}
-                    </span>
-                    {authoring && practice && (
-                      <button
-                        type="button"
-                        className="course-edit-practice"
-                        aria-label={`Edit ${name}`}
-                        onClick={() => props.onPracticeEdit(practice)}
+                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <span className="flex justify-between gap-3">
+                        <span className={cn('truncate font-bold', locked && 'text-ink-soft')}>
+                          {name}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">
+                          {state}
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="block h-1 overflow-hidden rounded-full bg-line"
                       >
-                        <EditIcon width={14} height={14} />
-                      </button>
-                    )}
-                  </motion.div>
+                        <motion.span
+                          className={cn(
+                            'block h-1 origin-left rounded-full',
+                            done ? 'bg-positive' : 'bg-ink',
+                          )}
+                          style={{ width: `${locked ? 0 : pct}%` }}
+                          initial={m > 0 ? { scaleX: 0 } : false}
+                          animate={{ scaleX: 1 }}
+                          transition={{
+                            duration: 0.7 * m,
+                            delay: (0.15 + Math.min(index, 8) * 0.04) * m,
+                            ease: MOTION_EASING.emphasised,
+                          }}
+                        />
+                      </span>
+                    </span>
+                    <ChevronRightIcon
+                      width={16}
+                      height={16}
+                      className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
+                    />
+                  </motion.button>
+                  {authoring && practice && (
+                    <button
+                      type="button"
+                      aria-label={`Edit ${name}`}
+                      onClick={() => props.onPracticeEdit(practice)}
+                      className="absolute right-10 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
+                    >
+                      <EditIcon width={14} height={14} />
+                    </button>
+                  )}
                   {reorder?.dropMarker && (
                     <div
                       aria-hidden="true"
-                      className={`course-drop-marker ${reorder.dropMarker}`}
+                      className={cn(
+                        'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-accent',
+                        reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
+                      )}
                     />
                   )}
-                </div>
+                </motion.li>
               );
             })}
-          </div>
+          </ol>
         )}
       </section>
-      <aside>
-        {selected && (
-          <div className="course-companion" ref={detailRef} tabIndex={-1}>
-            <CourseNodeDetail key={selected.id} node={selected} {...props} />
-          </div>
-        )}
-        {props.assessments.length > 0 && (
-          <section className="course-deadlines" aria-label="Assessments">
-            <h2 className="course-eyebrow">On the horizon</h2>
-            {props.assessments.map((assessment) => (
-              <button
-                key={assessment.id}
-                type="button"
-                disabled={archived}
-                onClick={() => props.onAssessmentOpen(assessment.id)}
-              >
-                <FlagIcon width={17} height={17} />
-                <span>
-                  <strong>{assessment.name}</strong>
-                  <small>
-                    {assessment.examDate === undefined
-                      ? 'Steady retention'
-                      : formatDate(assessment.examDate, assessment.timeZone ?? props.timeZone)}
-                  </small>
-                </span>
-              </button>
-            ))}
+      {props.assessments.length > 0 && (
+        <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
+          <section
+            className={cn(CARD, 'flex flex-col gap-3.5 p-6')}
+            aria-labelledby="course-assessments-heading"
+          >
+            <h2 id="course-assessments-heading" className="font-display text-lg">
+              Assessments
+            </h2>
+            {props.assessments.map((assessment) => {
+              const date = assessment.examDate;
+              const zone = assessment.timeZone ?? props.timeZone;
+              return (
+                <button
+                  key={assessment.id}
+                  type="button"
+                  disabled={archived}
+                  onClick={() => props.onAssessmentOpen(assessment.id)}
+                  className="-mx-2 flex min-h-11 items-center gap-3.5 rounded-xl px-2 py-1 text-left transition-colors hover:bg-ink/[0.03]"
+                >
+                  <span className="w-11 shrink-0 text-center leading-tight">
+                    {date === undefined ? (
+                      <FlagIcon width={18} height={18} className="mx-auto text-ink-soft" />
+                    ) : (
+                      <>
+                        <span className="block font-display text-[22px] font-semibold tracking-tight tabular-nums">
+                          {new Date(date).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            timeZone: zone,
+                          })}
+                        </span>
+                        <span className="text-xs text-ink-faint">
+                          {new Date(date).toLocaleDateString('en-GB', {
+                            month: 'short',
+                            timeZone: zone,
+                          })}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate font-bold">{assessment.name}</strong>
+                    <span className="text-sm text-ink-faint">
+                      {assessment.kind === 'final' ? 'All lessons' : 'Checkpoint'}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </section>
-        )}
-      </aside>
-    </div>
-  );
-}
-
-function nodeName(node: PathNode): string {
-  if (node.nodeType === 'lesson') return node.lesson.name;
-  if (node.nodeType === 'checkpoint') return node.assessment.name;
-  return node.practiceNode?.name ?? 'Practice';
-}
-
-function CourseNodeDetail({ node, ...props }: CourseOverviewProps & { node: PathNode }) {
-  const lesson = node.nodeType === 'lesson' ? node : undefined;
-  const practice =
-    node.nodeType === 'practice-manual' || node.nodeType === 'practice-auto' ? node : undefined;
-  const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
-  const progress = practice ? props.practiceProgress.get(practice.nodeKey) : undefined;
-  const locked = lesson?.status === 'locked' && !props.authoring && !props.archived;
-  return (
-    <div className="course-detail">
-      <h2>{nodeName(node)}</h2>
-      {lesson?.lesson.description && <p>{lesson.lesson.description}</p>}
-      {detail && (
-        <div className="course-detail-meta">
-          <CardsIcon width={16} height={16} />
-          {detail.cardCount} cards<span>·</span>
-          {lesson?.status === 'completed'
-            ? 'Completed'
-            : lesson?.status === 'locked' && !props.archived
-              ? (props.lockHint(lesson.lesson.id) ?? 'Not yet unlocked')
-              : `${detail.masteryPct}% mastery`}
-        </div>
-      )}
-      {progress && <p className="mb-5">{Math.round(progress.fraction * 100)}% secured</p>}
-      <Button
-        variant="primary"
-        disabled={locked || (props.archived && !lesson)}
-        onClick={() => {
-          if (lesson) props.onLessonOpen(lesson.lesson.id);
-          else if (practice) props.onPracticeOpen(practice);
-          else if (node.nodeType === 'checkpoint') props.onAssessmentOpen(node.assessment.id);
-        }}
-      >
-        {lesson
-          ? locked
-            ? 'Lesson locked'
-            : 'Open lesson'
-          : practice
-            ? 'Practise'
-            : 'View checkpoint'}
-        <ChevronRightIcon width={17} height={17} />
-      </Button>
-      {progress?.assessment && !props.archived && (
-        <Button
-          variant="ghost"
-          className="mt-3"
-          onClick={() => props.onAssessmentPractise(progress.assessment!.assessmentId)}
-        >
-          Practise for {progress.assessment.name}
-        </Button>
+        </aside>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
@@ -297,7 +297,8 @@ describe('CoursePath Study mode', () => {
       createdAt: 0, updatedAt: 0,
     }];
     renderPage();
-    expect(screen.getByRole('button', { name: /Zoned exam 1 January 2027/ })).toBeInTheDocument();
+    const deadlines = screen.getByRole('region', { name: 'Assessments' });
+    expect(within(deadlines).getByRole('button', { name: /^1\s*Jan\s*Zoned exam/ })).toBeInTheDocument();
   });
 
   it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
@@ -317,16 +318,14 @@ describe('CoursePath Study mode', () => {
     );
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open lesson' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
     const previouslyLockedLesson = screen.getByRole('button', { name: 'Dynamics' });
-    expect(previouslyLockedLesson).not.toHaveAttribute('aria-disabled');
+    expect(previouslyLockedLesson).toBeEnabled();
     fireEvent.click(previouslyLockedLesson);
-    fireEvent.click(screen.getByRole('button', { name: 'Open lesson' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
@@ -348,14 +347,16 @@ describe('CoursePath Study mode', () => {
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
 
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Practice Now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Practise freely/ }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
 
   it('disables course-wide practice when no reached card is eligible', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    expect(screen.getByRole('menuitem', { name: /Practise freely/ })).toBeDisabled();
   });
 
   it.each([false, true])('only exposes pending updates on active multi-lesson courses (archived=%s)', (archived) => {
@@ -460,8 +461,8 @@ describe('CoursePath Study mode', () => {
       );
     } else {
       expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-      expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
-      expect(screen.getByText('due now')).toHaveTextContent('0due now');
+      fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+      expect(screen.getByRole('menuitem', { name: /Practise freely/ })).toBeDisabled();
       expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
     }
   });
@@ -818,13 +819,9 @@ describe('CoursePath Author mode', () => {
 
 
 describe('CoursePath overview', () => {
-  it('selects a lesson without navigating, then opens the selected lesson', () => {
+  it('opens a lesson straight from its row', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
-    expect(mockNavigate).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Dynamics' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('heading', { name: 'Dynamics' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Open lesson' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
   });
 
@@ -845,9 +842,10 @@ describe('CoursePath overview', () => {
   it('shows the lock reason without opening an unreached lesson in Study mode', () => {
     mockCourse = { ...course, unlockMode: 'semi-linear' };
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
-    expect(screen.getByText(/Unlocks once the lesson before it is complete/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Lesson locked' })).toBeDisabled();
+    const locked = screen.getByRole('button', { name: 'Dynamics' });
+    expect(locked).toHaveTextContent(/Unlocks once the lesson before it is complete/);
+    expect(locked).toBeDisabled();
+    fireEvent.click(locked);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 

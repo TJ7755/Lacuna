@@ -9,6 +9,7 @@ import { updateCourse } from '../../db/courseRepository';
 import { canEditLessons, resolveLessonViewMode } from '../../course/lessonViewMode';
 import { LessonViewModeToggle } from './LessonViewModeToggle';
 import { useToast } from '../ui/Toast';
+import { STATUS_COLOUR, type ForecastStatus } from '../dashboard/ForecastChart';
 
 interface CoursePageNavigationProps {
   courseId: string;
@@ -17,6 +18,8 @@ interface CoursePageNavigationProps {
   backLabel: string;
   archived?: boolean;
   trailing?: ReactNode;
+  /** Show the course itself (status dot and name) in place of the back link. */
+  identity?: { name: string; status: ForecastStatus };
   className?: string;
 }
 
@@ -32,6 +35,7 @@ export function CoursePageNavigation({
   backLabel,
   archived = false,
   trailing,
+  identity,
   className,
 }: CoursePageNavigationProps) {
   const { notify } = useToast();
@@ -66,13 +70,27 @@ export function CoursePageNavigation({
         className,
       )}
     >
-      <Link
-        to={backTo}
-        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 justify-self-start text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        {backLabel}
-      </Link>
+      {identity && !archived ? (
+        <Link
+          to={`/course/${courseId}`}
+          className="inline-flex min-h-11 min-w-0 shrink items-center gap-2.5 justify-self-start font-bold text-ink"
+        >
+          <span
+            aria-hidden="true"
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ background: STATUS_COLOUR[identity.status] }}
+          />
+          <span className="truncate">{identity.name}</span>
+        </Link>
+      ) : (
+        <Link
+          to={backTo}
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 justify-self-start text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          {backLabel}
+        </Link>
+      )}
 
       <div className="min-w-0 justify-self-center">
         {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId} />}

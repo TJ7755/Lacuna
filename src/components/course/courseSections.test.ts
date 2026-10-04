@@ -6,8 +6,8 @@ describe('matchCourseSection', () => {
     expect(matchCourseSection('/course/abc')).toEqual({ courseId: 'abc', index: 0 });
     expect(matchCourseSection('/course/abc/cards')).toEqual({ courseId: 'abc', index: 1 });
     expect(matchCourseSection('/course/abc/questions')).toEqual({ courseId: 'abc', index: 2 });
-    expect(matchCourseSection('/course/abc/analytics')).toEqual({ courseId: 'abc', index: 3 });
-    expect(matchCourseSection('/course/abc/settings')).toEqual({ courseId: 'abc', index: 4 });
+    expect(matchCourseSection('/course/abc/analytics')).toBeNull();
+    expect(matchCourseSection('/course/abc/settings')).toEqual({ courseId: 'abc', index: 3 });
   });
 
   it('ignores routes that are destinations within a section rather than siblings of it', () => {
