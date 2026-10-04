@@ -20,6 +20,13 @@
   (about 82%) can no longer pass on the others' average. Baselines are in
   `docs/maintenance/coverage.md`. (#330)
 
+- Deleting a Question definition from the Question editor now confirms inline with
+  `ConfirmInlineSwap` instead of the blocking browser `window.confirm`, keeping the
+  attempt-evidence warning copy (#337).
+- The Question editor's save bar now sits above the phone course navigation bar
+  below the `sm` breakpoint, so Delete, Save and the inline delete confirmation are no
+  longer half-covered or unclickable on phones. The overlap predates #337.
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
@@ -44,7 +51,6 @@
   before preprocessing or database writes. Malformed records report their field path;
   supported older exports retain their existing migration behaviour and additive fields.
   The 200 MB file limit and pre-v22 Deck/Folder refusal remain in place (#327).
-
 
 ## Dependency audit patches
 
@@ -333,7 +339,6 @@ removed during sanitisation and covers rendering, fallback source and theme upda
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the
   study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
-
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.
