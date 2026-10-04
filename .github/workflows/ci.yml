@@ -5,9 +5,19 @@ on:
     branches: [master, main]
   pull_request:
     branches: [master, main]
+    # Retargeting a stacked pull request onto master, or marking a draft ready, must
+    # produce the required checks. `edited` also fires on title and body edits; those
+    # rerun the suite rather than skip it, because skipped jobs would satisfy the
+    # required checks without testing anything.
+    types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
+
+# A newer event for the same pull request supersedes any run still in progress.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Documentation-only pull requests skip the heavy jobs. Skipping at job level (never with
