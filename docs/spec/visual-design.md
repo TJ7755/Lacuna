@@ -1,32 +1,36 @@
 # 3. Visual design system
 
-### 3.1 Palette ("quiet laboratory")
+### 3.1 Palette ("Direction C")
 
 Defined as raw HSL triples in `:root` and overridden under `.dark`, then exposed as Tailwind
 colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
-- **Light:** warm off-white paper (`--paper`), near-white surfaces, dark warm ink. Subtle.
-- **Dark (default):** near-black charcoal paper, charcoal surfaces, warm off-white ink.
+- **Light:** warm stone paper (`--paper`), white surfaces (`--surface`), navy ink. The
+  sidebar sits on a slightly darker `--chrome` ground.
+- **Dark (default):** deep blue-black paper and chrome, blue-grey surfaces, pale ink.
 - **Accent triad:** `--accent`, `--accent-soft`, `--accent-ink`, `--accent-fg`. The default
   is amber; the user may pick **red, rose, pink, violet, blue, teal or green**. Selecting one
   sets `data-accent` on the root and overrides just the accent triad, with separate light and
   dark recipes so each accent reads correctly in both themes.
-- **Semantic:** `--positive` (green) and `--negative` (red) for success/failure states.
-- **Atmosphere:** the body carries a faint radial-dot paper grain (`--grain-opacity`,
-  stronger in dark mode) rather than a flat fill; theme-aware thin scrollbars; accent-tinted
-  text selection.
+- **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
+  (orange) for on-track, failure and behind-target states.
+- **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
+  never an outline or a tinted halo. Buttons are pills; the primary button carries no shadow.
+  Segmented controls are a pill track with a white pill that slides between options. The
+  paper grain is off (`--grain-opacity: 0`).
 
 ### 3.2 Typography
 
-- **Display (`font-display`, Instrument Sans):** headings (`h1`–`h4`), default weight 400, slight
-  negative letter-spacing. Page titles are `text-4xl`/`text-5xl`.
-- **Body (`font-body`, Instrument Sans):** all running text, weight 400. The font is bundled
-  locally and shared with the landing page.
+- **Display (`font-display`, Bricolage Grotesque):** headings (`h1`–`h4`) and large figures,
+  weight 600 with tight negative letter-spacing. Page titles are `text-4xl` to `44px`.
+- **Body (`font-body`, Atkinson Hyperlegible Next):** all running text. Both faces are
+  bundled locally (OFL) so they work offline; Instrument Sans remains the fallback and the
+  landing page's face.
 - **Brand (`font-brand`, Fraunces):** the Lacuna wordmark and the Fieldnotes course overview title.
-- **Mono (`font-mono`, JetBrains Mono):** code, and `.tabular` numerals (progress %, stats,
-  streak, timers) via `font-variant-numeric: tabular-nums`.
-- Eyebrow labels are small uppercase with wide tracking (`tracking-[0.18em]`,
-  `text-ink-faint`).
+- **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
+  or display face; axis and metadata labels are never monospace.
+- Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a
+  number to a sentence.
 - A global font-scale control multiplies all text (see §15).
 
 Dashboard and course/lesson headings sit directly on the page without decorative panel
@@ -52,6 +56,10 @@ Shared conventions:
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
 - `LayoutGroup` coordinates reflow animations across sibling elements (e.g. Settings' and
   Help's active-tab underline).
+
+- Celebration primitives (`components/ui/Celebration.tsx`): `CountUp` counts a figure up
+  once (assistive technology reads only the final value) and `Burst` throws a short
+  confetti burst. Both render statically or not at all when the multiplier is 0.
 
 Specific motion (current state of the app):
 
