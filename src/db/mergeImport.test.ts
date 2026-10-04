@@ -101,7 +101,10 @@ describe('mergeImport: first import of a lineage', () => {
     await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
     const updatedLesson = lessonOne({ am: 'reveal' });
     updatedLesson.cards[0].am = 'type';
-    await mergeLineageUpdate(course.id, coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }));
+    await mergeLineageUpdate(
+      course.id,
+      coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }),
+    );
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('reveal');
     expect((await db.cards.get('card-1'))?.answerMode).toBe('type');
     await mergeLineageUpdate(course.id, coursePayload({ rv: 3, at: 3000, lessons: [lessonOne()] }));
@@ -322,6 +325,34 @@ describe('mergeImport: v3 Question lineage', () => {
     });
   });
 
+  it('stamps updatedAt when a merge reassigns a card to another concept', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const before = (await db.cards.get('card-quadratic-example'))!;
+    await new Promise((resolve) => setTimeout(resolve, 2));
+
+    const base = questionPayloadV3();
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 2_000,
+        rv: 2,
+        lessons: [
+          {
+            ...base.lessons[0],
+            cards: base.lessons[0].cards.map((card) =>
+              card.id === 'card-quadratic-example' ? { ...card, co: 'concept-factorise' } : card,
+            ),
+          },
+        ],
+        concepts: [...base.concepts, { id: 'concept-factorise', n: 'Factorise a quadratic' }],
+      }),
+    );
+
+    const after = (await db.cards.get('card-quadratic-example'))!;
+    expect(after.conceptId).toBe('concept-factorise');
+    expect(after.updatedAt).toBeGreaterThan(before.updatedAt!);
+  });
+
   it('applies teacher Question edits without touching immutable local attempts', async () => {
     const first = questionPayloadV3();
     const { course } = await importLineageFirstTime(first);
@@ -435,7 +466,7 @@ describe('mergeImport: merge apply', () => {
     expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
   });
 
-  it('preserves the learner\'s introduction preference when the teacher publishes an update', async () => {
+  it("preserves the learner's introduction preference when the teacher publishes an update", async () => {
     await db.courses.update(courseId, { learnFirst: false });
     const payload = coursePayload({ rv: 2, lessons: [lessonOne()] });
     expect(payload.course.lf).toBeUndefined();

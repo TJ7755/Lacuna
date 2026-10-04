@@ -1205,7 +1205,7 @@ export async function mergeLineageUpdate(
       for (const [cardId, conceptId] of conceptIdByCard) {
         const card = await db.cards.get(cardId);
         if (card && card.conceptId !== conceptId) {
-          await db.cards.update(cardId, { conceptId });
+          await db.cards.update(cardId, stampUpdatedAt({ conceptId }));
         }
       }
     }
