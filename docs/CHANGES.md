@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A lineage merge that moves a card to another concept now stamps the card's
+  `updatedAt`. Without it the reassignment could lose a last-write-wins contest
+  against an older peer row and silently revert on the next merge (#326).
+
 - The hosted app now sends a `Content-Security-Policy` header with
   `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
   app cannot be framed by a third-party page. The header mirrors the
