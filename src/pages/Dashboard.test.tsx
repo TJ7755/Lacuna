@@ -114,6 +114,10 @@ function forecast(atEnd: number, hasExam = true) {
       { at: now, recall: 0.8 },
       { at: now + 7 * DAY, recall: atEnd },
     ],
+    outlook: [
+      { at: now, recall: 0.5 },
+      { at: now + 7 * DAY, recall: atEnd },
+    ],
   };
 }
 
