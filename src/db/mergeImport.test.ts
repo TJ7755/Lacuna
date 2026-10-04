@@ -101,7 +101,10 @@ describe('mergeImport: first import of a lineage', () => {
     await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
     const updatedLesson = lessonOne({ am: 'reveal' });
     updatedLesson.cards[0].am = 'type';
-    await mergeLineageUpdate(course.id, coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }));
+    await mergeLineageUpdate(
+      course.id,
+      coursePayload({ rv: 2, at: 2000, lessons: [updatedLesson] }),
+    );
     expect((await db.lessons.get('lesson-1'))?.answerMode).toBe('reveal');
     expect((await db.cards.get('card-1'))?.answerMode).toBe('type');
     await mergeLineageUpdate(course.id, coursePayload({ rv: 3, at: 3000, lessons: [lessonOne()] }));
@@ -322,6 +325,34 @@ describe('mergeImport: v3 Question lineage', () => {
     });
   });
 
+  it('stamps updatedAt when a merge reassigns a card to another concept', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const before = (await db.cards.get('card-quadratic-example'))!;
+    await new Promise((resolve) => setTimeout(resolve, 2));
+
+    const base = questionPayloadV3();
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 2_000,
+        rv: 2,
+        lessons: [
+          {
+            ...base.lessons[0],
+            cards: base.lessons[0].cards.map((card) =>
+              card.id === 'card-quadratic-example' ? { ...card, co: 'concept-factorise' } : card,
+            ),
+          },
+        ],
+        concepts: [...base.concepts, { id: 'concept-factorise', n: 'Factorise a quadratic' }],
+      }),
+    );
+
+    const after = (await db.cards.get('card-quadratic-example'))!;
+    expect(after.conceptId).toBe('concept-factorise');
+    expect(after.updatedAt).toBeGreaterThan(before.updatedAt!);
+  });
+
   it('applies teacher Question edits without touching immutable local attempts', async () => {
     const first = questionPayloadV3();
     const { course } = await importLineageFirstTime(first);
@@ -399,6 +430,85 @@ describe('mergeImport: v3 Question lineage', () => {
     expect(await db.questionConcepts.get('question-quadratic')).toBeUndefined();
     expect(await db.questionAttempts.get('attempt-quadratic')).toEqual(immutableAttempt);
   });
+
+  it('stamps updatedAt when a lineage merge reassigns a card concept', async () => {
+    // Regression for #326: the concept reassignment path wrote conceptId without
+    // stampUpdatedAt, so the reassignment kept its old timestamp and could lose a
+    // later last-write-wins peer merge against an older peer row.
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const targetId = 'card-quadratic-definition';
+    const before = (await db.cards.get(targetId))!;
+    expect(before.conceptId).toBe('concept-quadratic');
+
+    // Force an old timestamp so the test fails when the reassignment does not stamp.
+    await db.cards.update(targetId, { updatedAt: 1_000 });
+    const peerUpdatedAt = 1_500;
+
+    const first = questionPayloadV3();
+    const sharedLesson = first.lessons[0];
+    const [firstCard, secondCard] = sharedLesson.cards;
+    if (!firstCard || !secondCard) throw new Error('Expected two fixture cards.');
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 5_000,
+        rv: 2,
+        concepts: [
+          { id: 'concept-quadratic', n: 'Solve a quadratic equation' },
+          { id: 'concept-linear', n: 'Solve a linear equation' },
+        ],
+        lessons: [
+          {
+            ...sharedLesson,
+            cards: [{ ...firstCard, co: 'concept-linear' }, secondCard],
+          },
+        ],
+      }),
+    );
+
+    const after = (await db.cards.get(targetId))!;
+    expect(after.conceptId).toBe('concept-linear');
+    // The reassignment must carry a fresh timestamp, otherwise a peer row with the
+    // old concept and a newer-than-1000 updatedAt would win the next LWW merge.
+    expect(after.updatedAt).toBeGreaterThan(peerUpdatedAt);
+    expect(after.updatedAt).toBeGreaterThan(1_000);
+  });
+
+  it('never moves updatedAt backwards when reassigning a card concept', async () => {
+    // Follow-up from CodeRabbit on #326: stamping with Date.now() alone can lower
+    // updatedAt when the card timestamp runs ahead of this clock, so the stamp
+    // must exceed both values to preserve last-write-wins selection.
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+    const targetId = 'card-quadratic-definition';
+    const future = Date.now() + 10_000;
+    await db.cards.update(targetId, { updatedAt: future });
+
+    const first = questionPayloadV3();
+    const sharedLesson = first.lessons[0];
+    const [firstCard, secondCard] = sharedLesson.cards;
+    if (!firstCard || !secondCard) throw new Error('Expected two fixture cards.');
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 5_000,
+        rv: 2,
+        concepts: [
+          { id: 'concept-quadratic', n: 'Solve a quadratic equation' },
+          { id: 'concept-linear', n: 'Solve a linear equation' },
+        ],
+        lessons: [
+          {
+            ...sharedLesson,
+            cards: [{ ...firstCard, co: 'concept-linear' }, secondCard],
+          },
+        ],
+      }),
+    );
+
+    const after = (await db.cards.get(targetId))!;
+    expect(after.conceptId).toBe('concept-linear');
+    expect(after.updatedAt).toBeGreaterThan(future);
+  });
 });
 
 describe('mergeImport: merge apply', () => {
@@ -435,7 +545,7 @@ describe('mergeImport: merge apply', () => {
     expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
   });
 
-  it('preserves the learner\'s introduction preference when the teacher publishes an update', async () => {
+  it("preserves the learner's introduction preference when the teacher publishes an update", async () => {
     await db.courses.update(courseId, { learnFirst: false });
     const payload = coursePayload({ rv: 2, lessons: [lessonOne()] });
     expect(payload.course.lf).toBeUndefined();

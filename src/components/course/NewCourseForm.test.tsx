@@ -26,6 +26,17 @@ describe('NewCourseForm', () => {
     vi.restoreAllMocks();
   });
 
+  it('associates the visible course name label with the input', () => {
+    render(<NewCourseForm onClose={vi.fn()} />);
+
+    const input = screen.getByRole('textbox', { name: 'Course name' });
+    expect(screen.getByLabelText('Course name')).toBe(input);
+    expect(screen.getByText('Course name', { selector: 'label' })).toHaveAttribute(
+      'for',
+      input.id,
+    );
+  });
+
   it('requires an explicit scheduling target before showing an exam date', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 

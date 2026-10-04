@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- A lineage merge that moves a card to another concept now stamps the card's
+  `updatedAt`, and the stamp never moves backwards when the card's timestamp is
+  ahead of the local clock. Without it the reassignment could lose a last-write-wins
+  contest against an older peer row and silently revert on the next merge (#326).
+
+- Pinned `http-cache-semantics` to 4.3.0 through `overrides`. 4.2.0, pulled in by the
+  Electron download and packaging tooling, has a high-severity advisory
+  (GHSA-ch52-4w7c-c8xp) that failed the root `bun audit` gate.
+
+- The hosted app now sends a `Content-Security-Policy` header with
+  `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
+  app cannot be framed by a third-party page. The header mirrors the
+  `index.html` meta policy on `connect-src` origins (#331).
+
+- Associated the new-course name field with its visible label so assistive
+  technology announces “Course name” and clicking the label focuses the input (#328).
+  Pinned the clock in an existing calendar keyboard test: its first-day fallback
+  assertion otherwise fails when the viewed month becomes the current month.
+
+- Backup imports now validate every represented record collection, including nested
+  review evidence, Questions, revision plans and distributed-course merge state,
+  before preprocessing or database writes. Malformed records report their field path;
+  supported older exports retain their existing migration behaviour and additive fields.
+  The 200 MB file limit and pre-v22 Deck/Folder refusal remain in place (#327).
+
 
 ## Dependency audit patches
 

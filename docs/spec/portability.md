@@ -125,6 +125,13 @@ A single, reusable export UI offering multiple output formats:
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
   `lacuna-asset://` references. Older backups are normalised through the pure v24 converter;
   legacy `courseExamDates` remains an import-only compatibility field.
+- **Record validation:** JSON files and direct imports share a Zod schema for every
+  represented collection and its nested records. Invalid fields report the collection,
+  row and field before media preprocessing, normalisation or database writes. The
+  200 MB file guard runs before reading or parsing. Older supported backups may omit
+  later collections and backfilled timestamps; v11 requires its four Question-mode
+  collections. Additive unknown fields are retained, and non-empty legacy Deck/Folder
+  collections still trigger the pre-v22 refusal.
 - **Import modes:**
   - **Replace** — wipe the tables represented by the backup, then restore exactly. The UI
     calls this **Replace local data**, explains that there is no account or cloud copy, and

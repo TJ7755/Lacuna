@@ -22,7 +22,11 @@ test('first launch reaches the seeded dashboard', async ({ page }) => {
 test('creates a course with its first lesson', async ({ page }) => {
   await openSeededDashboard(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
-  await page.getByRole('textbox', { name: 'Course name' }).fill('Browser smoke course');
+  const nameInput = page.getByRole('textbox', { name: 'Course name' });
+  await page.getByRole('radio', { name: /Steady retention/ }).focus();
+  await page.locator('label').filter({ hasText: /^Course name$/ }).click();
+  await expect(nameInput).toBeFocused();
+  await nameInput.fill('Browser smoke course');
   await page.getByRole('radio', { name: /Steady retention/ }).click();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();

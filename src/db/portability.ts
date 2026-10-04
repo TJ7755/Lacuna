@@ -27,7 +27,7 @@ import type {
   Tombstone,
   AgentMemory,
 } from './types';
-import { isAgentMemory } from './agentMemoryRecord';
+import { assertValidBackup, backupIsValid } from './backupValidation';
 import {
   mergeReviewHistoryEntries,
   projectCardsForStorage,
@@ -50,7 +50,6 @@ import {
   referencedAssetHashesInValues,
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
-import { itemPayloadIsValid } from '../items/payloadValidation';
 import { adaptLegacyBackup } from './legacyBackupAdapter';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
@@ -191,39 +190,7 @@ export async function downloadBackup(): Promise<void> {
 
 /** Validate that an unknown parsed object is a Lacuna backup file. */
 export function validateBackup(data: unknown): data is BackupFile {
-  if (typeof data !== 'object' || data === null) return false;
-  const b = data as Partial<BackupFile>;
-  const cardsHaveValidPayloads =
-    Array.isArray(b.cards) &&
-    b.cards.every((card) => {
-      if (typeof card !== 'object' || card === null) return false;
-      const candidate = card as Card;
-      return (
-        itemPayloadIsValid(candidate.payload) &&
-        (candidate.payload === undefined || candidate.type === 'front_back')
-      );
-    });
-  const hasCurrentQuestionCollections =
-    typeof b.version === 'number' &&
-    (b.version < 11 ||
-      (Array.isArray(b.concepts) &&
-        Array.isArray(b.questions) &&
-        Array.isArray(b.questionConcepts) &&
-        Array.isArray(b.questionAttempts)));
-  return (
-    b.app === 'lacuna' &&
-    typeof b.version === 'number' &&
-    (b.decks === undefined || Array.isArray(b.decks)) &&
-    Array.isArray(b.cards) &&
-    cardsHaveValidPayloads &&
-    hasCurrentQuestionCollections &&
-    Array.isArray(b.assets) &&
-    Array.isArray(b.sessionHistory) &&
-    Array.isArray(b.userPerformance) &&
-    (b.tombstones === undefined || Array.isArray(b.tombstones)) &&
-    (b.agentMemories === undefined ||
-      (Array.isArray(b.agentMemories) && b.agentMemories.every(isAgentMemory)))
-  );
+  return backupIsValid(data);
 }
 
 export type ImportMode = 'replace' | 'merge';
@@ -249,9 +216,7 @@ function assertCurrentBackup(backup: BackupFile): void {
  * available, falling back to (timestamp, deckId) for legacy rows.
  */
 export async function importBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
-  if (!validateBackup(backup)) {
-    throw new Error('Invalid backup file.');
-  }
+  assertValidBackup(backup);
   assertCurrentBackup(backup);
   backup = normaliseQuestionBackup(backup);
   let incomingQuestions = {
@@ -1000,9 +965,7 @@ export async function readBackupFile(file: File): Promise<BackupFile> {
   }
   const text = await file.text();
   const data = JSON.parse(text);
-  if (!validateBackup(data)) {
-    throw new Error('This file is not a valid Lacuna backup.');
-  }
+  assertValidBackup(data, 'This file is not a valid Lacuna backup.');
   assertCurrentBackup(data);
   return data;
 }
