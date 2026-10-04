@@ -165,7 +165,7 @@ export function Analytics() {
     <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-6 py-10 md:gap-6 md:px-12">
       <Rise index={0} className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-          Analytics
+          Progress
         </h1>
         <PillToggleGroup
           label="Period"

@@ -63,7 +63,7 @@ describe('Analytics', () => {
   it('uses chart titles without redundant explanatory subtitles', () => {
     render(<Analytics />);
 
-    expect(screen.getByRole('heading', { name: 'Analytics' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
     expect(screen.queryByText('Insights across every course.')).not.toBeInTheDocument();
     expect(
       screen.queryByText('Cards due and new cards scheduled per day for the next 30 days.'),
