@@ -2,11 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { Link, useLocation } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db/schema';
 import type { QuestionSetPathNode } from '../../course/path';
-import { getQuestionSet } from '../../questions/questionSetRepository';
-import { listQuestionSetAttempts } from '../../questions/questionSetAttemptRepository';
+import { useQuestionSetPathData } from './useQuestionSetPathData';
 import { questionSetPathProgress } from '../../questions/questionSetPathProgress';
 import { FileTextIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
@@ -43,29 +40,9 @@ export function QuestionSetPathActivity({
   }, [touchOpen]);
   const [editing, setEditing] = useState(false);
   const courseId = node.practiceNode.courseId;
-  const data = useLiveQuery(
-    () =>
-      db.transaction(
-        'r',
-        [db.questionSets, db.questionSetAttempts, db.courseAssessments],
-        async () => {
-          const content = await getQuestionSet(node.questionSetId);
-          const attempts = await listQuestionSetAttempts(node.questionSetId);
-          const exam = content?.assessmentIds[0]
-            ? await db.courseAssessments.get(content.assessmentIds[0])
-            : undefined;
-          return {
-            content,
-            attempt: attempts.find((attempt) => attempt.courseId === courseId) ?? null,
-            exam: exam?.courseId === courseId ? exam : undefined,
-          };
-        },
-      ),
-    [node.questionSetId, courseId],
-  );
+  const data = useQuestionSetPathData(node);
   if (!data) return <p className="text-xs text-ink-soft">Loading Practice Qs…</p>;
-  if (!data.content || data.content.courseId !== courseId)
-    return <p className="text-xs text-ink-soft">Question set unavailable</p>;
+  if (!data.content) return <p className="text-xs text-ink-soft">Question set unavailable</p>;
   const progress = questionSetPathProgress(data.attempt);
   return (
     <div

@@ -335,9 +335,11 @@ describe('CoursePath Study mode', () => {
 
     renderPage();
 
-    expect(screen.getByRole('link', { name: /Practice Qs Question set/ })).toHaveAttribute(
-      'href',
+    fireEvent.click(screen.getByRole('button', { name: 'Practice Qs: Practice Qs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open question set' }));
+    expect(mockNavigate).toHaveBeenCalledWith(
       `/course/${course.id}/question-sets/${activity.questionSetId}`,
+      expect.objectContaining({ state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }) }),
     );
     expect(mockLessonViewProps).not.toHaveBeenCalled();
   });

@@ -23,6 +23,7 @@ import {
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
+import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { lockHintFor } from '../components/course/CoursePathSegment';
@@ -64,6 +65,7 @@ export function CoursePath() {
     node?: PracticeNode;
     defaultPosition?: number;
   } | null>(null);
+  const [addingQuestionSet, setAddingQuestionSet] = useState(false);
   const [assessmentEditor, setAssessmentEditor] = useState<{
     assessment?: CourseAssessment;
     defaultAfterLessonId?: string | null;
@@ -503,10 +505,18 @@ export function CoursePath() {
         }}
         onAdd={(kind) => {
           if (kind === 'practice') setPracticeEditor({ defaultPosition: lastLesson?.orderIndex });
+          else if (kind === 'question-set') setAddingQuestionSet(true);
           else setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null });
         }}
       />
       {pathEditors}
+      {addingQuestionSet && lastLesson && (
+        <QuestionSetPathEditor
+          courseId={course.id}
+          afterLessonId={lastLesson.id}
+          onClose={() => setAddingQuestionSet(false)}
+        />
+      )}
     </div>
   );
 }
