@@ -86,7 +86,7 @@ it('reviews before asking for a destination, retaining the draft on Undo and fai
   expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'French basics' } });
   fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(mocks.importCards).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
@@ -196,7 +196,7 @@ it('reads a text file before configuring a new course with an exam target', asyn
 it('keeps the import chooser free of redundant course navigation', () => {
   open();
   expect(screen.queryByRole('link', { name: 'All courses' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Back to import sources' })).not.toBeInTheDocument();
 });
 
 it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
@@ -204,9 +204,9 @@ it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
   async (source) => {
     open();
     fireEvent.click(screen.getByRole('button', { name: new RegExp(source) }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to import sources' }));
     expect(screen.getByText('Drop a file here')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to import sources' })).not.toBeInTheDocument();
     expect(mocks.importCards).not.toHaveBeenCalled();
     expect(mocks.importShare).not.toHaveBeenCalled();
     expect(mocks.navigate).not.toHaveBeenCalled();

@@ -269,7 +269,7 @@ export function SharedCourseImport({
   }
 
   return (
-    <section ref={importSectionRef} className="rounded-2xl border border-line bg-surface p-6">
+    <section ref={importSectionRef} className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
       <div className="mb-1 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
@@ -289,7 +289,7 @@ export function SharedCourseImport({
         }}
       />
 
-      <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
+      <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
         <textarea
           ref={importInputRef}
           aria-label="Share link or code to import"
@@ -333,9 +333,9 @@ export function SharedCourseImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-5"
           >
-            <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
+            <div className="rounded-2xl bg-paper p-4">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                <span className="text-sm font-semibold text-ink-soft">
                   QR scanner
                 </span>
                 <Button
@@ -372,7 +372,7 @@ export function SharedCourseImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-5"
           >
-            <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">
+            <div className="rounded-2xl bg-accent-soft/50 p-5">
               <h3 className="mb-2 font-display text-lg">
                 {pending.merge ? 'Course update' : 'Ready to import'}
               </h3>
@@ -419,7 +419,7 @@ export function SharedCourseImport({
                   {pending.summary.deckNames.map((name, i) => (
                     <li
                       key={`${name}-${i}`}
-                      className="rounded-lg border border-line bg-surface px-3 py-1 text-xs text-ink-soft"
+                      className="rounded-full bg-ink/[0.06] px-3 py-1 text-xs text-ink-soft"
                     >
                       {name}
                     </li>
@@ -427,7 +427,7 @@ export function SharedCourseImport({
                 </ul>
               )}
               {!pending.merge && pending.summary.omittedImages && (
-                <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft">
+                <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
                   This share code omitted media to keep the code small. Images and audio will appear
                   as placeholders after import. Use a full backup for an exact transfer.
                 </p>

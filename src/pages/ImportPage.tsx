@@ -46,25 +46,26 @@ export function ImportPage() {
 
   return (
     <div className="import-page mx-auto max-w-6xl px-6 py-10 md:px-10">
-      <header className="mb-8">
+      <header className="import-arrive mb-8">
         <div className="mb-3 flex min-h-11 items-center">
           {source && (
             <button
               type="button"
               disabled={busy}
+              aria-label="Back to import sources"
               onClick={reset}
-              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
             >
               <ChevronLeftIcon width={16} height={16} />
               Back
             </button>
           )}
         </div>
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">Import</h1>
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Import</h1>
       </header>
       {!source ? (
         <>
-          <div className="import-sources">
+          <div className="import-sources import-arrive">
             {sources.map(({ id, title, detail, icon: Icon }) => (
               <button key={id} type="button" onClick={() => setSource(id)}>
                 <Icon width={24} height={24} />
@@ -74,7 +75,7 @@ export function ImportPage() {
             ))}
           </div>
           <div
-            className="import-drop"
+            className="import-drop import-arrive"
             data-dragging={dragging}
             onDragOver={(event) => {
               event.preventDefault();
@@ -103,7 +104,7 @@ export function ImportPage() {
                 event.target.value = '';
               }}
             />
-            <Button variant="secondary" onClick={() => input.current?.click()}>
+            <Button variant="primary" onClick={() => input.current?.click()}>
               Choose file
             </Button>
           </div>

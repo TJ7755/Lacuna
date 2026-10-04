@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
+import { CopyButton } from '../components/share/CopyButton';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { cn } from '../components/ui/cn';
@@ -437,12 +438,12 @@ export function SharePage() {
     <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
       <header className="mb-10">
         <div className="relative">
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Share</h1>
+          <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Share</h1>
         </div>
       </header>
 
       {/* Export */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <section className="mb-8 rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
         <div className="mb-1 flex items-center gap-2">
           <DownloadIcon width={18} height={18} className="text-accent" />
           <h2 className="font-display text-xl">Export a course</h2>
@@ -462,8 +463,8 @@ export function SharePage() {
             <ShareSkeleton />
           </DelayedFallback>
         ) : courses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
-            <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">
+          <div className="flex flex-col items-center justify-center rounded-3xl bg-ink/[0.04] py-16 text-center">
+            <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-ink">
               <CardsIcon width={22} height={22} />
             </div>
             <h3 className="mb-1 font-display text-xl">No courses yet</h3>
@@ -495,10 +496,10 @@ export function SharePage() {
                       aria-pressed={on}
                       whileHover={m > 0 ? { y: -2, transition: { duration: 0.1 * m } } : undefined}
                       className={cn(
-                        'flex items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200',
+                        'flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all duration-200',
                         on
-                          ? 'border-accent bg-accent-soft/50 shadow-paper'
-                          : 'border-line bg-surface hover:border-line-strong hover:shadow-md',
+                          ? 'bg-accent-soft shadow-[inset_0_0_0_2px_hsl(var(--ink))]'
+                          : 'bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.06)] hover:shadow-[0_8px_24px_-14px_hsl(var(--ink)/0.3)]',
                       )}
                     >
                       <span
@@ -534,7 +535,7 @@ export function SharePage() {
 
             <div className="mt-5">
               {selectedCourse && (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper px-4 py-3">
                   {selectedCourse.distribution ? (
                     <>
                       <p className="text-sm text-ink-soft">
@@ -568,7 +569,7 @@ export function SharePage() {
                 </div>
               )}
               {selectedMediaCards.length > 0 && (
-                <div className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
+                <div className="mb-3 rounded-2xl bg-paper px-4 py-3 text-sm text-ink-soft">
                   <p>
                     This course contains media in {selectedMediaCards.length}{' '}
                     {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code cannot
@@ -601,7 +602,7 @@ export function SharePage() {
                         onClick={() => setSelectedMethod(method.id)}
                         aria-label={method.label}
                         aria-describedby={`share-method-hint-${method.id}`}
-                        className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md"
+                        className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 text-left shadow-[0_1px_2px_hsl(var(--ink)/0.06)] transition-all duration-200 hover:shadow-[0_8px_24px_-14px_hsl(var(--ink)/0.3)]"
                       >
                         <span className="shrink-0 text-accent">{method.icon}</span>
                         <span>
@@ -697,21 +698,12 @@ export function SharePage() {
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   className="mt-5"
                 >
-                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
+                  <div className="rounded-2xl bg-paper p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                      <span className="text-sm font-semibold text-ink-soft">
                         Your share code · {code.length.toLocaleString()} characters
                       </span>
-                      <Button size="sm" variant="secondary" onClick={handleCopy}>
-                        {copied ? (
-                          <>
-                            <CheckIcon width={14} height={14} />
-                            Copied
-                          </>
-                        ) : (
-                          'Copy'
-                        )}
-                      </Button>
+                      <CopyButton copied={copied} onClick={handleCopy} />
                     </div>
                     <textarea
                       readOnly
@@ -719,7 +711,7 @@ export function SharePage() {
                       value={code}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={4}
-                      className="w-full resize-none break-all rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
+                      className="w-full resize-none break-all rounded-xl bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
                     />
                   </div>
                 </motion.div>
@@ -738,9 +730,9 @@ export function SharePage() {
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   className="mt-5"
                 >
-                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
+                  <div className="rounded-2xl bg-paper p-4">
                     <div className="mb-3 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                      <span className="text-sm font-semibold text-ink-soft">
                         QR code · {qrCode.length.toLocaleString()} characters
                       </span>
                       <div className="flex gap-2">
@@ -753,7 +745,7 @@ export function SharePage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-center gap-4">
-                      <div className="rounded-xl border border-line bg-white p-4 dark:bg-white">
+                      <div className="rounded-2xl bg-white p-4 dark:bg-white">
                         <QRCode
                           value={qrCode}
                           size={256}
@@ -784,21 +776,12 @@ export function SharePage() {
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   className="mt-5"
                 >
-                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
+                  <div className="rounded-2xl bg-paper p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                      <span className="text-sm font-semibold text-ink-soft">
                         Share link · revision {shareLink.revision}
                       </span>
-                      <Button size="sm" variant="secondary" onClick={() => void handleCopyLink()}>
-                        {linkCopied ? (
-                          <>
-                            <CheckIcon width={14} height={14} />
-                            Copied
-                          </>
-                        ) : (
-                          'Copy'
-                        )}
-                      </Button>
+                      <CopyButton copied={linkCopied} onClick={() => void handleCopyLink()} />
                     </div>
                     <textarea
                       readOnly
@@ -806,7 +789,7 @@ export function SharePage() {
                       value={shareLinkUrl}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={2}
-                      className="w-full resize-none break-all rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
+                      className="w-full resize-none break-all rounded-xl bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
                     />
                     <p className="mt-2 text-xs text-ink-faint">
                       Send the link itself, or just the code after the final slash — both open the
@@ -828,7 +811,7 @@ export function SharePage() {
                         )}
                     </p>
                     <div className="mt-3 flex justify-center">
-                      <div className="rounded-xl border border-line bg-white p-4 dark:bg-white">
+                      <div className="rounded-2xl bg-white p-4 dark:bg-white">
                         <QRCode
                           value={shareLinkUrl}
                           size={192}
@@ -838,7 +821,7 @@ export function SharePage() {
                         />
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+                    <div className="mt-3 flex items-center justify-between gap-2 pt-3">
                       <p className="text-xs text-ink-faint">
                         Republishing updates this link in place.
                       </p>
@@ -876,7 +859,7 @@ export function SharePage() {
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   className="mt-5"
                 >
-                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
+                  <div className="rounded-2xl bg-paper p-4">
                     <p className="text-sm text-ink-soft">
                       This course&apos;s link was created on another device. Publishing here
                       creates a new link; the old link stays live until it expires.
@@ -915,22 +898,13 @@ export function SharePage() {
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   className="mt-5"
                 >
-                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
+                  <div className="rounded-2xl bg-paper p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                      <span className="text-sm font-semibold text-ink-soft">
                         Plain text export · {(courseCards?.length ?? 0).toLocaleString()} card
                         {(courseCards?.length ?? 0) === 1 ? '' : 's'}
                       </span>
-                      <Button size="sm" variant="secondary" onClick={handleCopyPlainText}>
-                        {plainTextCopied ? (
-                          <>
-                            <CheckIcon width={14} height={14} />
-                            Copied
-                          </>
-                        ) : (
-                          'Copy'
-                        )}
-                      </Button>
+                      <CopyButton copied={plainTextCopied} onClick={handleCopyPlainText} />
                     </div>
                     <textarea
                       readOnly
@@ -938,7 +912,7 @@ export function SharePage() {
                       value={plainText}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={6}
-                      className="w-full resize-none break-all rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
+                      className="w-full resize-none break-all rounded-xl bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
                     />
                   </div>
                 </motion.div>
@@ -960,7 +934,7 @@ function ShareSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+          className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3"
         >
           <div className="h-5 w-5 animate-pulse rounded-md bg-ink/10" />
           <div className="h-4 flex-1 animate-pulse rounded bg-ink/10" />

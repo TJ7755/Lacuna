@@ -4,6 +4,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { CardContent } from '../cards/CardContent';
 import { StepSwap } from '../ui/StepSwap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons';
 import { canReverseImportCard } from '../../db/cardImport';
 import type { ParsedCard } from '../../db/import';
 
@@ -81,7 +82,7 @@ export function CardImportPreview({
             setIndex(currentIndex - 1);
           }}
         >
-          ←
+          <ChevronLeftIcon width={16} height={16} />
         </button>
         <span aria-live="polite">
           {currentIndex + 1} / {cards.length}
@@ -95,7 +96,7 @@ export function CardImportPreview({
             setIndex(currentIndex + 1);
           }}
         >
-          →
+          <ChevronRightIcon width={16} height={16} />
         </button>
       </div>
     </div>

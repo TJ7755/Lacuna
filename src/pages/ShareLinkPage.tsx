@@ -122,7 +122,7 @@ export function ShareLinkPage() {
           <ShareLinkSkeleton />
         </DelayedFallback>
       ) : state.status === 'unavailable' ? (
-        <section className="rounded-2xl border border-line bg-surface p-6">
+        <section className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
           <h2 className="mb-1 font-display text-xl">This link is unavailable</h2>
           <p className="mb-5 text-sm text-ink-soft">{state.message}</p>
           <div className="flex flex-wrap gap-2">
@@ -145,7 +145,7 @@ export function ShareLinkPage() {
           }}
         />
       ) : (
-        <section className="rounded-2xl border border-line bg-surface p-6">
+        <section className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
           <h2 className="mb-1 font-display text-xl">This link is incomplete</h2>
           <p className="mb-5 text-sm text-ink-soft">{state.message}</p>
           <div className="flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 
 function ShareLinkSkeleton() {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6">
+    <div className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
       <div className="mb-2 h-6 w-48 animate-pulse rounded-lg bg-ink/10" />
       <div className="mb-5 h-4 w-full animate-pulse rounded-lg bg-ink/10" />
       <div className="h-32 w-full animate-pulse rounded-xl bg-ink/10" />

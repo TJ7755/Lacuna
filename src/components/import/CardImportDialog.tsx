@@ -10,9 +10,11 @@ import {
   MAX_IMPORT_CARDS,
   type CardImportContent,
 } from '../../db/cardImport';
-import { CloseIcon } from '../ui/icons';
+import { ChevronLeftIcon, CloseIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
+import { CountUp } from '../ui/Celebration';
+import { ImportStepper } from './ImportStepper';
 import { useCardImportSource } from './useCardImportSource';
 import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
@@ -165,14 +167,7 @@ export function CardImportDialog({
       >
         <header className="card-import-header">
           <h2 id="card-import-heading">Import cards</h2>
-          <ol className="card-import-steps" aria-label="Import progress">
-            <li aria-current={step === 'input' ? 'step' : undefined}>
-              <b>1</b> Add content
-            </li>
-            <li aria-current={step === 'review' ? 'step' : undefined}>
-              <b>2</b> Review cards
-            </li>
-          </ol>
+          <ImportStepper step={step} />
           <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
             <CloseIcon width={18} height={18} />
           </button>
@@ -216,7 +211,9 @@ export function CardImportDialog({
                       </label>
                     )}
                     <div className="card-import-total">
-                      <strong>{count}</strong>
+                      <strong>
+                        <CountUp value={count} multiplier={m} duration={0.7} />
+                      </strong>
                       <span>
                         cards
                         {!source.apkg && (
@@ -226,20 +223,24 @@ export function CardImportDialog({
                         )}
                       </span>
                     </div>
-                    {!!duplicates && (
-                      <p className="card-import-notice">
-                        {duplicates} already exist. Importing will add copies.
-                      </p>
-                    )}
-                    {source.apkg && (
-                      <p className="card-import-notice">Anki scheduling and media are preserved.</p>
-                    )}
-                    {(source.apkg?.skippedCards ?? source.result.skipped) > 0 && (
-                      <p className="card-import-notice">
-                        {source.apkg?.skippedCards ?? source.result.skipped}{' '}
-                        {source.apkg ? 'unsupported cards' : 'rows'} skipped.
-                      </p>
-                    )}
+                    <div className="card-import-notices">
+                      {!!duplicates && (
+                        <p className="card-import-notice" data-tone="warning">
+                          {duplicates} already exist. Importing will add copies.
+                        </p>
+                      )}
+                      {source.apkg && (
+                        <p className="card-import-notice">
+                          Anki scheduling and media are preserved.
+                        </p>
+                      )}
+                      {(source.apkg?.skippedCards ?? source.result.skipped) > 0 && (
+                        <p className="card-import-notice">
+                          {source.apkg?.skippedCards ?? source.result.skipped}{' '}
+                          {source.apkg ? 'unsupported cards' : 'rows'} skipped.
+                        </p>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -273,7 +274,8 @@ export function CardImportDialog({
                   setStep('input');
                 }}
               >
-                Undo
+                <ChevronLeftIcon width={16} height={16} />
+                Back
               </Button>
             ) : (
               <Button variant="ghost" disabled={busy} onClick={cancel}>

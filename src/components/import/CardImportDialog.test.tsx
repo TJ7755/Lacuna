@@ -29,7 +29,7 @@ function paste(value = 'bonjour\thello\n{{c1::Paris}} is in France\t') {
 }
 async function review() {
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
-  await screen.findByRole('button', { name: 'Undo' });
+  await screen.findByRole('button', { name: 'Back' });
 }
 
 describe('CardImportDialog', () => {
@@ -48,7 +48,7 @@ describe('CardImportDialog', () => {
     await review();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Also create reverse' }));
     expect(screen.getByRole('button', { name: 'Import 2 cards' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
     expect(screen.getByLabelText('Lesson title')).toHaveValue('Greetings');
     expect(screen.getByLabelText('Format')).toHaveValue('tsv');
@@ -114,7 +114,7 @@ describe('CardImportDialog', () => {
     expect(onImport).toHaveBeenCalledTimes(1);
     reject(new Error('Storage full'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Storage full');
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByLabelText('Paste your cards')).toHaveValue('Q\tA');
   });
   it('retains the Anki package through Undo and does not offer automatic reverses', async () => {
@@ -134,7 +134,7 @@ describe('CardImportDialog', () => {
     await screen.findByText('CARDS.APKG');
     await review();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     await screen.findByText('CARDS.APKG');
     await review();
     fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
@@ -176,7 +176,7 @@ it('supports an inline review with destination validation and preserves input on
   await review();
   expect(screen.getByText('Choose a destination')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(onImport).not.toHaveBeenCalled();
 });
