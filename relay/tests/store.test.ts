@@ -30,7 +30,9 @@ describe('MemoryStore', () => {
     const stale = await store.put('c/x/state', new Uint8Array([2]), { ifMatch: 'wrong' });
     expect(stale.ok).toBe(false);
 
-    const fresh = await store.put('c/x/state', new Uint8Array([3]), { ifMatch: `"${created.etag}"` });
+    const fresh = await store.put('c/x/state', new Uint8Array([3]), {
+      ifMatch: `"${created.etag}"`,
+    });
     expect(fresh.ok).toBe(true);
     if (!fresh.ok) throw new Error('expected overwrite');
     expect(fresh.etag).not.toBe(created.etag);
@@ -53,8 +55,12 @@ describe('createVercelStore', () => {
   it('uses one bounded Blob list page with its supplied cursor', async () => {
     const calls: Array<{ prefix: string; cursor?: string; limit: number }> = [];
     const client: BlobClient = {
-      async get() { return null; },
-      async put() { return { etag: 'unused' }; },
+      async get() {
+        return null;
+      },
+      async put() {
+        return { etag: 'unused' };
+      },
       async del() {},
       async list(options) {
         calls.push(options);
@@ -167,7 +173,9 @@ describe('createVercelStore', () => {
       message: 'blob read failed',
       cause: original,
     });
-    await expect(store.put('c/x/state', new Uint8Array([1]), { exclusive: true })).rejects.toMatchObject({
+    await expect(
+      store.put('c/x/state', new Uint8Array([1]), { exclusive: true }),
+    ).rejects.toMatchObject({
       message: 'blob write failed',
       cause: original,
     });

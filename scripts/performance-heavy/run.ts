@@ -124,7 +124,9 @@ async function claimProfile(directory: string): Promise<void> {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     const entries = await readdir(directory);
     if (entries.length > 0) {
-      throw new Error(`Refusing unowned non-empty performance profile: ${directory}`);
+      throw new Error(`Refusing unowned non-empty performance profile: ${directory}`, {
+        cause: error,
+      });
     }
     await writeFile(marker, `${profileSentinel}\n`, 'utf8');
   }
@@ -183,7 +185,7 @@ async function freshRunProfile(rate: number): Promise<string | undefined> {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     try {
       await readdir(directory);
-      throw new Error(`Refusing unowned performance profile: ${directory}`);
+      throw new Error(`Refusing unowned performance profile: ${directory}`, { cause: error });
     } catch (directoryError) {
       if ((directoryError as NodeJS.ErrnoException).code !== 'ENOENT') throw directoryError;
     }

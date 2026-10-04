@@ -2,23 +2,15 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { readAiSessionExpiry } from './aiSessionMetadata.js';
 import { cleanupExpiredChannels } from './channelMaintenance.js';
 import { cleanupExpiredShares } from './shares.js';
+import {
+  CLEARED_RATE_RECORD,
+  RATE_KEY_RE,
+  decodeRateRecord,
+  encodeRateRecord,
+} from './rateLimit.js';
 import { canonicalEtag, type BlobStore, type ListedObject } from './store.js';
 
-const AI_PAIRING_RATE_LIMIT = 10;
-const AI_PAIRING_RATE_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_CAS_ATTEMPTS = 5;
 export const AI_CLEANUP_GRACE_MS = 24 * 60 * 60 * 1000;
-const RATE_KEY_RE = /^ai-rate\/pairing\/[0-9a-f]{64}$/;
-
-interface PairingRateRecord {
-  version: 1;
-  count: number;
-  resetAt: number;
-}
-
-const CLEARED_RATE_RECORD: PairingRateRecord = { version: 1, count: 0, resetAt: 0 };
-
-export type AiPairingPermit = 'allowed' | 'limited' | 'unavailable';
 
 export async function handleAiMaintenanceRoute(
   store: BlobStore,
@@ -31,72 +23,6 @@ export async function handleAiMaintenanceRoute(
   const channels = await cleanupExpiredChannels(store, now);
   const shares = await cleanupExpiredShares(store, now);
   return maintenanceJson(200, { ...ai, ...channels, ...shares });
-}
-
-export async function consumeAiPairingPermit(
-  store: BlobStore,
-  request: Request,
-  now: number,
-): Promise<AiPairingPermit> {
-  const key = pairingRateKey(trustedClientAddress(request));
-
-  for (let attempt = 0; attempt < RATE_LIMIT_CAS_ATTEMPTS; attempt += 1) {
-    const stored = await store.get(key);
-    if (!stored) {
-      const created = await store.put(
-        key,
-        encodeRateRecord({
-          version: 1,
-          count: 1,
-          resetAt: now + AI_PAIRING_RATE_WINDOW_MS,
-        }),
-        { exclusive: true },
-      );
-      if (created.ok) return 'allowed';
-      continue;
-    }
-
-    const record = decodeRateRecord(stored.body);
-    const etag = canonicalEtag(stored.etag);
-    if (!record || etag === '') return 'unavailable';
-    if (now < record.resetAt && record.count >= AI_PAIRING_RATE_LIMIT) return 'limited';
-
-    const next: PairingRateRecord =
-      now >= record.resetAt
-        ? { version: 1, count: 1, resetAt: now + AI_PAIRING_RATE_WINDOW_MS }
-        : { ...record, count: record.count + 1 };
-    const updated = await store.put(key, encodeRateRecord(next), { ifMatch: etag });
-    if (updated.ok) return 'allowed';
-  }
-
-  return 'unavailable';
-}
-
-function trustedClientAddress(request: Request): string {
-  const vercelAddress = firstForwardedAddress(request.headers.get('x-vercel-forwarded-for'));
-  if (vercelAddress) return vercelAddress;
-
-  // Vercel always supplies x-vercel-forwarded-for. Fallback headers are accepted only for the
-  // documented off-Vercel deployment path, where the operator controls the front proxy.
-  if (process.env.VERCEL) return 'unknown';
-  return (
-    firstForwardedAddress(request.headers.get('x-forwarded-for')) ??
-    request.headers.get('x-real-ip')?.trim() ??
-    'unknown'
-  );
-}
-
-function firstForwardedAddress(value: string | null): string | null {
-  const address = value?.split(',')[0]?.trim();
-  return address ? address.toLowerCase() : null;
-}
-
-function pairingRateKey(address: string): string {
-  const digest = createHash('sha256')
-    .update('lacuna-ai-pairing-ip-v1\0', 'utf8')
-    .update(address, 'utf8')
-    .digest('hex');
-  return `ai-rate/pairing/${digest}`;
 }
 
 function authorisedCron(request: Request): boolean {
@@ -200,43 +126,4 @@ function maintenanceJson(status: number, body: Record<string, unknown>): Respons
     status,
     headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json' },
   });
-}
-
-function encodeRateRecord(record: PairingRateRecord): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(record));
-}
-
-function decodeRateRecord(bytes: Uint8Array): PairingRateRecord | null {
-  try {
-    const value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    if (
-      !isObject(value) ||
-      Object.keys(value).some((key) => !['version', 'count', 'resetAt'].includes(key))
-    ) {
-      return null;
-    }
-    if (
-      value.version !== 1 ||
-      !Number.isInteger(value.count) ||
-      typeof value.count !== 'number' ||
-      value.count < 0 ||
-      value.count > AI_PAIRING_RATE_LIMIT ||
-      !isTimestamp(value.resetAt) ||
-      (value.count === 0 && value.resetAt !== 0) ||
-      (value.count > 0 && value.resetAt === 0)
-    ) {
-      return null;
-    }
-    return { version: 1, count: value.count, resetAt: value.resetAt };
-  } catch {
-    return null;
-  }
-}
-
-function isTimestamp(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

@@ -276,7 +276,10 @@ remains visible but disabled as **Planning next step…**; it never accepts a cl
 advance.
 
 Curricular Practice keeps a fixed lesson prefix only for its milestone denominator, so later
-lessons cannot rewrite or revive that historical milestone. A current automatic or recurring
+lessons cannot rewrite or revive that historical milestone. A session persists its milestone
+identity and progress against that same prefix, never the wider live pool; a completed
+milestone saved before this rule, carrying the live-scope fingerprint, counts as complete only
+while that exact scope still holds. A current automatic or recurring
 Practice session uses all reached and exposed material; a manual Practice node may narrow its
 live session through its authored lesson selection. Manual checkpoints are conditional. In
 Study mode they appear and gate progression only when they have eligible work whose estimated
