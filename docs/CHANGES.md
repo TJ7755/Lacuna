@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- CI: pull requests that change only documentation (`docs/`, root Markdown, issue and PR
+  templates) now skip the heavy jobs. A `changes` job classifies the diff, and the `test`
+  and `browser-smoke` gates accept skipped jobs only in that case, so required checks still
+  report.
+
 - The relay's anonymous channel and share mint limits (10 per hour per address) now
   live in the blob store, sharing the AI pairing limiter in `relay/src/rateLimit.ts`,
   instead of per-isolate memory keyed on the first `x-forwarded-for` hop. On Vercel the

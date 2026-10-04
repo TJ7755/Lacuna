@@ -421,11 +421,15 @@ describe('release configuration', () => {
     expect(mobile).toContain('if: always()');
     expect(mobile).toContain('playwright-report/');
     const gate = workflowJob(ciWorkflow, 'browser-smoke');
-    expect(gate).toContain('needs: [browser-tests, browser-mobile]');
+    expect(gate).toContain('needs: [changes, browser-tests, browser-mobile]');
     expect(gate).toContain('if: always() && !cancelled()');
     expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
     expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
-    expect(gate).toContain('test "$RESULT" = success && test "$MOBILE_RESULT" = success');
+    expect(gate).toContain('DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}');
+    expect(gate).toContain(
+      'ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }',
+    );
+    expect(gate).toContain('ok "$RESULT" && ok "$MOBILE_RESULT"');
   });
 
   it('runs both locked Python suites and makes them part of the required test gate', () => {
@@ -440,12 +444,16 @@ describe('release configuration', () => {
 
     const gate = workflowJob(ciWorkflow, 'test');
     expect(gate).toContain(
-      'needs: [test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]',
+      'needs: [changes, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]',
+    );
+    expect(gate).toContain('DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}');
+    expect(gate).toContain(
+      'ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }',
     );
     expect(gate).toContain('MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}');
-    expect(gate).toContain('"$MACOS_ELECTRON_RESULT" != "success"');
+    expect(gate).toContain('! ok "$MACOS_ELECTRON_RESULT"');
     expect(gate).toContain('PYTHON_RESULT: ${{ needs.python-tools.result }}');
-    expect(gate).toContain('"$PYTHON_RESULT" != "success"');
+    expect(gate).toContain('! ok "$PYTHON_RESULT"');
   });
 
   it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {
