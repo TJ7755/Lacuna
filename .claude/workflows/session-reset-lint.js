@@ -16,7 +16,7 @@ commit on top. Do not push and do not open a pull request.
 
 # The error
 
-\\\`react-hooks/exhaustive-deps\\\` is \\\`'error'\\\` in \\\`.eslintrc.cjs\\\`, and \\\`bun run lint\\\`
+\\\`react-hooks/exhaustive-deps\\\` is \\\`'error'\\\` in \\\`eslint.config.js\\\`, and \\\`bun run lint\\\`
 is a required CI job.
 
     error  React Hook useEffect has missing dependencies: 'filterParams' and 'requestScopeLessonIds'

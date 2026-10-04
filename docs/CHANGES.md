@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Consolidated the ESLint setup into one native flat config per package. The root and
+  `tooling/lacuna-ai-mcp` no longer carry a legacy `.eslintrc.cjs` behind a `FlatCompat`
+  shim, and `@eslint/compat` and `@eslint/eslintrc` are gone. The rule set is unchanged
+  (verified with `--print-config` and identical violation lists). `eslint-plugin-react`'s
+  `version: 'detect'` calls `context.getFilename()`, which ESLint 10 removed, so the
+  config passes the installed React version explicitly instead of using `fixupConfigRules`.
+  The AI MCP package drops its inapplicable React rules (#343).
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
