@@ -94,8 +94,9 @@ describe('HttpTerminalRelayTransport', () => {
       expiresAt: 90_000,
     });
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
-    expect(url).toBe('https://relay.example/ai/s/ABCD-EFGH-JKMN-PQRS-TVW2/claim');
+    expect(url).toBe('https://relay.example/ai/claim');
     expect(init).toMatchObject({ method: 'POST' });
+    expect(new Headers(init?.headers).get('X-Lacuna-Pairing-Code')).toBe('ABCD-EFGH-JKMN-PQRS-TVW2');
     expect(new Headers(init?.headers).has('Content-Length')).toBe(false);
     expect(JSON.parse(String(init?.body))).toEqual({
       terminalPublicKey: PUBLIC_KEY,

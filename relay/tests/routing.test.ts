@@ -9,8 +9,13 @@ const relayRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PUBLIC_PATHS = ['/channel', '/c/:id', '/c/:id/:slot'] as const;
 const API_ALIASES = ['/api/channel', '/api/c/:id', '/api/c/:id/:slot'] as const;
-const AI_PUBLIC_PATHS = ['/ai/sessions', '/ai/s/:id', '/ai/s/:id/:action'] as const;
-const AI_API_ALIASES = ['/api/ai/sessions', '/api/ai/s/:id', '/api/ai/s/:id/:action'] as const;
+const AI_PUBLIC_PATHS = ['/ai/sessions', '/ai/claim', '/ai/s/:id', '/ai/s/:id/:action'] as const;
+const AI_API_ALIASES = [
+  '/api/ai/sessions',
+  '/api/ai/claim',
+  '/api/ai/s/:id',
+  '/api/ai/s/:id/:action',
+] as const;
 const AI_MAINTENANCE_PATHS = ['/ai/maintenance', '/api/ai/maintenance'] as const;
 const SHARE_PUBLIC_PATHS = ['/shares', '/shares/:id', '/shares/:id/:slot'] as const;
 const SHARE_API_ALIASES = ['/api/shares', '/api/shares/:id', '/api/shares/:id/:slot'] as const;
