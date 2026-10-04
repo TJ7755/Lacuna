@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '../../db/schema';
 import { McpBridgeController } from './McpBridgeController';
 import type { McpBridgeOptions } from '../../mcp/bridge/renderer';
 import type { McpConsentRequest, McpGrantNotice } from '../../mcp/bridge/protocol';
@@ -213,5 +214,53 @@ describe('McpBridgeController', () => {
 
     await waitFor(() => expect(mocks.restoreAgentMemory).toHaveBeenCalledWith(snapshot));
     expect(mocks.notify).toHaveBeenCalledWith('MCP action undone.', 'positive');
+  });
+
+  describe('consent label', () => {
+    const request = (id: string, courseId: string): McpConsentRequest => ({
+      id,
+      tool: 'lacuna.update_card',
+      courseId,
+      scope: 'write',
+    });
+    const mockGet = () => db.courses.get as unknown as ReturnType<typeof vi.fn>;
+
+    it('ignores a slow lookup for a superseded course', async () => {
+      let resolveA!: (value: { name: string }) => void;
+      let resolveB!: (value: { name: string }) => void;
+      mockGet().mockImplementation(
+        (id: string) =>
+          new Promise((resolve) => {
+            if (id === 'course-a') resolveA = resolve;
+            else resolveB = resolve;
+          }),
+      );
+      render(<McpBridgeController />);
+      act(() => consentListener(request('a', 'course-a')));
+      act(() => consentListener(request('b', 'course-b')));
+      fireEvent.click(await screen.findByText('Allow'));
+      expect(await screen.findByText(/Allow write access to this course/)).toBeInTheDocument();
+
+      await act(async () => resolveA({ name: 'Alpha' }));
+      expect(screen.queryByText(/Alpha/)).not.toBeInTheDocument();
+      expect(screen.getByText(/Allow write access to this course/)).toBeInTheDocument();
+
+      await act(async () => resolveB({ name: 'Beta' }));
+      expect(await screen.findByText(/Allow write access to Beta/)).toBeInTheDocument();
+      mockGet().mockResolvedValue({ name: 'Biology' });
+    });
+
+    it('keeps the neutral label when the lookup rejects', async () => {
+      const unhandled = vi.fn();
+      process.on('unhandledRejection', unhandled);
+      mockGet().mockRejectedValue(new Error('db closed'));
+      render(<McpBridgeController />);
+      act(() => consentListener(request('a', 'course-a')));
+      expect(await screen.findByText(/Allow write access to this course/)).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+      process.off('unhandledRejection', unhandled);
+      mockGet().mockResolvedValue({ name: 'Biology' });
+    });
   });
 });
