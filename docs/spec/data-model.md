@@ -452,4 +452,18 @@ questionConcepts, questionAttempts, courseExamDates? }` — the
   handle, sidebar settings, input mode, motion speed).
 
 
+### Question-set domain foundation (not persisted)
+
+`src/questions/questionSets.ts` defines ordered sets with question/part/subpart
+content, existing Concept references and author-defined mark allocations. Its pure
+validation and self-marking summary functions reject duplicate identities, invalid
+allocations and scored parents with children. Missing or unsure decisions keep a
+summary provisional; an explicitly awarded zero is resolved. Mixed allocations and
+multiple concept links do not duplicate marks.
+
+This foundation is not yet a database record or an available authoring/study flow.
+It does not change the four existing Question collections, backup formats, attempt
+histories or FSRS state. Persistence and interface work are tracked in the
+[implementation checklist](../plans/question-sets-implementation.md).
+
 [Specification index](../SPEC.md)
