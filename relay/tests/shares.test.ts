@@ -3,8 +3,6 @@ import {
   EMPTY_SLOT_ETAG,
   SHARE_META_MAX_BYTES,
   SHARE_PAYLOAD_MAX_BYTES,
-  __resetMintRateLimitForTests,
-  __resetShareMintRateLimitForTests,
   createHandler,
 } from '../src/relay.js';
 import { cleanupExpiredShares } from '../src/shares.js';
@@ -15,14 +13,10 @@ const MINT_SECRET = 'test-relay-mint-secret';
 
 beforeEach(() => {
   vi.stubEnv('RELAY_MINT_SECRET', MINT_SECRET);
-  __resetMintRateLimitForTests();
-  __resetShareMintRateLimitForTests();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  __resetMintRateLimitForTests();
-  __resetShareMintRateLimitForTests();
 });
 
 describe('course share links', () => {
@@ -81,9 +75,9 @@ describe('course share links', () => {
     const ctx = await mintedShare();
     const res = await ctx.handle(getShareRequest('not-a-share-id', 'payload'));
     expect(res.status).toBe(404);
-    expect(await ctx.handle(getShareRequest(`${ctx.shareId}zz`, 'payload')).then((r) => r.status)).toBe(
-      404,
-    );
+    expect(
+      await ctx.handle(getShareRequest(`${ctx.shareId}zz`, 'payload')).then((r) => r.status),
+    ).toBe(404);
   });
 
   it('rejects unknown slots', async () => {
@@ -175,8 +169,11 @@ describe('course share links', () => {
       ).status,
     ).toBe(204);
     expect(
-      (await ctx.handle(putShareRequest(ctx.shareId, 'meta', ctx.writeToken, EMPTY_SLOT_ETAG, meta)))
-        .status,
+      (
+        await ctx.handle(
+          putShareRequest(ctx.shareId, 'meta', ctx.writeToken, EMPTY_SLOT_ETAG, meta),
+        )
+      ).status,
     ).toBe(204);
 
     const gone = await ctx.handle(
@@ -260,6 +257,44 @@ describe('course share links', () => {
     expect(limited.status).toBe(429);
   });
 
+  it('counts share mints per platform address despite forged x-forwarded-for prefixes', async () => {
+    vi.stubEnv('VERCEL', '1');
+    const store = new MemoryStore();
+    const mint = (handle: ReturnType<typeof createHandler>, forged: string) =>
+      handle(
+        new Request('http://relay.test/shares', {
+          method: 'POST',
+          headers: {
+            Origin: ORIGIN,
+            'x-vercel-forwarded-for': '198.51.100.9',
+            'x-forwarded-for': `${forged}, 198.51.100.9`,
+          },
+        }),
+      );
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      expect((await mint(createHandler(store), `203.0.113.${attempt}`)).status).toBe(201);
+    }
+    expect((await mint(createHandler(store), '203.0.113.200')).status).toBe(429);
+  });
+
+  it('persists the share mint counter in the store, not module state', async () => {
+    const store = new MemoryStore();
+    const mint = (handle: ReturnType<typeof createHandler>) =>
+      handle(
+        new Request('http://relay.test/shares', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'x-forwarded-for': '198.51.100.9' },
+        }),
+      );
+    const first = createHandler(store);
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      expect((await mint(first)).status).toBe(201);
+    }
+    expect(await store.list('ai-rate/share-mint/')).toHaveLength(1);
+    expect((await mint(createHandler(store))).status).toBe(429);
+    expect((await mint(createHandler(new MemoryStore()))).status).toBe(201);
+  });
+
   it('sweeps shares untouched past the TTL plus grace', async () => {
     let now = 0;
     const store = new MemoryStore(() => now);
@@ -277,9 +312,8 @@ describe('course share links', () => {
     };
     const payload = new Uint8Array([1, 2]);
     expect(
-      (
-        await handle(putShareRequest(shareId, 'payload', writeToken, EMPTY_SLOT_ETAG, payload))
-      ).status,
+      (await handle(putShareRequest(shareId, 'payload', writeToken, EMPTY_SLOT_ETAG, payload)))
+        .status,
     ).toBe(204);
 
     now += 91 * 24 * 60 * 60 * 1000;

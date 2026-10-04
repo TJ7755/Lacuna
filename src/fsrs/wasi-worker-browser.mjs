@@ -14,7 +14,6 @@ const handler = new MessageHandler({
         // into production system logs.
       },
       printErr: function() {
-        // eslint-disable-next-line no-console
         console.error.apply(console, arguments)
         errorOutputs.push([...arguments])
       },

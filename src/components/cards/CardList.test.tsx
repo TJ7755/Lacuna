@@ -493,6 +493,84 @@ describe('CardList', () => {
     );
   });
 
+  it('reports a failed bulk delete, keeps select mode and raises no unhandled rejection', async () => {
+    const { deleteCards } = await import('../../db/cardRepository');
+    vi.mocked(deleteCards).mockRejectedValueOnce(new Error('write failed'));
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      render(
+        <CardList
+          cards={[mockCard, mockCard2]}
+          context={mockContext}
+          onNewCard={vi.fn()}
+          onEditCard={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByText('Select'));
+      fireEvent.click(screen.getByText('Select all'));
+      fireEvent.click(screen.getAllByText('Delete')[0]);
+
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith('Could not delete the selected cards.', 'negative'),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(screen.getByText('Done')).toBeInTheDocument();
+      expect(screen.getByText('Deselect all')).toBeInTheDocument();
+      expect(mockNotify).not.toHaveBeenCalledWith(
+        expect.stringContaining('deleted.'),
+        'neutral',
+        expect.anything(),
+      );
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('reports a failed bulk suspend and keeps select mode', async () => {
+    const { setCardsSuspended } = await import('../../db/cardRepository');
+    vi.mocked(setCardsSuspended).mockRejectedValueOnce(new Error('write failed'));
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={mockContext}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Suspend'));
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Could not suspend the selected cards.', 'negative'),
+    );
+    expect(screen.getByText('Done')).toBeInTheDocument();
+    expect(screen.getByText('Deselect all')).toBeInTheDocument();
+  });
+
+  it('offers Undo after a successful bulk delete', async () => {
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={mockContext}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getAllByText('Delete')[0]);
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('1 card deleted.', 'neutral', {
+        actionLabel: 'Undo',
+        onAction: expect.any(Function),
+      }),
+    );
+  });
+
   describe('generated cards', () => {
     const sequence: Sequence = {
       id: 'sequence-1',

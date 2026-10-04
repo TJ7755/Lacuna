@@ -70,6 +70,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     request?.kind === 'practice' && request.mode !== 'assessment'
       ? request.scopeLessonIds
       : undefined;
+  const requestMilestoneLessonIds =
+    request?.kind === 'practice' && request.mode === 'curricular'
+      ? request.milestoneLessonIds
+      : undefined;
   const requestAssessmentId =
     request?.kind === 'practice' && request.mode === 'assessment'
       ? request.assessmentId
@@ -207,6 +211,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     tagFilter,
     filterParams,
     requestScopeLessonIds,
+    requestMilestoneLessonIds,
     practiceNodeKeyParam,
     requestAssessmentId,
     requestPlanId,
