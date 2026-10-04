@@ -5,6 +5,9 @@
 - Deleting a Question definition from the Question editor now confirms inline with
   `ConfirmInlineSwap` instead of the blocking browser `window.confirm`, keeping the
   attempt-evidence warning copy (#337).
+- The Question editor's save bar now sits above the phone course navigation bar
+  below the `sm` breakpoint, so Delete, Save and the inline delete confirmation are no
+  longer half-covered or unclickable on phones. The overlap predates #337.
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins

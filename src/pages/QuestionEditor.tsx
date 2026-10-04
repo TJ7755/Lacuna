@@ -461,7 +461,7 @@ export function QuestionEditor() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-paper/90 px-6 py-4 backdrop-blur-xl">
+      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-paper/90 px-6 py-4 backdrop-blur-xl sm:bottom-0">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           {editing ? (
             <ConfirmInlineSwap
