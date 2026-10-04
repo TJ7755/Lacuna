@@ -158,3 +158,43 @@ live-upload interval.
 
 The primary agent owns the UI redesign. No delegated UI implementation is included in
 this slice, and work stops before the authoring interface.
+
+
+## Personal attempt storage implemented — 26 September 2026
+
+Schema v29 adds `questionSetAttempts`. Backup and peer sync now emit envelope v13 with the
+`lacuna-v13` marker and required attempt collection; historical v12 inputs normalise with no
+set attempts. Course sharing remains authored-content-only.
+
+The attempt repository creates the full immutable receipt before rendering. Response drafts
+are mutable until whole-question Practice submission or whole-set Paper submission. Submitted
+originals cannot be replaced; corrections, comments, allocation decisions and reflection live
+separately. Revision-ID compare-and-swap protects each write. Zero is an explicit award;
+unsure and absent decisions remain unresolved. Assistance is append-only.
+
+Peer and recovery merges reject conflicting receipts, identities, original responses and
+same-revision unequal payloads. Lifecycle cannot regress. Compatible submitted originals,
+reveals and assistance are retained across concurrent progress. Retained receipts keep their
+media reachable after deletion of the authored set; Course deletion and undo include attempts.
+
+Validation: actual baseline red at `0b09302d` (missing attempt codec), 219 passing tests across
+11 backend suites, including populated v28-to-v29 upgrade. Browser origin 5183 upgraded the
+existing v28 fixture to v29, answered and resumed a nested Biology set, submitted and annotated
+it, and exported v13 containing the attempt. Original responses remained intact beside a saved
+correction, and all 30 pre-existing Card schedules matched the stored browser baseline.
+
+
+### Follow-up merge and creation gate
+
+Attempt creation now reads its Course and set and writes its receipt within one transaction.
+Recovery and peer sync use the same attempt-pair merge. Synthesised state receives a bounded,
+deterministic revision; equal-time synthetic revisions take precedence over their source
+revisions. Same-revision unequal data remains a hard conflict.
+
+The T3 browser remerged concurrent assistance events with each original in turn: both retained
+identical combined evidence and the selected active part. The combined revision was 56 characters;
+no ancestry list or response content is embedded in the identifier.
+
+Validation: three expected failures were captured on `fb71b403` before these fixes (missing-Course
+creation, peer revision reuse and recovery remerge conflict). The updated backend gate passes
+220 tests across 11 suites and web typechecking.

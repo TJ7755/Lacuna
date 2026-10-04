@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import type { QuestionDefinition } from '../questions/types';
-import { QuestionsPage } from './QuestionsPage';
+import { LegacyQuestionsPage as QuestionsPage } from './LegacyQuestionsPage';
 
 const mocks = vi.hoisted(() => ({
   data: undefined as CourseQuestionData | undefined,

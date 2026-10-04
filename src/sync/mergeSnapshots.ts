@@ -47,6 +47,8 @@ import type {
   QuestionDefinition,
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
 import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
@@ -67,9 +69,9 @@ const NEVER_REVIEWED = {
   history: [] as Card['history'],
 };
 
-/** A v12 snapshot with every table merge always emits present. */
+/** A current snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 12;
+  version: 13;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -92,6 +94,7 @@ export type MergedBackupFile = BackupFile & {
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
   questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories: AgentMemory[];
@@ -236,6 +239,10 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
   const questionSets = mergeQuestionSetRecords(left.questionSets, right.questionSets, [
     ...tombstones.values(),
   ]).filter((set) => courses.some((course) => course.id === set.courseId));
+  const questionSetAttempts = mergeQuestionSetAttempts(
+    left.questionSetAttempts,
+    right.questionSetAttempts,
+  ).filter((attempt) => courses.some((course) => course.id === attempt.courseId));
   assertQuestionSetReferences(
     questionSets,
     courses,
@@ -305,6 +312,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
     questionSets,
+    questionSetAttempts,
     agentMemories,
   });
   const keptTombstones = [...tombstones.values()]
@@ -312,8 +320,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     .sort(compareTombstones);
 
   return {
-    app: 'lacuna-v12',
-    version: 12,
+    app: 'lacuna-v13',
+    version: 13,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),
@@ -329,6 +337,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
       questionState.questions,
       questionState.questionAttempts,
       questionSets,
+      questionSetAttempts,
     ),
     sessionHistory: sortSessionHistory(sessionHistory),
     userPerformance: [],
@@ -350,6 +359,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
     questionSets,
+    questionSetAttempts,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories: sortById(agentMemories),
@@ -382,6 +392,7 @@ interface NormalisedSnapshot extends QuestionMergeCollections {
   pendingMergeReviews: PendingMergeReview[];
   agentMemories: AgentMemory[];
   questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
 }
 
 function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
@@ -439,6 +450,7 @@ function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
     questionConcepts: normalised.questionConcepts,
     questionAttempts: normalised.questionAttempts,
     questionSets: normalised.questionSets,
+    questionSetAttempts: normalised.questionSetAttempts ?? [],
     lineageIdMappings: normalised.lineageIdMappings ?? [],
     pendingMergeReviews: normalised.pendingMergeReviews ?? [],
     agentMemories: normalised.agentMemories ?? [],
@@ -617,6 +629,7 @@ function collectLiveKeys(tables: {
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
   questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
   agentMemories: AgentMemory[];
 }): Set<string> {
   const keys = new Set<string>();
@@ -643,6 +656,7 @@ function collectLiveKeys(tables: {
   for (const row of tables.questionConcepts) add('questionConcepts', row.questionId);
   for (const row of tables.questionAttempts) add('questionAttempts', row.id);
   for (const row of tables.questionSets) add('questionSets', row.id);
+  for (const row of tables.questionSetAttempts) add('questionSetAttempts', row.id);
   for (const row of tables.agentMemories) add('agentMemories', row.id);
   return keys;
 }
@@ -758,6 +772,7 @@ function mergeAssets(
   questions: QuestionDefinition[],
   attempts: QuestionAttempt[],
   questionSets: QuestionSetRecord[],
+  questionSetAttempts: QuestionSetAttemptRecord[],
 ): BackupAsset[] {
   const byHash = new Map<string, BackupAsset>();
   for (const asset of [...left, ...right]) {
@@ -768,7 +783,15 @@ function mergeAssets(
       byHash.set(hash, normalised);
     }
   }
-  const referenced = referencedHashes(cards, notes, occlusions, questions, attempts, questionSets);
+  const referenced = referencedHashes(
+    cards,
+    notes,
+    occlusions,
+    questions,
+    attempts,
+    questionSets,
+    questionSetAttempts,
+  );
   return [...byHash.values()]
     .filter((asset) => referenced.has(asset.hash))
     .sort((a, b) => a.hash.localeCompare(b.hash));
@@ -781,6 +804,7 @@ function referencedHashes(
   questions: QuestionDefinition[],
   attempts: QuestionAttempt[],
   questionSets: QuestionSetRecord[],
+  questionSetAttempts: QuestionSetAttemptRecord[],
 ): Set<string> {
   const hashes = new Set<string>();
   const scan = (markdown: string) => {
@@ -802,7 +826,24 @@ function referencedHashes(
   questions.forEach(scanValue);
   attempts.forEach(scanValue);
   questionSets.forEach(scanValue);
+  questionSetAttempts.forEach(scanValue);
   return hashes;
+}
+
+function mergeQuestionSetAttempts(
+  left: QuestionSetAttemptRecord[],
+  right: QuestionSetAttemptRecord[],
+): QuestionSetAttemptRecord[] {
+  const merged = new Map<string, QuestionSetAttemptRecord>();
+  for (const incoming of [...left, ...right]) {
+    const existing = merged.get(incoming.id);
+    if (!existing) {
+      merged.set(incoming.id, incoming);
+      continue;
+    }
+    merged.set(incoming.id, mergeQuestionSetAttemptPair(existing, incoming));
+  }
+  return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function canonicalJson(value: unknown): string {

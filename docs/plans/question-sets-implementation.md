@@ -5,6 +5,44 @@
 using the evidence and limitations in the [research note](../question-sets-research-2026-09-26.md).
 No completion dates are assigned. Check an item only after its code and required evidence exist.
 
+## Next-session checkpoint — 26 September 2026
+
+Worktree: `/Users/tj7755/Documents/Coding/Lacuna-question-sets`, branch `feat/question-sets`.
+The original Lacuna checkout is separate; do not move or overwrite its work.
+
+Completed this session, each with browser evidence and its own commit:
+
+- `a906b9e9`: compact image chooser with preview and progressive description controls.
+- `723c114e`: lesson/exam/Card entry points and return after saving, including exam reopening.
+- `2cacd949`: per-set descriptive evidence with first/repeated filters and unresolved marks.
+
+Latest validation: 93 Question Set/learner tests plus 72 surrounding CardList/LessonView/
+CoursePath tests passed; full typechecks, focused lint and production asset build passed.
+Desktop and 390px browser gates passed. This is not a packaged or cold-offline release sign-off.
+
+**V1 remains incomplete. Next stages, in order:**
+
+1. Finish learner navigation/media: enlarge diagrams without losing answers; retain library
+   search/filter and scroll through entry/return. Lesson/exam return is already implemented.
+2. Finish author management: set removal confirmation using the existing tombstone/receipt
+   repository, sharing entry points using existing Course transport, and required media authoring
+   affordances. Do not invent a second sharing format. Assessment-linked published-course
+   lineage support remains restricted and must be resolved or explicitly scoped before release.
+3. Add optional Practice Qs path activities as one persistence gate, including schema, codecs,
+   sharing/remapping, sync, deletion and milestones. Related lesson links already exist but do
+   not replace the promised path activity.
+4. Finish evidence presentation: coverage gaps and unknown evidence; inspect whether useful
+   recommendations are supported. The per-set marks panel is complete, but it does not expose
+   every coverage/status value from the summary API. Numeric exam forecasts stay outside v1.
+5. Complete release evidence: duplicate/import, missing media, stale assessment, removal with
+   retained attempts, privacy, backup/restore and sync; real keyboard/focus and touch checks,
+   packaged desktop, long responses/annotations, and cold-offline launch/navigation.
+
+Root owns UI; Sol handles backend and Luna handles bounded tests/audits. Preserve no-Jev,
+self-marking-only and no question-to-FSRS writes. Do not mark whole stages complete merely
+by checking off their currently implemented portions. Some original broad checkboxes below
+remain open deliberately; dated gates specify the completed slices.
+
 ## Commit and browser gates
 
 The prompter requires regular commits and browser testing at **every gate**, including
@@ -355,38 +393,119 @@ Exit condition: an author can create, edit, preview and validate a complete set 
 without configuring lesson/exam/concepts before writing. The set library and unanswered
 learner view do not expose the scheme; author preview can exercise the full marking flow.
 
+### Paper authoring UI gate — 26 September 2026
+
+Implemented by the primary agent (no delegated UI implementation):
+
+- Real set library with search and Author-only local drafts; existing individual Questions
+  stay available. New sets start with an empty title and question, without required links.
+- Paper workspace with collapsible outline, persistent selected part in the current browser
+  session, stable nested numbering, add/remove/reorder, and confirmation before replacing
+  scored content with shared source material.
+- Separate Question, Mark scheme and Links steps. Existing Markdown renders directly;
+  text editing reveals a compact toolbar and a Write/Preview toggle. One criterion is expanded.
+- Written, calculation and text/Markdown MCQ options; maximum marks and allocation totals;
+  alternatives/level guidance; author-selected dimensions. Changing away from populated
+  MCQ options requires confirmation.
+- Manual concept/card search and related-card inspection, create-in-place concepts,
+  per-allocation targets and prerequisite links. Lesson and dated exam links are optional.
+- Image upload with required description, atomic asset/draft persistence, explicit save
+  state, retries, confirmed stale-draft reload and a separate-copy action for stale saved content.
+- Save set validates authored content and missing images. It saves locally; it does not
+  publish a share link. Locked/archived courses cannot open the editor.
+- Author preview renders ancestor sources, actual marks, response formats and an explicitly
+  requested scheme preview. Preview responses never become learner evidence.
+
+Validation: UI/library/legacy/Markdown/route regression suites pass. The new compact-editor
+assertion fails on baseline (the general image uploader remains visible there); new authoring
+APIs also fail to import before the slice. Full web/server/Electron typechecks passed, followed
+by a final web typecheck and focused ESLint after UI changes.
+
+T3 browser evidence: create, nested part selection, autosave, diagram upload with description,
+manual concept link, complete save, reopen, author preview and live stale-draft rejection with
+confirmed recovery. Narrow viewport 390×844 has no horizontal overflow. All 30 fixture card
+schedules match the pre-change baseline and the legacy attempt remains. Fresh-tab diagnostics
+contain no application errors. Desktop/narrow screenshots are shared in the chat.
+
+Remaining Stage 3 work includes set sharing/removal controls, richer media-option authoring,
+full offline/accessibility release checks. Preview and recorded practice now share the answer renderer.
+This gate does not complete Stage 4: student attempts, marking decisions, annotations, correction
+history and feedback/dependency timing need their persistence and learner-flow gate first.
+No numerical exam forecast or classifier has been added.
+
 ## Stage 4 — practice, self-marking, annotations and resume
 
-- [ ] Implement Practice and Paper feedback timing. Practice reveals feedback after the
+- [x] Implement Practice and Paper feedback timing. Practice reveals feedback after the
   independent question/dependency group; Paper stores responses until paper submission. Do not
   add a timer to v1.
-- [ ] Persist a presentation/attempt snapshot before display and save partial answers as the
+- [x] Persist a presentation/attempt snapshot before display and save partial answers as the
   learner moves. Preserve original answer separately from later correction.
-- [ ] Add explicit unanswered-part handling before submission; record assistance when a learner
+- [x] Add explicit unanswered-part handling before submission; record assistance when a learner
   opens related cards/lessons before submitting.
-- [ ] Implement side-by-side desktop answer/scheme and a single-flow small-screen marking view.
+- [x] Implement side-by-side desktop answer/scheme and a single-flow small-screen marking view.
   Decisions must support zero through maximum, partial credit where configured, and a distinct
   Unsure state without defaulting to zero/full marks.
-- [ ] Show one active answerable part during answering and one active criterion during
+- [x] Show one active answerable part during answering and one active criterion during
   marking, preserving parent context and dependent-part feedback rules. Capture both
   states in desktop and narrow-screen gate screenshots.
-- [ ] Add accessible text highlighting, comments and Add note controls. Keep annotations separate
+- [x] Add accessible text highlighting, comments and Add note controls. Keep annotations separate
   from the original answer. Pen drawing is out of scope.
-- [ ] Add optional multi-reason reflection and a separate corrections area; neither silently
+- [x] Add optional multi-reason reflection and a separate corrections area; neither silently
   changes first-attempt evidence.
 - [ ] Add Save and finish later, resume at the active question/scroll location, return to the
   originating entry point and preserve library filter/scroll state.
-- [ ] Keep self-marked results labelled as such; show unresolved decisions as provisional and
+- [x] Keep self-marked results labelled as such; show unresolved decisions as provisional and
   completion separately from score. Repeating creates a new attempt.
-- [ ] Add tests for close/reopen resume, Paper reveal timing, dependency groups, answer snapshot
+- [x] Add tests for close/reopen resume, Paper reveal timing, dependency groups, answer snapshot
   immutability, assisted exposure, annotation persistence and zero-mark completed attempts.
 - [ ] Run touch and browser evidence on supported web targets and packaged desktop as applicable;
   specifically check focus, selection-based annotation, enlarged diagrams and long answers on
   narrow screens.
-- [ ] Record the learner-flow browser gate and commit the validated slice.
+- [x] Record the learner-flow browser gate and commit the validated slice.
 
 Exit condition: an attempt can be answered, left, resumed, self-marked, annotated and completed
 without loss or accidental conversion of unknown/unsure to zero.
+
+### Core learner browser gate — 26 September 2026
+
+Implemented the real overview/start/history flow and persisted Practice/Paper attempts. The
+Paper workspace shares its question renderer with author preview. Each screen presents one
+answerable part or marking criterion; desktop compares original response and criterion side by
+side, while narrow screens stack them. Original responses are selectable plain text, never
+rewritten by highlights, notes or corrections. Related cards are revealed only after assistance
+is recorded. Optional reflection is separate from both marks and original answers.
+
+The write queue owns the attempt revision. Response text autosaves and flushes before navigation
+or submission. Accepted commands behind a failed write remain queued for retry; text arriving
+while a slow flush finishes is drained before it resolves. Errors block departure and further
+marking mutations. Explicit Save and finish later restores active part/criterion and per-tab
+scroll. The current entry point returns to its set overview.
+
+Evidence:
+- Sol implemented and audited attempt persistence; Luna supplied UI regressions and audit;
+  the primary agent implemented every UI component.
+- Actual missing-module red runs preceded the learner page and shared renderer. Two additional
+  deferred-write tests failed before the queue fixes and passed afterwards.
+- 27 relevant UI/session/regression tests passed across eight files, including failed mark save
+  and retry, resume, zero, blank submission, notes, corrections, assistance and reflection.
+- Web/server/Electron typechecks, focused ESLint and production build passed.
+- T3 browser origin 5183: filled nested Biology parts, saved/left/resumed at (a)(ii), submitted
+  Practice, saved a selected-text highlight/comment and separate correction, marked unsure then
+  resolved it, awarded an explicit zero and completed at 2/4. A fresh Paper attempt kept its scheme
+  hidden and required explicit confirmation for unanswered parts. No Card schedule changed.
+- Checked desktop and 390×844 layout with no horizontal overflow. Browser testing caught the
+  shell's default selection prohibition; the original-answer panel now explicitly enables text
+  selection. Selection changed from empty to the actual answer and a persisted highlight.
+- Desktop answering: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiub4td-f65692aa.png`.
+- Desktop marking: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiudwld-838142e5.png`.
+- Narrow marking: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiuejtp-925f67de.png`.
+- Narrow answering: `/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muiuj6w3-cffaf79a.png`.
+
+Remaining Stage 4 release checks: enlarged-diagram interaction, supported-browser/touch and
+packaged desktop checks, cold offline validation, future path-activity context and library
+filter/scroll restoration. Lesson/exam entry context was completed in the later related-set gate. Practice currently treats a top-level question as
+the dependency group; separately authored cross-question dependency metadata is not implemented.
+Stage 5 path/exam entry points and Stage 6 exam-performance integration remain unimplemented.
 
 ## Stage 5 — sharing, path and exam entry points
 
@@ -396,11 +515,11 @@ These depend on the persistence work and can then proceed in parallel UI slices.
   required and leaving learner attempts private. Include required referenced media in `.lacourse`.
 - [ ] Add an optional **Practice Qs** path activity after a lesson by extending existing path and
   practice-node models. Preserve stable activity IDs and existing Path completion behaviour.
-- [ ] Show related sets from the lesson and assessment detail views, and support return to the
+- [x] Show related sets from the lesson and assessment detail views, and support return to the
   original path/lesson/exam entry point after practice.
 - [ ] Link sets to existing assessment IDs, not copied dates. Moving an exam changes planning
   context only; historical attempt timestamps, marks and content versions stay fixed.
-- [ ] Expose related questions in card detail through existing Concept relationships. Manual links
+- [x] Expose related questions in card detail through existing Concept relationships. Manual links
   only; no Jev/classifier or paid suggestion call in v1.
 - [ ] Add duplicate/import, missing-media, stale-assessment, set-removal and offline share/import
   regression cases.
@@ -470,3 +589,29 @@ Jev or another classifier suggesting links; automatic marking; classroom assignm
 freehand annotation; timed papers; arbitrary user-authored executable generators; a mixed
 Cards-and-Questions FSRS session; Question-set FSRS state; and a numerical exam-day forecast
 without calibration. Future work can revisit these with separate evidence and design review.
+
+### Related-set entry gate — 26 September 2026
+
+- Added indexed lesson/exam queries and course-scoped Concept/Card queries, with assessed
+  concepts kept distinct from prerequisites. Cards show sets assessing their linked concept.
+- Browser verified lesson → set → saved attempt → lesson, exam → set → reopened exam details,
+  and Card expansion → related set at desktop and 390px width.
+- Regression tests cover relationships, same-course return validation, save-before-return and
+  unchanged Card records. Existing CardList/LessonView/CoursePath suites: 72 passing.
+- This completes the entry-point slice only. Persisted optional Practice Qs path activities,
+  sharing controls and release portability checks remain open; no new path schema was improvised.
+
+### Descriptive evidence gate — 26 September 2026
+
+- The set overview now offers a collapsed Practice evidence panel. All/first-recorded/repeated
+  partitions show sample and assistance counts, earned/available marks, explicit unresolved
+  marks, and Knowledge/Application/Exam execution (plus Mixed when present).
+- Historical totals use pinned receipts and submitted originals only. No corrections, drafts,
+  multi-concept duplication or FSRS writes enter the calculation. Current target/prerequisite
+  coverage is available in the pure summary API; coverage-gap UI remains to implement.
+- Actual missing-module red captured before implementation. Panel tests: 3 passing; pure
+  evidence tests: 4 passing. Question Set/learner regression group: 93 passing across 19 files.
+- Browser checked collapsed entry, all/first/repeated filters against retained real attempts,
+  explicit unresolved totals and 390px layout without horizontal overflow. Full web/server/
+  Electron typechecks, focused lint and production asset build pass.
+- This completes per-set descriptive totals only, not the whole analytics/release stage.

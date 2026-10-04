@@ -9,6 +9,7 @@ import type {
   QuestionDefinition,
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import type { QuestionSetDraft } from '../questions/questionSetDrafts';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { readPracticeDefaults } from '../state/practiceDefaults';
@@ -405,6 +406,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.questionConcepts,
       db.questionAttempts,
       db.questionSets,
+      db.questionSetAttempts,
       db.lineageIdMappings,
       db.pendingMergeReviews,
       db.agentMemories,
@@ -458,6 +460,9 @@ export async function deleteCourse(id: string): Promise<void> {
         await db.questionAttempts.where('courseId').equals(id).primaryKeys()
       ).map(String);
       const questionSets = await db.questionSets.where('courseId').equals(id).toArray();
+      const questionSetAttemptIds = (
+        await db.questionSetAttempts.where('courseId').equals(id).primaryKeys()
+      ).map(String);
       const questionSetDrafts = await listQuestionSetDrafts(id);
       const lineageMappingIds = (
         await db.lineageIdMappings.where('courseId').equals(id).primaryKeys()
@@ -504,6 +509,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.cards.where('courseId').equals(id).delete();
       await db.questionAttempts.where('courseId').equals(id).delete();
       await db.questionSets.where('courseId').equals(id).delete();
+      await db.questionSetAttempts.where('courseId').equals(id).delete();
       await db.appState.bulkDelete(
         questionSetDrafts.map((draft) => questionSetDraftKey(id, draft.content.id)),
       );
@@ -544,6 +550,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await recordTombstones(tx, 'questions', questionIds);
       await recordTombstones(tx, 'questionConcepts', questionConceptIds);
       await recordTombstones(tx, 'questionAttempts', questionAttemptIds);
+      await recordTombstones(tx, 'questionSetAttempts', questionSetAttemptIds);
       for (const set of questionSets) {
         await recordTombstone(tx, 'questionSets', set.id, Math.max(Date.now(), set.updatedAt + 1));
       }
@@ -584,6 +591,7 @@ export interface CourseSnapshot {
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
   questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
   questionSetDrafts?: QuestionSetDraft[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
@@ -618,6 +626,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questionConcepts,
     questionAttempts,
     questionSets,
+    questionSetAttempts,
     questionSetDrafts,
     lineageIdMappings,
     pendingMergeReviews,
@@ -637,6 +646,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.questionConcepts.where('courseId').equals(id).toArray(),
     db.questionAttempts.where('courseId').equals(id).toArray(),
     db.questionSets.where('courseId').equals(id).toArray(),
+    db.questionSetAttempts.where('courseId').equals(id).toArray(),
     listQuestionSetDrafts(id),
     db.lineageIdMappings.where('courseId').equals(id).toArray(),
     db.pendingMergeReviews.where('courseId').equals(id).toArray(),
@@ -698,6 +708,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     questionConcepts,
     questionAttempts,
     questionSets,
+    questionSetAttempts,
     questionSetDrafts,
     lineageIdMappings,
     pendingMergeReviews,
@@ -754,6 +765,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.questionConcepts,
         db.questionAttempts,
         db.questionSets,
+        db.questionSetAttempts,
         db.lineageIdMappings,
         db.pendingMergeReviews,
         db.agentMemories,
@@ -785,6 +797,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.questions.bulkPut(snapshot.questions),
           db.questionConcepts.bulkPut(snapshot.questionConcepts),
           db.questionAttempts.bulkPut(snapshot.questionAttempts),
+          db.questionSetAttempts.bulkPut(snapshot.questionSetAttempts ?? []),
           db.appState.bulkPut(
             (snapshot.questionSetDrafts ?? []).map((draft) => ({
               key: questionSetDraftKey(snapshot.course.id, draft.content.id),
@@ -907,6 +920,11 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           tx,
           'questionSets',
           (snapshot.questionSets ?? []).map((set) => set.id),
+        );
+        await clearTombstones(
+          tx,
+          'questionSetAttempts',
+          (snapshot.questionSetAttempts ?? []).map((attempt) => attempt.id),
         );
         await clearTombstones(
           tx,

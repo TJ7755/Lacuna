@@ -83,7 +83,8 @@ must cover candidate snapshotting and merging as well as import.
 ## Question-set backup compatibility
 
 Older readers accept unfamiliar numeric backup versions. V12 therefore uses the `lacuna-v12`
-marker so they reject rather than discard sets. Historical pre-migration files used schema
+marker so they reject rather than discard sets. V13 uses `lacuna-v13` for personal
+set attempts; keep old markers as historical input formats, never emit new collections under them. Historical pre-migration files used schema
 numbers; raw v22/v23 still need the legacy Question adapter before current normalisation.
 
 ## Local Electron commands
@@ -108,6 +109,9 @@ at fixed dimensions and resize the isolated surface; verify text bounds mid-anim
 For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
 to viewport bounding boxes before comparing positions. Playwright can scroll a
 control into view while clicking, without changing the content's layout.
+
+The app shell disables text selection globally. New plain-text panels that support highlighting
+must opt into `select-text`; DOM selection tests without the real stylesheet miss this.
 
 In Recharts composed charts, a Scatter's own data can replace the chart-level data
 used for axis hover selection. Use reference dots for fixed annotations; chart
