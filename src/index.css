@@ -10,6 +10,25 @@
   font-display: swap;
 }
 
+/* The app's own faces, bundled so they work offline: Bricolage Grotesque for
+   display type and Atkinson Hyperlegible Next for reading. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('/fonts/BricolageGrotesque-Variable.ttf') format('truetype');
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('/fonts/AtkinsonHyperlegibleNext-Variable.ttf') format('truetype');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -60,40 +79,43 @@
 }
 
 /*
- * "Quiet laboratory" palette. Light = warm off-white paper; dark = near-black charcoal.
- * A single warm amber accent carries every interactive and success state.
+ * Light = warm stone paper with white surfaces and navy ink; dark = deep blue-black.
+ * `--chrome` is the slightly darker ground behind the sidebar.
+ * A single warm amber accent carries every interactive and success state by default.
  * Defined as raw custom properties so they can switch with the `.dark` class, then
  * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
  */
 :root {
-  --paper: 38 33% 96%;
-  --surface: 40 30% 99%;
+  --paper: 50 21% 95%;
+  --surface: 0 0% 100%;
   --surface-raised: 0 0% 100%;
-  --ink: 30 12% 14%;
-  --ink-soft: 30 8% 38%;
-  --ink-faint: 30 6% 42%;
-  --line: 34 14% 86%;
-  --line-strong: 34 12% 78%;
+  --chrome: 51 15% 91%;
+  --ink: 221 41% 12%;
+  --ink-soft: 220 17% 35%;
+  --ink-faint: 218 12% 42%;
+  --line: 52 12% 87%;
+  --line-strong: 69 9% 80%;
   --accent: 32 90% 48%;
   --accent-soft: 32 85% 92%;
   --accent-ink: 28 60% 24%;
   --accent-fg: 28 60% 14%;
-  --positive: 150 45% 38%;
-  --negative: 6 62% 48%;
-  --warning: 38 92% 50%;
-  --warning-fg: 32 70% 24%;
-  --grain-opacity: 0.025;
+  --positive: 150 60% 30%;
+  --negative: 4 77% 40%;
+  --warning: 28 76% 50%;
+  --warning-fg: 29 100% 32%;
+  --grain-opacity: 0;
 }
 
 .dark {
-  --paper: 30 8% 7%;
-  --surface: 30 7% 9%;
-  --surface-raised: 30 6% 12%;
-  --ink: 36 20% 92%;
-  --ink-soft: 34 10% 66%;
-  --ink-faint: 34 8% 60%;
-  --line: 30 6% 18%;
-  --line-strong: 30 6% 26%;
+  --paper: 220 23% 8%;
+  --surface: 221 21% 12%;
+  --surface-raised: 221 19% 15%;
+  --chrome: 220 22% 10%;
+  --ink: 222 26% 94%;
+  --ink-soft: 220 12% 72%;
+  --ink-faint: 220 10% 64%;
+  --line: 221 15% 19%;
+  --line-strong: 221 13% 27%;
   --accent: 34 92% 56%;
   --accent-soft: 32 40% 18%;
   --accent-ink: 36 90% 70%;
@@ -101,7 +123,7 @@
   --negative: 6 70% 62%;
   --warning: 38 92% 56%;
   --warning-fg: 36 90% 70%;
-  --grain-opacity: 0.04;
+  --grain-opacity: 0;
 }
 
 /*
@@ -131,6 +153,7 @@
   --color-paper: hsl(var(--paper));
   --color-surface: hsl(var(--surface));
   --color-surface-raised: hsl(var(--surface-raised));
+  --color-chrome: hsl(var(--chrome));
   --color-ink: hsl(var(--ink));
   --color-ink-soft: hsl(var(--ink-soft));
   --color-ink-faint: hsl(var(--ink-faint));
@@ -146,8 +169,8 @@
   --color-warning-fg: hsl(var(--warning-fg));
 
   --font-brand: 'Fraunces', 'Georgia', serif;
-  --font-display: 'Instrument Sans', sans-serif;
-  --font-body: 'Instrument Sans', sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Instrument Sans', sans-serif;
+  --font-body: 'Atkinson Hyperlegible Next', 'Instrument Sans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
@@ -210,8 +233,8 @@
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.025em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   ::selection {

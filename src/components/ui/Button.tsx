@@ -18,16 +18,16 @@ interface ButtonProps extends Omit<
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors ' +
+  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors ' +
   'duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ' +
   'focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 ' +
   'disabled:pointer-events-none select-none';
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-accent text-accent-fg hover:brightness-105 shadow-sm shadow-accent/20 hover:shadow-md hover:shadow-accent/25',
+    'bg-accent text-accent-fg hover:brightness-105',
   secondary:
-    'bg-surface-raised text-ink border border-line-strong hover:border-accent/60 hover:text-accent hover:shadow-sm hover:shadow-black/5',
+    'bg-surface-raised text-ink border border-line-strong hover:border-ink/40',
   ghost: 'text-ink-soft hover:text-ink hover:bg-ink/5',
   danger:
     'bg-transparent text-negative border border-negative/40 hover:bg-negative/10 hover:shadow-sm hover:shadow-negative/10',
