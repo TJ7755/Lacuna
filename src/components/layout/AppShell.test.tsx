@@ -379,7 +379,7 @@ describe('AppShell AI workspace', () => {
     expect(capsule.parentElement).toHaveAttribute('inert');
   });
 
-  it('opens beside a forced navigation rail and restores focus when closed', async () => {
+  it('floats over the page without collapsing the rail, and restores focus when closed', async () => {
     vi.mocked(window.matchMedia).mockImplementation((query) => ({
       matches: query === '(min-width: 1024px)' || query === '(min-width: 1280px)',
       media: query,
@@ -397,13 +397,28 @@ describe('AppShell AI workspace', () => {
     fireEvent.click(trigger);
 
     expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
-    expect(trigger.closest('aside')).toHaveAttribute('data-collapsed', 'true');
+    expect(trigger.closest('aside')).not.toHaveAttribute('data-collapsed');
 
     const close = screen.getByRole('button', { name: 'Close AI' });
     close.focus();
     fireEvent.click(close);
     expect(screen.queryByLabelText('AI conversation')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it('closes to an Assistant pill that reopens the window and takes focus back', async () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Close AI' }));
+
+    const pill = screen.getByRole('button', { name: 'Assistant' });
+    pill.focus();
+    fireEvent.click(pill);
+    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Assistant' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
+    expect(screen.getByRole('button', { name: 'Assistant' })).toHaveFocus();
   });
 
   it('does not mount the AI control below the desktop breakpoint', () => {

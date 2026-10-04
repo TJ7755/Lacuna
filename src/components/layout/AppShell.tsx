@@ -14,7 +14,8 @@ import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
-import { CloseIcon } from '../ui/icons';
+import { CloseIcon, SparklesIcon } from '../ui/icons';
+import { scaledSpring } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -24,6 +25,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { AiActivityCapsule } from '../ai/AiActivityCapsule';
 import { loadAiPanel } from '../ai/loaders';
 import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
+import { AiFloatingWindow } from '../ai/AiFloatingWindow';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 
@@ -90,6 +92,9 @@ function AppShellLayout() {
   const paletteReturnFocusRef = useRef<HTMLElement | null>(null);
   const aiTriggerRef = useRef<HTMLButtonElement>(null);
   const aiWasOpenRef = useRef(false);
+  // Whichever control opened the floating assistant gets focus back when it closes.
+  const aiOpenerRef = useRef<'trigger' | 'pill'>('trigger');
+  const aiPillRef = useRef<HTMLButtonElement>(null);
   const mobileDrawerRef = useFocusTrap(mobileOpen, {
     autoFocusSelector: '[data-mobile-close]',
     returnFocus: false,
@@ -137,7 +142,7 @@ function AppShellLayout() {
   }, [aiSession, aiSettings.enabled]);
 
   useEffect(() => {
-    if (aiWasOpenRef.current && !aiOpen) aiTriggerRef.current?.focus();
+    if (aiWasOpenRef.current && !aiOpen) (aiOpenerRef.current === 'pill' ? aiPillRef : aiTriggerRef).current?.focus();
     aiWasOpenRef.current = aiOpen;
   }, [aiOpen]);
 
@@ -243,7 +248,7 @@ function AppShellLayout() {
         {/* Desktop sidebar */}
         <div className="hidden md:block">
           <Sidebar
-            collapsed={!wideDesktop || collapsed || aiOpen}
+            collapsed={!wideDesktop || collapsed}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
             onOpenPalette={() => {
               paletteReturnFocusRef.current =
@@ -251,39 +256,21 @@ function AppShellLayout() {
               setPaletteOpen(true);
             }}
             onOpenStudySheet={() => studySheet.value.openStudySheet()}
-            collapseControl={wideDesktop && !aiOpen}
+            collapseControl={wideDesktop}
             aiAction={
               aiSettings.enabled && aiSession && aiDesktop
                 ? {
                     active: aiOpen,
-                    onClick: () => setAiOpen((open) => !open),
+                    onClick: () => {
+                      aiOpenerRef.current = 'trigger';
+                      setAiOpen((open) => !open);
+                    },
                     triggerRef: aiTriggerRef,
                   }
                 : undefined
             }
           />
         </div>
-
-        {aiSession && (
-          <AnimatePresence initial={false}>
-            {aiOpen && aiDesktop && (
-              <motion.div
-                key="ai-panel"
-                initial={motionEnabled ? { width: 0, opacity: 0 } : false}
-                animate={{ width: 400, opacity: 1 }}
-                exit={motionEnabled ? { width: 0, opacity: 0 } : undefined}
-                transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="hidden shrink-0 overflow-hidden lg:block"
-              >
-                <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
-                  <Suspense fallback={null}>
-                    <AiPanel session={aiSession} onClose={() => setAiOpen(false)} />
-                  </Suspense>
-                </AiPanelLoadBoundary>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
 
         {!aiOpen && aiSettings.enabled && aiSession && (
           <div
@@ -299,10 +286,46 @@ function AppShellLayout() {
               canOpenConversation={aiDesktop}
               stoppableOnly={!aiDesktop}
               onOpenConversation={() => {
+                aiOpenerRef.current = 'trigger';
                 if (aiDesktop) setAiOpen(true);
               }}
             />
           </div>
+        )}
+
+        {aiSession && (
+          <AiFloatingWindow open={aiOpen && aiDesktop} multiplier={m} inert={paletteOpen}>
+            {(controls) => (
+              <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
+                <Suspense fallback={null}>
+                  <AiPanel session={aiSession} onClose={() => setAiOpen(false)} window={controls} />
+                </Suspense>
+              </AiPanelLoadBoundary>
+            )}
+          </AiFloatingWindow>
+        )}
+
+        {!aiOpen && aiSettings.enabled && aiSession && aiDesktop && (
+          <motion.button
+            ref={aiPillRef}
+            type="button"
+            inert={capsuleSuppressed}
+            onClick={() => {
+              aiOpenerRef.current = 'pill';
+              setAiOpen(true);
+            }}
+            initial={motionEnabled ? { opacity: 0, scale: 0.9, y: 10 } : false}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={
+              motionEnabled
+                ? { ...scaledSpring(m, 380, 30), opacity: { duration: 0.16 * m } }
+                : { duration: 0 }
+            }
+            className="fixed bottom-6 right-6 z-30 inline-flex h-12 items-center gap-2 rounded-full bg-ink pl-4 pr-5 text-sm font-semibold text-paper shadow-[0_16px_40px_-16px_hsl(var(--ink)/0.5)] transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            <SparklesIcon width={17} height={17} />
+            Assistant
+          </motion.button>
         )}
 
         {/* Mobile drawer */}

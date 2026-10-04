@@ -19,11 +19,11 @@ export class AiPanelLoadBoundary extends Component<Props, { failed: boolean }> {
     return (
       <aside
         aria-label="AI conversation unavailable"
-        className="flex h-full w-[400px] shrink-0 flex-col border-r border-line bg-paper"
+        className="flex h-full w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_24px_56px_-24px_hsl(var(--ink)/0.4)]"
       >
-        <header className="border-b border-line bg-surface px-4 py-3">
+        <header className="bg-surface px-4 py-3">
           <div className="flex min-h-11 items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-paper text-accent">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
               <SparklesIcon width={17} height={17} />
             </span>
             <h1 className="min-w-0 flex-1 font-display text-lg text-ink">AI</h1>
@@ -32,7 +32,7 @@ export class AiPanelLoadBoundary extends Component<Props, { failed: boolean }> {
               autoFocus
               onClick={this.props.onClose}
               aria-label="Close AI"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
             >
               <CloseIcon width={18} height={18} />
             </button>
