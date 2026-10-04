@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { QuestionSetDraftSession } from '../../questions/questionSetDraftSession';
 import { Button } from '../ui/Button';
+import { ImageFilePreview } from './ImageFilePreview';
 
 export function QuestionSetImage({
   session,
@@ -12,19 +13,9 @@ export function QuestionSetImage({
   const inputRef = useRef<HTMLInputElement>(null);
   const chooserRef = useRef<HTMLButtonElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState('');
   const [alt, setAlt] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => {
-    if (!file) {
-      setPreview('');
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
   function clear() {
     setFile(null);
     setAlt('');
@@ -50,9 +41,7 @@ export function QuestionSetImage({
         }}
       />
       <div className="qs-image-choice">
-        {file && preview && (
-          <img className="qs-image-thumb" src={preview} alt="Selected image preview" />
-        )}
+        {file && <ImageFilePreview file={file} className="qs-image-thumb" />}
         <div className="qs-image-choice-info">
           {file && <p className="qs-image-filename">{file.name}</p>}
           <div className="qs-actions">
