@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A lineage merge that moves a card to another concept now stamps the card's
+  `updatedAt`, and the stamp never moves backwards when the card's timestamp is
+  ahead of the local clock. Without it the reassignment could lose a last-write-wins
+  contest against an older peer row and silently revert on the next merge (#326).
+
 - Pinned `http-cache-semantics` to 4.3.0 through `overrides`. 4.2.0, pulled in by the
   Electron download and packaging tooling, has a high-severity advisory
   (GHSA-ch52-4w7c-c8xp) that failed the root `bun audit` gate.
