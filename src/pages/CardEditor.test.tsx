@@ -278,7 +278,7 @@ describe('CardEditor — draft autosave', () => {
     };
     renderEditing();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Preview revealed answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
     await act(async () => {
       vi.advanceTimersByTime(801);
     });
@@ -356,6 +356,52 @@ describe('CardEditor — draft autosave', () => {
 
     expect(loadDraft(draftKey('bank:course-1', 'card-1'))?.front).toBe('Unsaved source edit');
     expect(loadDraft(draftKey('bank:course-1', 'card-2'))).toBeNull();
+  });
+});
+
+describe('CardEditor — live preview', () => {
+  it('previews the question and flips to the answer', () => {
+    renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Why is the sky blue?' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Answer\./), {
+      target: { value: 'Rayleigh scattering' },
+    });
+
+    const question = screen.getByRole('button', { name: 'Question' });
+    const answer = screen.getByRole('button', { name: 'Answer' });
+    expect(question).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByText('Why is the sky blue?').length).toBeGreaterThan(0);
+
+    fireEvent.click(answer);
+    expect(answer).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByText('Rayleigh scattering').length).toBeGreaterThan(0);
+  });
+
+  it('marks the chosen card type as pressed and hides the flip for structured items', () => {
+    renderNew();
+    expect(screen.getByRole('button', { name: 'Front / Back' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Numeric answer' }));
+    expect(screen.getByRole('button', { name: 'Numeric answer' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByRole('group', { name: 'Preview side' })).not.toBeInTheDocument();
+  });
+
+  it('announces a save', async () => {
+    renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Q' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Answer\./), { target: { value: 'A' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
   });
 });
 

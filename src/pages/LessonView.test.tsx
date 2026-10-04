@@ -255,13 +255,39 @@ describe('LessonView Study mode', () => {
     expect(screen.queryByLabelText('Course settings')).not.toBeInTheDocument();
   });
 
-  it('shows a cards summary instead of the editable card list', () => {
+  it('lists the lesson cards without edit controls', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
-    expect(screen.getByText('Total')).toBeInTheDocument();
-    expect(screen.getByText('Due')).toBeInTheDocument();
-    expect(screen.getByText('Mastery')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
+    expect(screen.getByText('front')).toBeInTheDocument();
+    expect(screen.getByText('Front / back · New')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Edit card' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
     expect(screen.queryByText('Add your first card')).not.toBeInTheDocument();
+  });
+
+  it('summarises learnt cards and notes on one line', () => {
+    mockLessonCards = [makeCard('a'), { ...makeCard('b'), state: 2, lastReviewed: 1 }];
+    renderPage();
+    expect(screen.getByText(/^1 of 2 cards learnt · 1 note/)).toBeInTheDocument();
+  });
+
+  it('starts the lesson from the primary Study action', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/lesson/lesson-1/learn');
+  });
+
+  it('turns several notes into tabs and switches between them', () => {
+    mockNotes = [note, { ...note, id: 'note-2', name: 'Second note', content: 'Other body', orderIndex: 1 }];
+    renderPage();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual(['A note', 'Second note']);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(tabs[1]);
+    expect(screen.getByRole('tab', { name: 'Second note' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   it('keeps a locked distributed copy in Study mode across every lesson authoring gate', () => {
@@ -349,10 +375,15 @@ describe('LessonView Author mode', () => {
     expect(container.querySelector('[data-lesson-workspace-mode="edit"]')).not.toBeNull();
   });
 
-  it('renders the editable cards section rather than the summary', () => {
+  it('shows edit controls on each card row and the management section', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
-    expect(screen.queryByText('Total')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Edit card' })).toHaveAttribute(
+      'href',
+      '/course/course-1/lesson/lesson-1/cards/card-1/edit',
+    );
+    expect(screen.getByRole('button', { name: 'New card' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Manage/ })).toBeInTheDocument();
   });
 
   it('opens a newly created lesson from the inline path', async () => {

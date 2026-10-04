@@ -1,7 +1,9 @@
-// Lesson view page — a study destination first, notes/cards second. The
-// second half renders in one of two workspace modes, resolved by
-// src/course/lessonViewMode.ts: Study (read-only notes, a cards summary) or
-// Author (full notes/cards CRUD), driven by the course's own
+// Lesson view page — a study destination first, notes/cards second. A header
+// (title, one meta line, a Study/Edit pill and the study action) sits above a large
+// reading card for the notes beside a compact "Cards in this lesson" list. The
+// workspace renders in one of two modes, resolved by src/course/lessonViewMode.ts:
+// Study (read-only) or Author (the same layout with edit controls faded in, and
+// the full card management section revealed beneath), driven by the course's own
 // Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
 // Also renderable inline by CoursePath when a course has exactly one lesson
@@ -21,19 +23,21 @@ import {
   useCourseAssessments,
   useLessonBackingDeck,
 } from '../state/useCourseData';
-import { LessonNotesSection } from '../components/notes/LessonNotesSection';
-import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
+import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
-import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
+import { LessonCardsList } from '../components/cards/LessonCardsList';
+import { learntCardCount } from '../components/cards/lessonCardRow';
 import { PlayIcon, PlusIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
+import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
+import { riseIn } from '../components/course/riseIn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
-import { CourseHeader } from '../components/course/CourseHeader';
+import { LessonHeader } from '../components/course/LessonHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
-import { HeaderStats } from '../components/course/HeaderStats';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
+import { lessonMetaParts } from '../course/lessonMeta';
 import {
   canEditLessons,
   isLessonAuthoringMode,
@@ -43,10 +47,8 @@ import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { updateCourse } from '../db/courseRepository';
 import { updateLesson } from '../db/lessonRepository';
-import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
-import { StepSwap } from '../components/ui/StepSwap';
 import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 
@@ -126,15 +128,14 @@ export function LessonView({
   // Not found.
   if (lesson === null || course === null) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-        <div className="relative">
+      <div className="mx-auto max-w-6xl px-6 py-8 md:px-10">
+        <div className="rounded-3xl bg-surface p-10 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]">
           <p className="mb-4 text-ink-soft">
             {lesson === null
               ? 'This lesson could not be found.'
               : 'This course could not be found.'}
           </p>
-          <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
+          <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent-ink underline">
             {courseId ? 'Back to course' : 'Back to dashboard'}
           </Link>
         </div>
@@ -148,7 +149,7 @@ export function LessonView({
   const backTo = archived ? '/archived' : isInline ? '/' : `/course/${courseId}`;
   const backLabel = archived ? 'Archived courses' : isInline ? 'Dashboard' : 'Course';
 
-  // Header stats, scoped to this lesson's own cards (reusing the same FSRS
+  // Header figures, scoped to this lesson's own cards (reusing the same FSRS
   // helpers CoursePath uses at course scope — see CoursePath.tsx and
   // fsrs/eligibility.ts, fsrs/objective.ts).
   const now = Date.now();
@@ -160,31 +161,39 @@ export function LessonView({
   } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now, lessons);
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
   const authoring = !archived && isLessonAuthoringMode(course);
+  const metaParts = lessonMetaParts({
+    learnt: learntCardCount(lessonCards),
+    total: lessonCards.length,
+    noteCount: notes.length,
+    dueCount: lessonDueCount,
+    daysToExam:
+      nearestExam === undefined
+        ? undefined
+        : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
+  });
+  const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
   return (
-    <div className={`mx-auto max-w-4xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
-      {!isInline && <CoursePageNavigation
-        courseId={courseId ?? ''}
-        backTo={backTo}
-        backLabel={backLabel}
-        archived={archived}
-        className="mb-6"
-        trailing={
-          archived ? undefined : !canEditLessons(course) ? (
-            <Link
-              to={`/course/${courseId}/settings`}
-              className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
-            >
-              Authoring is locked for shared courses
-            </Link>
-          ) : (
-            <LessonViewModeToggle
-              mode={viewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
-          )
-        }
-      />}
+    <div className={`mx-auto max-w-6xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
+      {!isInline && (
+        <CoursePageNavigation
+          courseId={courseId ?? ''}
+          backTo={backTo}
+          backLabel={backLabel}
+          archived={archived}
+          className="mb-6"
+          trailing={
+            archived || canEditLessons(course) ? undefined : (
+              <Link
+                to={`/course/${courseId}/settings`}
+                className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
+              >
+                Authoring is locked for shared courses
+              </Link>
+            )
+          }
+        />
+      )}
       {isInline && courseId && authoring && (
         <div
           role="group"
@@ -213,109 +222,119 @@ export function LessonView({
         </div>
       )}
 
-      {/* Header — title, a row of labelled stat pills (HeaderStats), and the
-          Study action. */}
-      <CourseHeader
-        className="mb-8"
-        eyebrow={
-          nearestExam === undefined
-            ? 'Steady retention'
-            : `Exam ${formatDate(nearestExam, course.timeZone)}`
-        }
-        examUrgent={examUrgent}
-        title={lesson.name}
-        onRename={
-          authoring
-            ? async (name) => {
-                try {
-                  await updateLesson(lesson.id, { name });
-                } catch (error) {
-                  notify(
-                    error instanceof Error ? error.message : 'Could not rename the lesson.',
-                    'negative',
-                  );
-                  throw error;
-                }
-              }
-            : undefined
-        }
-        renameLabel="lesson"
-      >
-        <div>
-          <HeaderStats
-            dueCount={lessonDueCount}
-            masteryPct={Math.round(lessonMastery * 100)}
-            daysToExam={
-              nearestExam === undefined
-                ? undefined
-                : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
+      <div className="flex flex-col gap-6">
+        <motion.div {...riseIn(0, motionMultiplier)}>
+          <LessonHeader
+            title={lesson.name}
+            description={lesson.description || undefined}
+            meta={
+              <span className={examUrgent ? 'text-warning-fg' : undefined}>
+                {metaParts.join(' · ')}
+              </span>
             }
-            totalCards={lessonCards.length}
-            unseenCount={lessonCards.filter((c) => c.lastReviewed === null || c.state === 0).length}
-          />
-          {archived ? (
-            <ArchivedCourseRestoreNotice />
-          ) : showStudyNow ? (
-            <div className="mt-6 flex flex-wrap items-center gap-4">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
-              >
-                <PlayIcon width={18} height={18} />
-                Study
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                disabled={!practiceNowEnabled}
-                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
-              >
-                Practice Now
-              </Button>
-              {/* The due count already leads the stat pills above, so this line
-                only speaks when there is something the pills don't say. */}
-              {(lessonCards.length === 0 || lessonDueCount === 0) && (
-                <p className="text-sm text-ink-faint">
-                  {lessonCards.length === 0
-                    ? 'Add cards to begin studying.'
-                    : 'Nothing due right now.'}
-                </p>
-              )}
-            </div>
-          ) : null}
-        </div>
-      </CourseHeader>
-      {!archived && !isInline && (
-        <div className="mb-6">
-          <SimpleLearnOptions key={lesson.id} courseId={course.id} initialLessonId={lesson.id} />
-        </div>
-      )}
-      {lesson.description && <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>}
+            onRename={
+              authoring
+                ? async (name) => {
+                    try {
+                      await updateLesson(lesson.id, { name });
+                    } catch (error) {
+                      notify(
+                        error instanceof Error ? error.message : 'Could not rename the lesson.',
+                        'negative',
+                      );
+                      throw error;
+                    }
+                  }
+                : undefined
+            }
+          >
+            {archived ? (
+              <ArchivedCourseRestoreNotice />
+            ) : showStudyNow ? (
+              <>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
+                >
+                  <PlayIcon width={18} height={18} />
+                  Study
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="border-[1.5px] border-ink bg-transparent"
+                  disabled={!practiceNowEnabled}
+                  onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+                >
+                  Practice Now
+                </Button>
+              </>
+            ) : isInline ? null : (
+              <>
+                {canEditLessons(course) && (
+                  <LessonViewModeToggle
+                    mode={viewMode}
+                    onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+                  />
+                )}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  disabled={lessonCards.length === 0}
+                  onClick={() => navigate(lessonStudyPath)}
+                >
+                  <PlayIcon width={18} height={18} />
+                  Study
+                </Button>
+              </>
+            )}
+          </LessonHeader>
+          {/* The due count already leads the meta line, so this only speaks when
+              there is something it does not say. */}
+          {!archived && showStudyNow && (lessonCards.length === 0 || lessonDueCount === 0) && (
+            <p className="mt-3 text-sm text-ink-faint">
+              {lessonCards.length === 0 ? 'Add cards to begin studying.' : 'Nothing due right now.'}
+            </p>
+          )}
+        </motion.div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Notes and cards. Demoted below the study CTA: a quieter, smaller-   */}
-      {/* heading section either way. In Author mode this is the full CRUD   */}
-      {/* editor (LessonNotesSection/LessonCardsSection); in Study mode it   */}
-      {/* is read-only content plus a cards summary — see                    */}
-      {/* src/course/lessonViewMode.ts for how the mode is resolved.         */}
-      {/* ------------------------------------------------------------------ */}
-      <motion.div
-        layout="size"
-        transition={{ duration: 0.22 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-        className="border-t border-line pt-8"
-        data-lesson-workspace-mode={viewMode}
-      >
-        <StepSwap
-          stepKey={viewMode}
-          direction={viewMode === 'edit' ? 1 : -1}
-          className="space-y-10"
-        >
-          {viewMode === 'edit' ? (
-            <>
-              {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}
+        {/* Notes and cards. The two columns are identical in both modes; Author mode
+            fades the edit controls in place and reveals card management beneath. */}
+        <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
+          <motion.div {...riseIn(1, motionMultiplier)} className="flex flex-wrap items-start gap-6">
+            {lessonId && (
+              <LessonNotesCard
+                lessonId={lessonId}
+                notes={notes}
+                editable={viewMode === 'edit'}
+                className="flex-[3_1_560px]"
+              />
+            )}
+            {courseId && lessonId && (
+              <LessonCardsList
+                courseId={courseId}
+                lessonId={lessonId}
+                cards={lessonCards}
+                editable={viewMode === 'edit'}
+                onNavigate={navigate}
+                className="flex-[2_1_340px]"
+                footer={
+                  !archived && !isInline ? (
+                    <SimpleLearnOptions
+                      key={lesson.id}
+                      courseId={course.id}
+                      initialLessonId={lesson.id}
+                    />
+                  ) : undefined
+                }
+              />
+            )}
+          </motion.div>
 
-              {courseId && lessonId && (
+          <AnimatedDisclosure open={viewMode === 'edit' && Boolean(courseId && lessonId)}>
+            {courseId && lessonId && (
+              <div className="rounded-3xl bg-surface p-6 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-8">
                 <LessonCardsSection
                   courseId={courseId}
                   lessonId={lessonId}
@@ -324,53 +343,26 @@ export function LessonView({
                   lessonSchedulingConfig={lessonDeck}
                   onNavigate={navigate}
                 />
-              )}
-            </>
-          ) : (
-            <>
-              <LessonNotesStudyView notes={notes} />
-              <LessonCardsSummary
-                cardCount={lessonCards.length}
-                dueCount={lessonDueCount}
-                masteryPct={Math.round(lessonMastery * 100)}
-              />
-            </>
-          )}
-        </StepSwap>
-      </motion.div>
+              </div>
+            )}
+          </AnimatedDisclosure>
+        </div>
+      </div>
     </div>
   );
 }
 
 function LessonViewSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 md:px-10">
-      <div className="mb-6 h-4 w-20 animate-pulse rounded bg-ink/10" />
-      <div className="mb-8 flex flex-col gap-4 md:flex-row">
-        <div className="h-40 flex-1 animate-pulse rounded-2xl bg-ink/10" />
-        <div className="h-40 animate-pulse rounded-2xl bg-ink/10 md:w-56" />
+    <div className="mx-auto max-w-6xl px-6 py-8 md:px-10">
+      <div className="mb-6 h-11 w-24 animate-pulse rounded-full bg-ink/10" />
+      <div className="mb-6 flex flex-col gap-3">
+        <div className="h-11 w-72 max-w-full animate-pulse rounded-xl bg-ink/10" />
+        <div className="h-4 w-52 animate-pulse rounded bg-ink/10" />
       </div>
-      <div className="mb-10">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="h-7 w-16 animate-pulse rounded bg-ink/10" />
-          <div className="h-9 w-24 animate-pulse rounded-lg bg-ink/10" />
-        </div>
-        <div className="space-y-px rounded-xl border border-line">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2 px-4 py-3">
-              <div className="h-4 w-4 animate-pulse rounded bg-ink/10" />
-              <div className="h-4 flex-1 animate-pulse rounded bg-ink/10" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div>
-        <div className="mb-4 h-7 w-20 animate-pulse rounded bg-ink/10" />
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl border border-line bg-ink/5" />
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-6">
+        <div className="h-80 flex-[3_1_560px] animate-pulse rounded-3xl bg-ink/[0.06]" />
+        <div className="h-80 flex-[2_1_340px] animate-pulse rounded-3xl bg-ink/[0.06]" />
       </div>
     </div>
   );

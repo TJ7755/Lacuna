@@ -1,5 +1,5 @@
-// Card-list section for LessonView — demoted heading, empty state, and the
-// resolving-deck skeleton. Extracted from LessonView.tsx alongside
+// Card-management section for LessonView's Edit mode, shown beneath the compact
+// LessonCardsList — heading, empty state, and the resolving-deck skeleton. Extracted from LessonView.tsx alongside
 // LessonNotesSection so the page component stays a thin layout/data shell.
 
 import { useState } from 'react';
@@ -103,8 +103,8 @@ export function LessonCardsSection({
   return (
     <section className={className}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-xl text-ink-soft">
-          Cards <span className="text-ink-faint">({lessonCards.length})</span>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+          Manage <span className="text-ink-faint">({lessonCards.length})</span>
         </h2>
         {lessonCards.length > 0 && (
           <Button
