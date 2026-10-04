@@ -4,7 +4,6 @@ import {
   AI_PAIRING_TTL_MS,
   AI_SESSION_TTL_MS,
   EMPTY_SLOT_ETAG,
-  __resetMintRateLimitForTests,
   createHandler,
 } from '../src/relay.js';
 import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
@@ -14,6 +13,33 @@ const BROWSER_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(1));
 const TERMINAL_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(2));
 
 describe('AI relay', () => {
+  it('claims with the pairing code in a header and no session id in the path', async () => {
+    const handle = createHandler(new MemoryStore());
+    const created = await handle(
+      jsonRequest('/ai/sessions', 'POST', { browserPublicKey: BROWSER_PUBLIC_KEY }),
+    );
+    const browser = (await created.json()) as { sessionId: string; pairingCode: string };
+
+    const request = claimRequest(browser.pairingCode);
+    expect(request.url).not.toContain(browser.sessionId);
+    expect(request.url).not.toContain(browser.pairingCode);
+    const claimed = await handle(request);
+    expect(claimed.status).toBe(200);
+    expect(await claimed.json()).toMatchObject({ sessionId: browser.sessionId });
+
+    const again = await handle(claimRequest(browser.pairingCode));
+    expect(again.status).toBe(409);
+    const missing = await handle(claimRequest('AAAA-AAAA-AAAA-AAAA-AAAA'));
+    expect(missing.status).toBe(404);
+    const noHeader = await handle(
+      jsonRequest('/ai/claim', 'POST', {
+        terminalPublicKey: TERMINAL_PUBLIC_KEY,
+        client: { name: 'OpenCode' },
+      }),
+    );
+    expect(noHeader.status).toBe(404);
+  });
+
   it('accepts browser request bodies without Content-Length', async () => {
     const handle = createHandler(new MemoryStore());
     const encoded = JSON.stringify({ browserPublicKey: BROWSER_PUBLIC_KEY });
@@ -484,7 +510,6 @@ describe('AI relay', () => {
   });
 
   it('shares the hashed pairing limit across independent handlers', async () => {
-    __resetMintRateLimitForTests();
     const store = new MemoryStore();
     const first = createHandler(store);
     const second = createHandler(store);
@@ -526,11 +551,9 @@ describe('AI relay', () => {
       ),
     );
     expect(limited.status).toBe(429);
-    __resetMintRateLimitForTests();
   });
 
   it('fails pairing closed after bounded rate-limit contention', async () => {
-    __resetMintRateLimitForTests();
     const handle = createHandler(new RateConflictStore());
 
     const response = await handle(
@@ -546,7 +569,6 @@ describe('AI relay', () => {
   });
 
   it('keeps public pairing and device-sync mint limits independent', async () => {
-    __resetMintRateLimitForTests();
     const handle = createHandler(new MemoryStore());
     const pairingIp = '198.51.100.31';
     for (let index = 0; index < 10; index += 1) {
@@ -568,7 +590,6 @@ describe('AI relay', () => {
     );
     expect(deviceMint.status).toBe(201);
 
-    __resetMintRateLimitForTests();
     const deviceIp = '198.51.100.32';
     for (let index = 0; index < 10; index += 1) {
       const response = await handle(
@@ -592,7 +613,6 @@ describe('AI relay', () => {
       ),
     );
     expect(pairingSession.status).toBe(201);
-    __resetMintRateLimitForTests();
   });
 });
 
@@ -608,14 +628,18 @@ async function paired(store: BlobStore = new MemoryStore()) {
     pairingCode: string;
     browserToken: string;
   };
-  const claimed = await handle(
-    jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
-      terminalPublicKey: TERMINAL_PUBLIC_KEY,
-      client: { name: 'OpenCode' },
-    }),
-  );
+  const claimed = await handle(claimRequest(browser.pairingCode));
   const terminal = (await claimed.json()) as { terminalToken: string };
   return { handle, ...browser, ...terminal };
+}
+
+function claimRequest(code: string): Request {
+  return jsonRequest(
+    '/ai/claim',
+    'POST',
+    { terminalPublicKey: TERMINAL_PUBLIC_KEY, client: { name: 'OpenCode' } },
+    { 'X-Lacuna-Pairing-Code': code },
+  );
 }
 
 function jsonRequest(
