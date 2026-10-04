@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The critical-domain coverage gate (`bun run test:coverage`) now sets a floor per source
+  file instead of aggregate thresholds, so a weakly covered file such as `lineageDiff.ts`
+  (about 82%) can no longer pass on the others' average. Baselines are in
+  `docs/maintenance/coverage.md`. (#330)
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
