@@ -11,23 +11,9 @@ import { isAudioCardFront } from '../../media/audio';
 import { StudyCardFace } from './StudyCardFace';
 import { CardSizeMeasurements, useStableCardHeight } from './useStableCardHeight';
 
-function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
-  if (!revealed) return 'border-line shadow-xl shadow-black/5';
-  switch (mode) {
-    case 'cram':
-      return 'border-warning/40 shadow-2xl shadow-warning/10';
-    case 'simple':
-      return 'border-positive/40 shadow-2xl shadow-positive/10';
-    case 'filtered-leech':
-      return 'border-negative/40 shadow-2xl shadow-negative/10';
-    case 'filtered-flagged':
-      return 'border-warning/40 shadow-2xl shadow-warning/10';
-    case 'filtered':
-      return 'border-accent/40 shadow-2xl shadow-accent/10';
-    default:
-      return 'border-accent/40 shadow-2xl shadow-accent/10';
-  }
-}
+// One quiet surface in every mode and phase: no outline and no tinted halo.
+const CARD_SURFACE_CLASS =
+  'border-transparent shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
 
 /**
  * A card that flips vertically to reveal its answer, and responds to touch and mouse
@@ -50,7 +36,7 @@ export function FlipCard({
   onAnswer,
   typedAnswer,
   isTypingCard,
-  mode,
+  mode: _mode,
   isLinesModeCard,
   hintStep,
   onRevealHint,
@@ -367,7 +353,7 @@ export function FlipCard({
               // making a two-line card float in an otherwise empty container. Longer cards
               // grow past it as before.
               'relative z-10 ' + surfaceClassName,
-              modeBorderClass(mode, revealed),
+              CARD_SURFACE_CLASS,
             )}
           >
             {/* Keep drag feedback on the card, away from the page-wide grading pulse. */}
