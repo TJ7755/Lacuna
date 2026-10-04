@@ -4,6 +4,7 @@ import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { Toggle } from '../../components/ui/Toggle';
 import { useToast } from '../../components/ui/Toast';
 import { detachCourse, setCourseAutoAcceptUpdates } from '../../db/courseRepository';
+import { SettingsCard } from './SettingsUi';
 
 export interface DetachCourseSectionProps {
   courseId: string;
@@ -50,13 +51,13 @@ export function DetachCourseSection({ courseId, autoAcceptUpdates }: DetachCours
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+    <SettingsCard>
       <h2 className="mb-1 font-display text-xl">Shared course</h2>
       <p className="mb-4 text-sm text-ink-soft">
         This course is managed by its author. Detach it to edit freely — future updates
         from them will arrive as a separate course instead of merging.
       </p>
-      <div className="mb-4 flex items-start justify-between gap-3 border-t border-line pt-4">
+      <div className="mb-4 flex items-start justify-between gap-3 pt-1">
         <div className="min-w-0">
           <label htmlFor="auto-accept-updates" className="text-sm">
             Apply updates automatically
@@ -85,6 +86,6 @@ export function DetachCourseSection({ courseId, autoAcceptUpdates }: DetachCours
           Detach course
         </Button>
       )}
-    </section>
+    </SettingsCard>
   );
 }

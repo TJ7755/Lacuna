@@ -87,7 +87,7 @@ export function UnlockModeSection({
               value={linearCadence.intervalDays}
               onChange={(e) => onIntervalDaysChange(Math.max(1, Number(e.target.value) || 1))}
               onBlur={onIntervalDaysBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Each lesson unlocks this many days after the previous one, starting from the

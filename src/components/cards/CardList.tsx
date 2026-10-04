@@ -45,6 +45,8 @@ import { GeneratedCardBadge } from './GeneratedCardBadge';
 import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
+import { BulkBarButton, CardBulkBar } from './CardBulkBar';
+import { summariseLessonCard, type CardStatusTone } from './lessonCardRow';
 
 const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),
@@ -179,6 +181,8 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
       return next;
     });
   }
+
+  const allSelected = selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id));
 
   function toggleAll() {
     setSelected((prev) => {
@@ -453,93 +457,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
         />
       )}
 
-      {selectMode && (
-        <div className="mb-4 rounded-xl border border-line-strong bg-surface px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={toggleAll}
-              aria-pressed={selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id))}
-              className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
-            >
-              <span
-                className={cn(
-                  'grid h-5 w-5 place-items-center rounded-full border transition-colors',
-                  selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id))
-                    ? 'border-accent bg-accent text-accent-fg'
-                    : 'border-line-strong',
-                )}
-              >
-                {selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id)) && (
-                  <CheckIcon width={12} height={12} />
-                )}
-              </span>
-              {selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id)) ? 'Deselect all' : 'Select all'}
-            </button>
-            <span className="text-sm text-ink-faint">{selected.size} selected</span>
-            <div className="ml-auto flex flex-wrap gap-2">
-              <SelectedCardsAnswerMode courseId={courseId} cards={cards.filter((card) => selected.has(card.id))} />
-              <Button
-                size="sm"
-                variant={tagging ? 'primary' : 'secondary'}
-                disabled={selected.size === 0}
-                onClick={() => (tagging ? setTagging(false) : startTag())}
-              >
-                Tag…
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={selected.size === 0}
-                onClick={() => handleSuspend(true)}
-              >
-                Suspend
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={selected.size === 0}
-                onClick={() => handleSuspend(false)}
-              >
-                Resume
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={selected.size === 0}
-                onClick={handleBury}
-              >
-                Bury
-              </Button>
-              <Button
-                size="sm"
-                variant={rescheduling ? 'primary' : 'secondary'}
-                disabled={selected.size === 0}
-                onClick={() => (rescheduling ? setRescheduling(false) : startReschedule())}
-              >
-                Reschedule…
-              </Button>
-              {assignableLessons && courseId && (
-                <Button
-                  size="sm"
-                  variant={assigningLesson ? 'primary' : 'secondary'}
-                  disabled={selected.size === 0}
-                  onClick={() => (assigningLesson ? setAssigningLesson(false) : startAssignLesson())}
-                >
-                  Assign to lesson…
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={selected.size === 0}
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-
+      <CardBulkBar
+        open={selectMode}
+        panel={
+          (tagging || rescheduling || assigningLesson) && selected.size > 0 ? (
+          <>
           {/* Inline tag chooser */}
           <AnimatePresence>
             {tagging && selected.size > 0 && (
@@ -548,9 +470,9 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
                 animate={{ opacity: 1 }}
                 exit={m > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-3"
+                
               >
-                <div className="border-t border-line pt-3">
+                <div>
                   <label className="block text-sm text-ink-soft">
                     Tag for {selected.size} card{plural(selected.size)}
                     <input
@@ -606,9 +528,9 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
                 animate={{ opacity: 1 }}
                 exit={m > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-3"
+                
               >
-                <div className="border-t border-line pt-3">
+                <div>
                   <fieldset className="space-y-2">
                     <legend className="mb-2 text-sm text-ink-soft">
                       Reschedule {selected.size} card{plural(selected.size)}
@@ -657,9 +579,9 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
                 animate={{ opacity: 1 }}
                 exit={m > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-3"
+                
               >
-                <div className="border-t border-line pt-3">
+                <div>
                   <label className="block text-sm text-ink-soft">
                     Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
                     <Select
@@ -687,8 +609,72 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-      )}
+          </>
+          ) : undefined
+        }
+      >
+            <BulkBarButton
+              onClick={toggleAll}
+              aria-pressed={allSelected}
+              className="px-3"
+            >
+              <span
+                className={cn(
+                  'grid h-5 w-5 place-items-center rounded-full border transition-colors',
+                  allSelected ? 'border-paper bg-paper text-ink' : 'border-paper/40',
+                )}
+              >
+                {allSelected && <CheckIcon width={12} height={12} />}
+              </span>
+              {allSelected ? 'Deselect all' : 'Select all'}
+            </BulkBarButton>
+            <span className="px-2 text-sm font-semibold tabular-nums">{selected.size} selected</span>
+            <SelectedCardsAnswerMode courseId={courseId} cards={cards.filter((card) => selected.has(card.id))} />
+              <BulkBarButton active={tagging}
+                disabled={selected.size === 0}
+                onClick={() => (tagging ? setTagging(false) : startTag())}
+              >
+                Tag…
+              </BulkBarButton>
+              <BulkBarButton
+                disabled={selected.size === 0}
+                onClick={() => handleSuspend(true)}
+              >
+                Suspend
+              </BulkBarButton>
+              <BulkBarButton
+                disabled={selected.size === 0}
+                onClick={() => handleSuspend(false)}
+              >
+                Resume
+              </BulkBarButton>
+              <BulkBarButton
+                disabled={selected.size === 0}
+                onClick={handleBury}
+              >
+                Bury
+              </BulkBarButton>
+              <BulkBarButton active={rescheduling}
+                disabled={selected.size === 0}
+                onClick={() => (rescheduling ? setRescheduling(false) : startReschedule())}
+              >
+                Reschedule…
+              </BulkBarButton>
+              {assignableLessons && courseId && (
+                <BulkBarButton active={assigningLesson}
+                  disabled={selected.size === 0}
+                  onClick={() => (assigningLesson ? setAssigningLesson(false) : startAssignLesson())}
+                >
+                  Assign to lesson…
+                </BulkBarButton>
+              )}
+              <BulkBarButton danger
+                disabled={selected.size === 0}
+                onClick={handleDelete}
+              >
+                Delete
+              </BulkBarButton>
+      </CardBulkBar>
 
       {cards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
@@ -754,6 +740,14 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
 
 const VIRTUAL_THRESHOLD = 50;
 
+const STATUS_DOT_CLASS: Record<CardStatusTone, string> = {
+  new: 'bg-line-strong',
+  learning: 'bg-warning',
+  review: 'bg-positive',
+  lapsed: 'bg-negative',
+  paused: 'bg-ink-faint',
+};
+
 /** Longest possible entry animation: the capped stagger plus one row's fade. */
 const INTRO_WINDOW_MS = 420;
 
@@ -806,7 +800,7 @@ export function CardListBody({
   const { totalHeight, virtualItems, measureRef, containerRef } = useVirtualList({
     itemCount: cards.length,
     estimateSize: 100,
-    gap: 12,
+    gap: 4,
     overscan: 5,
     enabled,
   });
@@ -824,7 +818,7 @@ export function CardListBody({
 
   if (!enabled) {
     return (
-      <div className="grid gap-3">
+      <div className="grid gap-1">
         {cards.map((card, i) => (
           <CardRow
             key={card.id}
@@ -939,6 +933,7 @@ const CardRow = React.memo(function CardRow({
   const buried = card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
+  const statusTone = summariseLessonCard(card, Date.now()).tone;
   // Generated cards are owned by their Sequence or Occlusion: content edits and deletes
   // happen there, never here, so selection and deletion are suppressed regardless of
   // selectMode/hover. Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully
@@ -1140,17 +1135,14 @@ const CardRow = React.memo(function CardRow({
   return (
     <div
       className={cn(
-        'group relative rounded-xl border bg-surface transition-colors duration-200',
-        selected
-          ? 'border-accent ring-2 ring-accent/30'
-          : 'border-line hover:border-line-strong',
+        'group relative rounded-2xl bg-surface transition-colors duration-200',
       )}
     >
       {/* Action tray revealed behind the card on swipe-left */}
       <div
         data-card-swipe-tray
         inert={!trayOpen}
-        className="absolute inset-y-0 right-0 z-0 flex items-center overflow-hidden rounded-r-xl"
+        className="absolute inset-y-0 right-0 z-0 flex items-center overflow-hidden rounded-r-2xl"
         style={{ width: trayWidth }}
       >
         <div className="flex h-full w-full items-center">
@@ -1219,10 +1211,10 @@ const CardRow = React.memo(function CardRow({
         onPointerCancel={handlePointerCancel}
         data-card-id={card.id}
         className={cn(
-          'relative z-10 cursor-pointer rounded-xl border bg-surface p-4',
+          'relative z-10 cursor-pointer rounded-2xl p-4 transition-colors',
           selected
-            ? 'border-accent ring-2 ring-accent/30'
-            : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03] active:bg-ink/5',
+            ? 'bg-accent-soft'
+            : 'bg-surface hover:bg-ink/[0.04] active:bg-ink/[0.07]',
         )}
       >
         <button
@@ -1231,7 +1223,7 @@ const CardRow = React.memo(function CardRow({
           aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${card.front || cardTypeLabel(card)}`}
           aria-expanded={selectMode && !generated && !linked ? undefined : expanded}
           aria-pressed={selectMode && !generated && !linked ? selected : undefined}
-          className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
         <div className="relative flex items-start gap-4">
           {selectMode && !generated && !linked && (
@@ -1247,6 +1239,10 @@ const CardRow = React.memo(function CardRow({
 
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT_CLASS[statusTone])}
+              />
               <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
                 {cardTypeLabel(card)}
               </span>

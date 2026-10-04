@@ -67,7 +67,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           key={lesson.id}
           layout={multiplier > 0 ? 'position' : undefined}
           transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-lg border border-line bg-surface"
+          className="overflow-hidden rounded-2xl bg-ink/[0.03]"
         >
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">

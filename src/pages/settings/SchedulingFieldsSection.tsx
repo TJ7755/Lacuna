@@ -1,20 +1,5 @@
-import { m as motion } from 'motion/react';
-import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { Toggle } from '../../components/ui/Toggle';
-import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon } from '../../components/ui/icons';
-import {
-  DEFAULT_REQUEST_RETENTION,
-  MAX_REQUEST_RETENTION,
-  MIN_REQUEST_RETENTION,
-} from '../../fsrs/params';
-
-/** Named anchor points for the target-retention slider. */
-const RETENTION_PRESETS = [
-  { label: 'Relaxed', value: 0.85 },
-  { label: 'Balanced', value: 0.9 },
-  { label: 'Thorough', value: 0.95 },
-] as const;
 
 export interface SchedulingFieldsSectionProps {
   newCardsPerDay: string;
@@ -24,11 +9,6 @@ export interface SchedulingFieldsSectionProps {
   maxReviewsPerDay: string;
   onMaxReviewsPerDayChange: (value: string) => void;
   onMaxReviewsPerDayBlur: () => void;
-  retention: number;
-  /** Updates the live display value as the slider is dragged; does not commit. */
-  onRetentionChange: (value: number) => void;
-  /** Commits the retention value once the drag/keyboard interaction ends (or a preset is picked). */
-  onRetentionCommit: (value: number) => void;
   enableFuzz: boolean;
   onEnableFuzzChange: (value: boolean) => void;
   maxInterval: string;
@@ -63,9 +43,7 @@ export interface SchedulingFieldsSectionProps {
  * Pure controlled component — all state lives with the caller, which also owns the instant-commit
  * mechanics: text/numeric fields commit on blur via the `on*Blur` callbacks (so a half-typed value
  * never reaches the repository), toggles/selects commit directly through their `on*Change`
- * callback. The retention slider tracks the drag live via `onRetentionChange` but only commits
- * via `onRetentionCommit`, fired once when the drag/keyboard interaction ends (or a preset is
- * clicked), so a drag gesture does not write on every intermediate tick.
+ * callback. Target retention lives in TargetRecallCard, which leads the settings page.
  */
 export function SchedulingFieldsSection({
   newCardsPerDay,
@@ -74,9 +52,6 @@ export function SchedulingFieldsSection({
   maxReviewsPerDay,
   onMaxReviewsPerDayChange,
   onMaxReviewsPerDayBlur,
-  retention,
-  onRetentionChange,
-  onRetentionCommit,
   enableFuzz,
   onEnableFuzzChange,
   maxInterval,
@@ -101,9 +76,6 @@ export function SchedulingFieldsSection({
   onSessionTimeLimitChange,
   onSessionTimeLimitBlur,
 }: SchedulingFieldsSectionProps) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-
   return (
     <>
       <label className="block text-sm text-ink-soft">
@@ -116,7 +88,7 @@ export function SchedulingFieldsSection({
           onChange={(e) => onNewCardsPerDayChange(e.target.value)}
           onBlur={onNewCardsPerDayBlur}
           placeholder="Unlimited"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
           Caps how many never-seen cards a study session introduces each day, so a large course does
@@ -135,7 +107,7 @@ export function SchedulingFieldsSection({
           onChange={(e) => onMaxReviewsPerDayChange(e.target.value)}
           onBlur={onMaxReviewsPerDayBlur}
           placeholder="Unlimited"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
           Caps how many cards you can review in a single day for this course, including re-reviews
@@ -153,7 +125,7 @@ export function SchedulingFieldsSection({
           onChange={(e) => onDailyReviewGoalChange(e.target.value)}
           onBlur={onDailyReviewGoalBlur}
           placeholder="No goal"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
           Target number of cards to review per day. When reached, the session ends with a
@@ -171,7 +143,7 @@ export function SchedulingFieldsSection({
           onChange={(e) => onSessionTimeLimitChange(e.target.value)}
           onBlur={onSessionTimeLimitBlur}
           placeholder="No limit"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
           Maximum number of minutes a single study session may run. When the limit is reached, the
@@ -179,13 +151,12 @@ export function SchedulingFieldsSection({
         </span>
       </label>
 
-      <details className="group border-t border-line pt-5">
+      <details className="group pt-2">
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
             <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
             <span className="mt-1 block text-xs leading-5 text-ink-faint">
-              Lacuna currently aims for {Math.round(retention * 100)}% recall and manages card
-              intervals automatically. Open this to tune intervals, learning steps and leeches.
+              Tune intervals, learning steps and leeches.
             </span>
           </span>
           <ChevronDownIcon
@@ -196,61 +167,7 @@ export function SchedulingFieldsSection({
           />
         </summary>
 
-        <div className="mt-5 flex flex-col gap-4 rounded-xl border border-line bg-surface-raised/50 p-4">
-          <div className="block text-sm text-ink-soft">
-            <div className="flex items-baseline justify-between">
-              <span>Target retention</span>
-              <span className="tabular font-medium text-ink">{Math.round(retention * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min={MIN_REQUEST_RETENTION}
-              max={MAX_REQUEST_RETENTION}
-              step={0.01}
-              value={retention}
-              onChange={(e) => onRetentionChange(Number(e.target.value))}
-              onPointerUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
-              onKeyUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
-              aria-label="Target retention"
-              className="mt-3 w-full accent-accent"
-            />
-            <div className="mt-2 flex gap-2">
-              {RETENTION_PRESETS.map((p) => {
-                const active = Math.round(retention * 100) === Math.round(p.value * 100);
-                return (
-                  <motion.button
-                    key={p.label}
-                    type="button"
-                    onClick={() => onRetentionCommit(p.value)}
-                    aria-pressed={active}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ duration: 0.1 * m }}
-                    className={cn(
-                      'flex-1 rounded-lg border px-3 py-2 text-xs transition-colors',
-                      active
-                        ? 'border-accent bg-accent-soft text-accent'
-                        : 'border-line text-ink-soft hover:border-line-strong',
-                    )}
-                  >
-                    <span className="block font-medium">{p.label}</span>
-                    <span className="text-ink-faint">{Math.round(p.value * 100)}%</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-            <span className="mt-2 block text-xs text-ink-faint">
-              How well you want to remember each card. Higher means cards come back sooner and more
-              often (more reviews, fewer lapses); lower means a lighter workload with more
-              forgetting. {Math.round(retention * 100)}% is{' '}
-              {retention > DEFAULT_REQUEST_RETENTION
-                ? 'more thorough than the default.'
-                : retention < DEFAULT_REQUEST_RETENTION
-                  ? 'lighter than the default.'
-                  : 'the recommended default.'}
-            </span>
-          </div>
-
+        <div className="mt-5 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4">
           <div className="block text-sm text-ink-soft">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -274,7 +191,7 @@ export function SchedulingFieldsSection({
               onChange={(e) => onMaxIntervalChange(e.target.value)}
               onBlur={onMaxIntervalBlur}
               placeholder={maxIntervalPlaceholder}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Caps the longest scheduled interval in days. Cards that would be scheduled beyond this
@@ -289,7 +206,7 @@ export function SchedulingFieldsSection({
               onChange={(e) => onLearningStepsChange(e.target.value)}
               onBlur={onLearningStepsBlur}
               placeholder="e.g. 1m, 10m"
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Intervals for a new card before it graduates to review. Use values like 1m, 10m, 1d,
@@ -304,7 +221,7 @@ export function SchedulingFieldsSection({
               onChange={(e) => onRelearningStepsChange(e.target.value)}
               onBlur={onRelearningStepsBlur}
               placeholder="e.g. 10m"
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Intervals for a card after it lapses, before it returns to review. Use the same format
@@ -325,7 +242,7 @@ export function SchedulingFieldsSection({
                   onChange={(e) => onLeechThresholdChange(e.target.value)}
                   onBlur={onLeechThresholdBlur}
                   placeholder="8"
-                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                  className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
                 />
                 <span className="mt-1 block text-xs text-ink-faint">
                   Number of lapses (failed reviews) at which a card is treated as a leech. Leave

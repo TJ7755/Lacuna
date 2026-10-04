@@ -1,5 +1,6 @@
 // Course Cards — all cards in a course, organised by lesson, with an
-// "Unassigned" bucket for cards not yet assigned to a lesson.
+// "Unassigned" bucket for cards not yet assigned to a lesson. A toolbar searches and
+// filters across every bucket; selecting cards raises the floating bulk bar (CardList).
 // Route: /course/:courseId/cards
 // British English throughout.
 
@@ -18,9 +19,14 @@ import {
 import { LessonAnswerModeControl } from '../components/cards/AnswerModeControl';
 import { CardList } from '../components/cards/CardList';
 import { courseCardListContext } from '../components/cards/cardListContext';
-import { FadeInView } from '../components/ui/FadeInView';
+import { m as motion } from 'motion/react';
+import { MOTION_EASING } from '../components/ui/motion';
 import { Button } from '../components/ui/Button';
-import { PlusIcon, SearchIcon } from '../components/ui/icons';
+import { PlusIcon } from '../components/ui/icons';
+import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
+import { filterSessionCardPool, type CardFilter } from '../db/search';
+import { arrivalDelay } from './settings/SettingsUi';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
 
 // Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
@@ -35,6 +41,9 @@ export function CardsPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<ReadonlySet<CardFilter>>(new Set());
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
 
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
@@ -48,12 +57,20 @@ export function CardsPage() {
     () => (lessons ?? []).map((lesson) => ({ id: lesson.id, name: lesson.name })),
     [lessons],
   );
-  const { byLesson, unassigned, lessonsWithCards } = useMemo(() => {
+  const filterCounts = useMemo(() => {
+    const counts = {} as Record<CardFilter, number>;
+    for (const chip of CARD_FILTER_CHIPS) {
+      counts[chip.value] = filterSessionCardPool(cards ?? [], { filters: [chip.value] }).length;
+    }
+    return counts;
+  }, [cards]);
+  const { byLesson, unassigned, lessonsWithCards, shownCount } = useMemo(() => {
     const availableLessons = lessons ?? [];
-    const availableCards = cards ?? [];
+    const availableCards = filterSessionCardPool(cards ?? [], { filters: [...filters] });
     const lessonIdSet = new Set(availableLessons.map((lesson) => lesson.id));
     const byLesson = new Map<string, Card[]>();
     const unassigned: Card[] = [];
+    let shownCount = 0;
     for (const card of availableCards) {
       if (
         query &&
@@ -62,6 +79,7 @@ export function CardsPage() {
       ) {
         continue;
       }
+      shownCount += 1;
       if (card.primaryLessonId && lessonIdSet.has(card.primaryLessonId)) {
         const bucket = byLesson.get(card.primaryLessonId) ?? [];
         bucket.push(card);
@@ -73,11 +91,12 @@ export function CardsPage() {
     return {
       byLesson,
       unassigned,
+      shownCount,
       lessonsWithCards: availableLessons.filter(
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, query]);
+  }, [cards, lessons, query, filters]);
 
   if (
     course === undefined ||
@@ -105,23 +124,22 @@ export function CardsPage() {
 
   const isEmpty = cards.length === 0;
   const noMatches = !isEmpty && lessonsWithCards.length === 0 && unassigned.length === 0;
+  const hasCriteria = query !== '' || filters.size > 0;
+
+  function toggleFilter(filter: CardFilter) {
+    setFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(filter)) next.delete(filter);
+      else next.add(filter);
+      return next;
+    });
+  }
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      {/* Header */}
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
-        <div>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Cards</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            {cards.length} card{cards.length === 1 ? '' : 's'} across {course.name}
-          </p>
-        </div>
-        <div
-          role="group"
-          aria-label="Add content"
-          className="flex flex-wrap items-center justify-end gap-2"
-        >
-          <span className="w-full text-right text-xs font-medium text-ink-faint">Add content</span>
+    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 pt-6 md:pt-8">
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Cards</h1>
+        <div role="group" aria-label="Add content" className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
             <PlusIcon width={18} height={18} />
             New sequence
@@ -137,38 +155,54 @@ export function CardsPage() {
         </div>
       </header>
 
-      {/* Search */}
       {!isEmpty && (
-        <div className="relative mb-8">
-          <SearchIcon
-            width={16}
-            height={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-          />
-          <input
-            type="search"
-            aria-label="Search all cards"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search all cards…"
-            className="w-full rounded-xl border border-line-strong bg-surface py-2.5 pl-10 pr-4 text-ink outline-none focus:border-accent"
+        <div className="mb-6">
+          <CardsToolbar
+            search={search}
+            onSearch={setSearch}
+            filters={filters}
+            onToggleFilter={toggleFilter}
+            counts={filterCounts}
+            shown={shownCount}
           />
         </div>
       )}
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="text-sm text-ink-soft">This course has no cards yet.</p>
-          <p className="mt-2 text-xs text-ink-faint">Choose a content type above to begin.</p>
+        <div className={`${BUCKET_CLASS} py-16 text-center`}>
+          <p className="text-ink-soft">This course has no cards yet.</p>
         </div>
       ) : noMatches ? (
-        <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="text-sm text-ink-soft">No cards match &ldquo;{search}&rdquo;.</p>
+        <div className={`${BUCKET_CLASS} py-16 text-center`}>
+          <p className="text-ink-soft">
+            {search.trim() ? <>No cards match &ldquo;{search}&rdquo;.</> : 'No cards match.'}
+          </p>
+          {hasCriteria && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setFilters(new Set());
+              }}
+              className="mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            >
+              Clear search and filters
+            </button>
+          )}
         </div>
       ) : (
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-5">
           {lessonsWithCards.map((lesson, index) => (
-            <FadeInView key={lesson.id} delay={index * 0.04} y={12}>
+            <motion.div
+              key={lesson.id}
+              initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.45 * multiplier,
+                delay: arrivalDelay(index, multiplier),
+                ease: MOTION_EASING.emphasised,
+              }}
+            >
               <LessonBucket
                 courseId={courseId!}
                 lesson={lesson}
@@ -178,10 +212,18 @@ export function CardsPage() {
                 sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
                 occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
               />
-            </FadeInView>
+            </motion.div>
           ))}
           {unassigned.length > 0 && (
-            <FadeInView delay={lessonsWithCards.length * 0.04} y={12}>
+            <motion.div
+              initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.45 * multiplier,
+                delay: arrivalDelay(lessonsWithCards.length, multiplier),
+                ease: MOTION_EASING.emphasised,
+              }}
+            >
               <UnassignedBucket
                 courseId={courseId!}
                 courseName={course.name}
@@ -191,13 +233,17 @@ export function CardsPage() {
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
                 occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
               />
-            </FadeInView>
+            </motion.div>
           )}
         </div>
       )}
     </div>
   );
 }
+
+/** Each lesson's cards sit on one borderless surface, like the cards elsewhere. */
+const BUCKET_CLASS =
+  'rounded-3xl bg-surface p-4 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-5';
 
 interface AssignableLesson {
   id: string;
@@ -223,14 +269,14 @@ function LessonBucket({
 }) {
   const navigate = useNavigate();
   return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-xl">
-          {lesson.name} <span className="text-ink-faint">({cards.length})</span>
+    <section className={BUCKET_CLASS}>
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          {lesson.name} <span className="font-normal text-ink-faint">({cards.length})</span>
         </h2>
         <Link
           to={`/course/${courseId}/lesson/${lesson.id}`}
-          className="text-sm text-ink-faint transition-colors hover:text-ink"
+          className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           Open lesson
         </Link>
@@ -301,10 +347,10 @@ function UnassignedBucket({
 }) {
   const navigate = useNavigate();
   return (
-    <section>
-      <div className="mb-4">
-        <h2 className="font-display text-xl">
-          Unassigned <span className="text-ink-faint">({cards.length})</span>
+    <section className={BUCKET_CLASS}>
+      <div className="mb-3 px-1">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Unassigned <span className="font-normal text-ink-faint">({cards.length})</span>
         </h2>
       </div>
       {deck && (
@@ -339,16 +385,15 @@ function UnassignedBucket({
 
 function CardsPageSkeleton() {
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
-      <div className="mb-8 flex items-center justify-between">
-        <div className="h-10 w-64 animate-pulse rounded bg-ink/10" />
-        <div className="h-10 w-40 animate-pulse rounded-lg bg-ink/10" />
+    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
+      <div className="mb-6 mt-6 flex items-center justify-between md:mt-8">
+        <div className="h-10 w-40 animate-pulse rounded-full bg-ink/10" />
+        <div className="h-11 w-40 animate-pulse rounded-full bg-ink/10" />
       </div>
-      <div className="mb-8 h-10 w-full animate-pulse rounded-xl bg-ink/10" />
-      <div className="space-y-3">
+      <div className="mb-6 h-12 w-full max-w-sm animate-pulse rounded-full bg-ink/10" />
+      <div className="space-y-2 rounded-3xl bg-surface p-5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-14 animate-pulse rounded-xl border border-line bg-ink/5" />
+          <div key={i} className="h-14 animate-pulse rounded-2xl bg-ink/5" />
         ))}
       </div>
     </div>

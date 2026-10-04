@@ -14,6 +14,7 @@ import { optimiseEnabledForDeck, useAutoOptimiseDefault } from '../../state/opti
 import type { Card, FsrsParameters } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SettingsCard } from './SettingsUi';
 
 /** Minimal shape an optimisable entity (deck or course) must provide. */
 interface OptimisableEntity {
@@ -132,7 +133,7 @@ export function OptimisationPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-6">
+    <SettingsCard>
       <div>
         <span className="text-xs uppercase tracking-[0.16em] text-ink-faint">
           Advanced scheduling
@@ -294,6 +295,6 @@ export function OptimisationPanel({
           )}
         </div>
       </details>
-    </section>
+    </SettingsCard>
   );
 }

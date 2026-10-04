@@ -188,8 +188,9 @@ describe('CourseSettings', () => {
   it('uses cards to group related course settings', () => {
     renderPage();
 
-    const basics = screen.getByLabelText('Course name').closest('section');
-    expect(basics).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+    const goal = screen.getByLabelText('Course name').closest('section');
+    expect(goal).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(goal).not.toHaveClass('border');
   });
 
   it('does not reset the optimiser when the same course rerenders', () => {
@@ -209,10 +210,10 @@ describe('CourseSettings', () => {
 
   it('renders the grouped section headings and no "Save changes" bar', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: 'Basics' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Study' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Content' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Goal and dates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Daily study' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Lessons' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Auto-practice' })).toBeInTheDocument();
     // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
     // so assert on its presence rather than a specific role.
     expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);

@@ -70,7 +70,7 @@ export function PracticeSettingsSection({
           />
         </summary>
 
-        <div className="mt-4 flex flex-col gap-4 rounded-xl border border-line bg-surface-raised/50 p-4">
+        <div className="mt-4 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4">
           <label className="block text-sm text-ink-soft">
             Threshold (exam not near)
             <input
@@ -81,7 +81,7 @@ export function PracticeSettingsSection({
               value={practiceThresholdMinutesFar}
               onChange={(e) => onPracticeThresholdMinutesFarChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesFarBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Minutes-to-clear at which a practice node is triggered while the exam is not near.
@@ -98,7 +98,7 @@ export function PracticeSettingsSection({
               value={practiceThresholdMinutesNear}
               onChange={(e) => onPracticeThresholdMinutesNearChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesNearBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Minutes-to-clear at which a practice node is triggered once the exam is near (see the
@@ -116,7 +116,7 @@ export function PracticeSettingsSection({
               value={practiceUrgentWindowDays}
               onChange={(e) => onPracticeUrgentWindowDaysChange(e.target.value)}
               onBlur={onPracticeUrgentWindowDaysBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Days until the exam at or below which the &quot;exam near&quot; threshold applies.
@@ -133,7 +133,7 @@ export function PracticeSettingsSection({
               value={practiceMaxGap}
               onChange={(e) => onPracticeMaxGapChange(e.target.value)}
               onBlur={onPracticeMaxGapBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">
               Backstop: forces a practice node after this many lessons without one, even if neither

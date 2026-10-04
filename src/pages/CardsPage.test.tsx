@@ -330,4 +330,33 @@ describe('CardsPage', () => {
     });
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
   });
+
+  it('narrows the list with a filter chip and shows its count', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: 'lesson-1', front: 'Apple', flagged: true }),
+      makeCard({ id: 'c2', primaryLessonId: 'lesson-1', front: 'Banana' }),
+    ];
+    renderPage();
+    expect(screen.getByTestId('card-list-count').textContent).toBe('2');
+    const chip = screen.getByRole('button', { name: /Flagged/ });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+    fireEvent.click(chip);
+    expect(screen.getByTestId('card-list-count').textContent).toBe('2');
+  });
+
+  it('offers to clear a search and filters that match nothing', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1', front: 'Apple' })];
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Leech/ }));
+    expect(screen.getByText('No cards match.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }));
+    expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+  });
 });

@@ -43,7 +43,7 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
       {manualNodes?.map((node) => (
         <div
           key={node.id}
-          className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+          className="flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.03] px-4 py-3"
         >
           <div className="min-w-0">
             <div className="text-sm text-ink">{node.name}</div>
