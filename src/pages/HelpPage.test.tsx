@@ -49,7 +49,7 @@ describe('HelpPage', () => {
     expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
     expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
     expect(contentColumn).not.toHaveClass('max-w-4xl');
-    expect(rail).toHaveClass('w-56');
+    expect(rail).toHaveClass('w-[200px]');
     expect(screen.queryByText('On this page')).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Everything you need to know about using Lacuna/),

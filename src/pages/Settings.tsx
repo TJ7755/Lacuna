@@ -81,62 +81,63 @@ export function Settings() {
   }, []);
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-6 pb-10 pt-12 md:px-10 md:py-10">
-      <div className="min-w-0 flex-1">
-        <header className="mb-12 flex items-baseline justify-between gap-4 pt-2 md:pt-4">
-          <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-            Settings
-          </h1>
-          <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
-        </header>
+    <div className="max-w-[1156px] px-6 pb-10 pt-12 md:px-12 md:py-10">
+      <header className="mb-6 flex items-baseline justify-between gap-4">
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+          Settings
+        </h1>
+        <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
+      </header>
+      <div className="flex flex-row-reverse gap-8">
+        <div className="min-w-0 flex-1">
+          <SettingsArrivalProvider>
+            <SectionRailMobileJumper
+              sections={SETTINGS_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={goToSection}
+              label="Jump to settings group"
+            />
 
-        <SettingsArrivalProvider>
-          <SectionRailMobileJumper
-            sections={SETTINGS_SECTIONS}
-            activeSection={activeSection}
-            onNavigate={goToSection}
-            label="Jump to settings group"
-          />
+            <SettingsGroup id="settings-group-appearance" title="Appearance & access">
+              <AppearanceSection />
+              <InputModeSection />
+              <SidebarSection />
+              <DashboardSection />
+              <CourseHeaderSection />
+              <ShortcutsSection />
+            </SettingsGroup>
 
-          <SettingsGroup id="settings-group-appearance" title="Appearance & access">
-            <AppearanceSection />
-            <InputModeSection />
-            <SidebarSection />
-            <DashboardSection />
-            <CourseHeaderSection />
-            <ShortcutsSection />
-          </SettingsGroup>
+            <SettingsGroup id="settings-group-study" title="Study behaviour">
+              <StudySection />
+              <PomodoroSection />
+            </SettingsGroup>
 
-          <SettingsGroup id="settings-group-study" title="Study behaviour">
-            <StudySection />
-            <PomodoroSection />
-          </SettingsGroup>
+            <SettingsGroup id="settings-group-course-defaults" title="Course defaults">
+              <CourseDefaultsSection />
+            </SettingsGroup>
 
-          <SettingsGroup id="settings-group-course-defaults" title="Course defaults">
-            <CourseDefaultsSection />
-          </SettingsGroup>
+            <SettingsGroup id="settings-group-data" title="Your data">
+              <BackupsSection />
+              <DataLinksSection />
+              <SyncSection />
+              <DataPortabilitySection motionMultiplier={motionMultiplier} />
+            </SettingsGroup>
 
-          <SettingsGroup id="settings-group-data" title="Your data">
-            <BackupsSection />
-            <DataLinksSection />
-            <SyncSection />
-            <DataPortabilitySection motionMultiplier={motionMultiplier} />
-          </SettingsGroup>
+            <SettingsGroup id="settings-group-integrations" title="Integrations">
+              <InstallSection />
+              <AiSection />
+              {window.electronAPI?.isElectron && <McpSection />}
+            </SettingsGroup>
+          </SettingsArrivalProvider>
+        </div>
 
-          <SettingsGroup id="settings-group-integrations" title="Integrations">
-            <InstallSection />
-            <AiSection />
-            {window.electronAPI?.isElectron && <McpSection />}
-          </SettingsGroup>
-        </SettingsArrivalProvider>
+        <SectionRail
+          sections={SETTINGS_SECTIONS}
+          activeSection={activeSection}
+          onNavigate={goToSection}
+          motionMultiplier={motionMultiplier}
+        />
       </div>
-
-      <SectionRail
-        sections={SETTINGS_SECTIONS}
-        activeSection={activeSection}
-        onNavigate={goToSection}
-        motionMultiplier={motionMultiplier}
-      />
     </div>
   );
 }
@@ -158,8 +159,11 @@ function SettingsGroup({
       aria-labelledby={headingId}
       className="mb-8 scroll-mt-20 first:mt-0 [&>section]:scroll-mt-20"
     >
-      <div className="mb-5">
-        <h2 id={headingId} className="font-display text-2xl font-semibold tracking-tight">
+      <div className="mb-3 px-1">
+        <h2
+          id={headingId}
+          className="font-body text-[13px] font-bold tracking-normal text-ink-faint"
+        >
           {title}
         </h2>
       </div>

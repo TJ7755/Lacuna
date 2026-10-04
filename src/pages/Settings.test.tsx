@@ -273,7 +273,8 @@ describe('Settings', () => {
 
     const heading = screen.getByRole('heading', { level: 1, name: 'Settings' });
     const header = heading.closest('header');
-    const contentColumn = header?.parentElement;
+    // The title spans the page; the settings column sits beside the section rail below it.
+    const contentColumn = header?.nextElementSibling?.querySelector(':scope > .min-w-0');
 
     expect(screen.queryByText('Preferences')).not.toBeInTheDocument();
     expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
