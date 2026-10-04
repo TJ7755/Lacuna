@@ -23,6 +23,8 @@ interface MarkdownEditorProps {
   label?: string;
   /** Cloze preview mode for the live preview pane. */
   clozePreview?: 'front' | 'back' | 'none';
+  /** Leave out the side preview, for screens that already show their own preview. */
+  hidePreview?: boolean;
   onError?: (message: string) => void;
   /** Focus the textarea on mount (used by the quick-capture flow). */
   autoFocus?: boolean;
@@ -87,6 +89,7 @@ export function MarkdownEditor({
   minRows = 6,
   label,
   clozePreview = 'none',
+  hidePreview = false,
   onError,
   autoFocus = false,
   inputRef,
@@ -398,7 +401,7 @@ export function MarkdownEditor({
         />
 
         {/* Mobile write/preview switch */}
-        <div className="ml-auto flex gap-1 md:hidden">
+        <div className={cn('ml-auto flex gap-1 md:hidden', hidePreview && 'hidden')}>
           {(['write', 'preview'] as const).map((tab) => (
             <button
               key={tab}
@@ -416,8 +419,8 @@ export function MarkdownEditor({
       </div>
 
       {/* Split: editor + live preview (stacked/tabbed on mobile) */}
-      <div className="grid md:grid-cols-2">
-        <div className={cn('md:block', mobileTab === 'preview' && 'hidden')}>
+      <div className={cn('grid', !hidePreview && 'md:grid-cols-2')}>
+        <div className={cn('md:block', !hidePreview && mobileTab === 'preview' && 'hidden')}>
           <textarea
             ref={setTextareaRef}
             autoFocus={autoFocus}
@@ -475,37 +478,39 @@ export function MarkdownEditor({
             )}
           />
         </div>
-        <div
-          className={cn(
-            'min-h-[8rem] border-line px-4 py-3 md:border-l',
-            mobileTab === 'write' && 'hidden md:block',
-          )}
-        >
-          <AnimatePresence mode="sync">
-            {value.trim() ? (
-              <motion.div
-                key="preview"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * m }}
-              >
-                <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
-              </motion.div>
-            ) : (
-              <motion.p
-                key="placeholder"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * m }}
-                className="text-sm text-ink-faint"
-              >
-                Preview appears here.
-              </motion.p>
+        {!hidePreview && (
+          <div
+            className={cn(
+              'min-h-[8rem] border-line px-4 py-3 md:border-l',
+              mobileTab === 'write' && 'hidden md:block',
             )}
-          </AnimatePresence>
-        </div>
+          >
+            <AnimatePresence mode="sync">
+              {value.trim() ? (
+                <motion.div
+                  key="preview"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 * m }}
+                >
+                  <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
+                </motion.div>
+              ) : (
+                <motion.p
+                  key="placeholder"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 * m }}
+                  className="text-sm text-ink-faint"
+                >
+                  Preview appears here.
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   );

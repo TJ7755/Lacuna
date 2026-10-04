@@ -53,7 +53,14 @@ import { scaledSpring } from '../components/ui/motion';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
-import type { AnswerMode, Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
+import type {
+  AnswerMode,
+  Card,
+  CardType,
+  ItemFixture,
+  ItemPayload,
+  NumericAnswerSpec,
+} from '../db/types';
 import { isAudioCardFront } from '../media/audio';
 
 /** Shared card-surface treatment: white, rounded, softly lifted, never outlined. */
@@ -557,9 +564,14 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
-    const storedAnswerMode = course && !course.archived && isLessonAuthoringMode(course)
-      ? (isStructured ? undefined : answerMode)
-      : (editing ? card?.answerMode : undefined);
+    const storedAnswerMode =
+      course && !course.archived && isLessonAuthoringMode(course)
+        ? isStructured
+          ? undefined
+          : answerMode
+        : editing
+          ? card?.answerMode
+          : undefined;
     const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
     const backValue = isCloze || isStructured ? '' : back;
     const payload: ItemPayload | undefined = isNumeric
@@ -575,7 +587,14 @@ export function CardEditor() {
           }
         : undefined;
     if (editing && card) {
-      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload, answerMode: storedAnswerMode });
+      await updateCard(card.id, {
+        type: storedType,
+        front,
+        back: backValue,
+        tags,
+        payload,
+        answerMode: storedAnswerMode,
+      });
       // If this is a basic_reversed card, update its reverse partner too.
       if (card.type === 'basic_reversed' && card.reverseCardId) {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
@@ -594,18 +613,49 @@ export function CardEditor() {
     const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
-        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
+        await createLessonBasicReversedPair(
+          courseId!,
+          lessonId!,
+          front,
+          backValue,
+          tags,
+          storedAnswerMode,
+        );
       } else if (reversed) {
-        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
+        await createLessonCardWithReverse(
+          courseId!,
+          lessonId!,
+          front,
+          backValue,
+          tags,
+          storedAnswerMode,
+        );
       } else {
-        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload, storedAnswerMode);
+        await createLessonCard(
+          courseId!,
+          lessonId!,
+          storedType,
+          front,
+          backValue,
+          tags,
+          payload,
+          storedAnswerMode,
+        );
       }
     } else if (isBasicReversed) {
       await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
     } else if (reversed) {
       await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
     } else {
-      await createCourseCard(courseId!, storedType, front, backValue, tags, payload, storedAnswerMode);
+      await createCourseCard(
+        courseId!,
+        storedType,
+        front,
+        backValue,
+        tags,
+        payload,
+        storedAnswerMode,
+      );
     }
     clearDraft(draftKeyRef.current);
     setDraftDirty(false);
@@ -716,10 +766,7 @@ export function CardEditor() {
           />
         </motion.div>
 
-        <motion.div
-          {...riseIn(2, m)}
-          className="grid items-start gap-6 lg:grid-cols-5"
-        >
+        <motion.div {...riseIn(2, m)} className="grid items-start gap-6 lg:grid-cols-5">
           <section
             aria-label="Card content"
             className={`flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-5 md:p-7 lg:col-span-3 ${CARD_SURFACE}`}
@@ -733,6 +780,7 @@ export function CardEditor() {
                   )}
                 >
                   <MarkdownEditor
+                    hidePreview
                     key={`cloze-${formKey}`}
                     inputRef={frontRef}
                     autoFocus={!editing}
@@ -774,6 +822,7 @@ export function CardEditor() {
                   className={cn(shakeField === 'front' ? 'shake-field' : '')}
                 >
                   <MarkdownEditor
+                    hidePreview
                     key={`structured-front-${formKey}`}
                     inputRef={frontRef}
                     autoFocus={!editing}
@@ -823,6 +872,7 @@ export function CardEditor() {
                   className={cn(shakeField === 'front' ? 'shake-field' : '')}
                 >
                   <MarkdownEditor
+                    hidePreview
                     key={`front-${formKey}`}
                     inputRef={frontRef}
                     autoFocus={!editing}
@@ -840,6 +890,7 @@ export function CardEditor() {
                   className={cn(shakeField === 'back' ? 'shake-field' : '')}
                 >
                   <MarkdownEditor
+                    hidePreview
                     inputRef={backRef}
                     label="Back"
                     value={back}
