@@ -10,12 +10,7 @@ import type {
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
-import {
-  listQuestionSetDrafts,
-  questionSetDraftKey,
-  type QuestionSetDraft,
-} from '../questions/questionSetDrafts';
-import { restoreDeletedQuestionSets } from '../questions/questionSetRepository';
+import type { QuestionSetDraft } from '../questions/questionSetDrafts';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
@@ -382,6 +377,8 @@ export async function clearCourseShareId(courseId: string): Promise<void> {
  * created for this course; the cascade mirrors deleteDeck deleting its cards.
  */
 export async function deleteCourse(id: string): Promise<void> {
+  const { listQuestionSetDrafts, questionSetDraftKey } =
+    await import('../questions/questionSetDrafts');
   await db.transaction(
     'rw',
     [
@@ -614,6 +611,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
   const course = await db.courses.get(id);
   if (!course) return null;
 
+  const { listQuestionSetDrafts } = await import('../questions/questionSetDrafts');
   const [
     lessons,
     practiceNodes,
@@ -736,6 +734,10 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
       }
       validateAssessmentStructure(assessment);
     }
+    const [{ restoreDeletedQuestionSets }, { questionSetDraftKey }] = await Promise.all([
+      import('../questions/questionSetRepository'),
+      import('../questions/questionSetDrafts'),
+    ]);
     await db.transaction(
       'rw',
       [
