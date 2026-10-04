@@ -70,7 +70,8 @@
     "@emnapi/runtime": "1.10.0",
     "@napi-rs/wasm-runtime": "1.2.4",
     "lodash-es": "4.18.1",
-    "fast-uri": "3.1.8"
+    "fast-uri": "3.1.8",
+    "http-cache-semantics": "4.3.0"
   },
   "devDependencies": {
     "@ai-sdk/gateway": "^4.0.92",
