@@ -83,10 +83,12 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     const baseUrl = normaliseRelayUrl(relayUrl);
     const pair = await this.crypto.createKeyPair();
     const body = JSON.stringify({ terminalPublicKey: pair.publicKey, client });
-    const response = await this.fetchImpl(`${baseUrl}/ai/s/${encodeURIComponent(code)}/claim`, {
+    const response = await this.fetchImpl(`${baseUrl}/ai/claim`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // The pairing code is a capability: keep it out of the URL and so out of request logs.
+        'X-Lacuna-Pairing-Code': code,
       },
       body,
     });

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The AI pairing code is no longer sent in the request path. The MCP client now claims
+  with `POST /ai/claim` and an `X-Lacuna-Pairing-Code` header, so the capability stays
+  out of platform, CDN and upstream access logs; the code is compared in constant time.
+  The relay still accepts `POST /ai/s/:code/claim` for already-installed clients and
+  that form should be removed once they have upgraded. The relay needs redeploying
+  before clients move to the new route (#332).
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins

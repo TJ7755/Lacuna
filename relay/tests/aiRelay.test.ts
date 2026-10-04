@@ -14,6 +14,33 @@ const BROWSER_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(1));
 const TERMINAL_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(2));
 
 describe('AI relay', () => {
+  it('claims with the pairing code in a header and no session id in the path', async () => {
+    const handle = createHandler(new MemoryStore());
+    const created = await handle(
+      jsonRequest('/ai/sessions', 'POST', { browserPublicKey: BROWSER_PUBLIC_KEY }),
+    );
+    const browser = (await created.json()) as { sessionId: string; pairingCode: string };
+
+    const request = claimRequest(browser.pairingCode);
+    expect(request.url).not.toContain(browser.sessionId);
+    expect(request.url).not.toContain(browser.pairingCode);
+    const claimed = await handle(request);
+    expect(claimed.status).toBe(200);
+    expect(await claimed.json()).toMatchObject({ sessionId: browser.sessionId });
+
+    const again = await handle(claimRequest(browser.pairingCode));
+    expect(again.status).toBe(409);
+    const missing = await handle(claimRequest('AAAA-AAAA-AAAA-AAAA-AAAA'));
+    expect(missing.status).toBe(404);
+    const noHeader = await handle(
+      jsonRequest('/ai/claim', 'POST', {
+        terminalPublicKey: TERMINAL_PUBLIC_KEY,
+        client: { name: 'OpenCode' },
+      }),
+    );
+    expect(noHeader.status).toBe(404);
+  });
+
   it('accepts browser request bodies without Content-Length', async () => {
     const handle = createHandler(new MemoryStore());
     const encoded = JSON.stringify({ browserPublicKey: BROWSER_PUBLIC_KEY });
@@ -608,14 +635,18 @@ async function paired(store: BlobStore = new MemoryStore()) {
     pairingCode: string;
     browserToken: string;
   };
-  const claimed = await handle(
-    jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
-      terminalPublicKey: TERMINAL_PUBLIC_KEY,
-      client: { name: 'OpenCode' },
-    }),
-  );
+  const claimed = await handle(claimRequest(browser.pairingCode));
   const terminal = (await claimed.json()) as { terminalToken: string };
   return { handle, ...browser, ...terminal };
+}
+
+function claimRequest(code: string): Request {
+  return jsonRequest(
+    '/ai/claim',
+    'POST',
+    { terminalPublicKey: TERMINAL_PUBLIC_KEY, client: { name: 'OpenCode' } },
+    { 'X-Lacuna-Pairing-Code': code },
+  );
 }
 
 function jsonRequest(
