@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The titlebar window control IPC (minimise, maximise, close, maximised state) now
+  verifies the sender is the main window's main frame, reusing the updater's trust
+  check from the new `electron/windowControls.ts`. Untrusted callers are logged and
+  ignored; `window:isMaximized` rejects visibly (#334).
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
