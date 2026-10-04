@@ -35,8 +35,9 @@ and AI mailbox bodies are ciphertext. Channel and AI-session identifiers are not
 ## AI terminal pairing
 
 `POST /ai/sessions` creates a ten-minute pairing session from the browser's ephemeral P-256 public
-key. It returns a human-copyable code and a browser bearer token. `POST /ai/s/:code/claim` admits
-exactly one terminal public key and returns a separate terminal bearer token. Both peers derive the
+key. It returns a human-copyable code and a browser bearer token. `POST /ai/claim`, with the code in the
+`X-Lacuna-Pairing-Code` header (never the path, so it stays out of request logs), admits
+exactly one terminal public key and returns a separate terminal bearer token. The deprecated `POST /ai/s/:code/claim` form is still accepted for older clients. Both peers derive the
 same AES-GCM mailbox key without sending either private key to the relay.
 
 After pairing, the browser writes `/ai/s/:id/browser` and reads `/ai/s/:id/terminal`; the terminal

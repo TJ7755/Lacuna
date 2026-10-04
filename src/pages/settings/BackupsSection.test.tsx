@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { backupFolderName } from '../../db/backupFolder';
 import { BackupsSection } from './BackupsSection';
 
 const mockDeleteBackup = vi.fn().mockResolvedValue(undefined);
@@ -204,5 +205,29 @@ describe('BackupsSection', () => {
     view.rerender(<BackupsSection />);
 
     expect(screen.getAllByRole('listitem')[1]).toHaveStyle({ opacity: '0' });
+  });
+
+  it('shows a negative notice when the backup folder cannot be read', async () => {
+    const onUnhandled = vi.fn();
+    process.on('unhandledRejection', onUnhandled);
+    vi.mocked(backupFolderName).mockRejectedValueOnce(new Error('denied'));
+    render(<BackupsSection />);
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Could not read the backup folder setting.', 'negative'),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onUnhandled).not.toHaveBeenCalled();
+    process.off('unhandledRejection', onUnhandled);
+  });
+
+  it('tolerates a failed persistence check without an unhandled rejection', async () => {
+    const onUnhandled = vi.fn();
+    process.on('unhandledRejection', onUnhandled);
+    mockCheckPersistentStorage.mockRejectedValueOnce(new Error('denied'));
+    render(<BackupsSection />);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onUnhandled).not.toHaveBeenCalled();
+    expect(mockNotify).not.toHaveBeenCalled();
+    process.off('unhandledRejection', onUnhandled);
   });
 });
