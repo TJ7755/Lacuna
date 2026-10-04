@@ -10,6 +10,8 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { renderClozeBack, renderClozeFront } from './cloze';
+import { rehypeWikilinks } from './wikilinks';
+import { rehypeMermaidPlaceholder, renderMermaidDiagrams, updateMermaidTheme } from './mermaid';
 import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
 import { resolveAssetMarkdownCached } from '../../db/assetCache';
@@ -43,8 +45,9 @@ type MarkdownProps = ComponentProps<typeof ReactMarkdown>;
 const REMARK_PLUGINS: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath, remarkBreaks];
 
 /** Restricted schema that only allows the specific className patterns needed by
- *  remark-math ($...$ markers) and fenced code blocks. KaTeX and highlight.js
- *  run *after* sanitisation so their generated markup is not stripped.
+ *  remark-math ($...$ markers), fenced code blocks, Mermaid placeholders,
+ *  wikilink pills and the table wrapper. KaTeX and highlight.js run *after*
+ *  sanitisation so their generated markup is not stripped.
  */
 const RESTRICTED_SCHEMA = {
   ...defaultSchema,
@@ -53,9 +56,14 @@ const RESTRICTED_SCHEMA = {
     ...defaultSchema.attributes,
     span: [
       ...(defaultSchema.attributes?.span ?? []),
-      ['className', 'math', 'math-inline', 'cloze-blank', 'cloze-reveal'],
+      ['className', 'math', 'math-inline', 'cloze-blank', 'cloze-reveal', 'lacuna-wikilink'],
+      ['title'],
     ],
-    div: [...(defaultSchema.attributes?.div ?? []), ['className', 'math', 'math-display']],
+    div: [
+      ...(defaultSchema.attributes?.div ?? []),
+      ['className', 'math', 'math-display', 'lacuna-table-wrap'],
+    ],
+    pre: [['className', 'lacuna-mermaid']],
     code: [...(defaultSchema.attributes?.code ?? []), ['className', /^language-/]],
     audio: ['src', 'controls', 'preload'],
   },
@@ -87,6 +95,8 @@ function rehypeAudioAssets(): (tree: unknown) => void {
 const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeRaw,
   rehypeAudioAssets,
+  rehypeMermaidPlaceholder,
+  rehypeWikilinks,
   [rehypeSanitize, RESTRICTED_SCHEMA],
   rehypeKatex,
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
@@ -94,6 +104,11 @@ const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
 
 const MARKDOWN_COMPONENTS: MarkdownProps['components'] = {
   img: ({ node: _node, ...props }) => <img {...props} loading="lazy" decoding="async" />,
+  table: ({ node: _node, ...props }) => (
+    <div className="lacuna-table-wrap">
+      <table {...props} />
+    </div>
+  ),
 };
 
 // ── Video embed plugin ────────────────────────────────────────────────────────
@@ -251,7 +266,8 @@ const EMBED_SCHEMA = {
     ...RESTRICTED_SCHEMA.attributes,
     // The video-embed wrapper needs its layout classes to survive sanitisation,
     // otherwise the responsive aspect-ratio box collapses to zero height. Block
-    // maths (math/math-display) must still be permitted on div as well.
+    // maths (math/math-display) and the table wrapper must still be permitted
+    // on div as well.
     div: [
       'itemScope',
       'itemType',
@@ -259,6 +275,7 @@ const EMBED_SCHEMA = {
         'className',
         'math',
         'math-display',
+        'lacuna-table-wrap',
         'w-full',
         'aspect-video',
         'overflow-hidden',
@@ -266,6 +283,8 @@ const EMBED_SCHEMA = {
         'my-2',
       ],
     ],
+    span: [...(RESTRICTED_SCHEMA.attributes?.span ?? [])],
+    pre: [['className', 'lacuna-mermaid']],
     iframe: [
       // src is permitted only when it matches one of the two trusted embed hosts.
       [
@@ -288,6 +307,8 @@ const EMBED_REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeRaw,
   rehypeEmbedVideos,
   rehypeAudioAssets,
+  rehypeMermaidPlaceholder,
+  rehypeWikilinks,
   [rehypeSanitize, EMBED_SCHEMA],
   rehypeStripUnsourcedIframes,
   rehypeKatex,
@@ -379,9 +400,12 @@ function renderMarkdownToHtml(prepared: string, allowEmbeds: boolean): string {
 
 /**
  * Renders Markdown with GitHub-flavoured extensions, KaTeX maths, syntax-highlighted
- * code, embedded base64 images, and optional cloze transformation. Raw HTML is enabled
- * so the cloze highlight spans render, then passed through rehype-sanitize to strip any
- * dangerous elements or attributes introduced by user content (e.g. from imported shared decks).
+ * code, Mermaid diagrams, wikilink pills, embedded base64 images, and optional
+ * cloze transformation. Raw HTML is enabled so the cloze highlight spans render,
+ * then passed through rehype-sanitize to strip any dangerous elements or
+ * attributes introduced by user content (e.g. from imported shared decks).
+ * Mermaid blocks render client-side to theme-aware SVG; failures keep the
+ * source code readable.
  *
  * Memoised, and backed by a parse cache (see `renderMarkdownToHtml`), so re-renders and
  * remounts are cheap — the heavy markdown pipeline runs at most once per unique source.
@@ -452,6 +476,30 @@ export const MarkdownView = memo(function MarkdownView({
       if (audioAutoplay && settings.autoplay) void player.play().catch(() => {});
     });
   }, [html, audioAutoplay]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (!container.querySelector('pre.lacuna-mermaid')) return;
+    let cancelled = false;
+    void renderMermaidDiagrams(container).catch(() => {
+      if (!cancelled) container.setAttribute('data-mermaid-failed', 'true');
+    });
+    // Diagrams bake the light/dark palette into their SVG at render time, so
+    // re-render them when the theme toggles rather than leaving stale colours.
+    const observer = new MutationObserver(() => {
+      if (cancelled) return;
+      void updateMermaidTheme(container).catch(() => {});
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [html]);
 
   return (
     <div

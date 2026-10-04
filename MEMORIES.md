@@ -22,6 +22,10 @@ version comment on the `uses:` line for Dependabot updates.
 Use a disposable worktree for baseline tests rather than stashing unrelated work.
 Start it at the intended revision. Component tests need their own physical
 `node_modules` (a hardlink copy is suitable); symlinks can create two Vitest instances.
+On Windows, Git for Windows versions before 2.54.0 can traverse NTFS junctions
+during `git worktree remove` and delete their targets' contents; 2.54.0 and later
+avoid this. Use a physical copy of `node_modules` to avoid older Git's cleanup
+risk and the separate Vitest-isolation issue with symlinks.
 
 ## Windows dependency installation
 
@@ -66,6 +70,11 @@ course row, so they stay out of backups and course files.
 
 ## Recovery is not peer sync
 
+Backup validation must accept missing mutation timestamps and Concept identities in
+older supported exports: import backfills these. Validate before Question normalisation,
+which consumes nested revision-plan and lineage arrays before the write transaction.
+Earlier v21 scheduling projections may also lack `createdAt`; the legacy adapter rebuilds them.
+
 Replace-import deliberately preserves `db.backups`; exports deliberately omit it, so a
 pre-replacement restore point survives. Recovery merge and peer merge use different conflict
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
@@ -77,6 +86,10 @@ The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron app
 tests; otherwise packaged executables reject Chromium arguments as Node options.
 
 ## Browser evidence matters
+
+DateTimePicker initially focuses the selected day, then today when its month is viewed,
+then the first day. Calendar focus tests must pin `Date.now()` when asserting that fallback;
+otherwise the same keyboard sequence changes its expected focus as the real month advances.
 
 The collaborative preview's saved screenshots are downsampled to 1280 pixels wide.
 Do not use those exports as large product-page assets; use native device-scale
