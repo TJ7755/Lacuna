@@ -177,7 +177,7 @@ end-to-end encryption to the model or zero retention without provider evidence.
   Add incremental text and a clear interrupted response state using existing visual tokens.
 - Retain Stop, retry and follow-up behaviour. Handle offline, expired access, quota exhaustion,
   provider errors and reconnects with brief actionable copy and preserved drafts.
-- Follow `docs/frontend-design.md`, keyboard/focus conventions, reduced motion and existing
+- Follow `docs/spec/visual-design.md`, keyboard/focus conventions, reduced motion and existing
   responsive layout. Avoid announcing every streamed token to screen readers.
 - Keep the hosted stack behind existing lazy AI boundaries so disabled AI does not increase
   first-paint work or break cached offline study.

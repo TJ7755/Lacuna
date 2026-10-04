@@ -9,13 +9,14 @@ import type {
 } from '../db/types';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import { buildPath } from './path';
+import { buildPath, type PathNode } from './path';
 import { planNextStudyStep } from './studyFlowPlanner';
 import {
   buildCourseStudyFlowSnapshot,
   courseMeanReviewSeconds,
   practicePrefixLessonIds,
 } from './studyFlowSnapshot';
+import { practiceScopeVersion } from './studyPools';
 
 const NOW = 1_000_000;
 
@@ -378,5 +379,59 @@ describe('buildCourseStudyFlowSnapshot', () => {
 
     expect(snapshot.practiceByKey.get('p1')?.active).toBe(true);
     expect(snapshot.practiceByKey.get('p2')?.active).toBe(false);
+  });
+
+  describe('milestones written before the fixed-scope fix (#358)', () => {
+    const c = course();
+    const lessons = [lesson('l1', 0), lesson('l2', 1)];
+    const cards = [card('c1', 'l1'), card('c2', 'l2')];
+    const nodes: PathNode[] = [
+      { id: 'l1', nodeType: 'lesson', lesson: lessons[0], status: 'completed' },
+      { id: 'auto', nodeType: 'practice-auto', afterLessonId: 'l1', nodeKey: 'auto' },
+      { id: 'l2', nodeType: 'lesson', lesson: lessons[1], status: 'available' },
+    ];
+    const build = (
+      scopeVersion: string,
+      completedAt: number | undefined,
+      cardList: Card[] = cards,
+    ) =>
+      buildCourseStudyFlowSnapshot({
+        course: c,
+        nodes,
+        cards: cardList,
+        links: [],
+        exposures: cardList.map((item) => exposure(item.primaryLessonId!, item.id)),
+        examDateContext: makeExamDateContext(c, lessons, []),
+        meanReviewSeconds: 30,
+        practiceMilestones: [
+          {
+            nodeKey: 'auto',
+            courseId: 'course',
+            scopeVersion,
+            securedCardCount: 2,
+            totalCardCount: 2,
+            updatedAt: NOW,
+            ...(completedAt === undefined ? {} : { completedAt }),
+          },
+        ],
+        now: NOW,
+      });
+    const wideVersion = practiceScopeVersion(cards);
+
+    it('honours a completed live-scope fingerprint while that scope still holds', () => {
+      expect(build(wideVersion, NOW).practiceByKey.get('auto')?.completed).toBe(true);
+    });
+
+    it('does not complete from an incomplete record or an unrelated fingerprint', () => {
+      expect(build(wideVersion, undefined).practiceByKey.get('auto')?.completed).toBe(false);
+      expect(build('v1-9-stale', NOW).practiceByKey.get('auto')?.completed).toBe(false);
+    });
+
+    it('re-offers the step once the live scope has grown past the recorded one', () => {
+      const grown = [...cards, card('c3', 'l2')];
+      const snapshot = build(wideVersion, NOW, grown);
+      expect(snapshot.practiceByKey.get('auto')?.completed).toBe(false);
+      expect(snapshot.practiceByKey.get('auto')?.active).toBe(true);
+    });
   });
 });

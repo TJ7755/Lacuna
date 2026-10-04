@@ -259,6 +259,7 @@ describe('CourseStudyFlow', () => {
         courseId: 'course-1',
         nodeKey: 'auto-1',
         scopeLessonIds: ['lesson-1'],
+        milestoneLessonIds: ['lesson-1'],
         mode: 'curricular',
       }),
     );
@@ -335,6 +336,7 @@ describe('CourseStudyFlow', () => {
       courseId: 'course-1',
       nodeKey: 'manual-1',
       scopeLessonIds: ['lesson-1'],
+      milestoneLessonIds: ['lesson-1'],
       mode: 'curricular',
     });
     expect(screen.queryByRole('heading', { name: 'Choose what to study' })).not.toBeInTheDocument();

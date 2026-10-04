@@ -126,7 +126,11 @@ function CourseStudyFlowInner() {
   // request must not depend on the live practiceByKey map: answering writes a
   // milestone, the live query emits a new Map, and a fresh scope array would
   // restart the session.
-  const frozenScopeRef = useRef<{ step: StudyFlowStep | null; ids?: string[] }>({
+  const frozenScopeRef = useRef<{
+    step: StudyFlowStep | null;
+    ids?: string[];
+    milestoneIds?: string[];
+  }>({
     step: null,
   });
   if (frozenScopeRef.current.step !== displayStep) {
@@ -139,9 +143,14 @@ function CourseStudyFlowInner() {
                 []),
             ]
           : undefined,
+      milestoneIds:
+        displayStep?.kind === 'practice' && displayStep.mode === 'curricular'
+          ? [...(flow?.snapshot.practiceByKey.get(displayStep.nodeKey)?.scopeLessonIds ?? [])]
+          : undefined,
     };
   }
   const committedScopeLessonIds = frozenScopeRef.current.ids;
+  const committedMilestoneLessonIds = frozenScopeRef.current.milestoneIds;
 
   const request = useMemo<LearnSessionRequest | null>(() => {
     if (!displayStep) return null;
@@ -165,11 +174,12 @@ function CourseStudyFlowInner() {
         courseId: courseId ?? '',
         nodeKey: displayStep.mode === 'curricular' ? displayStep.nodeKey : undefined,
         scopeLessonIds: committedScopeLessonIds,
+        milestoneLessonIds: committedMilestoneLessonIds,
         mode: displayStep.nodeKey === 'ad-hoc' ? 'ad-hoc' : displayStep.mode,
       };
     }
     return null;
-  }, [committedScopeLessonIds, courseId, displayStep, revisionSession]);
+  }, [committedMilestoneLessonIds, committedScopeLessonIds, courseId, displayStep, revisionSession]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {
