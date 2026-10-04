@@ -51,4 +51,25 @@ describe('PWA assets', () => {
 
     expect(manifest.icons.filter((icon) => icon.purpose === 'maskable')).toHaveLength(1);
   });
+
+  it.each(['index.html', 'compare/quizlet/index.html'])(
+    'links crawlable favicons sized for Google Search from %s',
+    async (page) => {
+      const html = await readFile(resolve(projectRoot, page), 'utf8');
+      const icons = [...html.matchAll(/<link\s+rel="icon"\s+[^>]*href="([^"]+)"[^>]*>/g)].map(
+        (match) => match[1] ?? '',
+      );
+
+      expect(icons).toContain('/favicon.ico');
+      expect(icons.some((href) => /\.png$/.test(href))).toBe(true);
+      for (const href of icons) {
+        expect(existsSync(assetPath(href))).toBe(true);
+      }
+    },
+  );
+
+  it('does not block favicon files in robots.txt', async () => {
+    const robots = await readFile(resolve(projectRoot, 'public/robots.txt'), 'utf8');
+    expect(robots).not.toMatch(/^\s*Disallow:\s*\/(favicon|icon)/im);
+  });
 });
