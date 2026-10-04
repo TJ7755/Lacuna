@@ -27,6 +27,11 @@
   below the `sm` breakpoint, so Delete, Save and the inline delete confirmation are no
   longer half-covered or unclickable on phones. The overlap predates #337.
 
+- The Backups settings section now handles a failed backup-folder read: it shows a
+  negative notice instead of silently presenting a configured folder as "not
+  configured". The persistence check is annotated best-effort, and neither read sets
+  state after unmount (#336).
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
