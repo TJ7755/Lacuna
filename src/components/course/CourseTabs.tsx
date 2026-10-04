@@ -35,7 +35,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
       // Hidden below sm, where CourseSectionBar carries these same sections within
       // thumb reach instead. max-w-full with scroll is the last resort at large font
       // scales: the bar slides rather than wrapping its labels inside their tabs.
-      className="hidden h-9 touch-pan-y select-none max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-line bg-ink/5 p-0.5 text-sm sm:inline-flex"
+      className="hidden h-11 touch-pan-y select-none max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-full bg-ink/[0.06] p-1 text-sm sm:inline-flex"
     >
       <LayoutGroup id={`course-tabs-${courseId}`}>
         {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {
@@ -78,8 +78,8 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                 void navigate(`${base}${COURSE_SECTIONS[next].suffix}`);
               }}
               className={cn(
-                'relative flex h-full items-center whitespace-nowrap rounded-lg px-3 font-medium transition-colors',
-                active ? 'text-ink' : 'text-ink-faint hover:text-ink',
+                'relative flex h-full items-center whitespace-nowrap rounded-full px-4 font-semibold transition-colors',
+                active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >
               {active && (
@@ -90,7 +90,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                   data-course-tab-indicator=""
                   aria-hidden="true"
                   transition={scaledSpring(multiplier, 320, 28)}
-                  className="absolute inset-0 rounded-lg bg-surface shadow-sm shadow-black/[0.04]"
+                  className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.08)]"
                 />
               )}
               <span className="relative z-10 sm:hidden">{short}</span>

@@ -60,7 +60,9 @@ export function CoursePageNavigation({
     <div
       data-course-page-navigation=""
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+        // Sticks to the top while the course scrolls beneath a frosted band, so the
+        // sections stay in one place on every course surface.
+        'sticky top-0 z-20 -mx-3 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl bg-paper/85 px-3 py-1.5 backdrop-blur-md sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
         className,
       )}
     >
