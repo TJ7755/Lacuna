@@ -110,12 +110,15 @@ export function CountUp({
   multiplier,
   duration = 0.9,
   format = (n: number) => String(Math.round(n)),
+  suffix = '',
 }: {
   value: number;
   from?: number;
   multiplier: number;
   duration?: number;
   format?: (n: number) => string;
+  /** Text after the figure, such as "%", kept with it for assistive technology. */
+  suffix?: string;
 }) {
   const motionValue = useMotionValue(multiplier > 0 ? from : value);
   const text = useTransform(motionValue, format);
@@ -133,8 +136,11 @@ export function CountUp({
   // Screen readers get the final figure, not every intermediate frame.
   return (
     <>
-      <motion.span aria-hidden="true">{text}</motion.span>
-      <span className="sr-only">{format(value)}</span>
+      <span aria-hidden="true">
+        <motion.span>{text}</motion.span>
+        {suffix}
+      </span>
+      <span className="sr-only">{format(value) + suffix}</span>
     </>
   );
 }
