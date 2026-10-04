@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --external:@modelcontextprotocol/server --external:'@modelcontextprotocol/server/*' --external:zod --outfile=dist/index.js --banner:js='#!/usr/bin/env node'",
-    "lint": "eslint src",
+    "lint": "eslint . --max-warnings=0",
     "test": "vitest run -c vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

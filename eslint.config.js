@@ -84,5 +84,15 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
     },
   },
+  {
+    // Playwright page.evaluate callbacks and the WASI worker run in the browser.
+    files: ['scripts/**/*.mjs', 'src/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser, ...globals.es2021 } },
+  },
+  {
+    // Command-line tooling reports through the console by design.
+    files: ['scripts/**', 'tooling/**'],
+    rules: { 'no-console': 'off' },
+  },
   prettier,
 ];

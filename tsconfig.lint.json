@@ -5,5 +5,5 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["*.config.ts", "tests/config/*.ts", "scripts/**/*.ts", "tooling/handwriting-maths/vitest.config.ts"]
+  "include": ["*.config.ts", "tests/config/*.ts", "scripts/**/*.ts", "tooling/handwriting-maths/vitest.config.ts", "tests/setup.ts", "tooling/semantic-answer-match/scripts/*.ts"]
 }

@@ -100,8 +100,9 @@ export async function clickToReadable(
         state.state.settled = true;
         state.state.resolve?.(-1);
       }
-      state?.state.listener &&
+      if (state?.state.listener) {
         state.state.element.removeEventListener('click', state.state.listener);
+      }
       delete (window as unknown as { __performanceInput?: unknown }).__performanceInput;
     });
   }

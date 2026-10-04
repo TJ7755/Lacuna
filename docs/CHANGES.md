@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `bun run lint` now covers `api/`, all of `scripts/` (including `.mjs`), `tooling/`,
+  `tests/` and the root `*.config.ts` files, and runs with `--max-warnings=0`, so warnings
+  fail CI. Command-line scripts and tooling may use `console`. The widened glob found
+  three real violations (an expression statement in the performance latency probe and two
+  rethrown errors without a `cause`), fixed in place, plus an unused import and a stale
+  disable directive (#342).
+
 - Consolidated the ESLint setup into one native flat config per package. The root and
   `tooling/lacuna-ai-mcp` no longer carry a legacy `.eslintrc.cjs` behind a `FlatCompat`
   shim, and `@eslint/compat` and `@eslint/eslintrc` are gone. The rule set is unchanged
