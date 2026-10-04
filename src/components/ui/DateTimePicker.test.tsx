@@ -137,6 +137,8 @@ describe('DateTimePicker', () => {
   });
 
   it('provides roving keyboard selection in the month and year grids', async () => {
+    // Keep October outside the current month so the first-day fallback is deterministic.
+    vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 5, 10, 14, 30));
     render(<ControlledPicker initialValue={Date.UTC(2026, 5, 10, 14, 30)} />);
     openPicker();
 

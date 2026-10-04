@@ -12,6 +12,8 @@
 - Copy is **British English** throughout; **no emojis** in product copy or UI.
 
 - Cards search has an accessible name; typed study answers retain a visible label.
+  The new-course name input is associated with its visible label; activating that
+  label focuses the input.
   Card rows expose a native details/selection button. Covered swipe actions are inert,
   and hover actions also appear when focus is within the row.
 - Study overlays own their keyboard input. Opening editing, help, navigation or an exit

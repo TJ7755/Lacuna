@@ -12,8 +12,10 @@
   for fitting FSRS weights to review history.
 - **Motion:** the `motion` library (`motion/react`).
 - **Markdown / maths / code:** `react-markdown` + `remark-gfm` + `remark-math` +
-  `rehype-katex` + `rehype-highlight` + `rehype-raw`. KaTeX and highlight.js styles imported
-  globally; the restricted expression parser uses the number-only `mathjs/number` entry point.
+  `rehype-katex` + `rehype-highlight` + `rehype-raw`, plus local `rehypeWikilinks` and
+  `rehypeMermaidPlaceholder` plugins and lazily-loaded `mermaid` (dynamic import, never
+  preloaded). KaTeX and highlight.js styles imported globally; the restricted expression
+  parser uses the number-only `mathjs/number` entry point.
 - **Charts:** Recharts.
 - **Fonts:** locally bundled Instrument Sans (body and headings), Fraunces (brand),
   JetBrains Mono (code and the timer/tabular figures). `webBootstrap.ts` adds hosted
