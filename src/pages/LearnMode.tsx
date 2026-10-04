@@ -54,7 +54,7 @@ interface LearnModeProps {
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
-  // Consecutive correct self-graded answers, for the milestone celebration.
+  // Consecutive correct answers, self-graded or machine-marked, for the milestone celebration.
   const runRef = useRef(0);
   const [streakMoment, setStreakMoment] = useState<StreakMoment | null>(null);
   const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
@@ -245,6 +245,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     try {
       cardTransitionRef.current?.cancel();
       runRef.current = 0;
+      setStreakMoment(null);
       await undoLast();
     } finally {
       undoInFlightRef.current = false;
@@ -265,8 +266,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             });
           }
         })();
-      if (typeof input !== 'object') {
-        runRef.current = nextRun(runRef.current, typeof input === 'number' ? input > 1 : input);
+      {
+        const correct =
+          typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
+        runRef.current = nextRun(runRef.current, correct);
         if (isStreakMilestone(runRef.current)) {
           setStreakMoment({ run: runRef.current, key: Date.now() });
         }

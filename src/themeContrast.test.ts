@@ -20,7 +20,7 @@ describe('readable secondary text', () => {
     const block = css.slice(css.indexOf(`${theme} {`)).split('}')[0];
     const token = (name: string) => luminance(block.match(new RegExp(`--${name}: ([^;]+);`))![1]);
     const ink = token('ink-faint');
-    for (const surface of ['paper', 'surface', 'surface-raised']) {
+    for (const surface of ['paper', 'surface', 'surface-raised', 'chrome']) {
       const background = token(surface);
       expect(
         (Math.max(ink, background) + 0.05) / (Math.min(ink, background) + 0.05),

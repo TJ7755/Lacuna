@@ -127,7 +127,6 @@ export function ForecastChart({
             <li key={line.id}>
               <button
                 type="button"
-                aria-pressed={focus === line.id}
                 onPointerEnter={() => setFocus(line.id)}
                 onPointerLeave={() => setFocus(null)}
                 onFocus={() => setFocus(line.id)}
