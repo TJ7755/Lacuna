@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- Redesign, "Direction C" (core loop). The app now uses a stone paper ground,
+  white surfaces and navy ink, with Bricolage Grotesque for display type and
+  Atkinson Hyperlegible Next for reading, both bundled for offline use (OFL).
+  Buttons are pills, and the sidebar sits on a darker `--chrome` ground with a
+  white active pill that glides between items. Amber stays the default accent,
+  and the landing page keeps its own palette.
+  - The dashboard is now "Today":
+    - today's card and minute totals;
+    - an exam-day forecast chart (`fsrs/courseForecast.ts`), with each course's
+      outlook to its exam on a proportional date axis against the target;
+    - the streak, this week's reviews and the days studied this week;
+    - the courses ordered by urgency, each with Start and an archive menu.
+  - The outlook is the exam-day forecast as it would stand on each day if the
+    schedule is kept, simulating Good reviews whenever recall falls to the target.
+    It never falls, so the chart has no sawtooth.
+  - The week figures come from the compact review-activity timestamps, because
+    the dashboard must not read full review records.
+  - The course card grid, the review heatmap and the seven-day study-signals
+    strip are no longer on the dashboard.
+  - Study: the card keeps one quiet surface in every mode, with no outline or
+    tinted halo. Every fifth correct answer in a row pops a "5 in a row" badge
+    with a confetti burst.
+  - The session report counts its figures up and bursts for a good session.
+  - Course sections stick to the top as a frosted bar with pill tabs.
+  - Every animation follows the motion-speed setting and is skipped when motion
+    is off.
+
 - The hosted app now sends a `Content-Security-Policy` header with
   `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
   app cannot be framed by a third-party page. The header mirrors the
