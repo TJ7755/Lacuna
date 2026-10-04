@@ -25,7 +25,7 @@ export function WeekPanel({
     (missed.length > 0 ? `; missed ${missed.join(', ')}` : '');
 
   return (
-    <dl className="grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-3">
+    <dl className="grid grid-cols-2 gap-x-3 gap-y-4 border-t border-line pt-4 sm:grid-cols-3 sm:gap-4 sm:pt-5">
       <div className="flex items-center gap-3 text-ink-soft">
         <motion.span
           className={streak > 0 ? 'text-accent' : undefined}
@@ -55,9 +55,9 @@ export function WeekPanel({
           </dd>
         </div>
       </div>
-      <div className="flex flex-col-reverse justify-center gap-2 leading-tight">
+      <div className="col-span-2 flex flex-col-reverse justify-center gap-2 leading-tight sm:col-span-1">
         <dt className="text-sm text-ink-faint">studied this week</dt>
-        <dd aria-label={studiedLabel} className="flex gap-2">
+        <dd aria-label={studiedLabel} className="flex justify-between gap-2 sm:justify-start">
           {week.studied.map((done, index) => {
             const isToday = index === week.todayIndex;
             const future = index > week.todayIndex;

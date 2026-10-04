@@ -364,7 +364,7 @@ function AppShellLayout() {
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close navigation"
                   title="Close navigation (Esc)"
-                  className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+                  className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
                 >
                   <CloseIcon width={18} height={18} />
                 </button>
@@ -395,12 +395,12 @@ function AppShellLayout() {
           {...mobileNavigationSwipe}
         >
           {/* Mobile top bar */}
-          <div className="flex items-center gap-3 border-b border-line bg-surface py-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:hidden">
+          <div className="flex items-center gap-2 bg-paper pb-1 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:hidden">
             <button
               ref={mobileTriggerRef}
               onClick={() => setMobileOpen(true)}
               aria-label="Open navigation"
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5 active:bg-ink/10"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
             >
               <span className="flex flex-col gap-1">
                 <span className="block h-0.5 w-5 bg-current" />

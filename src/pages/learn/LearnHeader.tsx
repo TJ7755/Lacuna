@@ -11,10 +11,12 @@ import {
   MoreIcon,
   PauseIcon,
   RestoreIcon,
+  CloseIcon,
 } from '../../components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
 import { cn } from '../../components/ui/cn';
+import { scaledSpring } from '../../components/ui/motion';
 import type { CardFilter } from '../../db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
@@ -124,6 +126,8 @@ export function LearnHeader({
   onShowShortcuts,
   m,
   currentCardId,
+  canUndo = false,
+  onUndo,
 }: {
   mode: LearnModeType;
   plannedRevision: boolean;
@@ -156,6 +160,9 @@ export function LearnHeader({
   onShowShortcuts: () => void;
   m: number;
   currentCardId: string | null;
+  /** Phone undo control; renders only when the parent supplies onUndo. */
+  canUndo?: boolean;
+  onUndo?: () => void;
 }) {
   const info = computeHeaderInfo({
     singleDeck,
@@ -170,6 +177,9 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
+  const cardIndex = currentCardId === null ? -1 : sessionCardIds.indexOf(currentCardId);
+  const cardPosition =
+    cardIndex >= 0 && !plannedRevision ? `${cardIndex + 1} of ${sessionCardIds.length}` : null;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 
   return (
@@ -185,26 +195,31 @@ export function LearnHeader({
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
-      <div className="flex min-h-[72px] items-center gap-1 px-2 py-2.5 md:gap-5 md:px-6">
+      <div className="flex min-h-[72px] items-center gap-1 px-2 py-2.5 md:gap-5 md:px-6 max-md:gap-2 max-md:px-4">
         <button
           type="button"
           onClick={onOpenNav}
           aria-label="Open navigation"
           title="Open navigation"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 max-md:hidden"
         >
           <MenuIcon width={18} height={18} />
         </button>
 
         <div className="min-w-10 flex-1 overflow-hidden">
-          <h1
-            className="mb-1 truncate text-xs font-semibold text-ink md:text-sm"
-            title={info.title}
-          >
-            {info.title}
-          </h1>
+          <div className="mb-1.5 flex min-w-0 items-baseline gap-1 md:mb-1">
+            <h1
+              className="truncate text-[13px] font-semibold text-ink md:text-sm"
+              title={info.title}
+            >
+              {info.title}
+            </h1>
+            {cardPosition && (
+              <span className="shrink-0 text-[13px] text-ink-soft md:hidden">· {cardPosition}</span>
+            )}
+          </div>
           {mode !== 'simple' && !plannedRevision && (
-            <div className="mb-1 flex flex-wrap justify-between gap-x-3 text-xs tabular text-ink-faint">
+            <div className="mb-1 flex flex-wrap justify-between max-md:hidden gap-x-3 text-xs tabular text-ink-faint">
               <span>{Math.round(displayedProgress * 100)}% complete</span>
               <span>
                 {Math.round(predictedRecall * 100)}% {singleDeck
@@ -339,11 +354,51 @@ export function LearnHeader({
           </button>
         )}
 
-        <Button variant="ghost" size="sm" onClick={onExit}>
-          Exit
+        {onUndo && (
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo last answer"
+            title="Undo"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink ring-1 ring-line transition-colors active:bg-ink/10 disabled:opacity-40 md:hidden"
+          >
+            <UndoIcon width={18} height={18} />
+          </button>
+        )}
+
+        {/* One Exit for every width: a round icon button placed first on a phone,
+            a text button at the end on larger screens. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onExit}
+          className="max-md:order-first max-md:h-11 max-md:w-11 max-md:bg-surface max-md:px-0 max-md:text-ink max-md:ring-1 max-md:ring-line"
+        >
+          <CloseIcon width={18} height={18} aria-hidden="true" className="md:hidden" />
+          <span className="max-md:sr-only">Exit</span>
         </Button>
       </div>
     </motion.header>
+  );
+}
+
+function UndoIcon({ width, height }: { width: number; height: number }) {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </svg>
   );
 }
 
@@ -353,7 +408,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
     // This track is now the session's only progress indicator, so it carries the
     // accessible name and value that the removed counter ring used to provide.
     <div
-      className="h-2 w-full overflow-hidden rounded-full bg-ink/10"
+      className="h-[5px] w-full overflow-hidden rounded-full bg-ink/10 md:h-2"
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
@@ -363,7 +418,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
       <motion.div
         initial={false}
         animate={{ scaleX: progress }}
-        transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+        transition={scaledSpring(m, 220, 24)}
         className="h-full w-full origin-left rounded-full bg-accent"
       />
     </div>

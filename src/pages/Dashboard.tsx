@@ -131,12 +131,12 @@ export function Dashboard() {
   const totalMinutes = Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0);
 
   return (
-    <div className="mx-auto max-w-[1040px] px-6 py-10 md:px-12">
+    <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-10 md:px-12">
       <h1 className="sr-only">Today</h1>
-      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft">
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft sm:mb-6">
         {rows && rows.length > 0 && (
           <p
-            className="flex items-center gap-6"
+            className="flex items-center gap-5 sm:gap-6"
             aria-label={`Today: ${totalCards} cards, about ${totalMinutes} minutes`}
           >
             <span className="inline-flex items-center gap-2" aria-hidden="true">
@@ -191,7 +191,7 @@ export function Dashboard() {
           {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
             <motion.section
               aria-label="Forecast and this week"
-              className="flex flex-col gap-5 rounded-[28px] bg-surface px-6 pb-6 pt-7 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-8 md:pt-8"
+              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
               initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5 * m, ease: MOTION_EASING.emphasised }}

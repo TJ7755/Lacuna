@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
@@ -30,12 +30,32 @@ export function forecastStatus(forecast: CourseForecast): ForecastStatus {
   return forecast.atEnd + 0.005 >= forecast.target ? 'ahead' : 'behind';
 }
 
-const W = 640;
-const H = 240;
+const WIDE_WIDTH = 640;
 const LEFT = 40;
 const RIGHT = 16;
 const TOP = 14;
 const BOTTOM = 34;
+
+/**
+ * The chart is drawn at its rendered width so text keeps its real pixel size on a phone
+ * instead of shrinking with the viewBox. Height follows the width, within sensible limits.
+ */
+function useChartSize() {
+  const ref = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(WIDE_WIDTH);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const next = Math.round(entry.contentRect.width);
+      if (next > 0) setWidth(next);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const height = Math.round(Math.max(190, Math.min(260, width * 0.5)));
+  return { ref, W: width, H: height, narrow: width < 480 };
+}
 
 /** Five tidy ticks from 100% down, stepping by a round amount that reaches every value. */
 export function recallTicks(values: number[]): number[] {
@@ -85,6 +105,7 @@ export function ForecastChart({
   multiplier: number;
 }) {
   const titleId = useId();
+  const { ref, W, H, narrow } = useChartSize();
   const [focus, setFocus] = useState<string | null>(null);
   const target = lines[0]?.forecast.target ?? 0.9;
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
@@ -106,23 +127,23 @@ export function ForecastChart({
     ];
     for (const line of [...lines].sort((a, b) => a.forecast.end - b.forecast.end)) {
       if (!line.forecast.hasExam) continue;
-      const tooClose = marks.some((mark) => Math.abs(x(mark.at) - x(line.forecast.end)) < 64);
+      const tooClose = marks.some((mark) => Math.abs(x(mark.at) - x(line.forecast.end)) < (narrow ? 88 : 64));
       if (!tooClose)
         marks.push({ at: line.forecast.end, label: formatShortDate(line.forecast.end), strong: true });
     }
     return { x, y, ticks, marks };
-  }, [lines, now, target]);
+  }, [lines, now, target, W, H, narrow]);
 
   const { x, y, ticks, marks } = geometry;
   const draw = multiplier > 0;
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <h2 id={titleId} className="font-display text-2xl">
           Exam-day forecast
         </h2>
-        <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-ink-soft" aria-label="Courses">
+        <ul className="flex flex-wrap gap-x-3 gap-y-0 text-sm sm:gap-x-4 sm:gap-y-2 text-ink-soft" aria-label="Courses">
           {lines.map((line) => (
             <li key={line.id}>
               <button
@@ -154,6 +175,7 @@ export function ForecastChart({
         </ul>
       </div>
       <svg
+        ref={ref}
         viewBox={`0 0 ${W} ${H}`}
         className="h-auto w-full overflow-visible"
         role="img"

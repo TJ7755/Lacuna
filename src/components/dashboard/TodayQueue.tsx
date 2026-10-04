@@ -46,7 +46,7 @@ export function TodayQueue({
               ease: MOTION_EASING.emphasised,
             }}
             whileHover={multiplier > 0 ? { y: -2 } : undefined}
-            className="group flex items-center gap-4 rounded-[18px] bg-surface py-3 pl-5 pr-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)]"
+            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)]"
           >
             <span
               aria-hidden="true"
@@ -57,11 +57,11 @@ export function TodayQueue({
               to={row.href}
               onPointerEnter={() => prefetchRoute(row.href)}
               onFocus={() => prefetchRoute(row.href)}
-              className="min-w-0 flex-1 truncate font-display text-xl font-semibold tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
+              className="min-w-0 flex-1 truncate font-display text-lg font-semibold sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
             >
               {row.name}
               {row.hasPendingUpdate && (
-                <span className="ml-2 align-middle text-xs font-bold text-accent-ink">Update ready</span>
+                <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">Update ready</span>
               )}
             </Link>
             {done ? (
@@ -74,7 +74,7 @@ export function TodayQueue({
                 >
                   <CheckIcon width={14} height={14} />
                 </motion.span>
-                Done for today
+                <span className="max-sm:sr-only">Done for today</span>
               </span>
             ) : (
               <>
@@ -92,7 +92,7 @@ export function TodayQueue({
                   onClick={() => onStudy(row.id)}
                   aria-label={`Start ${row.name}`}
                   className={cn(
-                    'inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] px-5 font-bold transition-colors',
+                    'inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] px-4 font-bold sm:px-5 transition-colors',
                     lead
                       ? 'border-accent bg-accent text-accent-fg hover:brightness-105'
                       : 'border-ink text-ink hover:bg-ink hover:text-paper',

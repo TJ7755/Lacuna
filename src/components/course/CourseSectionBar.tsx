@@ -29,7 +29,7 @@ export function CourseSectionBar() {
       aria-label="Course sections"
       // Opaque rather than translucent: content scrolling under a blurred bar competes
       // with the icons for legibility.
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 rounded-t-[22px] bg-chrome shadow-[0_-8px_24px_-16px_hsl(var(--ink)/0.25)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:hidden"
     >
       <ul className="flex items-stretch">
         {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {
@@ -50,13 +50,24 @@ export function CourseSectionBar() {
                 // so the two can never disagree about which section is current.
                 className={({ isActive }) =>
                   cn(
-                    'flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors',
-                    isActive ? 'text-accent' : 'text-ink-faint active:text-ink',
+                    'group flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition-colors',
+                    isActive ? 'text-accent-ink' : 'text-ink-faint active:text-ink',
                   )
                 }
               >
-                <Icon width={22} height={22} />
-                {short}
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={cn(
+                        'flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200',
+                        isActive && 'bg-accent-soft',
+                      )}
+                    >
+                      <Icon width={20} height={20} />
+                    </span>
+                    {short}
+                  </>
+                )}
               </NavLink>
             </li>
           );

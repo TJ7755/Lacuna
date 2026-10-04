@@ -472,6 +472,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             <AnimatePresence>
               {(!focusMode || focusChromeVisible || menuOpen) && (
                 <LearnHeader
+                  canUndo={canUndo}
+                  onUndo={() => void undoWithTransitionCancel()}
                   key="learn-header"
                   mode={mode}
                   plannedRevision={plannedRevision}
