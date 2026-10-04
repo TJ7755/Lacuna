@@ -28,6 +28,48 @@
   - Course sections stick to the top as a frosted bar with pill tabs.
   - Every animation follows the motion-speed setting and is skipped when motion
     is off.
+- Redesign, "Direction C": the rest of the app.
+  - Settings and Your data:
+    - borderless cards that rise in, and sliding pill segmented controls;
+    - round accent swatches;
+    - springing switches (`Toggle` is now the single pill-switch implementation);
+    - a backup hero with a busy state and a tick, and restore points with a
+      confirmation modal;
+    - another device as one slim row that opens pairing in a modal.
+    - Back up now no longer reports a save that the five-minute throttle
+      skipped.
+  - Lesson and card editor:
+    - the lesson opens on its title, one meta line and a sliding Study/Edit pill,
+      with the note as a reading card beside its cards;
+    - the editor pairs the form with a live flip preview and pops a tick on save;
+    - `MarkdownEditor` gains `hidePreview`, so the editor shows one preview, not
+      two.
+  - Cards and course settings:
+    - Cards: counted filter chips and a floating bulk-action bar.
+    - Course settings: one readable column with a big target-recall figure and
+      presets.
+  - Questions:
+    - The bank is a card grid with the last five results, the record, and marks
+      with typical time.
+    - Practice has segmented progress, highlighted generated values, New numbers
+      for generated families, and a result that pops or shakes.
+  - Analytics:
+    - a period switch and counting headline figures;
+    - the review heatmap with a diagonal fade-in;
+    - calm restyled charts that draw in when scrolled into view;
+    - the course page opens with its own exam-day forecast.
+    - `StudySignals` was removed.
+  - The assistant is a draggable floating window that folds to its header or
+    closes to a pill, so it no longer resizes the page.
+  - The maths answer field is restyled.
+  - Import and sharing:
+    - Import has a stepper whose connector fills, and a review count that counts
+      up.
+    - Sharing has a Copy button that confirms with a tick.
+  - Phone:
+    - Today fits narrow screens.
+    - Study has a round Exit, "n of N" over a springing progress bar, a round
+      Undo and thumb-zone No/Yes buttons.
 
 - The hosted app now sends a `Content-Security-Policy` header with
   `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
