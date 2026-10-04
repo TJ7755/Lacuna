@@ -10,7 +10,32 @@ permissions:
   contents: read
 
 jobs:
+  # Documentation-only pull requests skip the heavy jobs. Skipping at job level (never with
+  # workflow-level paths filters) keeps every required check reporting, as "skipped".
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.scope.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            git diff --name-only "$BASE_SHA...$HEAD_SHA" | node scripts/ci-change-scope.mjs >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
   typecheck:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -29,6 +54,8 @@ jobs:
       - run: bun run typecheck
 
   lint:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,6 +72,8 @@ jobs:
       - run: bun run lint
 
   test-unit:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -66,6 +95,8 @@ jobs:
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/4
 
   test-coverage:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,6 +115,8 @@ jobs:
       - run: bun run test:coverage:risk
 
   python-tools:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -107,24 +140,29 @@ jobs:
         working-directory: tooling/${{ matrix.workspace }}
 
   test:
-    needs: [test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
+    needs: [changes, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify test jobs passed
         env:
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           UNIT_RESULT: ${{ needs.test-unit.result }}
           COVERAGE_RESULT: ${{ needs.test-coverage.result }}
           HANDWRITING_RESULT: ${{ needs.handwriting.result }}
           PYTHON_RESULT: ${{ needs.python-tools.result }}
           MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}
         run: |
-          if [ "$UNIT_RESULT" != "success" ] || [ "$COVERAGE_RESULT" != "success" ] || [ "$HANDWRITING_RESULT" != "success" ] || [ "$PYTHON_RESULT" != "success" ] || [ "$MACOS_ELECTRON_RESULT" != "success" ]; then
-            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT"
+          # "skipped" passes only when the change scope was classified as documentation-only.
+          ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
+          if ! ok "$UNIT_RESULT" || ! ok "$COVERAGE_RESULT" || ! ok "$HANDWRITING_RESULT" || ! ok "$PYTHON_RESULT" || ! ok "$MACOS_ELECTRON_RESULT"; then
+            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT docs-only=$DOCS_ONLY"
             exit 1
           fi
 
   handwriting:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -145,6 +183,8 @@ jobs:
       - run: bun run test
 
   relay:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -167,6 +207,8 @@ jobs:
         working-directory: relay
 
   ai-mcp:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -192,6 +234,8 @@ jobs:
         working-directory: tooling/lacuna-ai-mcp
 
   production:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -211,6 +255,8 @@ jobs:
       - run: bun run release:scenario
 
   browser-tests:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -243,6 +289,8 @@ jobs:
           if-no-files-found: ignore
 
   browser-mobile:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -270,17 +318,24 @@ jobs:
 
   # Keep the existing branch-protection check name while running every test in parallel shards.
   browser-smoke:
-    needs: [browser-tests, browser-mobile]
+    needs: [changes, browser-tests, browser-mobile]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Require all browser shards
         env:
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RESULT: ${{ needs.browser-tests.result }}
           MOBILE_RESULT: ${{ needs.browser-mobile.result }}
-        run: test "$RESULT" = success && test "$MOBILE_RESULT" = success
+        run: |
+          # "skipped" passes only when the change scope was classified as documentation-only.
+          ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
+          ok "$RESULT" && ok "$MOBILE_RESULT"
+
 
   electron-ai:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -297,6 +352,8 @@ jobs:
       - run: bun run test:e2e:electron-ai
 
   electron-macos-smoke:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -325,6 +382,8 @@ jobs:
           if-no-files-found: ignore
 
   windows-installed-upgrade:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
