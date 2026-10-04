@@ -28,6 +28,15 @@ export function formatDate(ms: number, timeZone?: string): string {
   });
 }
 
+/** A compact date for chart axes and tight rows, e.g. "12 Jun". */
+export function formatShortDate(ms: number, timeZone?: string): string {
+  return new Date(ms).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: timeZone ?? getLocalTimeZone(),
+  });
+}
+
 /** Coarse relative-time buckets, largest first, used by {@link formatRelativeTime}. */
 const RELATIVE_TIME_UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
   { unit: 'year', ms: 365 * MS_PER_DAY },

@@ -1,25 +1,31 @@
 import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
-import { StudySignals } from '../components/dashboard/StudySignals';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
-import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
+import {
+  ForecastChart,
+  forecastStatus,
+  type ForecastLine,
+} from '../components/dashboard/ForecastChart';
+import { WeekPanel } from '../components/dashboard/WeekPanel';
+import { TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
 import { Button } from '../components/ui/Button';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { PlusIcon } from '../components/ui/icons';
-import { CourseCard } from '../components/course/CourseCard';
+import { CardsIcon, ClockIcon, PlusIcon } from '../components/ui/icons';
+import { CountUp } from '../components/ui/Celebration';
+import { MOTION_EASING } from '../components/ui/motion';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { useDashboardSort } from '../state/dashboardSort';
+import { dashboardForecasts, urgencyOrder } from '../state/dashboardForecasts';
+import { weekSummary } from '../state/weekSummary';
 import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { Course } from '../db/types';
-import { cardReviewTimestamps } from '../fsrs/heatmap';
 
 interface CourseMenuState {
   course: Course;
@@ -37,14 +43,14 @@ export function Dashboard() {
   const courses = data?.courses;
   const summaries = data?.summaries;
   const stats = data?.stats;
-  const allCards = data?.allCards;
   const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
   const [creatingCourse, setCreatingCourse] = useState(false);
-  const [dashboardSort] = useDashboardSort();
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   // Background check for teacher republishes of share-linked courses. The poll
   // module (with the merge importer and course-file decoder) loads on demand so
@@ -63,82 +69,107 @@ export function Dashboard() {
     };
   }, []);
 
-  // Active courses only (archived ones are hidden from the main grid), ordered per
-  // the "Choose how courses are ordered" dashboard setting.
-  const activeCourses = useMemo(() => {
-    const active = courses?.filter((c) => !c.archived);
-    if (!active) return undefined;
-    const sorted = [...active];
-    switch (dashboardSort) {
-      case 'ready':
-        sorted.sort(
-          (a, b) => (summaries?.[b.id]?.eligible ?? 0) - (summaries?.[a.id]?.eligible ?? 0),
-        );
-        break;
-      case 'mastery':
-        sorted.sort(
-          (a, b) => (summaries?.[a.id]?.mastery ?? 0) - (summaries?.[b.id]?.mastery ?? 0),
-        );
-        break;
-      case 'exam':
-        sorted.sort(
-          (a, b) =>
-            (a.examDate ?? Number.POSITIVE_INFINITY) - (b.examDate ?? Number.POSITIVE_INFINITY),
-        );
-        break;
-      case 'name':
-        sorted.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'created':
-        sorted.sort((a, b) => b.createdAt - a.createdAt);
-        break;
-      case 'recent':
-      default:
-        sorted.sort(
-          (a, b) => (b.lastInteractedAt ?? b.createdAt) - (a.lastInteractedAt ?? a.createdAt),
-        );
-        break;
-    }
-    return sorted;
-  }, [courses, summaries, dashboardSort]);
+  // Archived courses are hidden from the dashboard.
+  const activeCourses = useMemo(() => courses?.filter((c) => !c.archived), [courses]);
 
-  // Cards grouped by course, for the card hover detail modules.
-  const cardsByCourse = useMemo(() => {
-    const grouped: Record<string, typeof allCards> = {};
-    for (const card of allCards ?? []) {
-      if (card.courseId) (grouped[card.courseId] ??= []).push(card);
-    }
-    return grouped;
-  }, [allCards]);
+  // The forecast simulates every card forward, so it follows the live data at a
+  // lower priority than the rest of the page.
+  const forecastInput = useDeferredValue(data);
+  const forecasts = useMemo(
+    () =>
+      forecastInput
+        ? dashboardForecasts(
+            forecastInput.courses,
+            forecastInput.lessons,
+            forecastInput.allCards,
+            Date.now(),
+          )
+        : undefined,
+    [forecastInput],
+  );
+
+  const today = stats?.forecast[0];
+  const rows = useMemo<QueueRow[] | undefined>(() => {
+    if (!activeCourses) return undefined;
+    const unordered = activeCourses.map((course) => {
+      const forecast = forecasts?.[course.id];
+      const slice = today?.byDeck.find((entry) => entry.sourceId === course.id);
+      const pending = pendingUpdateIds?.has(course.id) ?? false;
+      return {
+        id: course.id,
+        name: course.name,
+        examDate: course.examDate,
+        status: forecast ? forecastStatus(forecast) : course.examDate ? 'ahead' : 'steady',
+        due: summaries?.[course.id]?.eligible ?? 0,
+        minutes: slice?.minutes ?? 0,
+        href: pending ? `/course/${course.id}/updates` : `/course/${course.id}`,
+        hasPendingUpdate: pending,
+      } satisfies QueueRow & { examDate?: number };
+    });
+    return urgencyOrder(unordered, Date.now());
+  }, [activeCourses, forecasts, today, summaries, pendingUpdateIds]);
+
+  const lines = useMemo<ForecastLine[]>(
+    () =>
+      (rows ?? []).flatMap((row) => {
+        const forecast = forecasts?.[row.id];
+        return forecast && forecast.outlook.some((point) => point.recall > 0)
+          ? [{ id: row.id, name: row.name, status: row.status, forecast }]
+          : [];
+      }),
+    [rows, forecasts],
+  );
+
+  const reviewActivity = data?.reviewActivity;
+  const week = useMemo(
+    () =>
+      reviewActivity ? weekSummary([...reviewActivity.values()].flat(), Date.now()) : undefined,
+    [reviewActivity],
+  );
+
+  const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
+  const totalMinutes = Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
-      {/* Page header */}
-      {/* On a phone the title and non-shrinking action share limited horizontal space.
-          Keep the side padding tight while giving the single-line heading balanced
-          vertical space at each breakpoint. */}
-      <header className="relative mb-8 py-5 md:mb-12 md:py-7">
-        <div className="relative flex items-center justify-between gap-3 md:gap-4">
-          <div className="min-w-0">
-            <h1 className="font-display text-3xl tracking-tight md:text-6xl">Courses</h1>
-          </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button variant="secondary" onClick={() => navigate('/import')}>
-              Import
+    <div className="mx-auto max-w-[1040px] px-6 py-10 md:px-12">
+      <h1 className="sr-only">Today</h1>
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft">
+        {rows && rows.length > 0 && (
+          <p
+            className="flex items-center gap-6"
+            aria-label={`Today: ${totalCards} cards, about ${totalMinutes} minutes`}
+          >
+            <span className="inline-flex items-center gap-2" aria-hidden="true">
+              <CardsIcon width={20} height={20} />
+              <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+                <CountUp value={totalCards} multiplier={m} />
+              </strong>
+            </span>
+            <span className="inline-flex items-center gap-2" aria-hidden="true">
+              <ClockIcon width={20} height={20} />
+              <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+                <CountUp value={totalMinutes} multiplier={m} />
+              </strong>
+              min
+            </span>
+          </p>
+        )}
+        <div className="ml-auto flex shrink-0 gap-2">
+          <Button variant="ghost" onClick={() => navigate('/import')}>
+            Import
+          </Button>
+          {activeCourses && activeCourses.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => setCreatingCourse(true)}
+              className="shrink-0 whitespace-nowrap border-[1.5px] border-ink"
+            >
+              <PlusIcon width={16} height={16} />
+              New course
             </Button>
-            {activeCourses && activeCourses.length > 0 && (
-              <Button
-                variant="primary"
-                onClick={() => setCreatingCourse(true)}
-                className="shrink-0 whitespace-nowrap"
-              >
-                <PlusIcon width={16} height={16} />
-                New course
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </header>
+      </div>
 
       <AnimatePresence>
         {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
@@ -146,56 +177,42 @@ export function Dashboard() {
 
       <SyncStatus />
 
-      {/* Motivation strip: streak, reviews today, seven-day time forecast */}
-      {stats && activeCourses && activeCourses.length > 0 && (
-        <StudySignals stats={stats} courses={activeCourses} />
-      )}
-
-      {/* Course grid */}
-      {!activeCourses ? (
+      {!rows ? (
         <DelayedFallback>
           <CourseSkeleton />
         </DelayedFallback>
-      ) : activeCourses.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
           hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
           onCreateCourse={() => setCreatingCourse(true)}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {activeCourses.map((course) => (
-            <div key={course.id} className="h-full">
-              <CourseCard
-                course={course}
-                summary={summaries?.[course.id]}
-                cards={cardsByCourse[course.id]}
-                reviewActivity={data?.reviewActivity}
-                hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
-                onClick={() =>
-                  navigate(
-                    pendingUpdateIds?.has(course.id)
-                      ? `/course/${course.id}/updates`
-                      : `/course/${course.id}`,
-                  )
-                }
-                onStudy={() => navigate(`/course/${course.id}/study`)}
-                onArchiveMenu={(position, trigger) => {
-                  setArchiveTarget(null);
-                  setCourseMenu({ course, position, trigger });
-                }}
-              />
-            </div>
-          ))}
+        <div className="flex flex-col gap-6">
+          {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
+            <motion.section
+              aria-label="Forecast and this week"
+              className="flex flex-col gap-5 rounded-[28px] bg-surface px-6 pb-6 pt-7 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-8 md:pt-8"
+              initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.5 * m, ease: MOTION_EASING.emphasised }}
+            >
+              {lines.length > 0 && <ForecastChart lines={lines} now={Date.now()} multiplier={m} />}
+              {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
+            </motion.section>
+          )}
+          <TodayQueue
+            rows={rows}
+            multiplier={m}
+            onStudy={(id) => navigate(`/course/${id}/study`)}
+            onMenu={(id, position, trigger) => {
+              const course = activeCourses?.find((entry) => entry.id === id);
+              if (!course) return;
+              setArchiveTarget(null);
+              setCourseMenu({ course, position, trigger });
+            }}
+          />
         </div>
       )}
-
-      {/* Review activity heatmap */}
-      {allCards &&
-        allCards.some((c) => cardReviewTimestamps(c, data?.reviewActivity).length > 0) && (
-          <div className="mt-10">
-            <ReviewHeatmap cards={allCards} activity={data?.reviewActivity} />
-          </div>
-        )}
 
       {courseMenu && (
         <CourseContextMenu
@@ -387,18 +404,12 @@ function ArchiveCourseDialog({
 
 function CourseSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5">
-          <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
-          <div className="mb-4 h-7 w-3/4 animate-pulse rounded bg-ink/10" />
-          <div className="mt-auto">
-            <div className="mb-2 flex justify-between">
-              <div className="h-4 w-36 animate-pulse rounded bg-ink/10" />
-              <div className="h-4 w-12 animate-pulse rounded bg-ink/10" />
-            </div>
-            <div className="h-2 w-full animate-pulse rounded-full bg-ink/10" />
-          </div>
+    <div className="flex flex-col gap-6">
+      <div className="h-80 animate-pulse rounded-[28px] bg-surface" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="flex h-[68px] items-center gap-4 rounded-[18px] bg-surface px-5">
+          <div className="h-2.5 w-2.5 rounded-full bg-ink/10" />
+          <div className="h-5 w-40 animate-pulse rounded bg-ink/10" />
         </div>
       ))}
     </div>
