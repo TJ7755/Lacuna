@@ -10,10 +10,6 @@ dist/
 .DS_Store
 .npmrc
 
-# Agent mailbox runtime files
-.agent-mail/*
-!.agent-mail/README.md
-
 # Electron
 /release/
 electron/dist-electron/
@@ -21,7 +17,7 @@ electron/dist-electron/
 
 .env*
 !.env.example
-!.agent-mail/bin/
-.lmo/
-.freebuff/
 /.ai-invites/
+
+# Claude Code agent worktrees
+.claude/worktrees/
