@@ -5,6 +5,17 @@ export function questionSetReturn(state: unknown, courseId: string) {
   const label = value.questionSetReturnLabel;
   const root = `/course/${courseId}`;
   if (typeof path !== 'string' || typeof label !== 'string') return undefined;
+  if (label === 'Back to path') {
+    return path === root || path.startsWith(`${root}?`)
+      ? { questionSetReturnTo: path, questionSetReturnLabel: label }
+      : undefined;
+  }
+  if (label === 'Back to Questions') {
+    const questionsPath = `${root}/questions`;
+    return path === questionsPath || path.startsWith(`${questionsPath}?`)
+      ? { questionSetReturnTo: path, questionSetReturnLabel: label }
+      : undefined;
+  }
   if (!(path === root || path.startsWith(`${root}/`) || path.startsWith(`${root}?`)))
     return undefined;
   if (!['Back to lesson', 'Back to exam', 'Back to Cards'].includes(label)) return undefined;

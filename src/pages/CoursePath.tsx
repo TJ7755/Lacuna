@@ -23,6 +23,7 @@ import {
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
+import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { lockHintFor } from '../components/course/CoursePathSegment';
@@ -64,12 +65,19 @@ export function CoursePath() {
     node?: PracticeNode;
     defaultPosition?: number;
   } | null>(null);
+  const [addingQuestionSet, setAddingQuestionSet] = useState(false);
   const [assessmentEditor, setAssessmentEditor] = useState<{
     assessment?: CourseAssessment;
     defaultAfterLessonId?: string | null;
   } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(() => searchParams.get('exam'));
+  const selectedAssessmentId = searchParams.get('exam');
+  const setSelectedAssessmentId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('exam', id);
+    else next.delete('exam');
+    setSearchParams(next, { replace: true });
+  };
 
   const records = useCourseStudyFlowRecords(courseId);
   const course = records?.course;
@@ -295,11 +303,6 @@ export function CoursePath() {
             links={lessonLinks}
             onClose={() => {
               setSelectedAssessmentId(null);
-              if (searchParams.has('exam')) {
-                const next = new URLSearchParams(searchParams);
-                next.delete('exam');
-                setSearchParams(next, { replace: true });
-              }
             }}
             onRevise={() =>
               navigate(
@@ -335,10 +338,11 @@ export function CoursePath() {
   );
 
   // Single-lesson branch (addendum E): render the lesson view directly rather than
-  // showing a one-item path. No redirect — this is a rendering branch. The
+  // showing a one-item path. A question-set activity makes this a multi-step path.
+  // No redirect — this is a rendering branch. The
   // course header (and its review entry point) is bypassed here, so a pending
   // merge review gets the same entry above the lesson.
-  if (lessons.length === 1) {
+  if (lessons.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set')) {
     return (
       <>
         {!archived && pendingUpdate && (
@@ -501,10 +505,18 @@ export function CoursePath() {
         }}
         onAdd={(kind) => {
           if (kind === 'practice') setPracticeEditor({ defaultPosition: lastLesson?.orderIndex });
+          else if (kind === 'question-set') setAddingQuestionSet(true);
           else setAssessmentEditor({ defaultAfterLessonId: lastLesson?.id ?? null });
         }}
       />
       {pathEditors}
+      {addingQuestionSet && lastLesson && (
+        <QuestionSetPathEditor
+          courseId={course.id}
+          afterLessonId={lastLesson.id}
+          onClose={() => setAddingQuestionSet(false)}
+        />
+      )}
     </div>
   );
 }

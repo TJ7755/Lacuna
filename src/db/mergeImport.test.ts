@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4 } from './share';
+import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
 import type { Course } from './types';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
@@ -9,6 +9,7 @@ import { recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
 import { deleteQuestionSet } from '../questions/questionSetRepository';
+import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
 // (bypassing encode/decode, which Task 3 already tests) matching the real wire shape:
@@ -126,6 +127,19 @@ function questionPayloadV4(overrides: Partial<SharePayloadV4> = {}): SharePayloa
         updatedAt: 1_000,
       },
     ],
+    ...overrides,
+  };
+}
+
+function questionPayloadV5(overrides: Partial<SharePayloadV5> = {}): SharePayloadV5 {
+  return {
+    ...questionPayloadV4(),
+    v: 5,
+    questionSetPracticeNodes: [{
+      id: 'activity-quadratics', courseId: 'teacher-course', type: 'question-set',
+      name: 'Practice Qs', questionSetId: 'set-quadratics', afterLessonId: 'lesson-questions',
+      createdAt: 1_000, updatedAt: 1_000,
+    }],
     ...overrides,
   };
 }
@@ -591,7 +605,7 @@ describe('mergeImport: v4 Question Set lineage', () => {
     });
   });
 
-  it('fails closed on local edits, local deletion and unsupported Assessment links', async () => {
+  it('fails closed on local edits and local deletion', async () => {
     const first = questionPayloadV4();
     const { course } = await importLineageFirstTime(first);
     await db.questionSets.update('set-quadratics', {
@@ -614,18 +628,99 @@ describe('mergeImport: v4 Question Set lineage', () => {
       mergeLineageUpdate(course.id, questionPayloadV4({ at: 3_000, rv: 3 })),
     ).rejects.toThrow('locally deleted Question Set');
 
-    await db.delete();
-    await db.open();
-    const assessmentLinked = questionPayloadV4();
-    assessmentLinked.questionSets[0] = {
-      ...assessmentLinked.questionSets[0],
-      assessmentIds: ['assessment-origin'],
-    };
-    await expect(importLineageFirstTime(assessmentLinked)).rejects.toThrow(
-      'cannot yet import Question Sets linked to assessments',
-    );
+  });
+
+  it('adopts linked assessments and retains attempts when the teacher revises or removes a set', async () => {
+    const first = questionPayloadV4({
+      exams: [{ id: 'assessment-origin', n: 'Final', k: 'f', a: 0, m: 'p', e: 2_000_000, c: 1_000 }],
+    });
+    first.questionSets[0] = { ...first.questionSets[0], assessmentIds: ['assessment-origin'] };
+    const { course } = await importLineageFirstTime(first);
+    expect((await db.courseAssessments.get('assessment-origin'))?.courseId).toBe(course.id);
+    expect((await db.courseAssessments.where('courseId').equals(course.id).toArray())).toHaveLength(1);
+    expect((await db.questionSets.get('set-quadratics'))?.assessmentIds).toEqual(['assessment-origin']);
+
+    const attempt = await startQuestionSetAttempt('set-quadratics', 'paper', 1_100);
+    await db.cards.update('card-quadratic-example', { stability: 14, reps: 3, due: 9_000 });
+    await mergeLineageUpdate(course.id, questionPayloadV4({
+      exams: [{ id: 'assessment-origin', n: 'Revised final', k: 'f', a: 0, m: 'p', e: 3_000_000, c: 1_000 }],
+      questionSets: [{ ...first.questionSets[0], title: 'Revised paper', contentVersion: 2,
+        contentRevisionId: 'set-revision-2' }],
+      at: 2_000, rv: 2,
+    }));
+    expect((await db.courseAssessments.get('assessment-origin'))?.examDate).toBe(3_000_000);
+    expect((await db.questionSets.get('set-quadratics'))?.assessmentIds).toEqual(['assessment-origin']);
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+    expect(await db.cards.get('card-quadratic-example')).toMatchObject({
+      stability: 14, reps: 3, due: 9_000,
+    });
+
+    await mergeLineageUpdate(course.id, questionPayloadV4({
+      exams: [{ id: 'assessment-origin', n: 'Revised final', k: 'f', a: 0, m: 'p', e: 3_000_000, c: 1_000 }],
+      questionSets: [], at: 3_000, rv: 3,
+    }));
+    expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+  });
+
+  it('rejects missing assessment links atomically', async () => {
+    const payload = questionPayloadV4();
+    payload.questionSets[0] = { ...payload.questionSets[0], assessmentIds: ['missing'] };
+    await expect(importLineageFirstTime(payload)).rejects.toThrow('missing Assessment');
     expect(await db.courses.count()).toBe(0);
-    expect(await db.questionSets.count()).toBe(0);
+  });
+
+  it('rejects local assessment edits and deletion without applying a teacher revision', async () => {
+    const first = questionPayloadV4({
+      exams: [{ id: 'assessment-origin', n: 'Final', k: 'f', a: 0, m: 'p', e: 2_000_000, c: 1_000 }],
+    });
+    first.questionSets[0] = { ...first.questionSets[0], assessmentIds: ['assessment-origin'] };
+    const { course } = await importLineageFirstTime(first);
+    const revised = questionPayloadV4({
+      exams: [{ id: 'assessment-origin', n: 'Teacher revision', k: 'f', a: 0, m: 'p', e: 3_000_000, c: 1_000 }],
+      questionSets: [{ ...first.questionSets[0], title: 'Teacher revision',
+        contentVersion: 2, contentRevisionId: 'set-revision-2' }],
+      at: 2_000, rv: 2,
+    });
+    await db.courseAssessments.update('assessment-origin', { name: 'Learner revision' });
+    await expect(mergeLineageUpdate(course.id, revised)).rejects.toThrow('locally edited Assessment');
+    expect((await db.questionSets.get('set-quadratics'))?.title).toBe('Quadratics paper');
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
+
+    await db.courseAssessments.delete('assessment-origin');
+    await db.tombstones.put({ table: 'courseAssessments', recordId: 'assessment-origin', deletedAt: 1_500 });
+    await expect(mergeLineageUpdate(course.id, revised)).rejects.toThrow('locally deleted Assessment');
+    expect((await db.questionSets.get('set-quadratics'))?.title).toBe('Quadratics paper');
+  });
+
+  it('removes a checkpoint when the teacher unlinks it from the set', async () => {
+    const final = { id: 'final-origin', n: 'Final', k: 'f' as const,
+      a: 0, m: 'p' as const, e: 4_000_000, c: 1_000 };
+    const checkpoint = { id: 'checkpoint-origin', n: 'Checkpoint', k: 'c' as const,
+      a: 0, m: 'p' as const, e: 2_000_000, c: 1_000 };
+    const first = questionPayloadV4({ exams: [final, checkpoint] });
+    first.questionSets[0] = { ...first.questionSets[0], assessmentIds: [checkpoint.id] };
+    const { course } = await importLineageFirstTime(first);
+    expect(course.examDate).toBe(4_000_000);
+    const attempt = await startQuestionSetAttempt('set-quadratics', 'paper', 1_100);
+    await db.questionSets.add({ ...first.questionSets[0], id: 'local-set', courseId: course.id,
+      contentRevisionId: 'local-revision' });
+    const removal = questionPayloadV4({
+      exams: [final],
+      questionSets: [{ ...first.questionSets[0], assessmentIds: [final.id],
+        contentVersion: 2, contentRevisionId: 'set-revision-2' }],
+      at: 2_000, rv: 2,
+    });
+    await expect(mergeLineageUpdate(course.id, removal)).rejects.toThrow(
+      'local Question Set still links to a removed Assessment',
+    );
+    expect(await db.courseAssessments.get(checkpoint.id)).toBeDefined();
+    await db.questionSets.delete('local-set');
+    await mergeLineageUpdate(course.id, removal);
+    expect(await db.courseAssessments.get(checkpoint.id)).toBeUndefined();
+    expect(await db.tombstones.get(['courseAssessments', checkpoint.id])).toBeDefined();
+    expect((await db.questionSets.get('set-quadratics'))?.assessmentIds).toEqual([final.id]);
+    expect((await db.questionSetAttempts.get(attempt.id))?.receipt.assessmentIds).toEqual([checkpoint.id]);
   });
 
   it('removes an untouched set when the teacher removes it', async () => {
@@ -633,6 +728,44 @@ describe('mergeImport: v4 Question Set lineage', () => {
     await mergeLineageUpdate(course.id, questionPayloadV4({ at: 2_000, rv: 2, questionSets: [] }));
     expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
     expect(await db.tombstones.get(['questionSets', 'set-quadratics'])).toBeDefined();
+  });
+});
+
+describe('mergeImport: v5 Question Set path activity lineage', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('adopts placements, applies teacher changes and removes untouched activities', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV5());
+    expect(await db.practiceNodes.get('activity-quadratics')).toMatchObject({
+      courseId: course.id, questionSetId: 'set-quadratics', afterLessonId: 'lesson-questions',
+    });
+    const updated = questionPayloadV5({
+      at: 2_000, rv: 2,
+      questionSetPracticeNodes: [{
+        ...questionPayloadV5().questionSetPracticeNodes[0], name: 'Past paper practice',
+        updatedAt: 2_000,
+      }],
+    });
+    await mergeLineageUpdate(course.id, updated);
+    expect((await db.practiceNodes.get('activity-quadratics'))?.name).toBe('Past paper practice');
+    await mergeLineageUpdate(course.id, questionPayloadV5({
+      at: 3_000, rv: 3, questionSetPracticeNodes: [],
+    }));
+    expect(await db.practiceNodes.get('activity-quadratics')).toBeUndefined();
+    expect(await db.tombstones.get(['practiceNodes', 'activity-quadratics'])).toBeDefined();
+  });
+
+  it('rejects a local placement edit without partial teacher changes', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV5());
+    await db.practiceNodes.update('activity-quadratics', { name: 'Learner edit' });
+    await expect(mergeLineageUpdate(course.id, questionPayloadV5({
+      at: 2_000, rv: 2,
+    }))).rejects.toThrow('locally edited Question Set activity');
+    expect((await db.practiceNodes.get('activity-quadratics'))?.name).toBe('Learner edit');
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
   });
 });
 

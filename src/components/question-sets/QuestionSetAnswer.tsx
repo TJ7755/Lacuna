@@ -35,20 +35,23 @@ export function QuestionSetAnswer({
       </header>
       {active.parentIds.map((id) => (
         <section className="qs-source" key={id}>
-          <MarkdownView source={nodes.find((node) => node.id === id)!.node.prompt} />
+          <MarkdownView enlargeImages source={nodes.find((node) => node.id === id)!.node.prompt} />
         </section>
       ))}
-      <MarkdownView source={active.node.prompt} />
+      <MarkdownView enlargeImages source={active.node.prompt} />
       {format.kind === 'multiple-choice' ? (
-        <fieldset className="mt-6" disabled={readOnly}>
+        <fieldset className="mt-6">
           <legend className="qs-muted">
             {format.selection === 'single' ? 'Choose one answer' : 'Choose all that apply'}
           </legend>
           {format.options.map((option, index) => (
-            <label key={option.id} className="qs-check">
+            <div key={option.id} className="qs-check qs-option">
               <input
+                disabled={readOnly}
                 type={format.selection === 'single' ? 'radio' : 'checkbox'}
                 name={active.id}
+                id={`${active.id}-${option.id}`}
+                aria-labelledby={`${active.id}-${option.id}-content`}
                 checked={Array.isArray(value) && value.includes(option.id)}
                 onChange={() => {
                   if (readOnly) return;
@@ -61,10 +64,14 @@ export function QuestionSetAnswer({
                   );
                 }}
               />
-              <span>
-                {String.fromCharCode(65 + index)}. <MarkdownView source={option.content} />
+              <label className="qs-option-target" htmlFor={`${active.id}-${option.id}`}>
+                <span className="sr-only">Select option {String.fromCharCode(65 + index)}</span>
+              </label>
+              <span className="qs-option-content" id={`${active.id}-${option.id}-content`}>
+                {String.fromCharCode(65 + index)}.{' '}
+                <MarkdownView enlargeImages source={option.content} />
               </span>
-            </label>
+            </div>
           ))}
         </fieldset>
       ) : (

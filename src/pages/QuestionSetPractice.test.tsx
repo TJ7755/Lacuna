@@ -98,7 +98,12 @@ function open(
   origin?: { pathname: string; search?: string; state?: unknown },
 ) {
   const router = createMemoryRouter(
-    [{ path: '/course/:courseId/question-sets/:setId/attempts/:attemptId', element: <QuestionSetPractice /> }],
+    [
+      {
+        path: '/course/:courseId/question-sets/:setId/attempts/:attemptId',
+        element: <QuestionSetPractice />,
+      },
+    ],
     {
       initialEntries: [
         origin ?? `/course/${courseId}/question-sets/${setId}/attempts/${attemptId}`,
@@ -144,9 +149,7 @@ describe('QuestionSetPractice', () => {
     await waitFor(() => expect(save).not.toBeDisabled());
     fireEvent.click(save);
     await waitFor(() =>
-      expect(view.router?.state.location.pathname).toBe(
-        `/course/${course.id}/lesson/lesson-1`,
-      ),
+      expect(view.router?.state.location.pathname).toBe(`/course/${course.id}/lesson/lesson-1`),
     );
     expect(view.router?.state.location.search).toBe('?tab=cards');
     expect((await getQuestionSetAttempt(attempt.id))?.responses[0].draft).toEqual({
@@ -179,7 +182,9 @@ describe('QuestionSetPractice', () => {
     open(course.id, set.id, attempt.id);
     await answerAndAdvance('Answer one', 'Q1 (b)');
     await answerAndAdvance('Answer two', 'Q2');
-    fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'Answer three' } });
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'Answer three' },
+    });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
@@ -200,20 +205,23 @@ describe('QuestionSetPractice', () => {
     open(course.id, set.id, attempt.id);
     await answerAndAdvance('Answer one', 'Q1 (b)');
     await answerAndAdvance('Answer two', 'Q2');
-    fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'Answer three' } });
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'Answer three' },
+    });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'),
     );
-    const award = await screen.findByLabelText('Marks awarded');
-    expect(award).toHaveValue('');
-    expect(screen.getByRole('option', { name: /^0/ })).toHaveValue('0');
-    expect(screen.getByRole('option', { name: /^1/ })).toHaveValue('1');
-    expect(screen.getByRole('option', { name: /unsure/i })).toHaveValue('unsure');
+    const award = await screen.findByRole('radio', { name: '0 / 1' });
+    expect(award).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Not marked' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '0 / 1' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: '1 / 1' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Unsure' })).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Finish attempt' })).toBeDisabled();
     expect(screen.getByText(/3 criteria remaining/i)).toBeInTheDocument();
-    fireEvent.change(award, { target: { value: '0' } });
+    fireEvent.click(award);
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
         expect.arrayContaining([{ allocationId: 'a1', status: 'awarded', marks: 0 }]),
@@ -221,7 +229,7 @@ describe('QuestionSetPractice', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /next criterion/i }));
     await screen.findByText('Criterion 2 of 3');
-    fireEvent.change(screen.getByLabelText('Marks awarded'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('radio', { name: '1 / 1' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
         expect.arrayContaining([{ allocationId: 'a2', status: 'awarded', marks: 1 }]),
@@ -229,15 +237,19 @@ describe('QuestionSetPractice', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /next criterion/i }));
     await screen.findByText('Criterion 3 of 3');
-    fireEvent.change(screen.getByLabelText('Marks awarded'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('radio', { name: '1 / 1' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
         expect.arrayContaining([{ allocationId: 'a3', status: 'awarded', marks: 1 }]),
       ),
     );
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Finish attempt' })).not.toBeDisabled());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Finish attempt' })).not.toBeDisabled(),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Finish attempt' }));
-    await waitFor(async () => expect((await getQuestionSetAttempt(attempt.id))?.status).toBe('complete'));
+    await waitFor(async () =>
+      expect((await getQuestionSetAttempt(attempt.id))?.status).toBe('complete'),
+    );
     expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
       expect.arrayContaining([{ allocationId: 'a1', status: 'awarded', marks: 0 }]),
     );
@@ -249,11 +261,15 @@ describe('QuestionSetPractice', () => {
     open(course.id, set.id, attempt.id);
     await answerAndAdvance('Answer one', 'Q1 (b)');
     await answerAndAdvance('Answer two', 'Q2');
-    fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'Answer three' } });
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'Answer three' },
+    });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await screen.findByText('Controls cell activities.');
-    await waitFor(async () => expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'));
+    await waitFor(async () =>
+      expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
     fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Review this evidence.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
@@ -273,23 +289,29 @@ describe('QuestionSetPractice', () => {
     open(course.id, set.id, attempt.id);
     await answerAndAdvance('Answer one', 'Q1 (b)');
     await answerAndAdvance('Answer two', 'Q2');
-    fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'Answer three' } });
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'Answer three' },
+    });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await screen.findByText('Controls cell activities.');
-    await waitFor(async () => expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'));
+    await waitFor(async () =>
+      expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'),
+    );
 
-    vi.spyOn(attemptRepository, 'saveQuestionSetMarking').mockRejectedValueOnce(new Error('Offline'));
-    fireEvent.change(screen.getByLabelText('Marks awarded'), { target: { value: '0' } });
+    vi.spyOn(attemptRepository, 'saveQuestionSetMarking').mockRejectedValueOnce(
+      new Error('Offline'),
+    );
+    fireEvent.click(screen.getByRole('radio', { name: '0 / 1' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Offline');
-    expect(screen.getByLabelText('Marks awarded')).toBeDisabled();
+    expect(screen.getByRole('radio', { name: '0 / 1' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Retry save' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
         expect.arrayContaining([{ allocationId: 'a1', status: 'awarded', marks: 0 }]),
       ),
     );
-    expect(screen.getByLabelText('Marks awarded')).not.toBeDisabled();
+    expect(screen.getByRole('radio', { name: '0 / 1' })).not.toBeDisabled();
   });
 
   it('Practice submits all parts of the current question, then preserves the original while correcting', async () => {
@@ -297,12 +319,17 @@ describe('QuestionSetPractice', () => {
     const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
     open(course.id, set.id, attempt.id);
     await answerAndAdvance('Original one', 'Q1 (b)');
-    fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'Original two' } });
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'Original two' },
+    });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
     fireEvent.click(screen.getByRole('button', { name: 'Submit question' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
     expect(screen.queryByText('Describes selective permeability.')).not.toBeInTheDocument();
-    fireEvent.change(await screen.findByLabelText('Correction'), { target: { value: 'Improved' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Correction' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Correction' }), {
+      target: { value: 'Improved' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Save correction' }));
     let saved: Awaited<ReturnType<typeof getQuestionSetAttempt>> = null;
     await waitFor(async () => {
@@ -314,6 +341,9 @@ describe('QuestionSetPractice', () => {
       );
     });
     const persisted = await getQuestionSetAttempt(attempt.id);
-    expect(persisted?.responses.find((response) => response.nodeId === 'q1-a')?.submitted).toEqual({ kind: 'written', text: 'Original one' });
+    expect(persisted?.responses.find((response) => response.nodeId === 'q1-a')?.submitted).toEqual({
+      kind: 'written',
+      text: 'Original one',
+    });
   });
 });

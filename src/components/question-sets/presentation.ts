@@ -28,7 +28,7 @@ export function emptyAnswer(): QuestionAnswer {
 export const dimensionNames = {
   knowledge: 'Knowledge',
   application: 'Application / reasoning',
-  'exam-execution': 'Exam execution',
+  'exam-execution': 'Exam technique',
   mixed: 'Mixed',
 };
 

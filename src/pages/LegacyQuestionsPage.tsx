@@ -62,10 +62,12 @@ export function LegacyQuestionsPage() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-
+      <Link className="qs-back mt-6" to={`/course/${courseId}/questions`}>
+        ← Question sets
+      </Link>
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5 pt-6 md:pt-8">
         <div>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Questions</h1>
+          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Individual questions</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-ink-soft">
             Apply what you have learnt in fixed problems and varied generated examples. Question
             results are kept separate from Card recall.

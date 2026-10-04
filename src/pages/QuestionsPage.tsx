@@ -1,6 +1,9 @@
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQuestionSetAttempts';
+import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
+import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
 import { useCourse } from '../state/useCourseData';
@@ -18,10 +21,21 @@ import '../components/question-sets/question-sets.css';
 
 export function QuestionsPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const [params] = useSearchParams();
   const course = useCourse(courseId);
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
+  const setSearch = (value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set('q', value);
+    else next.delete('q');
+    setParams(next, { replace: true });
+  };
+  const origin = {
+    questionSetReturnTo: location.pathname + location.search,
+    questionSetReturnLabel: 'Back to Questions',
+  };
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const data = useLiveQuery(async () => {
@@ -37,7 +51,10 @@ export function QuestionsPage() {
       return { sets: [], drafts: [], legacy: 0, error: String(cause) };
     }
   }, [courseId]);
-  if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
+  const root = useQuestionSetScroll(
+    `question-set-library-scroll:${courseId}:${search}`,
+    !!course && !!data,
+  );
   if (!course || !data) return <p className="p-8 text-ink-soft">Loading Questions…</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
   const draftIds = new Set(data.drafts.map((d) => d.content.id));
@@ -52,23 +69,27 @@ export function QuestionsPage() {
     setError('');
     try {
       const draft = createEmptyQuestionSetDraft(course.id, makeId());
-      draft.content.questions = [{ id: makeId(), prompt: '', parts: [] }];
       await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
-      await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`);
+      await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`, {
+        state: origin,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not create a set.');
     } finally {
       setCreating(false);
     }
   };
+  if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
-    <div className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
+    <div ref={root} className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <div>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Questions</h1>
+          <h1 tabIndex={-1} className="font-display text-4xl tracking-tight md:text-5xl">
+            Questions
+          </h1>
         </div>
         {author && (
-          <Button onClick={() => void create()} disabled={creating}>
+          <Button variant="primary" onClick={() => void create()} disabled={creating}>
             {creating ? 'Creating…' : 'New question set'}
           </Button>
         )}
@@ -91,21 +112,44 @@ export function QuestionsPage() {
       )}
       <section className="qs-set-list" aria-label="Question sets">
         {rows.map(({ content, draft }) => (
-          <Link
-            className="qs-set-row"
-            key={content.id}
-            to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
-          >
-            <div>
-              <h2>{content.title || 'Untitled set'}</h2>
-              <p>
-                {content.questions.length}{' '}
-                {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
-                {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
-              </p>
-            </div>
-            <span>{draft ? 'Draft' : author ? 'Edit →' : 'View →'}</span>
-          </Link>
+          <div className="qs-library-row" key={content.id}>
+            <Link
+              className="qs-set-row"
+              state={origin}
+              to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
+            >
+              <div>
+                <h2>{content.title || 'Untitled set'}</h2>
+                <p>
+                  {content.questions.length}{' '}
+                  {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
+                  {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+                </p>
+              </div>
+              <span>{draft ? 'Draft' : author ? 'Edit →' : 'View →'}</span>
+            </Link>
+            {author && (
+              <QuestionSetLibraryActions
+                courseId={course.id}
+                setId={content.id}
+                title={content.title || 'Untitled set'}
+                contentRevisionId={
+                  data.sets.find((set) => set.id === content.id)?.contentRevisionId ?? null
+                }
+                draftRevisionId={
+                  data.drafts.find((row) => row.content.id === content.id)?.draftRevisionId ?? null
+                }
+                onRemoved={() =>
+                  requestAnimationFrame(() => {
+                    (
+                      root.current?.querySelector<HTMLElement>('input[type="search"]') ??
+                      root.current?.querySelector<HTMLElement>('h1')
+                    )?.focus();
+                  })
+                }
+              />
+            )}
+          </div>
         ))}
         {rows.length === 0 && (
           <div className="qs-empty">
@@ -121,11 +165,14 @@ export function QuestionsPage() {
           </div>
         )}
       </section>
+      <RemovedQuestionSetAttempts courseId={course.id} />
       {data.legacy > 0 && (
-        <details className="qs-legacy">
-          <summary>Individual questions · {data.legacy}</summary>
-          <LegacyQuestionsPage />
-        </details>
+        <Link
+          className="qs-legacy-link"
+          to={`?view=individual${search ? `&q=${encodeURIComponent(search)}` : ''}`}
+        >
+          Individual questions <span>{data.legacy} →</span>
+        </Link>
       )}
     </div>
   );

@@ -1,3 +1,5 @@
+import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
+import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -48,22 +50,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
   const attempt = progress.record;
   const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
-  const rootRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const scroller = rootRef.current?.closest('main');
-    if (!scroller) return;
-    const key = `question-set-scroll:${session.snapshot.record.id}`;
-    const saved = Number(sessionStorage.getItem(key) ?? 0);
-    const frame = requestAnimationFrame(() => {
-      scroller.scrollTop = saved;
-    });
-    const save = () => sessionStorage.setItem(key, String(scroller.scrollTop));
-    scroller.addEventListener('scroll', save, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      scroller.removeEventListener('scroll', save);
-    };
-  }, [session]);
+  const rootRef = useQuestionSetScroll(`question-set-scroll:${attempt.id}`);
   const [confirmBlank, setConfirmBlank] = useState(false);
   const [actionError, setActionError] = useState('');
   const [acting, setActing] = useState(false);
@@ -94,7 +81,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
     const paper = rootRef.current?.querySelector<HTMLElement>('.qs-paper');
     paper?.scrollIntoView?.({ block: 'start' });
     paper?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
-  }, [attempt.activeNodeId, attempt.activeAllocationId]);
+  }, [attempt.activeNodeId, attempt.activeAllocationId, rootRef]);
   const busy = progress.pending > 0;
   const base = `/course/${attempt.courseId}/question-sets/${attempt.questionSetId}`;
   const value = progress.value(active.id);
@@ -235,8 +222,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
             ? `Criterion ${criterionIndex + 1} of ${criteria.length}`
             : `Part ${index + 1} of ${nodes.length}`}
         </span>
-        <details>
-          <summary>All parts</summary>
+        <QuestionSetPanel title="All parts" closeOnSelect>
           <nav className="qs-outline" aria-label="Question parts">
             {nodes.map((node) => (
               <button
@@ -255,7 +241,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
               </button>
             ))}
           </nav>
-        </details>
+        </QuestionSetPanel>
       </div>
       <article className={`qs-paper ${marking ? 'qs-paper-marking' : ''}`}>
         {marking ? (
@@ -271,8 +257,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
               </span>
             </header>
-            <details className="qs-question-context">
-              <summary>Question and source</summary>
+            <QuestionSetPanel title="Question and source" className="qs-question-context">
               <QuestionSetAnswer
                 content={attempt.receipt}
                 nodeId={active.id}
@@ -280,7 +265,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 onChange={() => {}}
                 readOnly
               />
-            </details>
+            </QuestionSetPanel>
             {criterion && (
               <QuestionSetMarking
                 key={active.id}

@@ -11,6 +11,8 @@ import { createQuestionSet, deleteQuestionSet, updateQuestionSet } from './quest
 import {
   completeQuestionSetAttempt,
   getQuestionSetAttempt,
+  listRemovedQuestionSetAttempts,
+  listQuestionSetAttempts,
   recordQuestionSetAssistance,
   saveQuestionSetMarking,
   saveQuestionSetResponseDraft,
@@ -84,11 +86,71 @@ async function setFixture(): Promise<Awaited<ReturnType<typeof createQuestionSet
   return createQuestionSet(content, 100);
 }
 
+function smallSet(courseId: string, id: string, title: string): QuestionSet {
+  return {
+    id,
+    courseId,
+    title,
+    lessonIds: [],
+    assessmentIds: [],
+    questions: [
+      {
+        id: `${id}-q`,
+        prompt: 'Explain the idea.',
+        parts: [],
+        answer: {
+          maxMarks: 1,
+          response: { kind: 'written' },
+          prerequisiteConceptIds: [],
+          allocations: [
+            {
+              id: `${id}-a`,
+              criterion: 'Explains it.',
+              maxMarks: 1,
+              dimension: 'knowledge',
+              targetConceptIds: [],
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
 describe('Question Set attempt repository', () => {
   beforeEach(async () => {
     db.close();
     await db.delete();
     await db.open();
+  });
+
+  it('lists removed-set attempts for one course while retaining their receipts', async () => {
+    const removedSet = await setFixture();
+    const older = await startQuestionSetAttempt(removedSet.id, 'practice', 200);
+    const newer = await startQuestionSetAttempt(removedSet.id, 'paper', 300);
+    await deleteQuestionSet(removedSet.id, 400);
+
+    const live = await createQuestionSet(
+      smallSet(removedSet.courseId, 'live-set', 'Still available'),
+      410,
+    );
+    const liveAttempt = await startQuestionSetAttempt(live.id, 'practice', 420);
+
+    const foreignCourse = await createCourse('Chemistry');
+    const foreignSet = await createQuestionSet(
+      smallSet(foreignCourse.id, 'foreign-set', 'Other course'),
+      430,
+    );
+    const foreignAttempt = await startQuestionSetAttempt(foreignSet.id, 'practice', 440);
+    await deleteQuestionSet(foreignSet.id, 450);
+
+    const records = await listRemovedQuestionSetAttempts(removedSet.courseId);
+
+    expect(records.map((record) => record.id)).toEqual([newer.id, older.id]);
+    expect(records.map((record) => record.receipt.title)).toEqual(['Cells', 'Cells']);
+    expect(records.map((record) => record.id)).not.toContain(liveAttempt.id);
+    expect(records.map((record) => record.id)).not.toContain(foreignAttempt.id);
+    expect(await listQuestionSetAttempts(removedSet.id)).toHaveLength(2);
   });
 
   it('pins an immutable receipt and submitted original after authored content changes and deletion', async () => {
@@ -193,7 +255,7 @@ describe('Question Set attempt repository', () => {
     const set = await setFixture();
     const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
     const backup = await exportDatabase();
-    expect(backup.app).toBe('lacuna-v13');
+    expect(backup.app).toBe('lacuna-v14');
     expect(backup.questionSetAttempts).toEqual([attempt]);
     await db.questionSetAttempts.clear();
     await importBackup(backup, 'replace');

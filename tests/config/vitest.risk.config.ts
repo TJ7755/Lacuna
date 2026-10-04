@@ -14,6 +14,7 @@ export default defineConfig({
       'src/db/arc4Persistence.test.ts',
       'src/db/repository.mutation.test.ts',
       'src/db/repository.test.ts',
+      'src/db/practiceNodeRepository.questionSets.test.ts',
       'src/pages/LearnMode.test.tsx',
       'src/pages/learn/useLearnSession.test.tsx',
       'src/pages/learn/simpleSessionPersistence.test.ts',

@@ -17,7 +17,7 @@ const optionalCollections = Object.fromEntries(
 export const backupSchema = z
   .looseObject({
     ...optionalCollections,
-    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13']),
+    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13', 'lacuna-v14']),
     version: z.number().int().positive(),
     exportedAt: z.number().finite(),
     decks: z.array(z.looseObject({})).optional(),
@@ -53,6 +53,7 @@ export const backupSchema = z
         require(key, 11);
     if (backup.version >= 12 && !legacyRawSnapshot) require('questionSets', 12);
     if (backup.version >= 13 && !legacyRawSnapshot) require('questionSetAttempts', 13);
+    if (backup.version >= 14 && !legacyRawSnapshot) require('practiceNodes', 14);
   });
 
 export function backupIsValid(data: unknown): data is BackupFile {

@@ -1,47 +1,42 @@
 # Question sets implementation plan
 
-**Status:** implementation in progress; this document tracks the remaining work.
+**Status:** latest V1 implementation gaps completed; device/release sign-off remains open.
 **Scope:** implement the product described in the [design brief](../questions-design-brief.md),
 using the evidence and limitations in the [research note](../question-sets-research-2026-09-26.md).
 No completion dates are assigned. Check an item only after its code and required evidence exist.
 
-## Next-session checkpoint — 26 September 2026
+## Current checkpoint — 27 September 2026
 
 Worktree: `/Users/tj7755/Documents/Coding/Lacuna-question-sets`, branch `feat/question-sets`.
 The original Lacuna checkout is separate; do not move or overwrite its work.
 
-Completed this session, each with browser evidence and its own commit:
+The three remaining implementation areas from the latest V1 review are now complete:
 
-- `a906b9e9`: compact image chooser with preview and progressive description controls.
-- `723c114e`: lesson/exam/Card entry points and return after saving, including exam reopening.
-- `2cacd949`: per-set descriptive evidence with first/repeated filters and unresolved marks.
+- `8dfb36f4`: image paste/drop, preview, description and optional caption through atomic draft saves.
+- `edddc514`: current concept coverage, unknown/unresolved evidence and unfinished-attempt actions.
+- `576565a8`: assessment-linked published imports/updates, conflict protection, backup and peer mapping.
 
-Latest validation: 93 Question Set/learner tests plus 72 surrounding CardList/LessonView/
-CoursePath tests passed; full typechecks, focused lint and production asset build passed.
-Desktop and 390px browser gates passed. This is not a packaged or cold-offline release sign-off.
+Earlier gates completed diagram enlargement, navigation/search restoration, set removal with
+retained attempts, sharing entry points and compact optional Practice Qs path activities. The
+dated records below supersede their older outstanding-work notes. Original broad stage checkboxes
+remain historical planning groups; use these dated gates for the exact implementation evidence.
 
-**V1 remains incomplete. Next stages, in order:**
+Final automated validation: 357 tests across 41 files; web/server/Electron typechecks; focused
+lint; production assets; unsigned macOS arm64 package build and isolated-profile process launch.
+Browser verification covered production reload with the origin server stopped, offline answer
+save/resume, diagrams/captions, 20,700-character submitted response and annotation persistence,
+real IndexedDB backup replacement and published assessment updates. See the final gate below.
 
-1. Finish learner navigation/media: enlarge diagrams without losing answers; retain library
-   search/filter and scroll through entry/return. Lesson/exam return is already implemented.
-2. Finish author management: set removal confirmation using the existing tombstone/receipt
-   repository, sharing entry points using existing Course transport, and required media authoring
-   affordances. Do not invent a second sharing format. Assessment-linked published-course
-   lineage support remains restricted and must be resolved or explicitly scoped before release.
-3. Add optional Practice Qs path activities as one persistence gate, including schema, codecs,
-   sharing/remapping, sync, deletion and milestones. Related lesson links already exist but do
-   not replace the promised path activity.
-4. Finish evidence presentation: coverage gaps and unknown evidence; inspect whether useful
-   recommendations are supported. The per-set marks panel is complete, but it does not expose
-   every coverage/status value from the summary API. Numeric exam forecasts stay outside v1.
-5. Complete release evidence: duplicate/import, missing media, stale assessment, removal with
-   retained attempts, privacy, backup/restore and sync; real keyboard/focus and touch checks,
-   packaged desktop, long responses/annotations, and cold-offline launch/navigation.
+**V1 release sign-off is still open**, rather than pretending unavailable device checks passed:
+
+- Physical-device touch/OS clipboard and screen-reader interaction.
+- Interactive Question Set workflow inside the packaged desktop app (build/process launch only
+  was possible through the available tools; T3 preview controls its own embedded browser).
+- A real cross-device relay session for these additions; deterministic peer snapshot/merge tests
+  passed, but they do not prove two devices exchanging data on a network.
 
 Root owns UI; Sol handles backend and Luna handles bounded tests/audits. Preserve no-Jev,
-self-marking-only and no question-to-FSRS writes. Do not mark whole stages complete merely
-by checking off their currently implemented portions. Some original broad checkboxes below
-remain open deliberately; dated gates specify the completed slices.
+self-marking-only and no question-to-FSRS writes. Calibrated numerical forecasts remain outside V1.
 
 ## Commit and browser gates
 
@@ -513,7 +508,7 @@ These depend on the persistence work and can then proceed in parallel UI slices.
 
 - [ ] Publish/import a set through existing course sharing, assigning fresh local identities where
   required and leaving learner attempts private. Include required referenced media in `.lacourse`.
-- [ ] Add an optional **Practice Qs** path activity after a lesson by extending existing path and
+- [x] Add an optional **Practice Qs** path activity after a lesson by extending existing path and
   practice-node models. Preserve stable activity IDs and existing Path completion behaviour.
 - [x] Show related sets from the lesson and assessment detail views, and support return to the
   original path/lesson/exam entry point after practice.
@@ -615,3 +610,229 @@ without calibration. Future work can revisit these with separate evidence and de
   explicit unresolved totals and 390px layout without horizontal overflow. Full web/server/
   Electron typechecks, focused lint and production asset build pass.
 - This completes per-set descriptive totals only, not the whole analytics/release stage.
+
+
+## Learner navigation and diagrams gate — 27 September 2026
+
+Implemented opt-in image enlargement in the shared Markdown renderer; Question Set prompts,
+options, schemes and previews use it. The viewer fits a diagram or shows its actual size,
+traps keyboard focus, closes with Escape and returns focus. It leaves the response mounted.
+Multiple-choice controls and image buttons have separate label targets, preserving selection;
+read-only marking keeps image access. Authored image links retain their original navigation.
+
+Library search is URL-backed (`q`), and editor/overview/attempt links carry the existing
+validated return context. Shared scroll restoration waits for content and scopes library
+positions by course/query. No content schema or scheduling change.
+
+Validation: baseline image and library regressions failed before implementation. 68 tests
+across Markdown, Question Set components, learner, navigation and return helpers passed after
+implementation. Web typecheck and focused lint passed. Browser on `127.0.0.1:5183`, desktop
+1280×800 and narrow 390×844: typed response persisted through image open, keyboard close and
+save; focus returned to the diagram; no horizontal overflow. Editor return retained `q=Cells`;
+a 390×400 viewport proved 140px library scroll restoration. Library-to-attempt return also
+preserves the query. A stale development server stopped during setup; restarted it and reloaded
+before final verification. These checks do not establish cold-offline or packaged readiness.
+
+Screenshots:
+- [Desktop diagram viewer](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgie17-41f08502.png)
+- [Narrow diagram viewer](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgie79-4e6d7e7c.png)
+
+Next: author set removal and existing Course sharing access, then the separately scoped path
+activity/portability gate. The overall V1 checklist remains incomplete.
+
+
+## Author removal and sharing entry gate — 27 September 2026
+
+Added a small More disclosure per author library row, with Share course and confirmed Remove
+set. Sharing opens the existing Course transport with the current course selected; no new
+sharing format or external publication is performed by opening it. Removal compares the saved
+and draft revisions captured when confirmation opens, checks Course editing rights, and removes
+both atomically with a saved-content tombstone. Personal attempts and receipt assets survive.
+Removed sets' attempts are discoverable in a collapsed library section and remain available in
+their original overview/learner routes. There is no new-attempt action for removed content.
+
+Baseline tests failed for the missing removal/listing APIs, action component and share-query
+preselection. Repository tests cover stale revisions, read-only courses, drafts, tombstones,
+retained attempts and image garbage collection. UI tests cover cancellation, pending duplicate
+clicks, failure/retry, and sharing preselection. Targeted validation and browser checks passed.
+
+Browser: `127.0.0.1:5183`, 1280×800 and 390×844. Created a dedicated removal fixture using the
+real repository, with a draft and attempt. Cancel restored focus; changing the draft while the
+confirmation was open blocked removal. Reopening confirmation then removed both set and draft,
+kept its attempt/image, and wrote the tombstone. The removed attempt remained usable after a
+fresh navigation; its title returned to a retained-history overview. Library sharing selected the
+correct Course without publishing it. No horizontal overflow in the narrow layouts.
+
+- [Desktop removal confirmation](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgrixv-6d0b10bc.png)
+- [Narrow removal confirmation](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgrsay-0e3f63ed.png)
+- [Retained attempts](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujgwmk2-71f8703a.png)
+
+Author media paste/drop and assessment-linked published lineage remain separate outstanding
+work. Practice Qs path activities are being developed as a coordinated domain/portability gate;
+that in-progress work is not covered by this author-management gate.
+
+
+### Incidental exam navigation fix — 27 September 2026
+
+Opening an exam URL while CoursePath was mounted changed the query without opening its sheet.
+Selection now derives from the route query. The new mounted-route test failed before the fix;
+31 CoursePath tests passed after it. Desktop browser clicked the in-progress Practice Qs exam
+link on the same route and opened Final exam details. This fixes the existing route independently
+of the new path activity transport. Screenshot: [exam details](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujh6d3b-b3def5a5.png).
+
+
+## Practice Qs path and portability gate — 27 September 2026
+
+Added a Question Set variant to the existing practice-node model. Activities anchor to an exact
+lesson identity and follow its order; they do not create Card milestones or write FSRS states.
+Author controls add a saved set, move its anchor or remove the activity. Single-lesson courses
+show the full path when an activity exists. Progress uses answerable parts from the latest pinned
+attempt receipt, with answered and fully marked counts kept separate.
+
+The first tall activity layout was rejected by the prompter. The final node occupies a 56px slot
+with a caption; hover or keyboard focus expands it in place to reveal progress, the linked exam
+and author action. Escape collapses it. Touch first reveals details; a subsequent tap opens the
+set. Reduced motion uses the existing preference. Text stays clipped during expansion instead
+of wrapping outside the surface. Opening and closing the editor preserves keyboard focus.
+
+Backup/sync emit v14 (`lacuna-v14`); previous formats remain readable. Course share v5 includes
+only authored Question Set activities. Fresh imports remap activity, set and lesson identities;
+published lineage tracks activity changes and conflicts. Set/lesson removal and lesson undo
+preserve consistency. No Dexie table/index change is required. Assessment-linked published sets
+remain restricted; this gate does not remove that separate limitation.
+
+Validation: new backend tests failed before the APIs/variant existed; the compact disclosure
+regression failed against the tall implementation. 286 backend tests and 39 UI/progress tests
+passed. Full web/server/Electron typechecks, focused lint, diff checks and production asset build
+passed. The build retains existing Vite configuration/chunk warnings.
+
+Browser: development server `127.0.0.1:5183`, desktop 1280×800 and narrow 390×844. Created an
+activity through the author dialog, followed it to the learner overview and opened the exam
+sheet. Exported/decoded/imported a real `.lacourse` through the production APIs: v5 included its
+image, remapped all activity references and imported no personal attempts. The imported path
+and overview rendered correctly. Exported v14 backup validated and self-merge retained both
+activities and all four attempts. Whole-database replace restore was covered by automated tests,
+not performed on the preview database. Keyboard expansion, Escape, editor dismissal and focus
+return passed; the path retained its 79px layout footprint while expanded. No horizontal overflow.
+Touch pointer events were simulated; this is not physical-device touch or packaged/offline sign-off.
+
+- [Compact desktop path](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhe55p-b33bde7b.png)
+- [Expanded desktop activity](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhknbe-e2f849ff.png)
+- [Expanded narrow activity](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhkryc-99f6e5fc.png)
+
+V1 remains incomplete. Media paste/drop, assessment-linked published lineage, coverage/unknown
+presentation and the outstanding release checks remain on the checkpoint above.
+
+
+## Media authoring completion gate — 27 September 2026
+
+Question/source workspace accepts image paste and file drop, using the existing compact chooser
+for preview, description and optional caption. One image is accepted at a time; normal text paste
+is untouched. Captions are stored as editable prompt Markdown below the image. The existing
+session saves asset and reference atomically, preserving draft conflict/retry behaviour.
+
+New paste/drop UI tests failed before implementation. 20 image/session/editor tests pass;
+web typecheck and focused lint pass. Browser `127.0.0.1:5183`, 390×844 and 1280×800: pasted a
+stored PNG into Question text, entered description/caption, added it, and reloaded to verify the
+saved draft and rendered caption. Dropping a PNG opened the same preview; Remove selection
+cleared it without inserting. No narrow overflow. Clipboard/drop payloads were dispatched in
+the browser; OS clipboard and physical drag hardware were not exercised.
+
+- [Narrow image selection and caption](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhvpy7-66ff2f22.png)
+- [Desktop saved caption](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhwar2-dc0f67c2.png)
+
+
+## Evidence completion gate — 27 September 2026
+
+Expanded the existing disclosure with current-target concept coverage (marked, unresolved,
+missing), attempt states and an evidence-supported resume/marking action. Concepts are counted
+once. Awarded zero counts as recorded evidence, never as mastery. Current coverage requires
+matching leaf and ancestor prompt text, response options and allocation content; old receipts
+remain visible as historical marks but cannot fill changed-content gaps. Totals use resolved
+marks only; fully unmarked partitions say “Not marked yet”. No FSRS mutation or forecast.
+
+Regression tests failed for missing coverage, changed prompt context and hidden no-attempt
+state before implementation. 12 evidence model/UI tests pass; web typecheck and focused lint
+pass. Browser `127.0.0.1:5183`, 1280×800 and 390×844: expanded coverage, changed all/repeated
+filters, verified unresolved evidence, and followed Resume attempt back to the saved response.
+No horizontal overflow. Evidence remains collapsed by default.
+
+- [Desktop evidence](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mujhz1d2-0f3ef213.png)
+
+
+## Assessment-linked publication completion gate — 27 September 2026
+
+Published v4/v5 Course imports adopt assessments before validating Question Set links. Updates
+track assessment identities and content snapshots, retain local edits/deletions as conflicts,
+validate references, hydrate the final date and preserve learner receipts. Removing an assessment
+still referenced by a local authored set rolls back the update. Backup and peer merge retain the
+new mapping fields. Existing authored course transport is reused; no external publishing occurred.
+
+New linked-import tests failed against the old rejection guard. 142 focused backend tests passed;
+the combined final set of 357 tests across 41 files and all web/server/Electron typechecks passed.
+Browser `127.0.0.1:5183`: imported a v5 published Biology fixture through the production importer,
+started an attempt, applied a revision with a changed title/exam date, and verified the linked ID
+and byte-for-byte unchanged attempt. The updated learner overview and retained attempt rendered.
+Then exported the actual preview database and replace-restored it: all five attempts were identical,
+five authored sets and the assessment lineage mapping survived. This exercises the real browser
+IndexedDB restore path in addition to automated long-answer/media/privacy tests.
+
+- [Updated published set after restore](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muji32fw-251ab3b3.png)
+
+
+## Final automated and production-browser release gate — 27 September 2026
+
+Added `courseFile.questionSets.release.test.ts` without replacing existing coverage. It proves
+private submitted answers/annotations are excluded from `.lacourse`, authored images import,
+missing media blocks export, and backup replacement retains a 136k answer and 30k annotation.
+Combined validation: 357 tests in 41 files, full web/server/Electron typechecks, focused lint and
+production asset build passed. Existing Vite configuration/chunk warnings remain.
+
+Production browser at `127.0.0.1:5183`, 390×844: confirmed service-worker control and cached
+Question Set overview/editor/learner scripts and styles, then stopped the server (`curl` exit 7).
+Navigated to a new document URL while it remained stopped: the learner mounted with the saved
+answer and loaded diagram. Enlarged/closed the diagram; edited and saved the answer; reloaded
+again and found the exact saved text. The editor also reloaded with its caption and both images.
+This proves server-unavailable production reload, not an OS-level network disconnect or an
+HTTP-cache-cleared browser profile. First-time unvisited routes are not promised offline.
+
+Still with the origin stopped, submitted a 20,700-character answer, awarded a mark, added a
+note, saved and reloaded. The original length, mark and note survived; no horizontal overflow.
+The real stylesheet allowed answer text selection. Repeated-text highlight selection correctly
+reported ambiguity; the whole-answer note worked. Restored the production server afterwards.
+
+- [Learner after server-unavailable reload](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muji626d-e3b47b30.png)
+- [Retained long-answer annotation](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muji8zew-3839f2d4.png)
+- [Unresolved evidence on narrow screen](/Users/tj7755/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-muji1711-644b2fd8.png)
+
+Built final source as unsigned macOS arm64 DMG/ZIP using `CSC_IDENTITY_AUTO_DISCOVERY=false bun
+run electron:build:mac`. Launched the packaged executable with an isolated temporary profile and
+`ELECTRON_RUN_AS_NODE` unset; the process stayed running and exited cleanly on termination.
+Logs included macOS DNS/sandbox-extension warnings; no packaged UI or screen-reader validation
+is claimed. No release, signing, remote publication or PR was performed. Physical touch,
+interactive packaged Question Sets and real cross-device relay remain explicit release checks.
+
+## UI review gate — 27 September 2026
+
+Prompter review requested consistency with the rest of Lacuna, removal of dropdowns, and proper legacy-question navigation.
+
+- [x] Match Practice Qs hover footprint and spring to lesson nodes; caption must not activate hover.
+- [x] Remove the repeated course caption; align library width with Cards.
+- [x] Use shared Settings navigation for authoring, with visible controls on narrow screens.
+- [x] Fix checkbox sizing; unify card radii; restore accent primary actions.
+- [x] Make image insertion directly available.
+- [x] Replace question-set select/disclosure controls with visible choices and focused secondary panels.
+- [x] Give individual questions a separate view with a return to the set library.
+- [x] Browser-test desktop/narrow layouts, retained state, explicit-zero/unresolved marks, panel focus, and interrupted path expansion; capture screenshots and a motion recording.
+- [x] 61 focused tests, web typecheck, focused lint and production build.
+
+Screenshots from this gate are in the thread's browser artefacts. User visual review remains ongoing. Existing physical-device, screen-reader, packaged-workflow and real peer-sync release checks remain open.
+
+
+## Ordered authoring flow checkpoint — 27 September 2026
+
+Prompter feedback rejected the Settings-rail authoring layout as lacking a clear journey.
+The ordered flow supersedes that layout. Implementation, research, verification, open UX
+questions and local continuation details are recorded in
+[the pause handover](question-sets-authoring-handover.md). Work is paused at the prompter’s
+request; this checkpoint is not UX acceptance or a declaration that V1 is signed off.

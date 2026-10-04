@@ -130,7 +130,7 @@ describe('share codes', () => {
     const recompressed = 'LAC1' + b64;
 
     const decoded = await decodeShare(recompressed);
-    expect(decoded.v).toBe(4);
+    expect(decoded.v).toBe(5);
     if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
@@ -375,7 +375,7 @@ describe('course share codes (v2)', () => {
 
     const code = await buildCourseShareCode(course.id);
     const payload = await decodeShare(code);
-    expect(payload.v).toBe(4);
+    expect(payload.v).toBe(5);
     if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.course.n).toBe('Biology');
@@ -864,7 +864,7 @@ describe('course share codes (v2)', () => {
     expect(payload.bankCards?.[0].id).toBe(bankCard.id);
   });
 
-  it('refuses to publish an assessment-linked Question Set until assessment lineage exists', async () => {
+  it('publishes an assessment-linked Question Set with its assessment identity', async () => {
     const course = await createCourse('Published questions');
     const assessment = (await db.courseAssessments.where('courseId').equals(course.id).first())!;
     await db.questionSets.add({
@@ -901,9 +901,10 @@ describe('course share codes (v2)', () => {
     });
     await publishCourse(course.id);
 
-    await expect(buildCourseShareCode(course.id)).rejects.toThrow(
-      'cannot yet share Question Sets linked to assessments',
-    );
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 5) throw new Error('Expected a v5 course payload.');
+    expect(payload.exams?.[0].id).toBe(assessment.id);
+    expect(payload.questionSets[0].assessmentIds).toEqual([assessment.id]);
   });
 
   it('decodes li/rv and originating ids, and tolerates their absence (schema validation)', async () => {
@@ -1017,8 +1018,8 @@ describe('course share codes (v2)', () => {
     });
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    expect(payload.v).toBe(4);
-    if (payload.v !== 4) throw new Error('expected a v4 course payload');
+    expect(payload.v).toBe(5);
+    if (payload.v !== 5) throw new Error('expected a v5 course payload');
     expect(payload.questions).toHaveLength(2);
     expect(payload.questionSets).toHaveLength(1);
     expect(payload.concepts.map((concept) => concept.id)).toEqual(
@@ -1068,7 +1069,7 @@ describe('course share codes (v2)', () => {
       targetConceptId: target.id,
     });
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 4) throw new Error('expected a v4 course payload');
+    if (payload.v !== 5) throw new Error('expected a v5 course payload');
     const generated = payload.questions.find((question) => question.k === 1)!;
     generated.gk = 'future-family';
     generated.gv = 99;

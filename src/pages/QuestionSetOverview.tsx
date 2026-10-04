@@ -1,3 +1,6 @@
+import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
+import { QuestionSetChoices } from '../components/question-sets/QuestionSetChoices';
+import { QuestionSetAttemptList } from '../components/question-sets/QuestionSetAttemptList';
 import { QuestionSetEvidencePanel } from '../components/question-sets/QuestionSetEvidencePanel';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -7,7 +10,6 @@ import {
   listQuestionSetAttempts,
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
-import { summariseSelfMarking } from '../questions/questionSets';
 import type { QuestionSetAttemptMode } from '../questions/questionSetAttempts';
 import '../components/question-sets/question-set-practice.css';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -30,6 +32,23 @@ export function QuestionSetOverview() {
   const attempts = useLiveQuery(() => listQuestionSetAttempts(setId!), [setId], []);
   const content = useLiveQuery(() => getQuestionSet(setId!), [setId]);
   if (content === undefined || !course) return <p className="p-8">Loading question set…</p>;
+  const retainedAttempts = attempts.filter((attempt) => attempt.courseId === courseId);
+  if (!content && retainedAttempts.length)
+    return (
+      <div className="qs-overview">
+        <Link
+          className="qs-back"
+          to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
+        >
+          ← {origin?.questionSetReturnLabel ?? 'Question sets'}
+        </Link>
+        <h1>{retainedAttempts[0].receipt.title}</h1>
+        <p className="qs-muted mb-8">
+          This set has been removed. Your saved attempts remain available.
+        </p>
+        <QuestionSetAttemptList attempts={retainedAttempts} origin={origin} />
+      </div>
+    );
   if (!content || content.courseId !== courseId)
     return (
       <p className="p-8">
@@ -44,7 +63,11 @@ export function QuestionSetOverview() {
       <div className="qs-between">
         <h1>{content.title}</h1>
         {canEditLessons(course) && resolveLessonViewMode(course) === 'edit' && !course.archived && (
-          <Link className="qs-back" to={`/course/${courseId}/question-sets/${setId}/edit`}>
+          <Link
+            className="qs-back"
+            state={origin}
+            to={`/course/${courseId}/question-sets/${setId}/edit`}
+          >
             Edit set →
           </Link>
         )}
@@ -54,16 +77,15 @@ export function QuestionSetOverview() {
         {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
       </p>
       <div className="qs-start">
-        <label className="qs-field">
-          Session
-          <select
-            value={mode}
-            onChange={(event) => setMode(event.target.value as QuestionSetAttemptMode)}
-          >
-            <option value="practice">Practice — feedback after each question</option>
-            <option value="paper">Paper — feedback at the end</option>
-          </select>
-        </label>
+        <QuestionSetChoices
+          label="Session"
+          value={mode}
+          onChange={(value) => setMode(value as QuestionSetAttemptMode)}
+          options={[
+            { value: 'practice', label: 'Practice — feedback after each question' },
+            { value: 'paper', label: 'Paper — feedback at the end' },
+          ]}
+        />
         <Button
           variant="primary"
           disabled={starting || course.archived}
@@ -93,39 +115,19 @@ export function QuestionSetOverview() {
       {attempts.length > 0 && (
         <section className="qs-history">
           <h2>Your attempts</h2>
-          <div className="qs-set-list">
-            {attempts.map((attempt) => {
-              const result = summariseSelfMarking(attempt.receipt, attempt.decisions);
-              return (
-                <Link
-                  className="qs-set-row"
-                  key={attempt.id}
-                  state={origin}
-                  to={`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`}
-                >
-                  <div>
-                    <p>
-                      {attempt.mode === 'paper' ? 'Paper' : 'Practice'} ·{' '}
-                      {new Date(attempt.createdAt).toLocaleDateString('en-GB')}
-                    </p>
-                    <p>
-                      {attempt.status === 'complete'
-                        ? `${result.total.awarded} / ${result.total.available} · self-marked`
-                        : attempt.status === 'marking'
-                          ? 'Ready to mark'
-                          : 'In progress'}
-                    </p>
-                  </div>
-                  <span>{attempt.status === 'complete' ? 'Review' : 'Continue'} →</span>
-                </Link>
-              );
-            })}
-          </div>
+          <QuestionSetAttemptList attempts={attempts} origin={origin} />
         </section>
       )}
-      <QuestionSetEvidencePanel content={content} attempts={attempts} />
-      <details>
-        <summary className="qs-back">Browse questions</summary>
+      <QuestionSetEvidencePanel
+        content={content}
+        attempts={attempts}
+        onResume={(attempt) =>
+          navigate(`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`, {
+            state: origin,
+          })
+        }
+      />
+      <QuestionSetPanel title="Browse questions">
         <section className="qs-paper">
           {flattenQuestionSet(content).map((n) => (
             <section key={n.id} className="qs-source" style={{ marginLeft: n.depth * 12 }}>
@@ -135,11 +137,11 @@ export function QuestionSetOverview() {
                   {nodeMarks(n.node)} {nodeMarks(n.node) === 1 ? 'mark' : 'marks'}
                 </span>
               </div>
-              <MarkdownView source={n.node.prompt} />
+              <MarkdownView enlargeImages source={n.node.prompt} />
             </section>
           ))}
         </section>
-      </details>
+      </QuestionSetPanel>
     </div>
   );
 }

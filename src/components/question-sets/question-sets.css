@@ -1,10 +1,11 @@
+@import './question-set-controls.css';
+
 .qs-library {
   color: hsl(var(--ink));
 }
-/* The library uses the shared course frame; the editor and overview keep their own width. */
-.qs-editor,
+/* The library uses the shared course frame; the overview keeps its reading width. */
 .qs-overview {
-  max-width: 1050px;
+  max-width: 768px;
   margin: auto;
   padding: 32px 40px 110px;
   color: hsl(var(--ink));
@@ -30,7 +31,7 @@
   margin: 24px 0;
 }
 .qs-search input,
-.qs-field input,
+.qs-field input:not([type='checkbox']):not([type='radio']),
 .qs-field select,
 .qs-field textarea {
   display: block;
@@ -46,7 +47,7 @@
 }
 .qs-set-list {
   border: 1px solid hsl(var(--line));
-  border-radius: 14px;
+  border-radius: 16px;
   background: hsl(var(--surface-raised));
   overflow: hidden;
 }
@@ -62,7 +63,7 @@
   border: 0;
 }
 .qs-set-row:hover {
-  background: hsl(var(--ink) / 0.025);
+  background: hsl(var(--accent-soft));
 }
 .qs-set-row h2 {
   font-size: 21px;
@@ -162,10 +163,11 @@
 .qs-paper {
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--line));
-  border-radius: 4px;
-  max-width: 800px;
+  border-radius: 16px;
+  width: 100%;
+  min-width: 0;
   margin: auto;
-  padding: 34px 42px;
+  padding: 28px;
   box-shadow: 0 3px 12px #00000003;
 }
 .qs-part-bar {
@@ -204,7 +206,7 @@
   padding: 22px;
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--line));
-  border-radius: 12px;
+  border-radius: 16px;
   margin: 18px 0;
 }
 .qs-settings summary {
@@ -219,7 +221,15 @@
   margin: 12px 0;
   min-height: 32px;
 }
-.qs-check input {
+.qs-check input[type='checkbox'],
+.qs-option input[type='checkbox'],
+.qs-option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  flex: 0 0 18px;
+  padding: 0;
+  margin: 0;
   accent-color: hsl(var(--accent));
 }
 .qs-source {
@@ -244,7 +254,7 @@
 .qs-outline {
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--line));
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 14px;
   margin: 12px 0;
 }
@@ -323,8 +333,9 @@
 .qs-image-form {
   margin: 20px 0;
   padding: 16px;
-  border: 1px dashed hsl(var(--line));
+  border: 0;
   border-radius: 8px;
+  background: hsl(var(--surface));
 }
 .qs-image-form summary {
   font-size: 12px;
@@ -411,7 +422,7 @@
   display: flex;
   align-items: center;
   gap: 18px;
-  margin-top: 18px;
+  margin-top: 0;
 }
 .qs-image-thumb {
   width: 96px;
@@ -433,5 +444,90 @@
   .qs-image-choice {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+.qs-option {
+  position: relative;
+}
+.qs-option-target {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+.qs-option > input,
+.qs-option-content {
+  position: relative;
+}
+.qs-option-content {
+  pointer-events: none;
+}
+.qs-option-content button,
+.qs-option-content a {
+  pointer-events: auto;
+}
+
+.qs-library .qs-set-list {
+  overflow: visible;
+}
+.qs-library-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid hsl(var(--line));
+}
+.qs-library-row:last-child {
+  border-bottom: 0;
+}
+.qs-library-row > .qs-set-row {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+}
+.qs-library-row h2 {
+  overflow-wrap: anywhere;
+}
+.qs-library-options {
+  position: relative;
+  margin-right: 14px;
+}
+.qs-library-options > summary {
+  cursor: pointer;
+  padding: 12px 8px;
+  font-size: 12px;
+  color: hsl(var(--ink-soft));
+}
+.qs-library-options-panel {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  width: min(340px, calc(100vw - 64px));
+  padding: 14px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 10px;
+  background: hsl(var(--surface-raised));
+  box-shadow: 0 8px 24px hsl(var(--ink) / 0.08);
+}
+.qs-library-options-panel > a {
+  display: block;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+.qs-library-options-panel > div {
+  flex-wrap: wrap;
+}
+.qs-library-options-panel > div > span {
+  flex-basis: 100%;
+  margin-bottom: 8px;
+}
+
+.qs-editor {
+  margin: auto;
+  padding: 32px 40px 110px;
+  color: hsl(var(--ink));
+}
+@media (max-width: 700px) {
+  .qs-editor {
+    padding: 20px 16px 100px;
   }
 }

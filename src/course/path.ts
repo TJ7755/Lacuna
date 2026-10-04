@@ -16,6 +16,7 @@ import type {
   LessonCompletion,
   PracticeMilestone,
   PracticeNode,
+  QuestionSetPracticeNode,
 } from '../db/types';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { MS_PER_DAY } from '../fsrs/params';
@@ -35,6 +36,7 @@ export const KNOWN_NODE_TYPES = [
   'checkpoint',
   'practice-auto',
   'practice-manual',
+  'practice-question-set',
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -93,8 +95,18 @@ export interface PracticePathNode {
   milestone?: PracticeMilestone;
 }
 
+/** Optional authored Question Set activity, anchored to one exact Lesson. */
+export interface QuestionSetPathNode {
+  id: string;
+  nodeType: 'practice-question-set';
+  practiceNode: QuestionSetPracticeNode;
+  questionSetId: string;
+  afterLessonId: string;
+  nodeKey: string;
+}
+
 /** A discriminated union of every path-node view model this build defines. */
-export type PathNode = LessonPathNode | CheckpointPathNode | PracticePathNode;
+export type PathNode = LessonPathNode | CheckpointPathNode | PracticePathNode | QuestionSetPathNode;
 
 // ---------------------------------------------------------------------------
 // 1. lessonEffectiveReleaseDates
@@ -405,7 +417,7 @@ export function buildPath(
   interface Placement {
     /** Insert the node immediately after lessonNodes[afterIndex] (-1 = before all lessons). */
     afterIndex: number;
-    node: CheckpointPathNode | PracticePathNode;
+    node: CheckpointPathNode | PracticePathNode | QuestionSetPathNode;
   }
 
   const checkpointPlacements: Placement[] = assessments
@@ -444,6 +456,26 @@ export function buildPath(
           milestone: progress.practiceMilestones.find((milestone) => milestone.nodeKey === nodeKey),
         },
       };
+    });
+
+  const questionSetPlacements: Placement[] = practiceNodes
+    .filter((node): node is QuestionSetPracticeNode =>
+      node.type === 'question-set' && !!node.questionSetId && !!node.afterLessonId)
+    .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id))
+    .flatMap((node): Placement[] => {
+      const afterIndex = sorted.findIndex((lesson) => lesson.id === node.afterLessonId);
+      if (afterIndex < 0 || node.courseId !== course.id) return [];
+      return [{
+        afterIndex,
+        node: {
+          id: node.id,
+          nodeType: 'practice-question-set',
+          practiceNode: node,
+          questionSetId: node.questionSetId,
+          afterLessonId: node.afterLessonId,
+          nodeKey: node.id,
+        },
+      }];
     });
 
   // Auto practice slots (addendum 2 §H): walk the lesson list in path order,
@@ -508,7 +540,9 @@ export function buildPath(
   // Sort placements so we can weave them in a single forward pass. Checkpoints,
   // manual, then auto placements are pushed in that order for a stable tie-break
   // when multiple nodes share a slot (Array.prototype.sort is stable).
-  const placements: Placement[] = [...checkpointPlacements, ...manualPlacements, ...autoPlacements];
+  const placements: Placement[] = [
+    ...checkpointPlacements, ...manualPlacements, ...questionSetPlacements, ...autoPlacements,
+  ];
   placements.sort((a, b) => a.afterIndex - b.afterIndex);
 
   // Weave lesson, checkpoint and practice nodes together.

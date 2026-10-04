@@ -60,8 +60,9 @@ import {
   assertQuestionSetReferences,
   mergeQuestionSetRecords,
 } from '../questions/questionSetMerge';
+import { assertQuestionSetPracticeNodeReferences } from './questionSetPracticeNode';
 
-export const BACKUP_VERSION = 13;
+export const BACKUP_VERSION = 14;
 export const MAX_BACKUP_FILE_BYTES = 200 * 1024 * 1024;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
@@ -151,7 +152,7 @@ export async function exportDatabase(): Promise<BackupFile> {
   ).forEach((hash) => referencedHashes.add(hash));
   const assets = await assetsForBackup([...referencedHashes]);
   return {
-    app: 'lacuna-v13',
+    app: 'lacuna-v14',
     version: BACKUP_VERSION,
     exportedAt: Date.now(),
     cards: projectedCards,
@@ -378,6 +379,13 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     backup.lessons ?? [],
     courseAssessments,
     incomingQuestions.concepts,
+  );
+  assertQuestionSetPracticeNodeReferences(
+    backup.practiceNodes ?? [],
+    courses,
+    backup.lessons ?? [],
+    incomingQuestionSets,
+    backup.practiceMilestones ?? [],
   );
   const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
     backup.reviewHistory ?? [],

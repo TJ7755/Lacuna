@@ -2,6 +2,47 @@ import { describe, expect, it } from 'vitest';
 import { questionSetReturn } from './questionSetNavigation';
 
 describe('questionSetReturn', () => {
+  it('accepts the same-course path root with an optional query only', () => {
+    const origin = { questionSetReturnLabel: 'Back to path' };
+    expect(questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-1' }, 'course-1')).toEqual({
+      ...origin,
+      questionSetReturnTo: '/course/course-1',
+    });
+    expect(
+      questionSetReturn(
+        { ...origin, questionSetReturnTo: '/course/course-1?tab=questions' },
+        'course-1',
+      ),
+    ).toEqual({
+      ...origin,
+      questionSetReturnTo: '/course/course-1?tab=questions',
+    });
+    expect(
+      questionSetReturn(
+        { ...origin, questionSetReturnTo: '/course/course-1/lesson/lesson-1' },
+        'course-1',
+      ),
+    ).toBeUndefined();
+    expect(
+      questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-2' }, 'course-1'),
+    ).toBeUndefined();
+  });
+
+  it('accepts Questions library origins only at the same-course library route', () => {
+    const origin = { questionSetReturnLabel: 'Back to Questions' };
+    expect(questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-1/questions' }, 'course-1')).toEqual({
+      ...origin,
+      questionSetReturnTo: '/course/course-1/questions',
+    });
+    expect(questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-1/questions?search=kinetics' }, 'course-1')).toEqual({
+      ...origin,
+      questionSetReturnTo: '/course/course-1/questions?search=kinetics',
+    });
+    expect(questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-1/questions/other' }, 'course-1')).toBeUndefined();
+    expect(questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-2/questions' }, 'course-1')).toBeUndefined();
+    expect(questionSetReturn({ ...origin, questionSetReturnTo: '/course/course-1/cards' }, 'course-1')).toBeUndefined();
+  });
+
   it('accepts same-course lesson, exam and card origins', () => {
     expect(
       questionSetReturn(

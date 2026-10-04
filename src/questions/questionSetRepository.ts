@@ -1,7 +1,14 @@
 import { clearTombstone, recordTombstone } from '../db/mutationStamp';
 import { scheduleAssetGc } from '../db/assets';
 import { db, makeId } from '../db/schema';
+import type { Transaction } from 'dexie';
+import { canEditLessons } from '../course/lessonViewMode';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
+import {
+  deleteQuestionSetDraft,
+  loadQuestionSetDraft,
+  QuestionSetDraftConflictError,
+} from './questionSetDrafts';
 import { validateQuestionSet, type QuestionAnswer, type QuestionSet } from './questionSets';
 
 export class QuestionSetRevisionConflictError extends Error {
@@ -242,14 +249,82 @@ export async function updateQuestionSet(
 }
 
 export async function deleteQuestionSet(id: string, now = Date.now()): Promise<void> {
-  const deleted = await db.transaction('rw', [db.questionSets, db.tombstones], async (tx) => {
+  const deleted = await db.transaction('rw', [db.questionSets, db.practiceNodes, db.practiceMilestones, db.tombstones], async (tx) => {
     const existing = await db.questionSets.get(id);
     if (!existing) return false;
+    await deleteQuestionSetPathActivities(existing.courseId, id, tx, now);
     await db.questionSets.delete(id);
     await recordTombstone(tx, 'questionSets', id, Math.max(now, existing.updatedAt + 1));
     return true;
   });
   if (deleted) scheduleAssetGc();
+}
+
+async function deleteQuestionSetPathActivities(
+  courseId: string,
+  setId: string,
+  tx: Transaction,
+  now: number,
+): Promise<void> {
+  const nodes = (await db.practiceNodes.where('courseId').equals(courseId).toArray()).filter(
+    (node) => node.type === 'question-set' && node.questionSetId === setId,
+  );
+  for (const node of nodes) {
+    await db.practiceNodes.delete(node.id);
+    await recordTombstone(tx, 'practiceNodes', node.id, Math.max(now, node.updatedAt + 1));
+    if (await db.practiceMilestones.get(node.id)) {
+      await db.practiceMilestones.delete(node.id);
+      await recordTombstone(tx, 'practiceMilestones', node.id, now);
+    }
+  }
+}
+
+/** Remove exactly the authored revisions shown to the user, including a local draft. */
+export async function removeAuthoredQuestionSet(
+  courseId: string,
+  setId: string,
+  options: {
+    expectedContentRevisionId: string | null;
+    expectedDraftRevisionId: string | null;
+    now?: number;
+  },
+): Promise<void> {
+  const removed = await db.transaction(
+    'rw',
+    [db.courses, db.questionSets, db.practiceNodes, db.practiceMilestones, db.appState, db.tombstones],
+    async (tx) => {
+      const course = await db.courses.get(courseId);
+      if (!course || course.archived || !canEditLessons(course)) {
+        throw new Error('This Course is read-only.');
+      }
+      const record = await db.questionSets.get(setId);
+      if (record && record.courseId !== courseId) throw new Error('Question Set Course mismatch.');
+      if ((record?.contentRevisionId ?? null) !== options.expectedContentRevisionId) {
+        throw new QuestionSetRevisionConflictError();
+      }
+      const draft = await loadQuestionSetDraft(courseId, setId);
+      if ((draft?.draftRevisionId ?? null) !== options.expectedDraftRevisionId) {
+        throw new QuestionSetDraftConflictError();
+      }
+      if (draft) {
+        await deleteQuestionSetDraft(courseId, setId, {
+          expectedDraftRevisionId: draft.draftRevisionId,
+        });
+      }
+      if (record) {
+        await deleteQuestionSetPathActivities(courseId, setId, tx, options.now ?? Date.now());
+        await db.questionSets.delete(setId);
+        await recordTombstone(
+          tx,
+          'questionSets',
+          setId,
+          Math.max(options.now ?? Date.now(), record.updatedAt + 1),
+        );
+      }
+      return Boolean(record || draft);
+    },
+  );
+  if (removed) scheduleAssetGc();
 }
 
 async function removeReferenceFromQuestionSets(
