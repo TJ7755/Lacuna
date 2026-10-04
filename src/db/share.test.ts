@@ -14,6 +14,7 @@ import {
   updateCourse,
 } from './repository';
 import { createOcclusion } from './occlusionRepository';
+import { publishCourse } from './courseRepository';
 import {
   buildCourseShareCode,
   buildCourseShareCodeQR,
@@ -53,6 +54,7 @@ async function reset() {
     db.questions.clear(),
     db.questionConcepts.clear(),
     db.questionAttempts.clear(),
+    db.questionSets.clear(),
     db.tombstones.clear(),
   ]);
 }
@@ -128,7 +130,7 @@ describe('share codes', () => {
     const recompressed = 'LAC1' + b64;
 
     const decoded = await decodeShare(recompressed);
-    expect(decoded.v).toBe(3);
+    expect(decoded.v).toBe(4);
     if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
@@ -373,7 +375,7 @@ describe('course share codes (v2)', () => {
 
     const code = await buildCourseShareCode(course.id);
     const payload = await decodeShare(code);
-    expect(payload.v).toBe(3);
+    expect(payload.v).toBe(4);
     if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.course.n).toBe('Biology');
@@ -862,6 +864,48 @@ describe('course share codes (v2)', () => {
     expect(payload.bankCards?.[0].id).toBe(bankCard.id);
   });
 
+  it('refuses to publish an assessment-linked Question Set until assessment lineage exists', async () => {
+    const course = await createCourse('Published questions');
+    const assessment = (await db.courseAssessments.where('courseId').equals(course.id).first())!;
+    await db.questionSets.add({
+      id: 'published-set',
+      courseId: course.id,
+      title: 'Final paper',
+      lessonIds: [],
+      assessmentIds: [assessment.id],
+      questions: [
+        {
+          id: 'published-question',
+          prompt: 'Explain.',
+          answer: {
+            maxMarks: 1,
+            response: { kind: 'written' },
+            prerequisiteConceptIds: [],
+            allocations: [
+              {
+                id: 'published-allocation',
+                criterion: 'Explains',
+                maxMarks: 1,
+                dimension: 'knowledge',
+                targetConceptIds: [],
+              },
+            ],
+          },
+          parts: [],
+        },
+      ],
+      contentVersion: 1,
+      contentRevisionId: 'published-revision',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await publishCourse(course.id);
+
+    await expect(buildCourseShareCode(course.id)).rejects.toThrow(
+      'cannot yet share Question Sets linked to assessments',
+    );
+  });
+
   it('decodes li/rv and originating ids, and tolerates their absence (schema validation)', async () => {
     const publishedPayload = {
       v: 2 as const,
@@ -939,11 +983,44 @@ describe('course share codes (v2)', () => {
       },
       targetConceptId: target.id,
     });
+    await db.questionSets.add({
+      id: 'set-origin',
+      courseId: course.id,
+      title: 'Equation paper',
+      lessonIds: [lesson.id],
+      assessmentIds: [],
+      questions: [
+        {
+          id: 'set-question-origin',
+          prompt: 'Solve the equation.',
+          answer: {
+            maxMarks: 1,
+            response: { kind: 'written' },
+            prerequisiteConceptIds: [prerequisite.id],
+            allocations: [
+              {
+                id: 'allocation-origin',
+                criterion: 'Solves correctly',
+                maxMarks: 1,
+                dimension: 'knowledge',
+                targetConceptIds: [target.id],
+              },
+            ],
+          },
+          parts: [],
+        },
+      ],
+      contentVersion: 1,
+      contentRevisionId: 'set-revision-origin',
+      createdAt: 1,
+      updatedAt: 1,
+    });
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    expect(payload.v).toBe(3);
-    if (payload.v !== 3) throw new Error('expected a v3 course payload');
+    expect(payload.v).toBe(4);
+    if (payload.v !== 4) throw new Error('expected a v4 course payload');
     expect(payload.questions).toHaveLength(2);
+    expect(payload.questionSets).toHaveLength(1);
     expect(payload.concepts.map((concept) => concept.id)).toEqual(
       expect.arrayContaining([target.id, prerequisite.id]),
     );
@@ -965,6 +1042,13 @@ describe('course share codes (v2)', () => {
     expect(importedSet?.prerequisiteConceptIds).toHaveLength(1);
     const importedCards = await db.cards.toArray();
     expect(new Set(importedCards.map((card) => card.conceptId)).size).toBe(1);
+    const [importedQuestionSet] = await db.questionSets.toArray();
+    expect(importedQuestionSet.id).not.toBe('set-origin');
+    expect(importedQuestionSet.lessonIds).toEqual([expect.any(String)]);
+    expect(importedQuestionSet.lessonIds[0]).not.toBe(lesson.id);
+    expect(importedQuestionSet.questions[0].answer?.allocations[0].targetConceptIds).toEqual([
+      importedSet!.targetConceptIds[0],
+    ]);
   });
 
   it('preserves an unknown generated family safely as suspended content', async () => {
@@ -984,7 +1068,7 @@ describe('course share codes (v2)', () => {
       targetConceptId: target.id,
     });
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 3) throw new Error('expected a v3 course payload');
+    if (payload.v !== 4) throw new Error('expected a v4 course payload');
     const generated = payload.questions.find((question) => question.k === 1)!;
     generated.gk = 'future-family';
     generated.gv = 99;

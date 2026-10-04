@@ -46,6 +46,7 @@ describe('backup record validation', () => {
     expect(validateBackup(current)).toBe(true);
     const older = {
       ...current,
+      app: 'lacuna',
       version: 9,
       concepts: undefined,
       questions: undefined,

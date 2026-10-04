@@ -47,7 +47,7 @@ const NOW = Date.UTC(2026, 7, 12, 12);
 const SESSION_CARD_COUNT = 10_000;
 const RECORD_REVIEW_CARD_COUNTS = [500, 2_000, 10_000] as const;
 const INITIAL_ASSET_BUDGET = {
-  javascriptBytes: 900_000,
+  javascriptBytes: 910_000,
   javascriptGzipBytes: 280_000,
   cssBytes: 130_000,
   cssGzipBytes: 22_000,

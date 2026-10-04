@@ -53,8 +53,13 @@ import { mergeRevisionPlans } from '../course/revisionPlan';
 import { adaptLegacyBackup } from './legacyBackupAdapter';
 import { normaliseQuestionBackup } from '../questions/backup';
 import { mergeQuestionCollections } from '../questions/merge';
+import { parseQuestionSetRecord } from '../questions/questionSetCodec';
+import {
+  assertQuestionSetReferences,
+  mergeQuestionSetRecords,
+} from '../questions/questionSetMerge';
 
-export const BACKUP_VERSION = 11;
+export const BACKUP_VERSION = 12;
 export const MAX_BACKUP_FILE_BYTES = 200 * 1024 * 1024;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
@@ -92,6 +97,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     questions,
     questionConcepts,
     questionAttempts,
+    questionSets,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -119,6 +125,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.questions.toArray(),
     db.questionConcepts.toArray(),
     db.questionAttempts.toArray(),
+    db.questionSets.toArray(),
     db.lineageIdMappings.toArray(),
     db.pendingMergeReviews.toArray(),
     db.agentMemories.toArray(),
@@ -132,12 +139,12 @@ export async function exportDatabase(): Promise<BackupFile> {
   // cards carry a plain-text fallback, not a Markdown embed — so it must be gathered
   // explicitly or a backup would restore occlusions with no image (mirrors assets.ts's GC).
   for (const occlusion of occlusions) referencedHashes.add(occlusion.assetHash);
-  referencedAssetHashesInValues(questions, questionAttempts).forEach((hash) =>
+  referencedAssetHashesInValues(questions, questionAttempts, questionSets).forEach((hash) =>
     referencedHashes.add(hash),
   );
   const assets = await assetsForBackup([...referencedHashes]);
   return {
-    app: 'lacuna',
+    app: 'lacuna-v12',
     version: BACKUP_VERSION,
     exportedAt: Date.now(),
     cards: projectedCards,
@@ -165,6 +172,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     questions,
     questionConcepts,
     questionAttempts,
+    questionSets,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories,
@@ -225,6 +233,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     questionConcepts: backup.questionConcepts ?? [],
     questionAttempts: backup.questionAttempts ?? [],
   };
+  const incomingQuestionSets = (backup.questionSets ?? []).map(parseQuestionSetRecord);
 
   // Pre-process markdown assets outside the IndexedDB transaction so long-running
   // canvas compressions cannot auto-abort the import transaction.
@@ -352,6 +361,13 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     courses,
     [],
   );
+  assertQuestionSetReferences(
+    incomingQuestionSets,
+    courses,
+    backup.lessons ?? [],
+    courseAssessments,
+    incomingQuestions.concepts,
+  );
   const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
     backup.reviewHistory ?? [],
     cards,
@@ -378,6 +394,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         ? entry.courseId
         : undefined),
   }));
+  const restoredQuestionSetIds = new Set<string>();
   await db.transaction(
     'rw',
     [
@@ -407,6 +424,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.questions,
       db.questionConcepts,
       db.questionAttempts,
+      db.questionSets,
       db.lineageIdMappings,
       db.pendingMergeReviews,
       db.agentMemories,
@@ -442,6 +460,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.questions.clear(),
           db.questionConcepts.clear(),
           db.questionAttempts.clear(),
+          db.questionSets.clear(),
           db.lineageIdMappings.clear(),
           db.pendingMergeReviews.clear(),
           db.agentMemories.clear(),
@@ -517,6 +536,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         if (incomingQuestions.questionAttempts.length > 0) {
           await db.questionAttempts.bulkAdd(incomingQuestions.questionAttempts);
         }
+        if (incomingQuestionSets.length > 0) {
+          await db.questionSets.bulkAdd(incomingQuestionSets);
+        }
         if (backup.lineageIdMappings && backup.lineageIdMappings.length > 0) {
           await db.lineageIdMappings.bulkAdd(backup.lineageIdMappings);
         }
@@ -569,6 +591,35 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       }
       if (mergedQuestionState.questionAttempts.length > 0) {
         await db.questionAttempts.bulkPut(mergedQuestionState.questionAttempts);
+      }
+      const deletedAtBySet = new Map<string, number>();
+      for (const row of [...(await db.tombstones.toArray()), ...(backup.tombstones ?? [])]) {
+        if (row.table !== 'questionSets') continue;
+        deletedAtBySet.set(
+          row.recordId,
+          Math.max(deletedAtBySet.get(row.recordId) ?? -Infinity, row.deletedAt),
+        );
+      }
+      const mergedQuestionSets = mergeQuestionSetRecords(
+        await db.questionSets.toArray(),
+        incomingQuestionSets,
+        // Recovery merge deliberately restores rows and does not apply deletion receipts.
+        // Peer merge applies them in mergeSnapshots instead.
+        [],
+      ).map((record) => {
+        const deletedAt = deletedAtBySet.get(record.id);
+        if (deletedAt === undefined) return record;
+        if (deletedAt >= Number.MAX_SAFE_INTEGER) {
+          throw new Error('A Question Set deletion timestamp cannot be restored safely.');
+        }
+        restoredQuestionSetIds.add(record.id);
+        return { ...record, updatedAt: Math.max(record.updatedAt, deletedAt + 1, Date.now()) };
+      });
+      if (mergedQuestionSets.length > 0) await db.questionSets.bulkPut(mergedQuestionSets);
+      if (restoredQuestionSetIds.size > 0) {
+        await db.tombstones.bulkDelete(
+          [...restoredQuestionSetIds].map((id) => ['questionSets', id]),
+        );
       }
 
       if (backup.lessons && backup.lessons.length > 0) {
@@ -880,9 +931,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       ]);
       const existingKeys = new Set(
         [...existingEventRows, ...existingLegacyRows].map((entry) =>
-          entry.eventId
-            ? `event:${entry.eventId}`
-            : `legacy:${entry.timestamp}:${entry.deckId}`,
+          entry.eventId ? `event:${entry.eventId}` : `legacy:${entry.timestamp}:${entry.deckId}`,
         ),
       );
       const toAdd = sessionHistory.flatMap((entry) => {
@@ -905,6 +954,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         );
         const merged: Tombstone[] = [];
         for (const incoming of backup.tombstones) {
+          if (incoming.table === 'questionSets' && restoredQuestionSetIds.has(incoming.recordId)) {
+            continue;
+          }
           const key = `${incoming.table}:${incoming.recordId}`;
           const existing = byKey.get(key);
           if (!existing || incoming.deletedAt > existing.deletedAt) {

@@ -49,6 +49,57 @@ describe('mcp lineage tools', () => {
   });
 
   describe('lacuna.diff_lineage_update', () => {
+    it('rejects authored Question Sets until lineage preview supports them', async () => {
+      const code = await encodeShareDirect(
+        {
+          ...coursePayload(),
+          v: 4,
+          concepts: [],
+          questions: [],
+          questionSets: [
+            {
+              id: 'set-1',
+              courseId: 'source-course',
+              title: 'Paper',
+              lessonIds: [],
+              assessmentIds: [],
+              questions: [
+                {
+                  id: 'question-1',
+                  prompt: 'Answer.',
+                  parts: [],
+                  answer: {
+                    maxMarks: 1,
+                    response: { kind: 'written' },
+                    allocations: [
+                      {
+                        id: 'allocation-1',
+                        criterion: 'Answer.',
+                        maxMarks: 1,
+                        dimension: 'knowledge',
+                        targetConceptIds: [],
+                      },
+                    ],
+                    prerequisiteConceptIds: [],
+                  },
+                },
+              ],
+              contentVersion: 1,
+              contentRevisionId: 'revision-1',
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          ],
+        } as SharePayload,
+      );
+      const result = await validateAndRun(tools.diffLineageUpdate, { courseId, shareCode: code }, ctx);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe('validation');
+        expect(result.error.message).toMatch(/Question Sets/);
+      }
+    });
+
     it('classifies a teacher update without writing anything', async () => {
       const code = await encodeShareDirect(coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] }));
       const res = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
@@ -108,6 +159,18 @@ describe('mcp lineage tools', () => {
   });
 
   describe('lacuna.apply_lineage_update', () => {
+    it('rejects a lineage with locally tracked Question Sets before applying it', async () => {
+      await db.lineageIdMappings.update('lineage-1', { questionSetIds: ['set-1'] });
+      const code = await encodeShareDirect(coursePayload({ rv: 2, lessons: [lessonOne()] }));
+      const result = await validateAndRun(tools.applyLineageUpdate, { courseId, shareCode: code }, ctx);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe('validation');
+        expect(result.error.message).toMatch(/Question Sets/);
+      }
+      expect((await db.courses.get(courseId))?.distributedCopy?.revision).toBe(1);
+    });
+
     it('is declared write-tier', () => {
       expect(tools.applyLineageUpdate.requiredScope).toBe('write');
     });
