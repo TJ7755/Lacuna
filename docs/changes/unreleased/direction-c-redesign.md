@@ -66,3 +66,31 @@
     - Today fits narrow screens.
     - Study has a round Exit, "n of N" over a springing progress bar, a round
       Undo and thumb-zone No/Yes buttons.
+- Redesign, "Direction C": fidelity pass against the boards.
+  - Sidebar:
+    - reads Today, Search (with its shortcut) and Progress;
+    - gives each course a ring glyph (days to the exam, forecast fill, today's
+      load as dots, infinity without a date);
+    - lists Archived after the courses, and moves Share, Settings and Help to
+      its foot;
+    - shrinks its rows to fit the window, tightening further on short windows
+      with a fine pointer, so it never scrolls.
+  - The keep-to-schedule forecast is computed once in the shared course data
+    and cached per course (`state/dashboardForecasts.ts`). Today, the sidebar,
+    the course header and the course bar therefore agree, and a review only
+    recomputes its own course.
+  - Course page:
+    - opens on the course name, one line of facts, Study with today's count,
+      and an animated Other ways menu;
+    - shows a numbered lesson list with states and progress bars beside
+      assessment date tiles;
+    - the course bar shows the course's status dot and name;
+    - the Analytics tab is gone, because it duplicated Progress; course
+      analytics opens from the forecast figure.
+  - Study header: Exit pill first, the course with "n of N" over the bar, Undo
+    at every width, and a round card-actions trigger.
+  - Settings lays out with the title above and the section rail on the left;
+    the shared rail uses the white pill.
+  - The shared `Menu` fills its trigger, turns its chevron and staggers its
+    items, and its items can carry a second line.
+  - Card rows lead with the front, with a quiet meta line beneath.
