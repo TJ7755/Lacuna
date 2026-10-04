@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { checkNumeric, parseExpression, verifyWorkingLines } from '../../items/verify';
 import type { CheckerDisputeReport, LineVerdict } from '../../db/types';
+import { highlightParameters } from '../../questions/bankSummary';
 import type { QuestionAttempt, QuestionPayload } from '../../questions/types';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { MathsAnswerInput } from '../items/MathsAnswerInput';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
+import { ResultMark, resultTone } from './ResultMark';
 
 export interface CheckedQuestionAnswer {
   submittedAnswer: string | string[];
@@ -26,9 +28,12 @@ interface CheckedDraft {
 export function QuestionResponsePanel({
   attempt,
   onSubmit,
+  onReroll,
 }: {
   attempt: QuestionAttempt;
   onSubmit: (answer: CheckedQuestionAnswer) => void;
+  /** Present only for generated families: swap this presentation for fresh numbers. */
+  onReroll?: () => void;
 }) {
   const [answer, setAnswer] = useState('');
   const [checked, setChecked] = useState<CheckedDraft | null>(null);
@@ -36,6 +41,10 @@ export function QuestionResponsePanel({
   const startedAt = useState(() => performance.now())[0];
   const parsed = useMemo(() => (answer.trim() ? parseExpression(answer) : null), [answer]);
   const studentLines = useMemo(() => answerLines(answer), [answer]);
+  const prompt = useMemo(
+    () => highlightParameters(attempt.renderedPrompt, attempt.parameters),
+    [attempt.parameters, attempt.renderedPrompt],
+  );
 
   const check = () => {
     const result = checkQuestionAnswer(attempt.resolvedPayload, answer, attempt.id);
@@ -69,13 +78,36 @@ export function QuestionResponsePanel({
     });
   };
 
+  const numeric = attempt.resolvedPayload.kind === 'numeric';
+  const canCheck = numeric ? Boolean(parsed?.ok) : studentLines.length > 0;
+
   return (
-    <section className="rounded-3xl border border-line bg-surface px-6 py-8 shadow-xl shadow-black/5 md:px-10 md:py-12">
-      <div className="mx-auto max-w-2xl text-center text-lg leading-relaxed text-ink md:text-xl">
-        <MarkdownView source={attempt.renderedPrompt} />
+    <section className="flex flex-col gap-6 rounded-[28px] bg-surface px-6 py-8 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-[52px] md:py-11">
+      {onReroll && (
+        <div className="flex justify-end">
+          <Button type="button" size="sm" onClick={onReroll} className="border border-line-strong">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5" />
+              <path d="M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5" />
+            </svg>
+            New numbers
+          </Button>
+        </div>
+      )}
+      <div className="max-w-[24em] font-display text-2xl font-semibold leading-snug tracking-tight text-ink md:text-[32px] [&_p]:my-0 [&_strong]:font-semibold [&_strong]:text-accent-ink">
+        <MarkdownView source={prompt} />
       </div>
       <form
-        className="mx-auto mt-9 max-w-2xl border-t border-line pt-7"
         onSubmit={(event) => {
           event.preventDefault();
           if (checked) submit();
@@ -97,12 +129,11 @@ export function QuestionResponsePanel({
                   })
                 }
               />
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
                 <Button
                   type="button"
                   variant="secondary"
                   size="lg"
-                  className="w-full"
                   onClick={() => {
                     setChecked(null);
                     setDisputedLines(new Set());
@@ -110,50 +141,52 @@ export function QuestionResponsePanel({
                 >
                   Edit answer
                 </Button>
-                <Button type="submit" variant="primary" size="lg" className="w-full">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="min-h-14 px-7 font-bold"
+                >
                   Show worked feedback
                 </Button>
               </div>
             </>
           ) : (
-            <>
-              {attempt.resolvedPayload.kind === 'numeric' ? (
-                <MathsAnswerInput
+            <div className="flex flex-col gap-4">
+              {!numeric && (
+                <textarea
                   value={answer}
-                  onChange={setAnswer}
-                  label="Your answer"
-                  placeholder="Enter your answer"
+                  onChange={(event) => setAnswer(event.target.value)}
+                  rows={6}
+                  aria-label="Your working"
+                  placeholder="Write one step per line"
                   autoFocus
+                  className="w-full resize-y rounded-[14px] border-[1.5px] border-line-strong bg-surface px-4 py-3.5 font-mono text-base leading-7 text-ink outline-none transition focus:border-ink"
                 />
-              ) : (
-                <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
-                    Your working
-                  </span>
-                  <textarea
-                    value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
-                    rows={8}
-                    placeholder="Write one step per line"
-                    autoFocus
-                    className="w-full resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-base leading-7 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  />
-                </label>
               )}
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                className="mt-6 w-full"
-                disabled={
-                  attempt.resolvedPayload.kind === 'numeric'
-                    ? !parsed?.ok
-                    : studentLines.length === 0
-                }
-              >
-                {attempt.resolvedPayload.kind === 'numeric' ? 'Check answer' : 'Check working'}
-              </Button>
-            </>
+              <div className="flex flex-wrap items-start gap-3">
+                {numeric && (
+                  <MathsAnswerInput
+                    value={answer}
+                    onChange={setAnswer}
+                    label="Your answer"
+                    placeholder="Enter your answer"
+                    autoFocus
+                    className="min-w-[14rem] flex-1"
+                  />
+                )}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  aria-label={numeric ? 'Check answer' : 'Check working'}
+                  className={`min-h-14 px-7 font-bold ${numeric ? 'mt-6' : 'ml-auto'}`}
+                  disabled={!canCheck}
+                >
+                  Check
+                </Button>
+              </div>
+            </div>
           )}
         </StepSwap>
       </form>
@@ -170,66 +203,80 @@ function CheckedResult({
   disputedLines: Set<number>;
   onToggleDispute: (line: number) => void;
 }) {
-  const rows = result.lineVerdicts ?? [
+  const rows: LineVerdict[] = result.lineVerdicts ?? [
     {
       studentLine: String(result.answer),
       matchedLineIndex: result.marksEarned ? 0 : null,
       marksEarned: result.marksEarned,
-    },
+    } as LineVerdict,
   ];
+  const undetermined = rows.some((row) => row.undetermined);
+  const tone = resultTone(result.marksEarned, result.marksAvailable, undetermined);
+  const title =
+    tone === 'right'
+      ? 'Right'
+      : tone === 'partial'
+        ? 'Partly right'
+        : tone === 'undetermined'
+          ? 'Not sure'
+          : 'Not quite';
   return (
-    <div aria-label="Checker result">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <p className="text-sm text-ink-soft">First submission</p>
-        <p className="font-mono text-sm tabular-nums text-ink">
+    <div
+      aria-label="Checker result"
+      className="flex flex-col gap-4 rounded-[18px] bg-ink/[0.04] px-5 py-[18px]"
+    >
+      <div role="status" className="flex items-center gap-3.5">
+        <ResultMark tone={tone} />
+        <p className="flex-1 font-bold text-ink">{title}</p>
+        <p className="text-sm tabular-nums text-ink-soft">
           {result.marksEarned} / {result.marksAvailable} marks
         </p>
       </div>
-      <div className="space-y-2">
+      <ul className="flex flex-col gap-2">
         {rows.map((verdict, index) => {
           const disputed = disputedLines.has(index);
           return (
-            <div
+            <li
               key={`${index}-${verdict.studentLine}`}
-              className="rounded-xl border border-line bg-surface-raised px-4 py-3"
+              className="flex items-start gap-3 rounded-xl bg-surface px-4 py-3"
             >
-              <div className="flex items-start gap-3">
-                <span
-                  className={
-                    verdict.undetermined
-                      ? 'text-ink-faint'
-                      : verdict.matchedLineIndex === null
-                        ? 'text-negative'
-                        : 'text-positive'
-                  }
-                >
-                  {verdict.undetermined ? '–' : verdict.marksEarned}
-                </span>
-                <span className="min-w-0 flex-1 break-words font-mono text-sm leading-6 text-ink">
-                  {verdict.studentLine}
-                  {verdict.undetermined && (
-                    <span className="mt-1 block font-sans text-xs text-ink-faint">
-                      The checker could not decide this line. Scheduling will be withheld.
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  aria-pressed={disputed}
-                  onClick={() => onToggleDispute(index)}
-                  className="shrink-0 text-xs text-ink-faint underline decoration-line-strong underline-offset-4 hover:text-ink"
-                >
-                  {disputed ? 'Issue reported' : 'Checker got this wrong'}
-                </button>
-              </div>
-            </div>
+              <span
+                className={`min-w-4 pt-0.5 font-semibold tabular-nums ${
+                  verdict.undetermined
+                    ? 'text-ink-faint'
+                    : verdict.matchedLineIndex === null
+                      ? 'text-negative'
+                      : 'text-positive'
+                }`}
+              >
+                {verdict.undetermined ? '–' : verdict.marksEarned}
+              </span>
+              <span className="min-w-0 flex-1 break-words pt-0.5 font-mono text-sm leading-6 text-ink">
+                {verdict.studentLine}
+                {verdict.undetermined && (
+                  <span className="mt-1 block font-sans text-xs text-ink-faint">
+                    The checker could not decide this line. Scheduling will be withheld.
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                aria-pressed={disputed}
+                aria-label={
+                  rows.length > 1 ? `Marked unfairly? ${verdict.studentLine}` : undefined
+                }
+                onClick={() => onToggleDispute(index)}
+                className="inline-flex min-h-11 shrink-0 items-center text-sm text-ink-soft underline decoration-line-strong underline-offset-4 hover:text-ink"
+              >
+                {disputed ? 'Reported' : 'Marked unfairly?'}
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
       {disputedLines.size > 0 && (
-        <p className="mt-3 text-sm leading-5 text-ink-soft">
-          This evidence will be kept, but the Question schedule will not change while the checker
-          result is disputed.
+        <p className="text-sm leading-5 text-ink-soft">
+          The Question schedule will not change while the checker result is disputed.
         </p>
       )}
     </div>
