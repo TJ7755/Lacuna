@@ -79,6 +79,12 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
+Pull requests that change only documentation skip the heavy CI jobs; the required checks still report
+as passing. A change is documentation-only when every path is under `docs/` or `.github/ISSUE_TEMPLATE/`,
+is `.github/PULL_REQUEST_TEMPLATE.md`, or is a Markdown file in the repository root. Markdown under
+`src/`, `tooling/` or `public/` is not, because code consumes it. Pushes to master always run everything.
+The rule lives in `scripts/ci-change-scope.mjs`.
+
 ## Behaviour and review policy
 
 Every intentional behaviour change has a red-to-green test: identify or add an assertion that fails
