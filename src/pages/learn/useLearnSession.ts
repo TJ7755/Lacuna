@@ -153,6 +153,8 @@ export interface UseLearnSessionParams {
   tagFilter: string | null;
   filterParams: CardFilter[];
   requestScopeLessonIds: string[] | undefined;
+  /** Fixed lesson prefix of a curricular node's milestone; undefined records no milestone. */
+  requestMilestoneLessonIds?: string[];
   practiceNodeKeyParam: string | null;
   requestAssessmentId: string | undefined;
   requestPlanId: string | undefined;
@@ -186,6 +188,7 @@ export function useLearnSession({
   tagFilter,
   filterParams,
   requestScopeLessonIds,
+  requestMilestoneLessonIds,
   practiceNodeKeyParam,
   requestAssessmentId,
   requestPlanId,
@@ -209,6 +212,7 @@ export function useLearnSession({
   // carries no courseId, so it is resolved from the loaded lesson (see resolvedCourseId).
   const requestScopeLessonIdsIdentity = requestScopeLessonIds?.join('\0');
   const filterParamsIdentity = filterParams.join('\0');
+  const requestMilestoneLessonIdsKey = requestMilestoneLessonIds?.join('\0');
   const sessionScope = useMemo(
     () =>
       resolveLearnSessionScope({
@@ -1206,13 +1210,27 @@ export function useLearnSession({
         reviewKindRef.current = 'course';
         if (!standaloneSimple) ratchetCourseIdRef.current = course.id;
         setUnitDisplayName(selectedAssessment?.name ?? course.name);
-        if (practiceNodeKeyParam) {
-          const scopeVersion = practiceScopeVersion(fullScope);
+        // The milestone is measured against the node's fixed lesson prefix, exactly as
+        // the study-flow snapshot checks it; the wider live pool above is only what is
+        // studied. Without a prefix there is no safe fingerprint, so nothing is recorded.
+        if (practiceNodeKeyParam && requestMilestoneLessonIds) {
+          const milestoneScope = practiceCardScope(
+            allCards,
+            courseLinks,
+            courseExposures,
+            {
+              reachedLessonIds: new Set(requestMilestoneLessonIds),
+              practiceNode,
+              requireExposure: course.learnFirst !== false,
+            },
+            Date.now(),
+            course.leechThreshold,
+          );
           practiceSessionRef.current = {
             nodeKey: practiceNodeKeyParam,
             courseId,
-            scopeVersion,
-            scopeCards: fullScope,
+            scopeVersion: practiceScopeVersion(milestoneScope),
+            scopeCards: milestoneScope,
             course,
             examDateContext,
           };
@@ -1436,6 +1454,7 @@ export function useLearnSession({
     standaloneSimple,
     practiceNodeKeyParam,
     requestScopeLessonIdsKey,
+    requestMilestoneLessonIdsKey,
     requestAssessmentId,
     requestPlanId,
     requestWindowId,

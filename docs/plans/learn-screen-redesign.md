@@ -178,7 +178,7 @@ this plan starts.
 
 ## Constraints
 
-- Follow `docs/frontend-design.md` (available to Claude Code as the frontend-design skill).
+- Follow `docs/spec/visual-design.md` and `docs/spec/accessibility.md`.
   UI must look native and intentional, never bolted on.
 - British English. No emojis. No TODOs, placeholders or stubs.
 - Preserve keyboard parity and existing accessible names. The 16 July browser QA audit fixed

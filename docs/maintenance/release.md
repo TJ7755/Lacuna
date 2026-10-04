@@ -13,8 +13,12 @@ existing `GH_TOKEN`). Set `GH_PATH` to the executable path when `gh` is not on P
 the maintainer's existing credentials; the helper does not store credentials or change remotes.
 
 1. On a release preparation branch, run
-   `npm version 0.2.13 --no-git-tag-version --ignore-scripts --package-lock=false`, update
-   `docs/CHANGES.md` with the release notes, and merge the PR through normal required checks.
+   `npm version 0.2.13 --no-git-tag-version --ignore-scripts --package-lock=false`, run
+   `bun run changelog:release 0.2.13 "short release title"` to fold the fragments in
+   `docs/changes/unreleased/`, and any bullets still under "Unreleased", into a new
+   `## 0.2.13 beta — short release title` section of `docs/CHANGES.md` (it bumps the title
+   version, leaves "Unreleased" empty and deletes the fragments; the title is optional), and
+   merge the PR through normal required checks.
    Substitute the intended version throughout. `package.json` is the only version to edit;
    release configuration tests no longer duplicate it.
 2. Run `bun run release draft 0.2.13`. This resolves the canonical repository's default branch,

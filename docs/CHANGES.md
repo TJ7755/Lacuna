@@ -2,74 +2,87 @@
 
 ## Unreleased
 
-- Redesign, "Direction C" (core loop). The app now uses a stone paper ground,
-  white surfaces and navy ink, with Bricolage Grotesque for display type and
-  Atkinson Hyperlegible Next for reading, both bundled for offline use (OFL).
-  Buttons are pills, and the sidebar sits on a darker `--chrome` ground with a
-  white active pill that glides between items. Amber stays the default accent,
-  and the landing page keeps its own palette.
-  - The dashboard is now "Today":
-    - today's card and minute totals;
-    - an exam-day forecast chart (`fsrs/courseForecast.ts`), with each course's
-      outlook to its exam on a proportional date axis against the target;
-    - the streak, this week's reviews and the days studied this week;
-    - the courses ordered by urgency, each with Start and an archive menu.
-  - The outlook is the exam-day forecast as it would stand on each day if the
-    schedule is kept, simulating Good reviews whenever recall falls to the target.
-    It never falls, so the chart has no sawtooth.
-  - The week figures come from the compact review-activity timestamps, because
-    the dashboard must not read full review records.
-  - The course card grid, the review heatmap and the seven-day study-signals
-    strip are no longer on the dashboard.
-  - Study: the card keeps one quiet surface in every mode, with no outline or
-    tinted halo. Every fifth correct answer in a row pops a "5 in a row" badge
-    with a confetti burst.
-  - The session report counts its figures up and bursts for a good session.
-  - Course sections stick to the top as a frosted bar with pill tabs.
-  - Every animation follows the motion-speed setting and is skipped when motion
-    is off.
-- Redesign, "Direction C": the rest of the app.
-  - Settings and Your data:
-    - borderless cards that rise in, and sliding pill segmented controls;
-    - round accent swatches;
-    - springing switches (`Toggle` is now the single pill-switch implementation);
-    - a backup hero with a busy state and a tick, and restore points with a
-      confirmation modal;
-    - another device as one slim row that opens pairing in a modal.
-    - Back up now no longer reports a save that the five-minute throttle
-      skipped.
-  - Lesson and card editor:
-    - the lesson opens on its title, one meta line and a sliding Study/Edit pill,
-      with the note as a reading card beside its cards;
-    - the editor pairs the form with a live flip preview and pops a tick on save;
-    - `MarkdownEditor` gains `hidePreview`, so the editor shows one preview, not
-      two.
-  - Cards and course settings:
-    - Cards: counted filter chips and a floating bulk-action bar.
-    - Course settings: one readable column with a big target-recall figure and
-      presets.
-  - Questions:
-    - The bank is a card grid with the last five results, the record, and marks
-      with typical time.
-    - Practice has segmented progress, highlighted generated values, New numbers
-      for generated families, and a result that pops or shakes.
-  - Analytics:
-    - a period switch and counting headline figures;
-    - the review heatmap with a diagonal fade-in;
-    - calm restyled charts that draw in when scrolled into view;
-    - the course page opens with its own exam-day forecast.
-    - `StudySignals` was removed.
-  - The assistant is a draggable floating window that folds to its header or
-    closes to a pill, so it no longer resizes the page.
-  - The maths answer field is restyled.
-  - Import and sharing:
-    - Import has a stepper whose connector fills, and a review count that counts
-      up.
-    - Sharing has a Copy button that confirms with a tick.
-  - Phone:
-    - Today fits narrow screens.
-    - Study has a round Exit, "n of N" over a springing progress bar, a round
-      Undo and thumb-zone No/Yes buttons.
+- CI: pull requests that change only documentation (`docs/`, root Markdown, issue and PR
+  templates) now skip the heavy jobs. A `changes` job classifies the diff, and the `test`
+  and `browser-smoke` gates accept skipped jobs only in that case, so required checks still
+  report.
+
+- The relay's anonymous channel and share mint limits (10 per hour per address) now
+  live in the blob store, sharing the AI pairing limiter in `relay/src/rateLimit.ts`,
+  instead of per-isolate memory keyed on the first `x-forwarded-for` hop. On Vercel the
+  address is taken from `x-vercel-forwarded-for`, so a forged `x-forwarded-for` can no
+  longer reset the count, and recycling the isolate no longer clears it (#333)
+
+- The AI pairing code is no longer sent in the request path. The MCP client now claims
+  with `POST /ai/claim` and an `X-Lacuna-Pairing-Code` header, so the capability stays
+  out of platform, CDN and upstream access logs; the code is compared in constant time.
+  The relay still accepts `POST /ai/s/:code/claim` for already-installed clients and
+  that form should be removed once they have upgraded. The relay needs redeploying
+  before clients move to the new route (#332).
+
+- The critical-domain coverage gate (`bun run test:coverage`) now sets a floor per source
+  file instead of aggregate thresholds, so a weakly covered file such as `lineageDiff.ts`
+  (about 82%) can no longer pass on the others' average. Baselines are in
+  `docs/maintenance/coverage.md`. (#330)
+
+- Deleting a Question definition from the Question editor now confirms inline with
+  `ConfirmInlineSwap` instead of the blocking browser `window.confirm`, keeping the
+  attempt-evidence warning copy (#337).
+- The Question editor's save bar now sits above the phone course navigation bar
+  below the `sm` breakpoint, so Delete, Save and the inline delete confirmation are no
+  longer half-covered or unclickable on phones. The overlap predates #337.
+
+- The Backups settings section now handles a failed backup-folder read: it shows a
+  negative notice instead of silently presenting a configured folder as "not
+  configured". The persistence check is annotated best-effort, and neither read sets
+  state after unmount (#336).
+
+- The titlebar window control IPC (minimise, maximise, close, maximised state) now
+  verifies the sender is the main window's main frame, reusing the updater's trust
+  check from the new `electron/windowControls.ts`. Untrusted callers are logged and
+  ignored; `window:isMaximized` rejects visibly (#334).
+
+- Bulk suspend, resume, tag, bury, reschedule and delete in the card list now catch a
+  failed write, leave select mode and the selection intact, and show a negative toast
+  naming the operation instead of failing silently as an unhandled rejection. A failed
+  Undo of those changes is reported the same way (#325).
+
+- The MCP consent prompt now ignores a course-name lookup that has been superseded by the
+  next request and shows the neutral "this course" until the current one resolves, so a slow
+  lookup can no longer label a request with the wrong course. A failed lookup is caught and
+  leaves the neutral label. (#335)
+
+- Curricular Practice now records its milestone against the same fixed lesson prefix the
+  study-flow snapshot checks, while still studying the wider live pool. Previously a
+  completed step stored the live-scope fingerprint, never matched, and was offered again.
+  Existing milestones are reconciled at read time with no schema change: a completed
+  record whose fingerprint equals the node's current live scope still counts as complete,
+  any other mismatch leaves the step incomplete (offered once, then rewritten correctly).
+  No review history is touched (#358).
+
+- `bun run lint` now covers `api/`, all of `scripts/` (including `.mjs`), `tooling/`,
+  `tests/` and the root `*.config.ts` files, and runs with `--max-warnings=0`, so warnings
+  fail CI. Command-line scripts and tooling may use `console`. The widened glob found
+  three real violations (an expression statement in the performance latency probe and two
+  rethrown errors without a `cause`), fixed in place, plus an unused import and a stale
+  disable directive (#342).
+
+- Consolidated the ESLint setup into one native flat config per package. The root and
+  `tooling/lacuna-ai-mcp` no longer carry a legacy `.eslintrc.cjs` behind a `FlatCompat`
+  shim, and `@eslint/compat` and `@eslint/eslintrc` are gone. The rule set is unchanged
+  (verified with `--print-config` and identical violation lists). `eslint-plugin-react`'s
+  `version: 'detect'` calls `context.getFilename()`, which ESLint 10 removed, so the
+  config passes the installed React version explicitly instead of using `fixupConfigRules`.
+  The AI MCP package drops its inapplicable React rules (#343).
+
+- A lineage merge that moves a card to another concept now stamps the card's
+  `updatedAt`, and the stamp never moves backwards when the card's timestamp is
+  ahead of the local clock. Without it the reassignment could lose a last-write-wins
+  contest against an older peer row and silently revert on the next merge (#326).
+
+- Pinned `http-cache-semantics` to 4.3.0 through `overrides`. 4.2.0, pulled in by the
+  Electron download and packaging tooling, has a high-severity advisory
+  (GHSA-ch52-4w7c-c8xp) that failed the root `bun audit` gate.
 
 - The hosted app now sends a `Content-Security-Policy` header with
   `frame-ancestors 'none'`, `base-uri 'self'` and `form-action 'self'`, so the
@@ -86,7 +99,6 @@
   before preprocessing or database writes. Malformed records report their field path;
   supported older exports retain their existing migration behaviour and additive fields.
   The 200 MB file limit and pre-v22 Deck/Folder refusal remain in place (#327).
-
 
 ## Dependency audit patches
 
@@ -375,7 +387,6 @@ removed during sanitisation and covers rendering, fallback source and theme upda
   progress bar. Timing, focus, progress change and ratings sit under Session details.
   Removed completion badges, confetti and redundant copy; aligned actions with the
   study-step transition, with Done and Keep studying side by side on mobile. Existing Simple Learn restart and limit overrides are unchanged.
-
 
 - Added `bun run ai:invites` to generate private batches of beta AI codes and matching
   server credential hashes, with an option to preserve existing users when adding a batch.

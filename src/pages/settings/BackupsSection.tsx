@@ -44,8 +44,31 @@ export function BackupsSection() {
   const supportsPersistenceRequest = !window.electronAPI?.isElectron;
 
   useEffect(() => {
-    void backupFolderName().then(setFolder);
-    if (supportsPersistenceRequest) void checkPersistentStorage().then(setPersistence);
+    let cancelled = false;
+    backupFolderName().then(
+      (name) => {
+        if (!cancelled) setFolder(name);
+      },
+      () => {
+        // A configured folder must not silently read as "not configured".
+        if (!cancelled) notify('Could not read the backup folder setting.', 'negative');
+      },
+    );
+    if (supportsPersistenceRequest) {
+      checkPersistentStorage().then(
+        (state) => {
+          if (!cancelled) setPersistence(state);
+        },
+        () => {
+          // Best-effort: with no answer the persistence row stays hidden rather than guessing.
+        },
+      );
+    }
+    return () => {
+      cancelled = true;
+    };
+    // `notify` is deliberately omitted: the reads must run once, not on every toast change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supportsPersistenceRequest]);
 
   useEffect(() => {

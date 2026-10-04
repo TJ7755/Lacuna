@@ -1,0 +1,68 @@
+- Redesign, "Direction C" (core loop). The app now uses a stone paper ground,
+  white surfaces and navy ink, with Bricolage Grotesque for display type and
+  Atkinson Hyperlegible Next for reading, both bundled for offline use (OFL).
+  Buttons are pills, and the sidebar sits on a darker `--chrome` ground with a
+  white active pill that glides between items. Amber stays the default accent,
+  and the landing page keeps its own palette.
+  - The dashboard is now "Today":
+    - today's card and minute totals;
+    - an exam-day forecast chart (`fsrs/courseForecast.ts`), with each course's
+      outlook to its exam on a proportional date axis against the target;
+    - the streak, this week's reviews and the days studied this week;
+    - the courses ordered by urgency, each with Start and an archive menu.
+  - The outlook is the exam-day forecast as it would stand on each day if the
+    schedule is kept, simulating Good reviews whenever recall falls to the target.
+    It never falls, so the chart has no sawtooth.
+  - The week figures come from the compact review-activity timestamps, because
+    the dashboard must not read full review records.
+  - The course card grid, the review heatmap and the seven-day study-signals
+    strip are no longer on the dashboard.
+  - Study: the card keeps one quiet surface in every mode, with no outline or
+    tinted halo. Every fifth correct answer in a row pops a "5 in a row" badge
+    with a confetti burst.
+  - The session report counts its figures up and bursts for a good session.
+  - Course sections stick to the top as a frosted bar with pill tabs.
+  - Every animation follows the motion-speed setting and is skipped when motion
+    is off.
+- Redesign, "Direction C": the rest of the app.
+  - Settings and Your data:
+    - borderless cards that rise in, and sliding pill segmented controls;
+    - round accent swatches;
+    - springing switches (`Toggle` is now the single pill-switch implementation);
+    - a backup hero with a busy state and a tick, and restore points with a
+      confirmation modal;
+    - another device as one slim row that opens pairing in a modal.
+    - Back up now no longer reports a save that the five-minute throttle
+      skipped.
+  - Lesson and card editor:
+    - the lesson opens on its title, one meta line and a sliding Study/Edit pill,
+      with the note as a reading card beside its cards;
+    - the editor pairs the form with a live flip preview and pops a tick on save;
+    - `MarkdownEditor` gains `hidePreview`, so the editor shows one preview, not
+      two.
+  - Cards and course settings:
+    - Cards: counted filter chips and a floating bulk-action bar.
+    - Course settings: one readable column with a big target-recall figure and
+      presets.
+  - Questions:
+    - The bank is a card grid with the last five results, the record, and marks
+      with typical time.
+    - Practice has segmented progress, highlighted generated values, New numbers
+      for generated families, and a result that pops or shakes.
+  - Analytics:
+    - a period switch and counting headline figures;
+    - the review heatmap with a diagonal fade-in;
+    - calm restyled charts that draw in when scrolled into view;
+    - the course page opens with its own exam-day forecast.
+    - `StudySignals` was removed.
+  - The assistant is a draggable floating window that folds to its header or
+    closes to a pill, so it no longer resizes the page.
+  - The maths answer field is restyled.
+  - Import and sharing:
+    - Import has a stepper whose connector fills, and a review count that counts
+      up.
+    - Sharing has a Copy button that confirms with a tick.
+  - Phone:
+    - Today fits narrow screens.
+    - Study has a round Exit, "n of N" over a springing progress bar, a round
+      Undo and thumb-zone No/Yes buttons.

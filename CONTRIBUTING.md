@@ -59,6 +59,8 @@ bun run --cwd tooling/lacuna-ai-mcp test
 bun run --cwd tooling/lacuna-ai-mcp build
 ```
 
+`bun run lint` covers `src`, `server`, `electron`, `tests`, `api`, `scripts`, `tooling` and the root config files, and fails on warnings. `tooling/lacuna-ai-mcp` and `relay` have their own flat configs and lint scripts.
+
 The native Electron check is part of CI on Windows and must be run there for native, packaging or
 managed-device changes:
 
@@ -77,12 +79,22 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
+Pull requests that change only documentation skip the heavy CI jobs; the required checks still report
+as passing. A change is documentation-only when every path is under `docs/` or `.github/ISSUE_TEMPLATE/`,
+is `.github/PULL_REQUEST_TEMPLATE.md`, or is a Markdown file in the repository root. Markdown under
+`src/`, `tooling/` or `public/` is not, because code consumes it. Pushes to master always run everything.
+The rule lives in `scripts/ci-change-scope.mjs`.
+
 ## Behaviour and review policy
 
 Every intentional behaviour change has a red-to-green test: identify or add an assertion that fails
 on the merge base and passes on the proposed head. Do not weaken an assertion to obtain a green run.
 Pure refactors retain relevant coverage. Documentation, dependency and CI-only changes need
 proportionate validation and a note explaining what was checked.
+
+Record each user- or maintainer-visible change as a fragment file in `docs/changes/unreleased/`
+(see its README) rather than editing `docs/CHANGES.md`, which is assembled at release time.
+`bun run changelog:check` validates fragments.
 
 Prefer one invariant or one user workflow per pull request. Agent-produced changes follow the same
 rule. State the permitted files or module ownership, and require a human to review data,

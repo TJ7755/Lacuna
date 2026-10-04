@@ -200,7 +200,13 @@ export function buildCourseStudyFlowSnapshot({
       totalCount: readiness.totalCardCount,
       securedCount: readiness.securedCardCount,
       eligibleCount: sessionEligibleCount,
-      completed: milestone?.scopeVersion === scopeVersion && milestone.completedAt !== undefined,
+      completed:
+        milestone?.completedAt !== undefined &&
+        (milestone.scopeVersion === scopeVersion ||
+          // Milestones written before #358 carry the live session fingerprint. Honour one
+          // only while that exact scope still holds, so it can never complete a checkpoint
+          // it did not cover; otherwise the step is offered once and rewritten correctly.
+          (sessionScope.length > 0 && milestone.scopeVersion === practiceScopeVersion(sessionScope))),
       active: false,
       manual: node.nodeType === 'practice-manual',
       pathIndex,

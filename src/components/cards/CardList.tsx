@@ -206,18 +206,24 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
   async function applyBulk(
     apply: (ids: string[]) => Promise<void>,
     message: string,
+    failure: string,
   ) {
     const ids = [...selected];
     if (ids.length === 0) return;
-    const snapshot = await snapshotCards(ids);
-    await apply(ids);
-    exitSelect();
-    notify(message, 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
-      },
-    });
+    try {
+      const snapshot = await snapshotCards(ids);
+      await apply(ids);
+      exitSelect();
+      notify(message, 'neutral', { actionLabel: 'Undo', onAction: () => undoRestore(snapshot) });
+    } catch {
+      // Selection stays intact so the learner can retry.
+      notify(failure, 'negative');
+    }
+  }
+
+  /** Undo handler: a failed restore is reported rather than escaping as an unhandled rejection. */
+  function undoRestore(snapshot: Awaited<ReturnType<typeof snapshotCards>>) {
+    restoreCards(snapshot).catch(() => notify('Could not undo that change.', 'negative'));
   }
 
   function plural(n: number) {
@@ -229,6 +235,7 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     await applyBulk(
       (ids) => setCardsSuspended(ids, suspended),
       `${n} card${plural(n)} ${suspended ? 'suspended' : 'resumed'}.`,
+      `Could not ${suspended ? 'suspend' : 'resume'} the selected cards.`,
     );
   }
 
@@ -236,7 +243,7 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     const tag = tagValue.trim();
     if (!tag) return;
     const n = selected.size;
-    await applyBulk((ids) => addTagToCards(ids, tag), `Tagged ${n} card${plural(n)} "${tag}".`);
+    await applyBulk((ids) => addTagToCards(ids, tag), `Tagged ${n} card${plural(n)} "${tag}".`, 'Could not tag the selected cards.');
   }
 
   async function handleRemoveTag() {
@@ -246,21 +253,24 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     await applyBulk(
       (ids) => removeTagFromCards(ids, tag),
       `Removed "${tag}" from ${n} card${plural(n)}.`,
+      'Could not remove the tag from the selected cards.',
     );
   }
 
   async function handleDelete() {
     const ids = [...selected];
     if (ids.length === 0) return;
-    const snapshot = await snapshotCards(ids);
-    await deleteCards(ids);
-    exitSelect();
-    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} deleted.`, 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
-      },
-    });
+    try {
+      const snapshot = await snapshotCards(ids);
+      await deleteCards(ids);
+      exitSelect();
+      notify(`${ids.length} card${ids.length === 1 ? '' : 's'} deleted.`, 'neutral', {
+        actionLabel: 'Undo',
+        onAction: () => undoRestore(snapshot),
+      });
+    } catch {
+      notify('Could not delete the selected cards.', 'negative');
+    }
   }
 
   function startTag() {
@@ -309,6 +319,7 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     await applyBulk(
       (ids) => buryCards(ids, until.getTime()),
       `${n} card${plural(n)} buried until tomorrow.`,
+      'Could not bury the selected cards.',
     );
   }
 
@@ -318,11 +329,13 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
       await applyBulk(
         (ids) => rescheduleCards(ids, { reset: true }),
         `${n} card${plural(n)} reset to new.`,
+        'Could not reset the selected cards.',
       );
     } else {
       await applyBulk(
         (ids) => rescheduleCards(ids, { due: Date.now() }),
         `${n} card${plural(n)} made due now.`,
+        'Could not reschedule the selected cards.',
       );
     }
   }
