@@ -1,5 +1,4 @@
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
-import { removeQuestionSetAssessmentReference } from '../questions/questionSetRepository';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { syncCourseSchedulingUnits } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
@@ -204,6 +203,9 @@ export async function updateCourseAssessment(
 
 export async function deleteCourseAssessment(id: string): Promise<void> {
   try {
+    // Loaded on demand, before the transaction opens, to keep question sets out of the first load.
+    const { removeQuestionSetAssessmentReference } =
+      await import('../questions/questionSetRepository');
     await db.transaction(
       'rw',
       [

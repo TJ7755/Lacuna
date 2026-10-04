@@ -3,10 +3,6 @@
 
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
-import {
-  removeQuestionSetLessonReference,
-  restoreQuestionSetLessonReferences,
-} from '../questions/questionSetRepository';
 import { scheduleAssetGc } from './assets';
 import {
   ensureCourseBankBackingDeck,
@@ -194,6 +190,8 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
     const cardsToRestore = projectCardsForStorage(snapshot.cards);
     const reviewHistoryToRestore =
       snapshot.reviewHistory ?? snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
+    const { restoreQuestionSetLessonReferences } =
+      await import('../questions/questionSetRepository');
     await db.transaction(
       'rw',
       [
@@ -334,6 +332,7 @@ export async function deleteLesson(id: string): Promise<void> {
   const precedingLessonId = deletedIndex > 0 ? orderedLessons[deletedIndex - 1].id : null;
   const bankDeckId =
     cardCount > 0 || sequenceCount > 0 ? await ensureCourseBankBackingDeck(lesson.courseId) : null;
+  const { removeQuestionSetLessonReference } = await import('../questions/questionSetRepository');
   await db.transaction(
     'rw',
     [
