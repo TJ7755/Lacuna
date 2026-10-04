@@ -10,6 +10,7 @@ import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
 import { GeneratedQuestionConfiguration } from '../components/questions/GeneratedQuestionConfiguration';
 import { useCourseQuestionData, useQuestionRecord } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
+import { ConfirmInlineSwap } from '../components/ui/ConfirmInline';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { NavigationGuard } from '../components/ui/NavigationGuard';
 import { TagInput } from '../components/ui/TagInput';
@@ -51,6 +52,7 @@ export function QuestionEditor() {
   const data = useCourseQuestionData(courseId);
   const record = useQuestionRecord(questionId);
   const editing = Boolean(questionId);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const draft = useQuestionDraft(questionDraftKey(courseId ?? 'missing', questionId));
   const {
@@ -164,12 +166,7 @@ export function QuestionEditor() {
   };
 
   const remove = async () => {
-    if (
-      !questionId ||
-      !courseId ||
-      !window.confirm('Delete this Question definition? Its attempt evidence will be retained.')
-    )
-      return;
+    if (!questionId || !courseId) return;
     await deleteQuestion(questionId);
     draft.finish();
     notify('Question deleted.', 'positive');
@@ -467,10 +464,18 @@ export function QuestionEditor() {
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-paper/90 px-6 py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           {editing ? (
-            <Button type="button" variant="danger" onClick={() => void remove()}>
-              <TrashIcon width={16} height={16} />
-              Delete
-            </Button>
+            <ConfirmInlineSwap
+              active={confirmingDelete}
+              message="Delete this Question definition? Its attempt evidence will be retained."
+              confirmLabel="Delete"
+              onConfirm={() => void remove()}
+              onCancel={() => setConfirmingDelete(false)}
+            >
+              <Button type="button" variant="danger" onClick={() => setConfirmingDelete(true)}>
+                <TrashIcon width={16} height={16} />
+                Delete
+              </Button>
+            </ConfirmInlineSwap>
           ) : (
             <span />
           )}
