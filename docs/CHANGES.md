@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The relay's anonymous channel and share mint limits (10 per hour per address) now
+  live in the blob store, sharing the AI pairing limiter in `relay/src/rateLimit.ts`,
+  instead of per-isolate memory keyed on the first `x-forwarded-for` hop. On Vercel the
+  address is taken from `x-vercel-forwarded-for`, so a forged `x-forwarded-for` can no
+  longer reset the count, and recycling the isolate no longer clears it (#333)
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
