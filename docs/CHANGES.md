@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bulk suspend, resume, tag, bury, reschedule and delete in the card list now catch a
+  failed write, leave select mode and the selection intact, and show a negative toast
+  naming the operation instead of failing silently as an unhandled rejection. A failed
+  Undo of those changes is reported the same way (#325).
+
 - A lineage merge that moves a card to another concept now stamps the card's
   `updatedAt`, and the stamp never moves backwards when the card's timestamp is
   ahead of the local clock. Without it the reassignment could lose a last-write-wins
