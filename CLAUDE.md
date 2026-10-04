@@ -183,4 +183,4 @@ Do not commit while workers are running, or the commit captures a half-written s
 - Only use MCPs like browser use, Figma, Blender or computer use when I allow you to.
 - Ask me questions — loads of them. Make sure you know everything you need rather than making things up. If things are obvious, don't ask.
 - I have usage limits. Be terse with code, reasoning and output tokens. Suggest subagents liberally.
-- Update `docs/CHANGES.md` after any applicable change or lesson learned. It directly helps future models.
+- Add a fragment in `docs/changes/unreleased/` (see its README) after any applicable change or lesson learned; never edit `docs/CHANGES.md` directly. It directly helps future models.
