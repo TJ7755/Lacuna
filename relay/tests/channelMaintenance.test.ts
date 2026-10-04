@@ -8,9 +8,11 @@ const DAY = 24 * 60 * 60 * 1000;
 const secret = 'cron-secret';
 
 function maintenance(handle: ReturnType<typeof createHandler>): Promise<Response> {
-  return handle(new Request('https://relay.example/api/ai/maintenance', {
-    headers: { Authorization: `Bearer ${secret}` },
-  }));
+  return handle(
+    new Request('https://relay.example/api/ai/maintenance', {
+      headers: { Authorization: `Bearer ${secret}` },
+    }),
+  );
 }
 
 afterEach(() => vi.unstubAllEnvs());

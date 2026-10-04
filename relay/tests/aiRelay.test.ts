@@ -4,7 +4,6 @@ import {
   AI_PAIRING_TTL_MS,
   AI_SESSION_TTL_MS,
   EMPTY_SLOT_ETAG,
-  __resetMintRateLimitForTests,
   createHandler,
 } from '../src/relay.js';
 import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
@@ -484,7 +483,6 @@ describe('AI relay', () => {
   });
 
   it('shares the hashed pairing limit across independent handlers', async () => {
-    __resetMintRateLimitForTests();
     const store = new MemoryStore();
     const first = createHandler(store);
     const second = createHandler(store);
@@ -526,11 +524,9 @@ describe('AI relay', () => {
       ),
     );
     expect(limited.status).toBe(429);
-    __resetMintRateLimitForTests();
   });
 
   it('fails pairing closed after bounded rate-limit contention', async () => {
-    __resetMintRateLimitForTests();
     const handle = createHandler(new RateConflictStore());
 
     const response = await handle(
@@ -546,7 +542,6 @@ describe('AI relay', () => {
   });
 
   it('keeps public pairing and device-sync mint limits independent', async () => {
-    __resetMintRateLimitForTests();
     const handle = createHandler(new MemoryStore());
     const pairingIp = '198.51.100.31';
     for (let index = 0; index < 10; index += 1) {
@@ -568,7 +563,6 @@ describe('AI relay', () => {
     );
     expect(deviceMint.status).toBe(201);
 
-    __resetMintRateLimitForTests();
     const deviceIp = '198.51.100.32';
     for (let index = 0; index < 10; index += 1) {
       const response = await handle(
@@ -592,7 +586,6 @@ describe('AI relay', () => {
       ),
     );
     expect(pairingSession.status).toBe(201);
-    __resetMintRateLimitForTests();
   });
 });
 
