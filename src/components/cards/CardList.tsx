@@ -84,7 +84,25 @@ interface CardListBaseProps {
 
 type CardListProps = CardListBaseProps & { context: CardListContext };
 
-export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
+export function CardList({
+  cards,
+  context,
+  onNewCard,
+  onNewSequence,
+  onNewOcclusion,
+  onLinkExisting,
+  onEditCard,
+  hideHeader = false,
+  initiallyImporting = false,
+  assignableLessons,
+  courseId,
+  sequences,
+  onEditSequence,
+  occlusions,
+  onEditOcclusion,
+  linkedCardIds,
+  onUnlinkCard,
+}: CardListProps) {
   const { notify } = useToast();
   const schedulingConfig = context.schedulingConfig;
   const importTargetName = context.importTargetName;
@@ -104,7 +122,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
   useEffect(() => {
     setExpandedCardId(null);
   }, [schedulingConfig.id]);
-
 
   // Existing tags across the deck, offered as suggestions in the bulk tag panel.
   const tagSuggestions = useMemo(() => {
@@ -136,7 +153,9 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
         group.cards.push(card);
         byOwner.set(key, group);
       } else if (card.occlusionRegionId !== null && card.occlusionRegionId !== undefined) {
-        const occlusion = occlusions ? occlusionForRegionId(occlusions, card.occlusionRegionId) : undefined;
+        const occlusion = occlusions
+          ? occlusionForRegionId(occlusions, card.occlusionRegionId)
+          : undefined;
         if (!occlusion) continue;
         const key = `occlusion:${occlusion.id}`;
         const group = byOwner.get(key) ?? { kind: 'occlusion', owner: occlusion, cards: [] };
@@ -182,11 +201,13 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     });
   }
 
-  const allSelected = selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id));
+  const allSelected =
+    selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id));
 
   function toggleAll() {
     setSelected((prev) => {
-      if (selectableCards.length > 0 && selectableCards.every((c) => prev.has(c.id))) return new Set();
+      if (selectableCards.length > 0 && selectableCards.every((c) => prev.has(c.id)))
+        return new Set();
       return new Set(selectableCards.map((c) => c.id));
     });
   }
@@ -243,7 +264,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     const tag = tagValue.trim();
     if (!tag) return;
     const n = selected.size;
-    await applyBulk((ids) => addTagToCards(ids, tag), `Tagged ${n} card${plural(n)} "${tag}".`, 'Could not tag the selected cards.');
+    await applyBulk(
+      (ids) => addTagToCards(ids, tag),
+      `Tagged ${n} card${plural(n)} "${tag}".`,
+      'Could not tag the selected cards.',
+    );
   }
 
   async function handleRemoveTag() {
@@ -301,14 +326,18 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     await assignCardsToLesson(ids, courseId, lessonId);
     exitSelect();
     const lessonName = lessonId
-      ? assignableLessons?.find((l) => l.id === lessonId)?.name ?? 'lesson'
+      ? (assignableLessons?.find((l) => l.id === lessonId)?.name ?? 'lesson')
       : 'Unassigned';
-    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} assigned to ${lessonName}.`, 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
+    notify(
+      `${ids.length} card${ids.length === 1 ? '' : 's'} assigned to ${lessonName}.`,
+      'neutral',
+      {
+        actionLabel: 'Undo',
+        onAction: () => {
+          void restoreCards(snapshot);
+        },
       },
-    });
+    );
   }
 
   async function handleBury() {
@@ -348,40 +377,49 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     notify(`${count} card${count === 1 ? '' : 's'} imported.`, 'positive');
   }
 
-  const handleResume = useCallback(async (card: Card) => {
-    const snapshot = await snapshotCards([card.id]);
-    await unsuspendCard(card.id);
-    notify('Card resumed.', 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
-      },
-    });
-  }, [notify]);
+  const handleResume = useCallback(
+    async (card: Card) => {
+      const snapshot = await snapshotCards([card.id]);
+      await unsuspendCard(card.id);
+      notify('Card resumed.', 'neutral', {
+        actionLabel: 'Undo',
+        onAction: () => {
+          void restoreCards(snapshot);
+        },
+      });
+    },
+    [notify],
+  );
 
-  const handleToggleFlag = useCallback(async (card: Card) => {
-    const snapshot = await snapshotCards([card.id]);
-    await setCardFlag(card.id, !card.flagged);
-    notify(card.flagged ? 'Flag removed.' : 'Card flagged.', 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
-      },
-    });
-  }, [notify]);
+  const handleToggleFlag = useCallback(
+    async (card: Card) => {
+      const snapshot = await snapshotCards([card.id]);
+      await setCardFlag(card.id, !card.flagged);
+      notify(card.flagged ? 'Flag removed.' : 'Card flagged.', 'neutral', {
+        actionLabel: 'Undo',
+        onAction: () => {
+          void restoreCards(snapshot);
+        },
+      });
+    },
+    [notify],
+  );
 
   // One-click delete from a card's hover actions, with the same snapshot/undo flow
   // as the bulk selection delete.
-  const handleDeleteOne = useCallback(async (id: string) => {
-    const snapshot = await snapshotCards([id]);
-    await deleteCards([id]);
-    notify('Card deleted.', 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
-      },
-    });
-  }, [notify]);
+  const handleDeleteOne = useCallback(
+    async (id: string) => {
+      const snapshot = await snapshotCards([id]);
+      await deleteCards([id]);
+      notify('Card deleted.', 'neutral', {
+        actionLabel: 'Undo',
+        onAction: () => {
+          void restoreCards(snapshot);
+        },
+      });
+    },
+    [notify],
+  );
 
   // Everything except "New card". Built from the callbacks the caller actually supplied, so a
   // context that cannot make sequences simply has one fewer entry rather than a dead control.
@@ -474,219 +512,206 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
         open={selectMode}
         panel={
           (tagging || rescheduling || assigningLesson) && selected.size > 0 ? (
-          <>
-          {/* Inline tag chooser */}
-          <AnimatePresence>
-            {tagging && selected.size > 0 && (
-              <motion.div
-                initial={m > 0 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                exit={m > 0 ? { opacity: 0 } : undefined}
-                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                
-              >
-                <div>
-                  <label className="block text-sm text-ink-soft">
-                    Tag for {selected.size} card{plural(selected.size)}
-                    <input
-                      list="bulk-tag-suggestions"
-                      value={tagValue}
-                      onChange={(e) => setTagValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void handleAddTag();
-                        }
-                      }}
-                      placeholder="Type a tag…"
-                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
-                    />
-                    <datalist id="bulk-tag-suggestions">
-                      {tagSuggestions.map((t) => (
-                        <option key={t} value={t} />
-                      ))}
-                    </datalist>
-                  </label>
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setTagging(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleRemoveTag}
-                      disabled={!tagValue.trim()}
-                    >
-                      Remove
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={handleAddTag}
-                      disabled={!tagValue.trim()}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <>
+              {/* Inline tag chooser */}
+              <AnimatePresence>
+                {tagging && selected.size > 0 && (
+                  <motion.div
+                    initial={m > 0 ? { opacity: 0 } : false}
+                    animate={{ opacity: 1 }}
+                    exit={m > 0 ? { opacity: 0 } : undefined}
+                    transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <div>
+                      <label className="block text-sm text-ink-soft">
+                        Tag for {selected.size} card{plural(selected.size)}
+                        <input
+                          list="bulk-tag-suggestions"
+                          value={tagValue}
+                          onChange={(e) => setTagValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void handleAddTag();
+                            }
+                          }}
+                          placeholder="Type a tag…"
+                          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                        />
+                        <datalist id="bulk-tag-suggestions">
+                          {tagSuggestions.map((t) => (
+                            <option key={t} value={t} />
+                          ))}
+                        </datalist>
+                      </label>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setTagging(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={handleRemoveTag}
+                          disabled={!tagValue.trim()}
+                        >
+                          Remove
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={handleAddTag}
+                          disabled={!tagValue.trim()}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-          {/* Inline reschedule chooser */}
-          <AnimatePresence>
-            {rescheduling && selected.size > 0 && (
-              <motion.div
-                initial={m > 0 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                exit={m > 0 ? { opacity: 0 } : undefined}
-                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                
-              >
-                <div>
-                  <fieldset className="space-y-2">
-                    <legend className="mb-2 text-sm text-ink-soft">
-                      Reschedule {selected.size} card{plural(selected.size)}
-                    </legend>
-                    <label className="flex items-center gap-2 text-sm text-ink">
-                      <input
-                        type="radio"
-                        name="reschedule-mode"
-                        value="new"
-                        checked={rescheduleMode === 'new'}
-                        onChange={() => setRescheduleMode('new')}
-                        className="accent-accent"
-                      />
-                      Reset to new (clear scheduling)
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-ink">
-                      <input
-                        type="radio"
-                        name="reschedule-mode"
-                        value="dueNow"
-                        checked={rescheduleMode === 'dueNow'}
-                        onChange={() => setRescheduleMode('dueNow')}
-                        className="accent-accent"
-                      />
-                      Make due now
-                    </label>
-                  </fieldset>
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setRescheduling(false)}>
-                      Cancel
-                    </Button>
-                    <Button size="sm" variant="primary" onClick={handleReschedule}>
-                      Reschedule
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              {/* Inline reschedule chooser */}
+              <AnimatePresence>
+                {rescheduling && selected.size > 0 && (
+                  <motion.div
+                    initial={m > 0 ? { opacity: 0 } : false}
+                    animate={{ opacity: 1 }}
+                    exit={m > 0 ? { opacity: 0 } : undefined}
+                    transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <div>
+                      <fieldset className="space-y-2">
+                        <legend className="mb-2 text-sm text-ink-soft">
+                          Reschedule {selected.size} card{plural(selected.size)}
+                        </legend>
+                        <label className="flex items-center gap-2 text-sm text-ink">
+                          <input
+                            type="radio"
+                            name="reschedule-mode"
+                            value="new"
+                            checked={rescheduleMode === 'new'}
+                            onChange={() => setRescheduleMode('new')}
+                            className="accent-accent"
+                          />
+                          Reset to new (clear scheduling)
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-ink">
+                          <input
+                            type="radio"
+                            name="reschedule-mode"
+                            value="dueNow"
+                            checked={rescheduleMode === 'dueNow'}
+                            onChange={() => setRescheduleMode('dueNow')}
+                            className="accent-accent"
+                          />
+                          Make due now
+                        </label>
+                      </fieldset>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setRescheduling(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" variant="primary" onClick={handleReschedule}>
+                          Reschedule
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-          {/* Inline lesson assignment chooser */}
-          <AnimatePresence>
-            {assigningLesson && selected.size > 0 && assignableLessons && courseId && (
-              <motion.div
-                initial={m > 0 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                exit={m > 0 ? { opacity: 0 } : undefined}
-                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                
-              >
-                <div>
-                  <label className="block text-sm text-ink-soft">
-                    Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
-                    <Select
-                      value={assignTarget}
-                      onChange={(e) => setAssignTarget(e.target.value)}
-                      className="mt-2 w-full"
-                    >
-                      <option value="">Unassigned</option>
-                      {assignableLessons.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setAssigningLesson(false)}>
-                      Cancel
-                    </Button>
-                    <Button size="sm" variant="primary" onClick={handleAssignLesson}>
-                      Assign
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          </>
+              {/* Inline lesson assignment chooser */}
+              <AnimatePresence>
+                {assigningLesson && selected.size > 0 && assignableLessons && courseId && (
+                  <motion.div
+                    initial={m > 0 ? { opacity: 0 } : false}
+                    animate={{ opacity: 1 }}
+                    exit={m > 0 ? { opacity: 0 } : undefined}
+                    transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <div>
+                      <label className="block text-sm text-ink-soft">
+                        Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
+                        <Select
+                          value={assignTarget}
+                          onChange={(e) => setAssignTarget(e.target.value)}
+                          className="mt-2 w-full"
+                        >
+                          <option value="">Unassigned</option>
+                          {assignableLessons.map((l) => (
+                            <option key={l.id} value={l.id}>
+                              {l.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </label>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setAssigningLesson(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" variant="primary" onClick={handleAssignLesson}>
+                          Assign
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
           ) : undefined
         }
       >
-            <BulkBarButton
-              onClick={toggleAll}
-              aria-pressed={allSelected}
-              className="px-3"
-            >
-              <span
-                className={cn(
-                  'grid h-5 w-5 place-items-center rounded-full border transition-colors',
-                  allSelected ? 'border-paper bg-paper text-ink' : 'border-paper/40',
-                )}
-              >
-                {allSelected && <CheckIcon width={12} height={12} />}
-              </span>
-              {allSelected ? 'Deselect all' : 'Select all'}
-            </BulkBarButton>
-            <span className="px-2 text-sm font-semibold tabular-nums">{selected.size} selected</span>
-            <SelectedCardsAnswerMode courseId={courseId} cards={cards.filter((card) => selected.has(card.id))} />
-              <BulkBarButton active={tagging}
-                disabled={selected.size === 0}
-                onClick={() => (tagging ? setTagging(false) : startTag())}
-              >
-                Tag…
-              </BulkBarButton>
-              <BulkBarButton
-                disabled={selected.size === 0}
-                onClick={() => handleSuspend(true)}
-              >
-                Suspend
-              </BulkBarButton>
-              <BulkBarButton
-                disabled={selected.size === 0}
-                onClick={() => handleSuspend(false)}
-              >
-                Resume
-              </BulkBarButton>
-              <BulkBarButton
-                disabled={selected.size === 0}
-                onClick={handleBury}
-              >
-                Bury
-              </BulkBarButton>
-              <BulkBarButton active={rescheduling}
-                disabled={selected.size === 0}
-                onClick={() => (rescheduling ? setRescheduling(false) : startReschedule())}
-              >
-                Reschedule…
-              </BulkBarButton>
-              {assignableLessons && courseId && (
-                <BulkBarButton active={assigningLesson}
-                  disabled={selected.size === 0}
-                  onClick={() => (assigningLesson ? setAssigningLesson(false) : startAssignLesson())}
-                >
-                  Assign to lesson…
-                </BulkBarButton>
-              )}
-              <BulkBarButton danger
-                disabled={selected.size === 0}
-                onClick={handleDelete}
-              >
-                Delete
-              </BulkBarButton>
+        <BulkBarButton onClick={toggleAll} aria-pressed={allSelected} className="px-3">
+          <span
+            className={cn(
+              'grid h-5 w-5 place-items-center rounded-full border transition-colors',
+              allSelected ? 'border-paper bg-paper text-ink' : 'border-paper/40',
+            )}
+          >
+            {allSelected && <CheckIcon width={12} height={12} />}
+          </span>
+          {allSelected ? 'Deselect all' : 'Select all'}
+        </BulkBarButton>
+        <span className="px-2 text-sm font-semibold tabular-nums">{selected.size} selected</span>
+        <SelectedCardsAnswerMode
+          courseId={courseId}
+          cards={cards.filter((card) => selected.has(card.id))}
+        />
+        <BulkBarButton
+          active={tagging}
+          disabled={selected.size === 0}
+          onClick={() => (tagging ? setTagging(false) : startTag())}
+        >
+          Tag…
+        </BulkBarButton>
+        <BulkBarButton disabled={selected.size === 0} onClick={() => handleSuspend(true)}>
+          Suspend
+        </BulkBarButton>
+        <BulkBarButton disabled={selected.size === 0} onClick={() => handleSuspend(false)}>
+          Resume
+        </BulkBarButton>
+        <BulkBarButton disabled={selected.size === 0} onClick={handleBury}>
+          Bury
+        </BulkBarButton>
+        <BulkBarButton
+          active={rescheduling}
+          disabled={selected.size === 0}
+          onClick={() => (rescheduling ? setRescheduling(false) : startReschedule())}
+        >
+          Reschedule…
+        </BulkBarButton>
+        {assignableLessons && courseId && (
+          <BulkBarButton
+            active={assigningLesson}
+            disabled={selected.size === 0}
+            onClick={() => (assigningLesson ? setAssigningLesson(false) : startAssignLesson())}
+          >
+            Assign to lesson…
+          </BulkBarButton>
+        )}
+        <BulkBarButton danger disabled={selected.size === 0} onClick={handleDelete}>
+          Delete
+        </BulkBarButton>
       </CardBulkBar>
 
       {cards.length === 0 ? (
@@ -843,9 +868,7 @@ export function CardListBody({
             selected={selected.has(card.id)}
             expanded={expandedCardId === card.id}
             onToggle={() => onToggle(card.id)}
-            onToggleExpand={() =>
-              onToggleExpand((prev) => (prev === card.id ? null : card.id))
-            }
+            onToggleExpand={() => onToggleExpand((prev) => (prev === card.id ? null : card.id))}
             onEdit={() => onEditCard(card)}
             onResume={() => onResume(card)}
             onDelete={() => onDelete(card.id)}
@@ -878,9 +901,7 @@ export function CardListBody({
               selected={selected.has(card.id)}
               expanded={expandedCardId === card.id}
               onToggle={() => onToggle(card.id)}
-              onToggleExpand={() =>
-                onToggleExpand((prev) => (prev === card.id ? null : card.id))
-              }
+              onToggleExpand={() => onToggleExpand((prev) => (prev === card.id ? null : card.id))}
               onEdit={() => onEditCard(card)}
               onResume={() => onResume(card)}
               onDelete={() => onDelete(card.id)}
@@ -943,7 +964,8 @@ const CardRow = React.memo(function CardRow({
 
   const reviewed = card.lastReviewed !== null;
   const tags = card.tags ?? [];
-  const buried = card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
+  const buried =
+    card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
   const statusTone = summariseLessonCard(card, Date.now()).tone;
@@ -952,7 +974,8 @@ const CardRow = React.memo(function CardRow({
   // selectMode/hover. Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully
   // available.
   const isSequenceGenerated = card.sequenceItemId !== null && card.sequenceItemId !== undefined;
-  const isOcclusionGenerated = card.occlusionRegionId !== null && card.occlusionRegionId !== undefined;
+  const isOcclusionGenerated =
+    card.occlusionRegionId !== null && card.occlusionRegionId !== undefined;
   const generated = isSequenceGenerated || isOcclusionGenerated;
   const removable = linked || !generated;
 
@@ -988,101 +1011,114 @@ const CardRow = React.memo(function CardRow({
     cardRefForCallback.current = card;
   }, [card]);
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (selectMode || expanded) return;
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    if (target.closest('button:not([data-card-details]), a, [role="button"]')) return;
-    e.stopPropagation();
-    dragX.jump(springX.get());
-    springX.jump(dragX.get());
-    swipeState.current = {
-      dragging: true,
-      startX: e.clientX - springX.get() + (trayOpenRef.current ? -trayWidth : 0),
-      startY: e.clientY,
-      isSwipe: false,
-      openBeforeDrag: trayOpenRef.current,
-    };
-    cardRef.current?.setPointerCapture(e.pointerId);
-  }, [selectMode, expanded, dragX, springX]);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (selectMode || expanded) return;
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('button:not([data-card-details]), a, [role="button"]')) return;
+      e.stopPropagation();
+      dragX.jump(springX.get());
+      springX.jump(dragX.get());
+      swipeState.current = {
+        dragging: true,
+        startX: e.clientX - springX.get() + (trayOpenRef.current ? -trayWidth : 0),
+        startY: e.clientY,
+        isSwipe: false,
+        openBeforeDrag: trayOpenRef.current,
+      };
+      cardRef.current?.setPointerCapture(e.pointerId);
+    },
+    [selectMode, expanded, dragX, springX],
+  );
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!swipeState.current.dragging) return;
-    const dx = e.clientX - swipeState.current.startX;
-    const dy = e.clientY - swipeState.current.startY;
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!swipeState.current.dragging) return;
+      const dx = e.clientX - swipeState.current.startX;
+      const dy = e.clientY - swipeState.current.startY;
 
-    if (!swipeState.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
-      swipeState.current.isSwipe = true;
-    }
-    if (!swipeState.current.isSwipe) return;
+      if (!swipeState.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
+        swipeState.current.isSwipe = true;
+      }
+      if (!swipeState.current.isSwipe) return;
 
-    e.preventDefault();
+      e.preventDefault();
 
-    // If tray was already open, dragging right closes it; dragging left keeps it open.
-    // If tray was closed, dragging left opens it; dragging right triggers quick flag.
-    const base = swipeState.current.openBeforeDrag ? -trayWidth : 0;
-    const clamped = Math.max(-trayWidth, Math.min(isTouchMode ? MAX_DRAG : 0, base + dx));
-    dragX.set(clamped);
-    springX.jump(clamped);
-  }, [dragX, springX, isTouchMode]);
+      // If tray was already open, dragging right closes it; dragging left keeps it open.
+      // If tray was closed, dragging left opens it; dragging right triggers quick flag.
+      const base = swipeState.current.openBeforeDrag ? -trayWidth : 0;
+      const clamped = Math.max(-trayWidth, Math.min(isTouchMode ? MAX_DRAG : 0, base + dx));
+      dragX.set(clamped);
+      springX.jump(clamped);
+    },
+    [dragX, springX, isTouchMode],
+  );
 
   const justHandledTap = useRef(false);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!swipeState.current.dragging) return;
-    cardRef.current?.releasePointerCapture(e.pointerId);
-    swipeState.current.dragging = false;
-    const wasSwipe = swipeState.current.isSwipe;
-    swipeState.current.isSwipe = false;
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!swipeState.current.dragging) return;
+      cardRef.current?.releasePointerCapture(e.pointerId);
+      swipeState.current.dragging = false;
+      const wasSwipe = swipeState.current.isSwipe;
+      swipeState.current.isSwipe = false;
 
-    if (wasSwipe) {
-      e.stopPropagation();
-      justHandledTap.current = true;
-      const currentX = dragX.get();
-      // If open before drag, drag right to close; if closed, drag left to open.
-      if (swipeState.current.openBeforeDrag) {
-        // Tray was open — close if dragged right past threshold
-        if (currentX > -trayWidth + swipeThreshold) {
-          setTrayOpen(false);
-          dragX.set(0);
+      if (wasSwipe) {
+        e.stopPropagation();
+        justHandledTap.current = true;
+        const currentX = dragX.get();
+        // If open before drag, drag right to close; if closed, drag left to open.
+        if (swipeState.current.openBeforeDrag) {
+          // Tray was open — close if dragged right past threshold
+          if (currentX > -trayWidth + swipeThreshold) {
+            setTrayOpen(false);
+            dragX.set(0);
+          } else {
+            setTrayOpen(true);
+            dragX.set(-trayWidth);
+          }
         } else {
-          setTrayOpen(true);
-          dragX.set(-trayWidth);
+          // Tray was closed
+          if (currentX < -swipeThreshold) {
+            // Drag left — open tray
+            hapticLight();
+            setTrayOpen(true);
+            dragX.set(-trayWidth);
+          } else if (isTouchMode && currentX > swipeThreshold) {
+            // Drag right — quick flag (touch mode only)
+            hapticLight();
+            dragX.set(0);
+            onToggleFlag(cardRefForCallback.current);
+          } else {
+            setTrayOpen(false);
+            dragX.set(0);
+          }
         }
       } else {
-        // Tray was closed
-        if (currentX < -swipeThreshold) {
-          // Drag left — open tray
+        // It was a tap — close the tray if it is open; suppress the subsequent click.
+        if (trayOpenRef.current) {
           hapticLight();
-          setTrayOpen(true);
-          dragX.set(-trayWidth);
-        } else if (isTouchMode && currentX > swipeThreshold) {
-          // Drag right — quick flag (touch mode only)
-          hapticLight();
-          dragX.set(0);
-          onToggleFlag(cardRefForCallback.current);
-        } else {
+          justHandledTap.current = true;
           setTrayOpen(false);
           dragX.set(0);
         }
       }
-    } else {        // It was a tap — close the tray if it is open; suppress the subsequent click.
-      if (trayOpenRef.current) {
-        hapticLight();
-        justHandledTap.current = true;
-        setTrayOpen(false);
-        dragX.set(0);
-      }
-    }
-  }, [dragX, isTouchMode, onToggleFlag]);
+    },
+    [dragX, isTouchMode, onToggleFlag],
+  );
 
-  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation();
-    cardRef.current?.releasePointerCapture(e.pointerId);
-    swipeState.current.dragging = false;
-    swipeState.current.isSwipe = false;
-    dragX.set(trayOpenRef.current ? -trayWidth : 0);
-  }, [dragX]);
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      e.stopPropagation();
+      cardRef.current?.releasePointerCapture(e.pointerId);
+      swipeState.current.dragging = false;
+      swipeState.current.isSwipe = false;
+      dragX.set(trayOpenRef.current ? -trayWidth : 0);
+    },
+    [dragX],
+  );
 
   const handleClick = useCallback(() => {
     if (justHandledTap.current) {
@@ -1107,50 +1143,64 @@ const CardRow = React.memo(function CardRow({
     if (!selectMode) setHovered(false);
   }, [selectMode]);
 
-  const handleFlagClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    hapticLight();
-    onToggleFlag(cardRefForCallback.current);
-  }, [onToggleFlag]);
+  const handleFlagClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      hapticLight();
+      onToggleFlag(cardRefForCallback.current);
+    },
+    [onToggleFlag],
+  );
 
-  const handleEditClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    hapticLight();
-    onEdit();
-  }, [onEdit]);
+  const handleEditClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      hapticLight();
+      onEdit();
+    },
+    [onEdit],
+  );
 
-  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    hapticMedium();
-    onDelete();
-  }, [onDelete]);
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      hapticMedium();
+      onDelete();
+    },
+    [onDelete],
+  );
 
-  const handleUnlinkClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    hapticLight();
-    onUnlink();
-  }, [onUnlink]);
+  const handleUnlinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      hapticLight();
+      onUnlink();
+    },
+    [onUnlink],
+  );
 
-  const handleResumeClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onResume();
-  }, [onResume]);
+  const handleResumeClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onResume();
+    },
+    [onResume],
+  );
 
-  const handleFlagHoverClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleFlag(cardRefForCallback.current);
-  }, [onToggleFlag]);
+  const handleFlagHoverClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onToggleFlag(cardRefForCallback.current);
+    },
+    [onToggleFlag],
+  );
 
   const handleExpandedClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
   }, []);
 
   return (
-    <div
-      className={cn(
-        'group relative rounded-2xl bg-surface transition-colors duration-200',
-      )}
-    >
+    <div className={cn('group relative rounded-2xl bg-surface transition-colors duration-200')}>
       {/* Action tray revealed behind the card on swipe-left */}
       <div
         data-card-swipe-tray
@@ -1224,10 +1274,8 @@ const CardRow = React.memo(function CardRow({
         onPointerCancel={handlePointerCancel}
         data-card-id={card.id}
         className={cn(
-          'relative z-10 cursor-pointer rounded-2xl p-4 transition-colors',
-          selected
-            ? 'bg-accent-soft'
-            : 'bg-surface hover:bg-ink/[0.04] active:bg-ink/[0.07]',
+          'relative z-10 cursor-pointer rounded-2xl px-4 py-3 transition-colors',
+          selected ? 'bg-accent-soft' : 'bg-surface hover:bg-ink/[0.04] active:bg-ink/[0.07]',
         )}
       >
         <button
@@ -1251,55 +1299,7 @@ const CardRow = React.memo(function CardRow({
           )}
 
           <div className="min-w-0 flex-1">
-            <div className="mb-1.5 flex flex-wrap items-center gap-2">
-              <span
-                aria-hidden="true"
-                className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT_CLASS[statusTone])}
-              />
-              <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
-                {cardTypeLabel(card)}
-              </span>
-              {showBack && (
-                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-                  Back
-                </span>
-              )}
-              {reviewed ? (
-                <span className="text-[11px] text-ink-faint tabular">
-                  Stability {card.stability!.toFixed(1)}d
-                </span>
-              ) : (
-                <span className="text-[11px] text-accent">New</span>
-              )}
-              {card.suspended && (
-                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
-                  Suspended
-                </span>
-              )}
-              {!card.suspended && buried && (
-                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
-                  Buried
-                </span>
-              )}
-              {leech && (
-                <span
-                  title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
-                  className="rounded-lg bg-negative/10 px-2 py-0.5 text-[11px] font-medium text-negative"
-                >
-                  Leech
-                </span>
-              )}
-              {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
-              {generated && !isSequenceGenerated && (
-                <GeneratedCardBadge kind="occlusion" />
-              )}
-              {linked && (
-                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-                  Linked
-                </span>
-              )}
-            </div>
-            <div className="relative max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
+            <div className="relative max-h-24 overflow-hidden text-[15px] font-semibold text-ink [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={showBack ? 'back' : 'front'}
@@ -1308,11 +1308,57 @@ const CardRow = React.memo(function CardRow({
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.12 * m }}
                 >
-                  <Suspense fallback={<span className="inline-block h-4 w-24 animate-pulse rounded bg-ink/5" />}>
+                  <Suspense
+                    fallback={
+                      <span className="inline-block h-4 w-24 animate-pulse rounded bg-ink/5" />
+                    }
+                  >
                     <CardContent card={card} side={contentSide} />
                   </Suspense>
                 </motion.div>
               </AnimatePresence>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-faint">
+              <span
+                aria-hidden="true"
+                className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT_CLASS[statusTone])}
+              />
+              <span>{cardTypeLabel(card)}</span>
+              {showBack && (
+                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                  Back
+                </span>
+              )}
+              {reviewed ? (
+                <span className="tabular-nums">· Stability {card.stability!.toFixed(1)} d</span>
+              ) : (
+                <span className="font-semibold text-accent-ink">· New</span>
+              )}
+              {card.suspended && (
+                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-xs text-ink-faint">
+                  Suspended
+                </span>
+              )}
+              {!card.suspended && buried && (
+                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-xs text-ink-faint">
+                  Buried
+                </span>
+              )}
+              {leech && (
+                <span
+                  title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
+                  className="rounded-lg bg-negative/10 px-2 py-0.5 text-xs font-medium text-negative"
+                >
+                  Leech
+                </span>
+              )}
+              {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
+              {generated && !isSequenceGenerated && <GeneratedCardBadge kind="occlusion" />}
+              {linked && (
+                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
+                  Linked
+                </span>
+              )}
             </div>
             {tags.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -1368,21 +1414,25 @@ const CardRow = React.memo(function CardRow({
                 <EditIcon width={16} height={16} />
               </motion.button>
               {removable && (
-              <motion.button
-                type="button"
-                onClick={linked ? handleUnlinkClick : handleDeleteClick}
-                title={linked ? 'Remove from lesson' : 'Delete card'}
-                whileTap={{ scale: 0.85 }}
-                whileHover={{ scale: 1.08 }}
-                className={cn(
-                  'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible',
-                  linked
-                    ? 'hover:bg-ink/5 hover:text-ink'
-                    : 'hover:bg-negative/10 hover:text-negative',
-                )}
-              >
-                {linked ? <CloseIcon width={16} height={16} /> : <TrashIcon width={16} height={16} />}
-              </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={linked ? handleUnlinkClick : handleDeleteClick}
+                  title={linked ? 'Remove from lesson' : 'Delete card'}
+                  whileTap={{ scale: 0.85 }}
+                  whileHover={{ scale: 1.08 }}
+                  className={cn(
+                    'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible',
+                    linked
+                      ? 'hover:bg-ink/5 hover:text-ink'
+                      : 'hover:bg-negative/10 hover:text-negative',
+                  )}
+                >
+                  {linked ? (
+                    <CloseIcon width={16} height={16} />
+                  ) : (
+                    <TrashIcon width={16} height={16} />
+                  )}
+                </motion.button>
               )}
             </div>
           )}
