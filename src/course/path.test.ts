@@ -1032,4 +1032,22 @@ describe('buildPath progress and manual-node edge cases', () => {
       lessons, [questionActivity], 'l1', new Set(['question-activity']), new Set(),
     )).toBeUndefined();
   });
+
+  it('orders Practice Qs activities by creation and drops ones without a lesson in this course', () => {
+    const course = makeCourse({ id: 'c1' });
+    const lessons = [makeLesson({ id: 'l0', courseId: 'c1', orderIndex: 0 })];
+    const activity = (id: string, createdAt: number, overrides = {}) =>
+      makePracticeNode({
+        id, courseId: 'c1', type: 'question-set', questionSetId: `set-${id}`,
+        afterLessonId: 'l0', createdAt, ...overrides,
+      });
+    const nodes = buildPath(course, lessons, [], new Map(), [
+      activity('later', 2),
+      activity('b-tied', 1),
+      activity('a-tied', 1),
+      activity('missing-lesson', 0, { afterLessonId: 'gone' }),
+      activity('other-course', 0, { courseId: 'c2' }),
+    ]);
+    expect(nodes.map((node) => node.id)).toEqual(['l0', 'a-tied', 'b-tied', 'later']);
+  });
 });
