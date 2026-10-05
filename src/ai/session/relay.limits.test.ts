@@ -35,8 +35,10 @@ describe('relay AI session bounds', () => {
       () => instructions,
       {
         // Persistence is covered by relay.persistence.test.ts. Keeping it out of
-        // this protocol-limit loop prevents measuring 2,000 full snapshot writes.
-        storage: { getItem: () => null, setItem: () => undefined, removeItem: () => undefined },
+        // this protocol-limit loop prevents measuring 2,000 full snapshot writes:
+        // a no-op storage is not enough, because each save serialises the whole
+        // state (every queued message and its instructions) before `setItem`.
+        persistence: { load: () => null, save: () => undefined, clear: () => undefined },
       },
     );
     vi.mocked(relay.peer).mockResolvedValue({
@@ -60,7 +62,7 @@ describe('relay AI session bounds', () => {
       error: { kind: 'conflict', message: 'The AI message queue is full.' },
     });
     expect(session.getSnapshot().items).toHaveLength(MAX_AI_RELAY_MAILBOX_ENTRIES);
-  }, 15_000);
+  });
 
   it('bounds processed terminal event identifiers across compacted mailboxes', async () => {
     const { session, relay, crypto, storage, tick } = relaySessionHarness();
