@@ -61,6 +61,8 @@ interface AssignableLesson {
 interface CardListBaseProps {
   cards: Card[];
   onNewCard?: () => void;
+  /** Draw New card as a secondary action, for pages whose own header holds the primary one. */
+  quietNewCard?: boolean;
   /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
   onNewSequence?: () => void;
   /** Offers an image-occlusion editor alongside the other authoring controls. */
@@ -89,6 +91,7 @@ export function CardList({
   cards,
   context,
   onNewCard,
+  quietNewCard = false,
   onNewSequence,
   onNewOcclusion,
   onLinkExisting,
@@ -483,7 +486,7 @@ export function CardList({
             </Button>
           )}
           {onNewCard && (
-            <Button variant="primary" size="sm" onClick={onNewCard}>
+            <Button variant={quietNewCard ? 'secondary' : 'primary'} size="sm" onClick={onNewCard}>
               <PlusIcon width={16} height={16} />
               New card
             </Button>

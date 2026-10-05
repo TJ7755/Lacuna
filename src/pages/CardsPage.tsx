@@ -290,6 +290,7 @@ function LessonBucket({
             importTargetName: lesson.name,
           })}
           hideHeader
+          quietNewCard
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) =>
@@ -361,6 +362,7 @@ function UnassignedBucket({
             importTargetName: courseName,
           })}
           hideHeader
+          quietNewCard
           courseId={courseId}
           assignableLessons={assignableLessons}
           onNewCard={() => navigate(`/course/${courseId}/cards/new`)}

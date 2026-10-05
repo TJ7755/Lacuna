@@ -61,7 +61,9 @@ vi.mock('../components/cards/CardList', () => ({
     assignableLessons,
     onNewCard,
     context,
+    quietNewCard,
   }: {
+    quietNewCard?: boolean;
     cards: Card[];
     courseId?: string;
     assignableLessons?: { id: string; name: string }[];
@@ -82,7 +84,7 @@ vi.mock('../components/cards/CardList', () => ({
       });
     }
     return (
-      <div data-testid="card-list">
+      <div data-testid="card-list" data-quiet-new-card={quietNewCard ? 'true' : undefined}>
         <span data-testid="card-list-count">{cards.length}</span>
         <span data-testid="card-list-course">{courseId}</span>
         <span data-testid="card-list-assignable">
@@ -260,6 +262,16 @@ describe('CardsPage', () => {
     expect(screen.getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Supply/ })).toBeInTheDocument();
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
+  });
+
+  it('keeps New card primary only in the page header', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    renderPage();
+    for (const list of screen.getAllByTestId('card-list')) {
+      expect(list).toHaveAttribute('data-quiet-new-card', 'true');
+    }
   });
 
   it('shows an Unassigned bucket for cards with no primaryLessonId', () => {

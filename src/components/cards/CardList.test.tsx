@@ -304,6 +304,20 @@ describe('CardList', () => {
     expect(screen.getByText('geography')).toBeInTheDocument();
   });
 
+  it('draws New card as a secondary action when its page already holds the primary one', () => {
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={mockContext}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+        quietNewCard
+      />,
+    );
+    // Button is mocked here and reflects its variant as an attribute.
+    expect(screen.getByRole('button', { name: 'New card' })).toHaveAttribute('variant', 'secondary');
+  });
+
   it('uses the Working badge for working-item cards stored as front/back cards', () => {
     const workingCard: Card = {
       ...mockCard,
