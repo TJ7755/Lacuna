@@ -8,7 +8,7 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -32,7 +32,7 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/sequenceRepository';
-import type { EditorOriginState } from '../utils/editorOrigin';
+import { useReturn } from '../utils/editorOrigin';
 import type { SequenceItem, SequencePresetId } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -44,8 +44,6 @@ export function SequenceEditor() {
     lessonId?: string;
   }>();
   const lessonMode = Boolean(lessonId);
-  const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -117,9 +115,12 @@ export function SequenceEditor() {
   // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
   // so origin state is the only signal that an edit was opened from a lesson —
   // absent on direct loads and hard refreshes, which fall back to the bank.
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
 
   // Distinct speakers seen across items, in order of first appearance, for the
   // "my speaker" picker — populated by whichever items already carry a speaker,
@@ -370,7 +371,7 @@ export function SequenceEditor() {
         await createSequence(courseId, lessonId ?? null, name, items, opts);
         notify('Sequence added.', 'positive');
       }
-      void navigate(backPath);
+      returnTo.goBack();
     } finally {
       setSaving(false);
     }
@@ -384,7 +385,7 @@ export function SequenceEditor() {
           {course?.name}
         </Link>
         <ChevronRight />
-        <Link to={backPath} className="transition-colors hover:text-ink">
+        <Link {...returnTo.linkProps} className="transition-colors hover:text-ink">
           {backLabel}
         </Link>
         <ChevronRight />
@@ -392,10 +393,10 @@ export function SequenceEditor() {
       </nav>
 
       <div>
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
+        <header className="relative mb-8">
           <div className="relative">
             <Link
-              to={backPath}
+              {...returnTo.linkProps}
               className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
@@ -693,7 +694,7 @@ export function SequenceEditor() {
               snapshot={() => snapshotSequence(sequence.id)}
               onDelete={() => deleteSequence(sequence.id)}
               onRestore={(snap) => restoreSequence(snap as SequenceSnapshot)}
-              onDeleted={() => navigate(backPath)}
+              onDeleted={returnTo.goBack}
             />
           )}
         </div>
@@ -706,7 +707,7 @@ export function SequenceEditor() {
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
       >
         <div className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(backPath)}>
+          <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
           {saveError && (

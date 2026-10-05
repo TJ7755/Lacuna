@@ -190,3 +190,5 @@
   scroll position included (`useReturn` in `utils/editorOrigin.ts`). Cards
   keeps its search and filters in the address (`?q=`, `?f=`), so they survive
   a trip to an editor.
+- The sequence and occlusion editors return the same way, and lose their
+  legacy bordered header box.

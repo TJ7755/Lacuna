@@ -9,7 +9,7 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -33,7 +33,7 @@ import {
   updateOcclusion,
   type OcclusionSnapshot,
 } from '../db/occlusionRepository';
-import type { EditorOriginState } from '../utils/editorOrigin';
+import { useReturn } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -45,8 +45,6 @@ export function OcclusionEditor() {
     lessonId?: string;
   }>();
   const lessonMode = Boolean(lessonId);
-  const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -99,9 +97,12 @@ export function OcclusionEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/cards`;
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
 
   // A draft Occlusion built from current form state, purely so the pure generation
   // module (never re-implemented here) can compute the live card-count preview.
@@ -244,7 +245,7 @@ export function OcclusionEditor() {
         await createOcclusion(courseId, lessonId ?? null, name, assetHash, regions);
         notify('Occlusion added.', 'positive');
       }
-      void navigate(backPath);
+      returnTo.goBack();
     } finally {
       setSaving(false);
     }
@@ -258,7 +259,7 @@ export function OcclusionEditor() {
           {course?.name}
         </Link>
         <ChevronRight />
-        <Link to={backPath} className="transition-colors hover:text-ink">
+        <Link {...returnTo.linkProps} className="transition-colors hover:text-ink">
           {backLabel}
         </Link>
         <ChevronRight />
@@ -266,10 +267,10 @@ export function OcclusionEditor() {
       </nav>
 
       <div>
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
+        <header className="relative mb-8">
           <div className="relative">
             <Link
-              to={backPath}
+              {...returnTo.linkProps}
               className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
@@ -341,7 +342,7 @@ export function OcclusionEditor() {
               snapshot={() => snapshotOcclusion(occlusion.id)}
               onDelete={() => deleteOcclusion(occlusion.id)}
               onRestore={(snap) => restoreOcclusion(snap as OcclusionSnapshot)}
-              onDeleted={() => navigate(backPath)}
+              onDeleted={returnTo.goBack}
             />
           )}
         </div>
@@ -354,7 +355,7 @@ export function OcclusionEditor() {
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
       >
         <div className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(backPath)}>
+          <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={!canSave || saving}>
