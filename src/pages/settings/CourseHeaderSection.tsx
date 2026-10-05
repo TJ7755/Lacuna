@@ -2,6 +2,7 @@ import { GaugeIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
 import { useCourseHeaderSettings } from '../../state/courseHeaderSettings';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 /**
  * Which stat pills a course header shows. Which of them read as useful depends on how
@@ -12,9 +13,9 @@ export function CourseHeaderSection() {
   const [settings, setSettings] = useCourseHeaderSettings();
 
   return (
-    <section
+    <SectionCard
       id="settings-course-header"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <GaugeIcon width={18} height={18} />
@@ -41,6 +42,6 @@ export function CourseHeaderSection() {
           </div>
         ))}
       </div>
-    </section>
+    </SectionCard>
   );
 }

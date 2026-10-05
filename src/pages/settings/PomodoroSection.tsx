@@ -7,6 +7,7 @@ import {
   type PomodoroSettings,
 } from '../../hooks/usePomodoro';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function PomodoroSection() {
   const [settings, setSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
@@ -17,9 +18,9 @@ export function PomodoroSection() {
   }
 
   return (
-    <section
+    <SectionCard
       id="settings-pomodoro"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <ClockIcon width={18} height={18} />
@@ -55,7 +56,7 @@ export function PomodoroSection() {
           ariaLabel="Auto-start breaks"
         />
       </div>
-    </section>
+    </SectionCard>
   );
 }
 

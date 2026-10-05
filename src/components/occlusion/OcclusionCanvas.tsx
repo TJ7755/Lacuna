@@ -211,7 +211,7 @@ function ToolButton({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-9 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
         active
           ? 'border-accent bg-accent-soft text-accent-ink'
           : 'border-line text-ink-soft hover:border-line-strong hover:text-ink',

@@ -10,6 +10,7 @@ import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { cn } from '../../components/ui/cn';
 import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
 import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 const FINAL_EXAM_POLICIES: Array<{
   value: AfterFinalExamPolicy;
@@ -28,7 +29,7 @@ export function StudySection() {
   const [audioSettings, setAudioSettings] = useAudioSettings();
 
   return (
-    <section id="settings-study" className="mb-8 rounded-2xl border border-line bg-surface p-6">
+    <SectionCard id="settings-study" className="mb-8">
       <div className="mb-5 flex items-center gap-2 text-accent">
         <FlameIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">
@@ -119,7 +120,7 @@ export function StudySection() {
           onChange={setStartInFocusMode}
         />
       </div>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -129,9 +130,9 @@ export function CourseDefaultsSection() {
   const [afterFinalExam, setAfterFinalExam] = useAfterFinalExamPolicy();
 
   return (
-    <section
+    <SectionCard
       id="settings-course-defaults"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <FlameIcon width={18} height={18} />
@@ -259,7 +260,7 @@ export function CourseDefaultsSection() {
           applies otherwise. Max gap forces a practice node after this many lessons without one.
         </p>
       </details>
-    </section>
+    </SectionCard>
   );
 }
 

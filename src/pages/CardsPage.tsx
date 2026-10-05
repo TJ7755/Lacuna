@@ -22,6 +22,7 @@ import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { PlusIcon, SearchIcon } from '../components/ui/icons';
 import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
+import { Skeleton } from '../components/ui/Skeleton';
 
 // Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
 // duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
@@ -340,15 +341,15 @@ function UnassignedBucket({
 function CardsPageSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
+      <Skeleton className="mb-6 h-4 w-24" />
       <div className="mb-8 flex items-center justify-between">
-        <div className="h-10 w-64 animate-pulse rounded bg-ink/10" />
-        <div className="h-10 w-40 animate-pulse rounded-lg bg-ink/10" />
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-10 w-40 rounded-lg" />
       </div>
-      <div className="mb-8 h-10 w-full animate-pulse rounded-xl bg-ink/10" />
+      <Skeleton className="mb-8 h-10 w-full rounded-xl" />
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-14 animate-pulse rounded-xl border border-line bg-ink/5" />
+          <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
         ))}
       </div>
     </div>

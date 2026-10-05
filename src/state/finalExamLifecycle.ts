@@ -1,38 +1,18 @@
-import { useEffect, useState } from 'react';
 import type { Course } from '../db/types';
+import { createLocalSetting, oneOf } from './localSetting';
 
 const HANDLED_KEY = 'lacuna.handledFinalExams';
-const POLICY_KEY = 'lacuna.afterFinalExam';
-const POLICY_EVENT = 'lacuna:after-final-exam';
-
 export type AfterFinalExamPolicy = 'ask' | 'archive' | 'keep-revising';
 
-export function readAfterFinalExamPolicy(): AfterFinalExamPolicy {
-  const stored = localStorage.getItem(POLICY_KEY);
-  return stored === 'archive' || stored === 'keep-revising' ? stored : 'ask';
-}
+const policySetting = createLocalSetting<AfterFinalExamPolicy>({
+  key: 'lacuna.afterFinalExam',
+  event: 'lacuna:after-final-exam',
+  parse: oneOf(['archive', 'keep-revising'], 'ask'),
+});
 
-export function writeAfterFinalExamPolicy(policy: AfterFinalExamPolicy): void {
-  localStorage.setItem(POLICY_KEY, policy);
-  window.dispatchEvent(new CustomEvent(POLICY_EVENT));
-}
-
-export function useAfterFinalExamPolicy(): [
-  AfterFinalExamPolicy,
-  (policy: AfterFinalExamPolicy) => void,
-] {
-  const [policy, setPolicy] = useState(readAfterFinalExamPolicy);
-  useEffect(() => {
-    const refresh = () => setPolicy(readAfterFinalExamPolicy());
-    window.addEventListener('storage', refresh);
-    window.addEventListener(POLICY_EVENT, refresh);
-    return () => {
-      window.removeEventListener('storage', refresh);
-      window.removeEventListener(POLICY_EVENT, refresh);
-    };
-  }, []);
-  return [policy, writeAfterFinalExamPolicy];
-}
+export const readAfterFinalExamPolicy = policySetting.read;
+export const writeAfterFinalExamPolicy = policySetting.write;
+export const useAfterFinalExamPolicy = policySetting.use;
 
 function readHandledFinalExams(): Record<string, number> {
   try {

@@ -1,8 +1,7 @@
 import { useSyncExternalStore } from 'react';
+import { createLocalSetting } from './localSetting';
 
 export type MotionSpeed = 'slow' | 'normal' | 'fast';
-
-const KEY = 'lacuna.motionSpeed';
 
 const MULTIPLIERS: Record<MotionSpeed, number> = {
   slow: 1.4,
@@ -15,15 +14,14 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export function readMotionSpeed(): MotionSpeed {
-  const raw = localStorage.getItem(KEY) as MotionSpeed | null;
-  return raw === 'slow' || raw === 'fast' ? raw : 'normal';
-}
+const setting = createLocalSetting<MotionSpeed>({
+  key: 'lacuna.motionSpeed',
+  event: 'lacuna:motion-speed',
+  parse: (raw) => (raw === 'slow' || raw === 'fast' ? raw : 'normal'),
+});
 
-export function writeMotionSpeed(speed: MotionSpeed): void {
-  localStorage.setItem(KEY, speed);
-  window.dispatchEvent(new CustomEvent('lacuna:motion-speed', { detail: speed }));
-}
+export const readMotionSpeed = setting.read;
+export const writeMotionSpeed = setting.write;
 
 export function speedMultiplier(speed?: MotionSpeed): number {
   if (prefersReducedMotion()) return 0;
@@ -52,12 +50,10 @@ function emitMotionChange() {
 
 function startListening() {
   const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-  window.addEventListener('storage', emitMotionChange);
-  window.addEventListener('lacuna:motion-speed', emitMotionChange);
+  const unsubscribe = setting.subscribe(emitMotionChange);
   media.addEventListener('change', emitMotionChange);
   stopListening = () => {
-    window.removeEventListener('storage', emitMotionChange);
-    window.removeEventListener('lacuna:motion-speed', emitMotionChange);
+    unsubscribe();
     media.removeEventListener('change', emitMotionChange);
     stopListening = null;
   };

@@ -34,6 +34,8 @@ import {
 } from '../components/ui/icons';
 import { formatRelativeTime } from '../utils/datetime';
 import QRCode from 'react-qr-code';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 /** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
@@ -461,7 +463,7 @@ export function SharePage() {
       </header>
 
       {/* Export */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <SectionCard className="mb-8">
         <div className="mb-1 flex items-center gap-2">
           <DownloadIcon width={18} height={18} className="text-accent" />
           <h2 className="font-display text-xl">Export a course</h2>
@@ -966,7 +968,7 @@ export function SharePage() {
             )}
           </>
         )}
-      </section>
+      </SectionCard>
 
       <SharedCourseImport importIntent={searchParams.get('intent') === 'import'} />
     </div>
@@ -981,9 +983,9 @@ function ShareSkeleton() {
           key={i}
           className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
         >
-          <div className="h-5 w-5 animate-pulse rounded-md bg-ink/10" />
-          <div className="h-4 flex-1 animate-pulse rounded bg-ink/10" />
-          <div className="h-4 w-16 animate-pulse rounded bg-ink/10" />
+          <Skeleton className="h-5 w-5 rounded-md" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-16" />
         </div>
       ))}
     </div>

@@ -165,7 +165,11 @@ keyboard shortcuts on keyboard).
   screen width. The course overview pairs a compact winding path with a lesson companion
   on desktop and stacks those surfaces below 900px. All surfaces inherit Settings colours.
 - Cards/sections: `rounded-2xl border border-line bg-surface p-5/6`, soft black shadows on
-  hover.
+  hover. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
+- Shared primitives in `src/components/ui/`: `Field` and `Input` for labelled form
+  controls (label, hint, error), `Skeleton` for loading placeholders, and `DialogPanel`
+  with `DialogHeader` for centred modal dialogs (overlay, backdrop, paper panel and a
+  44px close button).
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.

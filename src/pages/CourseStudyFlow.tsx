@@ -20,6 +20,7 @@ import {
   mayContinueWithoutPause,
 } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface TransitionState {
   summary: SessionSummary;
@@ -380,12 +381,12 @@ function CourseStudyFlowSkeleton() {
       aria-label="Loading course study flow"
     >
       <div className="w-full max-w-xl space-y-4">
-        <div className="h-4 w-32 animate-pulse rounded bg-ink/5" />
-        <div className="h-12 w-3/4 animate-pulse rounded-xl bg-ink/5" />
-        <div className="h-5 w-full animate-pulse rounded bg-ink/5" />
+        <Skeleton className="h-4 w-32 bg-ink/5" />
+        <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
+        <Skeleton className="h-5 w-full bg-ink/5" />
         <div className="mt-8 flex gap-3">
-          <span className="h-11 w-32 animate-pulse rounded-xl bg-ink/5" />
-          <span className="h-11 w-24 animate-pulse rounded-xl bg-ink/5" />
+          <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
+          <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
         </div>
       </div>
     </div>

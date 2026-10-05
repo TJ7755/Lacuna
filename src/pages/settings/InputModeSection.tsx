@@ -2,6 +2,7 @@ import { KeyboardIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { useInputMode, type InputMode } from '../../state/inputMode';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 const INPUT_OPTIONS: { key: InputMode; label: string; desc: string }[] = [
   { key: 'keyboard', label: 'Keyboard first', desc: 'Compact layout with shortcuts' },
@@ -13,9 +14,9 @@ export function InputModeSection() {
   const [inputMode, setInputMode] = useInputMode();
 
   return (
-    <section
+    <SectionCard
       id="settings-input"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-4 flex items-center gap-2 text-accent">
         <KeyboardIcon width={18} height={18} />
@@ -43,6 +44,6 @@ export function InputModeSection() {
           );
         })}
       </div>
-    </section>
+    </SectionCard>
   );
 }
