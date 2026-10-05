@@ -113,8 +113,13 @@ export function answerFeedback({
   };
 }
 
-/** Arguments for `finish`: goal reached, daily limit reached, time limit reached. */
-export type SessionStop = [reachedGoal: boolean, limitReached?: boolean, timeLimitReached?: boolean];
+/** Arguments for `finish`: goal reached, daily limit, time limit, daily review goal. */
+export type SessionStop = [
+  reachedGoal: boolean,
+  limitReached?: boolean,
+  timeLimitReached?: boolean,
+  dailyGoalReached?: boolean,
+];
 
 /**
  * Whether a scheduled session stops after this answer, checked in order: the daily
@@ -147,7 +152,7 @@ export function sessionStopAfterAnswer({
     if (deckReviews >= maxReviewsPerDay) return [false, true];
   }
   if (!limitOverride && dailyReviewGoal && dailyReviewGoal > 0) {
-    if (deckReviews >= dailyReviewGoal) return [true];
+    if (deckReviews >= dailyReviewGoal) return [true, false, false, true];
   }
   if (revisionWindowEndsAt !== undefined && now >= revisionWindowEndsAt) {
     return [false, false, true];

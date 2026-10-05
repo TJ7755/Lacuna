@@ -57,7 +57,7 @@ describe('sessionStopAfterAnswer', () => {
   it('checks the daily limit before the goal, and lets an override skip both', () => {
     const both = { ...quiet, maxReviewsPerDay: 5, dailyReviewGoal: 5 };
     expect(sessionStopAfterAnswer(both)).toEqual([false, true]);
-    expect(sessionStopAfterAnswer({ ...quiet, dailyReviewGoal: 5 })).toEqual([true]);
+    expect(sessionStopAfterAnswer({ ...quiet, dailyReviewGoal: 5 })).toEqual([true, false, false, true]);
     expect(sessionStopAfterAnswer({ ...both, limitOverride: true })).toBeNull();
   });
 

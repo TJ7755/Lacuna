@@ -4,7 +4,10 @@ A Learn session may study a lesson, a course Practice node, a **single deck**, o
 deck at once** (the legacy global review session). FSRS-backed sessions run through one engine
 so ordering and predicted recall stay objective-derived; lesson teaching uses the Simple-mode loop.
 Course-guided sessions run inside the persistent conductor, while direct legacy routes remain
-available for standalone entry.
+available for standalone entry. Between steps the conductor shows a hand-off screen, except
+when Practice that cleared its work (with at least one answer) leads straight into more
+ordinary Practice: that continues without pausing. A reached daily review goal, a review or
+time limit, a due break, an assessment, a lesson or the end of the flow still pauses.
 
 ### Session lifecycle
 
