@@ -373,8 +373,10 @@ const CourseRow = memo(function CourseRow({
           aria-expanded={isExpanded}
           aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
           className={cn(
-            'flex shrink-0 items-center justify-center rounded-lg text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
-            compact ? 'h-6 w-6' : 'h-8 w-8',
+            'relative flex shrink-0 items-center justify-center rounded-lg text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
+            // The visible button stays small; the invisible ::after gives a 44px target.
+            "after:absolute after:content-['']",
+            compact ? 'h-6 w-6 after:-inset-2.5' : 'h-8 w-8 after:-inset-1.5',
           )}
         >
           <motion.span
