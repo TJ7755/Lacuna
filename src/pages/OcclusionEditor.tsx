@@ -8,7 +8,8 @@
 // and the lesson-scoped course/:courseId/lesson/:lessonId/occlusion/new variant.
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEditorKeys } from '../hooks/dialogKeys';
 import { Link, useParams } from 'react-router-dom';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -125,6 +126,11 @@ export function OcclusionEditor() {
   );
   const labelCount = regions.filter((r) => r.role === 'label').length;
   const featureCount = regions.length - labelCount;
+  const saveRef = useRef<HTMLButtonElement>(null);
+  const editorKeys = useEditorKeys({
+    onCancel: returnTo.goBack,
+    onSubmit: () => void handleSave(),
+  });
 
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
@@ -252,7 +258,7 @@ export function OcclusionEditor() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
+    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10" {...editorKeys}>
       {/* Breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
         <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
@@ -292,6 +298,14 @@ export function OcclusionEditor() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                // Name is the only text field: once the occlusion is complete, Tab goes to Save.
+                if (e.key === 'Tab' && !e.shiftKey && canSave) {
+                  e.preventDefault();
+                  saveRef.current?.focus();
+                }
+              }}
+              autoFocus
               placeholder="e.g. The plant cell"
               className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
@@ -358,7 +372,12 @@ export function OcclusionEditor() {
           <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!canSave || saving}>
+          <Button
+            ref={saveRef}
+            variant="primary"
+            onClick={handleSave}
+            disabled={!canSave || saving}
+          >
             {editing ? 'Save changes' : 'Add occlusion'}
           </Button>
         </div>

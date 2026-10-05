@@ -8,6 +8,7 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEditorKeys } from '../hooks/dialogKeys';
 import { Link, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
@@ -181,6 +182,12 @@ export function SequenceEditor() {
       setMySpeaker('');
     }
   }
+
+  const saveRef = useRef<HTMLButtonElement>(null);
+  const editorKeys = useEditorKeys({
+    onCancel: returnTo.goBack,
+    onSubmit: () => void handleSave(),
+  });
 
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
@@ -378,7 +385,7 @@ export function SequenceEditor() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
+    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10" {...editorKeys}>
       {/* Breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
         <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
@@ -415,6 +422,7 @@ export function SequenceEditor() {
             <input
               id="sequence-name"
               aria-label="Sequence name"
+              autoFocus
               type="text"
               value={name}
               onChange={(e) => {
@@ -633,6 +641,9 @@ export function SequenceEditor() {
                       onMoveUp={() => moveItem(item.id, 'up')}
                       onMoveDown={() => moveItem(item.id, 'down')}
                       onAddAfter={() => addItem(item.id)}
+                      onTabForward={
+                        i === items.length - 1 ? () => saveRef.current?.focus() : undefined
+                      }
                       invalid={invalidItems.has(item.id)}
                       inputRef={(input) => {
                         if (input) itemInputs.current.set(item.id, input);
@@ -716,6 +727,7 @@ export function SequenceEditor() {
             </p>
           )}
           <Button
+            ref={saveRef}
             variant="primary"
             onClick={handleSave}
             disabled={saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}

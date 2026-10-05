@@ -26,6 +26,8 @@ interface SequenceItemRowProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onAddAfter: () => void;
+  /** Tab off the value editor, so the last row can hand focus straight to the save button. */
+  onTabForward?: () => void;
   inputRef: Ref<HTMLTextAreaElement>;
   invalid: boolean;
 }
@@ -43,6 +45,7 @@ export function SequenceItemRow({
   onMoveUp,
   onMoveDown,
   onAddAfter,
+  onTabForward,
   inputRef,
   invalid,
 }: SequenceItemRowProps) {
@@ -155,6 +158,7 @@ export function SequenceItemRow({
         value={item.value}
         onChange={(value) => onChange({ value })}
         onModEnter={onAddAfter}
+        onTabForward={onTabForward}
         minRows={2}
         placeholder={`${itemTermCapitalized} content`}
       />

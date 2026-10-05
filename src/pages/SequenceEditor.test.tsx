@@ -37,6 +37,7 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
     placeholder,
     inputRef,
     onModEnter,
+    onTabForward,
     ariaLabel,
     ariaInvalid,
     ariaDescribedBy,
@@ -46,6 +47,7 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
     placeholder?: string;
     inputRef?: Ref<HTMLTextAreaElement>;
     onModEnter?: () => void;
+    onTabForward?: () => void;
     ariaLabel?: string;
     ariaInvalid?: boolean;
     ariaDescribedBy?: string;
@@ -58,6 +60,9 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
         if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           onModEnter();
+        } else if (onTabForward && e.key === 'Tab' && !e.shiftKey) {
+          e.preventDefault();
+          onTabForward();
         }
       }}
       aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
@@ -352,6 +357,38 @@ describe('SequenceEditor', () => {
       expect.arrayContaining([expect.objectContaining({ value: 'First item' })]),
       expect.objectContaining({ cueWindow: 2, generateLabelCards: false, mode: 'list' }),
     );
+  });
+
+  it('is keyboard-first: name focused, Tab from the last item reaches Save, Ctrl+Enter saves', async () => {
+    mockCourse = course;
+    renderNew();
+    const name = screen.getByRole('textbox', { name: 'Sequence name' });
+    expect(name).toHaveFocus();
+    fireEvent.change(name, { target: { value: 'My sequence' } });
+    const item = screen.getByRole('textbox', { name: 'Item 1 content' });
+    fireEvent.change(item, { target: { value: 'First item' } });
+    fireEvent.keyDown(item, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: 'Add sequence' })).toHaveFocus();
+    await act(async () => {
+      fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true });
+      await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
+    });
+  });
+
+  it('keeps the editor open on Escape once something has been typed', async () => {
+    mockCourse = course;
+    renderNew();
+    const name = screen.getByRole('textbox', { name: 'Sequence name' });
+    fireEvent.input(name, { target: { value: 'x' } });
+    fireEvent.keyDown(name, { key: 'Escape' });
+    expect(screen.getByRole('heading', { name: 'New sequence' })).toBeInTheDocument();
+  });
+
+  it('cancels a pristine new sequence on Escape', async () => {
+    mockCourse = course;
+    renderNew();
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Sequence name' }), { key: 'Escape' });
+    await screen.findByText('Cards');
   });
 
   it('shows inline validation instead of silently ignoring a blank sequence', () => {

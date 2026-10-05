@@ -235,6 +235,29 @@ describe('OcclusionEditor', () => {
     });
   });
 
+  it('is keyboard-first: name focused, Tab to Save once complete, Ctrl+Enter saves, Escape cancels', async () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    const name = screen.getByPlaceholderText('e.g. The plant cell');
+    expect(name).toHaveFocus();
+    await uploadDiagram();
+    drawBox(container, [40, 30], [200, 180]);
+    fireEvent.change(name, { target: { value: 'Plant cell' } });
+    fireEvent.keyDown(name, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: 'Add occlusion' })).toHaveFocus();
+    await act(async () => {
+      fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true });
+      await vi.waitFor(() => expect(createOcclusion).toHaveBeenCalled());
+    });
+  });
+
+  it('cancels a pristine new occlusion on Escape', async () => {
+    mockCourse = course;
+    renderNew();
+    fireEvent.keyDown(screen.getByPlaceholderText('e.g. The plant cell'), { key: 'Escape' });
+    await screen.findByText('Cards');
+  });
+
   it('warns before replacing the diagram of an existing occlusion, and only regenerates on confirm', async () => {
     mockCourse = course;
     mockOcclusion = {
