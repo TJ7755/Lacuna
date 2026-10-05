@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -187,7 +188,7 @@ export function QuestionEditor() {
     return (
       <DelayedFallback>
         <div className="mx-auto max-w-4xl px-6 py-10">
-          <div className="h-12 w-72 animate-pulse rounded-xl bg-ink/10" />
+          <Skeleton className="h-12 w-72 rounded-xl bg-ink/10" />
         </div>
       </DelayedFallback>
     );

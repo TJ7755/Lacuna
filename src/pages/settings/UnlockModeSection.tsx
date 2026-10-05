@@ -1,3 +1,4 @@
+import { Input } from '../../components/ui/Field';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import type { UnlockMode } from '../../db/types';
 
@@ -54,7 +55,7 @@ export function UnlockModeSection({
       <div className="flex flex-col gap-2">
         {MODES.map((mode) => (
           <label key={mode.value} className="flex cursor-pointer items-start gap-2">
-            <input
+            <Input
               type="radio"
               name="unlockMode"
               value={mode.value}
@@ -80,7 +81,7 @@ export function UnlockModeSection({
           />
           <label className="block text-sm text-ink-soft">
             Days between lessons
-            <input
+            <Input
               type="number"
               min={1}
               inputMode="numeric"

@@ -1,3 +1,4 @@
+import { SECTION_CARD_SURFACE_CLASS } from '../../components/ui/SectionCard';
 // Shared building blocks for the global Settings screen (Direction C): the card
 // surface with its staggered arrival, the segmented pill control and the pill
 // switch. Every animation is scaled by the motion multiplier and switches off at 0.
@@ -18,7 +19,7 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 /** Card surface shared by every settings section: no border, soft layered shadow. */
 export const SETTINGS_CARD_CLASS =
-  'mb-5 rounded-3xl bg-surface p-6 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-7';
+  `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
 
 /** Section headings sit in ink with only the icon tinted, so cards read calmly. */
 export const SETTINGS_HEADING_ROW_CLASS = 'flex items-center gap-2.5 text-ink [&>svg]:text-accent';

@@ -15,7 +15,12 @@ import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { StepSwap } from '../components/ui/StepSwap';
+import {
+  continuesWithoutPause,
+  mayContinueWithoutPause,
+} from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface TransitionState {
   summary: SessionSummary;
@@ -215,6 +220,35 @@ function CourseStudyFlowInner() {
     setTransition(null);
   }, [flow, pomodoro, refreshKey, transition]);
 
+  // Contiguous Practice continues without the full-screen hand-off once the planner
+  // has the next step; see continuesWithoutPause for the boundaries that still pause.
+  const nextFlow = flow?.generation === refreshKey ? flow : null;
+  const awaitingContinuation =
+    transition !== null &&
+    mayContinueWithoutPause(transition.completedStep, transition.summary, pomodoro.breakPending) &&
+    (nextFlow === null ||
+      continuesWithoutPause(
+        transition.completedStep,
+        transition.summary,
+        nextFlow.decision,
+        pomodoro.breakPending,
+      ));
+  useEffect(() => {
+    if (!transition || !nextFlow) return;
+    const { decision } = nextFlow;
+    if (
+      continuesWithoutPause(
+        transition.completedStep,
+        transition.summary,
+        decision,
+        pomodoro.breakPending,
+      )
+    ) {
+      setCurrentStep(decision.step);
+      setTransition(null);
+    }
+  }, [nextFlow, pomodoro.breakPending, transition]);
+
   const reviewDueCards = useCallback(() => {
     if (!courseId) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
@@ -247,7 +281,14 @@ function CourseStudyFlowInner() {
 
   let scene: string;
   let body: ReactNode;
-  if (transition) {
+  if (awaitingContinuation) {
+    scene = 'transition';
+    body = (
+      <DelayedFallback>
+        <CourseStudyFlowSkeleton />
+      </DelayedFallback>
+    );
+  } else if (transition) {
     const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
     const nextLabel =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
@@ -340,12 +381,12 @@ function CourseStudyFlowSkeleton() {
       aria-label="Loading course study flow"
     >
       <div className="w-full max-w-xl space-y-4">
-        <div className="h-4 w-32 animate-pulse rounded bg-ink/5" />
-        <div className="h-12 w-3/4 animate-pulse rounded-xl bg-ink/5" />
-        <div className="h-5 w-full animate-pulse rounded bg-ink/5" />
+        <Skeleton className="h-4 w-32 bg-ink/5" />
+        <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
+        <Skeleton className="h-5 w-full bg-ink/5" />
         <div className="mt-8 flex gap-3">
-          <span className="h-11 w-32 animate-pulse rounded-xl bg-ink/5" />
-          <span className="h-11 w-24 animate-pulse rounded-xl bg-ink/5" />
+          <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
+          <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
         </div>
       </div>
     </div>

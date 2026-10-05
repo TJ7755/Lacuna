@@ -3,12 +3,19 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import * as React from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
+import type * as MotionReact from 'motion/react';
 import { CardEditor } from './CardEditor';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
 const mockNavigate = vi.fn();
+let mockIsPresent = true;
+
+vi.mock('motion/react', async () => ({
+  ...await vi.importActual<typeof MotionReact>('motion/react'),
+  useIsPresent: () => mockIsPresent,
+}));
 let mockCourse: Course | undefined;
 let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
@@ -196,6 +203,7 @@ afterEach(() => vi.useRealTimers());
 
 beforeEach(() => {
   localStorage.clear();
+  mockIsPresent = true;
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
@@ -812,4 +820,90 @@ describe('CardEditor — authored answer mode', () => {
     await waitFor(() => expect(updateCard).toHaveBeenCalledWith('card-1', expect.objectContaining({ answerMode: 'reveal' })));
   });
 
+});
+
+
+describe('CardEditor — save navigation', () => {
+  it.each([false, true])('cancels the save return when the editor closes (editing: %s)', async (editing) => {
+    vi.useFakeTimers();
+    mockCard = editing ? { ...generatedCard, sequenceItemId: undefined } : undefined;
+    const view = editing ? renderEditing() : renderNew();
+    if (!editing) {
+      fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Q' } });
+      fireEvent.change(screen.getByPlaceholderText(/Answer\./), { target: { value: 'A' } });
+    }
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }));
+    });
+    expect(editing ? updateCard : createCourseCard).toHaveBeenCalledOnce();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    view.unmount();
+    await act(async () => { vi.advanceTimersByTime(500); });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('ignores a save that finishes after the editor has closed', async () => {
+    vi.useFakeTimers();
+    const save = Promise.withResolvers<void>();
+    updateCard.mockReturnValueOnce(save.promise);
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    const view = renderEditing();
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    view.unmount();
+    await act(async () => { save.resolve(); });
+    await act(async () => { vi.advanceTimersByTime(500); });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('cancels the old return when navigating to another card in the same editor', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
+        <Link to="/course/course-1/cards/card-2/edit">Next card</Link>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
+    mockCard = { ...generatedCard, id: 'card-2', sequenceItemId: undefined };
+    fireEvent.click(screen.getByRole('link', { name: 'Next card' }));
+    await act(async () => { vi.advanceTimersByTime(500); });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('cancels the return while the editor is retained for its exit animation', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    const view = renderEditing();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
+    mockIsPresent = false;
+    view.rerender(
+      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(500); });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('returns after the confirmation when the editor remains open', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    renderEditing();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    await act(async () => { vi.advanceTimersByTime(450); });
+    expect(mockNavigate).toHaveBeenCalledExactlyOnceWith('/course/course-1/cards');
+  });
 });

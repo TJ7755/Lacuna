@@ -1,3 +1,5 @@
+import { Input } from '../components/ui/Field';
+import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useState } from 'react';
@@ -309,7 +311,7 @@ export function CourseSettings() {
                 <div className="flex flex-col gap-5">
                   <label className="block text-sm font-semibold text-ink">
                     Course name
-                    <input
+                    <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={commitName}
@@ -319,7 +321,7 @@ export function CourseSettings() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <label className="block text-sm font-semibold text-ink">
                       Exam board
-                      <input
+                      <Input
                         value={examBoard}
                         onChange={(e) => setExamBoard(e.target.value)}
                         onBlur={commitExamBoard}
@@ -328,7 +330,7 @@ export function CourseSettings() {
                     </label>
                     <label className="block text-sm font-semibold text-ink">
                       Specification
-                      <input
+                      <Input
                         value={specification}
                         onChange={(e) => setSpecification(e.target.value)}
                         onBlur={commitSpecification}
@@ -555,13 +557,13 @@ export function CourseSettings() {
 function CourseSettingsSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
-      <div className="mb-8 mt-6 h-10 w-64 animate-pulse rounded-full bg-ink/10 md:mt-8" />
+      <Skeleton className="mb-8 mt-6 h-10 w-64 rounded-full bg-ink/10 md:mt-8" />
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         {[40, 32, 24].map((height) => (
           <div key={height} className="space-y-4 rounded-3xl bg-surface p-7">
-            <div className="h-6 w-40 animate-pulse rounded-full bg-ink/10" />
-            <div
-              className="w-full animate-pulse rounded-2xl bg-ink/10"
+            <Skeleton className="h-6 w-40 rounded-full bg-ink/10" />
+            <Skeleton
+              className="w-full rounded-2xl bg-ink/10"
               style={{ height: height * 4 }}
             />
           </div>

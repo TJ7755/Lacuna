@@ -93,6 +93,15 @@ vi.mock('./LearnMode', () => ({
         <button type="button" onClick={() => onStepFinished(summary(false))}>
           Pause step
         </button>
+        <button type="button" onClick={() => onStepFinished(answeredSummary())}>
+          Clear step
+        </button>
+        <button
+          type="button"
+          onClick={() => onStepFinished(answeredSummary({ dailyGoalReached: true }))}
+        >
+          Reach review goal
+        </button>
         <button type="button" onClick={onFlowExit}>
           Exit flow
         </button>
@@ -129,6 +138,14 @@ function summary(reachedGoal: boolean): SessionSummary {
     focusFraction: 1,
     reachedGoal,
     limitReached: false,
+  };
+}
+
+function answeredSummary(overrides: Partial<SessionSummary> = {}): SessionSummary {
+  return {
+    ...summary(true),
+    events: [{ grade: 3, correct: true, responseTimeSec: 4, distracted: false }],
+    ...overrides,
   };
 }
 
@@ -264,6 +281,42 @@ describe('CourseStudyFlow', () => {
       }),
     );
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('continues contiguous Practice without a hand-off screen', async () => {
+    mockFlows = [
+      flow({ kind: 'practice', nodeKey: 'auto-1', mode: 'curricular', label: 'Practice' }, 0, [
+        practiceState('auto-1', 'Practice', ['lesson-1']),
+      ]),
+      flow({ kind: 'practice', nodeKey: 'auto-2', mode: 'curricular', label: 'Practice' }, 1, [
+        practiceState('auto-2', 'Practice', ['lesson-2']),
+      ]),
+    ];
+    renderFlow();
+    await screen.findByTestId('learn-request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear step' }));
+
+    await waitFor(() => expect(request()).toMatchObject({ nodeKey: 'auto-2' }));
+    expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps the hand-off when Practice stops at the daily review goal', async () => {
+    mockFlows = [
+      flow({ kind: 'practice', nodeKey: 'auto-1', mode: 'curricular', label: 'Practice' }, 0, [
+        practiceState('auto-1', 'Practice', ['lesson-1']),
+      ]),
+      flow({ kind: 'practice', nodeKey: 'auto-2', mode: 'curricular', label: 'Practice' }, 1, [
+        practiceState('auto-2', 'Practice', ['lesson-2']),
+      ]),
+    ];
+    renderFlow();
+    await screen.findByTestId('learn-request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reach review goal' }));
+
+    expect(await screen.findByRole('button', { name: /^Continue$/ })).toBeEnabled();
+    expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
   });
 
   it('keeps Continue disabled while the next planner generation is pending', async () => {

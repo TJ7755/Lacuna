@@ -1,4 +1,6 @@
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { useCardSaveConfirmation } from './useCardSaveConfirmation';
+import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -199,8 +201,7 @@ export function CardEditor() {
   const focusSaveButton = () => (saveAddRef.current ?? saveRef.current)?.focus();
 
   // Brief "Saved" flourish shown in the action bar after each quick-capture save.
-  const [showSaved, setShowSaved] = useState(false);
-  const savedTimer = useRef<number | undefined>(undefined);
+  const { showSaved, flashSaved, afterSaved } = useCardSaveConfirmation(currentDraftKey);
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [shakeNonce, setShakeNonce] = useState(0);
   const shakeTimer = useRef<number | undefined>(undefined);
@@ -214,12 +215,6 @@ export function CardEditor() {
     setDraftDirty(true);
   }
 
-  function flashSaved() {
-    window.clearTimeout(savedTimer.current);
-    setShowSaved(true);
-    savedTimer.current = window.setTimeout(() => setShowSaved(false), 1200);
-  }
-
   async function copyMarkSchemePrompt() {
     if (!front.trim()) return;
     try {
@@ -229,7 +224,6 @@ export function CardEditor() {
       notify('Could not copy the mark-scheme prompt.', 'negative');
     }
   }
-  useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
   // Existing tags across the lesson or bank, offered as suggestions in the tag input.
   const tagSuggestions = useMemo(() => {
@@ -604,10 +598,10 @@ export function CardEditor() {
       setDraftDirty(false);
       flashSaved();
       // Let the confirmation flourish play briefly before leaving the page.
-      window.setTimeout(() => {
+      afterSaved(() => {
         notify('Card updated.', 'positive');
         void navigate(backPath);
-      }, 450);
+      });
       return;
     }
 
@@ -673,10 +667,10 @@ export function CardEditor() {
       flashSaved();
     } else {
       flashSaved();
-      window.setTimeout(() => {
+      afterSaved(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
         void navigate(backPath);
-      }, 450);
+      });
     }
   }
 
@@ -1003,12 +997,12 @@ export function CardEditor() {
 function CardEditorSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
-      <div className="mb-2 h-11 w-24 animate-pulse rounded-full bg-ink/10" />
-      <div className="mb-6 h-11 w-56 animate-pulse rounded-xl bg-ink/10" />
-      <div className="mb-6 h-11 w-96 max-w-full animate-pulse rounded-full bg-ink/[0.06]" />
+      <Skeleton className="mb-2 h-11 w-24 rounded-full bg-ink/10" />
+      <Skeleton className="mb-6 h-11 w-56 rounded-xl bg-ink/10" />
+      <Skeleton className="mb-6 h-11 w-96 max-w-full rounded-full bg-ink/[0.06]" />
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="h-96 animate-pulse rounded-3xl bg-ink/[0.06] lg:col-span-3" />
-        <div className="h-72 animate-pulse rounded-3xl bg-ink/[0.06] lg:col-span-2" />
+        <Skeleton className="h-96 rounded-3xl bg-ink/[0.06] lg:col-span-3" />
+        <Skeleton className="h-72 rounded-3xl bg-ink/[0.06] lg:col-span-2" />
       </div>
     </div>
   );

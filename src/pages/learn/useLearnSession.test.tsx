@@ -48,7 +48,6 @@ function sessionParams(overrides: Partial<UseLearnSessionParams> = {}): UseLearn
     navigate: vi.fn(),
     notify: vi.fn(),
     distraction,
-    startInFocusMode: false,
     ...overrides,
   };
 }

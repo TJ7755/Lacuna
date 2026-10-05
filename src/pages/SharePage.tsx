@@ -1,4 +1,5 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { Skeleton } from '../components/ui/Skeleton';
 import { CourseFileExportButton } from '../components/import/CourseFileControls';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -957,9 +958,9 @@ function ShareSkeleton() {
           key={i}
           className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3"
         >
-          <div className="h-5 w-5 animate-pulse rounded-md bg-ink/10" />
-          <div className="h-4 flex-1 animate-pulse rounded bg-ink/10" />
-          <div className="h-4 w-16 animate-pulse rounded bg-ink/10" />
+          <Skeleton className="h-5 w-5 rounded-md bg-ink/10" />
+          <Skeleton className="h-4 flex-1 rounded bg-ink/10" />
+          <Skeleton className="h-4 w-16 rounded bg-ink/10" />
         </div>
       ))}
     </div>

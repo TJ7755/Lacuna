@@ -1,6 +1,4 @@
-import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useEffect, useRef, useState } from 'react';
-import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { TagInput } from '../ui/TagInput';
@@ -9,10 +7,9 @@ import { useToast } from '../ui/Toast';
 import { updateCard } from '../../db/cardRepository';
 import { hasCloze } from '../../utils/cloze';
 import { cn } from '../ui/cn';
-import { CloseIcon } from '../ui/icons';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import type { Card, CardType } from '../../db/types';
-import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 interface CardEditOverlayProps {
   card: Card;
@@ -40,8 +37,6 @@ export function CardEditOverlay({
 }: CardEditOverlayProps) {
   const { notify } = useToast();
   const trapRef = useFocusTrap(true);
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
   const [type, setType] = useState<CardType>(card.type);
   const [front, setFront] = useState(card.front);
   const [back, setBack] = useState(card.back);
@@ -104,15 +99,13 @@ export function CardEditOverlay({
     }
   }
 
-  return (      <motion.div
-      ref={trapRef}
-      className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] will-change-transform-opacity"
-      initial={m > 0 ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      exit={m > 0 ? { opacity: 0 } : undefined}
-      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      // Keep the session's keyboard handler inert while editing: it checks `editing`,
-      // but stop bubbling here too so nothing behind the overlay reacts to typing.
+  return (
+    <DialogPanel
+      label="Edit card"
+      trapRef={trapRef}
+      onBackdropClick={onCancel}
+      className="max-h-[90vh] max-w-3xl"
+      overlayClassName="pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] will-change-transform-opacity"
       onKeyDown={(e) => {
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation();
@@ -125,142 +118,118 @@ export function CardEditOverlay({
         }
       }}
     >
-      <ModalBackdrop shade={50} onClick={onCancel} />
+      <DialogHeader title="Edit card" onClose={onCancel} closeLabel="Close editor" />
 
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Edit card"
-        initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
-        transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
-        className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
-      >
-        <header className="flex items-center justify-between border-b border-line px-6 py-4">
-          <h2 className="font-display text-xl">Edit card</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close editor"
-            title="Close (Esc)"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-          >
-            <CloseIcon width={18} height={18} />
-          </button>
-        </header>
-
-        <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6">
-          {/* Card type selector */}
-          <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
-              Card type
-            </div>
-            <div className="flex gap-2">
-              {([
-                { key: 'front_back' as const, label: 'Front / Back' },
-                { key: 'cloze' as const, label: 'Cloze deletion' },
-                { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
-              ]).map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setType(t.key)}
-                  className={cn(
-                    'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
-                    type === t.key
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-line text-ink-soft hover:border-line-strong',
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+      <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6">
+        {/* Card type selector */}
+        <div>
+          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+            Card type
           </div>
-
-          {isCloze ? (
-            <>
-              <MarkdownEditor
-                inputRef={frontRef}
-                autoFocus
-                label="Text (use the Cloze button to hide answers)"
-                value={front}
-                onChange={setFront}
-                minRows={6}
-                allowCloze
-                clozePreview={showBackCloze ? 'back' : 'front'}
-                placeholder="The chemical symbol for water is {{c1::H2O}}."
-                onError={(m) => notify(m, 'negative')}
-              />
-              <label className="flex items-center gap-2 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  checked={showBackCloze}
-                  onChange={(e) => setShowBackCloze(e.target.checked)}
-                  className="accent-accent"
-                />
-                Preview revealed answer
-              </label>
-              {!clozeValid && front.trim().length > 0 && (
-                <p className="text-sm text-negative">
-                  Add at least one cloze deletion using the Cloze button, e.g.{' '}
-                  <code className="font-mono">{'{{c1::answer}}'}</code>.
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <MarkdownEditor
-                inputRef={frontRef}
-                autoFocus
-                label="Front"
-                value={front}
-                onChange={setFront}
-                minRows={6}
-                placeholder="Question or prompt. Markdown, maths and images are supported."
-                onError={(m) => notify(m, 'negative')}
-                onTabForward={() => backRef.current?.focus()}
-              />
-              <MarkdownEditor
-                inputRef={backRef}
-                label="Back"
-                value={back}
-                onChange={setBack}
-                minRows={6}
-                placeholder="Answer. Markdown, maths and images are supported."
-                onError={(m) => notify(m, 'negative')}
-                onTabBackward={() => frontRef.current?.focus()}
-              />
-            </>
-          )}
-
-          {/* Tags */}
-          <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
-            <TagInput
-              tags={tags}
-              onChange={setTags}
-              suggestions={tagSuggestions}
-              placeholder="Add tags to group cards for filtered study…"
-            />
+          <div className="flex gap-2">
+            {([
+              { key: 'front_back' as const, label: 'Front / Back' },
+              { key: 'cloze' as const, label: 'Cloze deletion' },
+              { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
+            ]).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setType(t.key)}
+                className={cn(
+                  'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
+                  type === t.key
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line text-ink-soft hover:border-line-strong',
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
-          <Button variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={!canSave}
-            title="Save (Ctrl/Cmd+Enter)"
-          >
-            Save changes
-          </Button>
-        </footer>
-      </motion.div>
-    </motion.div>
+        {isCloze ? (
+          <>
+            <MarkdownEditor
+              inputRef={frontRef}
+              autoFocus
+              label="Text (use the Cloze button to hide answers)"
+              value={front}
+              onChange={setFront}
+              minRows={6}
+              allowCloze
+              clozePreview={showBackCloze ? 'back' : 'front'}
+              placeholder="The chemical symbol for water is {{c1::H2O}}."
+              onError={(m) => notify(m, 'negative')}
+            />
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={showBackCloze}
+                onChange={(e) => setShowBackCloze(e.target.checked)}
+                className="accent-accent"
+              />
+              Preview revealed answer
+            </label>
+            {!clozeValid && front.trim().length > 0 && (
+              <p className="text-sm text-negative">
+                Add at least one cloze deletion using the Cloze button, e.g.{' '}
+                <code className="font-mono">{'{{c1::answer}}'}</code>.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <MarkdownEditor
+              inputRef={frontRef}
+              autoFocus
+              label="Front"
+              value={front}
+              onChange={setFront}
+              minRows={6}
+              placeholder="Question or prompt. Markdown, maths and images are supported."
+              onError={(m) => notify(m, 'negative')}
+              onTabForward={() => backRef.current?.focus()}
+            />
+            <MarkdownEditor
+              inputRef={backRef}
+              label="Back"
+              value={back}
+              onChange={setBack}
+              minRows={6}
+              placeholder="Answer. Markdown, maths and images are supported."
+              onError={(m) => notify(m, 'negative')}
+              onTabBackward={() => frontRef.current?.focus()}
+            />
+          </>
+        )}
+
+        {/* Tags */}
+        <div>
+          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+          <TagInput
+            tags={tags}
+            onChange={setTags}
+            suggestions={tagSuggestions}
+            placeholder="Add tags to group cards for filtered study…"
+          />
+        </div>
+      </div>
+
+      <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+        <Button variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={!canSave}
+          title="Save (Ctrl/Cmd+Enter)"
+        >
+          Save changes
+        </Button>
+      </footer>
+    </DialogPanel>
   );
 }

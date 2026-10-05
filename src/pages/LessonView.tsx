@@ -1,4 +1,5 @@
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { Skeleton } from '../components/ui/Skeleton';
 import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
@@ -366,14 +367,14 @@ export function LessonView({
 function LessonViewSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} py-8`}>
-      <div className="mb-6 h-11 w-24 animate-pulse rounded-full bg-ink/10" />
+      <Skeleton className="mb-6 h-11 w-24 rounded-full bg-ink/10" />
       <div className="mb-6 flex flex-col gap-3">
-        <div className="h-11 w-72 max-w-full animate-pulse rounded-xl bg-ink/10" />
-        <div className="h-4 w-52 animate-pulse rounded bg-ink/10" />
+        <Skeleton className="h-11 w-72 max-w-full rounded-xl bg-ink/10" />
+        <Skeleton className="h-4 w-52 rounded bg-ink/10" />
       </div>
       <div className="flex flex-wrap gap-6">
-        <div className="h-80 flex-[3_1_560px] animate-pulse rounded-3xl bg-ink/[0.06]" />
-        <div className="h-80 flex-[2_1_340px] animate-pulse rounded-3xl bg-ink/[0.06]" />
+        <Skeleton className="h-80 flex-[3_1_560px] rounded-3xl bg-ink/[0.06]" />
+        <Skeleton className="h-80 flex-[2_1_340px] rounded-3xl bg-ink/[0.06]" />
       </div>
     </div>
   );

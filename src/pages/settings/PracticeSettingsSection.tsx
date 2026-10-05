@@ -1,3 +1,4 @@
+import { Input } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
 import { ChevronDownIcon } from '../../components/ui/icons';
 
@@ -73,7 +74,7 @@ export function PracticeSettingsSection({
         <div className="mt-4 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4">
           <label className="block text-sm text-ink-soft">
             Threshold (exam not near)
-            <input
+            <Input
               type="number"
               aria-label="Practice threshold when the exam is not near, in minutes"
               min={0}
@@ -90,7 +91,7 @@ export function PracticeSettingsSection({
 
           <label className="block text-sm text-ink-soft">
             Threshold (exam near)
-            <input
+            <Input
               type="number"
               aria-label="Practice threshold when the exam is near, in minutes"
               min={0}
@@ -108,7 +109,7 @@ export function PracticeSettingsSection({
 
           <label className="block text-sm text-ink-soft">
             Urgent window
-            <input
+            <Input
               type="number"
               aria-label="Practice urgent window, in days"
               min={0}
@@ -125,7 +126,7 @@ export function PracticeSettingsSection({
 
           <label className="block text-sm text-ink-soft">
             Maximum lesson gap
-            <input
+            <Input
               type="number"
               aria-label="Maximum lesson gap for automatic practice"
               min={1}

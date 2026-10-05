@@ -1,0 +1,1 @@
+- The course study flow no longer shows a full-screen hand-off between two ordinary Practice steps when the first cleared its work; it continues straight on. Reaching the daily review goal now marks the summary, so goals, limits, breaks, assessments and lessons still pause (#359)

@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -311,7 +312,7 @@ export function QuestionLearnMode() {
             </div>
           </section>
         ) : !attempt ? (
-          <div className="h-[24rem] animate-pulse rounded-[28px] bg-ink/10" />
+          <Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />
         ) : (
           <motion.div
             key={`${attempt.id}:${attempt.status}`}
@@ -348,8 +349,8 @@ function QuestionSessionSkeleton() {
   return (
     <main className="min-h-screen bg-paper px-4 py-7 md:px-8">
       <div className="mx-auto max-w-[1000px]">
-        <div className="mb-6 h-11 w-full animate-pulse rounded-xl bg-ink/10" />
-        <div className="h-[24rem] animate-pulse rounded-[28px] bg-ink/10" />
+        <Skeleton className="mb-6 h-11 w-full rounded-xl bg-ink/10" />
+        <Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />
       </div>
     </main>
   );

@@ -154,7 +154,6 @@ describe('curricular Practice milestone scope (#358)', () => {
       navigate: vi.fn(),
       notify: vi.fn(),
       distraction,
-      startInFocusMode: false,
     };
     const { result } = renderHook(() => useLearnSession(params));
     await waitFor(() => expect(result.current.phase).toBe('question'));

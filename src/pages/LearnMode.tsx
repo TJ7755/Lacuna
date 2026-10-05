@@ -22,6 +22,7 @@ import { useIsTouchMode } from '../state/inputMode';
 import { useToast } from '../components/ui/Toast';
 import type { CardFilter } from '../db/search';
 import { useLearnSession } from './learn/useLearnSession';
+import { useLearnView } from './learn/useLearnView';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { LearnHeader } from './learn/LearnHeader';
 import { NavSidebar } from './learn/NavSidebar';
@@ -138,6 +139,27 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   }, [isSimpleMode, filterParams, plannedRevision]);
 
   const {
+    menuOpen,
+    setMenuOpen,
+    focusMode,
+    setFocusMode,
+    focusChromeVisible,
+    setFocusChromeVisible,
+    isFullscreen,
+    toggleFullscreen,
+    hintsOpen,
+    setHintsOpen,
+    navOpen,
+    setNavOpen,
+    typedAnswer,
+    setTypedAnswer,
+    typingInputRef,
+    resetForCard,
+    resetForSession,
+    closingMenu,
+  } = useLearnView(startInFocusMode, notify);
+
+  const {
     phase,
     singleDeck,
     unitDisplayName,
@@ -155,21 +177,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     summary,
     setSummary,
     canUndo,
-    menuOpen,
-    setMenuOpen,
     editing,
-    focusMode,
-    setFocusMode,
-    focusChromeVisible,
-    setFocusChromeVisible,
-    isFullscreen,
-    hintsOpen,
-    setHintsOpen,
-    navOpen,
-    setNavOpen,
-    typedAnswer,
-    setTypedAnswer,
-    typingInputRef,
     sessionCardIds,
     setSessionCardIds,
     sessionCardOutcomes,
@@ -181,7 +189,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     revisionNextWindowDay,
     setLimitOverride,
     setTimeLimitOverride,
-    toggleFullscreen,
     backOut,
     finish,
     serveNext,
@@ -232,7 +239,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onStepFinished,
     notify,
     distraction,
-    startInFocusMode,
+    onCardServed: resetForCard,
+    onSessionReset: resetForSession,
   });
 
   const studyFocusRef = useStudyFocus(
@@ -247,6 +255,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const undoWithTransitionCancel = useCallback(async () => {
     if (undoInFlightRef.current) return;
     undoInFlightRef.current = true;
+    setMenuOpen(false);
     try {
       cardTransitionRef.current?.cancel();
       runRef.current = 0;
@@ -255,7 +264,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     } finally {
       undoInFlightRef.current = false;
     }
-  }, [undoLast]);
+  }, [undoLast, setMenuOpen]);
 
   const answerWithUndo = useCallback(
     (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
@@ -509,10 +518,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   setMenuOpen={setMenuOpen}
                   current={current}
                   isTouchMode={isTouchMode}
-                  onEdit={openEdit}
-                  onToggleFlag={toggleFlagCurrent}
-                  onBury={buryCurrent}
-                  onSuspend={suspendCurrent}
+                  onEdit={closingMenu(openEdit)}
+                  onToggleFlag={closingMenu(toggleFlagCurrent)}
+                  onBury={closingMenu(buryCurrent)}
+                  onSuspend={closingMenu(suspendCurrent)}
                   onShowShortcuts={() => {
                     setMenuOpen(false);
                     setHintsOpen(true);

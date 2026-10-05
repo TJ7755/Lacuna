@@ -1,6 +1,4 @@
-import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useEffect, useRef, useState } from 'react';
-import { m as motion } from 'motion/react';
 import {
   AssessmentEditor,
   assessmentChanges,
@@ -16,11 +14,10 @@ import {
 } from '../../db/assessmentRepository';
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
-import { CloseIcon } from '../ui/icons';
+import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 interface AssessmentEditorDialogProps {
   courseId: string;
@@ -48,8 +45,6 @@ export function AssessmentEditorDialog({
 }: AssessmentEditorDialogProps) {
   const { notify } = useToast();
   const trapRef = useFocusTrap(true, { autoFocusSelector: '[data-assessment-name]' });
-  const [motionSpeed] = useMotionSpeed();
-  const motionMultiplier = speedMultiplier(motionSpeed);
   const kind = assessment?.kind ?? 'checkpoint';
   const [draft, setDraft] = useState<AssessmentDraft>(() => {
     if (assessment) return draftFromAssessment(assessment);
@@ -108,13 +103,11 @@ export function AssessmentEditorDialog({
   }
 
   return (
-    <motion.div
-      ref={trapRef}
-      className="fixed inset-0 z-50 flex flex-col"
-      initial={motionMultiplier > 0 ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
-      transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+    <DialogPanel
+      label={assessment ? `Edit ${noun}` : 'Add checkpoint'}
+      trapRef={trapRef}
+      onBackdropClick={onCancel}
+      className="max-h-[90vh] max-w-lg"
       onKeyDown={(event) => {
         if (event.key === 'Tab') return;
         event.stopPropagation();
@@ -125,91 +118,64 @@ export function AssessmentEditorDialog({
         }
       }}
     >
-      <ModalBackdrop shade={50} onClick={onCancel} />
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label={assessment ? `Edit ${noun}` : 'Add checkpoint'}
-        initial={motionMultiplier > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={motionMultiplier > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
-        transition={
-          motionMultiplier > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }
-        }
-        className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
-      >
-        <header className="relative flex items-center justify-between border-b border-line px-6 py-4">
-          <div>
-            <h2 className="font-display text-xl">
-              {assessment ? `Edit ${noun}` : 'Add checkpoint'}
-            </h2>
-            <p className="mt-0.5 text-xs text-ink-faint">
-              Place it on the course path and set its scope.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close editor"
-            title="Close (Esc)"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-          >
-            <CloseIcon width={18} height={18} />
-          </button>
-        </header>
-        <div className="relative flex-1 overflow-y-auto px-6 py-6">
-          <AssessmentEditor
-            courseId={courseId}
-            kind={kind}
-            draft={draft}
-            onChange={setDraft}
-            lessons={lessons}
-            cards={cards}
-            links={links}
-            timeZone={timeZone}
-            initialNameFocusTarget
-          />
-        </div>
-        <footer className="relative flex items-center justify-between gap-3 border-t border-line px-6 py-4">
-          {assessment?.kind === 'checkpoint' ? (
-            confirmingDelete ? (
-              <ConfirmInline
-                message="Delete checkpoint?"
-                cancelLabel="Keep checkpoint"
-                announce
-                focusOnMount="cancel"
-                onConfirm={() => void remove()}
-                onCancel={() => setConfirmingDelete(false)}
-              />
-            ) : (
-              <Button
-                ref={deleteTriggerRef}
-                variant="danger"
-                size="sm"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                Delete
-              </Button>
-            )
+      <DialogHeader
+        title={assessment ? `Edit ${noun}` : 'Add checkpoint'}
+        description="Place it on the course path and set its scope."
+        onClose={onCancel}
+        closeLabel="Close editor"
+      />
+      <div className="relative flex-1 overflow-y-auto px-6 py-6">
+        <AssessmentEditor
+          courseId={courseId}
+          kind={kind}
+          draft={draft}
+          onChange={setDraft}
+          lessons={lessons}
+          cards={cards}
+          links={links}
+          timeZone={timeZone}
+          initialNameFocusTarget
+        />
+      </div>
+      <footer className="relative flex items-center justify-between gap-3 border-t border-line px-6 py-4">
+        {assessment?.kind === 'checkpoint' ? (
+          confirmingDelete ? (
+            <ConfirmInline
+              message="Delete checkpoint?"
+              cancelLabel="Keep checkpoint"
+              announce
+              focusOnMount="cancel"
+              onConfirm={() => void remove()}
+              onCancel={() => setConfirmingDelete(false)}
+            />
           ) : (
-            <span />
-          )}
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onCancel}>
-              Cancel
-            </Button>
             <Button
-              variant="primary"
-              onClick={() => void save()}
-              disabled={
-                saving || !assessmentDraftIsSaveable(courseId, kind, draft, lessons, cards, links)
-              }
+              ref={deleteTriggerRef}
+              variant="danger"
+              size="sm"
+              onClick={() => setConfirmingDelete(true)}
             >
-              Save {noun}
+              Delete
             </Button>
-          </div>
-        </footer>
-      </motion.div>
-    </motion.div>
+          )
+        ) : (
+          <span />
+        )}
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => void save()}
+            disabled={
+              saving || !assessmentDraftIsSaveable(courseId, kind, draft, lessons, cards, links)
+            }
+          >
+            Save {noun}
+          </Button>
+        </div>
+      </footer>
+    </DialogPanel>
   );
 }

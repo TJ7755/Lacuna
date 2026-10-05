@@ -1,4 +1,5 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { Skeleton } from '../components/ui/Skeleton';
 import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -397,11 +398,11 @@ function ArchiveCourseDialog({
 function CourseSkeleton() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="h-80 animate-pulse rounded-[28px] bg-surface" />
+      <Skeleton className="h-80 rounded-[28px] bg-surface" />
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="flex h-[68px] items-center gap-4 rounded-[18px] bg-surface px-5">
           <div className="h-2.5 w-2.5 rounded-full bg-ink/10" />
-          <div className="h-5 w-40 animate-pulse rounded bg-ink/10" />
+          <Skeleton className="h-5 w-40 rounded bg-ink/10" />
         </div>
       ))}
     </div>

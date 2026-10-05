@@ -35,7 +35,7 @@ async function startSession(count: number, objective: ExamObjective = 'securedTo
     practiceNodeKeyParam: null, requestAssessmentId: undefined,
     requestPlanId: undefined, requestWindowId: undefined, plannedRevision: false,
     reviewSessionKind: 'practice', isSimpleMode: false, mode: 'fsrs',
-    navigate: vi.fn(), notify: vi.fn(), startInFocusMode: false,
+    navigate: vi.fn(), notify: vi.fn(),
     distraction: {
       beginCard: vi.fn(), setAnswerVisible: vi.fn(), wasDistracted: () => false,
       blurredMs: () => 0, sessionMs: () => 1,
