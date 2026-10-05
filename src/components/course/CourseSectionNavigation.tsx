@@ -1,8 +1,6 @@
 import { COURSE_PAGE_FRAME } from './coursePageLayout';
 import { useCourse } from '../../state/useCourseData';
 import { CoursePageNavigation } from './CoursePageNavigation';
-import { useCourseForecast } from '../../state/ShellCourseData';
-import { forecastStatus } from '../dashboard/ForecastChart';
 import { useEffect, useState } from 'react';
 
 /**
@@ -38,7 +36,6 @@ export function CourseSectionNavigation({
   const course = useCourse(courseId);
   const titleInView = useCourseTitleInView(pathname);
   const archived = course?.archived === true;
-  const forecast = useCourseForecast(courseId);
 
   return (
     <div className={`${COURSE_PAGE_FRAME} mb-4 pt-8`}>
@@ -49,18 +46,7 @@ export function CourseSectionNavigation({
         backLabel={archived ? 'Archived courses' : 'All courses'}
         archived={archived}
         identityHidden={titleInView}
-        identity={
-          course
-            ? {
-                name: course.name,
-                status: forecast
-                  ? forecastStatus(forecast)
-                  : course.examDate
-                    ? 'ahead'
-                    : 'steady',
-              }
-            : undefined
-        }
+        identity={course ? { name: course.name } : undefined}
       />
     </div>
   );

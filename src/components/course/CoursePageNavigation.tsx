@@ -9,7 +9,6 @@ import { updateCourse } from '../../db/courseRepository';
 import { canEditLessons, resolveLessonViewMode } from '../../course/lessonViewMode';
 import { LessonViewModeToggle } from './LessonViewModeToggle';
 import { useToast } from '../ui/Toast';
-import { STATUS_COLOUR, type ForecastStatus } from '../dashboard/ForecastChart';
 
 interface CoursePageNavigationProps {
   courseId: string;
@@ -18,8 +17,8 @@ interface CoursePageNavigationProps {
   backLabel: string;
   archived?: boolean;
   trailing?: ReactNode;
-  /** Show the course itself (status dot and name) in place of the back link. */
-  identity?: { name: string; status: ForecastStatus };
+  /** Show the course name in place of the back link. */
+  identity?: { name: string };
   /** Fade the identity out while the page's own title already names the course. */
   identityHidden?: boolean;
   className?: string;
@@ -83,11 +82,6 @@ export function CoursePageNavigation({
             identityHidden && 'pointer-events-none translate-y-1 opacity-0',
           )}
         >
-          <span
-            aria-hidden="true"
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ background: STATUS_COLOUR[identity.status] }}
-          />
           <span className="truncate">{identity.name}</span>
         </Link>
       ) : (

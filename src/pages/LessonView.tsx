@@ -48,8 +48,6 @@ import {
 } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
-import { useCourseForecast } from '../state/ShellCourseData';
-import { forecastStatus } from '../components/dashboard/ForecastChart';
 import { updateLesson } from '../db/lessonRepository';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
@@ -112,7 +110,6 @@ export function LessonView({
   // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
   // Card membership remains independent from the scheduling implementation.
   const lessonDeck = useLessonBackingDeck(courseId, lessonId);
-  const forecast = useCourseForecast(courseId);
 
   // Loading state.
   if (
@@ -187,18 +184,7 @@ export function LessonView({
           backTo={backTo}
           backLabel={backLabel}
           archived={archived}
-          identity={
-            archived
-              ? undefined
-              : {
-                  name: course.name,
-                  status: forecast
-                    ? forecastStatus(forecast)
-                    : course.examDate
-                      ? 'ahead'
-                      : 'steady',
-                }
-          }
+          identity={archived ? undefined : { name: course.name }}
           className="mb-6"
           trailing={
             archived || canEditLessons(course) ? undefined : (

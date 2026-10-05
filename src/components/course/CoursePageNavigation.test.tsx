@@ -63,7 +63,7 @@ it('reports a rejected workspace-mode save', async () => {
 });
 
 it('fades the course name out of reach while the page title already shows it', () => {
-  const identity = { name: 'Biology', status: 'ahead' as const };
+  const identity = { name: 'Biology' };
   const { rerender } = render(
     <MemoryRouter>
       <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} identityHidden />
@@ -76,5 +76,8 @@ it('fades the course name out of reach while the page title already shows it', (
       <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} />
     </MemoryRouter>,
   );
-  expect(screen.getByRole('link', { name: 'Biology' })).toHaveAttribute('href', '/course/course-1');
+  const link = screen.getByRole('link', { name: 'Biology' });
+  expect(link).toHaveAttribute('href', '/course/course-1');
+  // The name stands alone: no coloured status dot beside it.
+  expect(link.querySelector('[style]')).toBeNull();
 });

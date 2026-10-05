@@ -171,3 +171,4 @@
   drop their You / AI labels (side and colour already say who is speaking).
 - The Study sheet's optional pass reads "Practise until all correct" (it was
   labelled with the mode name, Simple Learn), with Start practising.
+- The course bar shows the course name alone, without the coloured status dot.
