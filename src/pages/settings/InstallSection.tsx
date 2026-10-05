@@ -65,7 +65,7 @@ function InstallPanel() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-ink-soft">
-          Install Lacuna as a standalone app for offline access and a native-like experience.
+          Works offline once installed.
         </p>
         <Button variant="secondary" onClick={promptInstall}>
           <DownloadIcon width={18} height={18} />

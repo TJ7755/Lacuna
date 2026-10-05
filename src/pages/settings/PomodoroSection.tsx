@@ -45,9 +45,6 @@ export function PomodoroSection() {
       <div className="mt-5 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">
           <div className="text-sm">Auto-start breaks</div>
-          <p className="mt-1 text-sm text-ink-soft">
-            Automatically start the break timer when a focus session ends.
-          </p>
         </div>
         <PillSwitch
           checked={settings.autoStartBreaks}

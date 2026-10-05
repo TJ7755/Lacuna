@@ -33,7 +33,7 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
       <p className="text-xs text-ink-faint">
         Automatic practice appears when due work builds up and follows the thresholds above.
         Existing manual practice nodes stay on the course path and can limit lessons, card count and
-        order. Use Practice Now in the course header for immediate course-wide practice.
+        order.
       </p>
 
       {manualNodes?.length === 0 && (

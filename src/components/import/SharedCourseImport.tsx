@@ -253,15 +253,10 @@ export function SharedCourseImport({
 
   return (
     <SectionCard className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
-      <div className="mb-1 flex items-center gap-2">
+      <div className="mb-5 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Choose a course file, or paste a share link or code, then review it before
-        importing. Published course updates are matched to your existing copy.
-        All Lacuna share-code encodings (LAC0–LAC3) are supported.
-      </p>
 
       <CourseFileImportButton
         disabled={importing}
@@ -281,7 +276,7 @@ export function SharedCourseImport({
             beginInspection();
           }}
           rows={4}
-          placeholder="Paste a share link or code here (codes start with LAC)..."
+          placeholder="Paste a share link or code"
           className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
         />
       </div>
@@ -337,9 +332,6 @@ export function SharedCourseImport({
                 {!scanError && <Skeleton className="absolute inset-0 bg-ink/10" />}
               </div>
               {scanError && <p className="mt-2 text-sm text-negative">{scanError}</p>}
-              <p className="mt-2 text-xs text-ink-faint">
-                Point your camera at a Lacuna QR code. The scanner will auto-detect it.
-              </p>
             </div>
           </motion.div>
         )}

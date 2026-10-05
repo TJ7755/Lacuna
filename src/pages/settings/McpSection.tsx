@@ -142,8 +142,7 @@ export function McpSection() {
         </SettingsSectionHeading>
       </div>
       <p className="mb-4 text-sm text-ink-soft">
-        Control what connected MCP clients may read or change. Access is cleared when each client
-        disconnects.
+        Access is cleared when each client disconnects.
       </p>
       <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm">
         <span className={status?.running ? 'text-positive' : 'text-negative'}>

@@ -221,12 +221,8 @@ describe('SharedCourseImport with course codes and files', () => {
   it('shows import section with textarea', () => {
     render(<SharedCourseImport />);
     expect(screen.getByText('Import a shared course')).toBeInTheDocument();
-    expect(
-      screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('Paste a share link or code here (codes start with LAC)...'),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/share-code encodings/)).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Paste a share link or code')).toBeInTheDocument();
     expect(
       screen.getByRole('textbox', { name: 'Share link or code to import' }),
     ).toBeInTheDocument();
@@ -236,7 +232,7 @@ describe('SharedCourseImport with course codes and files', () => {
     async function inspectCode() {
       render(<SharedCourseImport />);
       fireEvent.change(
-        screen.getByPlaceholderText('Paste a share link or code here (codes start with LAC)...'),
+        screen.getByPlaceholderText('Paste a share link or code'),
         { target: { value: 'LAC2-some-code' } },
       );
       fireEvent.click(screen.getByText('Read code'));

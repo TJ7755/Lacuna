@@ -56,9 +56,6 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-ink-faint">
-        Lessons appear in order on the course path. Add, rename, reorder or remove them here.
-      </p>
       {lessons?.length === 0 && (
         <p className="text-xs text-ink-faint">This course has no lessons yet.</p>
       )}

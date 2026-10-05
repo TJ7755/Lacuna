@@ -139,9 +139,6 @@ export function CourseDefaultsSection() {
 
       <div className="mt-6 pt-0">
         <div className="text-sm">After the final exam</div>
-        <p className="mt-1 text-sm text-ink-soft">
-          Decide what happens after a course’s final exam. Checkpoints never trigger this.
-        </p>
         <div className="mt-3 grid gap-2" role="radiogroup" aria-label="After the final exam">
           {FINAL_EXAM_POLICIES.map((policy) => (
             <button

@@ -162,3 +162,7 @@
 - The card editor's Add card no longer wraps alone under the other actions:
   it takes the full width above Cancel and Save & add another.
 - A lesson's card list no longer shows raw maths markers ($e^x$).
+- More captions removed: the import panel's paragraph and scanner hint, the
+  break-timer, final-exam and lesson-management notes, and the MCP intro; the
+  practice note no longer points to a "Practice Now in the course header" that
+  no longer exists, and Install says only that it works offline.
