@@ -1,0 +1,1 @@
+- The sixteen device-local preference modules in `src/state/` are now declarations against one `createLocalSetting` factory, which owns the read, write, change event and cross-tab listener. Storage keys are unchanged, so no preference resets; the key convention (`lacuna.<camelCaseName>`, events `lacuna:<kebab-name>`) is documented in `src/state/localSetting.ts` (#340)

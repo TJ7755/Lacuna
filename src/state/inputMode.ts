@@ -1,8 +1,8 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
+import { createLocalSetting } from './localSetting';
 
 export type InputMode = 'keyboard' | 'touch' | 'auto';
 
-const KEY = 'lacuna.inputMode';
 const FONT_SCALE_KEY = 'lacuna-font-scale';
 const FONT_SCALE_USER_SET_KEY = 'lacuna-font-scale-user-set';
 
@@ -70,20 +70,18 @@ function automaticInput(): ResolvedInput {
   );
 }
 
-export function readInputMode(): InputMode {
-  const raw = localStorage.getItem(KEY) as InputMode | null;
-  if (raw === 'keyboard' || raw === 'touch') return raw;
-  return 'auto';
-}
+const setting = createLocalSetting<InputMode>({
+  key: 'lacuna.inputMode',
+  event: 'lacuna:input-mode',
+  parse: (raw) => (raw === 'keyboard' || raw === 'touch' ? raw : 'auto'),
+});
+
+export const readInputMode = setting.read;
+export const writeInputMode = setting.write;
 
 export function resolveInputMode(mode: InputMode): 'keyboard' | 'touch' {
   if (mode === 'auto') return automaticInput();
   return mode;
-}
-
-export function writeInputMode(mode: InputMode): void {
-  localStorage.setItem(KEY, mode);
-  window.dispatchEvent(new CustomEvent('lacuna:input-mode', { detail: mode }));
 }
 
 /**
@@ -103,24 +101,12 @@ function autoSetFontScaleForMode(mode: InputMode): void {
 }
 
 export function useInputMode(): [InputMode, (mode: InputMode) => void] {
-  const [mode, setMode] = useState<InputMode>(() => readInputMode());
-
-  useEffect(() => {
-    const onChange = () => setMode(readInputMode());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('lacuna:input-mode', onChange);
-    return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('lacuna:input-mode', onChange);
-    };
-  }, []);
-
+  const [mode, setMode] = setting.use();
   return [
     mode,
     (next) => {
-      writeInputMode(next);
-      autoSetFontScaleForMode(next);
       setMode(next);
+      autoSetFontScaleForMode(next);
     },
   ];
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createLocalSetting } from './localSetting';
 
 /**
  * How the answer is given during Learn mode's question phase.
@@ -13,35 +13,12 @@ import { useEffect, useState } from 'react';
  */
 export type TypingSetting = 'reveal' | 'type';
 
-const KEY = 'lacuna.typingSetting';
+const setting = createLocalSetting<TypingSetting>({
+  key: 'lacuna.typingSetting',
+  event: 'lacuna:typing-setting',
+  parse: (raw) => (raw === 'type' ? 'type' : 'reveal'),
+});
 
-export function readTypingSetting(): TypingSetting {
-  return localStorage.getItem(KEY) === 'type' ? 'type' : 'reveal';
-}
-
-export function writeTypingSetting(mode: TypingSetting): void {
-  localStorage.setItem(KEY, mode);
-  window.dispatchEvent(new CustomEvent('lacuna:typing-setting', { detail: mode }));
-}
-
-export function useTypingSetting(): [TypingSetting, (mode: TypingSetting) => void] {
-  const [mode, setMode] = useState<TypingSetting>(() => readTypingSetting());
-
-  useEffect(() => {
-    const onChange = () => setMode(readTypingSetting());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('lacuna:typing-setting', onChange);
-    return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('lacuna:typing-setting', onChange);
-    };
-  }, []);
-
-  return [
-    mode,
-    (next) => {
-      writeTypingSetting(next);
-      setMode(next);
-    },
-  ];
-}
+export const readTypingSetting = setting.read;
+export const writeTypingSetting = setting.write;
+export const useTypingSetting = setting.use;

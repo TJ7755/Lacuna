@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
+import { createLocalSetting, parseJson } from './localSetting';
 
 // Device-local sidebar preferences.
-
-const KEY = 'lacuna.sidebarSettings';
 
 export interface SidebarNavItem {
   id: string;
@@ -32,63 +30,45 @@ export const DEFAULTS: SidebarSettings = {
   navItems: DEFAULT_NAV_ITEMS,
 };
 
-export function readStored(): SidebarSettings {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<SidebarSettings>;
-      const navItems = parsed.navItems ?? DEFAULTS.navItems;
-      // Drop stored items whose id no longer exists as a default (e.g. a removed nav
-      // entry), then merge in any newly added defaults — preserving the stored order
-      // and visibility of everything that survives.
-      const merged = navItems.filter((n) => DEFAULT_NAV_ITEMS.some((def) => def.id === n.id));
-      for (const def of DEFAULT_NAV_ITEMS) {
-        if (!merged.find((n) => n.id === def.id)) {
-          merged.push(def);
+const setting = createLocalSetting<SidebarSettings>({
+  key: 'lacuna.sidebarSettings',
+  event: 'lacuna:sidebar-settings',
+  parse: (raw) =>
+    parseJson(
+      raw,
+      () => ({ ...DEFAULTS }),
+      (value) => {
+        const parsed = value as Partial<SidebarSettings>;
+        const navItems = parsed.navItems ?? DEFAULTS.navItems;
+        // Drop stored items whose id no longer exists as a default (e.g. a removed nav
+        // entry), then merge in any newly added defaults — preserving the stored order
+        // and visibility of everything that survives.
+        const merged = navItems.filter((n) => DEFAULT_NAV_ITEMS.some((def) => def.id === n.id));
+        for (const def of DEFAULT_NAV_ITEMS) {
+          if (!merged.find((n) => n.id === def.id)) {
+            merged.push(def);
+          }
         }
-      }
-      return {
-        showDueCounts: parsed.showDueCounts ?? DEFAULTS.showDueCounts,
-        compactMode: parsed.compactMode ?? DEFAULTS.compactMode,
-        navItems: merged,
-      };
-    }
-  } catch {
-    // Ignore parse errors and fall back to defaults.
-  }
-  return { ...DEFAULTS };
-}
+        return {
+          showDueCounts: parsed.showDueCounts ?? DEFAULTS.showDueCounts,
+          compactMode: parsed.compactMode ?? DEFAULTS.compactMode,
+          navItems: merged,
+        };
+      },
+    ),
+  serialise: JSON.stringify,
+});
+
+export const readStored = setting.read;
 
 export function writeSidebarSettings(settings: Partial<SidebarSettings>): void {
-  const current = readStored();
-  const next = { ...current, ...settings };
-  localStorage.setItem(KEY, JSON.stringify(next));
-  window.dispatchEvent(
-    new CustomEvent('lacuna:sidebar-settings', { detail: next }),
-  );
+  setting.write({ ...setting.read(), ...settings });
 }
 
 export function useSidebarSettings(): [
   SidebarSettings,
   (patch: Partial<SidebarSettings>) => void,
 ] {
-  const [settings, setSettings] = useState<SidebarSettings>(() => readStored());
-
-  useEffect(() => {
-    const onChange = () => setSettings(readStored());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('lacuna:sidebar-settings', onChange);
-    return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('lacuna:sidebar-settings', onChange);
-    };
-  }, []);
-
-  return [
-    settings,
-    (patch) => {
-      writeSidebarSettings(patch);
-      setSettings(readStored());
-    },
-  ];
+  const [settings, setSettings] = setting.use();
+  return [settings, (patch) => setSettings({ ...setting.read(), ...patch })];
 }
