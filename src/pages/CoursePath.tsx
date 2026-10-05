@@ -425,11 +425,6 @@ export function CoursePath() {
         onSelect: () =>
           navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
       })),
-    {
-      label: 'Questions',
-      description: 'Exam-style problems for this course',
-      onSelect: () => navigate(`/course/${courseId}/questions`),
-    },
   ];
   return (
     <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-7`}>

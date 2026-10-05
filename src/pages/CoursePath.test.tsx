@@ -428,10 +428,9 @@ describe('CoursePath View mode', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
 
-  it('disables course-wide practice when no reached card is eligible', () => {
+  it('offers no Other ways when no reached card is eligible and no exam is ahead', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    expect(screen.getByRole('menuitem', { name: /Practise freely/ })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
   });
 
   it.each([false, true])('only exposes pending updates on active multi-lesson courses (archived=%s)', (archived) => {
@@ -536,8 +535,7 @@ describe('CoursePath View mode', () => {
       );
     } else {
       expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-      fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-      expect(screen.getByRole('menuitem', { name: /Practise freely/ })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
       expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
     }
   });
