@@ -28,6 +28,17 @@
     longer shares a word with the Study button beside it.
   - The sharing announcement appears on Today only, and drops its illustration on
     phones, so it no longer pushes each page's work below the first screen.
+  - Every page shares one content frame and a stable scrollbar gutter, so titles
+    start on the same edge everywhere; the home page is called Today in every
+    link and message.
+  - Removed on-screen repeats: the Import page's second title and close button,
+    the Questions entry in Other ways (the Questions tab already opens it), the
+    New question button above an empty list, the course name placeholder, and
+    the "Scope is valid" line in assessment details (shown only when a scope
+    needs review).
+  - Empty states point to the next step: Questions in View mode offers to switch
+    to Edit, and the sidebar says "No active courses" when some are archived.
+  - Today's minute total never reads 0 while cards are due.
 - Redesign, "Direction C": the rest of the app.
   - Settings and Your data:
     - borderless cards that rise in, and sliding pill segmented controls;
