@@ -14,6 +14,12 @@ import {
 import { QuestionSetEditor } from './QuestionSetEditor';
 import { QuestionsPage } from './QuestionsPage';
 
+// The question bank fades in, which jsdom never completes; render it at rest.
+vi.mock('../state/motionSpeed', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  speedMultiplier: () => 0,
+}));
+
 vi.mock('../components/markdown/MarkdownEditor', () => ({
   MarkdownEditor: ({
     value,
