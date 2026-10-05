@@ -40,7 +40,7 @@ test('keeps the application usable when the optional announcement fails to load'
     });
     await enterFreshLacuna(page);
     await expect.poll(() => blocked).toBe(true);
-    await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await page.locator('main').getByRole('button', { name: 'New course', exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Course name' })).toBeVisible();
   } finally {

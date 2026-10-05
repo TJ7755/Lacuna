@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('renders Mermaid notes with safe fallback and theme updates', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();
   await page.getByRole('button', { name: 'Author mode' }).click();

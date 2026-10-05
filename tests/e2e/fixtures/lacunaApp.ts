@@ -11,7 +11,7 @@ export async function enterFreshLacuna(page: Page) {
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
 export async function createCourse(page: Page, courseName: string) {

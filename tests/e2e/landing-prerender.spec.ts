@@ -15,6 +15,6 @@ test(
     // Entering the app seeds the example course; the handover honours the
     // explicit entry instead of bouncing back to the welcome route.
     await expect(page).toHaveURL(/#\/$/, { timeout: 60000 });
-    await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   },
 );

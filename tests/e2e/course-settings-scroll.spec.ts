@@ -32,7 +32,8 @@ test('mobile course settings jumper leaves the target heading below its sticky b
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/settings`);
 

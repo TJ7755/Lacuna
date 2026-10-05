@@ -117,7 +117,7 @@ test('a share link imports a course and republishes update it', async ({ browser
   // Remount the dashboard past the hourly poll throttle so it picks up revision 2.
   await student.evaluate(() => localStorage.removeItem('lacuna.sharePollCheckedAt'));
   await student.reload();
-  await expect(student.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(student.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect.poll(() => readStudentRevision(student)).toBe(2);
   await student.getByRole('link', { name: 'Link biology', exact: true }).click();
   const studentCourseId = /#\/course\/([^/]+)/.exec(student.url())?.[1];

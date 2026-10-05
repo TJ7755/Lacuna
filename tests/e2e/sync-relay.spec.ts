@@ -50,7 +50,7 @@ async function openSeededDashboard(page: Page): Promise<void> {
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
 test('first-device sync setup completes against a stubbed relay', async ({ page }) => {

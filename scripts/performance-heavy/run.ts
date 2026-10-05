@@ -358,7 +358,7 @@ try {
       for (let iteration = 0; iteration < repetitions; iteration += 1) {
         await measure('dashboard-load', iteration, async () => {
           await page.goto(`${origin}/`);
-          await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
+          await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
           await expect(page.getByText('Heavy course 0', { exact: true }).first()).toBeVisible();
         });
         await measure('global-search', iteration, async () => {

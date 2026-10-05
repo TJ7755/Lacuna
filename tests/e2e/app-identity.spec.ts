@@ -7,7 +7,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
       await page.goto('/');
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-      const heading = page.getByRole('heading', { name: 'Courses', exact: true });
+      const heading = page.getByRole('heading', { name: 'Today', exact: true });
       await expect(heading).toBeVisible();
       await expect(heading).toHaveCSS('font-family', /Instrument Sans/);
       await page.evaluate(() => document.fonts.ready);

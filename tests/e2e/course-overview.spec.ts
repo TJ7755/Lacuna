@@ -3,7 +3,8 @@ import { enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('selected path lesson opens its real workspace; Add creates a real lesson', async ({ page }) => {
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   const courseUrl = page.url();
   await page.getByRole('button', { name: 'Scheduling philosophy', exact: true }).click();
   await expect(page).toHaveURL(courseUrl);
@@ -26,7 +27,8 @@ test('selected path lesson opens its real workspace; Add creates a real lesson',
 
 test('Add returns to its own corner without enlarging its disappearing text', async ({ page }) => {
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('button', { name: 'Author mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
   await add.click();
@@ -69,7 +71,8 @@ test('Add returns to its own corner without enlarging its disappearing text', as
 test('narrow-screen keyboard selection moves focus to the selected lesson', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   const stop = page.getByRole('button', { name: 'Scheduling philosophy', exact: true });
   await stop.focus();
   await stop.press('Enter');
@@ -81,7 +84,8 @@ test('narrow-screen keyboard selection moves focus to the selected lesson', asyn
 test('reduced motion changes Add dimensions without interpolating', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('button', { name: 'Author mode' }).click();
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
   const samples = await page.evaluate(async () => {
@@ -106,7 +110,8 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
 test('practice editing keeps an unobstructed 44px touch target with a long name', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('button', { name: 'Author mode' }).click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Practice', exact: true }).click();

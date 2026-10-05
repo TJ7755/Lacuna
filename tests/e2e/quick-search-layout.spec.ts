@@ -27,7 +27,7 @@ for (const width of [390, 1440]) {
 
     await input.press('Escape');
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     await page.keyboard.press(shortcut);
     await expect(input).toBeFocused();
     await expect(drawing).toBeVisible();

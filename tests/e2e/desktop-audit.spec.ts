@@ -57,7 +57,8 @@ for (const width of [768, 1024]) {
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await enterFreshLacuna(page);
-    await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+    await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
     await page.getByRole('button', { name: 'Author mode', exact: true }).click();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '150%';
@@ -89,7 +90,8 @@ for (const width of [768, 1024]) {
 test('mouse lesson dragging carries the lesson and moves its neighbour aside', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1200 });
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('button', { name: 'Author mode', exact: true }).click();
   const lessons = page.locator('[aria-roledescription="sortable lesson"]');
   const first = lessons.nth(0);
