@@ -127,17 +127,13 @@
   width: 30px;
   flex: 0 0 30px;
 }
+/* The arrow always shows, so the label never sits off-centre; hover only nudges it. */
 .study-transition-arrow svg {
-  opacity: 0;
-  transform: translateX(-5px);
-  transition:
-    opacity calc(200ms * var(--step-motion)) ease,
-    transform calc(300ms * var(--step-motion)) ease;
+  transition: transform calc(300ms * var(--step-motion)) ease;
 }
 .study-transition-continue:hover .study-transition-arrow svg,
 .study-transition-continue:focus-visible .study-transition-arrow svg {
-  opacity: 1;
-  transform: translateX(0);
+  transform: translateX(3px);
 }
 @keyframes study-topic-settle {
   from {
@@ -182,7 +178,6 @@
   animation: none;
 }
 .study-transition[data-motion='off'] .study-transition-arrow svg {
-  visibility: hidden;
   transition: none;
 }
 @media (max-width: 540px) {
