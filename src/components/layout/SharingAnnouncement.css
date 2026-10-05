@@ -139,3 +139,9 @@
     min-height: 215px;
   }
 }
+/* On phones the illustration would push the day's work off the first screen. */
+@media (max-width: 640px) {
+  .sharing-announcement-art {
+    display: none;
+  }
+}

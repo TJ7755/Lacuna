@@ -436,11 +436,14 @@ function AppShellLayout() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
           >
-            <ErrorBoundary fallback={null}>
-              <Suspense fallback={null}>
-                <SharingAnnouncement />
-              </Suspense>
-            </ErrorBoundary>
+            {/* Only on Today: elsewhere it would push each page's own work down the screen. */}
+            {location.pathname === '/' && (
+              <ErrorBoundary fallback={null}>
+                <Suspense fallback={null}>
+                  <SharingAnnouncement />
+                </Suspense>
+              </ErrorBoundary>
+            )}
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
                 <RouteTransitions
