@@ -17,6 +17,7 @@ export default defineConfig({
       'src/db/practiceNodeRepository.questionSets.test.ts',
       'src/pages/LearnMode.test.tsx',
       'src/pages/learn/useLearnSession.test.tsx',
+      'src/pages/learn/answerSteps.test.ts',
       'src/pages/learn/simpleSessionPersistence.test.ts',
       'src/pages/learn/sessionScope.test.ts',
     ],
@@ -33,6 +34,7 @@ export default defineConfig({
         'src/db/lessonRepository.ts',
         'src/db/noteRepository.ts',
         'src/pages/learn/useLearnSession.ts',
+        'src/pages/learn/answerSteps.ts',
         'src/pages/learn/simpleSessionPersistence.ts',
       ],
       thresholds: {
@@ -47,6 +49,12 @@ export default defineConfig({
           branches: 68,
           functions: 81,
           lines: 88,
+        },
+        'src/pages/learn/answerSteps.ts': {
+          statements: 90,
+          branches: 80,
+          functions: 100,
+          lines: 92,
         },
         'src/pages/learn/simpleSessionPersistence.ts': {
           statements: 96,
