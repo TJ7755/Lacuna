@@ -1,5 +1,10 @@
 @import './question-set-controls.css';
 
+/* The shared Direction C card surface (SECTION_CARD_SURFACE_CLASS). */
+:root {
+  --qs-card-shadow: 0 1px 2px hsl(var(--ink) / 0.05), 0 16px 40px -28px hsl(var(--ink) / 0.22);
+}
+
 .qs-library {
   color: hsl(var(--ink));
 }
@@ -36,19 +41,19 @@
   display: block;
   width: 100%;
   margin-top: 8px;
-  border: 1px solid hsl(var(--line));
-  background: hsl(var(--surface-raised));
-  border-radius: 8px;
-  padding: 12px;
+  border: 1.5px solid hsl(var(--line));
+  background: hsl(var(--surface));
+  border-radius: 12px;
+  padding: 10px 14px;
   color: hsl(var(--ink));
   font-size: 14px;
   min-height: 44px;
 }
 .qs-set-list {
-  border: 1px solid hsl(var(--line));
-  border-radius: 16px;
-  background: hsl(var(--surface-raised));
+  border-radius: 24px;
+  background: hsl(var(--surface));
   overflow: hidden;
+  box-shadow: var(--qs-card-shadow);
 }
 .qs-set-row {
   display: flex;
@@ -96,8 +101,7 @@
 }
 .qs-error {
   padding: 16px;
-  border: 1px solid hsl(var(--line));
-  border-radius: 8px;
+  border-radius: 16px;
   color: hsl(var(--ink));
   background: hsl(var(--accent-soft));
   margin: 16px 0;
@@ -156,24 +160,27 @@
   gap: 4px;
 }
 .qs-step-tabs button {
-  font-size: 12px;
-  padding: 12px 15px;
-  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 9999px;
   color: hsl(var(--ink-soft));
+  transition: background-color 150ms, color 150ms;
 }
 .qs-step-tabs button[aria-selected='true'] {
-  background: hsl(var(--accent-soft));
+  background: hsl(var(--surface));
   color: hsl(var(--ink));
+  box-shadow: 0 1px 2px hsl(var(--ink) / 0.08);
 }
 .qs-paper {
-  background: hsl(var(--surface-raised));
-  border: 1px solid hsl(var(--line));
-  border-radius: 16px;
+  background: hsl(var(--surface));
+  border-radius: 24px;
   width: 100%;
   min-width: 0;
   margin: auto;
   padding: 28px;
-  box-shadow: 0 3px 12px #00000003;
+  box-shadow: var(--qs-card-shadow);
 }
 .qs-part-bar {
   display: flex;
@@ -209,10 +216,10 @@
 }
 .qs-settings {
   padding: 22px;
-  background: hsl(var(--surface-raised));
-  border: 1px solid hsl(var(--line));
-  border-radius: 16px;
+  background: hsl(var(--surface));
+  border-radius: 24px;
   margin: 18px 0;
+  box-shadow: var(--qs-card-shadow);
 }
 .qs-settings summary {
   cursor: pointer;
@@ -257,11 +264,11 @@
   margin-top: 30px;
 }
 .qs-outline {
-  background: hsl(var(--surface-raised));
-  border: 1px solid hsl(var(--line));
-  border-radius: 16px;
+  background: hsl(var(--surface));
+  border-radius: 24px;
   padding: 14px;
   margin: 12px 0;
+  box-shadow: var(--qs-card-shadow);
 }
 .qs-outline button {
   display: block;
