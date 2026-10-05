@@ -61,3 +61,20 @@ it('reports a rejected workspace-mode save', async () => {
   ));
   expect(mocks.updateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
 });
+
+it('fades the course name out of reach while the page title already shows it', () => {
+  const identity = { name: 'Biology', status: 'ahead' as const };
+  const { rerender } = render(
+    <MemoryRouter>
+      <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} identityHidden />
+    </MemoryRouter>,
+  );
+  expect(screen.queryByRole('link', { name: 'Biology' })).not.toBeInTheDocument();
+
+  rerender(
+    <MemoryRouter>
+      <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} />
+    </MemoryRouter>,
+  );
+  expect(screen.getByRole('link', { name: 'Biology' })).toHaveAttribute('href', '/course/course-1');
+});

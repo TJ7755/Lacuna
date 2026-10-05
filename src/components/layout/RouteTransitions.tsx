@@ -33,7 +33,7 @@ export function RouteTransitions({
   const barCourseId = section?.courseId ?? COURSE_ANALYTICS.exec(pathname)?.[1];
   return (
     <>
-      {barCourseId && <CourseSectionNavigation key={barCourseId} courseId={barCourseId} />}
+      {barCourseId && <CourseSectionNavigation key={barCourseId} courseId={barCourseId} pathname={pathname} />}
       {/* The persistent chrome stays outside this clipped viewport. popLayout lets
           outgoing and incoming pages travel together without stacking their heights.
           AnimatePresence supplies the latest direction to the departing page too. */}

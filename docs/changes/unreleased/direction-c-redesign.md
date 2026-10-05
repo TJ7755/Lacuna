@@ -132,3 +132,5 @@
   - the numbered Course / Method / Send steps, the method descriptions and the
     import half are gone: receiving lives on Import → Lacuna course, so the
     unused `?intent=import` entry was removed.
+- The course bar no longer repeats the course page's title: its course name
+  fades in only once the title scrolls out of view.

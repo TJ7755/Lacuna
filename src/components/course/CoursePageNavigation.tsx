@@ -20,6 +20,8 @@ interface CoursePageNavigationProps {
   trailing?: ReactNode;
   /** Show the course itself (status dot and name) in place of the back link. */
   identity?: { name: string; status: ForecastStatus };
+  /** Fade the identity out while the page's own title already names the course. */
+  identityHidden?: boolean;
   className?: string;
 }
 
@@ -36,6 +38,7 @@ export function CoursePageNavigation({
   archived = false,
   trailing,
   identity,
+  identityHidden = false,
   className,
 }: CoursePageNavigationProps) {
   const { notify } = useToast();
@@ -73,7 +76,12 @@ export function CoursePageNavigation({
       {identity && !archived ? (
         <Link
           to={`/course/${courseId}`}
-          className="inline-flex min-h-11 min-w-0 shrink items-center gap-2.5 justify-self-start font-bold text-ink"
+          aria-hidden={identityHidden || undefined}
+          tabIndex={identityHidden ? -1 : undefined}
+          className={cn(
+            'inline-flex min-h-11 min-w-0 shrink items-center gap-2.5 justify-self-start font-bold text-ink transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none',
+            identityHidden && 'pointer-events-none translate-y-1 opacity-0',
+          )}
         >
           <span
             aria-hidden="true"

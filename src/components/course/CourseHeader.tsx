@@ -108,6 +108,7 @@ export function CourseHeader({
             ) : (
               <motion.h1
                 key="display-title"
+                data-course-title=""
                 onDoubleClick={startRename}
                 title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
                 layout={motionMultiplier > 0 ? 'size' : undefined}
