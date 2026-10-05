@@ -192,3 +192,7 @@
   a trip to an editor.
 - The sequence and occlusion editors return the same way, and lose their
   legacy bordered header box.
+- Leaving Study (Exit, Finish) returns to whichever page opened it, Today, a
+  course tab, a lesson or search, instead of always the course: the flow
+  remembers where it started in history and steps back past its own entries
+  (`useLeaveFlow`), falling back to the course after a deep link.

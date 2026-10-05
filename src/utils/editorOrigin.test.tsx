@@ -57,3 +57,22 @@ describe('useReturn', () => {
     expect(navigate).toHaveBeenCalledWith('/course/c1', { state: { returning: true } });
   });
 });
+
+describe('useLeaveFlowWith', () => {
+  it('steps back to the page that opened the flow, past its own entries', async () => {
+    const { useLeaveFlowWith } = await import('./editorOrigin');
+    window.history.replaceState({ idx: 4 }, '');
+    const { result } = renderHook(() => useLeaveFlowWith(navigate, '/course/c1'));
+    window.history.replaceState({ idx: 6 }, '');
+    result.current();
+    expect(navigate).toHaveBeenCalledWith(-3);
+  });
+
+  it('falls back to the route default when the flow was opened directly', async () => {
+    const { useLeaveFlowWith } = await import('./editorOrigin');
+    window.history.replaceState({ idx: 0 }, '');
+    const { result } = renderHook(() => useLeaveFlowWith(navigate, '/course/c1'));
+    result.current();
+    expect(navigate).toHaveBeenCalledWith('/course/c1', { state: { returning: true } });
+  });
+});

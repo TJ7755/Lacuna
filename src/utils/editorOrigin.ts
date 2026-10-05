@@ -1,5 +1,5 @@
-import { useCallback, type MouseEvent } from 'react';
-import { useLocation, useNavigate, type Location } from 'react-router-dom';
+import { useCallback, useRef, type MouseEvent } from 'react';
+import { useLocation, useNavigate, type Location, type NavigateFunction } from 'react-router-dom';
 import type { ReturningState } from '../components/layout/scrollMemory';
 
 /**
@@ -91,4 +91,29 @@ export function useReturn(fallback: { path: string; label: string }): ReturnTarg
   );
 
   return { to, label, goBack, linkProps: { to, onClick } };
+}
+
+/**
+ * Leaving a full-screen flow (Study, practice) goes back to the page it was opened
+ * from, whichever that was: the flow remembers where it started in history and steps
+ * back to the entry before. A flow opened directly (a deep link, a refresh on its
+ * first entry) goes to `fallback` instead.
+ */
+export function useLeaveFlow(fallback: string): () => void {
+  return useLeaveFlowWith(useNavigate(), fallback);
+}
+
+/** `useLeaveFlow` for callers that are handed their navigate function. */
+export function useLeaveFlowWith(navigate: NavigateFunction, fallback: string): () => void {
+  const startIdx = useRef(historyIndex());
+  return useCallback(() => {
+    const start = startIdx.current;
+    const here = historyIndex();
+    if (start !== undefined && here !== undefined && start > 0) {
+      void navigate(start - 1 - here);
+      return;
+    }
+    const returning: ReturningState = { returning: true };
+    void navigate(fallback, { state: returning });
+  }, [navigate, fallback]);
 }
