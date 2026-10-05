@@ -450,13 +450,12 @@ export type SessionCardAnswer = 'correct' | 'wrong';
 
 /**
  * Work cleared in this session (0..1), over the cards it started with; predicted
- * recall remains sessionProgress. A card counts as cleared once its latest answer
- * was correct, once it leaves study (suspended, buried or deleted), or when the
- * session stops serving it without an answer. A wrong answer keeps the card
- * outstanding until a correct retry, so a mistake never moves the bar forwards
- * and a retry coming due never moves it backwards. Cards admitted after the
- * session started never count, and a reached review limit ends the session
- * rather than changing this value.
+ * recall remains sessionProgress. A card counts as cleared once it has been answered
+ * in this session, whatever the grade, once it leaves study (suspended, buried or
+ * deleted), or when the session stops serving it unanswered. A failed card's retry
+ * coming due later never takes the bar backwards, and cards admitted after the
+ * session started never count. A reached review limit ends the session rather than
+ * changing this value.
  */
 export function sessionCompletionProgress(
   cards: Card[],
@@ -472,9 +471,8 @@ export function sessionCompletionProgress(
   let outstanding = 0;
   for (const id of initial.keys()) {
     const card = present.get(id);
-    if (!card || !isAvailable(card, now)) continue;
-    const answer = answers.get(id);
-    if (answer === 'wrong' || (answer === undefined && served.has(id))) outstanding += 1;
+    if (!card || !isAvailable(card, now) || answers.has(id)) continue;
+    if (served.has(id)) outstanding += 1;
   }
   return 1 - outstanding / total;
 }

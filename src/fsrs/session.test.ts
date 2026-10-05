@@ -628,33 +628,22 @@ describe('session completion progress', () => {
   };
   const swap = (cards: Card[], next: Card) => cards.map((c) => (c.id === next.id ? next : c));
 
-  it('does not move forwards after a wrong answer, even on a first review', () => {
+  it('counts a card once it is answered, whatever the grade', () => {
     const { cards, ctx } = start();
-    const fresh = card('fresh', unit.id, { due: NOW - 1 });
-    const pool = [...cards, fresh];
-    const freshCtx = makeSessionContext([unit], 'due', pool);
-    const failed = swap(pool, review(fresh, 1));
-    expect(sessionCompletionProgress(failed, freshCtx, new Map([['fresh', 'wrong']]), NOW)).toBe(0);
-    const failedReview = swap(cards, review(cards[0], 1));
-    expect(
-      sessionCompletionProgress(failedReview, ctx, new Map([['a', 'wrong']]), NOW),
-    ).toBe(0);
-  });
-
-  it('moves forwards after a slow correct answer', () => {
-    const { cards, ctx } = start();
+    const failed = swap(cards, review(cards[0], 1));
+    expect(sessionCompletionProgress(failed, ctx, new Map([['a', 'wrong']]), NOW)).toBe(0.25);
     const hard = swap(cards, review(cards[0], 2));
     expect(sessionCompletionProgress(hard, ctx, new Map([['a', 'correct']]), NOW)).toBe(0.25);
   });
 
-  it('does not move backwards when a failed retry falls due, and clears on a correct retry', () => {
+  it('does not move backwards when a failed card\'s retry falls due', () => {
     const { cards, ctx } = start();
     const failed = review(cards[0], 1);
     const afterFail = swap(cards, failed);
     const wrong = new Map([['a', 'wrong' as const]]);
     const retryDue = (failed.due ?? NOW) + 1;
-    expect(sessionCompletionProgress(afterFail, ctx, wrong, NOW)).toBe(0);
-    expect(sessionCompletionProgress(afterFail, ctx, wrong, retryDue)).toBe(0);
+    expect(sessionCompletionProgress(afterFail, ctx, wrong, NOW)).toBe(0.25);
+    expect(sessionCompletionProgress(afterFail, ctx, wrong, retryDue)).toBe(0.25);
     const retried = swap(afterFail, review(failed, 3, retryDue));
     expect(
       sessionCompletionProgress(retried, ctx, new Map([['a', 'correct']]), retryDue),
@@ -676,6 +665,6 @@ describe('session completion progress', () => {
       cards[3],
       due('late'),
     ];
-    expect(sessionCompletionProgress(changed, ctx, new Map([['a', 'wrong']]), NOW)).toBe(0.5);
+    expect(sessionCompletionProgress(changed, ctx, new Map(), NOW)).toBe(0.5);
   });
 });

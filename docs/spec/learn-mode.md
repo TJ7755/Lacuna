@@ -20,12 +20,11 @@ time limit, a due break, an assessment, a lesson or the end of the flow still pa
    remaining objective is met, a configured limit is reached, or the user exits.
 
 The top bar shows **session completion**, starting at zero for outstanding work and
-reaching 100% when that work is finished. A captured card counts as cleared once its
-latest answer in the session was correct, once it leaves study (suspended, buried or
-deleted), or when the session stops serving it unanswered. A wrong answer keeps it
-outstanding until a correct retry, so a mistake never moves the bar forwards and a
-retry falling due never moves it backwards. Cards admitted after the session started
-do not count, and the measure is independent of predicted recall. Undo restores the
+reaching 100% when that work is finished. A captured card counts as cleared once it
+has been answered in the session, whatever the grade, once it leaves study (suspended,
+buried or deleted), or when the session stops serving it unanswered. A failed card's
+retry falling due later never moves the bar backwards. Cards admitted after the session
+started do not count, and the measure is independent of predicted recall. Undo restores the
 card and reverses its completion. A daily limit or early exit does not manufacture
 100% completion. Predicted recall (or secured proportion) appears separately in the
 header as a forecast naming its horizon ("at the exam", or "in 7 days" with no exam
