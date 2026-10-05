@@ -69,7 +69,7 @@ export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Pr
   await expectVideoEmbedDocuments(page);
 
   await page.getByRole('button', { name: 'Add note', exact: true }).click();
-  await page.getByRole('button', { name: 'Provider iframe CSP probe' }).click();
+  await page.getByRole('tab', { name: 'Provider iframe CSP probe' }).click();
   await expectVideoEmbedDocuments(page);
 }
 
