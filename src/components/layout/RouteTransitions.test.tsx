@@ -4,7 +4,42 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { RouteTransitions } from './RouteTransitions';
 
+vi.mock('../course/CourseSectionNavigation', () => ({
+  CourseSectionNavigation: ({ courseId }: { courseId: string }) => (
+    <nav aria-label="Course bar">{courseId}</nav>
+  ),
+}));
+
 describe('RouteTransitions', () => {
+  it.each(['/course/c1', '/course/c1/cards', '/course/c1/analytics'])(
+    'keeps the course bar on %s',
+    (pathname) => {
+      render(
+        <MemoryRouter>
+          <LazyMotion features={domAnimation}>
+            <RouteTransitions pathname={pathname} direction={0} multiplier={0}>
+              <p>page</p>
+            </RouteTransitions>
+          </LazyMotion>
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('navigation', { name: 'Course bar' })).toHaveTextContent('c1');
+    },
+  );
+
+  it('leaves deeper course pages to draw their own bar', () => {
+    render(
+      <MemoryRouter>
+        <LazyMotion features={domAnimation}>
+          <RouteTransitions pathname="/course/c1/lesson/l1" direction={0} multiplier={0}>
+            <p>page</p>
+          </RouteTransitions>
+        </LazyMotion>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('navigation', { name: 'Course bar' })).not.toBeInTheDocument();
+  });
+
   it('makes departing pages inert while the latest destination is usable', () => {
     const page = (pathname: string) => (
       <MemoryRouter>

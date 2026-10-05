@@ -3,6 +3,8 @@ import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { CourseSectionNavigation } from '../course/CourseSectionNavigation';
 import { matchCourseSection } from '../course/courseSections';
 
+const COURSE_ANALYTICS = /^\/course\/([^/]+)\/analytics$/;
+
 /** Ordinary destinations fade without transforms so fixed descendants stay viewport-bound. */
 const ROUTE_VARIANTS = {
   enter: (direction: number) =>
@@ -27,9 +29,11 @@ export function RouteTransitions({
   children: ReactNode;
 }) {
   const section = matchCourseSection(pathname);
+  // Course analytics is not a tab, but it is still the course's own page, so it keeps the bar.
+  const barCourseId = section?.courseId ?? COURSE_ANALYTICS.exec(pathname)?.[1];
   return (
     <>
-      {section && <CourseSectionNavigation key={section.courseId} courseId={section.courseId} />}
+      {barCourseId && <CourseSectionNavigation key={barCourseId} courseId={barCourseId} />}
       {/* The persistent chrome stays outside this clipped viewport. popLayout lets
           outgoing and incoming pages travel together without stacking their heights.
           AnimatePresence supplies the latest direction to the departing page too. */}

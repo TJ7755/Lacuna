@@ -60,7 +60,10 @@ export function CourseAnalytics() {
     return {
       mastery: Math.round(masteryFraction(cards, course) * 100),
       reviews: reviewVolume(cards, 30, now, reviewHistory).reduce((sum, p) => sum + p.reviews, 0),
-      minutes: studyTimeSeries(cards, 30, now, reviewHistory).reduce((sum, p) => sum + p.minutes, 0),
+      minutes: studyTimeSeries(cards, 30, now, reviewHistory).reduce(
+        (sum, p) => sum + p.minutes,
+        0,
+      ),
     };
   }, [course, cards, reviewHistory]);
   const questionAnalytics = useMemo(
@@ -92,7 +95,7 @@ export function CourseAnalytics() {
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
         <Link to="/" className="text-accent underline">
-          Back to dashboard
+          Back to Today
         </Link>
       </div>
     );
@@ -102,7 +105,7 @@ export function CourseAnalytics() {
     <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-4 pb-8 md:gap-6`}>
       <Rise index={0} className="pt-6 md:pt-8">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-          Analytics
+          Progress
         </h1>
       </Rise>
 
