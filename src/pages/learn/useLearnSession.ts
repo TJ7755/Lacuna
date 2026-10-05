@@ -170,7 +170,10 @@ export interface UseLearnSessionParams {
   onStepFinished?: (summary: SessionSummary) => void;
   notify: ReturnType<typeof useToast>['notify'];
   distraction: DistractionTracker;
-  startInFocusMode: boolean;
+  /** Called whenever a card is served, so per-card view state can reset. */
+  onCardServed?: () => void;
+  /** Called when the session (re)loads, so session view state can reset. */
+  onSessionReset?: () => void;
 }
 
 /**
@@ -203,7 +206,8 @@ export function useLearnSession({
   onStepFinished,
   notify,
   distraction,
-  startInFocusMode,
+  onCardServed,
+  onSessionReset,
 }: UseLearnSessionParams) {
   const reviewSessionIdRef = useRef(sessionId ?? makeId());
 
@@ -263,10 +267,12 @@ export function useLearnSession({
     [curricularSimpleScope, standaloneSimple],
   );
 
-  const startInFocusModeRef = useRef(startInFocusMode);
-  useEffect(() => {
-    startInFocusModeRef.current = startInFocusMode;
-  }, [startInFocusMode]);
+  // Latest view callbacks, read through refs so serving and loading never depend on
+  // the caller's callback identity.
+  const onCardServedRef = useRef(onCardServed);
+  onCardServedRef.current = onCardServed;
+  const onSessionResetRef = useRef(onSessionReset);
+  onSessionResetRef.current = onSessionReset;
 
   const [phase, setPhase] = useState<Phase>('loading');
   // The unit a single-unit session is studying (null for the global session).
@@ -324,27 +330,14 @@ export function useLearnSession({
   const progressCacheRef = useRef<{ dirty: boolean; value: number }>({ dirty: true, value: 0 });
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [canUndo, setCanUndo] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   // When set, the in-session edit overlay is open for the current card. While it is
   // open the FSRS response timer is paused (see openEdit/resumeTimer) so time spent
   // fixing a card never counts towards the invisible grade.
   const [editing, setEditing] = useState(false);
-  // Focus mode hides the surrounding chrome for distraction-free review.
-  const [focusMode, setFocusMode] = useState(startInFocusMode);
-  const [focusChromeVisible, setFocusChromeVisible] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  // The keyboard-shortcuts cheatsheet (opened with ?).
-  const [hintsOpen, setHintsOpen] = useState(false);
-  // Navigation drawer — closed by default to keep Learn mode distraction-free,
-  // opened on demand for quick navigation away without leaving the session UI.
-  const [navOpen, setNavOpen] = useState(false);
   // Simple mode: queue of cards that are still unlearned (wrong or unseen).
   const simpleQueue = useRef<Card[]>([]);
   const simpleMastered = useRef<Set<string>>(new Set());
   const simpleWrong = useRef<Set<string>>(new Set());
-  // Typed answer for typing cards.
-  const [typedAnswer, setTypedAnswer] = useState('');
-  const typingInputRef = useRef<HTMLInputElement>(null);
   const [sessionCardIds, setSessionCardIds] = useState<string[]>([]);
   const [sessionCardOutcomes, setSessionCardOutcomes] = useState<Map<string, SessionCardOutcome>>(
     () => new Map(),
@@ -364,20 +357,6 @@ export function useLearnSession({
     return completed / sessionCardIds.length;
   }, [sessionCardIds, sessionCardOutcomes]);
 
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
-    } catch {
-      notify('Full screen is not available.', 'negative');
-    }
-  }, [notify]);
-
-  useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, []);
   useEffect(() => {
     if (!plannedRevision) return;
     const update = () => {
@@ -856,8 +835,7 @@ export function useLearnSession({
       setCurrent(next);
       if (!mountedRef.current) return;
       setPhase('question');
-      setMenuOpen(false);
-      setTypedAnswer('');
+      onCardServedRef.current?.();
       setHintStep(0);
       pendingReviewEventId.current = null;
       timerStart.current = performance.now();
@@ -913,8 +891,7 @@ export function useLearnSession({
       }
       setCurrent(next);
       setPhase('question');
-      setMenuOpen(false);
-      setTypedAnswer('');
+      onCardServedRef.current?.();
       setHintStep(0);
       pendingReviewEventId.current = null;
       timerStart.current = performance.now();
@@ -936,8 +913,7 @@ export function useLearnSession({
     setCurrent(next);
     if (!mountedRef.current) return;
     setPhase('question');
-    setMenuOpen(false);
-    setTypedAnswer('');
+    onCardServedRef.current?.();
     setHintStep(0);
     pendingReviewEventId.current = null;
     timerStart.current = performance.now();
@@ -995,11 +971,7 @@ export function useLearnSession({
     setCanUndo(false);
     setSummary(null);
     setEditing(false);
-    setMenuOpen(false);
-    setHintsOpen(false);
-    setNavOpen(false);
-    setFocusMode(startInFocusModeRef.current);
-    setFocusChromeVisible(false);
+    onSessionResetRef.current?.();
     setSessionCardIds([]);
     sessionCardOutcomesRef.current = new Map();
     setSessionCardOutcomes(sessionCardOutcomesRef.current);
@@ -1885,7 +1857,6 @@ export function useLearnSession({
       });
       setPhase('question');
       pendingReviewEventId.current = null;
-      setMenuOpen(false);
       timerStart.current = performance.now();
       distraction.beginCard();
     } catch (err) {
@@ -1898,7 +1869,6 @@ export function useLearnSession({
     const ctx = ctxRef.current;
     if (!ctx) return;
     if (!mountedRef.current) return;
-    setMenuOpen(false);
     setCanUndo(false);
     lastAnswer.current = null;
     const removedId = currentRef.current?.id;
@@ -1961,7 +1931,6 @@ export function useLearnSession({
     // Guard against the card having been removed from the session pool
     // (deleted / suspended by another tab) since the last render.
     if (!cardsRef.current.some((c) => c.id === current.id)) return;
-    setMenuOpen(false);
     // Only the question phase has a running timer; the answer phase already
     // captured responseTime at reveal, so there is nothing to pause there.
     if (phase === 'question') {
@@ -2001,7 +1970,6 @@ export function useLearnSession({
       const updated = { ...current, flagged: next };
       cardsRef.current = cardsRef.current.map((c) => (c.id === current.id ? updated : c));
       setCurrent(updated);
-      setMenuOpen(false);
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Could not update the card flag.', 'negative');
     }
@@ -2025,25 +1993,10 @@ export function useLearnSession({
     summary,
     setSummary,
     canUndo,
-    menuOpen,
-    setMenuOpen,
     editing,
-    focusMode,
-    setFocusMode,
-    focusChromeVisible,
-    setFocusChromeVisible,
-    isFullscreen,
-    hintsOpen,
-    setHintsOpen,
-    navOpen,
-    setNavOpen,
-    typedAnswer,
-    setTypedAnswer,
-    typingInputRef,
     sessionCardIds,
     setSessionCardIds,
     sessionCardOutcomes,
-    setSessionCardOutcomes,
     schedulerProgress,
     predictedRecall: !isSimpleMode && !plannedRevision && ctxRef.current
       ? cachedSessionProgress(cardsRef.current, ctxRef.current)
@@ -2052,11 +2005,8 @@ export function useLearnSession({
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,
     revisionNextWindowDay,
-    limitOverride,
     setLimitOverride,
-    timeLimitOverride,
     setTimeLimitOverride,
-    toggleFullscreen,
     backOut,
     finish,
     serveNext,
