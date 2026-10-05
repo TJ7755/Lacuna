@@ -200,6 +200,9 @@ export function CourseOverview(props: CourseOverviewProps) {
               return (
                 <motion.li key={node.id} {...arrive} className="relative flex flex-col">
                   <motion.button
+                    // Motion keeps the first ref it is given, so remount when authoring
+                    // starts or the reorder hook never sees this row.
+                    key={authoring ? 'author' : 'study'}
                     ref={reorder?.registerElement}
                     type="button"
                     aria-label={label}

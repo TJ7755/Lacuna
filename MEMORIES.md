@@ -268,3 +268,10 @@ A visible preview can stop delivering `requestAnimationFrame` callbacks while DO
 Motion transitions then appear frozen and screenshots can time out. Starting a T3 preview recording
 restored frame delivery during Questions review. Check frame delivery before treating this as an app
 animation defect, and stop the recording after verification.
+
+## Motion components keep their first callback ref
+
+A `motion.*` element calls only the ref callback it received on mount; a later ref is ignored.
+A row that mounts without a ref (Study mode) and gains one (Author mode) stays unregistered, so
+drag reordering silently half-works. Remount the element when its ref first becomes meaningful,
+for example with a `key` on the mode, or attach the ref to a plain element.
