@@ -20,6 +20,7 @@ import { allowRelayConnect } from '../../sync/csp';
 import { clearUnlockedCredentials, publishUnlockedCredentials } from '../../sync/triggers';
 import { SyncField } from './SyncField';
 import type { SyncPairingBusy, SyncPairingMode } from './SyncPairingFlow';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 const loadSyncPairingFlow = () =>
   import('./SyncPairingFlow').then((module) => ({ default: module.SyncPairingFlow }));
@@ -372,7 +373,7 @@ export function SyncSection() {
   const pairingBusy: SyncPairingBusy = busy === 'setup' || busy === 'join' ? busy : null;
 
   return (
-    <section id="settings-sync" className="mb-8 rounded-2xl border border-line bg-surface p-6">
+    <SectionCard id="settings-sync" className="mb-8">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <ShareIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">
@@ -594,6 +595,6 @@ export function SyncSection() {
       {syncState === null && mode === 'idle' && (
         <p className="mt-4 text-xs text-ink-faint">No sync channel is configured on this device.</p>
       )}
-    </section>
+    </SectionCard>
   );
 }

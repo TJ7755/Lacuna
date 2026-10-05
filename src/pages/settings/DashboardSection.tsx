@@ -5,6 +5,7 @@ import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric, type CourseCardMetric } from '../../state/courseCardMetric';
 import { useDashboardSort, type DashboardSort } from '../../state/dashboardSort';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
   { key: 'recent', label: 'Recently studied' },
@@ -21,9 +22,9 @@ export function DashboardSection() {
   const [courseCardMetric, setCourseCardMetric] = useCourseCardMetric();
 
   return (
-    <section
+    <SectionCard
       id="settings-dashboard"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <GridIcon width={18} height={18} />
@@ -109,6 +110,6 @@ export function DashboardSection() {
           />
         </div>
       </div>
-    </section>
+    </SectionCard>
   );
 }

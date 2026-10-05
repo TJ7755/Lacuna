@@ -23,6 +23,7 @@ import {
 import { selectQuestionSession } from '../questions/selection';
 import type { QuestionAttempt } from '../questions/types';
 import { useCourse } from '../state/useCourseData';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export function QuestionLearnMode() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -306,7 +307,7 @@ export function QuestionLearnMode() {
             </div>
           </section>
         ) : !attempt ? (
-          <div className="h-[30rem] animate-pulse rounded-3xl bg-ink/10" />
+          <Skeleton className="h-[30rem] rounded-3xl" />
         ) : attempt.status === 'answered' ? (
           <QuestionFeedback
             attempt={attempt}
@@ -330,8 +331,8 @@ function QuestionSessionSkeleton() {
   return (
     <main className="min-h-screen bg-paper px-4 py-7">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 h-11 w-full animate-pulse rounded-xl bg-ink/10" />
-        <div className="h-[30rem] animate-pulse rounded-3xl bg-ink/10" />
+        <Skeleton className="mb-6 h-11 w-full rounded-xl" />
+        <Skeleton className="h-[30rem] rounded-3xl" />
       </div>
     </main>
   );

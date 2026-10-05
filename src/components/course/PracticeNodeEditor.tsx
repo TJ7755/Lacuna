@@ -1,4 +1,3 @@
-import { ModalBackdrop } from '../ui/ModalBackdrop';
 // Modal editor for a manual practice node, opened from the path's Add practice
 // action or an existing node's edit badge. Mirrors the chrome of CardEditOverlay.
 // Settings links back here instead of maintaining a competing management surface.
@@ -6,21 +5,19 @@ import { ModalBackdrop } from '../ui/ModalBackdrop';
 // British English throughout.
 
 import { useState } from 'react';
-import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
-import { CloseIcon } from '../ui/icons';
 import {
   createPracticeNode,
   updatePracticeNode,
   deletePracticeNode,
 } from '../../db/practiceNodeRepository';
 import type { Lesson, PracticeNode } from '../../db/types';
-import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { PracticeNodeFields } from './PracticeNodeFields';
 import { emptyPracticeNodeDraft, draftFromPracticeNode, parseCardCount } from './practiceNodeDraft';
+import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 interface PracticeNodeEditorProps {
   courseId: string;
@@ -43,8 +40,6 @@ export function PracticeNodeEditor({
 }: PracticeNodeEditorProps) {
   const { notify } = useToast();
   const trapRef = useFocusTrap(true);
-  const [motionSpeed] = useMotionSpeed();
-  const motionMultiplier = speedMultiplier(motionSpeed);
   const [draft, setDraft] = useState(() =>
     node ? draftFromPracticeNode(node) : emptyPracticeNodeDraft(defaultPosition),
   );
@@ -88,13 +83,11 @@ export function PracticeNodeEditor({
   }
 
   return (
-    <motion.div
-      ref={trapRef}
-      className="fixed inset-0 z-50 flex flex-col"
-      initial={motionMultiplier > 0 ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
-      transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+    <DialogPanel
+      label={node ? 'Edit manual practice' : 'Add manual practice'}
+      trapRef={trapRef}
+      onBackdropClick={onCancel}
+      className="max-h-[90vh] max-w-md"
       onKeyDown={(e) => {
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation();
@@ -104,67 +97,41 @@ export function PracticeNodeEditor({
         }
       }}
     >
-      <ModalBackdrop shade={50} onClick={onCancel} />
+      <DialogHeader
+        title={node ? 'Edit practice' : 'Add practice'}
+        onClose={onCancel}
+        closeLabel="Close editor"
+      />
 
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label={node ? 'Edit manual practice' : 'Add manual practice'}
-        initial={motionMultiplier > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={motionMultiplier > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
-        transition={
-          motionMultiplier > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }
-        }
-        className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
-      >
-        <div
-          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
-          aria-hidden="true"
-        />
-        <header className="flex items-center justify-between border-b border-line px-6 py-4">
-          <h2 className="font-display text-xl">{node ? 'Edit practice' : 'Add practice'}</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close editor"
-            title="Close (Esc)"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-          >
-            <CloseIcon width={18} height={18} />
-          </button>
-        </header>
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <PracticeNodeFields draft={draft} onChange={setDraft} lessons={lessons} />
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <PracticeNodeFields draft={draft} onChange={setDraft} lessons={lessons} />
-        </div>
-
-        <footer className="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
-          {node ? (
-            confirmingDelete ? (
-              <ConfirmInline
-                message="Delete?"
-                onConfirm={() => void handleDelete()}
-                onCancel={() => setConfirmingDelete(false)}
-              />
-            ) : (
-              <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)}>
-                Delete
-              </Button>
-            )
+      <footer className="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
+        {node ? (
+          confirmingDelete ? (
+            <ConfirmInline
+              message="Delete?"
+              onConfirm={() => void handleDelete()}
+              onCancel={() => setConfirmingDelete(false)}
+            />
           ) : (
-            <span />
-          )}
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onCancel}>
-              Cancel
+            <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)}>
+              Delete
             </Button>
-            <Button variant="primary" onClick={() => void handleSave()} disabled={saving}>
-              Save
-            </Button>
-          </div>
-        </footer>
-      </motion.div>
-    </motion.div>
+          )
+        ) : (
+          <span />
+        )}
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => void handleSave()} disabled={saving}>
+            Save
+          </Button>
+        </div>
+      </footer>
+    </DialogPanel>
   );
 }

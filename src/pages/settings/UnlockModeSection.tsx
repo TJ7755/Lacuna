@@ -1,5 +1,6 @@
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import type { UnlockMode } from '../../db/types';
+import { Field, Input } from '../../components/ui/Field';
 
 const MODES: { value: UnlockMode; label: string; description: string }[] = [
   {
@@ -78,22 +79,24 @@ export function UnlockModeSection({
             timeZone={timeZone}
             label="First lesson unlocks on"
           />
-          <label className="block text-sm text-ink-soft">
-            Days between lessons
-            <input
+          <Field
+            label="Days between lessons"
+            hint={
+              <>
+                Each lesson unlocks this many days after the previous one, starting from the date
+                above. Overriding one lesson&apos;s date on its own page cascades to the rest.
+              </>
+            }
+          >
+            <Input
               type="number"
               min={1}
               inputMode="numeric"
               value={linearCadence.intervalDays}
               onChange={(e) => onIntervalDaysChange(Math.max(1, Number(e.target.value) || 1))}
               onBlur={onIntervalDaysBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
-              Each lesson unlocks this many days after the previous one, starting from the
-              date above. Overriding one lesson&apos;s date on its own page cascades to the rest.
-            </span>
-          </label>
+          </Field>
         </div>
       )}
     </fieldset>

@@ -5,6 +5,7 @@ import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import { createLesson } from '../../db/lessonRepository';
 import type { Lesson } from '../../db/types';
+import { Field, Input } from '../ui/Field';
 
 /** Suggested name for the next lesson in a course (e.g. "Lesson 2"). */
 export function defaultLessonName(lessonCount: number): string {
@@ -87,9 +88,8 @@ export function AddLessonControl({
   if (open) {
     return (
       <div className="flex w-full flex-col gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3">
-        <label className="block text-sm text-ink-soft">
-          Lesson name
-          <input
+        <Field label="Lesson name">
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -99,9 +99,9 @@ export function AddLessonControl({
             placeholder="e.g. Elasticity"
             autoFocus
             disabled={saving}
-            className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent disabled:opacity-40"
+            className="disabled:opacity-40"
           />
-        </label>
+        </Field>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"

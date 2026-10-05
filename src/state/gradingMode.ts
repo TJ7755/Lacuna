@@ -1,36 +1,13 @@
-import { useEffect, useState } from 'react';
+import { createLocalSetting } from './localSetting';
 
 export type GradingMode = 'silent' | 'manual';
 
-const KEY = 'lacuna.gradingMode';
+const setting = createLocalSetting<GradingMode>({
+  key: 'lacuna.gradingMode',
+  event: 'lacuna:grading-mode',
+  parse: (raw) => (raw === 'manual' ? 'manual' : 'silent'),
+});
 
-export function readGradingMode(): GradingMode {
-  return localStorage.getItem(KEY) === 'manual' ? 'manual' : 'silent';
-}
-
-export function writeGradingMode(mode: GradingMode): void {
-  localStorage.setItem(KEY, mode);
-  window.dispatchEvent(new CustomEvent('lacuna:grading-mode', { detail: mode }));
-}
-
-export function useGradingMode(): [GradingMode, (mode: GradingMode) => void] {
-  const [mode, setMode] = useState<GradingMode>(() => readGradingMode());
-
-  useEffect(() => {
-    const onChange = () => setMode(readGradingMode());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('lacuna:grading-mode', onChange);
-    return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('lacuna:grading-mode', onChange);
-    };
-  }, []);
-
-  return [
-    mode,
-    (next) => {
-      writeGradingMode(next);
-      setMode(next);
-    },
-  ];
-}
+export const readGradingMode = setting.read;
+export const writeGradingMode = setting.write;
+export const useGradingMode = setting.use;

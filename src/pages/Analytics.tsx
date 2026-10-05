@@ -32,29 +32,31 @@ import {
 } from '../components/analytics/prepare';
 import { predictionAccuracySeries } from '../fsrs/calibration';
 import { CourseComparison } from '../components/analytics/CourseComparison';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 function AnalyticsSkeleton() {
   return (
     <div className="space-y-2 p-6">
       <div className="py-4">
-        <div className="h-9 w-40 animate-pulse rounded-lg bg-ink/5" />
+        <Skeleton className="h-9 w-40 rounded-lg bg-ink/5" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-line bg-surface p-5">
+          <SectionCard as="div" compact>
             <div className="mb-4">
-              <div className="h-7 w-32 animate-pulse rounded-lg bg-ink/5" />
+              <Skeleton className="h-7 w-32 rounded-lg bg-ink/5" />
             </div>
-            <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
-          </div>
+            <Skeleton className="h-56 rounded-lg bg-ink/5" />
+          </SectionCard>
         </div>
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-line bg-surface p-5">
+          <SectionCard as="div" compact key={i}>
             <div className="mb-4">
-              <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
+              <Skeleton className="h-7 w-36 rounded-lg bg-ink/5" />
             </div>
-            <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
-          </div>
+            <Skeleton className="h-56 rounded-lg bg-ink/5" />
+          </SectionCard>
         ))}
       </div>
     </div>

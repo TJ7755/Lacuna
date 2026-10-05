@@ -6,6 +6,7 @@ import { useMotionSpeed } from '../../state/motionSpeed';
 import { useTheme, type Theme } from '../../state/ThemeContext';
 import { MotionSpeedControl } from './MotionSpeedControl';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function AppearanceSection() {
   const [motionSpeed, setMotionSpeed] = useMotionSpeed();
@@ -14,9 +15,9 @@ export function AppearanceSection() {
   const { scale, setScale } = useFontScale();
 
   return (
-    <section
+    <SectionCard
       id="settings-appearance"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-4 flex items-center gap-2 text-accent">
         <MoonIcon width={18} height={18} />
@@ -70,7 +71,7 @@ export function AppearanceSection() {
                 aria-pressed={active}
                 title={option.label}
                 aria-label={option.label}
-                className="relative h-9 w-9 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
+                className="relative h-11 w-11 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
                 style={{ backgroundColor: option.swatch }}
               >
                 {active && (
@@ -127,6 +128,6 @@ export function AppearanceSection() {
           describedBy="animation-speed-description"
         />
       </div>
-    </section>
+    </SectionCard>
   );
 }

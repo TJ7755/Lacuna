@@ -1,5 +1,6 @@
 import { Toggle } from '../../components/ui/Toggle';
 import { ChevronDownIcon } from '../../components/ui/icons';
+import { Field, Input } from '../../components/ui/Field';
 
 export interface PracticeSettingsSectionProps {
   autoPractice: boolean;
@@ -71,9 +72,15 @@ export function PracticeSettingsSection({
         </summary>
 
         <div className="mt-4 flex flex-col gap-4 rounded-xl border border-line bg-surface-raised/50 p-4">
-          <label className="block text-sm text-ink-soft">
-            Threshold (exam not near)
-            <input
+          <Field
+            label="Threshold (exam not near)"
+            hint={
+              <>
+                Minutes-to-clear at which a practice node is triggered while the exam is not near.
+              </>
+            }
+          >
+            <Input
               type="number"
               aria-label="Practice threshold when the exam is not near, in minutes"
               min={0}
@@ -81,16 +88,19 @@ export function PracticeSettingsSection({
               value={practiceThresholdMinutesFar}
               onChange={(e) => onPracticeThresholdMinutesFarChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesFarBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
-              Minutes-to-clear at which a practice node is triggered while the exam is not near.
-            </span>
-          </label>
+          </Field>
 
-          <label className="block text-sm text-ink-soft">
-            Threshold (exam near)
-            <input
+          <Field
+            label="Threshold (exam near)"
+            hint={
+              <>
+                Minutes-to-clear at which a practice node is triggered once the exam is near (see
+                the urgent window below). Typically lower than the far threshold.
+              </>
+            }
+          >
+            <Input
               type="number"
               aria-label="Practice threshold when the exam is near, in minutes"
               min={0}
@@ -98,17 +108,18 @@ export function PracticeSettingsSection({
               value={practiceThresholdMinutesNear}
               onChange={(e) => onPracticeThresholdMinutesNearChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesNearBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
-              Minutes-to-clear at which a practice node is triggered once the exam is near (see the
-              urgent window below). Typically lower than the far threshold.
-            </span>
-          </label>
+          </Field>
 
-          <label className="block text-sm text-ink-soft">
-            Urgent window
-            <input
+          <Field
+            label="Urgent window"
+            hint={
+              <>
+                Days until the exam at or below which the &quot;exam near&quot; threshold applies.
+              </>
+            }
+          >
+            <Input
               type="number"
               aria-label="Practice urgent window, in days"
               min={0}
@@ -116,16 +127,19 @@ export function PracticeSettingsSection({
               value={practiceUrgentWindowDays}
               onChange={(e) => onPracticeUrgentWindowDaysChange(e.target.value)}
               onBlur={onPracticeUrgentWindowDaysBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
-              Days until the exam at or below which the &quot;exam near&quot; threshold applies.
-            </span>
-          </label>
+          </Field>
 
-          <label className="block text-sm text-ink-soft">
-            Maximum lesson gap
-            <input
+          <Field
+            label="Maximum lesson gap"
+            hint={
+              <>
+                Backstop: forces a practice node after this many lessons without one, even if
+                neither threshold above has been crossed.
+              </>
+            }
+          >
+            <Input
               type="number"
               aria-label="Maximum lesson gap for automatic practice"
               min={1}
@@ -133,13 +147,8 @@ export function PracticeSettingsSection({
               value={practiceMaxGap}
               onChange={(e) => onPracticeMaxGapChange(e.target.value)}
               onBlur={onPracticeMaxGapBlur}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
-              Backstop: forces a practice node after this many lessons without one, even if neither
-              threshold above has been crossed.
-            </span>
-          </label>
+          </Field>
         </div>
       </details>
     </div>

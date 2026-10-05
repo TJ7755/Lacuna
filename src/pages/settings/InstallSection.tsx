@@ -3,12 +3,13 @@ import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { DesktopUpdatePanel } from './DesktopUpdatePanel';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function InstallSection() {
   return (
-    <section
+    <SectionCard
       id="settings-install"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <DownloadIcon width={18} height={18} />
@@ -17,7 +18,7 @@ export function InstallSection() {
         </SettingsSectionHeading>
       </div>
       <InstallPanel />
-    </section>
+    </SectionCard>
   );
 }
 

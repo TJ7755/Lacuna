@@ -24,6 +24,7 @@ import { db } from '../../db/schema';
 import { ensureLessonBackingDeck } from '../../db/backingDecks';
 import { unlinkCardFromLesson } from '../../db/lessonRepository';
 import type { Card, SchedulerConfig } from '../../db/types';
+import { Skeleton } from '../ui/Skeleton';
 
 interface LessonCardsSectionProps {
   courseId: string;
@@ -191,7 +192,7 @@ export function LessonCardsSection({
         // render destructive controls until that membership query has resolved.
         <div className="space-y-3" aria-label="Loading lesson cards">
           {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl border border-line bg-ink/5" />
+            <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
           ))}
         </div>
       ) : (

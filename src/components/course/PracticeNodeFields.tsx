@@ -13,6 +13,7 @@ import { Select } from '../ui/Select';
 import { cn } from '../ui/cn';
 import type { Lesson } from '../../db/types';
 import type { PracticeNodeDraft } from './practiceNodeDraft';
+import { Field, Input } from '../ui/Field';
 
 interface PracticeNodeFieldsProps {
   draft: PracticeNodeDraft;
@@ -35,15 +36,13 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
 
   return (
     <div className="flex flex-col gap-4">
-      <label className="block text-sm text-ink-soft">
-        Name
-        <input
+      <Field label="Name">
+        <Input
           value={draft.name}
           onChange={(e) => onChange((d) => ({ ...d, name: e.target.value }))}
           placeholder="e.g. Weekly review"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
-      </label>
+      </Field>
 
       {sortedLessons.length > 0 && (
         <label className="block text-sm text-ink-soft">
@@ -98,22 +97,22 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
         </div>
       )}
 
-      <label className="block text-sm text-ink-soft">
-        Card limit (optional)
-        <input
+      <Field label="Card limit (optional)">
+        <Input
           type="number"
           min={1}
           value={draft.cardCount}
           onChange={(e) => onChange((d) => ({ ...d, cardCount: e.target.value }))}
           placeholder="No limit"
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
-      </label>
+      </Field>
 
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm text-ink-soft">Randomise order</div>
-          <p className="text-xs text-ink-faint">Shuffle the cards instead of following lesson order.</p>
+          <p className="text-xs text-ink-faint">
+            Shuffle the cards instead of following lesson order.
+          </p>
         </div>
         <Toggle
           ariaLabel="Randomise order"
