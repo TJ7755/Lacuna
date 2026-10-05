@@ -4,11 +4,21 @@ import { Button } from '../ui/Button';
 import { CheckIcon } from '../ui/icons';
 
 /** A Copy button that confirms with a tick that pops in, then returns to "Copy". */
-export function CopyButton({ copied, onClick }: { copied: boolean; onClick: () => void }) {
+export function CopyButton({
+  copied,
+  onClick,
+  size = 'sm',
+  label = 'Copy',
+}: {
+  copied: boolean;
+  onClick: () => void;
+  size?: 'sm' | 'md';
+  label?: string;
+}) {
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
   return (
-    <Button size="sm" variant={copied ? 'primary' : 'secondary'} onClick={onClick}>
+    <Button size={size} variant={copied ? 'primary' : 'secondary'} onClick={onClick}>
       {copied ? (
         <>
           <motion.span
@@ -24,7 +34,7 @@ export function CopyButton({ copied, onClick }: { copied: boolean; onClick: () =
           Copied
         </>
       ) : (
-        'Copy'
+        label
       )}
     </Button>
   );

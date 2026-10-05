@@ -29,15 +29,19 @@ export function installPressFeedback(root: Document = document): () => void {
     const multiplier = speedMultiplier();
     animation.cancel();
     if (multiplier <= 0 || typeof element.animate !== 'function') return;
-    element.animate([{ scale: `${depth}` }, { scale: `${2 - depth}`, offset: 0.55 }, { scale: '1' }], {
-      duration: 260 * multiplier,
-      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-    });
+    element.animate(
+      [{ scale: `${depth}` }, { scale: `${2 - depth}`, offset: 0.55 }, { scale: '1' }],
+      {
+        duration: 260 * multiplier,
+        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+      },
+    );
   };
 
   const press = (event: PointerEvent) => {
     if (event.button !== 0) return;
-    const target = event.target instanceof Element ? event.target.closest<HTMLElement>(PRESSABLE) : null;
+    const target =
+      event.target instanceof Element ? event.target.closest<HTMLElement>(PRESSABLE) : null;
     if (!target || target.getAttribute('aria-disabled') === 'true') return;
     const multiplier = speedMultiplier();
     if (multiplier <= 0 || typeof target.animate !== 'function') return;

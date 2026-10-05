@@ -20,7 +20,10 @@ describe('design rules', () => {
       .filter((path) => {
         const source = readFileSync(path, 'utf8');
         // A capitals class or rule, or text typed in capitals (two words or more).
-        return /\buppercase\b|text-transform:\s*uppercase/.test(source) || />\s*[A-Z]{2,}(?: [A-Z]{2,})+\s*</.test(source);
+        return (
+          /\buppercase\b|text-transform:\s*uppercase/.test(source) ||
+          />\s*[A-Z]{2,}(?: [A-Z]{2,})+\s*</.test(source)
+        );
       })
       .map((path) => relative(SRC, path));
     expect(offenders).toEqual([]);

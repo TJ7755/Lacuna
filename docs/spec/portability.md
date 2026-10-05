@@ -55,10 +55,10 @@ lesson in an existing active course, or an existing lesson. Undo retains the con
 and destination settings. Confirmation imports through the existing atomic writer
 and opens the destination. Anki scheduling and media are preserved.
 
-Lacuna files and codes reuse the Share page's shared-course importer, including
+Lacuna files and codes use the shared-course importer (`SharedCourseImport`), including
 preview, media validation, QR scanning and published-course update matching. A
-successful import opens its course. The Share page retains the same component for
-existing entry points; backup restoration remains separate.
+successful import opens its course. The share-link route uses the same component;
+the Share page only sends. Backup restoration remains separate.
 
 ### Card import dialogue (`src/components/import/CardImportDialog.tsx`)
 
@@ -90,7 +90,7 @@ drag and drop, automatic format detection and a manual format override.
   persistence transaction, then scheduling/history and card records commit together.
   Failures preserve the draft for correction/retry. Closing and duplicate submissions
   are blocked during a write. Success closes the dialogue and confirms the card count.
-- Share codes use **Import → Lacuna course** or the Share page, preserving
+- Share codes use **Import → Lacuna course**, preserving
   lineage/update routing; full backup restoration remains a separate operation.
 
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
@@ -208,6 +208,17 @@ missing media and media whose SHA-256 hash does not match its bytes are rejected
 and course content commit together; a failed import leaves neither partial content nor
 new orphaned assets. Export refuses missing media instead of producing an incomplete file.
 
+### The Share page (`SharePage`, `src/components/share/`, `/share`)
+
+The page sends one course. It opens on the requested course (`?courseId=`), else
+one already being shared, else the first active course; a menu beside the title
+switches course when there is more than one. The share link is the default and
+the one primary action, because it carries media and updates in place. A course
+file, share code, QR code and plain text sit under **Other ways**, one open at a
+time; outputs survive switching between them and clear for another course. When
+a link's uploaded revision is behind the course, **Send revision n** becomes the
+primary action. Receiving lives on **Import → Lacuna course**.
+
 ### Share links (`relay/src/shares.ts`, `src/shareLinks/`, `/s/:code`)
 
 A hosted variant of the course file for classroom distribution. The teacher
@@ -286,7 +297,8 @@ never one person's scheduling progress or review history.
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
   not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
   for the recipient, and the study face falls back to each card's plain-text content. The
-  Share page names affected cards and directs users to **Save course file** to include media.
+  Share page's code, QR and text options name affected cards and point to a course file or the
+  share link to include media.
   This limitation applies to text/QR codes; course files and full backups carry the assets.
 - **What it omits:** personal FSRS memory state, Card review history, Question Attempts and Question
   scheduling state, plus suspended/buried/flag state on Cards.

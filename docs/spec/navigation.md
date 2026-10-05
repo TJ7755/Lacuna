@@ -83,7 +83,7 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/course/:courseId/lesson/:lessonId/occlusion/new`      | Occlusion editor (lesson-scoped)                                        | yes       | lazy    |
 | `/settings`                                             | Settings                                                                | yes       | lazy    |
 | `/search`                                               | Search                                                                  | yes       | lazy    |
-| `/share`                                                | Share (export/import via codes)                                         | yes       | lazy    |
+| `/share`                                                | Share (send a course: link by default, other ways folded)               | yes       | lazy    |
 | `/analytics`                                            | Global (cross-course) analytics                                         | yes       | lazy    |
 | `/help`                                                 | Help                                                                    | yes       | lazy    |
 | `/course/:courseId/study`                               | Persistent course study conductor                                       | **no**    | lazy    |

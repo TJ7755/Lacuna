@@ -121,3 +121,14 @@
   Connection, MCP access request, Final exam passed) are gone; the final-exam
   dialog now leads with "Final exam passed". `src/designRules.test.ts` keeps
   capitals out.
+- Share is redesigned around one default:
+  - it opens on a course (the requested one, else one already shared, else the
+    first active course), with a menu beside the title to switch;
+  - the share link is the single primary action and, once live, shows the link
+    with Copy, its QR code, its revision, Update link and Stop sharing;
+    **Send revision n** takes over when the link is behind the course;
+  - a course file, share code, QR code and plain text sit under Other ways, one
+    open at a time, with the media warning only where media is dropped;
+  - the numbered Course / Method / Send steps, the method descriptions and the
+    import half are gone: receiving lives on Import → Lacuna course, so the
+    unused `?intent=import` entry was removed.

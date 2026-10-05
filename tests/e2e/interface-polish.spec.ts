@@ -29,14 +29,14 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('Collaborate', { exact: true })).toHaveCount(0);
     const heading = page.getByRole('heading', { name: 'Share', exact: true });
     await expect(heading).toBeVisible();
-    await expect(heading.locator('xpath=ancestor::header[1]').locator('p')).toHaveCount(0);
-    const exportSection = page
-      .getByRole('heading', { name: 'Export a course', exact: true })
+    // The header holds the title and the course being shared, nothing descriptive.
+    await expect(heading.locator('xpath=ancestor::header[1]')).toHaveText('ShareWelcome to Lacuna');
+    const linkSection = page
+      .getByRole('heading', { name: 'Share link', exact: true })
       .locator('xpath=ancestor::section[1]');
-    const exportCopy = page.getByText(/Save a course file to share lessons, cards, question sets and media/);
-    await expect(exportCopy).toBeVisible();
+    await expect(linkSection).toBeVisible();
     expect(
-      Math.abs((await heading.boundingBox())!.x - (await exportSection.boundingBox())!.x),
+      Math.abs((await heading.boundingBox())!.x - (await linkSection.boundingBox())!.x),
     ).toBeLessThan(1);
     await page.screenshot({ animations: 'disabled', path: test.info().outputPath('share.png') });
     await page.goto('/#/analytics');

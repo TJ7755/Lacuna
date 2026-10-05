@@ -115,12 +115,10 @@ function describeMergeResult(result: MergeLineageResult): string {
 }
 
 export function SharedCourseImport({
-  importIntent = false,
   initialFile,
   onImported,
   onBusyChange,
 }: {
-  importIntent?: boolean;
   initialFile?: File;
   onImported?: (courseId: string) => void;
   onBusyChange?: (busy: boolean) => void;
@@ -130,8 +128,6 @@ export function SharedCourseImport({
   const [pending, setPending] = useState<PendingShareImport | null>(null);
   const inspectionGeneration = useRef(0);
   const [importing, setImporting] = useState(false);
-  const importSectionRef = useRef<HTMLElement>(null);
-  const importInputRef = useRef<HTMLTextAreaElement>(null);
   const [motionSpeed] = useMotionSpeed();
 
   const {
@@ -161,21 +157,6 @@ export function SharedCourseImport({
   });
 
   const m = speedMultiplier(motionSpeed);
-
-  // Welcome links carry an explicit import intent because the Share page opens
-  // with export controls. Move the existing import job into view and put the
-  // keyboard at its first actionable field once the lazy route has mounted.
-  useEffect(() => {
-    if (!importIntent) return;
-    const id = window.requestAnimationFrame(() => {
-      importSectionRef.current?.scrollIntoView({
-        behavior: m > 0 ? 'smooth' : 'auto',
-        block: 'start',
-      });
-      importInputRef.current?.focus({ preventScroll: true });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [importIntent, m]);
 
   useEffect(() => {
     if (!initialFile) return;
@@ -271,7 +252,7 @@ export function SharedCourseImport({
   }
 
   return (
-    <SectionCard ref={importSectionRef} className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
+    <SectionCard className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
       <div className="mb-1 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
@@ -293,7 +274,6 @@ export function SharedCourseImport({
 
       <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
         <textarea
-          ref={importInputRef}
           aria-label="Share link or code to import"
           value={input}
           onChange={(e) => {

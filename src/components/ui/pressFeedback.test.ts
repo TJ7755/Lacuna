@@ -26,7 +26,9 @@ describe('installPressFeedback', () => {
     button.innerHTML = '<span>Go</span>';
     document.body.append(button);
 
-    button.firstElementChild!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    button.firstElementChild!.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0 }),
+    );
     expect(animate.mock.instances[0]).toBe(button);
     expect(animate.mock.calls[0][0]).toEqual([{ scale: '1' }, { scale: '0.96' }]);
 
