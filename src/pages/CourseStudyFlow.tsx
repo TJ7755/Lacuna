@@ -15,6 +15,10 @@ import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { StepSwap } from '../components/ui/StepSwap';
+import {
+  continuesWithoutPause,
+  mayContinueWithoutPause,
+} from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -216,6 +220,35 @@ function CourseStudyFlowInner() {
     setTransition(null);
   }, [flow, pomodoro, refreshKey, transition]);
 
+  // Contiguous Practice continues without the full-screen hand-off once the planner
+  // has the next step; see continuesWithoutPause for the boundaries that still pause.
+  const nextFlow = flow?.generation === refreshKey ? flow : null;
+  const awaitingContinuation =
+    transition !== null &&
+    mayContinueWithoutPause(transition.completedStep, transition.summary, pomodoro.breakPending) &&
+    (nextFlow === null ||
+      continuesWithoutPause(
+        transition.completedStep,
+        transition.summary,
+        nextFlow.decision,
+        pomodoro.breakPending,
+      ));
+  useEffect(() => {
+    if (!transition || !nextFlow) return;
+    const { decision } = nextFlow;
+    if (
+      continuesWithoutPause(
+        transition.completedStep,
+        transition.summary,
+        decision,
+        pomodoro.breakPending,
+      )
+    ) {
+      setCurrentStep(decision.step);
+      setTransition(null);
+    }
+  }, [nextFlow, pomodoro.breakPending, transition]);
+
   const reviewDueCards = useCallback(() => {
     if (!courseId) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
@@ -248,7 +281,14 @@ function CourseStudyFlowInner() {
 
   let scene: string;
   let body: ReactNode;
-  if (transition) {
+  if (awaitingContinuation) {
+    scene = 'transition';
+    body = (
+      <DelayedFallback>
+        <CourseStudyFlowSkeleton />
+      </DelayedFallback>
+    );
+  } else if (transition) {
     const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
     const nextLabel =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')

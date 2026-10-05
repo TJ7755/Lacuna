@@ -22,6 +22,8 @@ export interface SessionSummary {
   limitReached: boolean;
   /** True when the session ended because the session time limit was reached. */
   timeLimitReached?: boolean;
+  /** True when the session stopped at the daily review goal with work possibly remaining. */
+  dailyGoalReached?: boolean;
   /** True for the first-pass YES/NO loop, whose answers also update FSRS. */
   simpleMode?: boolean;
   /** Visual mode identifier for the session report UI. */

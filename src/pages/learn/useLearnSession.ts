@@ -776,7 +776,12 @@ export function useLearnSession({
   );
 
   const finish = useCallback(
-    (reachedGoal: boolean, limitReached = false, timeLimitReached = false) => {
+    (
+      reachedGoal: boolean,
+      limitReached = false,
+      timeLimitReached = false,
+      dailyGoalReached = false,
+    ) => {
       if (!mountedRef.current) return;
       if (isSimpleMode && reachedGoal) clearSimpleSession(simpleSessionScope);
       const ctx = ctxRef.current;
@@ -800,6 +805,7 @@ export function useLearnSession({
         reachedGoal,
         limitReached,
         timeLimitReached,
+        ...(dailyGoalReached ? { dailyGoalReached } : {}),
         simpleMode: isSimpleMode,
         mode,
       });
