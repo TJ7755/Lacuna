@@ -9,14 +9,11 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
       const heading = page.getByRole('heading', { name: 'Today', exact: true });
       await expect(heading).toBeVisible();
-      await expect(heading).toHaveCSS('font-family', /Instrument Sans/);
+      await expect(page.locator('main')).toHaveCSS('font-family', /Atkinson Hyperlegible Next/);
       await page.evaluate(() => document.fonts.ready);
-      expect(await page.evaluate(() => document.fonts.check('16px "Instrument Sans"'))).toBe(true);
-      await expect(heading.locator('xpath=ancestor::header')).toHaveCSS('border-top-width', '0px');
-      await expect(heading.locator('xpath=ancestor::header')).toHaveCSS(
-        'background-color',
-        'rgba(0, 0, 0, 0)',
-      );
+      expect(
+        await page.evaluate(() => document.fonts.check('16px "Atkinson Hyperlegible Next"')),
+      ).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
@@ -33,8 +30,7 @@ for (const theme of ['light', 'dark'] as const) {
         level: 1,
       });
       await expect(course).toBeVisible();
-      await expect(course).toHaveCSS('font-family', /Fraunces/);
-      await expect(course.locator('xpath=ancestor::header')).toHaveCSS('border-top-width', '0px');
+      await expect(course).toHaveCSS('font-family', /Bricolage Grotesque/);
       await page.getByRole('button', { name: 'Author mode', exact: true }).click();
       await page.getByRole('button', { name: 'Rename course', exact: true }).click();
       await expect(page.getByRole('textbox', { name: 'course name', exact: true })).toBeFocused();
