@@ -10,6 +10,7 @@ import {
   parseShareManifest,
 } from '../shareLinks/client';
 import { confirmShareImport } from '../shareLinks/linkStore';
+import { Skeleton } from '../components/ui/Skeleton';
 
 type ShareLinkState =
   | { status: 'loading' }
@@ -174,9 +175,9 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 function ShareLinkSkeleton() {
   return (
     <div className="rounded-2xl border border-line bg-surface p-6">
-      <div className="mb-2 h-6 w-48 animate-pulse rounded-lg bg-ink/10" />
-      <div className="mb-5 h-4 w-full animate-pulse rounded-lg bg-ink/10" />
-      <div className="h-32 w-full animate-pulse rounded-xl bg-ink/10" />
+      <Skeleton className="mb-2 h-6 w-48 rounded-lg" />
+      <Skeleton className="mb-5 h-4 w-full rounded-lg" />
+      <Skeleton className="h-32 w-full rounded-xl" />
     </div>
   );
 }

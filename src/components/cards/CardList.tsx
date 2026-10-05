@@ -45,6 +45,7 @@ import { GeneratedCardBadge } from './GeneratedCardBadge';
 import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
+import { Skeleton } from '../ui/Skeleton';
 
 const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),
@@ -1312,7 +1313,7 @@ const CardRow = React.memo(function CardRow({
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.12 * m }}
                 >
-                  <Suspense fallback={<span className="inline-block h-4 w-24 animate-pulse rounded bg-ink/5" />}>
+                  <Suspense fallback={<Skeleton as="span" className="inline-block h-4 w-24 bg-ink/5" />}>
                     <CardContent card={card} side={contentSide} />
                   </Suspense>
                 </motion.div>

@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { EditIcon, PlayIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
 import { useCourse, useLessons } from '../state/useCourseData';
+import { Skeleton } from '../components/ui/Skeleton';
 
 function dueLabel(due: number | null, now: number): string {
   if (due === null) return 'Not yet practised';
@@ -200,14 +201,14 @@ export function QuestionsPage() {
 function QuestionsPageSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <div className="mb-8 h-11 w-56 animate-pulse rounded-xl bg-ink/10" />
+      <Skeleton className="mb-8 h-11 w-56 rounded-xl" />
       <div className="mb-8 grid gap-3 sm:grid-cols-2">
-        <div className="h-40 animate-pulse rounded-2xl bg-ink/10" />
-        <div className="h-40 animate-pulse rounded-2xl bg-ink/10" />
+        <Skeleton className="h-40 rounded-2xl" />
+        <Skeleton className="h-40 rounded-2xl" />
       </div>
       <div className="space-y-3">
-        <div className="h-24 animate-pulse rounded-2xl bg-ink/10" />
-        <div className="h-24 animate-pulse rounded-2xl bg-ink/10" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
       </div>
     </div>
   );

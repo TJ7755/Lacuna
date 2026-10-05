@@ -29,6 +29,7 @@ import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
 import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
 import { formatDate } from '../../utils/datetime';
+import { Skeleton } from '../ui/Skeleton';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -352,7 +353,7 @@ export function SharedCourseImport({
                 ref={scannerRef}
                 className="relative mx-auto aspect-square max-w-sm overflow-hidden rounded-lg bg-black"
               >
-                {!scanError && <div className="absolute inset-0 animate-pulse bg-ink/10" />}
+                {!scanError && <Skeleton className="absolute inset-0" />}
               </div>
               {scanError && <p className="mt-2 text-sm text-negative">{scanError}</p>}
               <p className="mt-2 text-xs text-ink-faint">

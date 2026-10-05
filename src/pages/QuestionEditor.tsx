@@ -39,6 +39,7 @@ import {
   type QuestionAnswerKind,
   useQuestionDraft,
 } from './questionDraft';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const inputClass =
   'min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20';
@@ -183,7 +184,7 @@ export function QuestionEditor() {
     return (
       <DelayedFallback>
         <div className="mx-auto max-w-4xl px-6 py-10">
-          <div className="h-12 w-72 animate-pulse rounded-xl bg-ink/10" />
+          <Skeleton className="h-12 w-72 rounded-xl" />
         </div>
       </DelayedFallback>
     );
