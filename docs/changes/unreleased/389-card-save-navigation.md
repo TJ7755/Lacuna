@@ -1,0 +1,1 @@
+- Cancel the card editor’s delayed post-save return when the editor closes or changes cards, so leaving for Settings cannot be redirected back to Cards. (#389)

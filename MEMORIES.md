@@ -270,3 +270,9 @@ A `motion.*` element calls only the ref callback it received on mount; a later r
 A row that mounts without a ref (Study mode) and gains one (Author mode) stays unregistered, so
 drag reordering silently half-works. Remount the element when its ref first becomes meaningful,
 for example with a `key` on the mode, or attach the ref to a plain element.
+
+## Card save feedback owns its navigation
+
+A saved card appears in the live list before the editor’s confirmation delay ends.
+Cancel that delayed return on unmount and route-identity changes, including async saves
+that finish after departure; otherwise navigation to Settings can be redirected to Cards.

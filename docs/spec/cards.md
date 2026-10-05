@@ -129,3 +129,7 @@ retains its Attempt receipts as personal evidence.
 
 
 [Specification index](../SPEC.md)
+
+The card editor briefly confirms a save before returning to its origin. Leaving the editor
+or switching to another card cancels that return, including when persistence finishes after
+the editor has closed.
