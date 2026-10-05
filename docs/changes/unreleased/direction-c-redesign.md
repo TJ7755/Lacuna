@@ -161,3 +161,4 @@
   longer repeat the create buttons (Open lesson adds to a lesson).
 - The card editor's Add card no longer wraps alone under the other actions:
   it takes the full width above Cancel and Save & add another.
+- A lesson's card list no longer shows raw maths markers ($e^x$).

@@ -33,6 +33,9 @@ describe('lessonCardRow', () => {
     expect(plainFront(card({ type: 'cloze', front: 'Splits in the {{c1::cytoplasm::where?}}.' }))).toBe(
       'Splits in the cytoplasm.',
     );
+    expect(plainFront(card({ front: 'What is the derivative of $e^x$?' }))).toBe(
+      'What is the derivative of e^x?',
+    );
   });
 
   it('classifies state and kind in the caption', () => {

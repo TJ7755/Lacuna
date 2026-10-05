@@ -36,7 +36,7 @@ export function plainFront(card: Card): string {
       .replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/gs, '$1')
       .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
       .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-      .replace(/[`*_#>~]/g, '')
+      .replace(/[`*_#>~$]/g, '')
       .replace(/\s+/g, ' ')
       .trim() || 'Untitled card'
   );
