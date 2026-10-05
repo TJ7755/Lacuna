@@ -289,7 +289,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                       type="button"
                       aria-label={`Edit ${name}`}
                       onClick={() => props.onPracticeEdit(practice)}
-                      className="absolute right-10 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
+                      className="absolute right-10 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
                     >
                       <EditIcon width={14} height={14} />
                     </button>
