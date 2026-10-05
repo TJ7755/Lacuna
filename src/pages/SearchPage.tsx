@@ -271,7 +271,7 @@ export function SearchPage() {
                 )}
                 <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                   <span>{hit.contextName}</span>
-                  <span className="rounded-lg border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                  <span className="rounded-lg border border-line px-2 py-0.5 text-xs">
                     Question
                   </span>
                   {hit.question.kind === 'generated' && <span>Generated family</span>}

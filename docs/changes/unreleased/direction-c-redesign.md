@@ -116,3 +116,8 @@
 - Every control now acknowledges a press: buttons, links, tabs, menu items and
   switches sink slightly and spring back (`pressFeedback.ts`), following the
   motion-speed setting.
+- No more all-caps labels: every small capitals label is now a sentence-case
+  label, and the eyebrows above headings (Course study, Revision plan, 404,
+  Connection, MCP access request, Final exam passed) are gone; the final-exam
+  dialog now leads with "Final exam passed". `src/designRules.test.ts` keeps
+  capitals out.

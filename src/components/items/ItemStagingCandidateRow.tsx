@@ -135,7 +135,7 @@ export function ItemStagingCandidateRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className="text-sm text-ink-faint">
               Question {candidate.index + 1}
             </span>
             <StatusPill tone={ready ? 'positive' : 'negative'}>

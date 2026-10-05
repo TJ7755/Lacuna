@@ -220,7 +220,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
             transition={{ duration: 0.16 * m, delay: i * 0.03 * m }}
             className="rounded-xl border border-line bg-surface-raised p-3"
           >
-            <div className="text-[11px] uppercase tracking-wide text-ink-faint">{stat.label}</div>
+            <div className="text-sm text-ink-faint">{stat.label}</div>
             <div className="mt-1 font-display text-lg tracking-tight">{stat.value}</div>
           </motion.div>
         ))}

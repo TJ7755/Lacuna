@@ -309,8 +309,7 @@ function PlanShell({
   return (
     <div className="min-h-screen bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
       <main className="mx-auto max-w-xl">
-        <p className="text-sm uppercase tracking-[0.18em] text-ink-faint">Revision plan</p>
-        <h1 className="mt-2 font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
         {children}
         <Button variant="ghost" size="lg" className="mt-4 w-full" onClick={onExit}>
           Back

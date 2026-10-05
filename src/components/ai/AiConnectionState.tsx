@@ -126,8 +126,7 @@ export function AiConnectionState({
     return (
       <section aria-labelledby="ai-connect-title" className="flex flex-1 flex-col overflow-y-auto p-5">
         <div className="my-auto">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">Connection</p>
-          <h2 id="ai-connect-title" className="mt-2 font-display text-xl text-ink">Built-in AI</h2>
+          <h2 id="ai-connect-title" className="font-display text-xl text-ink">Built-in AI</h2>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
             Enter your personal access code to use AI in Lacuna.
           </p>
@@ -185,10 +184,7 @@ export function AiConnectionState({
         className="flex flex-1 flex-col overflow-y-auto p-5"
       >
         <div className="my-auto">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">
-            Connection
-          </p>
-          <h2 id="ai-connect-title" className="mt-2 font-display text-2xl text-ink">
+          <h2 id="ai-connect-title" className="font-display text-2xl text-ink">
             Connect an AI client
           </h2>
           <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
@@ -330,15 +326,12 @@ export function AiConnectionState({
         className="flex flex-1 flex-col overflow-y-auto p-5"
       >
         <div className="my-auto">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">
-            Connection
-          </p>
-          <h2 id="ai-pair-title" className="mt-2 font-display text-2xl text-ink">
+          <h2 id="ai-pair-title" className="font-display text-2xl text-ink">
             Pair your AI client
           </h2>
 
           <div className="mt-5 rounded-xl border border-line-strong bg-surface-raised px-4 py-5 text-center shadow-sm">
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-faint">
+            <p className="text-sm font-medium text-ink-soft">
               Pairing code
             </p>
             <p className="mt-2 whitespace-nowrap font-mono text-xl font-semibold tracking-[0.06em] text-ink">
@@ -417,10 +410,7 @@ export function AiConnectionState({
       className="flex flex-1 flex-col p-5"
     >
       <div className="my-auto">
-        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">
-          Connection
-        </p>
-        <h2 id="ai-connect-title" className="mt-2 font-display text-2xl text-ink">
+        <h2 id="ai-connect-title" className="font-display text-2xl text-ink">
           Connect an AI client
         </h2>
         <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">

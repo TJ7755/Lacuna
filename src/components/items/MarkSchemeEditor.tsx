@@ -137,7 +137,7 @@ export function MarkSchemeEditor({
         <div className="relative">
           <label
             htmlFor={sourceId}
-            className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint"
+            className="mb-2 block text-sm text-ink-faint"
           >
             Scheme source
           </label>
@@ -191,7 +191,7 @@ export function MarkSchemeEditor({
         </div>
 
         <div>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+          <div className="mb-2 text-sm text-ink-faint">
             Compiled preview
           </div>
           <div className="min-h-[19rem] space-y-2 rounded-xl border border-line bg-surface-raised p-3">
@@ -319,7 +319,7 @@ function FixtureRow({ fixture, scheme, onRemove, index }: { fixture: ItemFixture
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">
       <div className="min-w-0 flex-1">
-        <div className="text-xs uppercase tracking-[0.12em] text-ink-faint">Fixture {index + 1}</div>
+        <div className="text-sm text-ink-faint">Fixture {index + 1}</div>
         <div className="mt-1 truncate font-mono text-sm text-ink">{lines.join(' · ')}</div>
       </div>
       <span className="text-sm tabular-nums text-ink-soft">Expected {fixture.expectedMarks}, got {result?.marksEarned ?? '—'}</span>

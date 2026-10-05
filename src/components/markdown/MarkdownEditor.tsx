@@ -352,7 +352,7 @@ export function MarkdownEditor({
   return (
     <div className="rounded-xl border border-line bg-surface">
       {label && (
-        <div className="border-b border-line px-3 py-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+        <div className="border-b border-line px-3 py-2 text-sm text-ink-faint">
           {label}
         </div>
       )}

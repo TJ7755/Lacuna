@@ -31,7 +31,7 @@ export function CourseStudyTarget({
   return (
     <>
       <fieldset ref={targetRef} aria-describedby={targetError ? 'course-target-error' : undefined}>
-        <legend className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+        <legend className="mb-2 text-sm text-ink-faint">
           Study target
         </legend>
         <div className="grid grid-cols-2 gap-2">

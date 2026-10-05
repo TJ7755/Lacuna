@@ -123,7 +123,7 @@ export function CardEditOverlay({
       <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6">
         {/* Card type selector */}
         <div>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+          <div className="mb-2 text-sm text-ink-faint">
             Card type
           </div>
           <div className="flex gap-2">
@@ -207,7 +207,7 @@ export function CardEditOverlay({
 
         {/* Tags */}
         <div>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+          <div className="mb-2 text-sm text-ink-faint">Tags</div>
           <TagInput
             tags={tags}
             onChange={setTags}

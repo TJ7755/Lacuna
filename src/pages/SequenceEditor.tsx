@@ -410,7 +410,7 @@ export function SequenceEditor() {
 
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Name</div>
+            <div className="mb-2 text-sm text-ink-faint">Name</div>
             <input
               id="sequence-name"
               aria-label="Sequence name"
@@ -432,7 +432,7 @@ export function SequenceEditor() {
             )}
           </div>
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <div className="mb-2 text-sm text-ink-faint">
               Description <span className="normal-case text-ink-faint/70">(optional)</span>
             </div>
             <input
@@ -448,7 +448,7 @@ export function SequenceEditor() {
           {/* Preset */}
           {!editing ? (
             <div>
-              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Type</div>
+              <div className="mb-2 text-sm text-ink-faint">Type</div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {SEQUENCE_PRESETS.map((p) => (
                   <button
@@ -478,7 +478,7 @@ export function SequenceEditor() {
           {/* Chunks */}
           <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <div className="text-sm text-ink-faint">
                 {preset.terminology.chunkLabel}s{' '}
                 <span className="normal-case text-ink-faint/70">(optional)</span>
               </div>
@@ -585,7 +585,7 @@ export function SequenceEditor() {
           {/* Items */}
           <div>
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-              <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <div className="text-sm text-ink-faint">
                 {preset.terminology.itemPlural}{' '}
                 <span className="text-ink-faint/70">({items.length})</span>
               </div>
@@ -657,7 +657,7 @@ export function SequenceEditor() {
           {/* Preview */}
           <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">Preview</div>
+              <div className="text-sm text-ink-faint">Preview</div>
               <span
                 className={cn(
                   'rounded-lg px-3 py-1 text-sm font-medium',

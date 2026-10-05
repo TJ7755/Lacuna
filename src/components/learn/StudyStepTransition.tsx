@@ -166,7 +166,7 @@ function RevisionFact({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-line bg-surface px-4 py-3">
       <p className="font-display text-2xl tabular">{value}</p>
-      <p className="mt-1 text-xs uppercase tracking-wide text-ink-faint">{label}</p>
+      <p className="mt-1 text-sm text-ink-faint">{label}</p>
     </div>
   );
 }

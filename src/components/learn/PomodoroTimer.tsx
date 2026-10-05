@@ -179,7 +179,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
             <div className="px-4 py-4">
               {/* header */}
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
+                <span className="text-sm font-medium text-ink-faint">
                   {breakPending ? 'Break ready' : label(phase)}
                 </span>
                 {sessionsCompleted > 0 && (

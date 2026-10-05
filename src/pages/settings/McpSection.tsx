@@ -155,7 +155,7 @@ export function McpSection() {
       {status?.companion && (
         <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs font-medium uppercase tracking-wide text-ink-faint">
+            <div className="text-sm font-medium text-ink-faint">
               MCP client configuration
             </div>
             <Button variant="secondary" size="sm" onClick={() => void copyConfiguration()}>

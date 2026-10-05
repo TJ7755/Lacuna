@@ -372,7 +372,7 @@ export function MergeReviewPanel() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-xs uppercase tracking-[0.16em] text-ink-faint">{title}</h2>
+      <h2 className="mb-3 text-sm text-ink-faint">{title}</h2>
       <ul className="space-y-2">{children}</ul>
     </section>
   );
@@ -405,7 +405,7 @@ function ReviewRow({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-ink-faint">{KIND_LABEL[row.kind]}</span>
+            <span className="text-sm text-ink-faint">{KIND_LABEL[row.kind]}</span>
             {onToggle && (
               <button
                 type="button"
@@ -435,13 +435,13 @@ function ReviewRow({
           {showPreview && expanded && (
             <div className="mt-2 space-y-3">
               <div>
-                <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-ink-faint">Current</p>
+                <p className="mb-1 text-sm text-ink-faint">Current</p>
                 <div className="text-sm text-ink-soft">
                   <MarkdownView source={row.beforeFull || '—'} />
                 </div>
               </div>
               <div>
-                <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-ink-faint">Incoming</p>
+                <p className="mb-1 text-sm text-ink-faint">Incoming</p>
                 <div className="text-sm text-ink">
                   <MarkdownView source={row.afterFull || '—'} />
                 </div>

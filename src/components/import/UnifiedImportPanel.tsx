@@ -551,7 +551,7 @@ export function UnifiedImportPanel({
             className="relative"
           >
             <div className="mb-2.5 flex items-center justify-between">
-              <label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+              <label className="text-sm font-medium text-ink-faint">
                 Paste your cards
               </label>
               <div className="flex items-center gap-2">
@@ -642,7 +642,7 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.12 * m }}
                 className="flex items-center gap-3"
               >
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+                <span className="text-sm font-medium text-ink-faint">
                   Detected
                 </span>
                 <FormatBadge format={effectiveFormat} confidence={detection.confidence} />
@@ -736,7 +736,7 @@ export function UnifiedImportPanel({
                           }}
                           className="flex items-center gap-2.5 rounded-2xl bg-paper px-3 py-2 text-sm"
                         >
-                          <span className="shrink-0 rounded-lg bg-ink/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                          <span className="shrink-0 rounded-lg bg-ink/5 px-2 py-0.5 text-xs font-medium text-ink-faint">
                             {c.type === 'cloze' ? 'Cloze' : 'Basic'}
                           </span>
                           <span className="min-w-0 flex-1 truncate text-ink">{c.front}</span>
@@ -910,7 +910,7 @@ function ShareCodeImport({
   return (
     <>
       <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60">
-        <label className="mb-2.5 block text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+        <label className="mb-2.5 block text-sm font-medium text-ink-faint">
           Share code
         </label>
         <textarea
@@ -1047,7 +1047,7 @@ function FormatBadge({ format, confidence }: { format: ImportFormat; confidence:
   return (
     <span
       className={cn(
-        'rounded-lg border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+        'rounded-lg border px-2.5 py-0.5 text-xs font-medium',
         colour,
       )}
     >

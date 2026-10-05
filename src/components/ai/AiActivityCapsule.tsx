@@ -115,7 +115,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
             <SparklesIcon width={14} height={14} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
+            <span className="block text-sm font-medium text-ink-faint">
               {statusLabel}
             </span>
             <span className="block max-w-52 truncate text-sm text-ink">{compactSummary}</span>
@@ -123,7 +123,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
         </button>
       ) : (
         <p className="max-w-48 px-2">
-          <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
+          <span className="block text-sm font-medium text-ink-faint">
             {statusLabel}
           </span>
           <span className="block truncate text-sm text-ink">{compactSummary}</span>
@@ -155,7 +155,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line-strong bg-paper shadow-xl shadow-black/15"
         >
           <div className="border-b border-line bg-surface px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
+            <p className="text-sm font-medium text-ink-faint">
               Current activity
             </p>
             <p className="mt-1 text-sm font-medium text-ink">
@@ -167,7 +167,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           </div>
           {latestReply && (
             <div className="border-b border-line px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
+              <p className="text-sm font-medium text-ink-faint">
                 Latest reply
               </p>
               <p className="mt-1 line-clamp-4 text-sm leading-5 text-ink-soft">
@@ -178,7 +178,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           <div className="px-4 py-3">
             <label
               htmlFor="ai-capsule-follow-up"
-              className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint"
+              className="text-sm font-medium text-ink-faint"
             >
               Queued follow-up
             </label>

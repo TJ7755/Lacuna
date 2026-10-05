@@ -111,7 +111,7 @@ export function NumericAnswerEditor({ value, onChange, invalid = false }: Numeri
           />
           {value.kind === 'within' && (
             <label className="block">
-              <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <span className="mb-2 block text-sm text-ink-faint">
                 Plus or minus
               </span>
               <input

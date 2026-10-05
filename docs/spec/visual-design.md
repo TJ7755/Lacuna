@@ -30,7 +30,9 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 - **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
   or display face; axis and metadata labels are never monospace.
 - Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a
-  number to a sentence.
+  number to a sentence. Nothing in the app is set in capitals or letter-spaced, and no
+  eyebrow label sits above a heading: the heading names the screen on its own
+  (`src/designRules.test.ts` enforces the capitals rule).
 - A global font-scale control multiplies all text (see §15).
 
 Dashboard and course/lesson headings sit directly on the page without decorative panel

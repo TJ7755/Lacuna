@@ -286,7 +286,7 @@ export function OcclusionEditor() {
 
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Name</div>
+            <div className="mb-2 text-sm text-ink-faint">Name</div>
             <input
               type="text"
               value={name}

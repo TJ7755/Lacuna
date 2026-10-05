@@ -222,7 +222,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
           aria-label={`Annotations for ${note.name}`}
           className="mt-5 border-t border-line pt-4"
         >
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+          <h3 className="text-sm font-semibold text-ink-faint">
             Highlights
           </h3>
           <ul className="mt-2 space-y-2">

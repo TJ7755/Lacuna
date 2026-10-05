@@ -97,7 +97,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
 
       <div className="flex flex-col gap-5 px-6 py-6">
         <div className="flex flex-col gap-2">
-          <label htmlFor={nameInputId} className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+          <label htmlFor={nameInputId} className="text-sm text-ink-faint">
             Course name
           </label>
           <input
