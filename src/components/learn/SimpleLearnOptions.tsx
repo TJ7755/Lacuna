@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLessons } from '../../state/useCourseData';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
+import { ChevronDownIcon } from '../ui/icons';
 
 /** Keep optional passes tucked beneath the scheduled study choices. */
 export function SimpleLearnOptions({
@@ -20,8 +21,14 @@ export function SimpleLearnOptions({
       className="border-t border-line pt-2"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary className="min-h-11 cursor-pointer rounded-lg py-3 text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-3 text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
         Simple Learn
+        <ChevronDownIcon
+          width={16}
+          height={16}
+          aria-hidden="true"
+          className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        />
       </summary>
       {expanded && (
         <SimpleLearnFields courseId={courseId} lessonId={lessonId} onLessonChange={setLessonId} />
