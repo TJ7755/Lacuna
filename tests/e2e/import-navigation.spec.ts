@@ -12,6 +12,10 @@ for (const width of [1280, 390]) {
     const header = page.locator('.import-page > header');
     await expect(title).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
+    // Measure after the entrance animation settles, not part-way through it.
+    await page.evaluate(() =>
+      Promise.all(document.getAnimations().map((animation) => animation.finished)),
+    );
     const position = async () => {
       const heading = await title.boundingBox();
       const bounds = await header.boundingBox();
@@ -25,7 +29,7 @@ for (const width of [1280, 390]) {
     const initial = await position();
     for (const source of ['Lacuna course', 'Anki deck', 'Text or spreadsheet']) {
       await page.getByRole('button', { name: new RegExp(source) }).click();
-      const back = page.getByRole('button', { name: 'Back', exact: true });
+      const back = page.getByRole('button', { name: 'Back to import sources', exact: true });
       await expect(back).toBeVisible();
       const backBounds = await back.boundingBox();
       const titleBounds = await title.boundingBox();

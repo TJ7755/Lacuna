@@ -8,8 +8,10 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   await enterFreshLacuna(page);
   const sidebar = page.getByRole('complementary');
   const course = sidebar.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
-  await expect(course).toHaveText('Welcome to Lacuna');
-  await expect(sidebar.locator('kbd')).toHaveCount(0);
+  await expect(course).toHaveAccessibleName('Welcome to Lacuna');
+  // The only shortcut hint is Search's own.
+  await expect(sidebar.locator('kbd')).toHaveCount(1);
+  await expect(sidebar.getByRole('button', { name: /^Search/ }).locator('kbd')).toHaveCount(1);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await course.hover();
   const card = page.getByRole('tooltip');
@@ -32,7 +34,7 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   });
   await page.keyboard.press('Escape');
   await expect(card).toHaveCount(0);
-  await sidebar.getByRole('link', { name: 'Dashboard', exact: true }).hover();
+  await sidebar.getByRole('link', { name: 'Today', exact: true }).hover();
   await expect(card.getByText('Day streak', { exact: true })).toBeVisible();
   await expect(card.getByText('Reviewed today', { exact: true })).toBeVisible();
   await page.mouse.move(1000, 900);

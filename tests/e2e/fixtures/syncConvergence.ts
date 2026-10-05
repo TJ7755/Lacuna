@@ -17,12 +17,12 @@ export async function addLessonCard(page: Page, courseId: string, front: string)
   await page.goto(`/#/course/${courseId}`);
   await page.getByRole('button', { name: 'Author mode' }).click();
   await expect(page.locator('[data-lesson-workspace-mode="edit"]')).toBeVisible();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(front);
   await page.getByRole('textbox', { name: 'Back' }).fill(`${front} answer`);
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/[^/]+$`));
-  await expect(page.getByText(front, { exact: true })).toBeVisible();
+  await expect(page.getByText(front, { exact: true }).first()).toBeVisible();
 }
 
 export async function editOnlyCard(page: Page, courseId: string, front: string): Promise<void> {

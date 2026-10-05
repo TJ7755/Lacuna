@@ -46,7 +46,7 @@ test('slows both flip phases, follows live speed changes and skips reduced-motio
   await enterFreshLacuna(page);
   await createCourse(page, 'Flip timing');
   await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill('Flip timing question');
   await page.getByRole('textbox', { name: 'Back' }).fill('Flip timing answer');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();

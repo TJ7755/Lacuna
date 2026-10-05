@@ -60,9 +60,11 @@ test('first-device sync setup completes against a stubbed relay', async ({ page 
   await stubRelay(page, relayBase, relayRequests);
 
   await page.goto('/#/settings');
-  await expect(page.getByRole('heading', { name: 'Device sync' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Another device' })).toBeVisible();
 
-  await page.locator('#settings-sync').getByRole('button', { name: 'Set up sync' }).click();
+  await page.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
+
+  await page.getByRole('dialog').getByRole('button', { name: 'Set up sync' }).click();
   await page.getByLabel('Relay URL', { exact: true }).fill(relayBase);
   await page
     .getByLabel('Relay mint secret (private relays only)', { exact: true })

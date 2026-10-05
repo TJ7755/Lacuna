@@ -6,7 +6,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
   await enterFreshLacuna(page);
   await createCourse(page, 'Study response regression');
   await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(frontText);
   await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
@@ -94,7 +94,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
     .toBe(1);
   await page.goto(`/#/course/${courseId}/cards`);
   const frontPrefix = frontText.trim().split(/\s+/).slice(0, 4).join(' ');
-  await page.getByPlaceholder('Search all cards…').fill(frontPrefix);
+  await page.getByLabel('Search all cards').fill(frontPrefix);
   // Hover previews can display the back; the search still identifies this single Card.
   const row = page.locator(`[data-card-id="${reviewedId}"]`);
   await expect(row).toHaveCount(1);

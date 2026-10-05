@@ -16,7 +16,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           for (const question of direction > 0
             ? ['Swipe question', 'Next question']
             : ['Swipe question']) {
-            await page.getByRole('button', { name: 'New card', exact: true }).click();
+            await page.getByRole('button', { name: 'New card', exact: true }).first().click();
             await page.getByRole('textbox', { name: 'Front' }).fill(question);
             await page.getByRole('textbox', { name: 'Back' }).fill('Swipe answer');
             await page.getByRole('button', { name: 'Add card', exact: true }).click();

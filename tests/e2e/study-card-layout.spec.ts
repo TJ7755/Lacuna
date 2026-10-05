@@ -67,7 +67,7 @@ test('keeps both study-card faces at the larger height across viewport changes',
   await page.getByRole('button', { name: 'Add card' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Study Stable card' }).click();
+  await page.getByRole('button', { name: 'Start Stable card' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   const card = page.locator('[data-study-card-id]').first();
@@ -140,7 +140,7 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
 
   await page.goto('/#/');
-  const studyCourse = page.getByRole('button', { name: 'Study Monarchs' });
+  const studyCourse = page.getByRole('button', { name: 'Start Monarchs' });
   await expect(studyCourse).toBeVisible();
   await studyCourse.click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -191,7 +191,7 @@ for (const width of [1280, 390]) {
     await enterFreshLacuna(page);
     await createCourse(page, 'Typed alignment');
     await page.getByRole('button', { name: 'Author mode' }).click();
-    await page.getByRole('button', { name: 'New card', exact: true }).click();
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
     await page.getByRole('textbox', { name: 'Front' }).fill('Translate the phrase');
     await page.getByRole('textbox', { name: 'Back' }).fill('a lighter timetable');
     await page.getByLabel('Card answer mode', { exact: true }).selectOption('type');

@@ -7,7 +7,7 @@ test('saves and imports course media on first use while offline', async ({ page,
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await page
-    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('navigation', { name: 'More' })
     .getByRole('link', { name: 'Share', exact: true })
     .click();
   const share = page.locator('main[data-route-path="/share"]');
