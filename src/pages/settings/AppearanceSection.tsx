@@ -63,7 +63,7 @@ export function AppearanceSection() {
                 >
                   <span
                     aria-hidden="true"
-                    className="h-8 w-8 rounded-full"
+                    className="absolute inset-1.5 rounded-full"
                     style={{ backgroundColor: option.swatch }}
                   />
                   {active && (

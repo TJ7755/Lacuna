@@ -116,7 +116,7 @@ export function OcclusionRegionPane({
               <select
                 value={selected.pairedRegionId ?? ''}
                 onChange={(e) => onUpdate(selected.id, { pairedRegionId: e.target.value || undefined })}
-                className="min-h-9 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                className="min-h-11 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
               >
                 <option value="">Not paired</option>
                 {labelRegions.map((label) => (
@@ -138,7 +138,7 @@ export function OcclusionRegionPane({
                 value={selected.answerText ?? ''}
                 onChange={(e) => onUpdate(selected.id, { answerText: e.target.value || undefined })}
                 placeholder="Only needed for typed mode"
-                className="min-h-9 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                className="min-h-11 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
               />
             </label>
           )}
@@ -151,7 +151,7 @@ export function OcclusionRegionPane({
               type="text"
               value={selected.backNote ?? ''}
               onChange={(e) => onUpdate(selected.id, { backNote: e.target.value || undefined })}
-              className="min-h-9 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+              className="min-h-11 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
             />
           </label>
         </div>
@@ -173,7 +173,7 @@ function RoleButton({ label, active, onClick }: { label: string; active: boolean
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-9 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
         active
           ? 'border-accent bg-accent-soft text-accent-ink'
           : 'border-line text-ink-soft hover:border-line-strong hover:text-ink',

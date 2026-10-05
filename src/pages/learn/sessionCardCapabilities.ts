@@ -1,4 +1,4 @@
-import { clozeAnswerText } from '../../components/markdown/cloze';
+import { clozeAnswerText } from '../../utils/cloze';
 import { CURRENT_ITEM_PAYLOAD_VERSION, type Card } from '../../db/types';
 
 export { isTypingEligible } from '../../utils/answerMode';

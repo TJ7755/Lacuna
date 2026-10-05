@@ -9,7 +9,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
-import { renderClozeBack, renderClozeFront } from './cloze';
+import { renderClozeBack, renderClozeFront } from '../../utils/cloze';
 import { rehypeWikilinks } from './wikilinks';
 import { rehypeMermaidPlaceholder, renderMermaidDiagrams, updateMermaidTheme } from './mermaid';
 import { cn } from '../ui/cn';
