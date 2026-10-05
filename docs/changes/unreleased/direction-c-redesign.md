@@ -139,3 +139,6 @@
   sidebar-navigation and assessment-placement notes, the Questions empty-state
   line, "The recommended default", Help's Back to Today link, the assessment
   sheet's eyebrow (its kind now leads the date line) and its empty Exclusions.
+- The lesson answer mode and the course exam objective use the shared pill
+  toggle. The exam objective names both choices (Most marks, Secure topics)
+  instead of a switch for one of them, with a one-line consequence.

@@ -1,3 +1,4 @@
+import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { Input } from '../components/ui/Field';
 import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
@@ -348,20 +349,24 @@ export function CourseSettings() {
                   />
                   <div>
                     <SettingRow label="Exam objective">
-                      <PillSwitch
-                        checked={objective === 'securedTopics'}
-                        onChange={(checked) => {
-                          const next: ExamObjective = checked ? 'securedTopics' : 'expectedMarks';
+                      <PillToggleGroup
+                        label="Exam objective"
+                        size="sm"
+                        value={objective}
+                        onChange={(next: ExamObjective) => {
                           setObjective(next);
                           commitCourse({ examObjective: next });
                         }}
-                        label="Secure topics"
+                        options={[
+                          { value: 'expectedMarks', label: 'Most marks' },
+                          { value: 'securedTopics', label: 'Secure topics' },
+                        ]}
                       />
                     </SettingRow>
                     <p className="text-sm text-ink-soft">
                       {objective === 'securedTopics'
-                        ? 'Prioritise cards a review would push to 90% or more on exam day. Progress shows the share of cards secured.'
-                        : 'Prioritise the largest expected lift to exam-day recall. Progress shows your mean predicted recall.'}
+                        ? 'Gets each card to 90% by exam day.'
+                        : 'Lifts your overall exam-day recall the most.'}
                     </p>
                   </div>
                 </div>

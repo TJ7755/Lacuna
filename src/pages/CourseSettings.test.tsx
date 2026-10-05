@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
@@ -303,9 +303,11 @@ describe('CourseSettings', () => {
     );
   });
 
-  it('commits the exam objective toggle immediately on change', () => {
+  it('commits the exam objective immediately on change', () => {
     renderPage();
-    fireEvent.click(screen.getByLabelText('Secure topics'));
+    const objective = screen.getByRole('group', { name: 'Exam objective' });
+    expect(within(objective).getByRole('button', { name: 'Most marks' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(objective).getByRole('button', { name: 'Secure topics' }));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ examObjective: 'securedTopics' }),
