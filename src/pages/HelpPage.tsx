@@ -793,7 +793,7 @@ export function HelpPage() {
     <div className={`${PAGE_FRAME} flex gap-6 py-8 md:py-10`}>
       <div className="min-w-0 flex-1">
         <div>
-          <header className="mb-12 pt-2 md:mb-16 md:pt-4">
+          <header className="mb-12 md:mb-16">
             <h1 className="font-display text-4xl tracking-tight md:text-5xl">Help</h1>
           </header>
 

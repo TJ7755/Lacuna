@@ -15,6 +15,7 @@ for (const width of [1440, 1920]) {
     await expect(courseTitle).toBeVisible();
     const edge = (await courseTitle.boundingBox())!.x;
     const base = page.url().replace(/#.*$/, '');
+    let top: number | undefined;
     for (const [route, title] of [
       ['settings', 'Settings'],
       ['import', 'Import'],
@@ -31,6 +32,10 @@ for (const width of [1440, 1920]) {
           message: `${title} title edge`,
         })
         .toBeLessThanOrEqual(1);
+      // Top-level pages also start their title at the same height.
+      const y = (await heading.boundingBox())!.y;
+      top ??= y;
+      expect(Math.abs(y - top), `${title} title top`).toBeLessThanOrEqual(2);
     }
   });
 }

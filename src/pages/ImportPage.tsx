@@ -48,8 +48,8 @@ export function ImportPage() {
   return (
     <div className={`import-page ${PAGE_FRAME} py-10`}>
       <header className="import-arrive mb-8">
-        <div className="mb-3 flex min-h-11 items-center">
-          {source && (
+        {source && (
+          <div className="mb-3 flex min-h-11 items-center">
             <button
               type="button"
               disabled={busy}
@@ -60,8 +60,8 @@ export function ImportPage() {
               <ChevronLeftIcon width={16} height={16} />
               Back
             </button>
-          )}
-        </div>
+          </div>
+        )}
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Import
         </h1>

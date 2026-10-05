@@ -154,3 +154,5 @@
 - Study: the step screen's Continue keeps its arrow with reduced motion (it
   used to hide it and leave the label off-centre) and gets its press animation
   back; the notes before a lesson sit on the shared card surface.
+- Top-level page titles also share one top edge: Import no longer reserves an
+  empty Back row, and Progress and Help lost their extra offsets.
