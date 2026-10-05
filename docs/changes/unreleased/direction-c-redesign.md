@@ -166,3 +166,6 @@
   break-timer, final-exam and lesson-management notes, and the MCP intro; the
   practice note no longer points to a "Practice Now in the course header" that
   no longer exists, and Install says only that it works offline.
+- Bordered "well" panels across editors, settings, study faces and the
+  assistant became the borderless tinted well, and the assistant's bubbles
+  drop their You / AI labels (side and colour already say who is speaking).

@@ -55,7 +55,7 @@ export function SyncStatus() {
     <button
       type="button"
       onClick={() => navigate('/settings')}
-      className="mb-6 flex w-full items-center justify-between rounded-xl border border-line bg-surface-raised/30 px-4 py-3 text-left transition-colors hover:bg-surface-raised/50"
+      className="mb-6 flex w-full items-center justify-between rounded-2xl bg-ink/[0.04] px-4 py-3 text-left transition-colors hover:bg-surface-raised/50"
     >
       <span className="flex items-center gap-2 text-sm">
         <span className="h-2 w-2 rounded-full bg-positive" aria-hidden="true" />

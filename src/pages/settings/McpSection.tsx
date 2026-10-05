@@ -144,7 +144,7 @@ export function McpSection() {
       <p className="mb-4 text-sm text-ink-soft">
         Access is cleared when each client disconnects.
       </p>
-      <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm">
+      <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm">
         <span className={status?.running ? 'text-positive' : 'text-negative'}>
           {status?.running ? 'Running' : 'Stopped'}
         </span>
@@ -152,7 +152,7 @@ export function McpSection() {
         <span className="text-ink-faint">Surface v{status?.toolSurfaceVersion ?? 0}</span>
       </div>
       {status?.companion && (
-        <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 px-4 py-3">
+        <div className="mb-5 rounded-2xl bg-ink/[0.04] px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-medium text-ink-faint">
               MCP client configuration

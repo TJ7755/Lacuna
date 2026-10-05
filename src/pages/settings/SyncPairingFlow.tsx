@@ -241,7 +241,7 @@ export function SyncPairingFlow({
         </p>
       </div>
       <div
-        className="mb-5 flex gap-1 rounded-lg border border-line bg-surface-raised/30 p-1"
+        className="mb-5 flex gap-1 rounded-2xl bg-ink/[0.04] p-1"
         role="tablist"
         aria-label="Pairing method"
       >
@@ -305,7 +305,7 @@ export function SyncPairingFlow({
           )}
           {pairingPayload && (
             <form onSubmit={handleQrJoin} className="space-y-4">
-              <div className="rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm text-ink-soft">
+              <div className="rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
                 QR read. This device will pair with{' '}
                 <span className="font-mono text-xs text-ink">{pairingPayload.relayUrl}</span>.
               </div>

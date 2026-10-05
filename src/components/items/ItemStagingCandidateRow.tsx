@@ -268,7 +268,7 @@ export function ItemStagingCandidateRow({
       </AnimatePresence>
 
       <AnimatedDisclosure open={revisionOpen && decision === 'staged'}>
-        <div className="mt-4 rounded-xl border border-line bg-surface-raised p-4">
+        <div className="mt-4 rounded-2xl bg-ink/[0.04] p-4">
           <label className="flex flex-col gap-2 text-sm text-ink-soft">
             What should change?
             <textarea

@@ -33,7 +33,7 @@ export function AiActivityReceipt({ receipt }: { receipt: AiActionReceipt }) {
   return (
     <article
       aria-label={`Completed action: ${receipt.summary}`}
-      className="rounded-xl border border-line bg-surface-raised/60 p-3"
+      className="rounded-2xl bg-ink/[0.04] p-3"
     >
       <div className="flex items-start gap-3">
         <span

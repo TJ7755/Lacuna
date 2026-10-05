@@ -176,7 +176,7 @@ export function CourseDefaultsSection() {
             className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
           />
         </summary>
-        <div className="mt-5 rounded-xl border border-line bg-surface-raised/50 p-4">
+        <div className="mt-5 rounded-2xl bg-ink/[0.04] p-4">
           <SettingToggle
             title="Optimise scheduling"
             description={`Fits FSRS weights after ${MIN_OPTIMISE_REVIEWS} reviews. Changes require confirmation and can be overridden per course.`}

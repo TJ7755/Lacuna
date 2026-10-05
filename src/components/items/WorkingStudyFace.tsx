@@ -98,7 +98,7 @@ export function WorkingStudyFace({
                   return (
                     <div
                       key={`${index}-${verdict.studentLine}`}
-                      className="rounded-xl border border-line bg-surface-raised px-4 py-3"
+                      className="rounded-2xl bg-ink/[0.04] px-4 py-3"
                     >
                       <div className="flex items-start gap-3">
                         <span

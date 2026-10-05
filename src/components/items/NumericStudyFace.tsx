@@ -68,7 +68,7 @@ export function NumericStudyFace({
           {result ? (
             <div
               aria-label="Checker result"
-              className="rounded-xl border border-line bg-surface-raised p-4"
+              className="rounded-2xl bg-ink/[0.04] p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="font-mono text-ink">{result.answer}</span>

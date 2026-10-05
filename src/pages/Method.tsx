@@ -38,7 +38,7 @@ function Formula({ children, label }: { children: ReactNode; label: string }) {
     <div
       role="img"
       aria-label={label}
-      className="mt-5 overflow-x-auto rounded-[10px] border border-line bg-surface-raised px-5 py-4 font-mono text-sm text-ink shadow-paper"
+      className="mt-5 overflow-x-auto rounded-[10px] bg-ink/[0.04] px-5 py-4 font-mono text-sm text-ink shadow-paper"
     >
       {children}
     </div>
@@ -214,7 +214,7 @@ export function Method() {
                 label: 'of those fall inside the seven-day window that matters for cramming',
               },
             ].map((s) => (
-              <div key={s.num} className="rounded-[10px] border border-line bg-surface-raised p-4">
+              <div key={s.num} className="rounded-[10px] bg-ink/[0.04] p-4">
                 <dt className="sr-only">{s.label}</dt>
                 <dd>
                   <span className="font-mono text-xl text-accent">{s.num}</span>

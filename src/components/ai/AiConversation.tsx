@@ -46,12 +46,10 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
               key={item.id}
               aria-label="Your message"
               data-speaker="user"
-              className="ml-auto max-w-[88%] rounded-2xl rounded-br-md border border-accent/20 bg-accent-soft px-4 py-3 text-accent-ink shadow-sm"
+              className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-accent-soft px-4 py-3 text-accent-ink"
             >
-              <p className="text-sm font-medium text-accent-ink/70">
-                You
-              </p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">
+              {/* Side and colour say who is speaking; the article label names it. */}
+              <p className="whitespace-pre-wrap break-words text-sm leading-6">
                 {item.content}
               </p>
             </article>
@@ -63,12 +61,9 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
               key={item.id}
               aria-label="AI response"
               data-speaker="assistant"
-              className="mr-auto max-w-[92%] rounded-2xl rounded-bl-md border border-line bg-surface-raised px-4 py-3 text-ink shadow-sm"
+              className="mr-auto max-w-[92%] rounded-2xl rounded-bl-md bg-ink/[0.04] px-4 py-3 text-ink"
             >
-              <p className="text-sm font-medium text-accent">
-                AI
-              </p>
-              <MarkdownView source={item.content} className="mt-1 break-words text-sm leading-6" />
+              <MarkdownView source={item.content} className="break-words text-sm leading-6" />
               {item.progress === 'interrupted' && (
                 <p className="mt-2 text-xs text-warning">Response interrupted</p>
               )}

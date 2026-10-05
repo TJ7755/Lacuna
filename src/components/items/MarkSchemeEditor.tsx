@@ -194,7 +194,7 @@ export function MarkSchemeEditor({
           <div className="mb-2 text-sm text-ink-faint">
             Compiled preview
           </div>
-          <div className="min-h-[19rem] space-y-2 rounded-xl border border-line bg-surface-raised p-3">
+          <div className="min-h-[19rem] space-y-2 rounded-2xl bg-ink/[0.04] p-3">
             {compilation.lines.length === 0 ? (
               <div className="grid min-h-[17rem] place-items-center px-6 text-center text-sm text-ink-faint">
                 Compiled criteria will appear here.
@@ -247,7 +247,7 @@ export function MarkSchemeEditor({
               <p className="mt-2 text-xs text-negative">Fix every scheme error before testing answers.</p>
             )}
           </div>
-          <div className="rounded-xl border border-line bg-surface-raised p-3">
+          <div className="rounded-2xl bg-ink/[0.04] p-3">
             {!testResult || testLines.length === 0 ? (
               <div className="grid min-h-32 place-items-center px-4 text-center text-sm text-ink-faint">
                 Line-by-line verdicts will appear here.
@@ -317,7 +317,7 @@ function FixtureRow({ fixture, scheme, onRemove, index }: { fixture: ItemFixture
   const matches = result?.passes ?? false;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="text-sm text-ink-faint">Fixture {index + 1}</div>
         <div className="mt-1 truncate font-mono text-sm text-ink">{lines.join(' · ')}</div>

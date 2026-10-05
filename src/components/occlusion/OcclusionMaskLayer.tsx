@@ -77,7 +77,7 @@ export function OcclusionMaskLayer({
   return (
     <div
       className={cn(
-        'relative w-full overflow-hidden rounded-xl border border-line bg-surface-raised',
+        'relative w-full overflow-hidden rounded-2xl bg-ink/[0.04]',
         className,
       )}
     >

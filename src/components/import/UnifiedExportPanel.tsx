@@ -205,7 +205,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
               'disabled:opacity-40 disabled:pointer-events-none',
             )}
           >
-            <div className="mt-0.5 rounded-xl border border-line bg-surface-raised p-2 text-ink-faint transition-all group-hover:border-accent/30 group-hover:bg-accent-soft/30 group-hover:text-accent">
+            <div className="mt-0.5 rounded-2xl bg-ink/[0.04] p-2 text-ink-faint transition-all group-hover:bg-accent-soft/30 group-hover:text-accent">
               {format.icon}
             </div>
             <div className="min-w-0 flex-1">

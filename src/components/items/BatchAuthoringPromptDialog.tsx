@@ -210,7 +210,7 @@ export function BatchAuthoringPromptDialog({
                 </p>
               </div>
 
-              <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
+              <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
                 <input
                   type="checkbox"
                   aria-label="Set generation constraints"

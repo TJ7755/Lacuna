@@ -152,7 +152,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
       <AnimatePresence initial={false}>
         {selectionError && (
           <motion.div key="selection-error" {...collapse(multiplier)} className="overflow-hidden">
-            <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-line bg-surface-raised px-3 py-2">
+            <div className="mt-3 flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.04] px-3 py-2">
               <p role="status" className="text-xs text-ink-soft">
                 {selectionError}
               </p>
@@ -235,7 +235,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                   key={annotation.id}
                   layout
                   transition={transition}
-                  className="rounded-lg border border-line bg-surface-raised px-3 py-3"
+                  className="rounded-2xl bg-ink/[0.04] px-3 py-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">

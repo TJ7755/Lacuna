@@ -328,7 +328,7 @@ export function ItemStagingReview({
             </div>
 
             <AnimatedDisclosure open={batchRevisionOpen && failingCandidates.length > 0}>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-2xl bg-ink/[0.04] p-4">
                 <p className="text-sm text-ink-soft">
                   The prompt carries each failing item and its validation errors. Paste the reply
                   back below; the {failingCandidates.length} revised item
