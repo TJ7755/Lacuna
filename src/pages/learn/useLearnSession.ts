@@ -4,7 +4,6 @@ import { db, makeId } from '../../db/schema';
 import {
   getSchedulingUnit,
   performanceForCourseBackingDecks,
-  performanceForReviewUnit,
   performanceForReviewUnits,
 } from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
@@ -25,7 +24,7 @@ import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
 import { ratchetLessonUnlock, upsertLessonCardExposure } from '../../db/lessonRepository';
 import { listNotes } from '../../db/noteRepository';
 import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
-import { recordReview, undoReview, type ReviewUndo } from '../../db/reviewRepository';
+import { undoReview, type ReviewUndo } from '../../db/reviewRepository';
 import {
   completeRevisionWindow,
   refreshRevisionPlan,
@@ -58,14 +57,7 @@ import {
 } from '../../course/assessmentPractice';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import { revisionProjection } from '../../course/revisionProjection';
-import {
-  emptyPerformance,
-  gradeFromMarks,
-  gradeFromResponse,
-  HINT_TIME_PENALTY_SEC,
-  updatePerformance,
-} from '../../fsrs/grading';
-import { reviewFeedbackMessage, reviewRetentionMessage } from '../../fsrs/gradingFeedback';
+import { emptyPerformance } from '../../fsrs/grading';
 import { applyCooldown, decrementCooldowns } from '../../fsrs/cooldown';
 import type { CooldownMap } from '../../fsrs/cooldown';
 import { progressHeading } from '../../fsrs/objective';
@@ -117,6 +109,25 @@ import {
 } from './simpleSessionPersistence';
 import { resolveLearnSessionScope } from './sessionScope';
 import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
+import {
+  answerCorrect,
+  answerFeedback,
+  answerGrade,
+  persistAnswer,
+  sessionStopAfterAnswer,
+  type AnswerInput,
+  type AnswerResult,
+} from './answerSteps';
+
+/** One submitted answer, as the grading paths need it. */
+interface AnswerResponse {
+  correct: boolean;
+  manualGrade: Grade | null;
+  machineMarked: MachineMarkedAnswer | null;
+  /** Response time in seconds. */
+  t: number;
+  distracted: boolean;
+}
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
@@ -135,10 +146,7 @@ interface AnswerSnapshot {
   revisionReviewEventIds: string[];
 }
 
-export interface AnswerResult {
-  undoAvailable: boolean;
-  feedbackMessage?: string;
-}
+export type { AnswerResult } from './answerSteps';
 
 type SessionSchedulingConfig = SchedulerConfig & {
   dailyReviewGoal?: number;
@@ -1451,176 +1459,160 @@ export function useLearnSession({
     distraction.setAnswerVisible(false);
   }, [distraction]);
 
-  const answer = useCallback(
-    async (input: boolean | Grade | MachineMarkedAnswer) => {
-      if (submitting.current) return { undoAvailable: false };
-      submitting.current = true;
-      const phaseNow = phaseRef.current;
-      const cardNow = currentRef.current;
-      const machineMarked = typeof input === 'object' ? input : null;
-      if (
-        (!machineMarked && phaseNow !== 'answer') ||
-        (machineMarked && phaseNow !== 'question') ||
-        !cardNow ||
-        isUnrenderableItemPayload(cardNow)
-      ) {
+  /**
+   * The unit an answer is recorded against. Global sessions key units by the card's
+   * explicit schedulingUnitId; course and lesson scope use their sole resolved unit.
+   */
+  const answerUnit = useCallback(
+    (card: Card): StudyUnit | undefined =>
+      isGlobal
+        ? card.schedulingUnitId
+          ? schedulingUnitsRef.current.get(card.schedulingUnitId)
+          : undefined
+        : schedulingUnitsRef.current.values().next().value,
+    [isGlobal],
+  );
+
+  /** Grade and record a Simple-mode answer, then advance the pass. */
+  const answerSimple = useCallback(
+    async (
+      cardNow: Card,
+      { correct, machineMarked, t, distracted }: AnswerResponse,
+    ): Promise<AnswerResult> => {
+      const deck = answerUnit(cardNow);
+      if (!deck) return { undoAvailable: false };
+      const perf = perfRef.current.get(deck.id);
+      const hintUsed = hintStepRef.current > 0;
+      // The controls stay binary, while the invisible grade uses the same
+      // timing, calibration and hint rules as Practice. Machine-marked cards
+      // retain their mark-aware grade.
+      const grade = answerGrade({
+        machineMarked,
+        manualGrade: null,
+        correct,
+        responseTimeSec: t,
+        hintUsed,
+        performance: perf,
+      });
+
+      const eventId = pendingReviewEventId.current ?? makeId();
+      pendingReviewEventId.current = eventId;
+      const { result, performance: nextPerf } = await persistAnswer(
+        {
+          card: cardNow,
+          eventId,
+          sessionId: reviewSessionIdRef.current,
+          sessionKind: reviewSessionKind,
+          deck,
+          kind: reviewKindRef.current,
+          grade,
+          responseTimeSec: t,
+          distracted,
+          hintUsed,
+          correct,
+          marksEarned: machineMarked?.marksEarned,
+          marksAvailable: machineMarked?.marksAvailable,
+          lineVerdicts: machineMarked?.lineVerdicts,
+          checkerDisputes: machineMarked?.checkerDisputes,
+        },
+        deck.id,
+        perf,
+      );
+      if (nextPerf) perfRef.current.set(deck.id, nextPerf);
+      const updated = result.card;
+      cardsRef.current = cardsRef.current.map((card) =>
+        card.id === updated.id ? updated : card,
+      );
+      simpleQueue.current = simpleQueue.current.map((card) =>
+        card.id === updated.id ? updated : card,
+      );
+      events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
+
+      if (correct) {
+        if (lessonExposureIdRef.current) {
+          await upsertLessonCardExposure(lessonExposureIdRef.current, updated.id);
+        }
+      }
+      const nextSimple = transitionSimpleAnswer(
+        {
+          queue: simpleQueue.current,
+          mastered: simpleMastered.current,
+          wrong: simpleWrong.current,
+          outcomes: sessionCardOutcomesRef.current,
+        },
+        updated,
+        correct,
+      );
+      simpleQueue.current = nextSimple.queue;
+      simpleMastered.current = nextSimple.mastered;
+      simpleWrong.current = nextSimple.wrong;
+      if (updated.suspended) {
+        setSessionCardIds((previous) => previous.filter((id) => id !== updated.id));
+      }
+      sessionCardOutcomesRef.current = nextSimple.outcomes;
+      setSessionCardOutcomes(nextSimple.outcomes);
+      persistSimpleResume(nextSimple.outcomes);
+      pendingReviewEventId.current = null;
+
+      const remaining = simpleQueue.current.filter(
+        (c) => !simpleMastered.current.has(c.id),
+      ).length;
+      if (remaining === 0) {
+        finish(!updated.suspended);
+      } else {
+        serveNext();
+      }
+      return { undoAvailable: false };
+    },
+    [answerUnit, finish, persistSimpleResume, reviewSessionKind, serveNext],
+  );
+
+  /**
+   * Grade and record a scheduled answer: persist it, update cooldowns, revision
+   * bookkeeping and undo state, then stop the session or serve the next card.
+   */
+  const answerScheduled = useCallback(
+    async (
+      cardNow: Card,
+      { correct, manualGrade, machineMarked, t, distracted }: AnswerResponse,
+    ): Promise<AnswerResult> => {
+      const ctx = ctxRef.current;
+      const deck = answerUnit(cardNow);
+      const schedulingConfig = isGlobal ? deck : schedulingConfigRef.current;
+      if (!ctx || !deck || !schedulingConfig) {
         submitting.current = false;
         return { undoAvailable: false };
       }
 
-      try {
-        const correct: boolean = machineMarked
-          ? machineMarked.correct
-          : typeof input === 'number'
-            ? input > 1
-            : input === true;
+      const perf = perfRef.current.get(deck.id);
+      const hintUsed = hintStepRef.current > 0;
+      const grade = answerGrade({
+        machineMarked,
+        manualGrade,
+        correct,
+        responseTimeSec: t,
+        hintUsed,
+        performance: perf,
+      });
 
-        const t = machineMarked
-          ? (performance.now() - timerStart.current) / 1000
-          : responseTime.current;
-        const distracted = distraction.wasDistracted();
+      const cooldownsSnapshot = new Map(cooldowns.current);
+      const eventsLen = events.current.length;
+      const perfBefore = perf ?? null;
+      const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
+      const eventId = pendingReviewEventId.current ?? makeId();
+      const revisionSnapshot = {
+        revisionCovered: new Set(revisionCovered.current),
+        revisionImproved: new Set(revisionImproved.current),
+        revisionParked: new Set(revisionParked.current),
+        revisionCompleted: new Set(revisionCompleted.current),
+        revisionRetryAt: new Map(revisionRetryAt.current),
+        revisionFailures: new Map(revisionFailures.current),
+        revisionReviewEventIds: [...revisionReviewEventIds.current],
+      };
+      pendingReviewEventId.current = eventId;
 
-        if (isSimpleMode) {
-          const deck = isGlobal
-            ? cardNow.schedulingUnitId
-              ? schedulingUnitsRef.current.get(cardNow.schedulingUnitId)
-              : undefined
-            : schedulingUnitsRef.current.values().next().value;
-          if (!deck) return { undoAvailable: false };
-          const perf = perfRef.current.get(deck.id);
-          const hintUsed = hintStepRef.current > 0;
-          // The controls stay binary, while the invisible grade uses the same
-          // timing, calibration and hint rules as Practice. Machine-marked cards
-          // retain their mark-aware grade.
-          const grade: Grade = machineMarked
-            ? gradeFromMarks(machineMarked.marksEarned, machineMarked.marksAvailable, t, false)
-            : gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf);
-
-          const eventId = pendingReviewEventId.current ?? makeId();
-          pendingReviewEventId.current = eventId;
-          const {
-            card: updated,
-            recorded,
-            kind,
-          } = await recordReview({
-            card: cardNow,
-            eventId,
-            sessionId: reviewSessionIdRef.current,
-            sessionKind: reviewSessionKind,
-            deck,
-            kind: reviewKindRef.current,
-            grade,
-            responseTimeSec: t,
-            distracted,
-            hintUsed,
-            correct,
-            marksEarned: machineMarked?.marksEarned,
-            marksAvailable: machineMarked?.marksAvailable,
-            lineVerdicts: machineMarked?.lineVerdicts,
-            checkerDisputes: machineMarked?.checkerDisputes,
-          });
-          if (correct && perf) {
-            const nextPerf = recorded
-              ? updatePerformance(perf, t)
-              : await performanceForReviewUnit(deck.id, kind);
-            if (nextPerf) perfRef.current.set(deck.id, nextPerf);
-          }
-          cardsRef.current = cardsRef.current.map((card) =>
-            card.id === updated.id ? updated : card,
-          );
-          simpleQueue.current = simpleQueue.current.map((card) =>
-            card.id === updated.id ? updated : card,
-          );
-          events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
-
-          if (correct) {
-            if (lessonExposureIdRef.current) {
-              await upsertLessonCardExposure(lessonExposureIdRef.current, updated.id);
-            }
-          }
-          const nextSimple = transitionSimpleAnswer(
-            {
-              queue: simpleQueue.current,
-              mastered: simpleMastered.current,
-              wrong: simpleWrong.current,
-              outcomes: sessionCardOutcomesRef.current,
-            },
-            updated,
-            correct,
-          );
-          simpleQueue.current = nextSimple.queue;
-          simpleMastered.current = nextSimple.mastered;
-          simpleWrong.current = nextSimple.wrong;
-          if (updated.suspended) {
-            setSessionCardIds((previous) => previous.filter((id) => id !== updated.id));
-          }
-          sessionCardOutcomesRef.current = nextSimple.outcomes;
-          setSessionCardOutcomes(nextSimple.outcomes);
-          persistSimpleResume(nextSimple.outcomes);
-          pendingReviewEventId.current = null;
-
-          const remaining = simpleQueue.current.filter(
-            (c) => !simpleMastered.current.has(c.id),
-          ).length;
-          if (remaining === 0) {
-            finish(!updated.suspended);
-          } else {
-            serveNext();
-          }
-          return { undoAvailable: false };
-        }
-
-        const ctx = ctxRef.current;
-        // Global sessions key units by the card's explicit schedulingUnitId;
-        // course and lesson scope use their sole resolved target unit.
-        const deck = isGlobal
-          ? cardNow.schedulingUnitId
-            ? schedulingUnitsRef.current.get(cardNow.schedulingUnitId)
-            : undefined
-          : schedulingUnitsRef.current.values().next().value;
-        const schedulingConfig = isGlobal ? deck : schedulingConfigRef.current;
-        if (!ctx || !deck || !schedulingConfig) {
-          submitting.current = false;
-          return { undoAvailable: false };
-        }
-
-        const manualGrade: Grade | null = typeof input === 'number' ? input : null;
-        const perf = perfRef.current.get(deck.id);
-        // Hint usage only ever nudges the silent-mode grade (see HINT_TIME_PENALTY_SEC);
-        // the true, unpenalised response time is still what's persisted and calibrated on
-        // below (recordReview's responseTimeSec and updatePerformance).
-        const hintUsed = hintStepRef.current > 0;
-        const grade: Grade = machineMarked
-          ? gradeFromMarks(machineMarked.marksEarned, machineMarked.marksAvailable, t, false)
-          : (manualGrade ??
-            gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf));
-
-        const cooldownsSnapshot = new Map(cooldowns.current);
-        const eventsLen = events.current.length;
-        const perfBefore = perf ?? null;
-        const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
-        const eventId = pendingReviewEventId.current ?? makeId();
-        const revisionSnapshot = {
-          revisionCovered: new Set(revisionCovered.current),
-          revisionImproved: new Set(revisionImproved.current),
-          revisionParked: new Set(revisionParked.current),
-          revisionCompleted: new Set(revisionCompleted.current),
-          revisionRetryAt: new Map(revisionRetryAt.current),
-          revisionFailures: new Map(revisionFailures.current),
-          revisionReviewEventIds: [...revisionReviewEventIds.current],
-        };
-        pendingReviewEventId.current = eventId;
-
-        const {
-          card: updated,
-          cardBefore,
-          recorded,
-          sessionHistoryId,
-          kind,
-          lastInteractedAtBefore,
-          updatedAtBefore,
-          undoStateAfter,
-        } = await recordReview({
+      const { result, performance: nextPerf } = await persistAnswer(
+        {
           card: cardNow,
           eventId,
           sessionId: reviewSessionIdRef.current,
@@ -1638,186 +1630,202 @@ export function useLearnSession({
           marksAvailable: machineMarked?.marksAvailable,
           lineVerdicts: machineMarked?.lineVerdicts,
           checkerDisputes: machineMarked?.checkerDisputes,
-        });
+        },
+        deck.id,
+        perf,
+      );
+      if (nextPerf) perfRef.current.set(deck.id, nextPerf);
+      const {
+        card: updated,
+        cardBefore,
+        recorded,
+        sessionHistoryId,
+        kind,
+        lastInteractedAtBefore,
+        updatedAtBefore,
+        undoStateAfter,
+      } = result;
 
-        if (correct && perf) {
-          const nextPerf = recorded
-            ? updatePerformance(perf, t)
-            : await performanceForReviewUnit(deck.id, kind);
-          if (nextPerf) perfRef.current.set(deck.id, nextPerf);
-        }
+      const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
+      cardsRef.current = nextCards;
+      setSchedulerProgress(sessionCompletionProgress(nextCards, ctx));
+      if (practiceSessionRef.current) {
+        await persistPracticeMilestone(nextCards, false);
+      }
 
-        const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
-        cardsRef.current = nextCards;
-        setSchedulerProgress(sessionCompletionProgress(nextCards, ctx));
-        if (practiceSessionRef.current) {
-          await persistPracticeMilestone(nextCards, false);
-        }
-
-        if (revisionPlanRef.current && requestWindowId) {
-          if (recorded) revisionReviewEventIds.current.push(eventId);
-          const now = Date.now();
-          const window = revisionPlanRef.current.windows.find(
-            (candidate) => candidate.id === requestWindowId,
-          );
-          const nextRevision = transitionRevisionAnswer(
-            {
-              covered: revisionCovered.current,
-              improved: revisionImproved.current,
-              parked: revisionParked.current,
-              completed: revisionCompleted.current,
-              retryAt: revisionRetryAt.current,
-              failures: revisionFailures.current,
-            },
-            {
-              cardId: updated.id,
-              correct,
-              now,
-              productiveAt: updated.due ?? now,
-              windowEndsAt: window
-                ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
-                : now,
-            },
-          );
-          revisionCovered.current = nextRevision.covered;
-          revisionImproved.current = nextRevision.improved;
-          revisionParked.current = nextRevision.parked;
-          revisionCompleted.current = nextRevision.completed;
-          revisionRetryAt.current = nextRevision.retryAt;
-          revisionFailures.current = nextRevision.failures;
-        } else if (grade === 1) {
-          // Global sessions span several decks, so size the cooldown to just this
-          // card's deck; course/lesson sessions are already scoped to their own
-          // pool (see the loading effect), so the whole pool applies.
-          const deckSize = isGlobal
-            ? nextCards.filter((c) => c.schedulingUnitId === deck.id).length
-            : nextCards.length;
-          applyCooldown(cooldowns.current, updated.id, deckSize);
-        }
-        if (!revisionPlanRef.current) decrementCooldowns(cooldowns.current, updated.id);
-
-        events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
-        setSessionCardOutcomes((previous) => {
-          const next = new Map(previous);
-          next.set(cardNow.id, correct ? 'correct' : 'wrong');
-          return next;
-        });
-
-        const reviewNow = Date.now();
-        const reviewDayStart = startOfDay(reviewNow);
-        if (reviewDayStart !== reviewsDayStart.current) {
-          reviewsByDeck.current = await dailyReviewCounts(kind, reviewNow);
-          reviewsDayStart.current = reviewDayStart;
-        } else if (recorded) {
-          reviewsByDeck.current.set(deck.id, (reviewsByDeck.current.get(deck.id) ?? 0) + 1);
-        }
-        const deckReviews = reviewsByDeck.current.get(deck.id) ?? 0;
-
-        lastAnswer.current = recorded
-          ? {
-              undo: {
-                eventId,
-                cardBefore,
-                perfBefore,
-                sessionHistoryId,
-                deckId: deck.id,
-                kind,
-                lastInteractedAtBefore,
-                updatedAtBefore,
-                undoStateAfter,
-              },
-              cooldowns: cooldownsSnapshot,
-              eventsLen,
-              deckId: deck.id,
-              deckReviews,
-              outcomeBefore,
-              ...revisionSnapshot,
-            }
-          : null;
-        setCanUndo(recorded);
-        // Course and lesson sessions hold a single unit; global sessions key
-        // the context by scheduling-unit id (see makeSessionContext).
-        const sessionDeck = isGlobal ? ctx.decks.get(deck.id) : ctx.decks.values().next().value;
-        const retentionMessage =
-          recorded && updated.due !== null
-            ? reviewRetentionMessage(
-                grade,
-                updated,
-                sessionDeck?.deck ?? deck,
-                sessionDeck?.oc.examDateContext,
-              )
-            : null;
-        const answerResult: AnswerResult = {
-          undoAvailable: recorded,
-          ...(recorded && updated.due !== null
-            ? { feedbackMessage: retentionMessage ?? reviewFeedbackMessage(grade, updated.due) }
-            : {}),
-        };
-
-        progressCacheRef.current.dirty = true;
-
-        const limit = schedulingConfig.maxReviewsPerDay;
-        if (!limitOverride && limit && limit > 0 && deckReviews >= limit) {
-          finish(false, true);
-          return { undoAvailable: false };
-        }
-
-        const goal = schedulingConfig.dailyReviewGoal;
-        if (!limitOverride && goal && goal > 0 && deckReviews >= goal) {
-          finish(true);
-          return { undoAvailable: false };
-        }
-
-        const revisionPlan = revisionPlanRef.current;
-        const revisionWindow = revisionPlan?.windows.find(
+      if (revisionPlanRef.current && requestWindowId) {
+        if (recorded) revisionReviewEventIds.current.push(eventId);
+        const now = Date.now();
+        const window = revisionPlanRef.current.windows.find(
           (candidate) => candidate.id === requestWindowId,
         );
-        if (
-          revisionPlan &&
-          revisionWindow &&
-          Date.now() >= revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
-        ) {
-          finish(false, false, true);
-          return { undoAvailable: false };
-        }
-
-        const timeLimit = schedulingConfig.sessionTimeLimitMinutes;
-        if (!timeLimitOverride && timeLimit && timeLimit > 0 && sessionStartMs.current > 0) {
-          const elapsedMinutes = (Date.now() - sessionStartMs.current) / 60000;
-          if (elapsedMinutes >= timeLimit) {
-            finish(false, false, true);
-            return { undoAvailable: false };
-          }
-        }
-
-        if (revisionPlanRef.current) {
-          serveNext();
-          return lastAnswer.current !== null ? answerResult : { undoAvailable: false };
-        }
-        if (sessionComplete(nextCards, ctx)) {
-          finish(true);
-          return { undoAvailable: false };
-        }
-        serveNext();
-        return answerResult;
-      } finally {
-        submitting.current = false;
+        const nextRevision = transitionRevisionAnswer(
+          {
+            covered: revisionCovered.current,
+            improved: revisionImproved.current,
+            parked: revisionParked.current,
+            completed: revisionCompleted.current,
+            retryAt: revisionRetryAt.current,
+            failures: revisionFailures.current,
+          },
+          {
+            cardId: updated.id,
+            correct,
+            now,
+            productiveAt: updated.due ?? now,
+            windowEndsAt: window
+              ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
+              : now,
+          },
+        );
+        revisionCovered.current = nextRevision.covered;
+        revisionImproved.current = nextRevision.improved;
+        revisionParked.current = nextRevision.parked;
+        revisionCompleted.current = nextRevision.completed;
+        revisionRetryAt.current = nextRevision.retryAt;
+        revisionFailures.current = nextRevision.failures;
+      } else if (grade === 1) {
+        // Global sessions span several decks, so size the cooldown to just this
+        // card's deck; course/lesson sessions are already scoped to their own
+        // pool (see the loading effect), so the whole pool applies.
+        const deckSize = isGlobal
+          ? nextCards.filter((c) => c.schedulingUnitId === deck.id).length
+          : nextCards.length;
+        applyCooldown(cooldowns.current, updated.id, deckSize);
       }
+      if (!revisionPlanRef.current) decrementCooldowns(cooldowns.current, updated.id);
+
+      events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
+      setSessionCardOutcomes((previous) => {
+        const next = new Map(previous);
+        next.set(cardNow.id, correct ? 'correct' : 'wrong');
+        return next;
+      });
+
+      const reviewNow = Date.now();
+      const reviewDayStart = startOfDay(reviewNow);
+      if (reviewDayStart !== reviewsDayStart.current) {
+        reviewsByDeck.current = await dailyReviewCounts(kind, reviewNow);
+        reviewsDayStart.current = reviewDayStart;
+      } else if (recorded) {
+        reviewsByDeck.current.set(deck.id, (reviewsByDeck.current.get(deck.id) ?? 0) + 1);
+      }
+      const deckReviews = reviewsByDeck.current.get(deck.id) ?? 0;
+
+      lastAnswer.current = recorded
+        ? {
+            undo: {
+              eventId,
+              cardBefore,
+              perfBefore,
+              sessionHistoryId,
+              deckId: deck.id,
+              kind,
+              lastInteractedAtBefore,
+              updatedAtBefore,
+              undoStateAfter,
+            },
+            cooldowns: cooldownsSnapshot,
+            eventsLen,
+            deckId: deck.id,
+            deckReviews,
+            outcomeBefore,
+            ...revisionSnapshot,
+          }
+        : null;
+      setCanUndo(recorded);
+      // Course and lesson sessions hold a single unit; global sessions key
+      // the context by scheduling-unit id (see makeSessionContext).
+      const sessionDeck = isGlobal ? ctx.decks.get(deck.id) : ctx.decks.values().next().value;
+      const answerResult = answerFeedback({
+        recorded,
+        grade,
+        card: updated,
+        deck: sessionDeck?.deck ?? deck,
+        examDateContext: sessionDeck?.oc.examDateContext,
+      });
+
+      progressCacheRef.current.dirty = true;
+
+      const revisionWindow = revisionPlanRef.current?.windows.find(
+        (candidate) => candidate.id === requestWindowId,
+      );
+      const stop = sessionStopAfterAnswer({
+        deckReviews,
+        maxReviewsPerDay: schedulingConfig.maxReviewsPerDay,
+        dailyReviewGoal: schedulingConfig.dailyReviewGoal,
+        sessionTimeLimitMinutes: schedulingConfig.sessionTimeLimitMinutes,
+        limitOverride,
+        timeLimitOverride,
+        revisionWindowEndsAt: revisionWindow
+          ? revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
+          : undefined,
+        sessionStartMs: sessionStartMs.current,
+        now: Date.now(),
+      });
+      if (stop) {
+        finish(...stop);
+        return { undoAvailable: false };
+      }
+
+      if (revisionPlanRef.current) {
+        serveNext();
+        return lastAnswer.current !== null ? answerResult : { undoAvailable: false };
+      }
+      if (sessionComplete(nextCards, ctx)) {
+        finish(true);
+        return { undoAvailable: false };
+      }
+      serveNext();
+      return answerResult;
     },
     [
-      distraction,
+      answerUnit,
       finish,
       serveNext,
       limitOverride,
       timeLimitOverride,
-      isSimpleMode,
       isGlobal,
       persistPracticeMilestone,
       sessionCardOutcomes,
       reviewSessionKind,
       requestWindowId,
-      persistSimpleResume,
     ],
+  );
+
+  const answer = useCallback(
+    async (input: AnswerInput): Promise<AnswerResult> => {
+      if (submitting.current) return { undoAvailable: false };
+      submitting.current = true;
+      const phaseNow = phaseRef.current;
+      const cardNow = currentRef.current;
+      const machineMarked = typeof input === 'object' ? input : null;
+      if (
+        (!machineMarked && phaseNow !== 'answer') ||
+        (machineMarked && phaseNow !== 'question') ||
+        !cardNow ||
+        isUnrenderableItemPayload(cardNow)
+      ) {
+        submitting.current = false;
+        return { undoAvailable: false };
+      }
+
+      try {
+        const response: AnswerResponse = {
+          correct: answerCorrect(input),
+          manualGrade: typeof input === 'number' ? input : null,
+          machineMarked,
+          t: machineMarked ? (performance.now() - timerStart.current) / 1000 : responseTime.current,
+          distracted: distraction.wasDistracted(),
+        };
+        return isSimpleMode
+          ? await answerSimple(cardNow, response)
+          : await answerScheduled(cardNow, response);
+      } finally {
+        submitting.current = false;
+      }
+    },
+    [distraction, isSimpleMode, answerSimple, answerScheduled],
   );
 
   const undoLast = useCallback(async () => {

@@ -1,0 +1,1 @@
+- `useLearnSession` no longer holds Learn mode's view state (focus mode, full screen, menus, drawer, typed answer), which now lives in `useLearnView`. Its `answer` callback is split into Simple and scheduled paths built from tested grading, persistence, feedback and stopping steps in `answerSteps.ts`, and three unused return fields are gone (#339)
