@@ -55,7 +55,7 @@ it('reports a rejected workspace-mode save', async () => {
       />
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
   await waitFor(() => expect(mocks.notify).toHaveBeenCalledWith(
     'Could not save workspace mode. Try again.', 'negative',
   ));

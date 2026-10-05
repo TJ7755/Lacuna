@@ -1,4 +1,4 @@
-// Lesson page header: display title (renamable in Author mode), one meta line,
+// Lesson page header: display title (renamable in Edit mode), one meta line,
 // and a trailing slot for the mode pill and study actions. Leaner than
 // CourseHeader, which carries the course cockpit's schedule row.
 

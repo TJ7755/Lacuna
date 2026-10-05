@@ -12,7 +12,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           await page.setViewportSize({ width: 1280, height: 900 });
           await enterFreshLacuna(page);
           await createCourse(page, 'Swipe regression');
-          await page.getByRole('button', { name: 'Author mode' }).click();
+          await page.getByRole('button', { name: 'Edit mode' }).click();
           for (const question of direction > 0
             ? ['Swipe question', 'Next question']
             : ['Swipe question']) {

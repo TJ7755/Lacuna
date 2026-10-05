@@ -83,16 +83,16 @@ test('workspace mode is shared by every course section', async ({ page }) => {
     await expect(mode).toBeVisible();
     if (index > 0) {
       await expect(
-        mode.getByRole('button', { name: index % 2 ? 'Author mode' : 'Study mode' }),
+        mode.getByRole('button', { name: index % 2 ? 'Edit mode' : 'View mode' }),
       ).toHaveAttribute('aria-pressed', 'true');
     }
-    const targetMode = mode.getByRole('button', { name: index % 2 ? 'Study mode' : 'Author mode' });
+    const targetMode = mode.getByRole('button', { name: index % 2 ? 'View mode' : 'Edit mode' });
     await targetMode.click();
     await expect(targetMode).toHaveAttribute('aria-pressed', 'true');
   }
   await page.reload();
   // The loop alternates modes, so the last section leaves the mode the reload must keep.
-  const lastMode = (COURSE_SECTIONS.length - 1) % 2 ? 'Study mode' : 'Author mode';
+  const lastMode = (COURSE_SECTIONS.length - 1) % 2 ? 'View mode' : 'Edit mode';
   await expect(page.getByRole('button', { name: lastMode, exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',

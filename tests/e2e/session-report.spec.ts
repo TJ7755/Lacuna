@@ -5,7 +5,7 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Session report');
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill('What is active recall?');
   await page.getByRole('textbox', { name: 'Back' }).fill('Retrieving information from memory.');

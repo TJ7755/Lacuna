@@ -106,7 +106,7 @@ Specific motion (current state of the app):
   Swipes follow the pointer directly, with a compact Yes/No cue on the card. Abandoned
   swipes spring back; accepted swipes retain their offset through the shared departure.
 - **In-place steps:** picker-to-options sheets, Learn reveal-to-grade, Question checking,
-  Numeric/Working results, Lesson Study/Author mode and other same-surface steps keep their
+  Numeric/Working results, Lesson Study/Edit mode and other same-surface steps keep their
   chrome still and crossfade the step (`StepSwap`). Forward and back take a short sideways
   step; phase changes fade in place. Note, annotation, optional-constraint and staging panels
   also interpolate height instead of snapping open or shut.

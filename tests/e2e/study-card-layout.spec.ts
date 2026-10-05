@@ -190,7 +190,7 @@ for (const width of [1280, 390]) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
     await createCourse(page, 'Typed alignment');
-    await page.getByRole('button', { name: 'Author mode' }).click();
+    await page.getByRole('button', { name: 'Edit mode' }).click();
     await page.getByRole('button', { name: 'New card', exact: true }).first().click();
     await page.getByRole('textbox', { name: 'Front' }).fill('Translate the phrase');
     await page.getByRole('textbox', { name: 'Back' }).fill('a lighter timetable');

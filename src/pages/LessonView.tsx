@@ -4,7 +4,7 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 // (title, one meta line, a Study/Edit pill and the study action) sits above a large
 // reading card for the notes beside a compact "Cards in this lesson" list. The
 // workspace renders in one of two modes, resolved by src/course/lessonViewMode.ts:
-// Study (read-only) or Author (the same layout with edit controls faded in, and
+// View (read-only) or Edit (the same layout with edit controls faded in, and
 // the full card management section revealed beneath), driven by the course's own
 // Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
@@ -302,7 +302,7 @@ export function LessonView({
           )}
         </motion.div>
 
-        {/* Notes and cards. The two columns are identical in both modes; Author mode
+        {/* Notes and cards. The two columns are identical in both modes; Edit mode
             fades the edit controls in place and reveals card management beneath. */}
         <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
           <motion.div {...riseIn(1, motionMultiplier)} className="flex flex-wrap items-start gap-6">

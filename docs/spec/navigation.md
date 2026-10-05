@@ -214,9 +214,9 @@ FSRS retention, shown as a ring rather than a bar) and from due-today (a live co
 session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
 same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
-Course locking controls study progression, not authoring. In Study mode, locked lesson
-nodes remain inert; in Author mode, they retain their locked appearance and status but open the
-ordinary lesson authoring view. Author mode also enables direct path reordering: mouse and pen
+Course locking controls study progression, not authoring. In View mode, locked lesson
+nodes remain inert; in Edit mode, they retain their locked appearance and status but open the
+ordinary lesson authoring view. Edit mode also enables direct path reordering: mouse and pen
 drags start after 8 px of movement; touch requires a 350 ms hold, leaving early movement free
 for scrolling. The lesson follows the pointer and neighbouring lessons make room. Escape and
 pointer cancellation abandon the move. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
@@ -238,8 +238,8 @@ confirmation.
 Checkpoint nodes open a detail sheet showing the assessment date, resolved lessons and cards,
 exclusions and validation state. Revision starts with that assessment's stable id; the final
 assessment uses the same authoring and resolution rules, and each course retains exactly one.
-In Author mode, **Add checkpoint** creates one at the end of the visible path and selecting an
-existing checkpoint opens the same assessment editor used by Course Settings. Study mode retains
+In Edit mode, **Add checkpoint** creates one at the end of the visible path and selecting an
+existing checkpoint opens the same assessment editor used by Course Settings. View mode retains
 the read-only detail and revision behaviour. Inline single-lesson courses expose the same creation
 action.
 
@@ -256,7 +256,7 @@ as a preference. Selecting a visible manual Practice node or assessment on the p
 generic choice and enters that exact scope. A secondary **Practice Now** action beside **Study**
 enters course-wide ad-hoc Practice directly when reached, exposed cards are eligible. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
-nodes remain editable on the path, and Author mode exposes one **Add practice** action beside the
+nodes remain editable on the path, and Edit mode exposes one **Add practice** action beside the
 other path-authoring actions rather than repeating insertion controls at every gap. Course Settings
 explains the distinction, lists existing manual nodes and links back to the path instead of
 duplicating the editor.
@@ -279,11 +279,11 @@ milestone saved before this rule, carrying the live-scope fingerprint, counts as
 while that exact scope still holds. A current automatic or recurring
 Practice session uses all reached and exposed material; a manual Practice node may narrow its
 live session through its authored lesson selection. Manual checkpoints are conditional. In
-Study mode they appear and gate progression only when they have eligible work whose estimated
+View mode they appear and gate progression only when they have eligible work whose estimated
 review time crosses the course's near/far threshold, or when they are the last relevant
 opportunity for an urgent assessment intersecting that exact Practice context. An unrelated
 assessment never tightens the threshold. Zero-eligible and low-workload nodes remain latent
-and non-gating; they remain visible in Author mode. Completed manual checkpoints remain visible
+and non-gating; they remain visible in Edit mode. Completed manual checkpoints remain visible
 as course history. Automatic Practice is conductor scheduling machinery and is not
 rendered as a separate path diamond.
 
@@ -353,7 +353,7 @@ modes resolved by `src/course/lessonViewMode.ts`:
   (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
   component stays a thin layout/data shell. Path authoring chrome — Add lesson, Manual
   practice, the practice-node pencil, and inline course/lesson rename — is also gated on
-  `isLessonAuthoringMode` and is absent in Study mode. Settings, Cards, Questions, Analytics and
+  `isLessonAuthoringMode` and is absent in View mode. Settings, Cards, Questions, Analytics and
   Quick search are not.
 
 Embed-aware note Markdown recognises bare YouTube watch/short URLs and Vimeo URLs only, then emits
@@ -373,7 +373,7 @@ mandatory field (e.g. an old backup restored later); a one-shot startup migratio
 global default's last value so existing users see no behaviour change. A single
 `canEditLessons(course)` gate returns `false` for a locked distributed copy and `true` for a course
 authored locally or deliberately detached from its lineage. It is the one place that decides
-whether Author mode is available at all, and every call site goes through it rather than reading
+whether Edit mode is available at all, and every call site goes through it rather than reading
 the mode field directly. When CoursePath renders this
 page inline for a single-lesson course, it gets the same full header/CTA treatment, including
 exam context via `nearestExamDate`.
@@ -420,12 +420,12 @@ editor and course settings add a sticky bottom action bar.
 
 Multi-lesson courses use a compact winding path and selected lesson companion.
 Selecting a lesson updates the companion; Open lesson enters its existing workspace.
-Locked lessons explain the release condition and remain closed in Study mode;
+Locked lessons explain the release condition and remain closed in View mode;
 authors and archived inspection retain their existing access. Practice nodes select
 an actionable companion, while checkpoint nodes and the assessment list open the
 existing assessment editor or details sheet according to workspace mode.
 
-Author mode offers one Add control that expands in place into Lesson, Practice and
+Edit mode offers one Add control that expands in place into Lesson, Practice and
 Checkpoint. Lesson creation and import reuse the existing form; practice and
 checkpoint choices open their existing editors. Escape and outside presses collapse
 Add, and cancelling an editor returns focus to it. Drag and Alt+Arrow reordering

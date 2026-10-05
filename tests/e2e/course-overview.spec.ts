@@ -10,7 +10,7 @@ test('a listed lesson opens its real workspace; Add creates a real lesson', asyn
   await expect(page).toHaveURL(/\/lesson\//);
   await expect(page.locator('[data-lesson-workspace-mode]')).toBeVisible();
   await page.goto(courseUrl);
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
   await add.click();
   await page.getByRole('button', { name: 'Lesson', exact: true }).click();
@@ -26,7 +26,7 @@ test('Add returns to its own corner without enlarging its disappearing text', as
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
   await add.click();
   await expect(page.getByRole('group', { name: 'Add to course' })).toBeVisible();
@@ -82,7 +82,7 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
   const samples = await page.evaluate(async () => {
     const surface = document.querySelector<HTMLElement>('button[aria-controls][aria-expanded]')!.parentElement!;
@@ -108,7 +108,7 @@ test('practice editing keeps an unobstructed 44px touch target with a long name'
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Practice', exact: true }).click();
   const name = 'Practice with a long name covering several lines';

@@ -11,7 +11,7 @@ async function createMobileCourse(page: Page, courseName: string) {
 }
 
 async function addCard(page: Page, front: string, back: string) {
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(front);
   await page.getByRole('textbox', { name: 'Back' }).fill(back);

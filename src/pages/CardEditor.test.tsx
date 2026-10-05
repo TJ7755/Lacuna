@@ -779,7 +779,7 @@ describe('CardEditor — authored answer mode', () => {
       expect.objectContaining({ answerMode: undefined }),
     ));
   });
-  it.each([false, true])('ignores a restored answer-mode override in Study mode (editing: %s)', async (editing) => {
+  it.each([false, true])('ignores a restored answer-mode override in View mode (editing: %s)', async (editing) => {
     mockCourse = { ...course, lessonViewMode: 'study' };
     mockCard = editing ? { ...generatedCard, sequenceItemId: undefined, answerMode: 'reveal' } : undefined;
     saveDraft(draftKey('bank:course-1', editing ? 'card-1' : 'new'), {

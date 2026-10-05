@@ -59,7 +59,7 @@ export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Pr
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+\/lesson\//);
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.locator('[data-lesson-workspace-mode="edit"]')).toBeVisible();
 
   await page.getByRole('button', { name: 'Add note' }).click();

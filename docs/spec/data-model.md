@@ -40,10 +40,10 @@ authoring agents and button handlers can share the same layer without duplicatio
 
 `PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
 computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
-Manual nodes are teacher-authored and persisted. In Author mode, an edit badge on an existing manual
+Manual nodes are teacher-authored and persisted. In Edit mode, an edit badge on an existing manual
 node lets a teacher reposition, rename or delete it (`PracticeNodeEditor`,
 `src/components/course/`). The path's **Add practice** action opens the same editor for creation,
-including on an inline single-lesson course. The badge and creation action are absent in Study mode.
+including on an inline single-lesson course. The badge and creation action are absent in View mode.
 `PracticeNodesSection` in course settings lists existing nodes and links to the path for editing.
 Filters (`CardFilter[]`) remain supported in storage but are not authorable in the UI because there
 is no existing filter builder to reuse.

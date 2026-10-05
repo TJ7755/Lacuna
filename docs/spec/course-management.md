@@ -18,7 +18,7 @@
   course overview. Read-only course analytics remain available.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
-  notes-first teaching flow when it is the next available path step. In Author mode,
+  notes-first teaching flow when it is the next available path step. In Edit mode,
   **Link existing cards** opens a searchable course-card picker and adds selected ordinary
   cards (sequence-generated cards are excluded) as
   `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS

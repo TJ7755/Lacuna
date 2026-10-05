@@ -51,7 +51,7 @@ const SECURE = 90;
 /**
  * The course as a list of lessons in order, with checkpoints and practice stops where
  * they fall, beside the course's assessments. Each lesson shows its number, state and a
- * progress bar; in Author mode lessons can be dragged or moved with Alt and the arrows.
+ * progress bar; in Edit mode lessons can be dragged or moved with Alt and the arrows.
  */
 export function CourseOverview(props: CourseOverviewProps) {
   const { nodes, authoring, archived, practiceProgress } = props;
@@ -99,7 +99,7 @@ export function CourseOverview(props: CourseOverviewProps) {
           </div>
         )}
         <p id="lesson-path-reorder-instructions" className="sr-only">
-          In Author mode, drag this lesson to reorder; with touch, hold first. Alternatively, press
+          In Edit mode, drag this lesson to reorder; with touch, hold first. Alternatively, press
           Alt and the up or down arrow key.
         </p>
         <div aria-live="polite" aria-atomic="true" className="sr-only">

@@ -50,7 +50,7 @@ const FIELD_CLASS =
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
  * scheduling fields, optimisation, unlock mode, auto-practice, exam dates and lesson
- * management, plus a danger zone. Author mode belongs beside the course content rather
+ * management, plus a danger zone. Edit mode belongs beside the course content rather
  * than being duplicated here. Laid out as one column of borderless cards (Goal and
  * dates, Daily study, Lessons, Auto-practice, then the danger zone) with one save model:
  * every field commits instantly through `updateCourse` (text/numeric inputs on blur,

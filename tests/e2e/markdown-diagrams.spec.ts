@@ -6,7 +6,7 @@ test('renders Mermaid notes with safe fallback and theme updates', async ({ page
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.locator('[data-lesson-workspace-mode="edit"]')).toBeVisible();
   await page.getByRole('button', { name: 'Add note' }).click();
   await page.getByPlaceholder('Note title').fill('Revision diagram');

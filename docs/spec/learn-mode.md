@@ -140,7 +140,7 @@ Authors choose **Reveal answers** or **Type answers** on a lesson's card section
 editor/creator and card-list selection controls offer **Use lesson setting**, **Reveal
 answer** and **Type answer**. `Card.answerMode` is an optional override; clearing it
 restores inheritance. Unconfigured lessons and unassigned cards default to reveal.
-These controls are available only in Author mode on editable, active courses.
+These controls are available only in Edit mode on editable, active courses.
 
 Lesson sessions use the active lesson's default (including linked cards); course-wide
 and daily reviews use the card's primary lesson. An explicit card override wins in every
@@ -305,7 +305,7 @@ criteria. Fixed Questions report first-presentation and repeat performance separ
 families report novel and repeated fingerprints separately. Shown, abandoned, undone,
 checker-withheld and unscored Attempts are explicit exclusions rather than fabricated failures.
 
-### Study mode (`src/state/studyMode.ts`)
+### View mode (`src/state/studyMode.ts`)
 
 Two modes reach Learn mode (ordinary sessions default to **FSRS**; lessons default to
 Simple mode). Course settings expose **Learn first**, enabled by default. Turning it off admits new cards from unlocked lessons directly into FSRS, with daily new-card pacing and no fabricated exposure or review records:

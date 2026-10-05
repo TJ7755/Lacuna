@@ -306,7 +306,7 @@ beforeEach(() => {
   mockLessonViewProps.mockReset();
 });
 
-describe('CoursePath Study mode', () => {
+describe('CoursePath View mode', () => {
   it('displays checkpoint dates in the assessment time zone', () => {
     mockCourse = { ...course, timeZone: 'Europe/London' };
     mockAssessments = [{
@@ -394,7 +394,7 @@ describe('CoursePath Study mode', () => {
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
@@ -405,10 +405,10 @@ describe('CoursePath Study mode', () => {
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
 
-  it('offers one explicit Author mode beside the course sections', () => {
+  it('offers one explicit Edit mode beside the course sections', () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
 
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
     expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
@@ -585,7 +585,7 @@ describe('CoursePath Study mode', () => {
     expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
   });
 
-  it('keeps a locked distributed copy in Study mode across every path authoring gate', () => {
+  it('keeps a locked distributed copy in View mode across every path authoring gate', () => {
     mockCourse = {
       ...course,
       lessonViewMode: 'edit',
@@ -614,7 +614,7 @@ describe('CoursePath Study mode', () => {
     renderPage();
 
     expect(screen.getByText('Authoring is locked for shared courses')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
@@ -626,7 +626,7 @@ describe('CoursePath Study mode', () => {
   });
 });
 
-describe('CoursePath Author mode', () => {
+describe('CoursePath Edit mode', () => {
   beforeEach(() => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
   });
@@ -914,7 +914,7 @@ describe('CoursePath overview', () => {
     await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
   });
-  it('shows the lock reason without opening an unreached lesson in Study mode', () => {
+  it('shows the lock reason without opening an unreached lesson in View mode', () => {
     mockCourse = { ...course, unlockMode: 'semi-linear' };
     renderPage();
     const locked = screen.getByRole('button', { name: 'Dynamics' });
@@ -924,7 +924,7 @@ describe('CoursePath overview', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('retains keyboard lesson reordering in Author mode', async () => {
+  it('retains keyboard lesson reordering in Edit mode', async () => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
     mockReorderLessons.mockResolvedValue(undefined);
     renderPage();

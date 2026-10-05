@@ -182,7 +182,7 @@ beforeEach(() => {
   mockUpdateLesson.mockResolvedValue(undefined);
 });
 
-describe('LessonView Study mode', () => {
+describe('LessonView View mode', () => {
   it('preselects this lesson for an optional Simple Learn pass', async () => {
     renderPage();
     fireEvent.click(screen.getByText('Simple Learn'));
@@ -222,7 +222,7 @@ describe('LessonView Study mode', () => {
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
@@ -231,10 +231,10 @@ describe('LessonView Study mode', () => {
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 
-  it('offers the shared Author mode on a normal lesson route', () => {
+  it('offers the shared Edit mode on a normal lesson route', () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
 
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
     expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
@@ -290,7 +290,7 @@ describe('LessonView Study mode', () => {
     );
   });
 
-  it('keeps a locked distributed copy in Study mode across every lesson authoring gate', () => {
+  it('keeps a locked distributed copy in View mode across every lesson authoring gate', () => {
     mockCourse = {
       ...course,
       lessonViewMode: 'edit',
@@ -310,7 +310,7 @@ describe('LessonView Study mode', () => {
     expect(
       screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
     ).toHaveAttribute('href', '/course/course-1/settings');
-    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
@@ -348,7 +348,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(link).toHaveAttribute('href', '/course/course-1/settings');
   });
 
-  it('hides Add lesson in Study mode', () => {
+  it('hides Add lesson in View mode', () => {
     renderInline();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(mockCreateLesson).not.toHaveBeenCalled();
@@ -356,14 +356,14 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 });
 
 describe('LessonView title editing', () => {
-  it('hides the lesson rename control in Study mode', () => {
+  it('hides the lesson rename control in View mode', () => {
     renderPage();
     expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 });
 
-describe('LessonView Author mode', () => {
+describe('LessonView Edit mode', () => {
   beforeEach(() => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
   });

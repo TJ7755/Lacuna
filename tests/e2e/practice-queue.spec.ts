@@ -8,7 +8,7 @@ for (const dueOnly of [false, true]) {
       await enterFreshLacuna(page);
       await createCourse(page, 'Practice queue');
       const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
-      await page.getByRole('button', { name: 'Author mode' }).click();
+      await page.getByRole('button', { name: 'Edit mode' }).click();
       for (let index = 0; index < 3; index += 1) {
         await page.getByRole('button', { name: 'New card', exact: true }).first().click();
         await page.getByRole('textbox', { name: 'Front' }).fill(`Queue question ${index}`);

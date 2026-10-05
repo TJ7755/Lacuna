@@ -5,7 +5,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
   const frontText = 'Which value is the response marker?';
   await enterFreshLacuna(page);
   await createCourse(page, 'Study response regression');
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(frontText);
   await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');

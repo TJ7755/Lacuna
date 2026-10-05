@@ -12,7 +12,7 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
   await enterFreshLacuna(page);
   await createCourse(page, courseName);
 
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.locator('[data-lesson-workspace-mode="edit"]')).toBeVisible();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
 

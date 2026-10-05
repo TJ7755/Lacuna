@@ -24,6 +24,10 @@
   - Course sections stick to the top as a frosted bar with pill tabs.
   - Every animation follows the motion-speed setting and is skipped when motion
     is off.
+  - The workspace mode reads View / Edit (formerly Study / Author mode), so it no
+    longer shares a word with the Study button beside it.
+  - The sharing announcement appears on Today only, and drops its illustration on
+    phones, so it no longer pushes each page's work below the first screen.
 - Redesign, "Direction C": the rest of the app.
   - Settings and Your data:
     - borderless cards that rise in, and sliding pill segmented controls;
@@ -35,7 +39,7 @@
     - Back up now no longer reports a save that the five-minute throttle
       skipped.
   - Lesson and card editor:
-    - the lesson opens on its title, one meta line and a sliding Study/Edit pill,
+    - the lesson opens on its title, one meta line and a sliding View/Edit pill,
       with the note as a reading card beside its cards;
     - the editor pairs the form with a live flip preview and pops a tick on save;
     - `MarkdownEditor` gains `hidePreview`, so the editor shows one preview, not

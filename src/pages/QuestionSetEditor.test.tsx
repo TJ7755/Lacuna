@@ -195,7 +195,7 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByText(/This course is read-only/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Set title')).not.toBeInTheDocument();
   });
-  it('shows local drafts only in Author mode and creates a real empty set', async () => {
+  it('shows local drafts only in Edit mode and creates a real empty set', async () => {
     const course = await setup();
     await db.courses.update(course.id, { lessonViewMode: 'study' });
     const view = open(course.id, 'questions');

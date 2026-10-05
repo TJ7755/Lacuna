@@ -1,5 +1,5 @@
 // The lesson's notes as one large reading card. Several notes become underlined
-// text tabs; a single note shows its name as the heading instead. In Study mode
+// text tabs; a single note shows its name as the heading instead. In View mode
 // the card is read-only; in Edit mode the same card gains add, edit, delete and
 // reorder controls that fade in without moving the text (the action row keeps its
 // height in both modes). Replaces the old collapsible NoteRow list.
@@ -20,7 +20,7 @@ import type { Note } from '../../db/types';
 interface LessonNotesCardProps {
   lessonId: string;
   notes: Note[];
-  /** Author mode: shows the add, edit, delete and reorder controls. */
+  /** Edit mode: shows the add, edit, delete and reorder controls. */
   editable: boolean;
   className?: string;
 }
