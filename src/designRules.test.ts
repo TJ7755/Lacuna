@@ -17,7 +17,11 @@ describe('design rules', () => {
   it('sets no all-caps labels in the app', () => {
     const offenders = sourceFiles(SRC)
       .filter((path) => !relative(SRC, path).startsWith(join('pages', 'landing')))
-      .filter((path) => /\buppercase\b|text-transform:\s*uppercase/.test(readFileSync(path, 'utf8')))
+      .filter((path) => {
+        const source = readFileSync(path, 'utf8');
+        // A capitals class or rule, or text typed in capitals (two words or more).
+        return /\buppercase\b|text-transform:\s*uppercase/.test(source) || />\s*[A-Z]{2,}(?: [A-Z]{2,})+\s*</.test(source);
+      })
       .map((path) => relative(SRC, path));
     expect(offenders).toEqual([]);
   });

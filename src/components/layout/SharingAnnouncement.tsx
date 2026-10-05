@@ -63,7 +63,7 @@ export function SharingAnnouncement() {
       </div>
       <div className="sharing-announcement-art" aria-hidden="true">
         <div className="sharing-announcement-sheet">
-          <span>YOUR COURSE</span>
+          <span>Your course</span>
           <div />
           <div />
           <div />

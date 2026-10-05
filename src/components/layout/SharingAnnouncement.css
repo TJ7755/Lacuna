@@ -90,8 +90,7 @@
     -13px 13px 0 var(--color-line-strong);
 }
 .sharing-announcement-sheet span {
-  font-size: 9px;
-  letter-spacing: 0.15em;
+  font-size: 11px;
 }
 .sharing-announcement-sheet div {
   height: 9px;
