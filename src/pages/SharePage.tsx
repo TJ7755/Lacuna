@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { CourseFileExportButton } from '../components/import/CourseFileControls';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -454,7 +455,8 @@ export function SharePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
+    // Shares the page frame's left edge but keeps a narrower reading column.
+    <div className={`${PAGE_FRAME} py-10 [&>*]:max-w-3xl`}>
       <header className="mb-10">
         <div className="relative">
           <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Share</h1>

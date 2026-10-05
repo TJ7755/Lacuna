@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CardImportDialog } from '../components/import/CardImportDialog';
@@ -45,7 +46,7 @@ export function ImportPage() {
   }
 
   return (
-    <div className="import-page mx-auto max-w-6xl px-6 py-10 md:px-10">
+    <div className={`import-page ${PAGE_FRAME} py-10`}>
       <header className="import-arrive mb-8">
         <div className="mb-3 flex min-h-11 items-center">
           {source && (
@@ -61,7 +62,9 @@ export function ImportPage() {
             </button>
           )}
         </div>
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Import</h1>
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+          Import
+        </h1>
       </header>
       {!source ? (
         <>

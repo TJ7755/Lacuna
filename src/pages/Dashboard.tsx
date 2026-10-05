@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -118,7 +119,7 @@ export function Dashboard() {
   const totalMinutes = Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0);
 
   return (
-    <div className="max-w-[1136px] px-4 py-6 sm:px-6 sm:py-10 md:px-12">
+    <div className={`${PAGE_FRAME} py-6 sm:py-10`}>
       <h1 className="sr-only">Today</h1>
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft sm:mb-6">
         {rows && rows.length > 0 && (

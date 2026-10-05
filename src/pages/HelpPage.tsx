@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -790,7 +791,7 @@ export function HelpPage() {
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-6 py-8 md:px-10 md:py-10">
+    <div className={`${PAGE_FRAME} flex gap-6 py-8 md:py-10`}>
       <div className="min-w-0 flex-1">
         <Link
           to="/"

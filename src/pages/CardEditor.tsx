@@ -1,3 +1,4 @@
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -459,7 +460,7 @@ export function CardEditor() {
         ? `/course/${courseId}/occlusion/${owningOcclusion.id}/edit`
         : undefined;
     return (
-      <div className="mx-auto max-w-6xl px-6 pb-10 pt-8 md:px-10">
+      <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
         <div className="flex flex-col gap-6">
           <header className="flex flex-col gap-2">
             <Link
@@ -681,7 +682,7 @@ export function CardEditor() {
 
   return (
     <div
-      className={cn('mx-auto max-w-6xl px-6 pt-8 md:px-10', isTouchMode ? 'pb-40' : 'pb-10')}
+      className={cn(COURSE_PAGE_FRAME, 'pt-8', isTouchMode ? 'pb-40' : 'pb-10')}
       onKeyDown={(e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
@@ -1001,7 +1002,7 @@ export function CardEditor() {
 
 function CardEditorSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-10 pt-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
       <div className="mb-2 h-11 w-24 animate-pulse rounded-full bg-ink/10" />
       <div className="mb-6 h-11 w-56 animate-pulse rounded-xl bg-ink/10" />
       <div className="mb-6 h-11 w-96 max-w-full animate-pulse rounded-full bg-ink/[0.06]" />

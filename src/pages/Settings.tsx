@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useEffect, type ReactNode } from 'react';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
@@ -81,7 +82,7 @@ export function Settings() {
   }, []);
 
   return (
-    <div className="max-w-[1156px] px-6 pb-10 pt-12 md:px-12 md:py-10">
+    <div className={`${PAGE_FRAME} pb-10 pt-12 md:py-10`}>
       <header className="mb-6 flex items-baseline justify-between gap-4">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Settings

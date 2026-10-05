@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useState } from 'react';
 import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
@@ -42,7 +43,7 @@ const X_INTERVAL: Record<Period, number> = { '7': 0, '30': 6, '90': 14 };
 
 function AnalyticsSkeleton() {
   return (
-    <div className="mx-auto max-w-[1100px] space-y-4 px-6 py-10 md:px-12">
+    <div className={`${PAGE_FRAME} space-y-4 py-10`}>
       <div className="h-11 w-48 animate-pulse rounded-lg bg-ink/5" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -162,17 +163,12 @@ export function Analytics() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-6 py-10 md:gap-6 md:px-12">
+    <div className={`${PAGE_FRAME} flex flex-col gap-4 py-10 md:gap-6`}>
       <Rise index={0} className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Progress
         </h1>
-        <PillToggleGroup
-          label="Period"
-          value={period}
-          onChange={setPeriod}
-          options={PERIODS}
-        />
+        <PillToggleGroup label="Period" value={period} onChange={setPeriod} options={PERIODS} />
       </Rise>
 
       <Rise index={1}>

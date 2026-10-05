@@ -1,3 +1,4 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { updateCourse } from '../db/courseRepository';
@@ -19,7 +20,7 @@ export function ArchivedCourses() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10 md:px-10">
+    <div className={`${PAGE_FRAME} py-10`}>
       <header className="mb-10">
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">Archived</h1>
       </header>

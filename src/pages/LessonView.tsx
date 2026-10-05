@@ -1,3 +1,4 @@
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
@@ -131,7 +132,7 @@ export function LessonView({
   // Not found.
   if (lesson === null || course === null) {
     return (
-      <div className="mx-auto max-w-6xl px-6 py-8 md:px-10">
+      <div className={`${COURSE_PAGE_FRAME} py-8`}>
         <div className="rounded-3xl bg-surface p-10 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]">
           <p className="mb-4 text-ink-soft">
             {lesson === null
@@ -177,7 +178,7 @@ export function LessonView({
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
   return (
-    <div className={`mx-auto max-w-6xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
+    <div className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}>
       {!isInline && (
         <CoursePageNavigation
           courseId={courseId ?? ''}
@@ -364,7 +365,7 @@ export function LessonView({
 
 function LessonViewSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} py-8`}>
       <div className="mb-6 h-11 w-24 animate-pulse rounded-full bg-ink/10" />
       <div className="mb-6 flex flex-col gap-3">
         <div className="h-11 w-72 max-w-full animate-pulse rounded-xl bg-ink/10" />
