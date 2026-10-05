@@ -138,7 +138,6 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
                 setName(e.target.value);
                 if (e.target.value.trim()) setNameError(null);
               }}
-              placeholder="Course name"
               autoFocus
               disabled={saving}
               aria-invalid={nameError ? 'true' : undefined}

@@ -35,6 +35,7 @@ describe('NewCourseForm', () => {
       'for',
       input.id,
     );
+    expect(input).not.toHaveAttribute('placeholder');
   });
 
   it('requires an explicit scheduling target before showing an exam date', () => {
@@ -64,7 +65,7 @@ describe('NewCourseForm', () => {
   it('creates an exam-targeted course after that target is selected', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -83,7 +84,7 @@ describe('NewCourseForm', () => {
 
   it('does not create a named course until its scheduling target is chosen', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
 
@@ -97,7 +98,7 @@ describe('NewCourseForm', () => {
   it('creates a steady-retention course without fabricating an exam date', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Spanish' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
@@ -112,7 +113,7 @@ describe('NewCourseForm', () => {
 
   it('passes a changed wall-clock time without shifting its time zone', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -140,7 +141,7 @@ describe('NewCourseForm', () => {
     });
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-02-28T17:00:00Z'));
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -161,7 +162,7 @@ describe('NewCourseForm', () => {
 
   it('does not submit while the date picker is handling keyboard input', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -178,7 +179,7 @@ describe('NewCourseForm', () => {
   it('shows inline validation instead of silently ignoring a blank course', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
-    const input = screen.getByPlaceholderText('Course name');
+    const input = screen.getByLabelText('Course name');
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
