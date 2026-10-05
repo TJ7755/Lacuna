@@ -172,3 +172,9 @@
 - The Study sheet's optional pass reads "Practise until all correct" (it was
   labelled with the mode name, Simple Learn), with Start practising.
 - The course bar shows the course name alone, without the coloured status dot.
+- Calmer page changes: the outgoing page leaves at once and the new one fades
+  in, so two pages never overlap; course tabs drift 24px instead of sliding a
+  full screen width; page sections fade in place instead of rising.
+- Returning to a page puts it back where you left it: browser Back and in-app
+  returns restore the scroll position (`scrollMemory.ts`), instead of every
+  navigation jumping to the top.

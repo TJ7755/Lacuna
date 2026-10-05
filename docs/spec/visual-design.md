@@ -65,16 +65,18 @@ Shared conventions:
 
 Specific motion (current state of the app):
 
-- **Page transitions:** shell pages crossfade in place through `AppShell` (`popLayout`, so
-  the outgoing page is taken out of flow and the two never stack). A fade writes opacity
-  only — never a transform — so `position: fixed` descendants stay viewport-fixed.
-  Moving between a course's sections still slides sideways in the direction of travel.
-  Full-screen landing, method, conductor and Learn routes use the outer `RouteTransition`
-  boundary, also a crossfade, with `AnimatePresence mode="wait"`. Both boundaries skip
-  enter/exit when `prefers-reduced-motion` is on. The main scroll area resets to the top
-  on every navigation. Incoming page content sits still inside that fade — settings
-  sections, dashboard cards, editor shells, Help and Share no longer hop up after the
-  route has already arrived.
+- **Page transitions:** shell pages fade in through `AppShell` (`popLayout`) while the
+  outgoing page leaves at once, so two pages never show together. The fade writes opacity
+  only, and the tab drift below settles with no transform left behind, so `position: fixed`
+  descendants stay viewport-fixed. Moving between adjacent course sections adds a 24px drift
+  in the direction of travel (`TAB_DRIFT_PX`), not a full-width slide. Full-screen landing,
+  method, conductor and Learn routes use the outer `RouteTransition` boundary, also a
+  crossfade, with `AnimatePresence mode="wait"`. Both boundaries skip enter/exit when
+  `prefers-reduced-motion` is on. Incoming page content sits still inside that fade:
+  sections may fade on a short stagger (`Rise`, settings cards, Import) but never move.
+- **Scroll memory (`scrollMemory.ts`):** a new page starts at the top; returning to a page,
+  by browser Back or Forward or by an in-app return (`state.returning`), restores where it
+  was left, keyed by path and query. A query change on the same page keeps its place.
 - **Shared controls:** `Button` scales to 1.02 on hover and 0.96 on press; `Toggle`, `Menu`
   and assessment sheets use the same global motion multiplier for their springs, fades and
   CSS transitions. Reduced motion removes these transforms and entrances. Every Button

@@ -5,6 +5,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
 import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
+import { useScrollMemory } from './scrollMemory';
 import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
 import { OverlayLoadBoundary } from './OverlayLoadBoundary';
@@ -154,11 +155,8 @@ function AppShellLayout() {
     return () => window.clearTimeout(id);
   }, [collapsed]);
 
-  useEffect(() => {
-    const previousPath = mainRef.current?.dataset.routePath;
-    if (previousPath && previousPath !== location.pathname) mainRef.current?.scrollTo({ top: 0 });
-    if (mainRef.current) mainRef.current.dataset.routePath = location.pathname;
-  }, [location.pathname]);
+  // New pages start at the top; returning to a page puts it back where it was left.
+  useScrollMemory(mainRef);
 
   useEffect(() => window.electronAPI?.onOpenHelp?.(() => navigate('/help')), [navigate]);
 
