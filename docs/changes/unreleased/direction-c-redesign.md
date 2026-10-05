@@ -134,3 +134,8 @@
     unused `?intent=import` entry was removed.
 - The course bar no longer repeats the course page's title: its course name
   fades in only once the title scrolls out of view.
+- Removed descriptive captions that did no work: the editor placeholders'
+  "Markdown, maths and images are supported", the tag hint, the answer-mode,
+  sidebar-navigation and assessment-placement notes, the Questions empty-state
+  line, "The recommended default", Help's Back to Today link, the assessment
+  sheet's eyebrow (its kind now leads the date line) and its empty Exclusions.

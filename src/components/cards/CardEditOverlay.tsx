@@ -188,7 +188,7 @@ export function CardEditOverlay({
               value={front}
               onChange={setFront}
               minRows={6}
-              placeholder="Question or prompt. Markdown, maths and images are supported."
+              placeholder="Question or prompt"
               onError={(m) => notify(m, 'negative')}
               onTabForward={() => backRef.current?.focus()}
             />
@@ -198,7 +198,7 @@ export function CardEditOverlay({
               value={back}
               onChange={setBack}
               minRows={6}
-              placeholder="Answer. Markdown, maths and images are supported."
+              placeholder="Answer"
               onError={(m) => notify(m, 'negative')}
               onTabBackward={() => frontRef.current?.focus()}
             />
@@ -212,7 +212,7 @@ export function CardEditOverlay({
             tags={tags}
             onChange={setTags}
             suggestions={tagSuggestions}
-            placeholder="Add tags to group cards for filtered study…"
+            placeholder="Add tags"
           />
         </div>
       </div>

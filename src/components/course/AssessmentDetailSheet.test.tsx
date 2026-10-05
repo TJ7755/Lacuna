@@ -80,4 +80,24 @@ describe('checkpoint assessment details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Revise for Paper 1' }));
     expect(onRevise).toHaveBeenCalledOnce();
   });
+
+  it('folds the kind into the date line and hides an empty exclusions list', () => {
+    render(
+      <MemoryRouter>
+        <AssessmentDetailSheet
+          assessment={{ ...assessment, excludedCardIds: [] }}
+          lessons={[lesson]}
+          cards={[card]}
+          links={[]}
+          onClose={vi.fn()}
+          onRevise={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Paper 1' }).nextElementSibling).toHaveTextContent(
+      /^Checkpoint · /,
+    );
+    expect(screen.queryByText('Exclusions')).not.toBeInTheDocument();
+    expect(screen.queryByText('None')).not.toBeInTheDocument();
+  });
 });

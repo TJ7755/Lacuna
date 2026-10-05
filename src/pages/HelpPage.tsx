@@ -12,7 +12,6 @@ import {
   InfoIcon,
   ImageIcon,
   SparklesIcon,
-  ChevronLeftIcon,
   SettingsIcon,
   ChartIcon,
   CardsIcon,
@@ -793,14 +792,6 @@ export function HelpPage() {
   return (
     <div className={`${PAGE_FRAME} flex gap-6 py-8 md:py-10`}>
       <div className="min-w-0 flex-1">
-        <Link
-          to="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Back to Today
-        </Link>
-
         <div>
           <header className="mb-12 pt-2 md:mb-16 md:pt-4">
             <h1 className="font-display text-4xl tracking-tight md:text-5xl">Help</h1>

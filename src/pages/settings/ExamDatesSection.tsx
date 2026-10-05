@@ -140,11 +140,6 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-ink-faint">
-        Place assessments on the path, then choose everything taught so far or an explicit set of
-        lessons. Assessments never lock later lessons.
-      </p>
-
       <AnimatePresence initial={false} mode="popLayout">
         {loaded &&
           assessments.map((assessment) => {

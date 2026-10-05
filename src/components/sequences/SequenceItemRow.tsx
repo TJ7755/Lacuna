@@ -156,7 +156,7 @@ export function SequenceItemRow({
         onChange={(value) => onChange({ value })}
         onModEnter={onAddAfter}
         minRows={2}
-        placeholder={`${itemTermCapitalized} content. Markdown, maths and images are supported.`}
+        placeholder={`${itemTermCapitalized} content`}
       />
       {invalid && (
         <p id={errorId} role="alert" className="mt-2 text-sm text-negative">

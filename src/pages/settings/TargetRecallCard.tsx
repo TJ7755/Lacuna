@@ -39,7 +39,7 @@ export function TargetRecallCard({
       ? 'More thorough than the default: more reviews, fewer lapses.'
       : retention < DEFAULT_REQUEST_RETENTION
         ? 'Lighter than the default: fewer reviews, more forgetting.'
-        : 'The recommended default.';
+        : null;
 
   return (
     <div>
@@ -89,7 +89,7 @@ export function TargetRecallCard({
           );
         })}
       </div>
-      <p className="mt-3 text-sm text-ink-soft">{note}</p>
+      {note && <p className="mt-3 text-sm text-ink-soft">{note}</p>}
     </div>
   );
 }

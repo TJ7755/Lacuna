@@ -30,10 +30,7 @@ export function SidebarSection() {
       />
 
       <div className="mt-6 pt-0">
-        <div className="mb-1 text-sm">Primary navigation</div>
-        <p className="mb-4 text-sm text-ink-soft">
-          Reorder or hide the main nav items in the sidebar. At least one item must remain visible.
-        </p>
+        <div className="mb-3 text-sm">Primary navigation</div>
         <div className="flex flex-col gap-2">
           {sidebarSettings.navItems.map((item, index) => {
             const canMoveUp = index > 0;

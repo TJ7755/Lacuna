@@ -105,12 +105,7 @@ export function LessonAnswerModeControl({
   }
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-sm text-ink">Answer by</p>
-        <p className="mt-1 text-xs text-ink-faint">
-          Default for this lesson. Individual cards can override it.
-        </p>
-      </div>
+      <p className="text-sm text-ink">Answer by</p>
       <AnswerModeChoices
         value={lesson.answerMode ?? 'reveal'}
         disabled={saving}

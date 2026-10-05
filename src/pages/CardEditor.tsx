@@ -825,7 +825,7 @@ export function CardEditor() {
                     value={front}
                     onChange={(value) => modifyDraftField(setFront, value)}
                     minRows={8}
-                    placeholder="Question or prompt. Markdown, maths and images are supported."
+                    placeholder="Question or prompt"
                     onError={(message) => notify(message, 'negative')}
                   />
                 </div>
@@ -875,7 +875,7 @@ export function CardEditor() {
                     value={front}
                     onChange={(value) => modifyDraftField(setFront, value)}
                     minRows={6}
-                    placeholder="Question or prompt. Markdown, maths and images are supported."
+                    placeholder="Question or prompt"
                     onError={(m) => notify(m, 'negative')}
                     onTabForward={() => backRef.current?.focus()}
                   />
@@ -891,7 +891,7 @@ export function CardEditor() {
                     value={back}
                     onChange={(value) => modifyDraftField(setBack, value)}
                     minRows={6}
-                    placeholder="Answer. Markdown, maths and images are supported."
+                    placeholder="Answer"
                     onError={(m) => notify(m, 'negative')}
                     onTabForward={focusSaveButton}
                     onTabBackward={() => frontRef.current?.focus()}
@@ -909,7 +909,7 @@ export function CardEditor() {
                   setDraftDirty(true);
                 }}
                 suggestions={tagSuggestions}
-                placeholder="Add tags to group cards for filtered study…"
+                placeholder="Add tags"
               />
             </div>
 

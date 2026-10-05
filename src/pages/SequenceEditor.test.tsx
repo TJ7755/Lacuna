@@ -184,7 +184,7 @@ describe('SequenceEditor', () => {
     expect(itemsHeading(2)).toBeInTheDocument();
 
     const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     expect(values[1]).toHaveFocus();
     expect(values[1].scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
@@ -199,13 +199,13 @@ describe('SequenceEditor', () => {
     fireEvent.change(first, { target: { value: 'First' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     let values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     fireEvent.change(values[1], { target: { value: 'Third' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add item below item 1' }));
     values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     expect(values).toHaveLength(3);
     expect(values[0]).toHaveValue('First');
@@ -218,14 +218,14 @@ describe('SequenceEditor', () => {
     renderNew();
 
     const first = screen.getByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     expect(first).toHaveAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
     fireEvent.change(first, { target: { value: 'First' } });
     fireEvent.keyDown(first, { key: 'Enter', ctrlKey: true });
 
     let values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     expect(values).toHaveLength(2);
     expect(values[1]).toHaveFocus();
@@ -233,7 +233,7 @@ describe('SequenceEditor', () => {
     fireEvent.keyDown(values[1], { key: 'Enter', metaKey: true });
 
     values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     expect(values).toHaveLength(3);
     expect(values[0]).toHaveValue('First');
@@ -288,7 +288,7 @@ describe('SequenceEditor', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     fireEvent.change(values[1], { target: { value: 'Second' } });
 
@@ -297,7 +297,7 @@ describe('SequenceEditor', () => {
     fireEvent.click(moveUpButtons[1]);
 
     const reordered = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     expect(reordered[0]).toHaveValue('Second');
     expect(reordered[1]).toHaveValue('First');
@@ -305,7 +305,7 @@ describe('SequenceEditor', () => {
     fireEvent.click(screen.getAllByTitle('Delete item')[1]);
     expect(itemsHeading(1)).toBeInTheDocument();
     expect(
-      screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
+      screen.getByPlaceholderText('Item content'),
     ).toHaveValue('Second');
   });
 
@@ -314,14 +314,14 @@ describe('SequenceEditor', () => {
     renderNew();
 
     const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     fireEvent.change(values[0], { target: { value: 'First item' } });
     expect(screen.getByText('1 card generated')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     const updatedValues = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     fireEvent.change(updatedValues[1], { target: { value: 'Second item' } });
     expect(screen.getByText('2 cards generated')).toBeInTheDocument();
@@ -335,7 +335,7 @@ describe('SequenceEditor', () => {
       target: { value: 'My sequence' },
     });
     const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
+      'Item content',
     );
     fireEvent.change(values[0], { target: { value: 'First item' } });
 
@@ -393,7 +393,7 @@ describe('SequenceEditor', () => {
         target: { value: 'Scene one' },
       });
       fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        screen.getByPlaceholderText('Line content'),
         { target: { value: 'Indeed I am.' } },
       );
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
@@ -413,7 +413,7 @@ describe('SequenceEditor', () => {
         target: { value: 'Scene one' },
       });
       fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        screen.getByPlaceholderText('Line content'),
         { target: { value: 'Indeed I am.' } },
       );
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
@@ -450,7 +450,7 @@ describe('SequenceEditor', () => {
           target: { value: 'Sonnet 18' },
         });
         fireEvent.change(
-          screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+          screen.getByPlaceholderText('Line content'),
           { target: { value: 'Shall I compare thee to a summer’s day?' } },
         );
         fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
@@ -488,7 +488,7 @@ describe('SequenceEditor', () => {
         target: { value: 'Scene one' },
       });
       fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        screen.getByPlaceholderText('Line content'),
         { target: { value: 'Indeed I am.' } },
       );
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });

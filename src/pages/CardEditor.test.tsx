@@ -373,7 +373,7 @@ describe('CardEditor — live preview', () => {
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'Why is the sky blue?' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Answer\./), {
+    fireEvent.change(screen.getByPlaceholderText(/^Answer$/), {
       target: { value: 'Rayleigh scattering' },
     });
 
@@ -406,7 +406,7 @@ describe('CardEditor — live preview', () => {
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'Q' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Answer\./), { target: { value: 'A' } });
+    fireEvent.change(screen.getByPlaceholderText(/^Answer$/), { target: { value: 'A' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
@@ -492,7 +492,7 @@ describe('CardEditor — backing-deck boundary', () => {
       target: { value: 'What is demand?' },
     });
     fireEvent.change(
-      screen.getByPlaceholderText('Answer. Markdown, maths and images are supported.'),
+      screen.getByPlaceholderText('Answer'),
       {
         target: { value: 'The quantity consumers will buy.' },
       },
@@ -530,7 +530,7 @@ describe('CardEditor — backing-deck boundary', () => {
       target: { value: 'What is demand?' },
     });
     fireEvent.change(
-      screen.getByPlaceholderText('Answer. Markdown, maths and images are supported.'),
+      screen.getByPlaceholderText('Answer'),
       { target: { value: 'The quantity consumers will buy.' } },
     );
 
@@ -830,7 +830,7 @@ describe('CardEditor — save navigation', () => {
     const view = editing ? renderEditing() : renderNew();
     if (!editing) {
       fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Q' } });
-      fireEvent.change(screen.getByPlaceholderText(/Answer\./), { target: { value: 'A' } });
+      fireEvent.change(screen.getByPlaceholderText(/^Answer$/), { target: { value: 'A' } });
     }
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }));
