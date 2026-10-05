@@ -6,7 +6,7 @@ test('course settings follows scrolling after the course loads', async ({ page }
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   const course = page
-    .getByRole('complementary')
+    .getByRole('navigation', { name: 'Courses' })
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true });
   await course.click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
@@ -14,8 +14,9 @@ test('course settings follows scrolling after the course loads', async ({ page }
   const rail = page.getByRole('complementary', { name: 'Page sections' });
   await expect(rail).toBeVisible();
   await page.locator('#course-settings-content').evaluate((element) => element.scrollIntoView());
-  await expect(rail.getByRole('button', { name: 'Content', exact: true })).toHaveClass(
-    /text-accent/,
+  await expect(rail.getByRole('button', { name: 'Content', exact: true })).toHaveAttribute(
+    'aria-current',
+    'true',
   );
   await page.screenshot({
     path: test.info().outputPath('content-scroll.png'),

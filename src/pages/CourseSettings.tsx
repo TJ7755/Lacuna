@@ -11,6 +11,8 @@ import {
   SettingsCard,
 } from './settings/SettingsUi';
 import { TargetRecallCard } from './settings/TargetRecallCard';
+import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import {
   deleteCourse,
   snapshotCourse,
@@ -35,6 +37,13 @@ import { PracticeNodesSection } from './settings/PracticeNodesSection';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { DetachCourseSection } from './settings/DetachCourseSection';
 
+const COURSE_SETTINGS_SECTIONS = [
+  { id: 'course-settings-goal', label: 'Goal and dates' },
+  { id: 'course-settings-study', label: 'Daily study' },
+  { id: 'course-settings-content', label: 'Content' },
+  { id: 'course-settings-danger', label: 'Danger zone' },
+];
+
 const FIELD_CLASS =
   'mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 font-normal text-ink outline-none focus:border-ink';
 
@@ -54,6 +63,8 @@ export function CourseSettings() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const { notify } = useToast();
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found"
@@ -62,6 +73,7 @@ export function CourseSettings() {
   const course = useCourse(courseId);
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
+  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m, !!course);
 
   const [name, setName] = useState('');
   const [examBoard, setExamBoard] = useState('');
@@ -281,241 +293,261 @@ export function CourseSettings() {
           Course settings
         </h1>
       </header>
-      <SettingsArrivalProvider>
-        <div className="mx-auto max-w-3xl">
-          <SettingsCard id="course-settings-goal">
-            <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
-              Goal and dates
-            </h2>
-            <div className="flex flex-col gap-5">
-              <label className="block text-sm font-semibold text-ink">
-                Course name
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={commitName}
-                  className={FIELD_CLASS}
-                />
-              </label>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block text-sm font-semibold text-ink">
-                  Exam board
-                  <input
-                    value={examBoard}
-                    onChange={(e) => setExamBoard(e.target.value)}
-                    onBlur={commitExamBoard}
-                    className={FIELD_CLASS}
-                  />
-                </label>
-                <label className="block text-sm font-semibold text-ink">
-                  Specification
-                  <input
-                    value={specification}
-                    onChange={(e) => setSpecification(e.target.value)}
-                    onBlur={commitSpecification}
-                    className={FIELD_CLASS}
-                  />
-                </label>
-              </div>
-              <TargetRecallCard
-                retention={retention}
-                onChange={setRetention}
-                onCommit={(value) => {
-                  setRetention(value);
-                  commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
-                }}
-              />
-              <div>
-                <SettingRow label="Exam objective">
-                  <PillSwitch
-                    checked={objective === 'securedTopics'}
-                    onChange={(checked) => {
-                      const next: ExamObjective = checked ? 'securedTopics' : 'expectedMarks';
-                      setObjective(next);
-                      commitCourse({ examObjective: next });
+      <div className="flex flex-row-reverse gap-8">
+        <div className="min-w-0 flex-1">
+          <SettingsArrivalProvider>
+            <SectionRailMobileJumper
+              sections={COURSE_SETTINGS_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={goToSection}
+            />
+            <div className="mx-auto max-w-3xl">
+              <SettingsCard id="course-settings-goal" className="scroll-mt-24">
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Goal and dates
+                </h2>
+                <div className="flex flex-col gap-5">
+                  <label className="block text-sm font-semibold text-ink">
+                    Course name
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onBlur={commitName}
+                      className={FIELD_CLASS}
+                    />
+                  </label>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <label className="block text-sm font-semibold text-ink">
+                      Exam board
+                      <input
+                        value={examBoard}
+                        onChange={(e) => setExamBoard(e.target.value)}
+                        onBlur={commitExamBoard}
+                        className={FIELD_CLASS}
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold text-ink">
+                      Specification
+                      <input
+                        value={specification}
+                        onChange={(e) => setSpecification(e.target.value)}
+                        onBlur={commitSpecification}
+                        className={FIELD_CLASS}
+                      />
+                    </label>
+                  </div>
+                  <TargetRecallCard
+                    retention={retention}
+                    onChange={setRetention}
+                    onCommit={(value) => {
+                      setRetention(value);
+                      commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
                     }}
-                    label="Secure topics"
                   />
-                </SettingRow>
-                <p className="text-sm text-ink-soft">
-                  {objective === 'securedTopics'
-                    ? 'Prioritise cards a review would push to 90% or more on exam day. Progress shows the share of cards secured.'
-                    : 'Prioritise the largest expected lift to exam-day recall. Progress shows your mean predicted recall.'}
-                </p>
-              </div>
-            </div>
-          </SettingsCard>
+                  <div>
+                    <SettingRow label="Exam objective">
+                      <PillSwitch
+                        checked={objective === 'securedTopics'}
+                        onChange={(checked) => {
+                          const next: ExamObjective = checked ? 'securedTopics' : 'expectedMarks';
+                          setObjective(next);
+                          commitCourse({ examObjective: next });
+                        }}
+                        label="Secure topics"
+                      />
+                    </SettingRow>
+                    <p className="text-sm text-ink-soft">
+                      {objective === 'securedTopics'
+                        ? 'Prioritise cards a review would push to 90% or more on exam day. Progress shows the share of cards secured.'
+                        : 'Prioritise the largest expected lift to exam-day recall. Progress shows your mean predicted recall.'}
+                    </p>
+                  </div>
+                </div>
+              </SettingsCard>
 
-          <SettingsCard>
-            <ExamDatesSection
-              courseId={course.id}
-              timeZone={timeZone}
-              editFinalOnMount={searchParams.get('editFinalExam') === '1'}
-            />
-          </SettingsCard>
-
-          <SettingsCard id="course-settings-study">
-            <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">Daily study</h2>
-            <div className="flex flex-col gap-5">
-              <SettingRow label="Learn first">
-                <PillSwitch
-                  checked={learnFirst}
-                  onChange={(checked) => {
-                    setLearnFirst(checked);
-                    commitCourse({ learnFirst: checked });
-                  }}
-                  ariaLabel="Learn first"
+              <SettingsCard>
+                <ExamDatesSection
+                  courseId={course.id}
+                  timeZone={timeZone}
+                  editFinalOnMount={searchParams.get('editFinalExam') === '1'}
                 />
-              </SettingRow>
-              <SchedulingFieldsSection
-                newCardsPerDay={newPerDay}
-                onNewCardsPerDayChange={setNewPerDay}
-                onNewCardsPerDayBlur={commitNewCardsPerDay}
-                maxReviewsPerDay={maxReviewsPerDay}
-                onMaxReviewsPerDayChange={setMaxReviewsPerDay}
-                onMaxReviewsPerDayBlur={commitMaxReviewsPerDay}
-                enableFuzz={enableFuzz}
-                onEnableFuzzChange={(checked) => {
-                  setEnableFuzz(checked);
-                  commitFsrsParameters({ enable_fuzz: checked });
-                }}
-                maxInterval={maxInterval}
-                onMaxIntervalChange={setMaxInterval}
-                onMaxIntervalBlur={commitMaxInterval}
-                maxIntervalPlaceholder={String(course.fsrsParameters.maximum_interval ?? 36500)}
-                learningSteps={learningSteps}
-                onLearningStepsChange={setLearningSteps}
-                onLearningStepsBlur={commitLearningSteps}
-                relearningSteps={relearningSteps}
-                onRelearningStepsChange={setRelearningSteps}
-                onRelearningStepsBlur={commitRelearningSteps}
-                leechThreshold={leechThreshold}
-                onLeechThresholdChange={setLeechThreshold}
-                onLeechThresholdBlur={commitLeechThreshold}
-                leechAction={leechAction}
-                onLeechActionChange={(value) => {
-                  setLeechAction(value);
-                  commitCourse({ leechAction: value });
-                }}
-                dailyReviewGoal={dailyReviewGoal}
-                onDailyReviewGoalChange={setDailyReviewGoal}
-                onDailyReviewGoalBlur={commitDailyReviewGoal}
-                sessionTimeLimit={sessionTimeLimit}
-                onSessionTimeLimitChange={setSessionTimeLimit}
-                onSessionTimeLimitBlur={commitSessionTimeLimit}
-              />
-            </div>
-          </SettingsCard>
+              </SettingsCard>
 
-          <SettingsCard id="course-settings-content">
-            <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">Lessons</h2>
-            <div className="flex flex-col gap-8">
-              <UnlockModeSection
-                unlockMode={unlockMode}
-                onUnlockModeChange={(mode) => {
-                  setUnlockMode(mode);
-                  commitCourse({ unlockMode: mode });
-                }}
-                linearCadence={linearCadence}
-                onAnchorDateChange={(ms) => {
-                  const next = { ...linearCadence, anchorDate: ms };
-                  setLinearCadence(next);
-                  commitLinearCadence(next);
-                }}
-                onIntervalDaysChange={(days) =>
-                  setLinearCadence((prev) => ({ ...prev, intervalDays: days }))
-                }
-                onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
-                timeZone={timeZone}
+              <SettingsCard id="course-settings-study" className="scroll-mt-24">
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Daily study
+                </h2>
+                <div className="flex flex-col gap-5">
+                  <SettingRow label="Learn first">
+                    <PillSwitch
+                      checked={learnFirst}
+                      onChange={(checked) => {
+                        setLearnFirst(checked);
+                        commitCourse({ learnFirst: checked });
+                      }}
+                      ariaLabel="Learn first"
+                    />
+                  </SettingRow>
+                  <SchedulingFieldsSection
+                    newCardsPerDay={newPerDay}
+                    onNewCardsPerDayChange={setNewPerDay}
+                    onNewCardsPerDayBlur={commitNewCardsPerDay}
+                    maxReviewsPerDay={maxReviewsPerDay}
+                    onMaxReviewsPerDayChange={setMaxReviewsPerDay}
+                    onMaxReviewsPerDayBlur={commitMaxReviewsPerDay}
+                    enableFuzz={enableFuzz}
+                    onEnableFuzzChange={(checked) => {
+                      setEnableFuzz(checked);
+                      commitFsrsParameters({ enable_fuzz: checked });
+                    }}
+                    maxInterval={maxInterval}
+                    onMaxIntervalChange={setMaxInterval}
+                    onMaxIntervalBlur={commitMaxInterval}
+                    maxIntervalPlaceholder={String(course.fsrsParameters.maximum_interval ?? 36500)}
+                    learningSteps={learningSteps}
+                    onLearningStepsChange={setLearningSteps}
+                    onLearningStepsBlur={commitLearningSteps}
+                    relearningSteps={relearningSteps}
+                    onRelearningStepsChange={setRelearningSteps}
+                    onRelearningStepsBlur={commitRelearningSteps}
+                    leechThreshold={leechThreshold}
+                    onLeechThresholdChange={setLeechThreshold}
+                    onLeechThresholdBlur={commitLeechThreshold}
+                    leechAction={leechAction}
+                    onLeechActionChange={(value) => {
+                      setLeechAction(value);
+                      commitCourse({ leechAction: value });
+                    }}
+                    dailyReviewGoal={dailyReviewGoal}
+                    onDailyReviewGoalChange={setDailyReviewGoal}
+                    onDailyReviewGoalBlur={commitDailyReviewGoal}
+                    sessionTimeLimit={sessionTimeLimit}
+                    onSessionTimeLimitChange={setSessionTimeLimit}
+                    onSessionTimeLimitBlur={commitSessionTimeLimit}
+                  />
+                </div>
+              </SettingsCard>
+
+              <SettingsCard id="course-settings-content" className="scroll-mt-24">
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">Lessons</h2>
+                <div className="flex flex-col gap-8">
+                  <UnlockModeSection
+                    unlockMode={unlockMode}
+                    onUnlockModeChange={(mode) => {
+                      setUnlockMode(mode);
+                      commitCourse({ unlockMode: mode });
+                    }}
+                    linearCadence={linearCadence}
+                    onAnchorDateChange={(ms) => {
+                      const next = { ...linearCadence, anchorDate: ms };
+                      setLinearCadence(next);
+                      commitLinearCadence(next);
+                    }}
+                    onIntervalDaysChange={(days) =>
+                      setLinearCadence((prev) => ({ ...prev, intervalDays: days }))
+                    }
+                    onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
+                    timeZone={timeZone}
+                  />
+                  <LessonManagementSection courseId={course.id} />
+                  <div>
+                    <h3 className="mb-3 font-semibold text-ink">Practice nodes</h3>
+                    <PracticeNodesSection courseId={course.id} />
+                  </div>
+                </div>
+              </SettingsCard>
+
+              <SettingsCard>
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Auto-practice
+                </h2>
+                <PracticeSettingsSection
+                  autoPractice={autoPractice}
+                  onAutoPracticeChange={(checked) => {
+                    setAutoPractice(checked);
+                    commitCourse({ autoPractice: checked });
+                  }}
+                  practiceThresholdMinutesFar={practiceThresholdMinutesFar}
+                  onPracticeThresholdMinutesFarChange={setPracticeThresholdMinutesFar}
+                  onPracticeThresholdMinutesFarBlur={() =>
+                    commitCourse({
+                      practiceThresholdMinutesFar: parsePositiveIntOr(
+                        practiceThresholdMinutesFar,
+                        course.practiceThresholdMinutesFar,
+                        true,
+                      ),
+                    })
+                  }
+                  practiceThresholdMinutesNear={practiceThresholdMinutesNear}
+                  onPracticeThresholdMinutesNearChange={setPracticeThresholdMinutesNear}
+                  onPracticeThresholdMinutesNearBlur={() =>
+                    commitCourse({
+                      practiceThresholdMinutesNear: parsePositiveIntOr(
+                        practiceThresholdMinutesNear,
+                        course.practiceThresholdMinutesNear,
+                        true,
+                      ),
+                    })
+                  }
+                  practiceUrgentWindowDays={practiceUrgentWindowDays}
+                  onPracticeUrgentWindowDaysChange={setPracticeUrgentWindowDays}
+                  onPracticeUrgentWindowDaysBlur={() =>
+                    commitCourse({
+                      practiceUrgentWindowDays: parsePositiveIntOr(
+                        practiceUrgentWindowDays,
+                        course.practiceUrgentWindowDays,
+                        true,
+                      ),
+                    })
+                  }
+                  practiceMaxGap={practiceMaxGap}
+                  onPracticeMaxGapChange={setPracticeMaxGap}
+                  onPracticeMaxGapBlur={() =>
+                    // Maximum lesson gap is a backstop count of lessons; the input's min={1}
+                    // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
+                    commitCourse({
+                      practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
+                    })
+                  }
+                />
+              </SettingsCard>
+
+              <OptimisationPanel
+                entity={course}
+                cards={cards ?? []}
+                reviewHistory={reviewHistory}
+                onUpdate={(changes) => updateCourse(course.id, changes)}
+                entityLabel="course"
+                headingLevel={3}
               />
-              <LessonManagementSection courseId={course.id} />
-              <div>
-                <h3 className="mb-3 font-semibold text-ink">Practice nodes</h3>
-                <PracticeNodesSection courseId={course.id} />
+
+              <DetachCourseSection
+                courseId={course.id}
+                autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
+              />
+
+              <div id="course-settings-danger" className="scroll-mt-24">
+                <DangerZoneSection
+                  entityLabel="course"
+                  entityName={course.name}
+                  description="Deleting this course removes all of its lessons, notes and card assignments."
+                  snapshot={() => snapshotCourse(course.id)}
+                  onDelete={() => deleteCourse(course.id)}
+                  onRestore={(snap) => restoreCourse(snap as CourseSnapshot)}
+                  onDeleted={() => navigate('/')}
+                />
               </div>
             </div>
-          </SettingsCard>
-
-          <SettingsCard>
-            <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
-              Auto-practice
-            </h2>
-            <PracticeSettingsSection
-              autoPractice={autoPractice}
-              onAutoPracticeChange={(checked) => {
-                setAutoPractice(checked);
-                commitCourse({ autoPractice: checked });
-              }}
-              practiceThresholdMinutesFar={practiceThresholdMinutesFar}
-              onPracticeThresholdMinutesFarChange={setPracticeThresholdMinutesFar}
-              onPracticeThresholdMinutesFarBlur={() =>
-                commitCourse({
-                  practiceThresholdMinutesFar: parsePositiveIntOr(
-                    practiceThresholdMinutesFar,
-                    course.practiceThresholdMinutesFar,
-                    true,
-                  ),
-                })
-              }
-              practiceThresholdMinutesNear={practiceThresholdMinutesNear}
-              onPracticeThresholdMinutesNearChange={setPracticeThresholdMinutesNear}
-              onPracticeThresholdMinutesNearBlur={() =>
-                commitCourse({
-                  practiceThresholdMinutesNear: parsePositiveIntOr(
-                    practiceThresholdMinutesNear,
-                    course.practiceThresholdMinutesNear,
-                    true,
-                  ),
-                })
-              }
-              practiceUrgentWindowDays={practiceUrgentWindowDays}
-              onPracticeUrgentWindowDaysChange={setPracticeUrgentWindowDays}
-              onPracticeUrgentWindowDaysBlur={() =>
-                commitCourse({
-                  practiceUrgentWindowDays: parsePositiveIntOr(
-                    practiceUrgentWindowDays,
-                    course.practiceUrgentWindowDays,
-                    true,
-                  ),
-                })
-              }
-              practiceMaxGap={practiceMaxGap}
-              onPracticeMaxGapChange={setPracticeMaxGap}
-              onPracticeMaxGapBlur={() =>
-                // Maximum lesson gap is a backstop count of lessons; the input's min={1}
-                // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
-                commitCourse({
-                  practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
-                })
-              }
-            />
-          </SettingsCard>
-
-          <OptimisationPanel
-            entity={course}
-            cards={cards ?? []}
-            reviewHistory={reviewHistory}
-            onUpdate={(changes) => updateCourse(course.id, changes)}
-            entityLabel="course"
-            headingLevel={3}
-          />
-
-          <DetachCourseSection
-            courseId={course.id}
-            autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
-          />
-
-          <DangerZoneSection
-            entityLabel="course"
-            entityName={course.name}
-            description="Deleting this course removes all of its lessons, notes and card assignments."
-            snapshot={() => snapshotCourse(course.id)}
-            onDelete={() => deleteCourse(course.id)}
-            onRestore={(snap) => restoreCourse(snap as CourseSnapshot)}
-            onDeleted={() => navigate('/')}
-          />
+          </SettingsArrivalProvider>
         </div>
-      </SettingsArrivalProvider>
+
+        <SectionRail
+          sections={COURSE_SETTINGS_SECTIONS}
+          activeSection={activeSection}
+          onNavigate={goToSection}
+          motionMultiplier={m}
+        />
+      </div>
     </div>
   );
 }

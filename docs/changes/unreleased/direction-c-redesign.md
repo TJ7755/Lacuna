@@ -43,7 +43,7 @@
   - Cards and course settings:
     - Cards: counted filter chips and a floating bulk-action bar.
     - Course settings: one readable column with a big target-recall figure and
-      presets.
+      presets, beside the shared section rail (a jump menu on narrow screens).
   - Questions:
     - The Individual questions bank, now behind the question set library, is a
       card grid with the last five results, the record, and marks with typical
