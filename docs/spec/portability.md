@@ -431,7 +431,7 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   "no lineage, treat as new" fallback a pre-v18 course already takes on import.
 - **Review panel (`MergeReviewPanel`, `src/components/import/MergeReviewPanel.tsx`)** — a
   course-scoped `/course/:courseId/updates` route reached from a quiet accent **"Update
-  available"** badge on the dashboard course card (`CourseCard.tsx`) and a **"Review
+  available"** badge on the course's row on Today (`TodayQueue.tsx`) and a **"Review
   updates"** entry point in the `CoursePath` header, both shown iff a `pendingMergeReviews`
   row exists for the course. Renders three sections — Updates, Removals, Conflicts — each
   row offering the accept/reject action pair, plus a bottom bar with a bulk **Accept all**.
