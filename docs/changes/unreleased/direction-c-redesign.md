@@ -196,3 +196,7 @@
   course tab, a lesson or search, instead of always the course: the flow
   remembers where it started in history and steps back past its own entries
   (`useLeaveFlow`), falling back to the course after a deep link.
+- Page shortcuts through one `usePageShortcuts` hook: S studies on Today, the
+  course page and lesson pages; N adds a card on the Cards page and on a lesson in
+  edit mode; / focuses the Cards search. They ignore typing, modifiers and open
+  dialogs, and are listed in the shortcuts cheatsheet and the Help page.

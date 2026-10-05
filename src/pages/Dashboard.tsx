@@ -1,4 +1,5 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
 import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -115,6 +116,9 @@ export function Dashboard() {
       reviewActivity ? weekSummary([...reviewActivity.values()].flat(), Date.now()) : undefined,
     [reviewActivity],
   );
+
+  const firstCourseId = rows?.[0]?.id;
+  usePageShortcuts({ s: firstCourseId ? () => navigate(`/course/${firstCourseId}/study`) : undefined });
 
   const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
   // A non-empty queue never reads as zero minutes.

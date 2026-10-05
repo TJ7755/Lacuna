@@ -52,6 +52,7 @@ import { updateLesson } from '../db/lessonRepository';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
 import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 
 interface LessonViewProps {
@@ -110,6 +111,26 @@ export function LessonView({
   // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
   // Card membership remains independent from the scheduling implementation.
   const lessonDeck = useLessonBackingDeck(courseId, lessonId);
+
+  const shortcutArchived = course?.archived === true;
+  usePageShortcuts({
+    s: shortcutArchived
+      ? undefined
+      : showStudyNow
+        ? (onStudy ?? (() => navigate(`/course/${courseId}/study`)))
+        : !isInline && lessonCards && lessonCards.length > 0
+          ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
+          : undefined,
+    n:
+      courseId &&
+      lessonId &&
+      course &&
+      !shortcutArchived &&
+      isLessonAuthoringMode(course) &&
+      resolveLessonViewMode(course) === 'edit'
+        ? () => navigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)
+        : undefined,
+  });
 
   // Loading state.
   if (

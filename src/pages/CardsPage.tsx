@@ -7,7 +7,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { originFrom } from '../utils/editorOrigin';
 import {
@@ -28,6 +28,7 @@ import { Menu } from '../components/ui/Menu';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
 import { filterSessionCardPool, type CardFilter } from '../db/search';
 import { arrivalDelay } from './settings/SettingsUi';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
 
@@ -74,6 +75,7 @@ export function CardsPage() {
       },
       { replace: true },
     );
+  const searchRef = useRef<HTMLInputElement>(null);
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
 
@@ -129,6 +131,11 @@ export function CardsPage() {
       ),
     };
   }, [cards, lessons, query, filters]);
+
+  usePageShortcuts({
+    '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,
+    n: courseId && course ? () => go(`/course/${courseId}/cards/new`) : undefined,
+  });
 
   if (
     course === undefined ||
@@ -199,6 +206,7 @@ export function CardsPage() {
         <div className="mb-6">
           <CardsToolbar
             search={search}
+            searchRef={searchRef}
             onSearch={setSearch}
             filters={filters}
             onToggleFilter={toggleFilter}

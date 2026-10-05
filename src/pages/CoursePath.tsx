@@ -45,6 +45,7 @@ import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
 
 const LazyLessonView = lazy(() =>
@@ -272,6 +273,8 @@ export function CoursePath() {
       }),
     [authoring, nodes, studyFlowSnapshot],
   );
+
+  usePageShortcuts({ s: dataLoaded && course && !archived ? () => openStudySheet(courseId) : undefined });
 
   // Loading state — a skeleton while course/lesson data resolves.
   if (!dataLoaded) {

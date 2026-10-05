@@ -3,6 +3,7 @@
 // chips combine with AND, as everywhere else those filters are used. Chips spring
 // when pressed, scaled by the motion multiplier.
 
+import type { Ref } from 'react';
 import { m as motion } from 'motion/react';
 import { SearchIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -20,6 +21,7 @@ export const CARD_FILTER_CHIPS: readonly { value: CardFilter; label: string }[] 
 
 export function CardsToolbar({
   search,
+  searchRef,
   onSearch,
   filters,
   onToggleFilter,
@@ -27,6 +29,7 @@ export function CardsToolbar({
   shown,
 }: {
   search: string;
+  searchRef?: Ref<HTMLInputElement>;
   onSearch: (value: string) => void;
   filters: ReadonlySet<CardFilter>;
   onToggleFilter: (filter: CardFilter) => void;
@@ -46,6 +49,7 @@ export function CardsToolbar({
           className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
         />
         <input
+          ref={searchRef}
           type="search"
           aria-label="Search all cards"
           value={search}

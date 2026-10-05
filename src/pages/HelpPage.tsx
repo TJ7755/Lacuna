@@ -446,6 +446,21 @@ export function HelpPage() {
                     <td className="px-4 py-3 text-ink-soft">Any time</td>
                   </tr>
                   <tr>
+                    <td className="px-4 py-3 text-ink-soft">Study</td>
+                    <td className="px-4 py-3 font-medium text-ink">S</td>
+                    <td className="px-4 py-3 text-ink-soft">Today, course and lesson pages</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">New card</td>
+                    <td className="px-4 py-3 font-medium text-ink">N</td>
+                    <td className="px-4 py-3 text-ink-soft">Cards page, lesson in edit mode</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Search cards</td>
+                    <td className="px-4 py-3 font-medium text-ink">/</td>
+                    <td className="px-4 py-3 text-ink-soft">Cards page</td>
+                  </tr>
+                  <tr>
                     <td className="px-4 py-3 text-ink-soft">Save or submit</td>
                     <td className="px-4 py-3 font-medium text-ink">Ctrl/Cmd+Enter</td>
                     <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>

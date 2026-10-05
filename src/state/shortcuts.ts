@@ -22,6 +22,14 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Pages',
+    shortcuts: [
+      { keys: ['S'], description: 'Study (Today, course and lesson pages)' },
+      { keys: ['N'], description: 'New card (Cards page, lesson in edit mode)' },
+      { keys: ['/'], description: 'Search cards (Cards page)' },
+    ],
+  },
+  {
     title: 'Dialogs and editors',
     shortcuts: [
       { keys: ['Ctrl/Cmd', 'Enter'], description: 'Save or submit' },
