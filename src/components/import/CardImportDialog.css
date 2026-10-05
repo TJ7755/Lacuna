@@ -342,6 +342,8 @@
 }
 .card-import-switch {
   position: relative;
+  /* Decorative: clicks reach the real checkbox beneath it. */
+  pointer-events: none;
   width: 52px;
   height: 30px;
   border-radius: 999px;

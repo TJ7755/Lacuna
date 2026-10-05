@@ -48,7 +48,7 @@ for (const width of [1280, 390]) {
     await importer.getByRole('radio', { name: /Steady retention/ }).check();
     await importer.getByRole('checkbox', { name: 'Also create reverse' }).check();
     await expect(importer.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
-    await importer.getByRole('button', { name: 'Undo' }).click();
+    await importer.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(importer.getByLabel('Paste your cards')).toHaveValue(
       'Import greeting\thello\n{{c1::Paris}} is in France',
     );
@@ -83,7 +83,7 @@ for (const width of [1280, 390]) {
     const first = await dialog.boundingBox();
     await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
     expect(await dialog.boundingBox()).toEqual(first);
-    await dialog.getByRole('button', { name: 'Undo' }).click();
+    await dialog.getByRole('button', { name: 'Back', exact: true }).click();
     expect((await importedCards(page)).length).toBe(before + 3);
     await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
     await dialog.getByRole('button', { name: 'Import 1 cards' }).click();
