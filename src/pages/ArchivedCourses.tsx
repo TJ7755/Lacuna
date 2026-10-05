@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { updateCourse } from '../db/courseRepository';
 import { useCourses } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
+import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { useToast } from '../components/ui/Toast';
 import {
   markFinalExamHandled,
@@ -28,19 +29,18 @@ export function ArchivedCourses() {
       {archived === undefined ? null : archived.length === 0 ? (
         <div className="border-t border-line py-10">
           <h2 className="font-display text-2xl">No archived courses</h2>
-          <p className="mt-2 text-sm text-ink-soft">Courses you archive will appear here.</p>
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {archived.map((course) => (
             <li
               key={course.id}
-              className="group relative flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-5 transition-colors hover:border-line-strong focus-within:ring-2 focus-within:ring-accent/25"
+              className={`${SECTION_CARD_SURFACE_CLASS} group relative flex items-center justify-between gap-4 p-5 transition-shadow hover:shadow-[0_1px_2px_hsl(var(--ink)/0.06),0_18px_40px_-24px_hsl(var(--ink)/0.3)] focus-within:ring-2 focus-within:ring-accent/25`}
             >
               <Link
                 to={`/course/${course.id}`}
                 aria-label={`Open ${course.name}`}
-                className="absolute inset-0 rounded-2xl focus-visible:outline-none"
+                className="absolute inset-0 rounded-3xl focus-visible:outline-none"
               />
               <div className="pointer-events-none relative min-w-0">
                 <h2 className="truncate font-display text-xl">{course.name}</h2>

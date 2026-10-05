@@ -715,15 +715,6 @@ export function Sidebar({
             ))}
           </AnimatePresence>
 
-          <div className="mt-0.5 [&_a]:text-sm [&_a]:text-ink-faint">
-            <NavItem
-              to="/archived"
-              icon={<ArchiveIcon />}
-              label="Archived"
-              collapsed={collapsed}
-              compact={sidebarSettings.compactMode}
-            />
-          </div>
           {sidebarCourses.length === 0 && !collapsed && (
             <motion.p
               initial={{ opacity: 0 }}
@@ -737,6 +728,15 @@ export function Sidebar({
               {courses?.length ? 'No active courses.' : 'No courses yet.'}
             </motion.p>
           )}
+          <div className="mt-0.5 [&_a]:text-sm [&_a]:text-ink-faint">
+            <NavItem
+              to="/archived"
+              icon={<ArchiveIcon />}
+              label="Archived"
+              collapsed={collapsed}
+              compact={sidebarSettings.compactMode}
+            />
+          </div>
         </div>
       </nav>
 

@@ -160,14 +160,11 @@ function SettingsGroup({
       aria-labelledby={headingId}
       className="mb-8 scroll-mt-20 first:mt-0 [&>section]:scroll-mt-20"
     >
-      <div className="mb-3 px-1">
-        <h2
-          id={headingId}
-          className="font-body text-[13px] font-bold tracking-normal text-ink-faint"
-        >
-          {title}
-        </h2>
-      </div>
+      {/* The section rail already names the group on screen; the heading keeps
+          the outline for assistive technology. */}
+      <h2 id={headingId} className="sr-only">
+        {title}
+      </h2>
       <SettingsHeadingLevelProvider level={3}>{children}</SettingsHeadingLevelProvider>
     </section>
   );

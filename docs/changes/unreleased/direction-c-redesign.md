@@ -145,3 +145,7 @@
 - The study target (new course and final assessment) is one shared tile pair
   with icons and a tick, in place of two bordered native radio cards. It still
   asks for an explicit choice, so no course gets an exam date by accident.
+- Settings drops the small group label above each card (the section rail
+  already names it; the heading stays for screen readers). Archived courses
+  use the shared card surface, and the sidebar's empty message sits where the
+  courses would, above Archived.

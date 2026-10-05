@@ -93,7 +93,12 @@ describe('Sidebar', () => {
   it('says no active courses when every course is archived', () => {
     mockCourses = [{ id: 'archived', name: 'Finished course', archived: true } as Course];
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(screen.getByText('No active courses.')).toBeInTheDocument();
+    const message = screen.getByText('No active courses.');
+    // The message stands in for the course list, so it sits above Archived.
+    expect(
+      message.compareDocumentPosition(screen.getByRole('link', { name: /Archived/ })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     mockCourses = [];
   });
 
