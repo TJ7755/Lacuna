@@ -200,3 +200,9 @@
   course page and lesson pages; N adds a card on the Cards page and on a lesson in
   edit mode; / focuses the Cards search. They ignore typing, modifiers and open
   dialogs, and are listed in the shortcuts cheatsheet and the Help page.
+- Keyboard-first editors: the sequence, occlusion, lesson-note, question-set and
+  import flows open on their first field, save or continue with Ctrl/Cmd+Enter and
+  cancel with Escape while nothing has been entered (question sets step back, as
+  drafts autosave). Tab from the last text field reaches the primary action. In the
+  sequence editor Ctrl/Cmd+Enter inside an item still adds the next item. The new
+  `useEditorKeys` hook never stops propagation, so the shell shortcuts keep working.

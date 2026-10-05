@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent, type SyntheticEvent } from 'react';
 
 interface DialogKeyOptions {
   onCancel: () => void;
@@ -33,5 +33,42 @@ export function dialogKeyDown({ onCancel, onSubmit, enterSubmits, ignore }: Dial
         onSubmit();
       }
     }
+  };
+}
+
+/**
+ * Keys for full-page and inline editors, as opposed to modal dialogs: it never stops
+ * propagation, so the shell's own shortcuts keep working. Ctrl/Cmd+Enter submits unless a
+ * field already used it (for example "add the next item"), and Escape cancels only while
+ * nothing has been typed or clicked, so a stray Escape cannot discard work. Spread the result
+ * onto the editor's root element.
+ */
+export function useEditorKeys({
+  onCancel,
+  onSubmit,
+}: {
+  onCancel: () => void;
+  onSubmit?: () => void;
+}) {
+  const dirty = useRef(false);
+  const markDirty = (event: SyntheticEvent) => {
+    if (event.type === 'input' || (event.target as Element).closest('button')) {
+      dirty.current = true;
+    }
+  };
+  return {
+    onInput: markDirty,
+    onClick: markDirty,
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.defaultPrevented) return;
+      const target = event.target as Element;
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && onSubmit) {
+        event.preventDefault();
+        onSubmit();
+      } else if (event.key === 'Escape' && !dirty.current && target.tagName !== 'SELECT') {
+        event.preventDefault();
+        onCancel();
+      }
+    },
   };
 }

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useEditorKeys } from '../../hooks/dialogKeys';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
@@ -22,6 +23,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
   const [name, setName] = useState(note?.name ?? '');
   const [content, setContent] = useState(note?.content ?? '');
 
+  const saveRef = useRef<HTMLButtonElement>(null);
   const canSave = name.trim().length > 0 && !busy;
 
   async function handleSave() {
@@ -29,8 +31,10 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
     await onSave({ name: name.trim(), content });
   }
 
+  const keys = useEditorKeys({ onCancel: () => !busy && onCancel(), onSubmit: () => void handleSave() });
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" {...keys}>
       {/* Note title */}
       <div>
         <label className="mb-1.5 block text-sm text-ink-faint">
@@ -42,16 +46,12 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
           onChange={(e) => setName(e.target.value)}
           placeholder="Note title"
           disabled={busy}
+          autoFocus
           className={cn(
             'w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink',
             'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
             'disabled:opacity-40',
           )}
-          onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-              void handleSave();
-            }
-          }}
         />
       </div>
 
@@ -63,6 +63,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
         label="Content"
         minRows={8}
         allowEmbeds
+        onTabForward={() => saveRef.current?.focus()}
       />
 
       {/* Actions */}
@@ -71,6 +72,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
           Cancel
         </Button>
         <Button
+          ref={saveRef}
           variant="primary"
           size="sm"
           onClick={() => void handleSave()}
