@@ -149,3 +149,5 @@
   already names it; the heading stays for screen readers). Archived courses
   use the shared card surface, and the sidebar's empty message sits where the
   courses would, above Archived.
+- A lesson with one note no longer opens on an empty band in View mode: the
+  note's tab and control row folds away and slides in for Edit.

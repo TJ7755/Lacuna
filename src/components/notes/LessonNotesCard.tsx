@@ -12,7 +12,7 @@ import { Button } from '../ui/Button';
 import { ConfirmInlineSwap } from '../ui/ConfirmInline';
 import { ChevronDownIcon, EditIcon, PlusIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
-import { motionTransition, scaledSpring } from '../ui/motion';
+import { collapse, motionTransition, scaledSpring } from '../ui/motion';
 import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/noteRepository';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { Note } from '../../db/types';
@@ -89,8 +89,16 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
         className,
       )}
     >
-      {/* The row keeps its height in both modes so edit controls never push the text. */}
-      <div className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-normal">
+      {/* A single note in View mode needs neither tabs nor controls, so the row
+          folds away rather than leaving an empty band above the text. */}
+      <AnimatePresence initial={false}>
+      {(showTabs || editable) && (
+      <motion.div
+        key="note-bar"
+        {...collapse(m)}
+        data-note-bar=""
+        className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-normal"
+      >
         {showTabs ? (
           <div role="tablist" aria-label="Notes" className="flex min-w-0 gap-5 overflow-x-auto">
             <LayoutGroup id={`note-tabs-${lessonId}`}>
@@ -206,7 +214,9 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
+      )}
+      </AnimatePresence>
 
       {addingNote && (
         <LessonNoteEditor
