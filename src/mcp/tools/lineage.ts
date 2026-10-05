@@ -122,6 +122,21 @@ function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
   };
 }
 
+function assertQuestionSetLineagePreviewSupported(
+  payload: Awaited<ReturnType<typeof decodeShare>>,
+  mapping: LineageIdMapping,
+): void {
+  if (((payload.v === 4 || payload.v === 5) && payload.questionSets.length > 0) ||
+      (mapping.questionSetIds?.length ?? 0) > 0 ||
+      (payload.v === 5 && payload.questionSetPracticeNodes.length > 0) ||
+      (mapping.questionSetPracticeNodeIds?.length ?? 0) > 0) {
+    throw new McpToolException({
+      kind: 'validation',
+      message: 'Lineage preview and apply do not yet support authored Question Sets.',
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // lacuna.diff_lineage_update
 // ---------------------------------------------------------------------------
@@ -187,6 +202,7 @@ const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateContract
       : [];
 
     const mapping = (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
+    assertQuestionSetLineagePreviewSupported(payload, mapping);
     const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
 
     const diffInput: LineageDiffInput = {
@@ -231,6 +247,9 @@ const applyLineageUpdate: ToolDefinition<z.infer<typeof applyLineageUpdateContra
     if (!isLineagePayload(payload)) {
       throw new McpToolException({ kind: 'validation', message: 'Share code does not carry a course lineage.' });
     }
+
+    const mapping = (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
+    assertQuestionSetLineagePreviewSupported(payload, mapping);
 
     const merge = await mergeLineageUpdate(courseId, payload);
 

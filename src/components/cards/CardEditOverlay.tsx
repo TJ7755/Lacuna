@@ -5,7 +5,7 @@ import { TagInput } from '../ui/TagInput';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { updateCard } from '../../db/cardRepository';
-import { hasCloze } from '../markdown/cloze';
+import { hasCloze } from '../../utils/cloze';
 import { cn } from '../ui/cn';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import type { Card, CardType } from '../../db/types';

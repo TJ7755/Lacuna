@@ -6,7 +6,7 @@
 // The engine is pure (no side-effects) so it can be called from any context:
 // paste, file upload, clipboard detection, or share-code import.
 
-import { hasCloze } from '../components/markdown/cloze';
+import { hasCloze } from '../utils/cloze';
 import { parseImport, type ParsedCard, type ImportParseResult } from './import';
 
 // ---------------------------------------------------------------------------

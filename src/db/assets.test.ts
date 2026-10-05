@@ -34,6 +34,10 @@ async function reset() {
     db.courses.clear(),
     db.lessons.clear(),
     db.notes.clear(),
+    db.questions.clear(),
+    db.questionAttempts.clear(),
+    db.questionSets.clear(),
+    db.appState.clear(),
   ]);
 }
 
@@ -266,6 +270,28 @@ describe('image assets', () => {
     expect(await collectOrphanedAssets()).toBe(1);
     expect(await db.assets.get(orphan.hash)).toBeUndefined();
     expect(await db.assets.get(kept.hash)).toBeDefined();
+  });
+
+  it('keeps assets referenced only by Questions, attempts, question sets or drafts', async () => {
+    const store = (label: string) =>
+      storeImageBlob(new Blob([label], { type: 'image/png' }), 'image/png', 1, 1);
+    const [question, attempt, set, draft, orphan] = await Promise.all(
+      ['question', 'attempt', 'set', 'draft', 'orphan'].map(store),
+    );
+    const embed = (hash: string) => `![diagram](${assetUrl(hash)})`;
+    // Garbage collection scans stored values for references, so the rows need only carry one.
+    await db.questions.put({ id: 'q', prompt: embed(question.hash) } as never);
+    await db.questionAttempts.put({ id: 'qa', receipt: embed(attempt.hash) } as never);
+    await db.questionSets.put({ id: 'qs', questions: [{ prompt: embed(set.hash) }] } as never);
+    await db.appState.put({
+      key: 'questionSetDraft:qs',
+      value: { content: { questions: [{ prompt: embed(draft.hash) }] } },
+    } as never);
+
+    expect(await collectOrphanedAssets()).toBe(1);
+    expect(await db.assets.get(orphan.hash)).toBeUndefined();
+    for (const kept of [question, attempt, set, draft])
+      expect(await db.assets.get(kept.hash)).toBeDefined();
   });
 
   it('runs one deferred orphan sweep after rapid rescheduling', async () => {

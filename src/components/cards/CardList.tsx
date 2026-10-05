@@ -1,3 +1,4 @@
+import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
@@ -1408,6 +1409,7 @@ const CardRow = React.memo(function CardRow({
                   schedulingConfig={schedulingConfig}
                   motionMultiplier={m}
                 />
+                {card.courseId && <RelatedQuestionSets courseId={card.courseId} cardId={card.id} />}
               </div>
             </motion.div>
           )}

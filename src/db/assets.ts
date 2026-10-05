@@ -196,8 +196,20 @@ export async function storeImageBlob(
   width: number,
   height: number,
 ): Promise<MediaAsset> {
+  const asset = await prepareImageAsset(blob, mimeType, width, height);
+  await db.assets.put(asset);
+  return asset;
+}
+
+/** Prepare an image row without persisting it, for caller-owned atomic transactions. */
+export async function prepareImageAsset(
+  blob: Blob,
+  mimeType: string,
+  width: number,
+  height: number,
+): Promise<MediaAsset> {
   const hash = await sha256Blob(blob);
-  const asset: MediaAsset = {
+  return {
     hash,
     blob: new Uint8Array(await blobToArrayBuffer(blob)),
     mimeType,
@@ -206,8 +218,6 @@ export async function storeImageBlob(
     height,
     createdAt: Date.now(),
   };
-  await db.assets.put(asset);
-  return asset;
 }
 
 export async function storeAudioBlob(blob: Blob, mimeType = blob.type): Promise<MediaAsset> {
@@ -378,67 +388,109 @@ export async function collectOrphanedAssets(): Promise<number> {
   if (gcRunning) return 0;
   gcRunning = true;
   try {
-    // Build the set of referenced hashes by streaming every persisted Markdown
-    // owner in batches so note-only images are not mistaken for orphans.
-    const referenced = new Set<string>();
-    const batchSize = 500;
-    let cardOffset = 0;
-    for (;;) {
-      const batch = await db.cards.offset(cardOffset).limit(batchSize).toArray();
-      if (batch.length === 0) break;
-      for (const card of batch) {
-        referencedAssetHashes(`${card.front}\n${card.back}`).forEach((h) => referenced.add(h));
-      }
-      cardOffset += batch.length;
-    }
-    let noteOffset = 0;
-    for (;;) {
-      const batch = await db.notes.offset(noteOffset).limit(batchSize).toArray();
-      if (batch.length === 0) break;
-      for (const note of batch) {
-        referencedAssetHashes(note.content).forEach((h) => referenced.add(h));
-      }
-      noteOffset += batch.length;
-    }
-    // An occlusion's diagram is referenced solely by `Occlusion.assetHash`, not by any
-    // Markdown the regex above scans (its generated cards carry only a plain-text
-    // fallback, per occlusionGeneration.ts) — without this, GC would delete a diagram out
-    // from under the cards generated from it.
-    let occlusionOffset = 0;
-    for (;;) {
-      const batch = await db.occlusions.offset(occlusionOffset).limit(batchSize).toArray();
-      if (batch.length === 0) break;
-      for (const occlusion of batch) {
-        referenced.add(occlusion.assetHash);
-      }
-      occlusionOffset += batch.length;
-    }
-    let questionOffset = 0;
-    for (;;) {
-      const batch = await db.questions.offset(questionOffset).limit(batchSize).toArray();
-      if (batch.length === 0) break;
-      referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
-      questionOffset += batch.length;
-    }
-    // Attempts deliberately outlive deleted Questions, so their rendered receipts
-    // remain asset owners even when no definition references the media any more.
-    let attemptOffset = 0;
-    for (;;) {
-      const batch = await db.questionAttempts.offset(attemptOffset).limit(batchSize).toArray();
-      if (batch.length === 0) break;
-      referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
-      attemptOffset += batch.length;
-    }
+    return await db.transaction(
+      'rw',
+      [
+        db.cards,
+        db.notes,
+        db.occlusions,
+        db.questions,
+        db.questionAttempts,
+        db.questionSets,
+        db.questionSetAttempts,
+        db.appState,
+        db.assets,
+      ],
+      async () => {
+        // Build the set of referenced hashes by streaming every persisted Markdown
+        // owner in batches so note-only images are not mistaken for orphans.
+        const referenced = new Set<string>();
+        const batchSize = 500;
+        let cardOffset = 0;
+        for (;;) {
+          const batch = await db.cards.offset(cardOffset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          for (const card of batch) {
+            referencedAssetHashes(`${card.front}\n${card.back}`).forEach((h) => referenced.add(h));
+          }
+          cardOffset += batch.length;
+        }
+        let noteOffset = 0;
+        for (;;) {
+          const batch = await db.notes.offset(noteOffset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          for (const note of batch) {
+            referencedAssetHashes(note.content).forEach((h) => referenced.add(h));
+          }
+          noteOffset += batch.length;
+        }
+        // An occlusion's diagram is referenced solely by `Occlusion.assetHash`, not by any
+        // Markdown the regex above scans (its generated cards carry only a plain-text
+        // fallback, per occlusionGeneration.ts) — without this, GC would delete a diagram out
+        // from under the cards generated from it.
+        let occlusionOffset = 0;
+        for (;;) {
+          const batch = await db.occlusions.offset(occlusionOffset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          for (const occlusion of batch) {
+            referenced.add(occlusion.assetHash);
+          }
+          occlusionOffset += batch.length;
+        }
+        let questionOffset = 0;
+        for (;;) {
+          const batch = await db.questions.offset(questionOffset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+          questionOffset += batch.length;
+        }
+        // Attempts deliberately outlive deleted Questions, so their rendered receipts
+        // remain asset owners even when no definition references the media any more.
+        let attemptOffset = 0;
+        for (;;) {
+          const batch = await db.questionAttempts.offset(attemptOffset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+          attemptOffset += batch.length;
+        }
+        let questionSetOffset = 0;
+        for (;;) {
+          const batch = await db.questionSets.offset(questionSetOffset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+          questionSetOffset += batch.length;
+        }
+        let questionSetAttemptOffset = 0;
+        for (;;) {
+          const batch = await db.questionSetAttempts
+            .offset(questionSetAttemptOffset)
+            .limit(batchSize)
+            .toArray();
+          if (batch.length === 0) break;
+          referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+          questionSetAttemptOffset += batch.length;
+        }
+        // Author drafts are deliberately local-only app state, but their media must remain
+        // reachable until the author either publishes or discards the draft.
+        const draftEntries = await db.appState
+          .where('key')
+          .startsWith('questionSetDraft:')
+          .toArray();
+        referencedAssetHashesInValues(draftEntries.map((entry) => entry.value)).forEach((hash) =>
+          referenced.add(hash),
+        );
 
-    // Stream asset keys and collect orphans without loading all keys at once.
-    const orphans: string[] = [];
-    await db.assets.toCollection().eachPrimaryKey((hash) => {
-      if (!referenced.has(hash)) orphans.push(hash);
-    });
-    if (orphans.length > 0) {
-      await db.assets.bulkDelete(orphans);
-    }
-    return orphans.length;
+        // Stream asset keys and collect orphans without loading all keys at once.
+        const orphans: string[] = [];
+        await db.assets.toCollection().eachPrimaryKey((hash) => {
+          if (!referenced.has(hash)) orphans.push(hash);
+        });
+        if (orphans.length > 0) {
+          await db.assets.bulkDelete(orphans);
+        }
+        return orphans.length;
+      },
+    );
   } finally {
     gcRunning = false;
   }

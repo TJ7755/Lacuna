@@ -13,7 +13,7 @@ test('the Question editor footer clears the phone course bar', async ({ page }) 
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Generated family' }).click();
   await page.getByRole('button', { name: 'Create Question' }).click();
-  await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions$`));
+  await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/questions\\?view=individual$`));
 
   // Seeded at desktop width, where the section bar is absent; the editor is then
   // opened at phone width.

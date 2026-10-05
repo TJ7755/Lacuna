@@ -29,6 +29,7 @@ import type { AiSession, AiSessionCommandResult, AiSessionSnapshot } from './typ
 import { appendConversationItems, applyTerminalEvent, expireClaimLease } from './relayEvents';
 import {
   createRelaySessionPersistence,
+  type RelaySessionPersistence,
   type PersistedRelayConnection,
   type RelaySessionStorage,
 } from './relayPersistence';
@@ -69,6 +70,8 @@ export interface RelaySessionCrypto {
 export interface RelayAiSessionOptions {
   relay: RelayClient;
   storage?: RelaySessionStorage;
+  /** Replaces storage-backed persistence; `storage` is then unused. */
+  persistence?: RelaySessionPersistence;
   timers?: RelaySessionTimers;
   crypto?: RelaySessionCrypto;
   now?: () => number;
@@ -89,8 +92,9 @@ export function clearPersistedRelayAiDeviceState(
 }
 
 export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSession {
-  const storage = options.storage ?? globalThis.localStorage;
-  const persistence = createRelaySessionPersistence(storage);
+  const persistence =
+    options.persistence ??
+    createRelaySessionPersistence(options.storage ?? globalThis.localStorage);
   const timers = options.timers ?? browserTimers();
   const crypto = options.crypto ?? browserCrypto();
   const now = options.now ?? Date.now;

@@ -16,6 +16,8 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
 } from '../questions/types';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -779,7 +781,7 @@ export interface NoteAnnotation {
 export interface PracticeNode {
   id: string;
   courseId: string;
-  type: 'auto' | 'manual';
+  type: 'auto' | 'manual' | 'question-set';
   /** Only meaningful for `manual`; `auto` nodes are positioned at render time. */
   position?: number;
   name: string;
@@ -789,9 +791,19 @@ export interface PracticeNode {
   /** Limit the session to N cards. */
   cardCount?: number;
   randomize?: boolean;
+  /** Authored Question Set activity only; never used as a Card practice scope. */
+  questionSetId?: string;
+  /** Exact lesson anchor for a Question Set activity. */
+  afterLessonId?: string;
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt. */
   updatedAt: number;
+}
+
+export interface QuestionSetPracticeNode extends PracticeNode {
+  type: 'question-set';
+  questionSetId: string;
+  afterLessonId: string;
 }
 
 /** Persisted progress for one stable practice path node and its current card scope. */
@@ -1158,7 +1170,8 @@ export interface SyncState {
 
 /** Shape of an exported/imported backup file. */
 export interface BackupFile {
-  app: 'lacuna';
+  /** New markers make older readers reject collections they cannot preserve. */
+  app: 'lacuna' | 'lacuna-v12' | 'lacuna-v13' | 'lacuna-v14';
   version: number;
   exportedAt: number;
   /** Pre-v22 Deck rows. Current exports omit this; a non-empty array is refused. */
@@ -1169,6 +1182,10 @@ export interface BackupFile {
   questions?: QuestionDefinition[];
   questionConcepts?: QuestionConceptSet[];
   questionAttempts?: QuestionAttempt[];
+  /** Authored question-set content. Required from backup/snapshot version 12. */
+  questionSets?: QuestionSetRecord[];
+  /** Personal authored-set attempts. Required from backup/snapshot version 13. */
+  questionSetAttempts?: QuestionSetAttemptRecord[];
   /** Durable AI teaching context. Optional so existing v11 backups remain valid. */
   agentMemories?: AgentMemory[];
   /** Canonical review events when exported from schema v20 or later. */
@@ -1232,6 +1249,21 @@ export interface LineageIdMapping {
   conceptIds?: string[];
   /** Originating Question ids carried by v3 course shares. */
   questionIds?: string[];
+  /** Originating authored Question Set ids carried by v4 course shares. */
+  questionSetIds?: string[];
+  /** Last teacher-authored revision imported for each set, used to detect local edits. */
+  questionSetRevisions?: Record<string, string>;
+  /** Adopted published assessments and their last imported authored content. */
+  assessmentIds?: string[];
+  assessmentSnapshots?: Record<string, Omit<CourseAssessment, 'updatedAt'>>;
+  /** Adopted optional Question Set path activity IDs from v5 shares. */
+  questionSetPracticeNodeIds?: string[];
+  /** Last imported authored placement, used to reject local edits on update. */
+  questionSetPracticeNodeSnapshots?: Record<string, {
+    questionSetId: string;
+    afterLessonId: string;
+    name: string;
+  }>;
   /** Originating sequence ids already adopted as local ids. */
   sequenceIds: string[];
   /** Originating occlusion ids already adopted as local ids. Absent on mappings written

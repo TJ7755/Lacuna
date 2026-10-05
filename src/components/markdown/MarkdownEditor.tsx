@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type Ref } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
-import { nextClozeIndex } from './cloze';
+import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -13,6 +13,10 @@ interface MarkdownEditorProps {
   placeholder?: string;
   /** Show a Cloze button (only meaningful for cloze cards). */
   allowCloze?: boolean;
+  /** Let specialised editors own image persistence and descriptions. */
+  allowImages?: boolean;
+  layout?: 'split' | 'tabs';
+  compactToolbar?: boolean;
   /**
    * Opt-in to embed-aware toolbar actions and live-preview. Enables "Collapsible"
    * and "Video" toolbar buttons, and passes `allowEmbeds` to the preview pane.
@@ -83,6 +87,9 @@ export function MarkdownEditor({
   onChange,
   placeholder,
   allowCloze = false,
+  allowImages = true,
+  layout = 'split',
+  compactToolbar = false,
   allowEmbeds = false,
   minRows = 6,
   label,
@@ -107,6 +114,7 @@ export function MarkdownEditor({
   }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [moreTools, setMoreTools] = useState(false);
   const [mobileTab, setMobileTab] = useState<'write' | 'preview'>('write');
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -307,6 +315,7 @@ export function MarkdownEditor({
   ];
 
   async function insertImageFiles(files: FileList | File[]) {
+    if (!allowImages) return;
     const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
     if (images.length === 0) return;
     cancelHistoryTimer();
@@ -347,17 +356,35 @@ export function MarkdownEditor({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">
-        {actions.map((a) => (
+        {actions
+          .filter(
+            (a) =>
+              !compactToolbar ||
+              moreTools ||
+              ['Bold', 'Italic', 'Link', 'Inline maths'].includes(a.title),
+          )
+          .map((a) => (
+            <button
+              key={a.title}
+              type="button"
+              title={a.title}
+              onClick={() => runAction(a)}
+              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            >
+              {a.label}
+            </button>
+          ))}
+        {compactToolbar && (
           <button
-            key={a.title}
             type="button"
-            title={a.title}
-            onClick={() => runAction(a)}
-            className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            title="More formatting"
+            aria-expanded={moreTools}
+            onClick={() => setMoreTools(!moreTools)}
+            className="min-h-11 rounded-md px-2 text-xs text-ink-soft"
           >
-            {a.label}
+            {moreTools ? 'Less' : 'More'}
           </button>
-        ))}
+        )}
         {allowCloze && (
           <button
             type="button"
@@ -380,14 +407,16 @@ export function MarkdownEditor({
               {a.label}
             </button>
           ))}
-        <button
-          type="button"
-          title="Insert image"
-          onClick={() => fileInputRef.current?.click()}
-          className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
-        >
-          <ImageIcon width={15} height={15} />
-        </button>
+        {allowImages && (
+          <button
+            type="button"
+            title="Insert image"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+          >
+            <ImageIcon width={15} height={15} />
+          </button>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -398,7 +427,7 @@ export function MarkdownEditor({
         />
 
         {/* Mobile write/preview switch */}
-        <div className="ml-auto flex gap-1 md:hidden">
+        <div className={cn('ml-auto flex gap-1', layout === 'split' && 'md:hidden')}>
           {(['write', 'preview'] as const).map((tab) => (
             <button
               key={tab}
@@ -416,8 +445,8 @@ export function MarkdownEditor({
       </div>
 
       {/* Split: editor + live preview (stacked/tabbed on mobile) */}
-      <div className="grid md:grid-cols-2">
-        <div className={cn('md:block', mobileTab === 'preview' && 'hidden')}>
+      <div className={cn('grid', layout === 'split' && 'md:grid-cols-2')}>
+        <div className={cn(layout === 'split' && 'md:block', mobileTab === 'preview' && 'hidden')}>
           <textarea
             ref={setTextareaRef}
             autoFocus={autoFocus}
@@ -477,8 +506,9 @@ export function MarkdownEditor({
         </div>
         <div
           className={cn(
-            'min-h-[8rem] border-line px-4 py-3 md:border-l',
-            mobileTab === 'write' && 'hidden md:block',
+            'min-h-[8rem] border-line px-4 py-3',
+            layout === 'split' && 'md:border-l',
+            mobileTab === 'write' && (layout === 'split' ? 'hidden md:block' : 'hidden'),
           )}
         >
           <AnimatePresence mode="sync">

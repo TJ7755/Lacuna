@@ -282,6 +282,7 @@ describe('manualMerge', () => {
       questions: { kept: 0, added: 0, removed: 0 },
       questionConcepts: { kept: 0, added: 0, removed: 0 },
       questionAttempts: { kept: 0, added: 0, removed: 0 },
+      questionSets: { kept: 0, added: 0, removed: 0 },
     });
   });
 
@@ -297,7 +298,7 @@ describe('manualMerge', () => {
     await manualMerge(backup(), { beforeApply });
 
     expect(beforeApply).toHaveBeenCalledWith(
-      expect.objectContaining({ app: 'lacuna', version: 11 }),
+      expect.objectContaining({ app: 'lacuna-v14', version: 14 }),
     );
     expect(order).toEqual(['before-apply', 'import']);
   });
@@ -410,6 +411,7 @@ describe('summariseMerge', () => {
       questions: { kept: 0, added: 0, removed: 0 },
       questionConcepts: { kept: 0, added: 0, removed: 0 },
       questionAttempts: { kept: 0, added: 0, removed: 0 },
+      questionSets: { kept: 0, added: 0, removed: 0 },
     });
   });
 });

@@ -56,6 +56,10 @@ build without rebuilding — code changes silently stop taking effect and
 failures look impossible. When e2e results defy the current source, check
 `lsof -i :4173` and kill leftovers before trusting another run.
 
+Packaging while Vite dev is running can trigger full-page reloads as generated release HTML
+changes. Stop the dev server or use production preview for concurrent packaging/browser gates;
+otherwise transient form state can disappear during a check.
+
 ## Share-link state
 
 Keep `lacuna-relay.vercel.app` serving the same relay as `relay.getlacuna.app`, without
@@ -80,6 +84,25 @@ pre-replacement restore point survives. Recovery merge and peer merge use differ
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
 must cover candidate snapshotting and merging as well as import.
 
+## Question-set backup compatibility
+
+Older readers accept unfamiliar numeric backup versions. V12 therefore uses the `lacuna-v12`
+marker so they reject rather than discard sets. V13 uses `lacuna-v13` for personal
+set attempts; V14 uses `lacuna-v14` for Question Set path activities in the existing practice-node
+collection. Keep old markers as historical input formats, never emit new collections or row
+variants under them. Historical pre-migration files used schema
+numbers; raw v22/v23 still need the legacy Question adapter before current normalisation.
+
+Backup acceptance lives in the zod schemas (`backupValidation.ts`, `backupRecordSchemas.ts`,
+`backupStateSchemas.ts`), not `validateBackup`. A new version needs its `lacuna-vN` app id and
+required collections there; a new row variant (such as `question-set` practice nodes) needs a
+schema branch, or valid exports are rejected.
+
+## Course path rendering
+
+`CourseOverview` renders the course path and its companion detail. `PathNodeView` and
+`CoursePathSegment` are no longer mounted by any page, so path features added there never appear.
+
 ## Local Electron commands
 
 The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron application
@@ -102,6 +125,9 @@ at fixed dimensions and resize the isolated surface; verify text bounds mid-anim
 For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
 to viewport bounding boxes before comparing positions. Playwright can scroll a
 control into view while clicking, without changing the content's layout.
+
+The app shell disables text selection globally. New plain-text panels that support highlighting
+must opt into `select-text`; DOM selection tests without the real stylesheet miss this.
 
 In Recharts composed charts, a Scatter's own data can replace the chart-level data
 used for axis hover selection. Use reference dots for fixed annotations; chart
@@ -235,3 +261,10 @@ examples. Historical plans are evidence of past intent, not an active implementa
 The prompter explicitly values the graded-card departure and inter-card pause as delightful
 (26 September 2026). Preserve that timing when improving desktop throughput; make controls
 and cancellation reliable around it instead of treating the pause as a performance defect.
+
+## T3 preview frame delivery
+
+A visible preview can stop delivering `requestAnimationFrame` callbacks while DOM interaction still works;
+Motion transitions then appear frozen and screenshots can time out. Starting a T3 preview recording
+restored frame delivery during Questions review. Check frame delivery before treating this as an app
+animation defect, and stop the recording after verification.

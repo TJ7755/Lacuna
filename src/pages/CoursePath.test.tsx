@@ -2,7 +2,7 @@ import { CourseSectionNavigation } from '../components/course/CourseSectionNavig
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CoursePath } from './CoursePath';
 import { ToastProvider } from '../components/ui/Toast';
@@ -17,6 +17,7 @@ import type {
   PendingMergeReview,
   PracticeMilestone,
   PracticeNode,
+  QuestionSetPracticeNode,
 } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { practiceScopeVersion } from '../course/studyPools';
@@ -77,6 +78,24 @@ vi.mock('react-router-dom', async () => {
 vi.mock('dexie-react-hooks', () => ({
   useLiveQuery: (querier: () => unknown) => {
     const source = Function.prototype.toString.call(querier);
+    if (source.includes('listQuestionSetAttempts')) {
+      return {
+        content: {
+          id: 'question-set-1',
+          courseId: 'course-1',
+          title: 'Question set',
+          lessonIds: [],
+          assessmentIds: [],
+          contentVersion: 1,
+          contentRevisionId: 'content-1',
+          createdAt: 1,
+          updatedAt: 1,
+          questions: [],
+        },
+        attempt: null,
+        exam: undefined,
+      };
+    }
     if (source.includes('lessonCardExposures')) return live.exposures;
     if (source.includes('lessonCompletions')) return live.completions;
     if (source.includes('practiceMilestones')) return live.milestones;
@@ -298,6 +317,63 @@ describe('CoursePath Study mode', () => {
     }];
     renderPage();
     expect(screen.getByRole('button', { name: /Zoned exam 1 January 2027/ })).toBeInTheDocument();
+  });
+
+  it('shows a one-lesson course as a path when it contains a Practice Qs activity', () => {
+    mockLessons = [lesson1];
+    const activity: QuestionSetPracticeNode = {
+      id: 'question-set-activity-1',
+      courseId: course.id,
+      type: 'question-set',
+      name: 'Practice Qs',
+      questionSetId: 'question-set-1',
+      afterLessonId: lesson1.id,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    mockPracticeNodes = [activity];
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Practice Qs: Practice Qs' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open question set' }));
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/course/${course.id}/question-sets/${activity.questionSetId}`,
+      expect.objectContaining({ state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }) }),
+    );
+    expect(mockLessonViewProps).not.toHaveBeenCalled();
+  });
+
+  it('opens an assessment deep link after the CoursePath is already mounted', async () => {
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1']}>
+        <ToastProvider>
+          <Link to="/course/course-1?exam=assessment-1">Open path assessment link</Link>
+          <Routes>
+            <Route path="/course/:courseId" element={<CoursePath />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Open path assessment link' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Paper 1 details' })).toBeInTheDocument();
   });
 
   it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {

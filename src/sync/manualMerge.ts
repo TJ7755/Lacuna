@@ -25,6 +25,7 @@ export interface ManualMergeSummary {
   questions: MergeDelta;
   questionConcepts: MergeDelta;
   questionAttempts: MergeDelta;
+  questionSets: MergeDelta;
 }
 
 export class ManualMergeError extends Error {
@@ -125,6 +126,7 @@ export function summariseMerge(local: BackupFile, merged: BackupFile): ManualMer
       (row) => row.questionId,
     ),
     questionAttempts: deltaOf(before.questionAttempts, after.questionAttempts),
+    questionSets: deltaOf(before.questionSets, after.questionSets),
   };
 }
 

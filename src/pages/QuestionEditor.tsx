@@ -148,7 +148,7 @@ export function QuestionEditor() {
       }
       draft.finish();
       notify(questionId ? 'Question updated.' : 'Question created.', 'positive');
-      void navigate(`/course/${courseId}/questions`);
+      void navigate(`/course/${courseId}/questions?view=individual`);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not save the Question.', 'negative');
     } finally {
@@ -172,7 +172,7 @@ export function QuestionEditor() {
     await deleteQuestion(questionId);
     draft.finish();
     notify('Question deleted.', 'positive');
-    void navigate(`/course/${courseId}/questions`);
+    void navigate(`/course/${courseId}/questions?view=individual`);
   };
 
   if (

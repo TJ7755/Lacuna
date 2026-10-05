@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { validateAssessmentStructure } from './assessmentRepository';
+import type { CourseAssessment } from './types';
 import {
   answerMode,
   card,
@@ -274,6 +276,25 @@ export const stateSchemas = {
     lessonSnapshots: z.record(text, lessonContent.omit({ unlockedAt: true })),
     noteSnapshots: z.record(text, noteContent),
     cardSnapshots: z.record(text, cardContent),
+    assessmentIds: ids
+      .refine((values) => new Set(values).size === values.length, 'Duplicate assessment id')
+      .optional(),
+    assessmentSnapshots: z.record(text, z.looseObject({ id, courseId: id })).optional(),
+  }).superRefine((mapping, context) => {
+    for (const [key, snapshot] of Object.entries(mapping.assessmentSnapshots ?? {})) {
+      let valid = snapshot.id === key && snapshot.courseId === mapping.courseId;
+      try {
+        if (valid) validateAssessmentStructure({ ...snapshot, updatedAt: 0 } as CourseAssessment);
+      } catch {
+        valid = false;
+      }
+      if (!valid)
+        context.addIssue({
+          code: 'custom',
+          path: ['assessmentSnapshots', key],
+          message: 'Invalid assessment snapshot',
+        });
+    }
   }),
   pendingMergeReviews: object({
     id,

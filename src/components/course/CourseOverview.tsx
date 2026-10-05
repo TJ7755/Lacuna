@@ -10,7 +10,9 @@ import { formatDate } from '../../utils/datetime';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
 import { Button } from '../ui/Button';
-import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
+import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon, HelpIcon } from '../ui/icons';
+import { QuestionSetCourseDetail } from './QuestionSetCourseDetail';
+import { useQuestionSetTitles } from './useQuestionSetPathData';
 import './course-overview.css';
 
 interface CourseOverviewProps {
@@ -42,6 +44,7 @@ export function CourseOverview(props: CourseOverviewProps) {
   const { nodes, authoring, archived, practiceProgress } = props;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingLesson, setAddingLesson] = useState(false);
+  const questionSetTitles = useQuestionSetTitles(nodes);
   const selected =
     nodes.find((node) => node.id === selectedId) ??
     nodes.find((node) => node.nodeType === 'lesson' && node.status === 'available') ??
@@ -78,6 +81,7 @@ export function CourseOverview(props: CourseOverviewProps) {
           {authoring && (
             <div ref={addRef}>
               <AddCourseControl
+                kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
                 onAdd={(kind) => {
                   if (kind === 'lesson') setAddingLesson(true);
                   else props.onAdd(kind);
@@ -115,20 +119,24 @@ export function CourseOverview(props: CourseOverviewProps) {
                 node.nodeType === 'practice-manual' || node.nodeType === 'practice-auto'
                   ? node
                   : undefined;
+              const questionSet = node.nodeType === 'practice-question-set' ? node : undefined;
               const progress = practice ? practiceProgress.get(practice.nodeKey) : undefined;
-              const name = nodeName(node);
+              const name =
+                (questionSet && questionSetTitles.get(questionSet.questionSetId)) ?? nodeName(node);
               const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
               const reorder = lesson && authoring ? props.reorderFor(lesson.lesson.id) : undefined;
               const label = checkpoint
                 ? `${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${name}`
                 : practice
                   ? `Manual practice: ${name}, ${Math.round((progress?.fraction ?? 0) * 100)}% secured`
-                  : lesson?.status === 'locked' && authoring
-                    ? `${name}, locked for study`
-                    : name;
+                  : questionSet
+                    ? `Practice Qs: ${name}`
+                    : lesson?.status === 'locked' && authoring
+                      ? `${name}, locked for study`
+                      : name;
               return (
                 <div
-                  className={`course-stop ${status} ${checkpoint ? 'course-checkpoint' : practice ? 'course-practice' : ''}`}
+                  className={`course-stop ${status} ${checkpoint ? 'course-checkpoint' : practice || questionSet ? 'course-practice' : ''}`}
                   key={node.id}
                 >
                   {index < nodes.length - 1 && (
@@ -186,6 +194,8 @@ export function CourseOverview(props: CourseOverviewProps) {
                         <FlagIcon />
                       ) : practice ? (
                         <CardsIcon />
+                      ) : questionSet ? (
+                        <HelpIcon />
                       ) : status === 'completed' ? (
                         <CheckIcon />
                       ) : status === 'locked' ? (
@@ -223,7 +233,9 @@ export function CourseOverview(props: CourseOverviewProps) {
                         ? `${props.detailForLesson(lesson.lesson.id).cardCount} cards${lesson.lesson.isExtension ? ' · Extension' : ''}`
                         : checkpoint
                           ? 'Checkpoint'
-                          : 'Practice'}
+                          : questionSet
+                            ? 'Practice Qs'
+                            : 'Practice'}
                     </span>
                     {authoring && practice && (
                       <button
@@ -289,6 +301,8 @@ function nodeName(node: PathNode): string {
 }
 
 function CourseNodeDetail({ node, ...props }: CourseOverviewProps & { node: PathNode }) {
+  if (node.nodeType === 'practice-question-set')
+    return <QuestionSetCourseDetail node={node} authoring={props.authoring && !props.archived} />;
   const lesson = node.nodeType === 'lesson' ? node : undefined;
   const practice =
     node.nodeType === 'practice-manual' || node.nodeType === 'practice-auto' ? node : undefined;

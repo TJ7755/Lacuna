@@ -1008,4 +1008,46 @@ describe('buildPath progress and manual-node edge cases', () => {
     expect(manual.map((node) => node.id)).toEqual(['a', 'b']);
     expect(restoredManual[0].milestone).toEqual(milestone);
   });
+
+  it('anchors a Question Set activity to its lesson without adding a Card practice gate', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
+    const lessons = [
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const questionActivity = makePracticeNode({
+      id: 'question-activity', courseId: 'c1', type: 'question-set',
+      questionSetId: 'set-1', afterLessonId: 'l1',
+    });
+    const nodes = buildPath(course, lessons, [], new Map(), [questionActivity]);
+    expect(nodes.map((node) => node.nodeType)).toEqual([
+      'lesson', 'lesson', 'practice-question-set',
+    ]);
+    expect(nodes[2]).toMatchObject({
+      id: 'question-activity', nodeKey: 'question-activity',
+      questionSetId: 'set-1', afterLessonId: 'l1',
+    });
+    expect(practiceGateAfterLesson(lessons, [questionActivity], 'l1')).toBe(false);
+    expect(manualPracticeGateOutcomeAfterLesson(
+      lessons, [questionActivity], 'l1', new Set(['question-activity']), new Set(),
+    )).toBeUndefined();
+  });
+
+  it('orders Practice Qs activities by creation and drops ones without a lesson in this course', () => {
+    const course = makeCourse({ id: 'c1' });
+    const lessons = [makeLesson({ id: 'l0', courseId: 'c1', orderIndex: 0 })];
+    const activity = (id: string, createdAt: number, overrides = {}) =>
+      makePracticeNode({
+        id, courseId: 'c1', type: 'question-set', questionSetId: `set-${id}`,
+        afterLessonId: 'l0', createdAt, ...overrides,
+      });
+    const nodes = buildPath(course, lessons, [], new Map(), [
+      activity('later', 2),
+      activity('b-tied', 1),
+      activity('a-tied', 1),
+      activity('missing-lesson', 0, { afterLessonId: 'gone' }),
+      activity('other-course', 0, { courseId: 'c2' }),
+    ]);
+    expect(nodes.map((node) => node.id)).toEqual(['l0', 'a-tied', 'b-tied', 'later']);
+  });
 });

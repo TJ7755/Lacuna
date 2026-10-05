@@ -452,4 +452,35 @@ questionConcepts, questionAttempts, courseExamDates? }` — the
   handle, sidebar settings, input mode, motion speed).
 
 
+### Authored question sets (schema v28)
+
+`src/questions/questionSets.ts` defines ordered sets with question/part/subpart
+content, existing Concept references and author-defined mark allocations. Its pure
+validation and self-marking summary functions reject duplicate identities, invalid
+allocations and scored parents with children. Missing or unsure decisions keep a
+summary provisional; an explicitly awarded zero is resolved. Mixed allocations and
+multiple concept links do not duplicate marks.
+
+`questionSets` stores each authored document as one aggregate, indexed by `id`,
+`courseId`, multi-entry `lessonIds` and `assessmentIds`, and `updatedAt`. The record
+adds `contentVersion`, `contentRevisionId`, `createdAt` and `updatedAt`. The runtime
+codec rejects malformed or unknown fields before domain validation; repositories
+validate same-course references and save a complete revision atomically. Existing
+Concept identities connect allocations to Cards without changing Card FSRS state.
+
+Schema v28 adds an empty store. It does not convert or rewrite legacy Questions,
+their schedules or attempts. Personal set attempts remain a separate implementation stage. Future attempts must retain
+their own immutable content/scheme receipt; current set records contain no learner
+answers or marks. See the [persistence contract](../plans/question-sets-persistence.md)
+and [implementation checklist](../plans/question-sets-implementation.md).
+
+Author drafts use device-local `appState` entries keyed by encoded Course and set IDs.
+They allow incomplete documents, retain the saved content revision they were based on,
+and use draft revisions to reject stale writes. Saving complete content and removing
+its draft share one transaction. Corrupt drafts remain stored and raise an explicit
+error. Drafts are excluded from backups, sharing and sync; their media remains reachable
+for local cleanup. Course deletion includes drafts and undo restores them with fresh
+revisions. The Paper editor uses these APIs for local autosave and validated completion.
+Its author preview does not create attempts, answers or card reviews.
+
 [Specification index](../SPEC.md)

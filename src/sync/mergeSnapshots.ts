@@ -46,6 +46,14 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
 } from '../questions/types';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import { mergeQuestionSetAttemptPair } from '../questions/questionSetAttemptMerge';
+import {
+  assertQuestionSetReferences,
+  mergeQuestionSetRecords,
+} from '../questions/questionSetMerge';
+import { assertQuestionSetPracticeNodeReferences } from '../db/questionSetPracticeNode';
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
@@ -62,9 +70,9 @@ const NEVER_REVIEWED = {
   history: [] as Card['history'],
 };
 
-/** A v11 snapshot with every table merge always emits present. */
+/** A current snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 11;
+  version: 14;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -86,6 +94,8 @@ export type MergedBackupFile = BackupFile & {
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories: AgentMemory[];
@@ -227,6 +237,21 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     (memory) => memory.courseId === null || courses.some((course) => course.id === memory.courseId),
   );
   const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
+  const questionSets = mergeQuestionSetRecords(left.questionSets, right.questionSets, [
+    ...tombstones.values(),
+  ]).filter((set) => courses.some((course) => course.id === set.courseId));
+  const questionSetAttempts = mergeQuestionSetAttempts(
+    left.questionSetAttempts,
+    right.questionSetAttempts,
+  ).filter((attempt) => courses.some((course) => course.id === attempt.courseId));
+  assertQuestionSetReferences(
+    questionSets,
+    courses,
+    lessons,
+    courseAssessments,
+    questionState.concepts,
+  );
+  assertQuestionSetPracticeNodeReferences(practiceNodes, courses, lessons, questionSets, practiceMilestones);
   // Detached lineage state carries deletion receipts (see detachCourse): honour them here
   // so a peer snapshot cannot resurrect a severed registry or its queued review.
   // Lineage mappings carry no updatedAt, so any tombstone for the id wins outright.
@@ -288,6 +313,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questions: questionState.questions,
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
+    questionSets,
+    questionSetAttempts,
     agentMemories,
   });
   const keptTombstones = [...tombstones.values()]
@@ -295,8 +322,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     .sort(compareTombstones);
 
   return {
-    app: 'lacuna',
-    version: 11,
+    app: 'lacuna-v14',
+    version: 14,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),
@@ -311,6 +338,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
       occlusions,
       questionState.questions,
       questionState.questionAttempts,
+      questionSets,
+      questionSetAttempts,
     ),
     sessionHistory: sortSessionHistory(sessionHistory),
     userPerformance: [],
@@ -331,6 +360,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     questions: questionState.questions,
     questionConcepts: questionState.questionConcepts,
     questionAttempts: questionState.questionAttempts,
+    questionSets,
+    questionSetAttempts,
     lineageIdMappings,
     pendingMergeReviews,
     agentMemories: sortById(agentMemories),
@@ -362,6 +393,8 @@ interface NormalisedSnapshot extends QuestionMergeCollections {
   lineageIdMappings: LineageIdMapping[];
   pendingMergeReviews: PendingMergeReview[];
   agentMemories: AgentMemory[];
+  questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
 }
 
 function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
@@ -418,6 +451,8 @@ function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
     questions: normalised.questions,
     questionConcepts: normalised.questionConcepts,
     questionAttempts: normalised.questionAttempts,
+    questionSets: normalised.questionSets,
+    questionSetAttempts: normalised.questionSetAttempts ?? [],
     lineageIdMappings: normalised.lineageIdMappings ?? [],
     pendingMergeReviews: normalised.pendingMergeReviews ?? [],
     agentMemories: normalised.agentMemories ?? [],
@@ -544,6 +579,26 @@ function mergeLineageMappings(
       lessonIds: union(existing.lessonIds, incoming.lessonIds),
       noteIds: union(existing.noteIds, incoming.noteIds),
       cardIds: union(existing.cardIds, incoming.cardIds),
+      conceptIds: union(existing.conceptIds ?? [], incoming.conceptIds ?? []),
+      questionIds: union(existing.questionIds ?? [], incoming.questionIds ?? []),
+      questionSetIds: union(existing.questionSetIds ?? [], incoming.questionSetIds ?? []),
+      questionSetRevisions: records(
+        existing.questionSetRevisions ?? {},
+        incoming.questionSetRevisions ?? {},
+      ),
+      assessmentIds: union(existing.assessmentIds ?? [], incoming.assessmentIds ?? []),
+      assessmentSnapshots: records(
+        existing.assessmentSnapshots ?? {},
+        incoming.assessmentSnapshots ?? {},
+      ),
+      questionSetPracticeNodeIds: union(
+        existing.questionSetPracticeNodeIds ?? [],
+        incoming.questionSetPracticeNodeIds ?? [],
+      ),
+      questionSetPracticeNodeSnapshots: records(
+        existing.questionSetPracticeNodeSnapshots ?? {},
+        incoming.questionSetPracticeNodeSnapshots ?? {},
+      ),
       sequenceIds: union(existing.sequenceIds, incoming.sequenceIds),
       occlusionIds: union(existing.occlusionIds ?? [], incoming.occlusionIds ?? []),
       lessonSnapshots: records(existing.lessonSnapshots, incoming.lessonSnapshots),
@@ -588,6 +643,8 @@ function collectLiveKeys(tables: {
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  questionSets: QuestionSetRecord[];
+  questionSetAttempts: QuestionSetAttemptRecord[];
   agentMemories: AgentMemory[];
 }): Set<string> {
   const keys = new Set<string>();
@@ -613,6 +670,8 @@ function collectLiveKeys(tables: {
   for (const row of tables.questions) add('questions', row.id);
   for (const row of tables.questionConcepts) add('questionConcepts', row.questionId);
   for (const row of tables.questionAttempts) add('questionAttempts', row.id);
+  for (const row of tables.questionSets) add('questionSets', row.id);
+  for (const row of tables.questionSetAttempts) add('questionSetAttempts', row.id);
   for (const row of tables.agentMemories) add('agentMemories', row.id);
   return keys;
 }
@@ -727,6 +786,8 @@ function mergeAssets(
   occlusions: Occlusion[],
   questions: QuestionDefinition[],
   attempts: QuestionAttempt[],
+  questionSets: QuestionSetRecord[],
+  questionSetAttempts: QuestionSetAttemptRecord[],
 ): BackupAsset[] {
   const byHash = new Map<string, BackupAsset>();
   for (const asset of [...left, ...right]) {
@@ -737,7 +798,15 @@ function mergeAssets(
       byHash.set(hash, normalised);
     }
   }
-  const referenced = referencedHashes(cards, notes, occlusions, questions, attempts);
+  const referenced = referencedHashes(
+    cards,
+    notes,
+    occlusions,
+    questions,
+    attempts,
+    questionSets,
+    questionSetAttempts,
+  );
   return [...byHash.values()]
     .filter((asset) => referenced.has(asset.hash))
     .sort((a, b) => a.hash.localeCompare(b.hash));
@@ -749,6 +818,8 @@ function referencedHashes(
   occlusions: Occlusion[],
   questions: QuestionDefinition[],
   attempts: QuestionAttempt[],
+  questionSets: QuestionSetRecord[],
+  questionSetAttempts: QuestionSetAttemptRecord[],
 ): Set<string> {
   const hashes = new Set<string>();
   const scan = (markdown: string) => {
@@ -769,7 +840,25 @@ function referencedHashes(
   };
   questions.forEach(scanValue);
   attempts.forEach(scanValue);
+  questionSets.forEach(scanValue);
+  questionSetAttempts.forEach(scanValue);
   return hashes;
+}
+
+function mergeQuestionSetAttempts(
+  left: QuestionSetAttemptRecord[],
+  right: QuestionSetAttemptRecord[],
+): QuestionSetAttemptRecord[] {
+  const merged = new Map<string, QuestionSetAttemptRecord>();
+  for (const incoming of [...left, ...right]) {
+    const existing = merged.get(incoming.id);
+    if (!existing) {
+      merged.set(incoming.id, incoming);
+      continue;
+    }
+    merged.set(incoming.id, mergeQuestionSetAttemptPair(existing, incoming));
+  }
+  return [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function canonicalJson(value: unknown): string {
