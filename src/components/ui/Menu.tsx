@@ -143,7 +143,7 @@ export function Menu({
     <div ref={rootRef} className={cn('relative', className)}>
       <Button
         ref={triggerRef}
-        variant="secondary"
+        variant={open ? 'inverse' : 'secondary'}
         size={size}
         aria-label={label}
         aria-haspopup="menu"
@@ -151,10 +151,7 @@ export function Menu({
         aria-controls={open ? menuId : undefined}
         onClick={() => (open ? close(false) : setOpen(true))}
         onKeyDown={onTriggerKeyDown}
-        className={cn(
-          size === 'md' && 'min-h-12 px-5',
-          open && 'border-ink bg-ink text-paper hover:border-ink',
-        )}
+        className={cn(size === 'md' && 'min-h-12 px-5')}
       >
         {children}
         {chevron && (

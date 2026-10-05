@@ -27,6 +27,14 @@ function renderMenu(overrides?: {
 }
 
 describe('Menu', () => {
+  it('inverts its trigger while open without a competing background', () => {
+    const { trigger } = renderMenu();
+    expect(trigger).toHaveClass('bg-surface-raised');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveClass('bg-ink', 'text-paper');
+    expect(trigger).not.toHaveClass('bg-surface-raised');
+  });
+
   it('keeps its items out of the document until opened', () => {
     const { trigger } = renderMenu();
     expect(screen.queryByText('New sequence')).not.toBeInTheDocument();

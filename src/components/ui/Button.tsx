@@ -4,7 +4,7 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
 import { scaledSpring } from './motion';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'inverse';
 type Size = 'sm' | 'md' | 'lg';
 
 // Framer's motion.button defines its own gesture/animation handlers, so drop the DOM
@@ -31,6 +31,8 @@ const variants: Record<Variant, string> = {
   ghost: 'text-ink-soft hover:text-ink hover:bg-ink/5',
   danger:
     'bg-transparent text-negative border border-negative/40 hover:bg-negative/10 hover:shadow-sm hover:shadow-negative/10',
+  /** A pressed or open state of a secondary control. */
+  inverse: 'bg-ink text-paper border border-ink',
 };
 
 const sizes: Record<Size, string> = {
