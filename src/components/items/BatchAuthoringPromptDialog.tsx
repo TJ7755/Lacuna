@@ -115,10 +115,6 @@ export function BatchAuthoringPromptDialog({
           mode === 'review' ? 'max-w-5xl' : 'max-w-2xl',
         )}
       >
-        <div
-          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
-          aria-hidden="true"
-        />
         <header className="relative flex items-start justify-between border-b border-line px-6 py-5">
           <div>
             <h2 className="font-display text-2xl">Author Question batch</h2>

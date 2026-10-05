@@ -276,7 +276,6 @@ export function CoursePath() {
   if (course === null || summary === null) {
     return (
       <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <p className="mb-4 text-ink-soft">This course could not be found.</p>
           <Link to="/" className="text-accent underline">

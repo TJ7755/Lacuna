@@ -265,7 +265,6 @@ export function OcclusionEditor() {
 
       <div>
         <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
             <Link
               to={backPath}

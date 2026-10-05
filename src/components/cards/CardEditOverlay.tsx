@@ -137,7 +137,6 @@ export function CardEditOverlay({
         transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
         className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
-        <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
         <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="font-display text-xl">Edit card</h2>
           <button

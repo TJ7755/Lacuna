@@ -138,10 +138,6 @@ export function AssessmentEditorDialog({
         }
         className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
-        <div
-          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
-          aria-hidden="true"
-        />
         <header className="relative flex items-center justify-between border-b border-line px-6 py-4">
           <div>
             <h2 className="font-display text-xl">
