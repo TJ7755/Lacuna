@@ -5,16 +5,23 @@ import { matchCourseSection } from '../course/courseSections';
 
 const COURSE_ANALYTICS = /^\/course\/([^/]+)\/analytics$/;
 
-/** Ordinary destinations fade without transforms so fixed descendants stay viewport-bound. */
-const ROUTE_VARIANTS = {
+/** How far a course tab drifts as it fades in: a nudge that says which way, not a full slide. */
+export const TAB_DRIFT_PX = 24;
+
+/**
+ * Ordinary destinations fade in over a page that leaves at once, so two pages never
+ * overlap. Adjacent course tabs also drift a little in the direction of travel. Both
+ * settle with no transform left behind, so fixed descendants stay viewport-bound.
+ */
+export const ROUTE_VARIANTS = {
   enter: (direction: number) =>
-    direction === 0 ? { opacity: 0 } : { opacity: 1, transform: `translateX(${100 * direction}%)` },
-  center: (direction: number) =>
-    direction === 0 ? { opacity: 1 } : { opacity: 1, transform: 'translateX(0%)' },
-  exit: (direction: number) =>
-    direction === 0
-      ? { opacity: 0 }
-      : { opacity: 1, transform: `translateX(${-100 * direction}%)` },
+    direction === 0 ? { opacity: 0 } : { opacity: 0, x: TAB_DRIFT_PX * direction },
+  center: { opacity: 1, x: 0 },
+  exit: (direction: number) => ({
+    opacity: 0,
+    x: -TAB_DRIFT_PX * direction * 0.5,
+    transition: { duration: 0 },
+  }),
 };
 
 export function RouteTransitions({
@@ -34,8 +41,8 @@ export function RouteTransitions({
   return (
     <>
       {barCourseId && <CourseSectionNavigation key={barCourseId} courseId={barCourseId} pathname={pathname} />}
-      {/* The persistent chrome stays outside this clipped viewport. popLayout lets
-          outgoing and incoming pages travel together without stacking their heights.
+      {/* The persistent chrome stays outside this clipped viewport. The departing page
+          leaves at once, so popLayout never shows two pages at the same time.
           AnimatePresence supplies the latest direction to the departing page too. */}
       <div className={section ? 'relative overflow-x-clip' : 'relative min-h-full'}>
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -96,7 +103,7 @@ const RoutePage = forwardRef<
       animate={multiplier > 0 ? 'center' : undefined}
       exit={multiplier > 0 ? 'exit' : undefined}
       transition={{
-        duration: (direction === 0 ? 0.18 : 0.3) * multiplier,
+        duration: (direction === 0 ? 0.16 : 0.22) * multiplier,
         ease: [0.16, 1, 0.3, 1],
       }}
       className="min-h-full w-full"

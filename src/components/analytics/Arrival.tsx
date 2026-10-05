@@ -3,7 +3,7 @@ import { m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { MOTION_EASING } from '../ui/motion';
 
-/** Page arrival: each section rises in on a short stagger (about 40 ms a step). */
+/** Page arrival: each section fades in on a short stagger (about 40 ms a step), without moving. */
 export function Rise({
   index = 0,
   className,
@@ -18,10 +18,10 @@ export function Rise({
   return (
     <motion.div
       className={className}
-      initial={m > 0 ? { opacity: 0, y: 10 } : false}
-      animate={{ opacity: 1, y: 0 }}
+      initial={m > 0 ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
       transition={{
-        duration: 0.45 * m,
+        duration: 0.3 * m,
         delay: Math.min(index, 6) * 0.04 * m,
         ease: MOTION_EASING.emphasised,
       }}

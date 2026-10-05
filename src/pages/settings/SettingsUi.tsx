@@ -60,10 +60,10 @@ export function SettingsCard({
   return (
     <motion.section
       id={id}
-      initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
-      animate={{ opacity: 1, y: 0 }}
+      initial={multiplier > 0 ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
       transition={{
-        duration: 0.45 * multiplier,
+        duration: 0.3 * multiplier,
         delay: arrivalDelay(index, multiplier),
         ease: MOTION_EASING.emphasised,
       }}

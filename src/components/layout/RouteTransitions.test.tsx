@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { RouteTransitions } from './RouteTransitions';
+import { ROUTE_VARIANTS, RouteTransitions, TAB_DRIFT_PX } from './RouteTransitions';
 
 vi.mock('../course/CourseSectionNavigation', () => ({
   CourseSectionNavigation: ({ courseId }: { courseId: string }) => (
@@ -107,4 +107,15 @@ describe('RouteTransitions', () => {
       }
     },
   );
+
+  it('fades pages in without overlap and only nudges between course tabs', () => {
+    const enter = ROUTE_VARIANTS.enter as (direction: number) => Record<string, number>;
+    const exit = ROUTE_VARIANTS.exit as (direction: number) => { transition: { duration: number } };
+    expect(enter(0)).toEqual({ opacity: 0 });
+    expect(Math.abs(enter(1).x)).toBe(TAB_DRIFT_PX);
+    expect(TAB_DRIFT_PX).toBeLessThanOrEqual(32);
+    // The departing page leaves at once, so two pages never show together.
+    expect(exit(0).transition.duration).toBe(0);
+    expect(exit(-1).transition.duration).toBe(0);
+  });
 });

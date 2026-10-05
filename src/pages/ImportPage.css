@@ -1,11 +1,10 @@
 @keyframes import-arrive {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
 }
 .import-arrive {
-  animation: import-arrive 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: import-arrive 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .import-page > .import-arrive:nth-child(2) {
   animation-delay: 40ms;
