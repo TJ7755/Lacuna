@@ -117,7 +117,10 @@ describe('LearnMode course/lesson scope', () => {
       </ToastProvider></ThemeProvider>,
     );
     expect(await findStudyFaceText('Optional question')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+    // The header names the lesson; Simple Learn's own Yes/No grading shows the mode.
+    expect(screen.getByRole('heading', { name: 'Any time' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
+    expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
   });
 
   it('does not paint a focus ring on the programmatic study container', async () => {
@@ -1673,7 +1676,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await findStudyFaceText(/cause$/);
     expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Industrial change' })).toBeInTheDocument();
     const firstServedId = document
       .querySelector('[data-study-card-id]')
       ?.getAttribute('data-study-card-id');

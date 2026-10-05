@@ -48,7 +48,8 @@ function computeHeaderInfo({
   switch (mode) {
     case 'simple':
       return {
-        title: 'Simple Learn',
+        // Name what is being studied; the mode's own name is only a fallback.
+        title: unitDisplayName ?? 'Simple Learn',
         subtitle: tagPart,
       };
     case 'cram':
