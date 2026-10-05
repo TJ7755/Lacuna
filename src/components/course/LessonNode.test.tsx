@@ -35,6 +35,20 @@ function reorderInteraction(): LessonReorderInteraction {
 }
 
 describe('LessonNode authoring', () => {
+  it('registers the lesson when authoring starts after the initial mount', () => {
+    const onClick = vi.fn();
+    const { rerender } = render(
+      <LessonNode lesson={lesson} status="available" onClick={onClick} />,
+    );
+    const reorder = reorderInteraction();
+    rerender(
+      <LessonNode lesson={lesson} status="available" authoring reorder={reorder} onClick={onClick} />,
+    );
+    expect(reorder.registerElement).toHaveBeenCalledWith(
+      screen.getByRole('button', { name: 'Locked lesson' }),
+    );
+  });
+
   it('keeps a locked lesson inert in Read mode', () => {
     const onClick = vi.fn();
     render(

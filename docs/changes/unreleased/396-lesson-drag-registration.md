@@ -1,0 +1,1 @@
+- Fix lesson drag reordering immediately after switching into Author mode, without requiring a page reload. (#396)

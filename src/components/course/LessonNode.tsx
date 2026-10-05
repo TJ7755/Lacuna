@@ -108,7 +108,8 @@ export function LessonNode({
       <div className="relative h-14 w-14">
         <motion.button
           ref={reorder?.registerElement}
-          key={settleKey}
+          // Motion retains its initial callback ref; remount when authoring first registers the lesson.
+          key={`${settleKey}:${authoring ? 'author' : 'study'}`}
           type="button"
           onClick={interactive ? onClick : undefined}
           disabled={!interactive}
