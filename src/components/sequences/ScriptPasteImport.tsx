@@ -4,6 +4,7 @@
 // list. Mirrors LinkCardsDialog's modal shell (focus trap, Escape-to-close).
 
 import { useMemo, useState } from 'react';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { splitScript, type SplitScriptItem } from '../../db/scriptSplitter';
 import { makeId } from '../../db/schema';
@@ -61,13 +62,16 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
       trapRef={trapRef}
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-2xl"
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel,
+        onSubmit: () => {
+          if (!preview) {
+            if (raw.trim()) handleSplit();
+          } else if (preview.length > 0) {
+            handleConfirm();
+          }
+        },
+      })}
     >
       <DialogHeader
         title="Paste script"

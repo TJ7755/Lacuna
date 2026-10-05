@@ -5,6 +5,7 @@
 // British English throughout.
 
 import { useState } from 'react';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
@@ -88,14 +89,13 @@ export function PracticeNodeEditor({
       trapRef={trapRef}
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-md"
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        e.nativeEvent.stopImmediatePropagation();
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onCancel();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel,
+        onSubmit: () => {
+          if (!saving) void handleSave();
+        },
+        enterSubmits: true,
+      })}
     >
       <DialogHeader
         title={node ? 'Edit practice' : 'Add practice'}

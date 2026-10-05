@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { TagInput } from '../ui/TagInput';
@@ -106,17 +107,7 @@ export function CardEditOverlay({
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-3xl"
       overlayClassName="pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] will-change-transform-opacity"
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        e.nativeEvent.stopImmediatePropagation();
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onCancel();
-        } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          void handleSave();
-        }
-      }}
+      onKeyDown={dialogKeyDown({ onCancel, onSubmit: () => void handleSave() })}
     >
       <DialogHeader title="Edit card" onClose={onCancel} closeLabel="Close editor" />
 

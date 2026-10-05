@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
@@ -79,19 +80,15 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
       onBackdropClick={onClose}
       className="max-w-md"
       overlayClassName="will-change-transform-opacity"
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        e.nativeEvent.stopImmediatePropagation();
-        if (e.key === 'Escape') {
-          if ((e.target as Element).closest('[data-date-time-picker-popover]')) return;
-          e.preventDefault();
-          onClose();
-        } else if (e.key === 'Enter') {
-          if ((e.target as Element).closest('[data-date-time-picker]')) return;
-          e.preventDefault();
-          void handleCreate();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel: onClose,
+        onSubmit: () => void handleCreate(),
+        enterSubmits: true,
+        ignore: (target, key) =>
+          key === 'Escape'
+            ? !!target.closest('[data-date-time-picker-popover]')
+            : !!target.closest('[data-date-time-picker]'),
+      })}
     >
       <DialogHeader title="New course" onClose={onClose} closeLabel="Close" />
 

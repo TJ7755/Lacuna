@@ -178,3 +178,7 @@
 - Returning to a page puts it back where you left it: browser Back and in-app
   returns restore the scroll position (`scrollMemory.ts`), instead of every
   navigation jumping to the top.
+- Dialogs now open on their first field rather than the close button, and the
+  close button shows a focus ring. Escape, Ctrl/Cmd+Enter and (for single-line
+  forms) Enter share one `dialogKeyDown` helper across the card editor overlay,
+  New course, assessment, practice and script-paste dialogs.
