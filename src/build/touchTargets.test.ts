@@ -17,6 +17,12 @@ const CONTROL_FILES = [
   'src/components/sequences/ScriptPasteImport.tsx',
   'src/components/items/BatchAuthoringPromptDialog.tsx',
   'src/components/notes/NoteRow.tsx',
+  'src/components/notes/AnnotatedNoteContent.tsx',
+  'src/components/occlusion/OcclusionRegionPane.tsx',
+  'src/components/occlusion/OcclusionCanvas.tsx',
+  'src/components/import/MergeReviewPanel.tsx',
+  'src/components/course/CourseCard.tsx',
+  'src/pages/settings/AppearanceSection.tsx',
 ];
 
 // 32px to 40px is the band hand-rolled controls fell into; smaller sizes here are icons.

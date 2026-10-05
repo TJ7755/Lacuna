@@ -388,7 +388,7 @@ export function CourseCard({
           }}
           title={`Study ${course.name}`}
           aria-label={`Study ${course.name}`}
-          className="absolute right-4 top-4 z-30 grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-faint shadow-sm shadow-black/[0.02] transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="absolute right-4 top-4 z-30 grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-ink-faint shadow-sm shadow-black/[0.02] transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           <PlayIcon width={16} height={16} />
         </button>
