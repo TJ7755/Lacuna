@@ -118,29 +118,19 @@ export function AssessmentDetailSheet({
             )}
           </section>
 
-          <section>
-            <h3 className="text-sm font-medium text-ink">Validation</h3>
-            <p
-              className={
-                'mt-1 text-sm ' +
-                (resolved.validation.valid && !resolved.validation.needsAuthorConfirmation
-                  ? 'text-positive'
-                  : 'text-negative')
-              }
-            >
-              {resolved.validation.valid && !resolved.validation.needsAuthorConfirmation
-                ? 'Scope is valid'
-                : 'Needs author review'}
-            </p>
-            {resolved.validation.issues.map((issue) => (
-              <p
-                key={`${issue.code}-${issue.referenceId ?? ''}`}
-                className="mt-1 text-xs text-negative"
-              >
-                {issue.message}
-              </p>
-            ))}
-          </section>
+          {!(resolved.validation.valid && !resolved.validation.needsAuthorConfirmation) && (
+            <section>
+              <h3 className="text-sm font-medium text-ink">Needs author review</h3>
+              {resolved.validation.issues.map((issue) => (
+                <p
+                  key={`${issue.code}-${issue.referenceId ?? ''}`}
+                  className="mt-1 text-sm text-negative"
+                >
+                  {issue.message}
+                </p>
+              ))}
+            </section>
+          )}
         </div>
 
         <footer className="border-t border-line px-6 py-4">

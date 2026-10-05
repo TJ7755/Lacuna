@@ -75,6 +75,8 @@ describe('checkpoint assessment details', () => {
     expect(screen.getByText('Atoms')).toBeInTheDocument();
     expect(screen.getByText('What is a proton?')).toBeInTheDocument();
     expect(screen.getByText(/1 lesson · 0 cards/)).toBeInTheDocument();
+    expect(screen.queryByText('Scope is valid')).not.toBeInTheDocument();
+    expect(screen.queryByText('Needs author review')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Revise for Paper 1' }));
     expect(onRevise).toHaveBeenCalledOnce();
   });
