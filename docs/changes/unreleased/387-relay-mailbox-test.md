@@ -1,0 +1,1 @@
+- The relay mailbox-limit test now injects a no-op persistence instead of a no-op storage, so it no longer serialises the whole session 2,000 times; it runs in under 100ms rather than 10 to 16 seconds and its 15-second timeout override is gone (#387)

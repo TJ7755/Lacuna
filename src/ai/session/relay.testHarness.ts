@@ -9,6 +9,7 @@ import {
   type RelaySessionStorage,
   type RelaySessionTimers,
 } from './relay';
+import type { RelaySessionPersistence } from './relayPersistence';
 
 export const CREATED = {
   sessionId: 'A'.repeat(20),
@@ -24,7 +25,7 @@ export const BROWSER_PRIVATE_KEY =
 export const TERMINAL_PUBLIC_KEY = BROWSER_PUBLIC_KEY;
 
 export interface RelaySessionHarnessOptions {
-  storage?: RelaySessionStorage;
+  persistence?: RelaySessionPersistence;
 }
 
 export function relaySessionHarness(
@@ -43,12 +44,11 @@ export function relaySessionHarness(
     revoke: vi.fn().mockResolvedValue(undefined),
   };
   const values = new Map<string, string>();
-  const storage: RelaySessionStorage =
-    options.storage ?? {
-      getItem: (key) => values.get(key) ?? null,
-      setItem: (key, value) => values.set(key, value),
-      removeItem: (key) => values.delete(key),
-    };
+  const storage: RelaySessionStorage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
   const encryptionKey = {} as CryptoKey;
   const crypto: RelaySessionCrypto = {
     createKeyPair: vi
@@ -68,6 +68,7 @@ export function relaySessionHarness(
   const session = createRelayAiSession({
     relay,
     storage,
+    persistence: options.persistence,
     crypto,
     timers,
     now: () => currentTime,
