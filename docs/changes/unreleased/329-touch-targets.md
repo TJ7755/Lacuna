@@ -1,0 +1,1 @@
+- Inline confirmations, Pomodoro controls, dialog close buttons, note-row and annotation actions, occlusion and merge-review controls, the course-card study button and accent swatches now meet the 44px minimum target in `docs/spec/accessibility.md`; a source test keeps those files from regressing (#329)

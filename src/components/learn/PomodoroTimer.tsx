@@ -247,7 +247,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                     <button
                       type="button"
                       onClick={acceptBreak}
-                      className="flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
+                      className="flex h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
                     >
                       <PauseIcon width={14} height={14} />
                       Take break
@@ -255,7 +255,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                     <button
                       type="button"
                       onClick={deferBreak}
-                      className="flex h-8 items-center rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+                      className="flex h-11 items-center rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
                     >
                       Not now
                     </button>
@@ -264,7 +264,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                   <button
                     type="button"
                     onClick={startFocus}
-                    className="flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
+                    className="flex h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
                   >
                     <PlayIcon width={14} height={14} />
                     Start
@@ -275,7 +275,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                       <button
                         type="button"
                         onClick={pause}
-                        className="flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+                        className="flex h-11 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
                       >
                         <PauseIcon width={14} height={14} />
                         Pause
@@ -284,7 +284,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                       <button
                         type="button"
                         onClick={resume}
-                        className="flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
+                        className="flex h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
                       >
                         <PlayIcon width={14} height={14} />
                         Resume
@@ -294,7 +294,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                       type="button"
                       onClick={reset}
                       title="Reset"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+                      className="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
                     >
                       <CloseIcon width={12} height={12} />
                     </button>

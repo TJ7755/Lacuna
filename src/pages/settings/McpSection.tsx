@@ -7,6 +7,7 @@ import type { McpGrant } from '../../mcp/types';
 import type { McpClientConnection } from '../../mcp/connections';
 import { useCourses } from '../../state/useCourseData';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 interface McpStatus {
   running: boolean;
@@ -107,8 +108,8 @@ export function McpSection() {
   }
 
   return (
-    <section id="settings-mcp"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6">
+    <SectionCard id="settings-mcp"
+      className="mb-8">
       <div className="mb-1 flex items-center gap-2 text-accent"><GridIcon width={18} height={18} /><SettingsSectionHeading className="font-display text-xl">MCP server</SettingsSectionHeading></div>
       <p className="mb-4 text-sm text-ink-soft">Control what connected MCP clients may read or change. Access is cleared when each client disconnects.</p>
       <div className="mb-5 flex flex-wrap gap-x-5 gap-y-1 rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm">
@@ -147,6 +148,6 @@ export function McpSection() {
           </div>
         </div>)}
       </div>
-    </section>
+    </SectionCard>
   );
 }

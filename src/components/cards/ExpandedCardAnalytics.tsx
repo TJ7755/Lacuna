@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useCard } from '../../state/useData';
 import type { Card, SchedulerConfig } from '../../db/types';
+import { Skeleton } from '../ui/Skeleton';
 
 const CardAnalytics = lazy(() =>
   import('./CardAnalytics').then((module) => ({ default: module.CardAnalytics })),
@@ -16,7 +17,7 @@ function Analytics({
   motionMultiplier: number;
 }) {
   return (
-    <Suspense fallback={<div className="h-32 animate-pulse rounded-xl bg-ink/[0.03]" />}>
+    <Suspense fallback={<Skeleton className="h-32 rounded-xl bg-ink/[0.03]" />}>
       <CardAnalytics
         card={card}
         schedulingConfig={schedulingConfig}
@@ -43,7 +44,7 @@ function HydratedAnalytics({
       motionMultiplier={motionMultiplier}
     />
   ) : (
-    <div className="h-32 animate-pulse rounded-xl bg-ink/[0.03]" />
+    <Skeleton className="h-32 rounded-xl bg-ink/[0.03]" />
   );
 }
 

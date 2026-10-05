@@ -50,6 +50,8 @@ import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
 import type { AnswerMode, Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 import { isAudioCardFront } from '../media/audio';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 type EditorCardType = CardType | 'numeric' | 'working' | 'audio';
 
@@ -1061,24 +1063,24 @@ export function CardEditor() {
 function CardEditorSkeleton() {
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
-      <div className="mb-8 rounded-2xl border border-line bg-surface p-6">
-        <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
-        <div className="h-10 w-48 animate-pulse rounded bg-ink/10" />
-      </div>
+      <Skeleton className="mb-6 h-4 w-24" />
+      <SectionCard as="div" className="mb-8">
+        <Skeleton className="mb-1 h-3 w-20" />
+        <Skeleton className="h-10 w-48" />
+      </SectionCard>
       <div className="flex flex-col gap-5">
         <div>
-          <div className="mb-2 h-3 w-20 animate-pulse rounded bg-ink/10" />
+          <Skeleton className="mb-2 h-3 w-20" />
           <div className="flex gap-2">
-            <div className="h-10 flex-1 animate-pulse rounded-lg bg-ink/10" />
-            <div className="h-10 flex-1 animate-pulse rounded-lg bg-ink/10" />
+            <Skeleton className="h-10 flex-1 rounded-lg" />
+            <Skeleton className="h-10 flex-1 rounded-lg" />
           </div>
         </div>
-        <div className="h-40 w-full animate-pulse rounded-lg bg-ink/10" />
-        <div className="h-40 w-full animate-pulse rounded-lg bg-ink/10" />
+        <Skeleton className="h-40 w-full rounded-lg" />
+        <Skeleton className="h-40 w-full rounded-lg" />
         <div>
-          <div className="mb-2 h-3 w-12 animate-pulse rounded bg-ink/10" />
-          <div className="h-10 w-full animate-pulse rounded-lg bg-ink/10" />
+          <Skeleton className="mb-2 h-3 w-12" />
+          <Skeleton className="h-10 w-full rounded-lg" />
         </div>
       </div>
     </div>

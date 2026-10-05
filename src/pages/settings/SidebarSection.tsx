@@ -4,15 +4,16 @@ import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon, MenuIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
 import { DEFAULT_NAV_ITEMS, useSidebarSettings } from '../../state/sidebarSettings';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function SidebarSection() {
   const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
   const visibleCount = sidebarSettings.navItems.filter((item) => item.visible).length;
 
   return (
-    <section
+    <SectionCard
       id="settings-sidebar"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <MenuIcon width={18} height={18} />
@@ -96,7 +97,7 @@ export function SidebarSection() {
           </Button>
         </div>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 

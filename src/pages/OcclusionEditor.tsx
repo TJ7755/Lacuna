@@ -35,6 +35,8 @@ import {
 } from '../db/occlusionRepository';
 import type { EditorOriginState } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '../db/types';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 export function OcclusionEditor() {
   const { occlusionId, courseId, lessonId } = useParams<{
@@ -368,14 +370,14 @@ export function OcclusionEditor() {
 function OcclusionEditorSkeleton() {
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-ink/10" />
-      <div className="mb-8 rounded-2xl border border-line bg-surface p-6">
-        <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
-        <div className="h-10 w-48 animate-pulse rounded bg-ink/10" />
-      </div>
+      <Skeleton className="mb-6 h-4 w-24" />
+      <SectionCard as="div" className="mb-8">
+        <Skeleton className="mb-1 h-3 w-20" />
+        <Skeleton className="h-10 w-48" />
+      </SectionCard>
       <div className="flex flex-col gap-5">
-        <div className="h-10 w-full animate-pulse rounded-lg bg-ink/10" />
-        <div className="h-64 w-full animate-pulse rounded-lg bg-ink/10" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
       </div>
     </div>
   );

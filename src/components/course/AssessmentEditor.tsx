@@ -9,6 +9,7 @@ import type {
 } from '../../db/types';
 import { defaultExamDate } from '../../utils/datetime';
 import { DateTimePicker } from '../ui/DateTimePicker';
+import { Field, Input, inputClassName } from '../ui/Field';
 
 export interface AssessmentDraft {
   name: string;
@@ -143,16 +144,14 @@ export function AssessmentEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <label className="block text-sm text-ink-soft">
-        Name
-        <input
+      <Field label="Name">
+        <Input
           data-assessment-name={initialNameFocusTarget ? '' : undefined}
           value={draft.name}
           onChange={(event) => onChange({ ...draft, name: event.target.value })}
           placeholder={kind === 'final' ? 'Final exam' : 'e.g. Mock exam'}
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
-      </label>
+      </Field>
 
       {kind === 'final' && (
         <fieldset>
@@ -205,7 +204,7 @@ export function AssessmentEditor({
         <select
           value={draft.afterLessonId ?? ''}
           onChange={(event) => onChange({ ...draft, afterLessonId: event.target.value || null })}
-          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+          className={inputClassName}
         >
           <option value="">Before the first lesson</option>
           {lessons.map((lesson) => (
