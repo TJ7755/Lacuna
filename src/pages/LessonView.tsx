@@ -36,7 +36,6 @@ import { riseIn } from '../components/course/riseIn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { LessonHeader } from '../components/course/LessonHeader';
-import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
 import { lessonMetaParts } from '../course/lessonMeta';
@@ -47,7 +46,8 @@ import {
 } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
-import { updateCourse } from '../db/courseRepository';
+import { useCourseForecast } from '../state/ShellCourseData';
+import { forecastStatus } from '../components/dashboard/ForecastChart';
 import { updateLesson } from '../db/lessonRepository';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
@@ -110,6 +110,7 @@ export function LessonView({
   // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
   // Card membership remains independent from the scheduling implementation.
   const lessonDeck = useLessonBackingDeck(courseId, lessonId);
+  const forecast = useCourseForecast(courseId);
 
   // Loading state.
   if (
@@ -180,9 +181,22 @@ export function LessonView({
       {!isInline && (
         <CoursePageNavigation
           courseId={courseId ?? ''}
+          course={course}
           backTo={backTo}
           backLabel={backLabel}
           archived={archived}
+          identity={
+            archived
+              ? undefined
+              : {
+                  name: course.name,
+                  status: forecast
+                    ? forecastStatus(forecast)
+                    : course.examDate
+                      ? 'ahead'
+                      : 'steady',
+                }
+          }
           className="mb-6"
           trailing={
             archived || canEditLessons(course) ? undefined : (
@@ -274,23 +288,15 @@ export function LessonView({
                 </Button>
               </>
             ) : isInline ? null : (
-              <>
-                {canEditLessons(course) && (
-                  <LessonViewModeToggle
-                    mode={viewMode}
-                    onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-                  />
-                )}
-                <Button
-                  variant="primary"
-                  size="lg"
-                  disabled={lessonCards.length === 0}
-                  onClick={() => navigate(lessonStudyPath)}
-                >
-                  <PlayIcon width={18} height={18} />
-                  Study
-                </Button>
-              </>
+              <Button
+                variant="primary"
+                size="lg"
+                disabled={lessonCards.length === 0}
+                onClick={() => navigate(lessonStudyPath)}
+              >
+                <PlayIcon width={18} height={18} />
+                Study
+              </Button>
             )}
           </LessonHeader>
           {/* The due count already leads the meta line, so this only speaks when
