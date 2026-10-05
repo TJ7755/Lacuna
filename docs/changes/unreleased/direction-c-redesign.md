@@ -142,3 +142,6 @@
 - The lesson answer mode and the course exam objective use the shared pill
   toggle. The exam objective names both choices (Most marks, Secure topics)
   instead of a switch for one of them, with a one-line consequence.
+- The study target (new course and final assessment) is one shared tile pair
+  with icons and a tick, in place of two bordered native radio cards. It still
+  asks for an explicit choice, so no course gets an exam date by accident.

@@ -9,6 +9,7 @@ import type {
 } from '../../db/types';
 import { defaultExamDate } from '../../utils/datetime';
 import { DateTimePicker } from '../ui/DateTimePicker';
+import { StudyTargetTiles } from './CourseStudyTarget';
 import { Field, Input, inputClassName } from '../ui/Field';
 
 export interface AssessmentDraft {
@@ -155,38 +156,12 @@ export function AssessmentEditor({
 
       {kind === 'final' && (
         <fieldset>
-          <legend className="mb-2 text-sm text-ink-soft">Study target</legend>
-          <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ['exam', 'Exam date', 'Schedule towards a deadline.'],
-                ['steady', 'Steady retention', 'Maintain knowledge without a deadline.'],
-              ] as const
-            ).map(([mode, label, description]) => (
-              <label
-                key={mode}
-                className={
-                  'cursor-pointer rounded-lg border px-3 py-2 transition-colors ' +
-                  (draft.schedulingMode === mode
-                    ? 'border-accent bg-accent-soft'
-                    : 'border-line hover:border-line-strong')
-                }
-              >
-                <span className="flex items-center gap-2 text-sm text-ink">
-                  <input
-                    type="radio"
-                    name="assessment-scheduling-mode"
-                    checked={draft.schedulingMode === mode}
-                    onChange={() => onChange({ ...draft, schedulingMode: mode })}
-                  />
-                  {label}
-                </span>
-                <span className="mt-1 block pl-6 text-xs leading-relaxed text-ink-faint">
-                  {description}
-                </span>
-              </label>
-            ))}
-          </div>
+          <legend className="mb-2 text-sm text-ink-faint">Study target</legend>
+          <StudyTargetTiles
+            name="assessment-scheduling-mode"
+            value={draft.schedulingMode}
+            onChange={(mode) => onChange({ ...draft, schedulingMode: mode })}
+          />
         </fieldset>
       )}
 
