@@ -98,11 +98,6 @@ Backup acceptance lives in the zod schemas (`backupValidation.ts`, `backupRecord
 required collections there; a new row variant (such as `question-set` practice nodes) needs a
 schema branch, or valid exports are rejected.
 
-## Course path rendering
-
-`CourseOverview` renders the course path and its companion detail. `PathNodeView` and
-`CoursePathSegment` are no longer mounted by any page, so path features added there never appear.
-
 ## Local Electron commands
 
 The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron application

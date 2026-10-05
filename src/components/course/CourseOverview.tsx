@@ -3,7 +3,6 @@ import { m as motion } from 'motion/react';
 import type { PathNode, PracticePathNode } from '../../course/path';
 import type { CourseAssessment, Lesson } from '../../db/types';
 import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
-import type { LessonNodeDetail } from './LessonNode';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatShortDate } from '../../utils/datetime';
@@ -13,6 +12,12 @@ import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
 import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
+
+export interface LessonNodeDetail {
+  cardCount: number;
+  dueCount: number;
+  masteryPct: number;
+}
 
 interface CourseOverviewProps {
   courseId: string;

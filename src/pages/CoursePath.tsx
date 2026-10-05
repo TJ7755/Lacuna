@@ -27,7 +27,7 @@ import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
-import { lockHintFor } from '../components/course/CoursePathSegment';
+import { lockHintFor } from '../components/course/lockHint';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';

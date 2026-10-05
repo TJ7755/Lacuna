@@ -179,20 +179,17 @@ Organic Chemistry                                          [Study]
 ```
 
 An ordered path of lesson nodes, checkpoint assessments (informational, never block progress)
-and practice nodes, built by `src/course/path.ts`. The breadcrumb row pairs the "All
-courses" link with the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`:
-Path · Cards · Questions · Analytics · Settings, active tab derived from the route), rendered
-on the five course surfaces and every normal or single-lesson view, so any section is one click
-from any other. Lesson URLs keep Path active because a lesson belongs to the path. The course-owned
-`LessonViewModeToggle` appears beside that navigation on CoursePath and every Lesson view, so the
-same Study/Author decision follows the user through the workspace. CoursePath places the back link,
-tabs and toggle in one chrome row above the header. Its `UpcomingAssessmentsStrip`
-(`src/components/course/UpcomingAssessmentsStrip.tsx`) renders immediately below when multiple
-assessments make a choice useful: compact date/name pills for the nearest few future-dated
-assessments (checkpoints and the final alike), reusing the same `assessments` array the path itself
-renders checkpoint nodes from, so exam dates are visible without opening Course Settings. Clicking
-a pill opens the same `AssessmentDetailSheet` a checkpoint node opens. It is omitted entirely when
-no assessment is still ahead of `now`. Practice gathers cards from lessons
+and practice nodes, built by `src/course/path.ts` and shown by `CourseOverview` as a list in
+path order. The course row pairs the course's name and status dot (a link back to its Path) with
+the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`: Path · Cards ·
+Questions · Settings, active tab derived from the route), rendered on the four course surfaces
+and every normal or single-lesson view, so any section is one click from any other. Course
+analytics opens from the forecast figure in the course header rather than a tab. Lesson URLs keep
+Path active because a lesson belongs to the path. The course-owned `LessonViewModeToggle` appears
+beside that navigation on CoursePath and every Lesson view, so the same Study/Author decision
+follows the user through the workspace. Beside the lesson list, an Assessments panel lists the
+course's assessments with their dates, so exam dates are visible without opening Course
+Settings; each opens the same `AssessmentDetailSheet`. Practice gathers cards from lessons
 reached so far whose predicted retrievability remains below the mastery threshold at each
 card's applicable exam horizon; this is not the narrower `card.due` timestamp concept. Questions
 do not enter this pool or the Path conductor in v1; they are reached deliberately from the separate

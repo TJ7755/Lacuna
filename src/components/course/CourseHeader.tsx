@@ -1,5 +1,5 @@
 // Shared "course cockpit" header: schedule metadata, display title, and caller
-// content beneath — typically the HeaderStats row. Used by CoursePath
+// content beneath — typically a line of course facts. Used by CoursePath
 // (full course) and, in a leaner form, LessonView.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -19,14 +19,14 @@ interface CourseHeaderProps {
   onRename?: (name: string) => void | Promise<void>;
   /** Entity noun used by the rename control and input label. */
   renameLabel?: 'course' | 'lesson';
-  /** Content under the title — typically the HeaderStats row. */
+  /** Content under the title — typically a line of course facts. */
   children?: ReactNode;
   className?: string;
 }
 
 /**
  * Frame for a course/lesson header: display title, schedule row, and
- * caller-supplied content beneath (the HeaderStats row), so the same frame serves
+ * caller-supplied content beneath (a line of course facts), so the same frame serves
  * both the CoursePath header and LessonView's leaner adoption.
  */
 export function CourseHeader({
