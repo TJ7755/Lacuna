@@ -22,7 +22,8 @@ import { courseCardListContext } from '../components/cards/cardListContext';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../components/ui/motion';
 import { Button } from '../components/ui/Button';
-import { PlusIcon } from '../components/ui/icons';
+import { MoreIcon, PlusIcon } from '../components/ui/icons';
+import { Menu } from '../components/ui/Menu';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
 import { filterSessionCardPool, type CardFilter } from '../db/search';
 import { arrivalDelay } from './settings/SettingsUi';
@@ -140,14 +141,24 @@ export function CardsPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4 pt-6 md:pt-8">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Cards</h1>
         <div role="group" aria-label="Add content" className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
-            <PlusIcon width={18} height={18} />
-            New sequence
-          </Button>
-          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
-            <PlusIcon width={18} height={18} />
-            New occlusion
-          </Button>
+          <Menu
+            label="More ways to add"
+            size="md"
+            items={[
+              {
+                label: 'New sequence',
+                icon: <PlusIcon width={16} height={16} />,
+                onSelect: () => navigate(`/course/${courseId}/sequence/new`),
+              },
+              {
+                label: 'New occlusion',
+                icon: <PlusIcon width={16} height={16} />,
+                onSelect: () => navigate(`/course/${courseId}/occlusion/new`),
+              },
+            ]}
+          >
+            <MoreIcon width={18} height={18} />
+          </Menu>
           <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
             <PlusIcon width={18} height={18} />
             New card
@@ -291,26 +302,10 @@ function LessonBucket({
             importTargetName: lesson.name,
           })}
           hideHeader
-          quietNewCard
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) =>
             navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`, {
-              state: cardsOrigin(courseId),
-            })
-          }
-          onNewCard={() =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/new`, {
-              state: cardsOrigin(courseId),
-            })
-          }
-          onNewSequence={() =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/sequence/new`, {
-              state: cardsOrigin(courseId),
-            })
-          }
-          onNewOcclusion={() =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/occlusion/new`, {
               state: cardsOrigin(courseId),
             })
           }
@@ -363,12 +358,8 @@ function UnassignedBucket({
             importTargetName: courseName,
           })}
           hideHeader
-          quietNewCard
           courseId={courseId}
           assignableLessons={assignableLessons}
-          onNewCard={() => navigate(`/course/${courseId}/cards/new`)}
-          onNewSequence={() => navigate(`/course/${courseId}/sequence/new`)}
-          onNewOcclusion={() => navigate(`/course/${courseId}/occlusion/new`)}
           onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
           onEditSequence={(sequenceId) =>

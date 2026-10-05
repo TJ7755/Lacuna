@@ -101,8 +101,8 @@ vi.mock('../components/cards/CardList', () => ({
 }));
 
 vi.mock('../components/ui/Button', () => ({
-  Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
       {children}
     </button>
   ),
@@ -112,6 +112,8 @@ vi.mock('../components/ui/icons', () => ({
   ChevronLeftIcon: () => <svg data-testid="chevron-left" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
   SearchIcon: () => <svg data-testid="search-icon" />,
+  MoreIcon: () => <svg data-testid="more-icon" />,
+  ChevronDownIcon: () => <svg data-testid="chevron-down" />,
 }));
 
 const course: Course = {
@@ -231,13 +233,12 @@ describe('CardsPage', () => {
     const emptyPanel = emptyMessage.parentElement;
     expect(emptyPanel).not.toBeNull();
     expect(screen.getAllByRole('button', { name: 'New card' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'New sequence' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'New occlusion' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'More ways to add' })).toHaveLength(1);
     expect(within(emptyPanel!).queryByRole('button')).not.toBeInTheDocument();
     expect(within(emptyPanel!).queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('keeps the common content types directly available from one labelled action group', () => {
+  it('leads with New card and folds the rarer content types into one menu', () => {
     mockCourse = course;
     mockLessons = [];
     mockCards = [makeCard({ id: 'c1' })];
@@ -246,8 +247,10 @@ describe('CardsPage', () => {
 
     const addContent = screen.getByRole('group', { name: 'Add content' });
     expect(addContent).toHaveTextContent('New card');
-    expect(addContent).toHaveTextContent('New sequence');
-    expect(addContent).toHaveTextContent('New occlusion');
+    expect(addContent).not.toHaveTextContent('New sequence');
+    fireEvent.click(within(addContent).getByRole('button', { name: 'More ways to add' }));
+    expect(screen.getByRole('menuitem', { name: 'New sequence' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'New occlusion' })).toBeInTheDocument();
   });
 
   it('groups cards by lesson and shows counts', () => {
@@ -264,14 +267,16 @@ describe('CardsPage', () => {
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
   });
 
-  it('keeps New card primary only in the page header', () => {
+  it('offers New card once, in the page header, not again in each group', () => {
     mockCourse = course;
     mockLessons = [lesson1];
-    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: 'lesson-1' }),
+      makeCard({ id: 'c2', primaryLessonId: null }),
+    ];
     renderPage();
-    for (const list of screen.getAllByTestId('card-list')) {
-      expect(list).toHaveAttribute('data-quiet-new-card', 'true');
-    }
+    expect(screen.getAllByTestId('card-list')).toHaveLength(2);
+    expect(screen.queryByText('new-card')).not.toBeInTheDocument();
   });
 
   it('shows an Unassigned bucket for cards with no primaryLessonId', () => {

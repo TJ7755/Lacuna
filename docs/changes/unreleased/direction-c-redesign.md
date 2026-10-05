@@ -156,3 +156,6 @@
   back; the notes before a lesson sit on the shared card surface.
 - Top-level page titles also share one top edge: Import no longer reserves an
   empty Back row, and Progress and Help lost their extra offsets.
+- Cards offers New card once, in the page header; New sequence and New
+  occlusion fold into a menu beside it, and the lesson and unassigned groups no
+  longer repeat the create buttons (Open lesson adds to a lesson).
