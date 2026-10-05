@@ -85,6 +85,18 @@ describe('Paper question set authoring', () => {
     expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Edit Q1' })).toBeVisible();
   });
+  it('is keyboard-first: title focused, Ctrl+Enter continues, Escape steps back', async () => {
+    const course = await setup();
+    open(course.id);
+    const title = await screen.findByLabelText('Set title');
+    await waitFor(() => expect(title).toHaveFocus());
+    fireEvent.change(title, { target: { value: 'Cells' } });
+    fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true });
+    expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Q1' }));
+    fireEvent.keyDown(await screen.findByLabelText('Question text'), { key: 'Escape' });
+    expect(await screen.findByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+  });
   it('does not repeat the course name above Questions', async () => {
     const course = await setup();
     open(course.id, 'questions');

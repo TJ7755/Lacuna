@@ -56,10 +56,14 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
       setStep(snapshot.draft.content.title.trim() ? 'contents' : 'setup');
   }, [snapshot, selectedStep]);
   const heading = useRef<HTMLHeadingElement>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const ready = Boolean(session && snapshot?.draft);
   useEffect(() => {
-    heading.current?.focus({ preventScroll: true });
+    // The first step opens on its title field so typing can start at once; later steps
+    // announce their heading, as before.
+    (step === 'setup' ? titleInput.current : heading.current)?.focus({ preventScroll: true });
     heading.current?.closest('header')?.scrollIntoView?.({ block: 'start' });
-  }, [step, activeId]);
+  }, [step, activeId, ready]);
   const [error, setError] = useState('');
   const [showIssues, setShowIssues] = useState(false);
   const [confirm, setConfirm] = useState<{ message: string; run: () => void } | null>(null);
@@ -202,7 +206,24 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
         ? String(snapshot.error)
         : '');
   return (
-    <div className="qs-editor qs-flow">
+    <div
+      className="qs-editor qs-flow"
+      onKeyDown={(event) => {
+        if (event.defaultPrevented) return;
+        const root = event.currentTarget;
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          root.querySelector<HTMLButtonElement>('[data-step-primary]')?.click();
+        } else if (event.key === 'Escape') {
+          // Drafts autosave, so stepping back never loses work.
+          const back = root.querySelector<HTMLButtonElement>('[data-step-back]');
+          if (back) {
+            event.preventDefault();
+            back.click();
+          }
+        }
+      }}
+    >
       <header className="qs-editor-header">
         <div className="qs-editor-title">
           <Link
@@ -308,6 +329,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
               <label className="qs-field">
                 Set title
                 <input
+                  ref={titleInput}
                   value={content.title}
                   placeholder="Name this question set"
                   onChange={(event) =>
@@ -324,6 +346,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
             <footer className="qs-flow-footer">
               <Button
                 variant="primary"
+                data-step-primary
                 onClick={() => {
                   if (!content.title.trim()) setError('Give this set a title.');
                   else {
@@ -376,6 +399,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
               {step === 'contents' ? (
                 <Button
                   variant="primary"
+                  data-step-primary
                   disabled={!content.questions.length}
                   onClick={() => {
                     setShowIssues(true);
@@ -386,9 +410,11 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
                 </Button>
               ) : (
                 <>
-                  <Button onClick={() => setStep('contents')}>Back to questions</Button>
+                  <Button data-step-back onClick={() => setStep('contents')}>
+                    Back to questions
+                  </Button>
                   <Button onClick={() => setStep('preview')}>Preview as student</Button>
-                  <Button variant="primary" onClick={() => void publish()}>
+                  <Button variant="primary" data-step-primary onClick={() => void publish()}>
                     Save set
                   </Button>
                 </>
@@ -414,6 +440,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
             />
             <footer className="qs-flow-footer">
               <Button
+                data-step-back
                 onClick={() => {
                   setError('');
                   setStep(step === 'marks' ? 'question' : step === 'links' ? 'marks' : 'contents');
@@ -423,6 +450,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
               </Button>
               <Button
                 variant="primary"
+                data-step-primary
                 onClick={
                   step === 'question'
                     ? nextFromQuestion
@@ -447,7 +475,9 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
             <p className="qs-muted mb-5">Preview only. Your answers here are not recorded.</p>
             <QuestionSetPreview content={content} authorPreview />
             <footer className="qs-flow-footer">
-              <Button onClick={() => setStep('review')}>Back to review</Button>
+              <Button data-step-back onClick={() => setStep('review')}>
+                Back to review
+              </Button>
             </footer>
           </>
         )}
