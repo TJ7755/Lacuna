@@ -500,7 +500,7 @@ export function UnifiedImportPanel({
             className={cn(
               'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
-                ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
+                ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
             )}
           >
@@ -517,7 +517,7 @@ export function UnifiedImportPanel({
             className={cn(
               'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
               shareMode
-                ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
+                ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
             )}
           >
@@ -584,8 +584,8 @@ export function UnifiedImportPanel({
               className={cn(
                 'w-full resize-y rounded-2xl border bg-surface px-4 py-3 font-mono text-sm text-ink outline-none transition-all',
                 dragging
-                  ? 'border-accent ring-2 ring-accent/20 shadow-md shadow-accent/10'
-                  : 'border-line focus:border-accent/60 focus:shadow-sm focus:shadow-accent/5',
+                  ? 'border-accent ring-2 ring-accent/20'
+                  : 'border-line focus:border-accent/60',
               )}
             />
 
@@ -908,7 +908,7 @@ function ShareCodeImport({
 }) {
   return (
     <>
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60 focus-within:shadow-sm focus-within:shadow-accent/5">
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60">
         <label className="mb-2.5 block text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
           Share code
         </label>
@@ -931,7 +931,7 @@ function ShareCodeImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-4"
           >
-            <div className="rounded-3xl bg-accent-soft/40 p-5 text-sm leading-relaxed text-ink-soft shadow-sm shadow-accent/5">
+            <div className="rounded-3xl bg-accent-soft/40 p-5 text-sm leading-relaxed text-ink-soft">
               {notice}
             </div>
           </motion.div>
