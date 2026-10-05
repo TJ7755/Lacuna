@@ -129,7 +129,7 @@ function CoursePicker({
         <p className="py-2 text-sm text-ink-faint">Loading your courses…</p>
       ) : active.length === 0 ? (
         <p className="py-2 text-sm text-ink-soft">
-          There are no courses to study yet. Create one from the dashboard first.
+          There are no courses to study yet. Create one from Today first.
         </p>
       ) : (
         active.map((course) => (

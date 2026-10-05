@@ -363,7 +363,7 @@ function ArchiveCourseDialog({
           Archive {course.name}?
         </h2>
         <p id="archive-course-description" className="mt-2 text-sm leading-relaxed text-ink-soft">
-          This removes the course from active study and the dashboard. Its lessons, cards and review
+          This removes the course from active study and Today. Its lessons, cards and review
           history are preserved.
         </p>
         {error && (

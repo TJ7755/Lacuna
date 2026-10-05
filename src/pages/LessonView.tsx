@@ -140,7 +140,7 @@ export function LessonView({
               : 'This course could not be found.'}
           </p>
           <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent-ink underline">
-            {courseId ? 'Back to course' : 'Back to dashboard'}
+            {courseId ? 'Back to course' : 'Back to Today'}
           </Link>
         </div>
       </div>
@@ -151,7 +151,7 @@ export function LessonView({
   // for a single-lesson course (no path to navigate back to).
   const archived = course.archived === true;
   const backTo = archived ? '/archived' : isInline ? '/' : `/course/${courseId}`;
-  const backLabel = archived ? 'Archived courses' : isInline ? 'Dashboard' : 'Course';
+  const backLabel = archived ? 'Archived courses' : isInline ? 'Today' : 'Course';
 
   // Header figures, scoped to this lesson's own cards (reusing the same FSRS
   // helpers CoursePath uses at course scope — see CoursePath.tsx and

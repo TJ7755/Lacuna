@@ -138,7 +138,7 @@ export function OcclusionEditor() {
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
         <Link to="/" className="text-accent underline">
-          Back to dashboard
+          Back to Today
         </Link>
       </div>
     );
@@ -148,7 +148,7 @@ export function OcclusionEditor() {
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
         <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
-          {courseId ? 'Back to course' : 'Back to dashboard'}
+          {courseId ? 'Back to course' : 'Back to Today'}
         </Link>
       </div>
     );

@@ -152,7 +152,7 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Courses</h3>
                 <p className="text-sm text-ink-soft">
                   A course is the top-level subject you are studying &mdash; a module, a subject, an
-                  exam. The dashboard lists your courses; opening one takes you to its path. A
+                  exam. Today lists your courses; opening one takes you to its path. A
                   course with a single lesson skips the path and opens straight into that lesson.
                 </p>
               </div>
@@ -798,7 +798,7 @@ export function HelpPage() {
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
         >
           <ChevronLeftIcon width={16} height={16} />
-          Back to dashboard
+          Back to Today
         </Link>
 
         <div>

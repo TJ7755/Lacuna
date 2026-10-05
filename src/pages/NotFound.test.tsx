@@ -17,6 +17,6 @@ describe('NotFound', () => {
       screen.getByRole('heading', { name: 'This page is not on the path.' }),
     ).toBeInTheDocument();
     expect(screen.getByText('/definitely-not-a-route')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to dashboard' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Back to Today' })).toHaveAttribute('href', '/');
   });
 });
