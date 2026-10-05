@@ -28,6 +28,7 @@ export function CardEditorActions({
   saveAddRef,
   saveRef,
 }: CardEditorActionsProps) {
+  const stacked = !editing && !isTouchMode;
   return (
     <div
       role="region"
@@ -39,12 +40,14 @@ export function CardEditorActions({
     >
       <div
         className={cn(
-          'flex flex-wrap items-center justify-end gap-2.5',
+          // Three actions do not fit the preview column in one row, so the primary
+          // takes the full width above the other two rather than wrapping alone.
+          stacked ? 'grid grid-cols-2 gap-2.5' : 'flex flex-wrap items-center justify-end gap-2.5',
           isTouchMode && 'mx-auto max-w-3xl',
         )}
       >
         {!editing && addedCount > 0 && (
-          <span className="mr-auto text-sm tabular-nums text-ink-faint">
+          <span className={cn('text-sm tabular-nums text-ink-faint', stacked ? 'col-span-2' : 'mr-auto')}>
             {addedCount} added
           </span>
         )}
@@ -69,6 +72,7 @@ export function CardEditorActions({
           size="lg"
           onClick={() => onSave(false)}
           disabled={!canSave}
+          className={stacked ? 'order-first col-span-2' : undefined}
         >
           {editing ? 'Save changes' : 'Add card'}
         </Button>

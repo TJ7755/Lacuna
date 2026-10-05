@@ -159,3 +159,5 @@
 - Cards offers New card once, in the page header; New sequence and New
   occlusion fold into a menu beside it, and the lesson and unassigned groups no
   longer repeat the create buttons (Open lesson adds to a lesson).
+- The card editor's Add card no longer wraps alone under the other actions:
+  it takes the full width above Cancel and Save & add another.
