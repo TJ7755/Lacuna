@@ -12,12 +12,12 @@ async function createMobileCourse(page: Page, courseName: string) {
 
 async function addCard(page: Page, front: string, back: string) {
   await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(front);
   await page.getByRole('textbox', { name: 'Back' }).fill(back);
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await expect(page.getByText(front, { exact: true })).toBeVisible();
+  await expect(page.getByText(front, { exact: true }).first()).toBeVisible();
 }
 
 async function waitForServiceWorkerControl(page: Page) {
@@ -36,7 +36,8 @@ test('opens course navigation and returns to the dashboard', async ({ page }) =>
   const sections = page.getByRole('navigation', { name: 'Course sections' });
   await sections.getByRole('link', { name: 'Cards' }).click();
   await expect(page.locator('main[data-route-path$="/cards"]')).toBeVisible();
-  await page.getByRole('link', { name: 'All courses' }).click();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('link', { name: 'Today', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 });
 
