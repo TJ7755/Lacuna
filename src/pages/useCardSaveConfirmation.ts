@@ -5,6 +5,7 @@ export function useCardSaveConfirmation(draftKey: string) {
   const [showSaved, setShowSaved] = useState(false);
   const scope = useMemo(
     () => ({
+      draftKey,
       active: true,
       savedTimer: undefined as number | undefined,
       returnTimer: undefined as number | undefined,
