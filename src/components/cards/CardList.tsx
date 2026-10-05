@@ -46,6 +46,7 @@ import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types'
 import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 import { Skeleton } from '../ui/Skeleton';
+import { Input } from '../ui/Field';
 
 const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),
@@ -567,7 +568,7 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
                 <div className="border-t border-line pt-3">
                   <label className="block text-sm text-ink-soft">
                     Tag for {selected.size} card{plural(selected.size)}
-                    <input
+                    <Input
                       list="bulk-tag-suggestions"
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
@@ -578,7 +579,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
                         }
                       }}
                       placeholder="Type a tag…"
-                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     />
                     <datalist id="bulk-tag-suggestions">
                       {tagSuggestions.map((t) => (

@@ -31,6 +31,7 @@ import { PracticeNodesSection } from './settings/PracticeNodesSection';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { DetachCourseSection } from './settings/DetachCourseSection';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Field, Input } from '../components/ui/Field';
 
 const COURSE_SETTINGS_SECTIONS = [
   { id: 'course-settings-basics', label: 'Basics' },
@@ -300,35 +301,29 @@ export function CourseSettings() {
               <h2 className="font-display text-2xl">Basics</h2>
               <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
                 <div className="flex flex-col gap-4">
-                  <label className="block text-sm text-ink-soft">
-                    Course name
-                    <input
+                  <Field label="Course name">
+                    <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={commitName}
-                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     />
-                  </label>
+                  </Field>
 
-                  <label className="block text-sm text-ink-soft">
-                    Exam board
-                    <input
+                  <Field label="Exam board">
+                    <Input
                       value={examBoard}
                       onChange={(e) => setExamBoard(e.target.value)}
                       onBlur={commitExamBoard}
-                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     />
-                  </label>
+                  </Field>
 
-                  <label className="block text-sm text-ink-soft">
-                    Specification
-                    <input
+                  <Field label="Specification">
+                    <Input
                       value={specification}
                       onChange={(e) => setSpecification(e.target.value)}
                       onBlur={commitSpecification}
-                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     />
-                  </label>
+                  </Field>
 
                   <div className="block text-sm text-ink-soft">
                     <div className="mb-2">Exam objective</div>
