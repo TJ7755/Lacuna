@@ -166,17 +166,25 @@ export function CardImportDialog({
         transition={{ type: 'spring', duration: 0.4 * m, bounce: 0 }}
       >
         <header className="card-import-header">
-          <h2 id="card-import-heading">Import cards</h2>
+          {/* On the Import page, the page's own title and Back link already do these jobs. */}
+          <h2 id="card-import-heading" className={presentation === 'page' ? 'sr-only' : undefined}>
+            Import cards
+          </h2>
           <ImportStepper step={step} />
-          <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
-            <CloseIcon width={18} height={18} />
-          </button>
+          {presentation === 'dialog' && (
+            <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
+              <CloseIcon width={18} height={18} />
+            </button>
+          )}
         </header>
         <div className="card-import-scroll">
           <StepSwap stepKey={step} direction={step === 'review' ? 1 : -1} moveFocus>
             <div className="card-import-body">
               <div className="card-import-options">
-                <h2 tabIndex={-1}>{step === 'input' ? 'Add content' : 'Review cards'}</h2>
+                {/* The stepper shows the step; this heading stays as the focus target. */}
+                <h2 tabIndex={-1} className="sr-only">
+                  {step === 'input' ? 'Add content' : 'Review cards'}
+                </h2>
                 {titleLabel ? (
                   <label className="card-import-title-label" htmlFor="card-import-title">
                     {titleLabel}
