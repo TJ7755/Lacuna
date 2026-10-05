@@ -1,3 +1,5 @@
+import { SectionCard } from '../ui/SectionCard';
+import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
@@ -269,7 +271,7 @@ export function SharedCourseImport({
   }
 
   return (
-    <section ref={importSectionRef} className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
+    <SectionCard ref={importSectionRef} className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
       <div className="mb-1 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
@@ -352,7 +354,7 @@ export function SharedCourseImport({
                 ref={scannerRef}
                 className="relative mx-auto aspect-square max-w-sm overflow-hidden rounded-lg bg-black"
               >
-                {!scanError && <div className="absolute inset-0 animate-pulse bg-ink/10" />}
+                {!scanError && <Skeleton className="absolute inset-0 bg-ink/10" />}
               </div>
               {scanError && <p className="mt-2 text-sm text-negative">{scanError}</p>}
               <p className="mt-2 text-xs text-ink-faint">
@@ -452,6 +454,6 @@ export function SharedCourseImport({
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </SectionCard>
   );
 }

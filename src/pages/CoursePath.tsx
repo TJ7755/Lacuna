@@ -45,6 +45,7 @@ import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const LazyLessonView = lazy(() =>
   import('./LessonView').then((module) => ({ default: module.LessonView })),
@@ -360,7 +361,7 @@ export function CoursePath() {
           </div>
         )}
         <Suspense
-          fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}
+          fallback={<Skeleton className="min-h-[50vh] rounded-2xl bg-ink/[0.03]" />}
         >
           <LazyLessonView
             courseId={courseId}

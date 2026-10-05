@@ -12,6 +12,7 @@ import {
 import type { CourseAssessment, RevisionPlan } from '../../db/types';
 import { formatDateTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
+import { SectionCard } from '../ui/SectionCard';
 
 const PRESETS = [10, 20, 30] as const;
 
@@ -159,7 +160,7 @@ export function RevisionPlanSetup({
       )}
 
       {readOnly ? (
-        <div className="mt-8 rounded-2xl border border-line bg-surface p-5">
+        <SectionCard as="div" compact className="mt-8">
           <h2 className="font-display text-xl">{expired ? 'Plan archived' : 'Plan complete'}</h2>
           <p className="mt-2 text-sm text-ink-soft">
             {expired
@@ -170,16 +171,16 @@ export function RevisionPlanSetup({
             {plan.completedSessions.length} window{plan.completedSessions.length === 1 ? '' : 's'}{' '}
             completed
           </p>
-        </div>
+        </SectionCard>
       ) : (
         <>
           {activeWindow ? (
-            <section className="mt-8 rounded-2xl border border-line bg-surface p-5">
+            <SectionCard compact className="mt-8">
               <h2 className="font-display text-2xl">Today’s window</h2>
               <p className="mt-2 text-sm text-ink-soft">
                 {activeWindow.budgetMinutes} minutes · started earlier
               </p>
-            </section>
+            </SectionCard>
           ) : (
             <section className="mt-8">
               <h2 className="font-display text-2xl">Time available today</h2>

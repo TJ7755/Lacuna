@@ -1,3 +1,5 @@
+import { Input } from '../ui/Field';
+import { Skeleton } from '../ui/Skeleton';
 import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -526,7 +528,7 @@ export function CardList({
                     <div>
                       <label className="block text-sm text-ink-soft">
                         Tag for {selected.size} card{plural(selected.size)}
-                        <input
+                        <Input
                           list="bulk-tag-suggestions"
                           value={tagValue}
                           onChange={(e) => setTagValue(e.target.value)}
@@ -1311,7 +1313,7 @@ const CardRow = React.memo(function CardRow({
                 >
                   <Suspense
                     fallback={
-                      <span className="inline-block h-4 w-24 animate-pulse rounded bg-ink/5" />
+                      <Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />
                     }
                   >
                     <CardContent card={card} side={contentSide} />

@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useState } from 'react';
 import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
@@ -43,16 +44,16 @@ const X_INTERVAL: Record<Period, number> = { '7': 0, '30': 6, '90': 14 };
 function AnalyticsSkeleton() {
   return (
     <div className="mx-auto max-w-[1100px] space-y-4 px-6 py-10 md:px-12">
-      <div className="h-11 w-48 animate-pulse rounded-lg bg-ink/5" />
+      <Skeleton className="h-11 w-48 rounded-lg bg-ink/5" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-3xl bg-ink/5" />
+          <Skeleton key={i} className="h-24 rounded-3xl bg-ink/5" />
         ))}
       </div>
-      <div className="h-56 animate-pulse rounded-3xl bg-ink/5" />
+      <Skeleton className="h-56 rounded-3xl bg-ink/5" />
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-72 animate-pulse rounded-3xl bg-ink/5" />
+          <Skeleton key={i} className="h-72 rounded-3xl bg-ink/5" />
         ))}
       </div>
     </div>

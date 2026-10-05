@@ -36,6 +36,7 @@ import {
 } from '../../db/mergeImport';
 import type { CourseRecord } from '../../db/types';
 import { formatDate } from '../../utils/datetime';
+import { Skeleton } from '../ui/Skeleton';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -624,7 +625,7 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.15 * m }}
                 className="flex items-center gap-2.5 rounded-2xl bg-accent-soft/60 px-3.5 py-2 text-xs text-accent"
               >
-                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
+                <Skeleton as="span" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                 {pasteNotification}
               </motion.div>
             )}

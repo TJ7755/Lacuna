@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { Skeleton } from '../components/ui/Skeleton';
 
 /**
  * Short enough to overlap the shell's own route transition without reading as a
@@ -14,10 +15,10 @@ function RouteFallback() {
     <DelayedFallback>
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4 p-8">
         <div className="w-full max-w-xs space-y-3">
-          <div className="h-8 w-3/4 animate-pulse rounded-lg bg-ink/5" />
-          <div className="h-4 w-full animate-pulse rounded-lg bg-ink/5" />
-          <div className="h-4 w-5/6 animate-pulse rounded-lg bg-ink/5" />
-          <div className="h-32 w-full animate-pulse rounded-xl bg-ink/5" />
+          <Skeleton className="h-8 w-3/4 rounded-lg bg-ink/5" />
+          <Skeleton className="h-4 w-full rounded-lg bg-ink/5" />
+          <Skeleton className="h-4 w-5/6 rounded-lg bg-ink/5" />
+          <Skeleton className="h-32 w-full rounded-xl bg-ink/5" />
         </div>
       </div>
     </DelayedFallback>

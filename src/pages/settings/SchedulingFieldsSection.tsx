@@ -1,3 +1,4 @@
+import { Input } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
 import { ChevronDownIcon } from '../../components/ui/icons';
 
@@ -80,7 +81,7 @@ export function SchedulingFieldsSection({
     <>
       <label className="block text-sm text-ink-soft">
         New cards per day
-        <input
+        <Input
           type="number"
           min={0}
           inputMode="numeric"
@@ -99,7 +100,7 @@ export function SchedulingFieldsSection({
 
       <label className="block text-sm text-ink-soft">
         Maximum reviews per day
-        <input
+        <Input
           type="number"
           min={0}
           inputMode="numeric"
@@ -117,7 +118,7 @@ export function SchedulingFieldsSection({
 
       <label className="block text-sm text-ink-soft">
         Daily review goal
-        <input
+        <Input
           type="number"
           min={0}
           inputMode="numeric"
@@ -135,7 +136,7 @@ export function SchedulingFieldsSection({
 
       <label className="block text-sm text-ink-soft">
         Session time limit
-        <input
+        <Input
           type="number"
           min={0}
           inputMode="numeric"
@@ -183,7 +184,7 @@ export function SchedulingFieldsSection({
 
           <label className="block text-sm text-ink-soft">
             Maximum interval
-            <input
+            <Input
               type="number"
               min={1}
               inputMode="numeric"
@@ -201,7 +202,7 @@ export function SchedulingFieldsSection({
 
           <label className="block text-sm text-ink-soft">
             Learning steps
-            <input
+            <Input
               value={learningSteps}
               onChange={(e) => onLearningStepsChange(e.target.value)}
               onBlur={onLearningStepsBlur}
@@ -216,7 +217,7 @@ export function SchedulingFieldsSection({
 
           <label className="block text-sm text-ink-soft">
             Relearning steps
-            <input
+            <Input
               value={relearningSteps}
               onChange={(e) => onRelearningStepsChange(e.target.value)}
               onBlur={onRelearningStepsBlur}
@@ -234,7 +235,7 @@ export function SchedulingFieldsSection({
             <div className="flex flex-col gap-3">
               <label className="block text-sm text-ink-soft">
                 Leech threshold
-                <input
+                <Input
                   type="number"
                   min={1}
                   inputMode="numeric"
@@ -253,7 +254,7 @@ export function SchedulingFieldsSection({
                 <legend className="mb-2">When a card becomes a leech</legend>
                 <div className="flex flex-col gap-2">
                   <label className="flex cursor-pointer items-center gap-2">
-                    <input
+                    <Input
                       type="radio"
                       name="leechAction"
                       value="suspend"
@@ -264,7 +265,7 @@ export function SchedulingFieldsSection({
                     <span className="text-sm text-ink-soft">Auto-suspend the card</span>
                   </label>
                   <label className="flex cursor-pointer items-center gap-2">
-                    <input
+                    <Input
                       type="radio"
                       name="leechAction"
                       value="tag"
@@ -275,7 +276,7 @@ export function SchedulingFieldsSection({
                     <span className="text-sm text-ink-soft">Add a &apos;leech&apos; tag</span>
                   </label>
                   <label className="flex cursor-pointer items-center gap-2">
-                    <input
+                    <Input
                       type="radio"
                       name="leechAction"
                       value="none"

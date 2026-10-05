@@ -1,3 +1,4 @@
+import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '../../db/types';
 import {
@@ -210,11 +211,7 @@ export function LearnHeader({
             {mode !== 'simple' && !plannedRevision && (
               <span className="ml-auto hidden shrink-0 pl-3 text-ink-soft tabular-nums md:inline">
                 {Math.round(predictedRecall * 100)}%{' '}
-                {singleDeck
-                  ? singleDeck.examObjective === 'securedTopics'
-                    ? 'secured'
-                    : 'predicted recall'
-                  : 'predicted readiness'}
+                {forecastLabel(singleDeck)}
               </span>
             )}
           </div>
@@ -414,6 +411,19 @@ function UndoIcon({ width, height }: { width: number; height: number }) {
       <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </svg>
   );
+}
+
+/**
+ * What the header's second figure forecasts. Recall is a prediction at the scheduling
+ * horizon, so it names that horizon: the exam while one is ahead, otherwise the
+ * rolling maintenance window.
+ */
+export function forecastLabel(unit: StudyUnit | null, now: number = Date.now()): string {
+  if (!unit) return 'predicted readiness';
+  if (unit.examObjective === 'securedTopics') return 'secured';
+  return unit.examDate !== undefined && unit.examDate >= now
+    ? 'forecast recall at the exam'
+    : `forecast recall in ${MAINTENANCE_HORIZON_DAYS} days`;
 }
 
 function SessionProgressTrack({ value, label, m }: { value: number; label: string; m: number }) {

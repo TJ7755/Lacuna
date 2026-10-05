@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 // Course-scoped analytics page.
 // Route: /course/:courseId/analytics
 
@@ -27,7 +28,7 @@ function CourseAnalyticsSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-8`}>
       <div className="mb-8 pt-6 md:pt-8">
-        <div className="h-11 w-56 animate-pulse rounded-lg bg-ink/10" />
+        <Skeleton className="h-11 w-56 rounded-lg bg-ink/10" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
