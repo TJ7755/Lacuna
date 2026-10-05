@@ -3,7 +3,7 @@ import { useCardSaveConfirmation } from './useCardSaveConfirmation';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard } from '../state/useData';
 import {
@@ -55,7 +55,7 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { scaledSpring } from '../components/ui/motion';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
-import type { EditorOriginState } from '../utils/editorOrigin';
+import { useReturn } from '../utils/editorOrigin';
 import type {
   AnswerMode,
   Card,
@@ -89,7 +89,6 @@ export function CardEditor() {
   const lessonMode = Boolean(lessonId);
   const bankMode = !lessonMode;
   const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -380,14 +379,15 @@ export function CardEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/cards`;
-  // Where the caller navigated from, when that differs from what the route alone
-  // implies (e.g. a lesson-owned card opened for editing from Cards).
-  // Absent on direct loads and hard refreshes, which drop router state — the
-  // route-derived default below covers that case.
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  // Cancel, post-save navigation and the breadcrumb all return to where the learner
+  // came from (see src/utils/editorOrigin.ts), or to the route's own default after a
+  // deep link or refresh.
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
 
   if (
     (lessonMode
@@ -458,7 +458,7 @@ export function CardEditor() {
         <div className="flex flex-col gap-6">
           <header className="flex flex-col gap-2">
             <Link
-              to={backPath}
+              {...returnTo.linkProps}
               className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               <ChevronLeftIcon width={14} height={14} />
@@ -600,7 +600,7 @@ export function CardEditor() {
       // Let the confirmation flourish play briefly before leaving the page.
       afterSaved(() => {
         notify('Card updated.', 'positive');
-        void navigate(backPath);
+        returnTo.goBack();
       });
       return;
     }
@@ -669,7 +669,7 @@ export function CardEditor() {
       flashSaved();
       afterSaved(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
-        void navigate(backPath);
+        returnTo.goBack();
       });
     }
   }
@@ -684,14 +684,14 @@ export function CardEditor() {
           void handleSave(!editing);
         } else if (e.key === 'Escape' && !e.defaultPrevented) {
           // Nested popovers consume Escape first; otherwise it cancels, like the dialogs do.
-          void navigate(backPath);
+          returnTo.goBack();
         }
       }}
     >
       <div className="flex flex-col gap-6">
         <motion.header {...riseIn(0, m)} className="flex flex-col gap-2">
           <Link
-            to={backPath}
+            {...returnTo.linkProps}
             className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             <ChevronLeftIcon width={14} height={14} />
@@ -986,7 +986,7 @@ export function CardEditor() {
               canSave={canSave}
               addedCount={addedCount}
               isTouchMode={isTouchMode}
-              onCancel={() => navigate(backPath)}
+              onCancel={returnTo.goBack}
               onSave={(andAnother) => void handleSave(andAnother)}
               saveAddRef={saveAddRef}
               saveRef={saveRef}

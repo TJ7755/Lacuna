@@ -691,7 +691,7 @@ describe('CardEditor — generated cards', () => {
     renderEditing();
 
     fireEvent.keyDown(screen.getByPlaceholderText(/Question or prompt/), { key: 'Escape' });
-    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'));
+    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'), { state: { returning: true } });
   });
 
   it('renders the ordinary editable form for a non-generated card', () => {
@@ -912,6 +912,6 @@ describe('CardEditor — save navigation', () => {
     });
     expect(mockNavigate).not.toHaveBeenCalled();
     await act(async () => { vi.advanceTimersByTime(450); });
-    expect(mockNavigate).toHaveBeenCalledExactlyOnceWith('/course/course-1/cards');
+    expect(mockNavigate).toHaveBeenCalledExactlyOnceWith('/course/course-1/cards', { state: { returning: true } });
   });
 });

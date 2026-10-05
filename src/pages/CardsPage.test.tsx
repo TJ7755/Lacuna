@@ -190,9 +190,9 @@ function makeCard(overrides: Partial<Card>): Card {
   };
 }
 
-function renderPage() {
+function renderPage(entry = '/course/course-1/cards') {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/cards']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/course/:courseId/cards" element={<CardsPage />} />
         <Route path="/course/:courseId/cards/new" element={<p>Card editor</p>} />
@@ -375,5 +375,16 @@ describe('CardsPage', () => {
     expect(screen.getByText('No cards match.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }));
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+  });
+
+  it('restores search and filters from the address, so a return keeps them', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    renderPage('/course/course-1/cards?q=supply&f=due');
+    expect(screen.getByRole('searchbox', { name: 'Search all cards' })).toHaveValue('supply');
+    expect(
+      within(screen.getByRole('group', { name: 'Filter cards' })).getByRole('button', { name: /Due/ }),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 });

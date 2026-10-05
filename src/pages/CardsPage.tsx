@@ -7,8 +7,9 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { originFrom } from '../utils/editorOrigin';
 import {
   useCourse,
   useLessons,
@@ -30,19 +31,49 @@ import { arrivalDelay } from './settings/SettingsUi';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
 
-// Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
-// duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
-// user opened it from here, so the back-link should return to Cards
-// rather than the lesson — see src/utils/editorOrigin.ts.
-function cardsOrigin(courseId: string) {
-  return { origin: { path: `/course/${courseId}/cards`, label: 'Cards' } };
+/**
+ * Navigate from Cards so the destination's Back returns here with the same search,
+ * filters and scroll position (see src/utils/editorOrigin.ts). Editing a lesson-owned
+ * card still uses the lesson-scoped route, so without this it would return to the lesson.
+ */
+function useCardsNavigate() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (to: string) => void navigate(to, { state: originFrom(location, 'Cards') });
+}
+
+function readFilters(value: string | null): ReadonlySet<CardFilter> {
+  const known = new Set<string>(CARD_FILTER_CHIPS.map((chip) => chip.value));
+  return new Set((value ?? '').split(',').filter((part): part is CardFilter => known.has(part)));
 }
 
 export function CardsPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<ReadonlySet<CardFilter>>(new Set());
+  const go = useCardsNavigate();
+  // Search and filters live in the URL, so returning from an editor restores them.
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
+  const filters = useMemo(() => readFilters(params.get('f')), [params]);
+  const setSearch = (value: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set('q', value);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
+  const setFilters = (value: ReadonlySet<CardFilter>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value.size) next.set('f', [...value].join(','));
+        else next.delete('f');
+        return next;
+      },
+      { replace: true },
+    );
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
 
@@ -128,12 +159,10 @@ export function CardsPage() {
   const hasCriteria = query !== '' || filters.size > 0;
 
   function toggleFilter(filter: CardFilter) {
-    setFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(filter)) next.delete(filter);
-      else next.add(filter);
-      return next;
-    });
+    const next = new Set(filters);
+    if (next.has(filter)) next.delete(filter);
+    else next.add(filter);
+    setFilters(next);
   }
 
   return (
@@ -148,18 +177,18 @@ export function CardsPage() {
               {
                 label: 'New sequence',
                 icon: <PlusIcon width={16} height={16} />,
-                onSelect: () => navigate(`/course/${courseId}/sequence/new`),
+                onSelect: () => go(`/course/${courseId}/sequence/new`),
               },
               {
                 label: 'New occlusion',
                 icon: <PlusIcon width={16} height={16} />,
-                onSelect: () => navigate(`/course/${courseId}/occlusion/new`),
+                onSelect: () => go(`/course/${courseId}/occlusion/new`),
               },
             ]}
           >
             <MoreIcon width={18} height={18} />
           </Menu>
-          <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
+          <Button variant="primary" onClick={() => go(`/course/${courseId}/cards/new`)}>
             <PlusIcon width={18} height={18} />
             New card
           </Button>
@@ -278,7 +307,7 @@ function LessonBucket({
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
-  const navigate = useNavigate();
+  const go = useCardsNavigate();
   return (
     <section className={BUCKET_CLASS}>
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
@@ -305,17 +334,15 @@ function LessonBucket({
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`, {
-              state: cardsOrigin(courseId),
-            })
+            go(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)
           }
           sequences={sequences}
           onEditSequence={(sequenceId) =>
-            navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)
+            go(`/course/${courseId}/sequence/${sequenceId}/edit`)
           }
           occlusions={occlusions}
           onEditOcclusion={(occlusionId) =>
-            navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)
+            go(`/course/${courseId}/occlusion/${occlusionId}/edit`)
           }
         />
       )}
@@ -340,7 +367,7 @@ function UnassignedBucket({
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
-  const navigate = useNavigate();
+  const go = useCardsNavigate();
   return (
     <section className={BUCKET_CLASS}>
       <div className="mb-3 px-1">
@@ -360,14 +387,14 @@ function UnassignedBucket({
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
-          onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
+          onEditCard={(card) => go(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
           onEditSequence={(sequenceId) =>
-            navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)
+            go(`/course/${courseId}/sequence/${sequenceId}/edit`)
           }
           occlusions={occlusions}
           onEditOcclusion={(occlusionId) =>
-            navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)
+            go(`/course/${courseId}/occlusion/${occlusionId}/edit`)
           }
         />
       )}

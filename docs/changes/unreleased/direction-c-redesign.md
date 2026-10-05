@@ -184,3 +184,9 @@
   New course, assessment, practice and script-paste dialogs.
 - The card editor page cancels on Escape, and the shortcuts cheatsheet and
   Help page list the shared dialog keys (Esc, Enter, Ctrl/Cmd+Enter).
+- Back returns you to where you were. An origin now carries the full address
+  (query included) and its place in browser history, so the card editor's
+  Back, Cancel, Escape and post-save return step back to that exact entry,
+  scroll position included (`useReturn` in `utils/editorOrigin.ts`). Cards
+  keeps its search and filters in the address (`?q=`, `?f=`), so they survive
+  a trip to an editor.

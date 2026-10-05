@@ -37,23 +37,23 @@ function setup() {
 it('starts a new page at the top and restores the old one on Back', () => {
   const main = setup();
   scrollTo(main, 640);
-  act(() => go('/course/c1/cards/x/edit'));
+  act(() => void go('/course/c1/cards/x/edit'));
   expect(main.scrollTop).toBe(0);
-  act(() => go(-1));
+  act(() => void go(-1));
   expect(main.scrollTop).toBe(640);
 });
 
 it('restores the place for an in-app return', () => {
   const main = setup();
   scrollTo(main, 320);
-  act(() => go('/course/c1/cards/x/edit'));
-  act(() => go('/course/c1/cards?q=cell', { state: { returning: true } }));
+  act(() => void go('/course/c1/cards/x/edit'));
+  act(() => void go('/course/c1/cards?q=cell', { state: { returning: true } }));
   expect(main.scrollTop).toBe(320);
 });
 
 it('keeps its place when only the query changes', () => {
   const main = setup();
   scrollTo(main, 200);
-  act(() => go('/course/c1/cards?q=atom'));
+  act(() => void go('/course/c1/cards?q=atom'));
   expect(main.scrollTop).toBe(200);
 });
