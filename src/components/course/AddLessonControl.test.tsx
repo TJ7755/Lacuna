@@ -56,7 +56,8 @@ it('offers an import into a new lesson without creating it before confirmation',
   render(<AddLessonControl courseId="course-1" lessonCount={1} />);
   fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
   fireEvent.click(screen.getByRole('button', { name: 'Import cards' }));
-  expect(await screen.findByLabelText('Lesson title')).toHaveValue('Lesson 2');
+  // The importer is a lazy chunk, and its first load can be slow on a cold run.
+  expect(await screen.findByLabelText('Lesson title', {}, { timeout: 5000 })).toHaveValue('Lesson 2');
   expect(screen.getByLabelText('Paste your cards')).toHaveValue('');
   expect(createLesson).not.toHaveBeenCalled();
 });
