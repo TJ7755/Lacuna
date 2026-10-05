@@ -182,3 +182,5 @@
   close button shows a focus ring. Escape, Ctrl/Cmd+Enter and (for single-line
   forms) Enter share one `dialogKeyDown` helper across the card editor overlay,
   New course, assessment, practice and script-paste dialogs.
+- The card editor page cancels on Escape, and the shortcuts cheatsheet and
+  Help page list the shared dialog keys (Esc, Enter, Ctrl/Cmd+Enter).

@@ -445,6 +445,16 @@ export function HelpPage() {
                     <td className="px-4 py-3 font-medium text-ink">?</td>
                     <td className="px-4 py-3 text-ink-soft">Any time</td>
                   </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Save or submit</td>
+                    <td className="px-4 py-3 font-medium text-ink">Ctrl/Cmd+Enter</td>
+                    <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Cancel</td>
+                    <td className="px-4 py-3 font-medium text-ink">Esc</td>
+                    <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>
+                  </tr>
                 </tbody>
               </table>
             </div>

@@ -22,6 +22,14 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Dialogs and editors',
+    shortcuts: [
+      { keys: ['Ctrl/Cmd', 'Enter'], description: 'Save or submit' },
+      { keys: ['Enter'], description: 'Submit a single-line form' },
+      { keys: ['Esc'], description: 'Cancel and close' },
+    ],
+  },
+  {
     title: 'Studying',
     shortcuts: [
       { keys: ['Space'], description: 'Show the answer' },

@@ -682,6 +682,9 @@ export function CardEditor() {
           e.preventDefault();
           // In new-card mode, Cmd/Ctrl+Enter saves and keeps going for fast capture.
           void handleSave(!editing);
+        } else if (e.key === 'Escape' && !e.defaultPrevented) {
+          // Nested popovers consume Escape first; otherwise it cancels, like the dialogs do.
+          void navigate(backPath);
         }
       }}
     >

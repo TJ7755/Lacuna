@@ -686,6 +686,14 @@ describe('CardEditor — generated cards', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/sequence/sequence-1/edit');
   });
 
+  it('cancels back to the origin on Escape', () => {
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    renderEditing();
+
+    fireEvent.keyDown(screen.getByPlaceholderText(/Question or prompt/), { key: 'Escape' });
+    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'));
+  });
+
   it('renders the ordinary editable form for a non-generated card', () => {
     mockCard = { ...generatedCard, sequenceItemId: undefined };
     renderEditing();
