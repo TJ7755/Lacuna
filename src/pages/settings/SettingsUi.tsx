@@ -131,7 +131,7 @@ export function SegmentedPills<T extends string>({
       role="radiogroup"
       aria-label={label}
       aria-describedby={describedBy}
-      className={cn('inline-flex rounded-full bg-ink/[0.06] p-1', className)}
+      className={cn('inline-flex rounded-full bg-ink/[0.06] px-1', className)}
     >
       <LayoutGroup id={groupId}>
         {options.map((option, index) => {
@@ -150,7 +150,7 @@ export function SegmentedPills<T extends string>({
               onClick={() => onChange(option.value)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                'relative inline-flex h-9 min-w-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                'relative inline-flex h-11 min-w-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
                 active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >
@@ -159,7 +159,7 @@ export function SegmentedPills<T extends string>({
                   layoutId="segmented-pill"
                   aria-hidden="true"
                   transition={scaledSpring(multiplier, 520, 36)}
-                  className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_3px_hsl(var(--ink)/0.14)]"
+                  className="absolute inset-x-0 inset-y-1 rounded-full bg-surface shadow-[0_1px_3px_hsl(var(--ink)/0.14)]"
                 />
               )}
               <span className="relative">{option.label}</span>
