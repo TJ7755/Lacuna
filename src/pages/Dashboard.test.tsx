@@ -214,6 +214,15 @@ describe('Dashboard', () => {
     expect(heading).toHaveClass('sr-only');
   });
 
+  it('never reads a non-empty queue as zero minutes', () => {
+    setCourseData([mockCourse], {
+      summaries: { 'course-1': summary(2) },
+      minutes: { 'course-1': 0.2 },
+    });
+    render(<Dashboard />);
+    expect(screen.getByLabelText('Today: 2 cards, about 1 minute')).toBeInTheDocument();
+  });
+
   it('totals the cards and minutes due across active courses', () => {
     setCourseData([mockCourse, course('course-2', 'Second Course')], {
       summaries: { 'course-1': summary(7), 'course-2': summary(5) },

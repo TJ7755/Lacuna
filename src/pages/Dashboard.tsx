@@ -116,7 +116,11 @@ export function Dashboard() {
   );
 
   const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
-  const totalMinutes = Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0);
+  // A non-empty queue never reads as zero minutes.
+  const totalMinutes = Math.max(
+    totalCards > 0 ? 1 : 0,
+    Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0),
+  );
 
   return (
     <div className={`${PAGE_FRAME} py-6 sm:py-10`}>
@@ -125,7 +129,7 @@ export function Dashboard() {
         {rows && rows.length > 0 && (
           <p
             className="flex items-center gap-5 sm:gap-6"
-            aria-label={`Today: ${totalCards} cards, about ${totalMinutes} minutes`}
+            aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'card' : 'cards'}, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`}
           >
             <span className="inline-flex items-center gap-2" aria-hidden="true">
               <CardsIcon width={20} height={20} />
