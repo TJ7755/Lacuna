@@ -52,6 +52,7 @@ export function QuestionSetCourseRow({
             },
           })
         }
+        data-press=""
         whileTap={m ? { scale: 0.99 } : undefined}
         className="group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors hover:bg-ink/[0.03] disabled:cursor-default"
       >

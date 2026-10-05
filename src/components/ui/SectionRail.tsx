@@ -145,6 +145,7 @@ function NavItem({
       initial={motionMultiplier > 0 ? { opacity: 0, x: -8 } : false}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.04 * index * motionMultiplier, duration: 0.35 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      data-press=""
       whileTap={{ scale: 0.98 }}
       className={cn(
         'relative flex min-h-11 items-center rounded-xl px-3.5 text-left text-[15px] transition-colors duration-150',

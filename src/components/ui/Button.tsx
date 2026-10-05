@@ -51,6 +51,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <motion.button
       ref={ref}
+      data-press=""
       whileTap={multiplier > 0 ? { scale: 0.96 } : undefined}
       whileHover={multiplier > 0 ? { scale: 1.02 } : undefined}
       transition={scaledSpring(multiplier, 600, 28)}

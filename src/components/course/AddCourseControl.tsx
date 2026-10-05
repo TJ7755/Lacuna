@@ -87,6 +87,7 @@ export function AddCourseControl({
           aria-expanded={open}
           aria-controls={optionsId}
           onClick={() => setOpen((value) => !value)}
+          data-press=""
           whileTap={reduced ? undefined : { scale: 0.97 }}
           transition={transition}
         >
@@ -118,6 +119,7 @@ export function AddCourseControl({
                     key={name}
                     type="button"
                     className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 text-sm font-medium text-ink hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-offset-[-3px]"
+                    data-press=""
                     whileTap={reduced ? undefined : { scale: 0.97 }}
                     transition={transition}
                     onClick={() => {

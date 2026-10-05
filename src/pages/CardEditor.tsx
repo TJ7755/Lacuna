@@ -930,6 +930,7 @@ export function CardEditor() {
                       setAlsoReverse((v) => !v);
                       setDraftDirty(true);
                     }}
+                    data-press=""
                     whileTap={m > 0 ? { scale: 0.96 } : undefined}
                     aria-pressed={alsoReverse}
                     title="Also create a card testing the back side"

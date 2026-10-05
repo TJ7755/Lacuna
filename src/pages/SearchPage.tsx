@@ -159,6 +159,7 @@ export function SearchPage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
               whileHover={{ y: -1, transition: { duration: 0.1 * m } }}
+              data-press=""
               whileTap={{ scale: 0.95 }}
               className={cn(
                 'rounded-lg border px-3 py-1 text-xs transition-colors',

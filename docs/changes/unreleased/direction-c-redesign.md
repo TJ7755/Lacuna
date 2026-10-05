@@ -113,3 +113,6 @@
   - The shared `Menu` fills its trigger, turns its chevron and staggers its
     items, and its items can carry a second line.
   - Card rows lead with the front, with a quiet meta line beneath.
+- Every control now acknowledges a press: buttons, links, tabs, menu items and
+  switches sink slightly and spring back (`pressFeedback.ts`), following the
+  motion-speed setting.

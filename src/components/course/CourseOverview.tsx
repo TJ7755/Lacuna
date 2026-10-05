@@ -230,6 +230,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                       y: reorder?.offset?.y ?? 0,
                       zIndex: reorder?.lifted ? 30 : undefined,
                     }}
+                    data-press=""
                     whileTap={m ? { scale: 0.99 } : undefined}
                     className={cn(
                       'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',

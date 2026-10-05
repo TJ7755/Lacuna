@@ -77,6 +77,11 @@ Specific motion (current state of the app):
   and assessment sheets use the same global motion multiplier for their springs, fades and
   CSS transitions. Reduced motion removes these transforms and entrances. Every Button
   variant enforces a 44px minimum touch height.
+- **Press feedback (`pressFeedback.ts`):** every other control (plain buttons, links, tabs,
+  menu items, switches) sinks about 5px on press and springs back on release, so large
+  surfaces dip as gently as pills. It animates the standalone `scale` property, so it
+  composes with a control's own transform. Controls that animate their own press carry
+  `data-press` to opt out.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
 - **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a

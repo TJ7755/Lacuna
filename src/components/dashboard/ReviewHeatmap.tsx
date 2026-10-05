@@ -241,6 +241,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
                   animate={revealed ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
                   whileHover={m > 0 ? { scale: 1.18 } : undefined}
                   whileFocus={m > 0 ? { scale: 1.18 } : undefined}
+                  data-press=""
                   whileTap={m > 0 ? { scale: 0.9 } : undefined}
                   transition={{
                     duration: 0.3 * m,

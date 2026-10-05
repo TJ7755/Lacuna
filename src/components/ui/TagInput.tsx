@@ -78,6 +78,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
               key={s}
               type="button"
               onClick={() => addTag(s)}
+              data-press=""
               whileTap={{ scale: 0.92 }}
               className="rounded-lg border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors hover:border-accent hover:text-accent active:border-accent active:text-accent"
             >

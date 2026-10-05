@@ -63,6 +63,7 @@ export function CardsToolbar({
               type="button"
               aria-pressed={active}
               onClick={() => onToggleFilter(chip.value)}
+              data-press=""
               whileTap={multiplier > 0 ? { scale: 0.94 } : undefined}
               transition={scaledSpring(multiplier, 520, 24)}
               className={cn(
