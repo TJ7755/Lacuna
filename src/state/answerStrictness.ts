@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createLocalSetting, oneOf } from './localSetting';
 import type { AnswerComparisonOptions } from '../utils/answerComparison';
 
 /**
@@ -10,40 +10,15 @@ import type { AnswerComparisonOptions } from '../utils/answerComparison';
  */
 export type AnswerStrictness = 'lenient' | 'standard' | 'exact';
 
-const KEY = 'lacuna.answerStrictness';
-const VALUES: AnswerStrictness[] = ['lenient', 'standard', 'exact'];
+const setting = createLocalSetting<AnswerStrictness>({
+  key: 'lacuna.answerStrictness',
+  event: 'lacuna:answer-strictness',
+  parse: oneOf(['lenient', 'standard', 'exact'], 'lenient'),
+});
 
-export function readAnswerStrictness(): AnswerStrictness {
-  const stored = localStorage.getItem(KEY);
-  return VALUES.includes(stored as AnswerStrictness) ? (stored as AnswerStrictness) : 'lenient';
-}
-
-export function writeAnswerStrictness(strictness: AnswerStrictness): void {
-  localStorage.setItem(KEY, strictness);
-  window.dispatchEvent(new CustomEvent('lacuna:answer-strictness', { detail: strictness }));
-}
-
-export function useAnswerStrictness(): [AnswerStrictness, (strictness: AnswerStrictness) => void] {
-  const [strictness, setStrictness] = useState<AnswerStrictness>(() => readAnswerStrictness());
-
-  useEffect(() => {
-    const onChange = () => setStrictness(readAnswerStrictness());
-    window.addEventListener('storage', onChange);
-    window.addEventListener('lacuna:answer-strictness', onChange);
-    return () => {
-      window.removeEventListener('storage', onChange);
-      window.removeEventListener('lacuna:answer-strictness', onChange);
-    };
-  }, []);
-
-  return [
-    strictness,
-    (next) => {
-      writeAnswerStrictness(next);
-      setStrictness(next);
-    },
-  ];
-}
+export const readAnswerStrictness = setting.read;
+export const writeAnswerStrictness = setting.write;
+export const useAnswerStrictness = setting.use;
 
 /** Translate a strictness level into the comparison flags compareAnswer expects. */
 export function answerComparisonOptions(strictness: AnswerStrictness): AnswerComparisonOptions {
