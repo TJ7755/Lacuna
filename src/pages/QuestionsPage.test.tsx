@@ -65,6 +65,19 @@ function definition(): QuestionDefinition {
 }
 
 describe('QuestionsPage', () => {
+  it('offers one way to create the first Question', () => {
+    mocks.data = { questions: [], conceptSets: [], concepts: [], attempts: [] };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions']}>
+        <Routes>
+          <Route path="/course/:courseId/questions" element={<QuestionsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: /Create a Question/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /New question/ })).not.toBeInTheDocument();
+  });
+
   it('offers the independent default and All-due Question sessions', async () => {
     const question = definition();
     mocks.data = {

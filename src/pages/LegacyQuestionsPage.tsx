@@ -7,7 +7,7 @@ import { QuestionBankCard } from '../components/questions/QuestionBankCard';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { ChevronRightIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
 import { MOTION_EASING } from '../components/ui/motion';
 import { summariseQuestion } from '../questions/bankSummary';
 import { selectQuestionSession } from '../questions/selection';
@@ -99,8 +99,12 @@ export function LegacyQuestionsPage() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-10`}>
-      <Link className="qs-back mt-6" to={`/course/${course.id}/questions`}>
-        ← Question sets
+      <Link
+        to={`/course/${course.id}/questions`}
+        className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+      >
+        <ChevronLeftIcon width={16} height={16} />
+        Question sets
       </Link>
       <motion.header
         initial={multiplier > 0 ? { opacity: 0, y: 10 } : false}
@@ -126,23 +130,24 @@ export function LegacyQuestionsPage() {
               All due{dueCount ? ` (${dueCount})` : ''}
             </Button>
           )}
-          <Button
-            variant="secondary"
-            className={OUTLINE_PILL}
-            onClick={() => navigate(`/course/${course.id}/questions/new`)}
-          >
-            <PlusIcon width={16} height={16} />
-            New question
-          </Button>
+          {/* An empty bank offers its own Create a Question. */}
+          {data.questions.length > 0 && (
+            <Button
+              variant="secondary"
+              className={OUTLINE_PILL}
+              onClick={() => navigate(`/course/${course.id}/questions/new`)}
+            >
+              <PlusIcon width={16} height={16} />
+              New question
+            </Button>
+          )}
           {data.questions.length > 0 && (
             <Button
               variant="primary"
               size="lg"
               className="min-h-12 px-6 font-bold"
               disabled={sessionSize === 0}
-              onClick={() =>
-                navigate(`/course/${course.id}/questions/learn?mode=default&limit=10`)
-              }
+              onClick={() => navigate(`/course/${course.id}/questions/learn?mode=default&limit=10`)}
             >
               Practise {sessionSize}
               <ChevronRightIcon width={16} height={16} />
@@ -183,7 +188,9 @@ export function LegacyQuestionsPage() {
                 key={question.id}
                 name={question.name}
                 topic={lessonName ?? targetName ?? 'No lesson'}
-                description={targetName ? (promptSnippet(question) ?? targetName) : 'Target Concept missing'}
+                description={
+                  targetName ? (promptSnippet(question) ?? targetName) : 'Target Concept missing'
+                }
                 descriptionWarning={!targetName}
                 due={due}
                 summary={summariseQuestion(question, data.attempts)}

@@ -121,12 +121,18 @@
   flex: 1;
   min-width: 0;
 }
+/* Matches the app's other back links: 14px faint ink with a 44px target. */
 .qs-back {
-  font-size: 12px;
-  color: hsl(var(--ink-soft));
+  font-size: 14px;
+  color: hsl(var(--ink-faint));
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
+  gap: 6px;
+  transition: color 150ms;
+}
+.qs-back:hover {
+  color: hsl(var(--ink));
 }
 .qs-status {
   font-size: 11px;

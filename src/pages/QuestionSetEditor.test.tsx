@@ -108,7 +108,7 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByRole('heading', { name: 'Individual questions' })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Questions' })).not.toBeInTheDocument();
     expect(screen.getByText('Cell calculation')).toBeVisible();
-    fireEvent.click(screen.getByRole('link', { name: '← Question sets' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Question sets' }));
     expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
     expect(screen.queryByText('Cell calculation')).not.toBeInTheDocument();
   });
