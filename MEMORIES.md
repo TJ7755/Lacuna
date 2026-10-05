@@ -274,5 +274,5 @@ for example with a `key` on the mode, or attach the ref to a plain element.
 ## Card save feedback owns its navigation
 
 A saved card appears in the live list before the editor’s confirmation delay ends.
-Cancel that delayed return on unmount and route-identity changes, including async saves
-that finish after departure; otherwise navigation to Settings can be redirected to Cards.
+Cancel that delayed return as the route starts exiting (`useIsPresent`), on unmount
+and on card-identity changes, including async saves that finish after departure; otherwise navigation to Settings can be redirected to Cards.

@@ -1,7 +1,9 @@
+import { useIsPresent } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 
 /** Save feedback belongs to one editor route; leaving it cancels its delayed return. */
 export function useCardSaveConfirmation(draftKey: string) {
+  const isPresent = useIsPresent();
   const [showSaved, setShowSaved] = useState(false);
   const scope = useMemo(
     () => ({
@@ -14,14 +16,14 @@ export function useCardSaveConfirmation(draftKey: string) {
   );
 
   useEffect(() => {
-    scope.active = true;
+    scope.active = isPresent;
     setShowSaved(false);
     return () => {
       scope.active = false;
       window.clearTimeout(scope.savedTimer);
       window.clearTimeout(scope.returnTimer);
     };
-  }, [scope]);
+  }, [scope, isPresent]);
 
   function flashSaved() {
     if (!scope.active) return;

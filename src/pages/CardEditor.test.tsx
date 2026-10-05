@@ -3,12 +3,19 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import * as React from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
+import type * as MotionReact from 'motion/react';
 import { CardEditor } from './CardEditor';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
 const mockNavigate = vi.fn();
+let mockIsPresent = true;
+
+vi.mock('motion/react', async () => ({
+  ...await vi.importActual<typeof MotionReact>('motion/react'),
+  useIsPresent: () => mockIsPresent,
+}));
 let mockCourse: Course | undefined;
 let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
@@ -196,6 +203,7 @@ afterEach(() => vi.useRealTimers());
 
 beforeEach(() => {
   localStorage.clear();
+  mockIsPresent = true;
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
@@ -863,6 +871,26 @@ describe('CardEditor — save navigation', () => {
     });
     mockCard = { ...generatedCard, id: 'card-2', sequenceItemId: undefined };
     fireEvent.click(screen.getByRole('link', { name: 'Next card' }));
+    await act(async () => { vi.advanceTimersByTime(500); });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('cancels the return while the editor is retained for its exit animation', async () => {
+    vi.useFakeTimers();
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    const view = renderEditing();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
+    mockIsPresent = false;
+    view.rerender(
+      <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
     await act(async () => { vi.advanceTimersByTime(500); });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
