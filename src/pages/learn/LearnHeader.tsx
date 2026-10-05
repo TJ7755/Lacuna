@@ -177,9 +177,12 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
-  const cardIndex = currentCardId === null ? -1 : sessionCardIds.indexOf(currentCardId);
+  // Position through the session, not the card's index: queues serve cards in their own order.
+  const sessionTotal = sessionCardIds.length;
   const cardPosition =
-    cardIndex >= 0 && !plannedRevision ? `${cardIndex + 1} of ${sessionCardIds.length}` : null;
+    currentCardId !== null && sessionTotal > 0 && !plannedRevision
+      ? `${Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)} of ${sessionTotal}`
+      : null;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 
   return (

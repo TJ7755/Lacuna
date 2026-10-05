@@ -10,7 +10,7 @@ for (const dueOnly of [false, true]) {
       const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
       await page.getByRole('button', { name: 'Author mode' }).click();
       for (let index = 0; index < 3; index += 1) {
-        await page.getByRole('button', { name: 'New card', exact: true }).click();
+        await page.getByRole('button', { name: 'New card', exact: true }).first().click();
         await page.getByRole('textbox', { name: 'Front' }).fill(`Queue question ${index}`);
         await page.getByRole('textbox', { name: 'Back' }).fill(`Answer ${index}`);
         await page.getByRole('button', { name: 'Add card', exact: true }).click();
@@ -43,7 +43,7 @@ for (const dueOnly of [false, true]) {
       await page.goto(`/#/course/${courseId}/learn${dueOnly ? '?filter=due' : ''}`);
       const progress = page.getByRole('progressbar', { name: 'Session progress' });
       await expect(progress).toHaveAttribute('aria-valuenow', '0');
-      await expect(page.locator('header').getByText('0% complete')).toBeVisible();
+      await expect(page.locator('header').getByText(/\b1 of 3$/)).toBeVisible();
       const seen = new Set<string>();
       for (let index = 0; index < 3; index += 1) {
         const face = page.locator('[data-study-card-id]');
@@ -57,7 +57,7 @@ for (const dueOnly of [false, true]) {
           await expect(progress).toHaveAttribute('aria-valuenow', String(Math.round((index + 1) / 3 * 100)));
           await expect(page.locator('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', id);
           if (index === 0) {
-            await expect(page.locator('header').getByText('33% complete')).toBeVisible();
+            await expect(page.locator('header').getByText(/\b2 of 3$/)).toBeVisible();
             for (const width of [1280, 390]) {
               await page.setViewportSize({ width, height: 800 });
               expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
