@@ -82,7 +82,7 @@ export function AssessmentDetailSheet({
             type="button"
             onClick={onClose}
             aria-label="Close assessment details"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5"
           >
             <CloseIcon width={18} height={18} />
           </button>

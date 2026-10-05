@@ -72,7 +72,7 @@ export function ConfirmInline({
         type="button"
         onClick={onConfirm}
         className={cn(
-          'min-h-9 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+          'min-h-11 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
           variant === 'destructive'
             ? 'text-negative hover:bg-negative/10'
             : 'text-accent hover:bg-accent/10',
@@ -84,7 +84,7 @@ export function ConfirmInline({
         ref={cancelRef}
         type="button"
         onClick={onCancel}
-        className="min-h-9 rounded-lg px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-ink/5"
+        className="min-h-11 rounded-lg px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-ink/5"
       >
         {cancelLabel}
       </button>

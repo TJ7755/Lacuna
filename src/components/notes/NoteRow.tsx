@@ -139,7 +139,7 @@ export function NoteRow({
                     disabled={isFirst}
                     title="Move up"
                     className={cn(
-                      'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+                      'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
                       'disabled:pointer-events-none disabled:opacity-30',
                     )}
                   >
@@ -151,7 +151,7 @@ export function NoteRow({
                     disabled={isLast}
                     title="Move down"
                     className={cn(
-                      'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+                      'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
                       'disabled:pointer-events-none disabled:opacity-30',
                     )}
                   >
@@ -161,7 +161,7 @@ export function NoteRow({
                     type="button"
                     onClick={onEdit}
                     title="Edit note"
-                    className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
                   >
                     <EditIcon width={14} height={14} />
                   </button>
@@ -169,7 +169,7 @@ export function NoteRow({
                     type="button"
                     onClick={onDeleteRequest}
                     title="Delete note"
-                    className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                   >
                     <TrashIcon width={14} height={14} />
                   </button>

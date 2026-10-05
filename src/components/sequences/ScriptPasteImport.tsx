@@ -94,7 +94,7 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
             type="button"
             onClick={onCancel}
             aria-label="Close script paste"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
           >
             <CloseIcon width={18} height={18} />
           </button>
@@ -129,27 +129,27 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
                 <div className="flex flex-col gap-2">
                   {preview.map((item, i) => (
                     <div key={item.id} className="flex items-start gap-2 rounded-lg border border-line p-2.5">
-                      <span className="mt-2.5 w-5 shrink-0 text-center text-xs text-ink-faint">{i + 1}</span>
+                      <span className="mt-3.5 w-5 shrink-0 text-center text-xs text-ink-faint">{i + 1}</span>
                       <input
                         type="text"
                         value={item.speaker}
                         onChange={(e) => updatePreviewItem(item.id, { speaker: e.target.value })}
                         aria-label={`Speaker for line ${i + 1}`}
-                        className="min-h-9 w-32 shrink-0 rounded-lg border border-line bg-transparent px-2 py-1.5 text-sm font-medium outline-none focus:border-accent"
+                        className="min-h-11 w-32 shrink-0 rounded-lg border border-line bg-transparent px-2 py-1.5 text-sm font-medium outline-none focus:border-accent"
                       />
                       <textarea
                         value={item.value}
                         onChange={(e) => updatePreviewItem(item.id, { value: e.target.value })}
                         aria-label={`Line ${i + 1} content`}
                         rows={1}
-                        className="min-h-9 flex-1 resize-y rounded-lg border border-line bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
+                        className="min-h-11 flex-1 resize-y rounded-lg border border-line bg-transparent px-2 py-1.5 text-sm outline-none focus:border-accent"
                       />
                       <button
                         type="button"
                         onClick={() => deletePreviewItem(item.id)}
                         title="Remove line"
                         aria-label={`Remove line ${i + 1}`}
-                        className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                       >
                         <TrashIcon width={14} height={14} />
                       </button>

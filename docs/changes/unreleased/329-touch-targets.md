@@ -1,0 +1,1 @@
+- Inline confirmations, Pomodoro controls, dialog close buttons and note-row actions now meet the 44px minimum target in `docs/spec/accessibility.md`; a source test keeps those files from regressing (#329)
