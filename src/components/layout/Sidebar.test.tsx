@@ -90,6 +90,13 @@ describe('Sidebar', () => {
     expect(within(courseNavigation).queryByText('Finished course')).not.toBeInTheDocument();
     mockCourses = [];
   });
+  it('says no active courses when every course is archived', () => {
+    mockCourses = [{ id: 'archived', name: 'Finished course', archived: true } as Course];
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+    expect(screen.getByText('No active courses.')).toBeInTheDocument();
+    mockCourses = [];
+  });
+
   it('keeps ready counts and the streak out of sidebar rows', () => {
     mockCourses = [{ id: 'active', name: 'Active course', archived: false } as Course];
     mockEligible = 7;

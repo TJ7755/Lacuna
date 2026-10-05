@@ -734,7 +734,7 @@ export function Sidebar({
                 sidebarSettings.compactMode ? 'text-xs' : 'text-sm',
               )}
             >
-              No courses yet.
+              {courses?.length ? 'No active courses.' : 'No courses yet.'}
             </motion.p>
           )}
         </div>
