@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type Ref } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
-import { nextClozeIndex } from './cloze';
+import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
