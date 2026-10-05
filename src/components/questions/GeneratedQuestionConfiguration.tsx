@@ -1,4 +1,5 @@
 import type { GeneratorDescription } from '../../questions/generators/contracts';
+import { SectionCard } from '../ui/SectionCard';
 
 interface GeneratedQuestionConfigurationProps {
   generator: GeneratorDescription;
@@ -19,7 +20,7 @@ export function GeneratedQuestionConfiguration({
   };
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5 md:p-6">
+    <SectionCard compact className="md:p-6">
       <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">Built-in family</p>
       <h2 className="mt-2 font-display text-2xl text-ink">{generator.name}</h2>
       <p className="mt-2 text-sm leading-6 text-ink-soft">{generator.summary}</p>
@@ -56,6 +57,6 @@ export function GeneratedQuestionConfiguration({
           ),
         )}
       </div>
-    </section>
+    </SectionCard>
   );
 }

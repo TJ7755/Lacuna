@@ -18,22 +18,24 @@ import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyt
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { buildQuestionAnalytics } from '../questions/analytics';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 function CourseAnalyticsSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-8`}>
       <div className="mb-8 space-y-3">
-        <div className="h-10 w-56 animate-pulse rounded bg-ink/10" />
+        <Skeleton className="h-10 w-56" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className={i < 2 ? 'lg:col-span-2' : undefined}>
-            <div className="rounded-2xl border border-line bg-surface p-5">
+            <SectionCard as="div" compact>
               <div className="mb-4 space-y-2">
-                <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
+                <Skeleton className="h-7 w-36 rounded-lg bg-ink/5" />
               </div>
-              <div className="h-56 animate-pulse rounded-lg bg-ink/5" />
-            </div>
+              <Skeleton className="h-56 rounded-lg bg-ink/5" />
+            </SectionCard>
           </div>
         ))}
       </div>

@@ -6,6 +6,7 @@ import { useToast } from '../../components/ui/Toast';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { ACTION_LABELS, formatBinding, useShortcutBindings, type LearnAction } from '../../state/shortcutBindings';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function ShortcutsSection() {
   const shortcutBindings = useShortcutBindings();
@@ -13,9 +14,9 @@ export function ShortcutsSection() {
   const [capturingAction, setCapturingAction] = useState<LearnAction | null>(null);
 
   return (
-    <section
+    <SectionCard
       id="settings-shortcuts"
-      className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      className="mb-8"
     >
       <div className="mb-5 flex items-center gap-2 text-accent">
         <KeyboardIcon width={18} height={18} />
@@ -71,7 +72,7 @@ export function ShortcutsSection() {
           Reset to defaults
         </Button>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 

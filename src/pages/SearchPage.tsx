@@ -25,6 +25,7 @@ import {
 } from '../components/ui/icons';
 import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { Skeleton } from '../components/ui/Skeleton';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -332,9 +333,9 @@ function SearchSkeleton() {
     <div className="space-y-2">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4">
-          <div className="h-4 w-3/4 animate-pulse rounded bg-ink/10" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-ink/10" />
-          <div className="mt-1 h-3 w-24 animate-pulse rounded bg-ink/10" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="mt-1 h-3 w-24" />
         </div>
       ))}
     </div>

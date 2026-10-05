@@ -20,6 +20,8 @@ import { useToast } from '../components/ui/Toast';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { Course } from '../db/types';
 import { cardReviewTimestamps } from '../fsrs/heatmap';
+import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 interface CourseMenuState {
   course: Course;
@@ -389,17 +391,17 @@ function CourseSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5">
-          <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
-          <div className="mb-4 h-7 w-3/4 animate-pulse rounded bg-ink/10" />
+        <SectionCard as="div" compact key={i} className="flex h-full flex-col">
+          <Skeleton className="mb-1 h-3 w-20" />
+          <Skeleton className="mb-4 h-7 w-3/4" />
           <div className="mt-auto">
             <div className="mb-2 flex justify-between">
-              <div className="h-4 w-36 animate-pulse rounded bg-ink/10" />
-              <div className="h-4 w-12 animate-pulse rounded bg-ink/10" />
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-4 w-12" />
             </div>
-            <div className="h-2 w-full animate-pulse rounded-full bg-ink/10" />
+            <Skeleton className="h-2 w-full rounded-full" />
           </div>
-        </div>
+        </SectionCard>
       ))}
     </div>
   );

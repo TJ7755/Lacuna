@@ -11,6 +11,7 @@ import type { BackupFile } from '../../db/types';
 import type * as ManualMergeModule from '../../sync/manualMerge';
 import type { ManualMergeSummary, MergeDelta } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -132,7 +133,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   }
 
   return (
-    <section id="settings-export" className="rounded-2xl border border-line bg-surface p-6">
+    <SectionCard id="settings-export">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <UploadIcon width={18} height={18} />
         <SettingsSectionHeading className="mb-1 font-display text-xl">
@@ -289,6 +290,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </SectionCard>
   );
 }

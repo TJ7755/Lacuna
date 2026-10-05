@@ -21,6 +21,7 @@ import {
 import { useBackups } from '../../state/useData';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatDateTime } from '../../utils/datetime';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function BackupsSection() {
   const { notify } = useToast();
@@ -134,7 +135,7 @@ export function BackupsSection() {
   }
 
   return (
-    <section id="settings-backups" className="mt-8 rounded-2xl border border-line bg-surface p-6">
+    <SectionCard id="settings-backups" className="mt-8">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-accent">
           <ArchiveIcon width={18} height={18} />
@@ -343,6 +344,6 @@ export function BackupsSection() {
           </motion.ul>
         )}
       </AnimatePresence>
-    </section>
+    </SectionCard>
   );
 }
