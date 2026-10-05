@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 import { MarkSchemeEditor } from './MarkSchemeEditor';
 import { NumericAnswerEditor } from './NumericAnswerEditor';
+import { SectionCard } from '../ui/SectionCard';
 
 interface StagedItemEditorProps {
   candidate: BatchCandidate;
@@ -184,8 +185,8 @@ function FixtureEditor({
   };
 
   return (
-    <section
-      className="rounded-2xl border border-line bg-surface p-5 md:p-6"
+    <SectionCard compact
+      className="md:p-6"
       aria-labelledby="staged-fixtures-heading"
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -266,7 +267,7 @@ function FixtureEditor({
           ))}
         </div>
       )}
-    </section>
+    </SectionCard>
   );
 }
 

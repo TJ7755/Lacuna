@@ -3,6 +3,7 @@ import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 import { StudyDrawing } from '../ui/StudyDrawing';
+import { SectionCard } from '../ui/SectionCard';
 
 /** A titled container giving every chart a consistent frame and empty state. */
 export function ChartCard({
@@ -33,7 +34,7 @@ export function ChartCard({
   const m = speedMultiplier(motionSpeed);
   const d = delay ?? 0;
   return (
-    <section className="min-w-0 rounded-2xl border border-line bg-surface p-5">
+    <SectionCard compact className="min-w-0">
       <header className="mb-4">
         <h3 className="font-display text-xl tracking-tight">{title}</h3>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
@@ -106,6 +107,6 @@ export function ChartCard({
           </div>
         </details>
       )}
-    </section>
+    </SectionCard>
   );
 }

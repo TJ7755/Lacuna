@@ -51,6 +51,7 @@ import type { EditorOriginState } from '../utils/editorOrigin';
 import type { AnswerMode, Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 import { isAudioCardFront } from '../media/audio';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 type EditorCardType = CardType | 'numeric' | 'working' | 'audio';
 
@@ -1063,10 +1064,10 @@ function CardEditorSkeleton() {
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
       <Skeleton className="mb-6 h-4 w-24" />
-      <div className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <SectionCard as="div" className="mb-8">
         <Skeleton className="mb-1 h-3 w-20" />
         <Skeleton className="h-10 w-48" />
-      </div>
+      </SectionCard>
       <div className="flex flex-col gap-5">
         <div>
           <Skeleton className="mb-2 h-3 w-20" />

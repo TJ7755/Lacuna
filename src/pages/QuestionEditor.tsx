@@ -40,6 +40,7 @@ import {
   useQuestionDraft,
 } from './questionDraft';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 const inputClass =
   'min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20';
@@ -261,7 +262,7 @@ export function QuestionEditor() {
           </fieldset>
         )}
 
-        <section className="grid gap-5 rounded-2xl border border-line bg-surface p-5 md:grid-cols-2 md:p-6">
+        <SectionCard compact className="grid gap-5 md:grid-cols-2 md:p-6">
           <label className="block md:col-span-2">
             <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
               Name
@@ -372,7 +373,7 @@ export function QuestionEditor() {
               </div>
             </fieldset>
           )}
-        </section>
+        </SectionCard>
 
         <StepSwap stepKey={kind} direction={kind === 'generated' ? 1 : -1} className="space-y-8">
           {kind === 'fixed' ? (

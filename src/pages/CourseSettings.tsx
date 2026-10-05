@@ -32,6 +32,7 @@ import { DangerZoneSection } from './settings/DangerZoneSection';
 import { DetachCourseSection } from './settings/DetachCourseSection';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Field, Input } from '../components/ui/Field';
+import { SectionCard } from '../components/ui/SectionCard';
 
 const COURSE_SETTINGS_SECTIONS = [
   { id: 'course-settings-basics', label: 'Basics' },
@@ -299,7 +300,7 @@ export function CourseSettings() {
           <div className="flex flex-col gap-10">
             <div id="course-settings-basics" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Basics</h2>
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <div className="flex flex-col gap-4">
                   <Field label="Course name">
                     <Input
@@ -345,12 +346,12 @@ export function CourseSettings() {
                     </div>
                   </div>
                 </div>
-              </section>
+              </SectionCard>
             </div>
 
             <div id="course-settings-study" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Study</h2>
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Scheduling</h3>
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-4">
@@ -413,9 +414,9 @@ export function CourseSettings() {
                     onSessionTimeLimitBlur={commitSessionTimeLimit}
                   />
                 </div>
-              </section>
+              </SectionCard>
 
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <UnlockModeSection
                   unlockMode={unlockMode}
                   onUnlockModeChange={(mode) => {
@@ -434,9 +435,9 @@ export function CourseSettings() {
                   onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
                   timeZone={timeZone}
                 />
-              </section>
+              </SectionCard>
 
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Auto-practice</h3>
                 <PracticeSettingsSection
                   autoPractice={autoPractice}
@@ -487,7 +488,7 @@ export function CourseSettings() {
                     })
                   }
                 />
-              </section>
+              </SectionCard>
 
               <div>
                 <OptimisationPanel
@@ -503,26 +504,26 @@ export function CourseSettings() {
 
             <div id="course-settings-content" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Content</h2>
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Lessons</h3>
                 <LessonManagementSection courseId={course.id} />
-              </section>
+              </SectionCard>
 
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <h3 className="mb-4 font-display text-xl">Practice nodes</h3>
                 <PracticeNodesSection courseId={course.id} />
-              </section>
+              </SectionCard>
             </div>
 
             <div id="course-settings-assessments" className="flex scroll-mt-20 flex-col gap-6">
               <h2 className="font-display text-2xl">Assessments</h2>
-              <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]">
+              <SectionCard className="shadow-sm shadow-black/[0.02]">
                 <ExamDatesSection
                   courseId={course.id}
                   timeZone={timeZone}
                   editFinalOnMount={searchParams.get('editFinalExam') === '1'}
                 />
-              </section>
+              </SectionCard>
             </div>
 
             <div id="course-settings-danger" className="flex scroll-mt-20 flex-col gap-6">
@@ -570,17 +571,17 @@ function CourseSettingsSkeleton() {
         <Skeleton className="h-10 w-48" />
       </div>
       <div className="flex flex-col gap-6">
-        <div className="rounded-2xl border border-line bg-surface p-6 space-y-4">
+        <SectionCard as="div" className="space-y-4">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-24 w-full rounded-lg" />
-        </div>
-        <div className="rounded-2xl border border-line bg-surface p-6 space-y-3">
+        </SectionCard>
+        <SectionCard as="div" className="space-y-3">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-8 w-32 rounded-lg" />
-        </div>
+        </SectionCard>
         <div className="rounded-2xl border border-negative/30 bg-negative/5 p-6 space-y-3">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 w-full" />

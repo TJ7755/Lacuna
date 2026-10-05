@@ -36,6 +36,7 @@ import {
 import type { EditorOriginState } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 export function OcclusionEditor() {
   const { occlusionId, courseId, lessonId } = useParams<{
@@ -370,10 +371,10 @@ function OcclusionEditorSkeleton() {
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
       <Skeleton className="mb-6 h-4 w-24" />
-      <div className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <SectionCard as="div" className="mb-8">
         <Skeleton className="mb-1 h-3 w-20" />
         <Skeleton className="h-10 w-48" />
-      </div>
+      </SectionCard>
       <div className="flex flex-col gap-5">
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-64 w-full rounded-lg" />

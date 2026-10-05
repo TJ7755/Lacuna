@@ -21,6 +21,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import type { Course } from '../db/types';
 import { cardReviewTimestamps } from '../fsrs/heatmap';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SectionCard } from '../components/ui/SectionCard';
 
 interface CourseMenuState {
   course: Course;
@@ -390,7 +391,7 @@ function CourseSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5">
+        <SectionCard as="div" compact key={i} className="flex h-full flex-col">
           <Skeleton className="mb-1 h-3 w-20" />
           <Skeleton className="mb-4 h-7 w-3/4" />
           <div className="mt-auto">
@@ -400,7 +401,7 @@ function CourseSkeleton() {
             </div>
             <Skeleton className="h-2 w-full rounded-full" />
           </div>
-        </div>
+        </SectionCard>
       ))}
     </div>
   );

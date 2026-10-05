@@ -30,6 +30,7 @@ import { Button } from '../ui/Button';
 import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
 import { formatDate } from '../../utils/datetime';
 import { Skeleton } from '../ui/Skeleton';
+import { SectionCard } from '../ui/SectionCard';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -270,7 +271,7 @@ export function SharedCourseImport({
   }
 
   return (
-    <section ref={importSectionRef} className="rounded-2xl border border-line bg-surface p-6">
+    <SectionCard ref={importSectionRef}>
       <div className="mb-1 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
@@ -453,6 +454,6 @@ export function SharedCourseImport({
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </SectionCard>
   );
 }

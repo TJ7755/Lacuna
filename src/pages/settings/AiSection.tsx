@@ -4,6 +4,7 @@ import { Toggle } from '../../components/ui/Toggle';
 import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
 import { AiMemoryInspector } from './AiMemoryInspector';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SectionCard } from '../../components/ui/SectionCard';
 
 export function AiSection() {
   const [settings, update] = useAiSettings();
@@ -15,7 +16,7 @@ export function AiSection() {
   }
 
   return (
-    <section id="settings-ai" className="mb-8 rounded-2xl border border-line bg-surface p-6">
+    <SectionCard id="settings-ai" className="mb-8">
       <div className="mb-1 flex items-center gap-2 text-accent">
         <SparklesIcon width={18} height={18} />
         <SettingsSectionHeading className="font-display text-xl">AI</SettingsSectionHeading>
@@ -75,6 +76,6 @@ export function AiSection() {
       </div>
 
       <AiMemoryInspector />
-    </section>
+    </SectionCard>
   );
 }
