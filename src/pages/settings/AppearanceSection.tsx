@@ -70,7 +70,7 @@ export function AppearanceSection() {
                 aria-pressed={active}
                 title={option.label}
                 aria-label={option.label}
-                className="relative h-9 w-9 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
+                className="relative h-11 w-11 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
                 style={{ backgroundColor: option.swatch }}
               >
                 {active && (

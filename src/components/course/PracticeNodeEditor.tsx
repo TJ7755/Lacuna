@@ -129,7 +129,7 @@ export function PracticeNodeEditor({
             onClick={onCancel}
             aria-label="Close editor"
             title="Close (Esc)"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
           >
             <CloseIcon width={18} height={18} />
           </button>

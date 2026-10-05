@@ -11,6 +11,12 @@ describe('ConfirmInline', () => {
     expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
 
+  it('gives both actions a 44px minimum target', () => {
+    render(<ConfirmInline message="Delete?" onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Yes' })).toHaveClass('min-h-11');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveClass('min-h-11');
+  });
+
   it('calls onConfirm when the confirm button is clicked', () => {
     const onConfirm = vi.fn();
     render(<ConfirmInline message="Delete?" onConfirm={onConfirm} onCancel={vi.fn()} />);
