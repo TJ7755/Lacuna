@@ -17,11 +17,16 @@ available for standalone entry.
    remaining objective is met, a configured limit is reached, or the user exits.
 
 The top bar shows **session completion**, starting at zero for outstanding work and
-reaching 100% when that work is finished. It counts the captured eligible cards which
-no longer need a review now, independently of predicted recall. Undo restores the
+reaching 100% when that work is finished. A captured card counts as cleared once its
+latest answer in the session was correct, once it leaves study (suspended, buried or
+deleted), or when the session stops serving it unanswered. A wrong answer keeps it
+outstanding until a correct retry, so a mistake never moves the bar forwards and a
+retry falling due never moves it backwards. Cards admitted after the session started
+do not count, and the measure is independent of predicted recall. Undo restores the
 card and reverses its completion. A daily limit or early exit does not manufacture
 100% completion. Predicted recall (or secured proportion) appears separately in the
-header and remains the before/after measurement in the report. Planned revision
+header as a forecast naming its horizon ("at the exam", or "in 7 days" with no exam
+ahead) and remains the before/after measurement in the report. Planned revision
 retains its time-budget bar; Simple Learn retains its successful-answer segments.
 
 Maximum reviews per day and the daily review goal count persisted review events in the user's

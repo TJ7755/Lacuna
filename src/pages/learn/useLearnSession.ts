@@ -1272,7 +1272,7 @@ export function useLearnSession({
       const initialProgress = sessionProgress(cards, ctx);
       const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
       const hasServeableCards = serveableCards.length > 0;
-      setSchedulerProgress(sessionCompletionProgress(cards, ctx));
+      setSchedulerProgress(sessionCompletionProgress(cards, ctx, sessionCardOutcomesRef.current));
       setSessionCardIds(cards.map((card) => card.id));
       sessionCardOutcomesRef.current = new Map();
       setSessionCardOutcomes(sessionCardOutcomesRef.current);
@@ -1648,7 +1648,10 @@ export function useLearnSession({
 
       const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
       cardsRef.current = nextCards;
-      setSchedulerProgress(sessionCompletionProgress(nextCards, ctx));
+      const nextOutcomes = new Map(sessionCardOutcomesRef.current);
+      nextOutcomes.set(cardNow.id, correct ? 'correct' : 'wrong');
+      sessionCardOutcomesRef.current = nextOutcomes;
+      setSchedulerProgress(sessionCompletionProgress(nextCards, ctx, nextOutcomes));
       if (practiceSessionRef.current) {
         await persistPracticeMilestone(nextCards, false);
       }
@@ -1696,11 +1699,7 @@ export function useLearnSession({
       if (!revisionPlanRef.current) decrementCooldowns(cooldowns.current, updated.id);
 
       events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
-      setSessionCardOutcomes((previous) => {
-        const next = new Map(previous);
-        next.set(cardNow.id, correct ? 'correct' : 'wrong');
-        return next;
-      });
+      setSessionCardOutcomes(nextOutcomes);
 
       const reviewNow = Date.now();
       const reviewDayStart = startOfDay(reviewNow);
@@ -1838,7 +1837,12 @@ export function useLearnSession({
       cardsRef.current = cardsRef.current.map((c) =>
         c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
       );
-      setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx));
+      const restoredOutcomes = new Map(sessionCardOutcomesRef.current);
+      if (snap.outcomeBefore) restoredOutcomes.set(snap.undo.cardBefore.id, snap.outcomeBefore);
+      else restoredOutcomes.delete(snap.undo.cardBefore.id);
+      sessionCardOutcomesRef.current = restoredOutcomes;
+      setSessionCardOutcomes(restoredOutcomes);
+      setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx, restoredOutcomes));
       cooldowns.current = snap.cooldowns;
       revisionCovered.current = snap.revisionCovered;
       revisionImproved.current = snap.revisionImproved;
@@ -1857,12 +1861,6 @@ export function useLearnSession({
       setCanUndo(false);
       progressCacheRef.current.dirty = true;
       setCurrent(snap.undo.cardBefore);
-      setSessionCardOutcomes((previous) => {
-        const next = new Map(previous);
-        if (snap.outcomeBefore) next.set(snap.undo.cardBefore.id, snap.outcomeBefore);
-        else next.delete(snap.undo.cardBefore.id);
-        return next;
-      });
       setPhase('question');
       pendingReviewEventId.current = null;
       timerStart.current = performance.now();
@@ -1882,14 +1880,15 @@ export function useLearnSession({
     const removedId = currentRef.current?.id;
     if (removedId) {
       setSessionCardIds((previous) => previous.filter((id) => id !== removedId));
-      setSessionCardOutcomes((previous) => {
-        const next = new Map(previous);
-        next.delete(removedId);
-        return next;
-      });
+      const nextOutcomes = new Map(sessionCardOutcomesRef.current);
+      nextOutcomes.delete(removedId);
+      sessionCardOutcomesRef.current = nextOutcomes;
+      setSessionCardOutcomes(nextOutcomes);
     }
     progressCacheRef.current.dirty = true;
-    setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx));
+    setSchedulerProgress(
+      sessionCompletionProgress(cardsRef.current, ctx, sessionCardOutcomesRef.current),
+    );
     const hasRemainingCards = isSimpleMode
       ? simpleQueue.current.some((card) => !simpleMastered.current.has(card.id))
       : sessionServePool(cardsRef.current, ctx).length > 0;

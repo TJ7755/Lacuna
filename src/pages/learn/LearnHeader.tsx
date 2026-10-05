@@ -19,6 +19,7 @@ import type { CardFilter } from '../../db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';
+import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 
 function computeHeaderInfo({
   singleDeck,
@@ -207,9 +208,7 @@ export function LearnHeader({
             <div className="mb-1 flex flex-wrap justify-between gap-x-3 text-xs tabular text-ink-faint">
               <span>{Math.round(displayedProgress * 100)}% complete</span>
               <span>
-                {Math.round(predictedRecall * 100)}% {singleDeck
-                  ? singleDeck.examObjective === 'securedTopics' ? 'secured' : 'predicted recall'
-                  : 'predicted readiness'}
+                {Math.round(predictedRecall * 100)}% {forecastLabel(singleDeck)}
               </span>
             </div>
           )}
@@ -345,6 +344,19 @@ export function LearnHeader({
       </div>
     </motion.header>
   );
+}
+
+/**
+ * What the header's second figure forecasts. Recall is a prediction at the scheduling
+ * horizon, so it names that horizon: the exam while one is ahead, otherwise the
+ * rolling maintenance window.
+ */
+export function forecastLabel(unit: StudyUnit | null, now: number = Date.now()): string {
+  if (!unit) return 'predicted readiness';
+  if (unit.examObjective === 'securedTopics') return 'secured';
+  return unit.examDate !== undefined && unit.examDate >= now
+    ? 'forecast recall at the exam'
+    : `forecast recall in ${MAINTENANCE_HORIZON_DAYS} days`;
 }
 
 function SessionProgressTrack({ value, label, m }: { value: number; label: string; m: number }) {

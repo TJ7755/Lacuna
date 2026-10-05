@@ -24,7 +24,7 @@ import {
   type ObjectiveContext,
 } from './objective';
 import { selectNextCard, type CooldownMap } from './cooldown';
-import { studyPool, availableCards, dueCards } from './eligibility';
+import { studyPool, availableCards, dueCards, isAvailable } from './eligibility';
 import { schedulingHorizon } from './horizon';
 import { cramScore } from './cram';
 import type { ExamDateContext } from './examDate';
@@ -445,13 +445,36 @@ export function sessionProgress(
   return total ? acc / total : 1;
 }
 
-/** Work cleared in this session; predicted recall remains sessionProgress. */
+/** The latest in-session answer to a card. */
+export type SessionCardAnswer = 'correct' | 'wrong';
+
+/**
+ * Work cleared in this session (0..1), over the cards it started with; predicted
+ * recall remains sessionProgress. A card counts as cleared once its latest answer
+ * was correct, once it leaves study (suspended, buried or deleted), or when the
+ * session stops serving it without an answer. A wrong answer keeps the card
+ * outstanding until a correct retry, so a mistake never moves the bar forwards
+ * and a retry coming due never moves it backwards. Cards admitted after the
+ * session started never count, and a reached review limit ends the session
+ * rather than changing this value.
+ */
 export function sessionCompletionProgress(
   cards: Card[],
   ctx: SessionContext,
+  answers: ReadonlyMap<string, SessionCardAnswer> = new Map(),
   now: number = Date.now(),
 ): number {
-  const total = ctx.initialReviewCounts?.size ?? 0;
-  if (total === 0) return 1;
-  return Math.max(0, 1 - sessionServePool(cards, ctx, now).length / total);
+  const initial = ctx.initialReviewCounts;
+  const total = initial?.size ?? 0;
+  if (!initial || total === 0) return 1;
+  const served = new Set(sessionServePool(cards, ctx, now).map((card) => card.id));
+  const present = new Map(cards.map((card) => [card.id, card]));
+  let outstanding = 0;
+  for (const id of initial.keys()) {
+    const card = present.get(id);
+    if (!card || !isAvailable(card, now)) continue;
+    const answer = answers.get(id);
+    if (answer === 'wrong' || (answer === undefined && served.has(id))) outstanding += 1;
+  }
+  return 1 - outstanding / total;
 }
