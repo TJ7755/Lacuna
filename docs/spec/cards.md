@@ -1,6 +1,6 @@
 # 11. Cards, cloze & the editor
 
-### Cloze (`src/components/markdown/cloze.ts`)
+### Cloze (`src/utils/cloze.ts`)
 
 - Notation: `{{c1::hidden answer}}` and `{{c1::hidden answer::optional hint}}`.
 - A single card hides **all** `cN` spans at once. On the **front** each span renders

@@ -1,0 +1,1 @@
+- Moved the React-free cloze helpers from `src/components/markdown/` to `src/utils/cloze.ts`, so the database layer no longer imports the UI folder; a boundary test now rejects any `src/db` import from `components/` or `pages/` (#338)

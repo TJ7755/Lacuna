@@ -29,7 +29,7 @@ import {
   createCourseBasicReversedPair,
   updateCard,
 } from '../db/cardRepository';
-import { hasCloze } from '../components/markdown/cloze';
+import { hasCloze } from '../utils/cloze';
 import { sequenceForItemId } from '../db/sequenceGeneration';
 import { occlusionForRegionId } from '../db/occlusionGeneration';
 import { CardContent } from '../components/cards/CardContent';

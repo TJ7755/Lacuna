@@ -6,7 +6,7 @@
 // flows through the same path.
 
 import type { AnswerMode, CardType, ItemPayload } from './types';
-import { hasCloze } from '../components/markdown/cloze';
+import { hasCloze } from '../utils/cloze';
 
 /** A card ready to be created: the same shape createCards() consumes. */
 export interface ParsedCard {
