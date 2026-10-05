@@ -239,7 +239,7 @@ describe('Dashboard', () => {
 
     const link = screen.getByRole('link', { name: /Test Course/ });
     expect(link).toHaveAttribute('href', '/course/course-1/updates');
-    expect(link).toHaveTextContent('Update ready');
+    expect(link).toHaveTextContent('Update available');
   });
 
   it('starts the course study flow from the Start button', () => {
