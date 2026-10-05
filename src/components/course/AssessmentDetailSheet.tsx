@@ -1,3 +1,4 @@
+import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { m as motion } from 'motion/react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
@@ -89,6 +90,7 @@ export function AssessmentDetailSheet({
         </header>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+          <RelatedQuestionSets courseId={assessment.courseId} assessmentId={assessment.id} onNavigate={onClose} />
           <section>
             <h3 className="text-sm font-medium text-ink">Coverage</h3>
             <p className="mt-1 text-sm text-ink-soft">

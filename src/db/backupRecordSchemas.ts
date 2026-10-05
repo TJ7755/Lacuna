@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { itemPayloadIsValid } from '../items/payloadValidation';
+import { parseQuestionSetRecord } from '../questions/questionSetCodec';
+import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
+import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
 
 export const text = z.string();
 export const id = text.min(1);
@@ -201,6 +204,19 @@ const performance = {
   totalCorrectReviews: number,
 };
 
+// Authored aggregates already have strict codecs; reuse them rather than mirroring
+// their nested shape here.
+function codec(parse: (value: unknown) => unknown, message: string) {
+  return z.unknown().refine((value) => {
+    try {
+      parse(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }, message);
+}
+
 export const recordSchemas = {
   cards: card,
   assets: object({
@@ -236,18 +252,21 @@ export const recordSchemas = {
     updatedAt: number.optional(),
   }),
   lessonCompletions: object({ lessonId: id, completedAt: number, updatedAt: number.optional() }),
-  practiceNodes: object({
-    ...timestamps,
-    id,
-    courseId: id,
-    type: z.enum(['auto', 'manual']),
-    position: number.optional(),
-    name: text,
-    lessonIds: ids.optional(),
-    filters: z.array(z.enum(['new', 'due', 'flagged', 'suspended', 'leech'])).optional(),
-    cardCount: number.optional(),
-    randomize: flag.optional(),
-  }),
+  practiceNodes: z.union([
+    object({
+      ...timestamps,
+      id,
+      courseId: id,
+      type: z.enum(['auto', 'manual']),
+      position: number.optional(),
+      name: text,
+      lessonIds: ids.optional(),
+      filters: z.array(z.enum(['new', 'due', 'flagged', 'suspended', 'leech'])).optional(),
+      cardCount: number.optional(),
+      randomize: flag.optional(),
+    }),
+    codec(parseQuestionSetPracticeNode, 'Invalid question set practice node'),
+  ]),
   practiceMilestones: object({
     nodeKey: id,
     courseId: id,
@@ -348,4 +367,6 @@ export const recordSchemas = {
     updatedAt: number.optional(),
   }),
   tombstones: object({ table: id, recordId: id, deletedAt: number }),
+  questionSets: codec(parseQuestionSetRecord, 'Invalid question set'),
+  questionSetAttempts: codec(parseQuestionSetAttemptRecord, 'Invalid question set attempt'),
 };

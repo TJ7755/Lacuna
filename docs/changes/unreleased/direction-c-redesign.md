@@ -45,8 +45,9 @@
     - Course settings: one readable column with a big target-recall figure and
       presets.
   - Questions:
-    - The bank is a card grid with the last five results, the record, and marks
-      with typical time.
+    - The Individual questions bank, now behind the question set library, is a
+      card grid with the last five results, the record, and marks with typical
+      time.
     - Practice has segmented progress, highlighted generated values, New numbers
       for generated families, and a result that pops or shakes.
   - Analytics:
@@ -84,6 +85,9 @@
       and an animated Other ways menu;
     - shows a numbered lesson list with states and progress bars beside
       assessment date tiles;
+    - Practice Qs stops sit in the lesson list as rows that open the set
+      directly, with an Edit button in Author mode, replacing the side detail
+      panel;
     - the course bar shows the course's status dot and name;
     - the Analytics tab is gone, because it duplicated Progress; course
       analytics opens from the forecast figure.

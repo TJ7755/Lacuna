@@ -12,6 +12,7 @@ import { cn } from '../ui/cn';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
 import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
+import { QuestionSetCourseRow } from './QuestionSetCourseRow';
 
 interface CourseOverviewProps {
   courseId: string;
@@ -72,6 +73,7 @@ export function CourseOverview(props: CourseOverviewProps) {
           {authoring && (
             <div ref={addRef}>
               <AddCourseControl
+                kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
                 onAdd={(kind) => {
                   if (kind === 'lesson') setAddingLesson(true);
                   else props.onAdd(kind);
@@ -144,6 +146,18 @@ export function CourseOverview(props: CourseOverviewProps) {
                         </button>
                       )}
                     </div>
+                  </motion.li>
+                );
+              }
+
+              if (node.nodeType === 'practice-question-set') {
+                return (
+                  <motion.li key={node.id} {...arrive} className="relative flex flex-col">
+                    <QuestionSetCourseRow
+                      node={node}
+                      index={index}
+                      authoring={authoring && !archived}
+                    />
                   </motion.li>
                 );
               }

@@ -1,19 +1,27 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { CardsIcon, FlagIcon, FileTextIcon, PlusIcon } from '../ui/icons';
+import { CardsIcon, FlagIcon, FileTextIcon, HelpIcon, PlusIcon } from '../ui/icons';
 
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
-export type CourseAddKind = 'lesson' | 'practice' | 'checkpoint';
+export type CourseAddKind = 'lesson' | 'practice' | 'question-set' | 'checkpoint';
 
 const options = [
   { kind: 'lesson', name: 'Lesson', Icon: FileTextIcon },
   { kind: 'practice', name: 'Practice', Icon: CardsIcon },
+  { kind: 'question-set', name: 'Practice Qs', Icon: HelpIcon },
   { kind: 'checkpoint', name: 'Checkpoint', Icon: FlagIcon },
 ] as const;
 
 /** The button and its choices share one surface, fixed to the button's own corner. */
-export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => void }) {
+export function AddCourseControl({
+  onAdd,
+  kinds,
+}: {
+  onAdd: (kind: CourseAddKind) => void;
+  kinds?: readonly CourseAddKind[];
+}) {
+  const visible = options.filter((option) => !kinds || kinds.includes(option.kind));
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -65,7 +73,11 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
         }`}
         // Animate this isolated surface's dimensions, never a scale inherited by its text.
         initial={false}
-        animate={{ width: open ? 216 : 84, height: open ? 190 : 44, borderRadius: open ? 18 : 22 }}
+        animate={{
+          width: open ? 216 : 84,
+          height: open ? 58 + 44 * visible.length : 44,
+          borderRadius: open ? 18 : 22,
+        }}
         transition={transition}
       >
         <motion.button
@@ -101,7 +113,7 @@ export function AddCourseControl({ onAdd }: { onAdd: (kind: CourseAddKind) => vo
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * multiplier }}
               >
-                {options.map(({ kind, name, Icon }) => (
+                {visible.map(({ kind, name, Icon }) => (
                   <motion.button
                     key={name}
                     type="button"

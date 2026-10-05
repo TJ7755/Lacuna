@@ -78,15 +78,25 @@ interface SectionRailProps {
   activeSection: string;
   onNavigate: (id: string) => void;
   motionMultiplier: number;
+  compact?: boolean;
 }
 
-/** Sticky desktop sidebar nav, rendered only from the `xl` breakpoint up. */
-export function SectionRail({ sections, activeSection, onNavigate, motionMultiplier }: SectionRailProps) {
+/** Shared section navigation; compact keeps the same controls available below xl. */
+export function SectionRail({
+  sections,
+  activeSection,
+  onNavigate,
+  motionMultiplier,
+  compact = false,
+}: SectionRailProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
-  if (!isDesktop) return null;
+  if (!isDesktop && !compact) return null;
 
   return (
-    <aside aria-label="Page sections" className="w-[200px] shrink-0">
+    <aside
+      aria-label="Page sections"
+      className={compact ? 'w-full shrink-0 xl:w-[200px]' : 'w-[200px] shrink-0'}
+    >
       <div className="sticky top-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -114,7 +124,13 @@ export function SectionRail({ sections, activeSection, onNavigate, motionMultipl
   );
 }
 
-function NavItem({ section, active, onClick, index, motionMultiplier }: {
+function NavItem({
+  section,
+  active,
+  onClick,
+  index,
+  motionMultiplier,
+}: {
   section: SectionRailItem;
   active: boolean;
   onClick: () => void;
@@ -164,12 +180,23 @@ interface SectionRailMobileJumperProps {
  * rail has no room. A native select keeps it accessible and touch-friendly
  * without inventing new interaction patterns.
  */
-export function SectionRailMobileJumper({ sections, activeSection, onNavigate, label = 'Jump to section', className }: SectionRailMobileJumperProps) {
+export function SectionRailMobileJumper({
+  sections,
+  activeSection,
+  onNavigate,
+  label = 'Jump to section',
+  className,
+}: SectionRailMobileJumperProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   if (isDesktop) return null;
 
   return (
-    <div className={cn('sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-2 shadow-sm', className)}>
+    <div
+      className={cn(
+        'sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-2 shadow-sm',
+        className,
+      )}
+    >
       <label className="relative flex items-center">
         <span className="sr-only">{label}</span>
         <select
@@ -178,10 +205,16 @@ export function SectionRailMobileJumper({ sections, activeSection, onNavigate, l
           className="w-full appearance-none rounded-lg bg-transparent py-1.5 pl-2 pr-8 text-sm font-medium text-ink outline-none"
         >
           {sections.map((section) => (
-            <option key={section.id} value={section.id}>{section.label}</option>
+            <option key={section.id} value={section.id}>
+              {section.label}
+            </option>
           ))}
         </select>
-        <ChevronDownIcon className="pointer-events-none absolute right-2 text-ink-faint" width={16} height={16} />
+        <ChevronDownIcon
+          className="pointer-events-none absolute right-2 text-ink-faint"
+          width={16}
+          height={16}
+        />
       </label>
     </div>
   );

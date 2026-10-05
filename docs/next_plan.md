@@ -45,6 +45,19 @@ maintenance programme is in progress. Permitted work is limited to:
 
 Ideas in old plans, audits or `docs/new_features_list.md` stay parked until a fresh product decision.
 
+### Authorised exception: question sets
+
+On 26 September 2026 the prompter authorised implementation of the
+[Questions design brief](questions-design-brief.md), starting on `feat/question-sets`.
+The [implementation checklist](plans/question-sets-implementation.md) tracks this work.
+This is a scoped exception to the feature freeze; unrelated proposals remain parked.
+
+Begin with the nested-question and self-marking domain foundation, then implement
+persistence together with backup, restore, sharing and sync compatibility before
+exposing new stored content. Existing study data and scheduling histories must survive.
+Version one uses manual concept/card linking; Jev is excluded. A calibrated exam-score
+forecast is a later milestone, not a prerequisite for authoring and self-marking.
+
 ## Ordered maintenance programme
 
 ### 1. Dependency and release security

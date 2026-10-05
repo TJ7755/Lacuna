@@ -26,11 +26,28 @@ async function reset() {
     db.questions.clear(),
     db.questionConcepts.clear(),
     db.questionAttempts.clear(),
+    db.appState.clear(),
   ]);
 }
 
 describe('asset garbage collection', () => {
   beforeEach(reset);
+
+  it('retains an asset referenced only by a local Question Set draft', async () => {
+    const asset = await storeImageBlob(
+      new Blob(['draft'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    await db.appState.put({
+      key: 'questionSetDraft:course:set',
+      value: { content: { title: `![draft](${assetUrl(asset.hash)})` } },
+    });
+
+    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await db.assets.get(asset.hash)).toBeDefined();
+  });
 
   it('deletes an asset that is no longer referenced by any card', async () => {
     const deck = await createCourse('GC');

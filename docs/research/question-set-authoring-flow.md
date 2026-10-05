@@ -1,0 +1,28 @@
+# Question set authoring flow: primary-source review
+
+**Reviewed:** 27 September 2026. **Scope:** Authoring UX only. Recommendations are design inferences, not claims that the sources tested Lacuna's workflow.
+
+## What the sources establish
+
+- GOV.UK's [question-page pattern](https://design-system.service.gov.uk/patterns/question-pages/) starts with one question per page, a specific heading, Back and Continue, and the information a user needs to answer. It permits grouping related questions when research supports it. It advises trying a simpler order before adding a progress indicator. Applied here, each authoring view should have one clear job, while tightly related fields such as a criterion and its marks can stay together.
+- GOV.UK's [complete-multiple-tasks pattern](https://design-system.service.gov.uk/patterns/complete-multiple-tasks/) reserves task lists for long transactions that may span sessions and says to simplify first. A persistent task rail for a single question part has no support from that pattern. This is an inference about Lacuna, not a GOV.UK prohibition on side navigation.
+- GOV.UK's [check-answers pattern](https://design-system.service.gov.uk/patterns/check-answers/) gives users a final review grouped by section, direct Change links, preserved answers when they return, and an explicit final action. It says to show skipped optional information as “Not provided”. A set review can adopt these ideas without pretending publishing a question set is a government transaction.
+- Moodle's [Building Quiz](https://docs.moodle.org/501/en/Building_Quiz) documents adding a question, entering its form and grade, saving, repeating, and previewing both individual questions and the whole quiz. It also documents ordering questions and assigning marks. Moodle's [question bank](https://docs.moodle.org/500/en/Question_banks) separates reusable question definitions from quiz membership and exposes draft/ready status. These are useful precedents, though Moodle's bank and settings model is not a reason to duplicate it in Lacuna.
+
+## Repository fit
+
+The existing [individual Question editor](../../src/pages/QuestionEditor.tsx) already presents a prompt, answer form and worked explanation in a readable main column, with lesson/concept relationships in the same form. Its Markdown editor can include images. The current [set editor](../../src/pages/QuestionSetEditor.tsx) already supports nested nodes, images, per-part response and scheme editors, lesson/exam links, preview, draft saving and publishing. Its active-part tabs and persistent section rail split those actions across places and put set links beside question parts. The authoring overhaul should rearrange these existing capabilities, not invent a second data model or second image tool.
+
+## Recommended author journey
+
+1. **Start the set.** Ask for a title and show one primary action, “Add question”. Keep draft state visible and durable. The set's lesson/exam relationships can wait until the content exists.
+2. **Write Q1.** Show the current exam-paper outline above or beside the main form as compact context, not as a settings navigation rail. Put the Q1 prompt in the main column, with image insertion next to the prompt. Offer explicit “Add part (a)” and then “Add subpart (i)” actions. A parent with children becomes shared source material; make the consequence clear before converting an answerable parent. Numbering should derive from the tree, so authors never type or synchronise Q1(a)(i) labels by hand.
+3. **Define each answerable part.** Keep its question text, response format, model answer and marking criteria in one local sequence. Show one criterion row at a time with its mark allocation and optional dimension: knowledge, application or exam technique. Derive the part total from criterion marks; show group and set totals read-only. A prose or level-based scheme must remain possible where checkboxes would misrepresent the marking. This part-level allocation is a Lacuna requirement, not a claim that Moodle offers it.
+4. **Add relationships after the part works.** Offer optional searchable concept/card links at part level and lesson/exam links at set level as clearly labelled actions. Use inline selection or a dedicated page; do not use dropdown menus. Show selected links as readable names with a direct remove action. Never make these links prerequisites for writing a question or scheme.
+5. **Review the set.** Present the nested paper in learner order with images, response expectations, schemes, per-part marks and derived totals. Show missing required content next to the affected part and provide direct “Change” actions that return to review. Preview the learner view from this screen. Use one final “Save set” action; keep draft saving and final publication semantically distinct.
+
+The default path should be **write → mark → add another part/question → review**. Back must preserve the draft and the browser's previous state. A set overview can list questions and completion states after there is meaningful content; it need not remain visible as a competing navigation mechanism throughout editing. This is a design inference from the cited GOV.UK and Moodle patterns, not a proven optimal flow for teachers. Test it with authors creating a multipart question from a real paper, especially the Q1 to Q1(a)(i) transition, image placement and return from review to edit.
+
+## Boundaries
+
+Self-marking criteria and author-selected marks are in scope. AI marking and writes to card FSRS state are out of scope. The authoring interface should not imply that a knowledge/application/exam-technique label objectively diagnoses a learner's weakness; it records the author's assessment intent.

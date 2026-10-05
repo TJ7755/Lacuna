@@ -1,3 +1,5 @@
+import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
+import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
 // (title, one meta line, a Study/Edit pill and the study action) sits above a large
 // reading card for the notes beside a compact "Cards in this lesson" list. The
@@ -213,6 +215,7 @@ export function LessonView({
               Add practice
             </Button>
           )}
+          <AddQuestionSetPractice courseId={courseId} afterLessonId={lesson.id} />
           {onAddCheckpoint && (
             <Button variant="secondary" size="sm" onClick={onAddCheckpoint}>
               <PlusIcon width={16} height={16} />
@@ -346,6 +349,7 @@ export function LessonView({
               </div>
             )}
           </AnimatedDisclosure>
+          {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
         </div>
       </div>
     </div>

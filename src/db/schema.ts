@@ -60,6 +60,8 @@ import type {
   QuestionConceptSet,
   QuestionDefinition,
 } from '../questions/types';
+import type { QuestionSetRecord } from '../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import {
   reviewActivityProjectionMiddleware,
   type ReviewActivityRow,
@@ -156,6 +158,8 @@ class LacunaDatabase extends Dexie {
   questions!: Table<QuestionDefinition, string>;
   questionConcepts!: Table<QuestionConceptSet, string>;
   questionAttempts!: Table<QuestionAttempt, string>;
+  questionSets!: Table<QuestionSetRecord, string>;
+  questionSetAttempts!: Table<QuestionSetAttemptRecord, string>;
   agentMemories!: Table<AgentMemory, string>;
 
   constructor() {
@@ -1029,9 +1033,7 @@ class LacunaDatabase extends Dexie {
         // needed only when v24 actually upgrades an existing database, not on every
         // launch. Dexie.waitFor keeps the versionchange transaction alive while the
         // optional module is fetched.
-        const { migrateQuestionModeContent } = await Dexie.waitFor(
-          import('../questions/domain'),
-        );
+        const { migrateQuestionModeContent } = await Dexie.waitFor(import('../questions/domain'));
         const migration = migrateQuestionModeContent({
           cards,
           reviewHistory,
@@ -1291,6 +1293,17 @@ class LacunaDatabase extends Dexie {
           );
         }
       });
+
+    // Version 28: authored Question Sets are revisioned document aggregates.
+    // This additive store does not reinterpret legacy scheduled Questions.
+    this.version(28).stores({
+      questionSets: 'id, courseId, *lessonIds, *assessmentIds, updatedAt',
+    });
+
+    // Version 29: personal authored Question Set attempts retain complete content receipts.
+    this.version(29).stores({
+      questionSetAttempts: 'id, courseId, questionSetId, status, updatedAt',
+    });
   }
 }
 
@@ -1312,7 +1325,7 @@ function containsReviewProjection(
   return true;
 }
 
-const CURRENT_SCHEMA_VERSION = 27;
+const CURRENT_SCHEMA_VERSION = 28;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24, 26]);
 
 export const db = new LacunaDatabase();
@@ -1505,8 +1518,8 @@ export async function readAllDataFromVersion(
   );
 
   const payload: BackupFile = {
-    app: 'lacuna',
-    version: schemaVersion,
+    app: schemaVersion < 24 ? 'lacuna' : schemaVersion < 29 ? 'lacuna-v12' : 'lacuna-v13',
+    version: schemaVersion < 24 ? schemaVersion : schemaVersion < 29 ? 12 : 13,
     exportedAt: Date.now(),
     decks: (raw.data['decks'] ?? []) as LegacyDeck[],
     cards: (raw.data['cards'] ?? []) as Card[],
@@ -1535,6 +1548,8 @@ export async function readAllDataFromVersion(
     questions: (raw.data['questions'] ?? []) as QuestionDefinition[],
     questionConcepts: (raw.data['questionConcepts'] ?? []) as QuestionConceptSet[],
     questionAttempts: (raw.data['questionAttempts'] ?? []) as QuestionAttempt[],
+    questionSets: (raw.data['questionSets'] ?? []) as QuestionSetRecord[],
+    questionSetAttempts: (raw.data['questionSetAttempts'] ?? []) as QuestionSetAttemptRecord[],
     lineageIdMappings: (raw.data['lineageIdMappings'] ?? []) as LineageIdMapping[],
     pendingMergeReviews: (raw.data['pendingMergeReviews'] ?? []) as PendingMergeReview[],
     agentMemories: (raw.data['agentMemories'] ?? []) as AgentMemory[],

@@ -138,7 +138,9 @@ export function SharePage() {
   const { notify } = useToast();
   const [searchParams] = useSearchParams();
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(() =>
+    searchParams.get('courseId'),
+  );
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [code, setCode] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -223,7 +225,24 @@ export function SharePage() {
     };
   }, [selectedShareId]);
 
+  const initialSelection = useRef(searchParams.get('courseId'));
+  useEffect(() => {
+    if (!initialSelection.current || !selectedCourse) return;
+    if (initialSelection.current === selectedCourse.id) {
+      const distribution = selectedCourse.distribution;
+      if (distribution?.shareId) {
+        setShareLink({
+          shareId: distribution.shareId,
+          revision: distribution.shareRevision ?? distribution.revision,
+        });
+        setSelectedMethod((current) => current ?? 'link');
+      }
+    }
+    initialSelection.current = null;
+  }, [selectedCourse]);
+
   function select(id: string) {
+    initialSelection.current = null;
     setCoursePickerOpen(false);
     if (selectedCourseId === id) return;
     setSelectedCourseId(id);
@@ -449,9 +468,9 @@ export function SharePage() {
           <h2 className="font-display text-xl">Export a course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Save a course file to share lessons, cards and media. Your study history stays private.
-          A share link includes media and updates in place when you republish. Text and QR codes
-          are also available, but omit media files.{' '}
+          Save a course file to share lessons, cards, question sets and media. Your study history
+          stays private. A share link includes media and updates in place when you republish. Text
+          and QR codes are also available, but omit media files.{' '}
           <Link to="/settings#settings-export" className="text-accent underline underline-offset-2">
             Open full backup and recovery
           </Link>
@@ -861,8 +880,8 @@ export function SharePage() {
                 >
                   <div className="rounded-2xl bg-paper p-4">
                     <p className="text-sm text-ink-soft">
-                      This course&apos;s link was created on another device. Publishing here
-                      creates a new link; the old link stays live until it expires.
+                      This course&apos;s link was created on another device. Publishing here creates
+                      a new link; the old link stays live until it expires.
                     </p>
                     <div className="mt-3 flex justify-end">
                       <ConfirmInlineSwap

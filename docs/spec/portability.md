@@ -98,7 +98,8 @@ drag and drop, automatic format detection and a manual format override.
 A single, reusable export UI offering multiple output formats:
 
 - **Full backup (JSON)** — complete database snapshot including Cards, Card reviews, Concepts,
-  Questions, Question relationships and Attempts, plus media assets (`downloadBackup`).
+  Questions, Question relationships, Attempts and authored Question Sets, plus media assets
+  (`downloadBackup`).
   Selected backup files over 200 MB are rejected before they are read or parsed.
 - **CSV** — comma-separated values with all card fields.
 - **TSV** — tab-separated values, compatible with Anki import.
@@ -119,11 +120,16 @@ A single, reusable export UI offering multiple output formats:
   `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
   progress, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions`, `concepts`,
-  `questions`, `questionConcepts` and `questionAttempts`). Backups are
+  `questions`, `questionConcepts`, `questionAttempts` and `questionSets`). Current exports use
+  envelope v12 and the `lacuna-v12` application marker, which makes older readers reject the file
+  instead of accepting it and silently dropping authored sets. Public v11 and earlier backups and
+  internal pre-migration schema snapshots from v22–v28 remain accepted.
+  Backups are
   one route that carries media between machines; course files also carry media, while text share codes do not. An
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
-  `lacuna-asset://` references. Older backups are normalised through the pure v24 converter;
+  `lacuna-asset://` references. Authored sets are scanned by backup export, sync accounting and
+  orphan-media collection. Older backups are normalised through the pure v24 converter;
   legacy `courseExamDates` remains an import-only compatibility field.
 - **Record validation:** JSON files and direct imports share a Zod schema for every
   represented collection and its nested records. Invalid fields report the collection,
@@ -137,9 +143,9 @@ A single, reusable export UI offering multiple output formats:
     calls this **Replace local data**, explains that there is no account or cloud copy, and
     requires a second explicit confirmation. `noteAnnotations` is also cleared but is not
     restored because it is device-local. Concepts, Questions, relationships and Attempts are
-    replaced and restored with the rest of the represented data. Lineage mappings and pending
-    merge-review queues are not represented by `BackupFile` and are not currently exported or
-    cleared.
+    replaced and restored with the rest of the represented data. Authored Question Sets are parsed
+    and their Course, Lesson, Assessment and Concept references are checked before replacement
+    begins.
   - **Add from backup** — fold in by id (`importBackup(..., 'merge')`). The Settings recover
     flow shows the backup's lesson/card counts and applies immediately when **Add from backup**
     is pressed; it does not currently show a full add/change/overwrite diff or ask for a second
@@ -190,8 +196,8 @@ The recipient confirms before any data is written. Published files use the same 
 matching and update review as share codes.
 
 The file is a versioned JSON envelope (`format: "lacuna-course"`, `version: 1`) containing
-an existing v3 course-share payload and its referenced media as `BackupAsset` records.
-Card, note and Question media references remain intact. Occlusion diagrams are gathered
+the current v4 course-share payload and its referenced media as `BackupAsset` records.
+Card, note, Question and authored Question Set media references remain intact. Occlusion diagrams are gathered
 from their asset hashes, and each required image or audio asset is included once. The
 content scope matches course share codes, including their exclusion of unassigned bank
 material; personal review history, scheduling state and unrelated media are excluded.
@@ -218,7 +224,7 @@ deployable as static files with no server rewrites.
 - **Relay routes** (same Blob store and conventions as sync channels):
   `POST /shares` mints a 32-hex share id plus write token (public path
   rate-limited 10/hour/IP, secret bypass like channels); `PUT
-  /shares/:id/payload|meta` publishes with `If-Match` compare-and-swap;
+/shares/:id/payload|meta` publishes with `If-Match` compare-and-swap;
   `GET` on either slot is unauthenticated (knowledge of the id is the read
   capability) with `Cache-Control: no-store`; `DELETE /shares/:id` unpublishes
   the group. Payloads are capped at 4 MB so publishes stay under the function
@@ -251,7 +257,7 @@ copy-and-paste (or scannable) **code** and rebuilds a course from one. It is dis
 backup export: a share code carries only the **material** needed to recreate the course,
 never one person's scheduling progress or review history.
 
-- **What a code contains (current, v3 payload):** course metadata (name, exam objective,
+- **What a code contains (current, v4 payload):** course metadata (name, exam objective,
   date created, an exam date or steady-retention marker, target retention, new-card cap), its ordered lessons each with
   their notes and cards (type, front, back, tags), and current `CourseAssessment`
   checkpoints. **Sequences**
@@ -265,6 +271,10 @@ never one person's scheduling progress or review history.
   reference on each generated card, region ids remapped fresh on import and a pairing whose
   target region did not travel dropped rather than left dangling. Bank-scoped sequences and
   occlusions are excluded from both, since their generated cards are never packed.
+  V4 also carries authored Question Sets while excluding personal answers, marks and schedules.
+  A normal import assigns fresh set and nested IDs and remaps Lesson, Assessment and Concept links
+  atomically. Published-lineage imports currently fail closed when a set links an Assessment,
+  because Assessment lineage is not yet represented; they never report success while dropping it.
   `LessonCardLink` (display-only cross-lesson linking) travels with the material so linked bank
   Cards remain linked after import. Concepts, fixed and generated Question definitions, and their
   primary/prerequisite relationships also travel; the importer remaps their identifiers with the
@@ -475,8 +485,15 @@ consent-gated) calls `mergeLineageUpdate` directly and may pre-resolve queued it
 the same `acceptMergeReviewItems`/`rejectMergeReviewItems` functions the review panel
 uses.
 
-
 [Specification index](../SPEC.md)
+
+### Question-set integration limits
+
+Ordinary course-file imports carry assessment-linked sets. Published export and lineage import
+reject those links until assessment lineage is supported. Published set updates track the last
+accepted revision and reject conflicting local edits or deletions atomically. MCP lineage
+preview/apply rejects incoming or locally tracked sets because its preview currently covers
+lessons, notes and cards only; it must not apply changes that its preview cannot describe.
 
 ### Authored answer modes
 

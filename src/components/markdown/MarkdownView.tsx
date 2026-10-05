@@ -17,6 +17,7 @@ import { ASSET_PROTOCOL } from '../../db/assets';
 import { resolveAssetMarkdownCached } from '../../db/assetCache';
 import { readAudioSettings } from '../../state/audioSettings';
 import 'katex/dist/katex.min.css';
+import { MarkdownImageViewer } from './MarkdownImageViewer';
 
 type ClozeMode = 'front' | 'back' | 'none';
 
@@ -34,6 +35,8 @@ interface MarkdownViewProps {
   allowEmbeds?: boolean;
   /** Play embedded card audio when this rendered face is mounted in Learn mode. */
   audioAutoplay?: boolean;
+  /** Open diagrams without leaving the current response. */
+  enlargeImages?: boolean;
   typedAnswerFeedback?: TypedAnswerFeedback;
 }
 
@@ -92,12 +95,29 @@ function rehypeAudioAssets(): (tree: unknown) => void {
   };
 }
 
+/** Linked diagrams keep their authored navigation rather than nesting controls. */
+function rehypeLinkedImages(): (tree: unknown) => void {
+  return (tree) => {
+    const visit = (
+      node: { tagName?: string; data?: Record<string, unknown>; children?: unknown[] },
+      linked = false,
+    ) => {
+      if (linked && node.tagName === 'img') node.data = { ...node.data, linkedImage: true };
+      node.children?.forEach((child) =>
+        visit(child as typeof node, linked || node.tagName === 'a'),
+      );
+    };
+    visit(tree as Parameters<typeof visit>[0]);
+  };
+}
+
 const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeRaw,
   rehypeAudioAssets,
   rehypeMermaidPlaceholder,
   rehypeWikilinks,
   [rehypeSanitize, RESTRICTED_SCHEMA],
+  rehypeLinkedImages,
   rehypeKatex,
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
 ];
@@ -109,6 +129,22 @@ const MARKDOWN_COMPONENTS: MarkdownProps['components'] = {
       <table {...props} />
     </div>
   ),
+};
+
+const ENLARGE_COMPONENTS: MarkdownProps['components'] = {
+  ...MARKDOWN_COMPONENTS,
+  img: ({ node, ...props }) =>
+    (node?.data as { linkedImage?: boolean } | undefined)?.linkedImage ? (
+      <img {...props} loading="lazy" decoding="async" />
+    ) : (
+      <button
+        type="button"
+        data-enlarge-image=""
+        aria-label={props.alt ? `Enlarge image: ${props.alt}` : 'Enlarge image'}
+      >
+        <img {...props} loading="lazy" decoding="async" />
+      </button>
+    ),
 };
 
 // ── Video embed plugin ────────────────────────────────────────────────────────
@@ -310,6 +346,7 @@ const EMBED_REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeMermaidPlaceholder,
   rehypeWikilinks,
   [rehypeSanitize, EMBED_SCHEMA],
+  rehypeLinkedImages,
   rehypeStripUnsourcedIframes,
   rehypeKatex,
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
@@ -364,9 +401,13 @@ function evictLru(): void {
   if (oldestKey !== undefined) HTML_CACHE.delete(oldestKey);
 }
 
-function renderMarkdownToHtml(prepared: string, allowEmbeds: boolean): string {
+function renderMarkdownToHtml(
+  prepared: string,
+  allowEmbeds: boolean,
+  enlargeImages: boolean,
+): string {
   // Prefix embed-mode keys so the same source never collides across render modes.
-  const cacheKey = allowEmbeds ? '\x00E\x00' + prepared : prepared;
+  const cacheKey = `${enlargeImages ? '\x00I\x00' : ''}${allowEmbeds ? '\x00E\x00' : ''}${prepared}`;
   const now = Date.now();
   const cached = HTML_CACHE.get(cacheKey);
   if (cached !== undefined) {
@@ -381,7 +422,7 @@ function renderMarkdownToHtml(prepared: string, allowEmbeds: boolean): string {
     <ReactMarkdown
       remarkPlugins={REMARK_PLUGINS}
       rehypePlugins={rehypePlugins}
-      components={MARKDOWN_COMPONENTS}
+      components={enlargeImages ? ENLARGE_COMPONENTS : MARKDOWN_COMPONENTS}
       urlTransform={(url) => (url.startsWith('blob:') ? url : defaultUrlTransform(url))}
     >
       {prepared}
@@ -416,6 +457,7 @@ export const MarkdownView = memo(function MarkdownView({
   className,
   allowEmbeds = false,
   audioAutoplay = false,
+  enlargeImages = false,
   typedAnswerFeedback,
 }: MarkdownViewProps) {
   const [resolved, setResolved] = useState(source);
@@ -461,11 +503,11 @@ export const MarkdownView = memo(function MarkdownView({
         : clozeMode === 'back'
           ? renderClozeBack(resolved)
           : resolved;
-    const rendered = renderMarkdownToHtml(prepared, allowEmbeds);
+    const rendered = renderMarkdownToHtml(prepared, allowEmbeds, enlargeImages);
     return typedAnswerFeedback
       ? typedAnswerFeedbackHtml(rendered, typedAnswerFeedback, clozeMode === 'back')
       : rendered;
-  }, [resolved, clozeMode, allowEmbeds, typedAnswerFeedback]);
+  }, [resolved, clozeMode, allowEmbeds, enlargeImages, typedAnswerFeedback]);
 
   useEffect(() => {
     const players = containerRef.current?.querySelectorAll('audio') ?? [];
@@ -501,12 +543,17 @@ export const MarkdownView = memo(function MarkdownView({
     };
   }, [html]);
 
-  return (
+  const content = (
     <div
       ref={containerRef}
       className={cn('prose-lacuna', className)}
       dangerouslySetInnerHTML={{ __html: html }}
       tabIndex={-1}
     />
+  );
+  return enlargeImages ? (
+    <MarkdownImageViewer key={source}>{content}</MarkdownImageViewer>
+  ) : (
+    content
   );
 });

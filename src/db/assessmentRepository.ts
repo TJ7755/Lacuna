@@ -203,12 +203,16 @@ export async function updateCourseAssessment(
 
 export async function deleteCourseAssessment(id: string): Promise<void> {
   try {
+    // Loaded on demand, before the transaction opens, to keep question sets out of the first load.
+    const { removeQuestionSetAssessmentReference } =
+      await import('../questions/questionSetRepository');
     await db.transaction(
       'rw',
       [
         db.courses,
         db.lessons,
         db.courseAssessments,
+        db.questionSets,
         db.revisionPlans,
         db.schedulingUnits,
         db.coursePerformance,
@@ -224,6 +228,7 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
           await db.revisionPlans.where('assessmentId').equals(id).primaryKeys()
         ).map(String);
         await db.revisionPlans.where('assessmentId').equals(id).delete();
+        await removeQuestionSetAssessmentReference(assessment.courseId, id, Date.now());
         await db.courseAssessments.delete(id);
         await recordTombstone(tx, 'courseAssessments', id);
         await recordTombstones(tx, 'revisionPlans', revisionPlanIds);

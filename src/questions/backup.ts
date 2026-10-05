@@ -11,12 +11,14 @@ import type {
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import { migrateQuestionModeContent } from './domain';
 import type { Concept, QuestionAttempt, QuestionConceptSet, QuestionDefinition } from './types';
+import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 
 export interface QuestionBackupCollections {
   concepts: Concept[];
   questions: QuestionDefinition[];
   questionConcepts: QuestionConceptSet[];
   questionAttempts: QuestionAttempt[];
+  questionSets: QuestionSetRecord[];
 }
 
 export type QuestionNormalisedBackup = BackupFile & QuestionBackupCollections;
@@ -181,13 +183,18 @@ function migrationTombstones(
  * Current backups are copied unchanged; attempt evidence is never reconstructed twice.
  */
 export function normaliseQuestionBackup(input: BackupFile): QuestionNormalisedBackup {
-  if (input.version >= 11) {
+  const requiresQuestionMigration =
+    input.app === 'lacuna' && input.version >= 22 && input.version < 24;
+  if (input.version >= 11 && !requiresQuestionMigration) {
     return {
       ...input,
+      app: 'lacuna-v12',
+      version: 12,
       concepts: [...(input.concepts ?? [])],
       questions: [...(input.questions ?? [])],
       questionConcepts: [...(input.questionConcepts ?? [])],
       questionAttempts: [...(input.questionAttempts ?? [])],
+      questionSets: (input.questionSets ?? []).map(parseQuestionSetRecord),
     };
   }
 
@@ -239,7 +246,8 @@ export function normaliseQuestionBackup(input: BackupFile): QuestionNormalisedBa
 
   return {
     ...input,
-    version: 11,
+    app: 'lacuna-v12',
+    version: 12,
     // validateBackup has already constrained every incoming payload to ItemPayload;
     // the pure migration deliberately accepts unknown at its legacy boundary.
     cards: migration.cards as BackupFile['cards'],
@@ -247,6 +255,7 @@ export function normaliseQuestionBackup(input: BackupFile): QuestionNormalisedBa
     questions: migration.questions,
     questionConcepts: migration.questionConcepts,
     questionAttempts: migration.attempts,
+    questionSets: [],
     reviewHistory: reviews,
     lessonCards: (input.lessonCards ?? []).filter((row) => !removedLinkIds.has(row.id)),
     lessonCardExposures: (input.lessonCardExposures ?? []).filter(
@@ -258,12 +267,10 @@ export function normaliseQuestionBackup(input: BackupFile): QuestionNormalisedBa
     practiceMilestones: (input.practiceMilestones ?? []).filter(
       (row) => !removedMilestoneIds.has(row.nodeKey),
     ),
-    courseAssessments: input.courseAssessments?.map(
-      (assessment): CourseAssessment => ({
-        ...assessment,
-        excludedCardIds: (assessment.excludedCardIds ?? []).filter((id) => !removed.has(id)),
-      }),
-    ),
+    courseAssessments: input.courseAssessments?.map((assessment): CourseAssessment => ({
+      ...assessment,
+      excludedCardIds: (assessment.excludedCardIds ?? []).filter((id) => !removed.has(id)),
+    })),
     revisionPlans: input.revisionPlans?.map((plan) => removeCardIdsFromRevisionPlan(plan, removed)),
     coursePerformance: rebuildCoursePerformance(
       input.coursePerformance ?? [],

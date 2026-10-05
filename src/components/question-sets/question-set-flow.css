@@ -1,0 +1,178 @@
+.qs-editor.qs-flow {
+  max-width: 896px;
+}
+.qs-flow h1 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+  margin: 10px 0 16px;
+}
+.qs-flow h1:focus {
+  outline: none;
+}
+.qs-flow-header {
+  margin-bottom: 28px;
+}
+.qs-flow-body {
+  min-width: 0;
+}
+.qs-flow .qs-settings {
+  padding: 24px 0 0;
+  border: 0;
+  border-top: 1px solid hsl(var(--line));
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  margin-bottom: 0;
+}
+.qs-flow .qs-settings h2 {
+  font-size: 16px;
+}
+.qs-flow .qs-settings .qs-fields {
+  align-items: flex-start;
+}
+.qs-flow-progress {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 0;
+  color: hsl(var(--ink-soft));
+  font-size: 13px;
+}
+.qs-flow-progress li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qs-flow-progress li span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: hsl(var(--ink) / 0.06);
+  flex-shrink: 0;
+}
+.qs-flow-progress li[aria-current] {
+  color: hsl(var(--accent-ink));
+  font-weight: 600;
+}
+.qs-flow-progress li[aria-current] span {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-fg));
+}
+.qs-flow-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 24px 0;
+}
+.qs-flow-footer > button:first-child:not(:only-child) {
+  margin-right: auto;
+}
+.qs-flow-set-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+  color: hsl(var(--ink-soft));
+  margin-bottom: 20px;
+}
+.qs-flow-question {
+  border: 1px solid hsl(var(--line));
+  border-radius: 16px;
+  background: hsl(var(--surface));
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.qs-flow-row {
+  padding: 22px 24px;
+}
+.qs-flow-row + .qs-flow-row {
+  border-top: 1px solid hsl(var(--line));
+}
+.qs-flow-row[data-depth='1'] {
+  padding-left: 42px;
+}
+.qs-flow-row[data-depth='2'] {
+  padding-left: 60px;
+}
+.qs-flow-row-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.qs-flow-row h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.qs-flow-row > p {
+  font-size: 15px;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.qs-flow-incomplete {
+  color: hsl(var(--ink-soft));
+  font-size: 12px;
+}
+.qs-flow-ready {
+  color: hsl(var(--accent-ink));
+  background: hsl(var(--accent-soft));
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.qs-flow-empty {
+  padding: 32px;
+  margin-bottom: 24px;
+  border: 1px dashed hsl(var(--line-strong));
+  border-radius: 16px;
+  color: hsl(var(--ink-soft));
+}
+.qs-flow-context {
+  border-bottom: 1px solid hsl(var(--line));
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+.qs-flow-context h2 {
+  font-size: 13px;
+  color: hsl(var(--ink-soft));
+  margin-bottom: 12px;
+}
+.qs-flow-split {
+  border-top: 1px solid hsl(var(--line));
+  padding-top: 20px;
+  margin-top: 24px;
+}
+.qs-flow-total {
+  font-size: 16px;
+  margin-bottom: 24px;
+  color: hsl(var(--accent-ink));
+}
+.qs-flow .qs-field input[type='number'] {
+  max-width: 120px;
+}
+@media (max-width: 700px) {
+  .qs-flow-progress {
+    gap: 10px;
+    font-size: 11px;
+  }
+  .qs-flow-progress li {
+    gap: 5px;
+    align-items: flex-start;
+  }
+  .qs-flow-row {
+    padding: 18px;
+  }
+  .qs-flow-row[data-depth='1'] {
+    padding-left: 28px;
+  }
+  .qs-flow-row[data-depth='2'] {
+    padding-left: 38px;
+  }
+}

@@ -1,223 +1,179 @@
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
-import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
-import { QuestionBankCard } from '../components/questions/QuestionBankCard';
-import { useCourseQuestionData } from '../components/questions/useQuestionData';
+import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQuestionSetAttempts';
+import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
+import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, makeId } from '../db/schema';
+import { useCourse } from '../state/useCourseData';
+import { resolveLessonViewMode } from '../course/lessonViewMode';
+import {
+  createEmptyQuestionSetDraft,
+  listQuestionSetDrafts,
+  saveQuestionSetDraft,
+} from '../questions/questionSetDrafts';
+import { listQuestionSets } from '../questions/questionSetRepository';
 import { Button } from '../components/ui/Button';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { ChevronRightIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
-import { MOTION_EASING } from '../components/ui/motion';
-import { summariseQuestion } from '../questions/bankSummary';
-import { selectQuestionSession } from '../questions/selection';
-import type { QuestionDefinition } from '../questions/types';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
-import { useCourse, useLessons } from '../state/useCourseData';
-
-const OUTLINE_PILL =
-  'min-h-12 border-[1.5px] border-ink bg-transparent text-ink hover:border-ink hover:bg-ink/[0.04]';
-
-function endOfToday(now: number): number {
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  return end.getTime();
-}
-
-function dueState(due: number | null, now: number): { label: string; today: boolean } {
-  if (due === null) return { label: 'Not yet practised', today: false };
-  if (due <= endOfToday(now)) return { label: 'Due today', today: true };
-  return {
-    label: `Due ${new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(due)}`,
-    today: false,
-  };
-}
-
-/** The first line of a fixed prompt as plain text, for the card's one-line description. */
-function promptSnippet(question: QuestionDefinition): string | null {
-  if (question.kind !== 'fixed') return null;
-  const line = question.prompt
-    .split(/\r?\n/)
-    .map((part) => part.replace(/[*_`#>$]/g, '').trim())
-    .find(Boolean);
-  return line ?? null;
-}
+import { LegacyQuestionsPage } from './LegacyQuestionsPage';
+import { questionSetMarks } from '../components/question-sets/presentation';
+import '../components/question-sets/question-sets.css';
 
 export function QuestionsPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const navigate = useNavigate();
-  const [showBatchPrompt, setShowBatchPrompt] = useState(false);
-  const [motionSpeed] = useMotionSpeed();
-  const multiplier = speedMultiplier(motionSpeed);
   const course = useCourse(courseId);
-  const lessons = useLessons(courseId);
-  const data = useCourseQuestionData(courseId);
-  const now = Date.now();
-  const conceptNames = useMemo(
-    () => new Map(data?.concepts.map((concept) => [concept.id, concept.name]) ?? []),
-    [data?.concepts],
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
+  const setSearch = (value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set('q', value);
+    else next.delete('q');
+    setParams(next, { replace: true });
+  };
+  const origin = {
+    questionSetReturnTo: location.pathname + location.search,
+    questionSetReturnLabel: 'Back to Questions',
+  };
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const data = useLiveQuery(async () => {
+    if (!courseId) return null;
+    try {
+      const [sets, drafts, legacy] = await Promise.all([
+        listQuestionSets(courseId),
+        listQuestionSetDrafts(courseId),
+        db.questions.where('courseId').equals(courseId).count(),
+      ]);
+      return { sets, drafts, legacy, error: '' };
+    } catch (cause) {
+      return { sets: [], drafts: [], legacy: 0, error: String(cause) };
+    }
+  }, [courseId]);
+  const root = useQuestionSetScroll(
+    `question-set-library-scroll:${courseId}:${search}`,
+    !!course && !!data,
   );
-  const sets = useMemo(
-    () => new Map(data?.conceptSets.map((set) => [set.questionId, set]) ?? []),
-    [data?.conceptSets],
-  );
-  const lessonNames = useMemo(
-    () => new Map(lessons?.map((lesson) => [lesson.id, lesson.name]) ?? []),
-    [lessons],
-  );
-  const dueCount = data?.questions.filter(
-    (question) => !question.suspended && question.due !== null && question.due <= now,
-  ).length;
-  const sessionSize = useMemo(
-    () =>
-      data
-        ? selectQuestionSession(data.questions, data.conceptSets, data.attempts, {
-            mode: 'default',
-            limit: 10,
-          }).length
-        : 0,
-    [data],
-  );
-
-  if (course === undefined || lessons === undefined || data === undefined) {
-    return (
-      <DelayedFallback>
-        <QuestionsPageSkeleton />
-      </DelayedFallback>
-    );
-  }
-  if (course === null) {
-    return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
-        </Link>
-      </div>
-    );
-  }
-
+  if (!course || !data) return <p className="p-8 text-ink-soft">Loading Questions…</p>;
+  const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
+  const draftIds = new Set(data.drafts.map((d) => d.content.id));
+  const rows = [
+    ...data.drafts.filter(() => author).map((d) => ({ content: d.content, draft: true })),
+    ...data.sets
+      .filter((s) => !author || !draftIds.has(s.id))
+      .map((content) => ({ content, draft: false })),
+  ].filter((row) => row.content.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+  const create = async () => {
+    setCreating(true);
+    setError('');
+    try {
+      const draft = createEmptyQuestionSetDraft(course.id, makeId());
+      await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
+      await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`, {
+        state: origin,
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not create a set.');
+    } finally {
+      setCreating(false);
+    }
+  };
+  if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10`}>
-      <motion.header
-        initial={multiplier > 0 ? { opacity: 0, y: 10 } : false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.46 * multiplier, ease: MOTION_EASING.emphasised }}
-        className="mb-6 flex flex-wrap items-end justify-between gap-4 pt-6 md:pt-8"
-      >
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-          Questions
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" onClick={() => setShowBatchPrompt(true)}>
-            <SparklesIcon width={18} height={18} />
-            Build batch prompt
-          </Button>
-          {data.questions.length > 0 && (
-            <Button
-              variant="secondary"
-              disabled={!dueCount}
-              className={OUTLINE_PILL}
-              onClick={() => navigate(`/course/${course.id}/questions/learn?mode=all-due`)}
-            >
-              All due{dueCount ? ` (${dueCount})` : ''}
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            className={OUTLINE_PILL}
-            onClick={() => navigate(`/course/${course.id}/questions/new`)}
-          >
-            <PlusIcon width={16} height={16} />
-            New question
-          </Button>
-          {data.questions.length > 0 && (
-            <Button
-              variant="primary"
-              size="lg"
-              className="min-h-12 px-6 font-bold"
-              disabled={sessionSize === 0}
-              onClick={() =>
-                navigate(`/course/${course.id}/questions/learn?mode=default&limit=10`)
-              }
-            >
-              Practise {sessionSize}
-              <ChevronRightIcon width={16} height={16} />
-            </Button>
-          )}
+    <div ref={root} className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
+        <div>
+          <h1 tabIndex={-1} className="font-display text-4xl tracking-tight md:text-5xl">
+            Questions
+          </h1>
         </div>
-      </motion.header>
-
-      {data.questions.length === 0 ? (
-        <section className="rounded-3xl bg-surface px-6 py-16 text-center shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]">
-          <p className="font-display text-2xl font-semibold tracking-tight text-ink">
-            No Questions yet
-          </p>
-          <Button
-            className="mt-6 min-h-12 px-6"
-            variant="primary"
-            onClick={() => navigate(`/course/${course.id}/questions/new`)}
-          >
-            <PlusIcon width={18} height={18} />
-            Create a Question
+        {author && (
+          <Button variant="primary" onClick={() => void create()} disabled={creating}>
+            {creating ? 'Creating…' : 'New question set'}
           </Button>
-        </section>
-      ) : (
-        <section aria-label="Question definitions" className="grid gap-4 md:grid-cols-2">
-          {data.questions.map((question, index) => {
-            const set = sets.get(question.id);
-            const targetName = set?.targetConceptIds[0]
-              ? conceptNames.get(set.targetConceptIds[0])
-              : undefined;
-            const lessonName = question.primaryLessonId
-              ? lessonNames.get(question.primaryLessonId)
-              : undefined;
-            const due = question.suspended
-              ? { label: 'Suspended', today: false }
-              : dueState(question.due, now);
-            return (
-              <QuestionBankCard
-                key={question.id}
-                name={question.name}
-                topic={lessonName ?? targetName ?? 'No lesson'}
-                description={targetName ? (promptSnippet(question) ?? targetName) : 'Target Concept missing'}
-                descriptionWarning={!targetName}
-                due={due}
-                summary={summariseQuestion(question, data.attempts)}
-                editHref={`/course/${course.id}/questions/${question.id}/edit`}
-                index={index}
-                multiplier={multiplier}
-              />
-            );
-          })}
-        </section>
-      )}
-
-      <AnimatePresence>
-        {showBatchPrompt && (
-          <BatchAuthoringPromptDialog
-            courseId={course.id}
-            courseName={course.name}
-            examBoard={course.examBoard}
-            specification={course.specification}
-            lessons={lessons}
-            questions={data.questions}
-            onClose={() => setShowBatchPrompt(false)}
-          />
         )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function QuestionsPageSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-6 md:pt-8`}>
-      <div className="mb-6 h-11 w-56 animate-pulse rounded-xl bg-ink/10" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="h-40 animate-pulse rounded-3xl bg-ink/10" />
-        <div className="h-40 animate-pulse rounded-3xl bg-ink/10" />
-      </div>
+      </header>
+      {(error || data.error) && (
+        <p role="alert" className="qs-error">
+          {error || data.error}
+        </p>
+      )}
+      {(data.sets.length > 0 || (author && data.drafts.length > 0)) && (
+        <label className="qs-search">
+          Search sets
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Find a question set"
+          />
+        </label>
+      )}
+      <section className="qs-set-list" aria-label="Question sets">
+        {rows.map(({ content, draft }) => (
+          <div className="qs-library-row" key={content.id}>
+            <Link
+              className="qs-set-row"
+              state={origin}
+              to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
+            >
+              <div>
+                <h2>{content.title || 'Untitled set'}</h2>
+                <p>
+                  {content.questions.length}{' '}
+                  {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
+                  {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+                </p>
+              </div>
+              <span>{draft ? 'Draft' : author ? 'Edit →' : 'View →'}</span>
+            </Link>
+            {author && (
+              <QuestionSetLibraryActions
+                courseId={course.id}
+                setId={content.id}
+                title={content.title || 'Untitled set'}
+                contentRevisionId={
+                  data.sets.find((set) => set.id === content.id)?.contentRevisionId ?? null
+                }
+                draftRevisionId={
+                  data.drafts.find((row) => row.content.id === content.id)?.draftRevisionId ?? null
+                }
+                onRemoved={() =>
+                  requestAnimationFrame(() => {
+                    (
+                      root.current?.querySelector<HTMLElement>('input[type="search"]') ??
+                      root.current?.querySelector<HTMLElement>('h1')
+                    )?.focus();
+                  })
+                }
+              />
+            )}
+          </div>
+        ))}
+        {rows.length === 0 && (
+          <div className="qs-empty">
+            <h2>{search ? 'No matching sets' : 'No question sets yet'}</h2>
+            <p>
+              {search
+                ? 'Try a different search.'
+                : author
+                  ? 'Start with a question. Add marks and connections when you’re ready.'
+                  : 'Question sets shared with this course will appear here.'}
+            </p>
+            {search && <button onClick={() => setSearch('')}>Clear search</button>}
+          </div>
+        )}
+      </section>
+      <RemovedQuestionSetAttempts courseId={course.id} />
+      {data.legacy > 0 && (
+        <Link
+          className="qs-legacy-link"
+          to={`?view=individual${search ? `&q=${encodeURIComponent(search)}` : ''}`}
+        >
+          Individual questions <span>{data.legacy} →</span>
+        </Link>
+      )}
     </div>
   );
 }
