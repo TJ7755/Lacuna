@@ -21,6 +21,8 @@ export async function createCourse(page: Page, courseName: string) {
   await page.getByRole('button', { name: 'Create', exact: true }).click();
 
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
-  await expect(page.getByRole('link', { name: courseName, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: courseName, exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
 }

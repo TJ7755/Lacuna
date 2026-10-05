@@ -11,8 +11,8 @@ async function openSeededDashboard(page: Page) {
 test('first launch reaches the seeded dashboard', async ({ page }) => {
   await openSeededDashboard(page);
   await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
-  const searchButton = page.getByRole('button', { name: 'Quick search', exact: true });
-  await expect(searchButton).toHaveText('Quick search');
+  const searchButton = page.getByRole('button', { name: /^Search/ });
+  await expect(searchButton).toContainText('Search');
   await expect(searchButton.locator('kbd')).toHaveCount(0);
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByRole('dialog', { name: 'Quick search' })).toBeVisible();

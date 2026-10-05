@@ -60,7 +60,9 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     await expect.poll(() => courseStored(page, courseName)).toBe(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect.poll(() => courseStored(page, courseName)).toBe(true);
-    await expect(page.getByRole('link', { name: courseName, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: courseName, exact: true }),
+    ).toBeVisible();
 
     await page
       .getByRole('navigation', { name: 'Courses' })

@@ -153,7 +153,7 @@ async function installBrowserProbe(page: Page, scenario: InteractionScenario): P
 async function performInteraction(page: Page, scenario: InteractionScenario): Promise<void> {
   if (scenario === 'search') {
     await page
-      .getByRole('button', { name: /Quick search/ })
+      .getByRole('button', { name: /^Search/ })
       .first()
       .click();
     return;

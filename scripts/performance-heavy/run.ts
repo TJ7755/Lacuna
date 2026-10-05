@@ -362,7 +362,7 @@ try {
           await expect(page.getByText('Heavy course 0', { exact: true }).first()).toBeVisible();
         });
         await measure('global-search', iteration, async () => {
-          await page.getByRole('button', { name: 'Quick search' }).click();
+          await page.getByRole('button', { name: /^Search/ }).click();
           await page.getByRole('combobox').fill('Recall item 0-0-99');
           await expect(
             page.getByRole('option').filter({ hasText: 'Recall item 0-0-99' }).first(),
