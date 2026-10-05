@@ -7,7 +7,8 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
 import { useCourse } from '../state/useCourseData';
-import { resolveLessonViewMode } from '../course/lessonViewMode';
+import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
+import { updateCourse } from '../db/courseRepository';
 import {
   createEmptyQuestionSetDraft,
   listQuestionSetDrafts,
@@ -162,6 +163,16 @@ export function QuestionsPage() {
                   : 'Question sets shared with this course will appear here.'}
             </p>
             {search && <button onClick={() => setSearch('')}>Clear search</button>}
+            {!search && !author && !course.archived && canEditLessons(course) && (
+              // View mode is read-only, so the way forward is the mode switch itself.
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => void updateCourse(course.id, { lessonViewMode: 'edit' })}
+              >
+                Switch to Edit to write one
+              </Button>
+            )}
           </div>
         )}
       </section>

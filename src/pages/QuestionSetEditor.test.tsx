@@ -202,6 +202,9 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByText('No question sets yet')).toBeInTheDocument();
     expect(screen.queryByText('Untitled set')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'New question set' })).not.toBeInTheDocument();
+    // The empty state still shows the way forward: the switch into Edit.
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Edit to write one' }));
+    expect(await screen.findByRole('button', { name: 'New question set' })).toBeInTheDocument();
     view.unmount();
     await db.courses.update(course.id, { lessonViewMode: 'edit' });
     open(course.id, 'questions');
