@@ -1,6 +1,7 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useEditorKeys } from '../hooks/dialogKeys';
 import { CardImportDialog } from '../components/import/CardImportDialog';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { ImportDestination, useImportDestination } from '../components/import/ImportDestination';
@@ -44,9 +45,12 @@ export function ImportPage() {
     setSource(null);
     setFile(undefined);
   }
+  // Escape returns to the source list while nothing has been entered; the card import form
+  // claims its own keys first.
+  const keys = useEditorKeys({ onCancel: () => source && !busy && reset() });
 
   return (
-    <div className={`import-page ${PAGE_FRAME} py-10`}>
+    <div className={`import-page ${PAGE_FRAME} py-10`} {...keys}>
       <header className="import-arrive mb-8">
         {source && (
           <div className="mb-3 flex min-h-11 items-center">
@@ -69,8 +73,8 @@ export function ImportPage() {
       {!source ? (
         <>
           <div className="import-sources import-arrive">
-            {sources.map(({ id, title, detail, icon: Icon }) => (
-              <button key={id} type="button" onClick={() => setSource(id)}>
+            {sources.map(({ id, title, detail, icon: Icon }, index) => (
+              <button key={id} type="button" autoFocus={index === 0} onClick={() => setSource(id)}>
                 <Icon width={24} height={24} />
                 <strong>{title}</strong>
                 <span>{detail}</span>

@@ -212,3 +212,29 @@ it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
     expect(mocks.navigate).not.toHaveBeenCalled();
   },
 );
+
+it('is keyboard-first: focuses the paste field, Tab reaches the primary action, Ctrl+Enter continues', async () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  const paste = screen.getByLabelText('Paste your cards');
+  await waitFor(() => expect(paste).toHaveFocus());
+  fireEvent.change(paste, { target: { value: 'bonjour\thello' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Review cards' })).toBeEnabled());
+  fireEvent.keyDown(paste, { key: 'Tab' });
+  expect(screen.getByRole('button', { name: 'Review cards' })).toHaveFocus();
+  fireEvent.keyDown(paste, { key: 'Enter', ctrlKey: true });
+  expect(await screen.findByLabelText('Course title')).toBeInTheDocument();
+});
+
+it('Escape returns to the source list only while nothing has been typed', () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  const paste = screen.getByLabelText('Paste your cards');
+  fireEvent.input(paste, { target: { value: 'x' } });
+  fireEvent.keyDown(paste, { key: 'Escape' });
+  expect(screen.getByLabelText('Paste your cards')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  fireEvent.keyDown(screen.getByLabelText('Paste your cards'), { key: 'Escape' });
+  expect(screen.getByRole('button', { name: /Text or spreadsheet/ })).toBeInTheDocument();
+});

@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { dialogKeyDown, useEditorKeys } from '../../hooks/dialogKeys';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { checkDuplicatesBatch } from '../../db/cardRepository';
 import {
@@ -142,16 +143,37 @@ export function CardImportDialog({
       onBusyChange?.(false);
     }
   }
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  // As a dialog it owns the keyboard (Escape cancels, Ctrl/Cmd+Enter continues or imports);
+  // as a page it leaves keys to the shell and only cancels while nothing has been entered.
+  const dialogKeys = dialogKeyDown({ onCancel: cancel, onSubmit: () => void confirm() });
+  const pageKeys = useEditorKeys({ onCancel: cancel, onSubmit: () => void confirm() });
+  useEffect(() => {
+    if (presentation !== 'page') return;
+    trapRef.current
+      ?.querySelector<HTMLElement>(titleLabel ? '#card-import-title' : '#card-import-text')
+      ?.focus();
+    // Only on first show: later focus belongs to the person.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const view = (
     <div
       ref={trapRef}
       className={presentation === 'dialog' ? 'card-import-overlay' : 'card-import-page'}
+      onInput={presentation === 'page' ? pageKeys.onInput : undefined}
+      onClick={presentation === 'page' ? pageKeys.onClick : undefined}
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && presentation === 'dialog') {
-          event.stopPropagation();
+        // Pasted data does not need Tab, so the last field hands focus to the primary action.
+        if (
+          event.key === 'Tab' &&
+          !event.shiftKey &&
+          (event.target as Element).id === 'card-import-text' &&
+          canContinue
+        ) {
           event.preventDefault();
-          cancel();
+          primaryRef.current?.focus();
         }
+        (presentation === 'dialog' ? dialogKeys : pageKeys.onKeyDown)(event);
       }}
     >
       {presentation === 'dialog' && <div className="card-import-backdrop" aria-hidden="true" />}
@@ -296,6 +318,7 @@ export function CardImportDialog({
                 : `${cards.length} original${!source.apkg && reverse ? ` + ${eligible} reverse` : ''}`}
             </span>
             <Button
+              ref={primaryRef}
               variant="primary"
               disabled={!canContinue || busy || (step === 'review' && !canImport)}
               onClick={() => void confirm()}

@@ -252,7 +252,17 @@ export function SharedCourseImport({
   }
 
   return (
-    <SectionCard className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
+    <SectionCard
+      className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6"
+      onKeyDown={(event) => {
+        // Ctrl/Cmd+Enter does the next step: import once a course is read, otherwise read the code.
+        if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || event.defaultPrevented)
+          return;
+        event.preventDefault();
+        if (pending) void handleImport();
+        else if (input.trim() && !importing) void handleInspect();
+      }}
+    >
       <div className="mb-5 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
@@ -270,6 +280,7 @@ export function SharedCourseImport({
       <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
         <textarea
           aria-label="Share link or code to import"
+          autoFocus
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
