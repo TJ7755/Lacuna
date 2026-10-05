@@ -61,7 +61,7 @@ export function TodayQueue({
             >
               {row.name}
               {row.hasPendingUpdate && (
-                <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">Update ready</span>
+                <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">Update available</span>
               )}
             </Link>
             {done ? (
