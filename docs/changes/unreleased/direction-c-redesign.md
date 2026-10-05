@@ -169,3 +169,5 @@
 - Bordered "well" panels across editors, settings, study faces and the
   assistant became the borderless tinted well, and the assistant's bubbles
   drop their You / AI labels (side and colour already say who is speaking).
+- The Study sheet's optional pass reads "Practise until all correct" (it was
+  labelled with the mode name, Simple Learn), with Start practising.

@@ -22,7 +22,7 @@ export function SimpleLearnOptions({
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-3 text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
-        Simple Learn
+        Practise until all correct
         <ChevronDownIcon
           width={16}
           height={16}
@@ -50,12 +50,10 @@ function SimpleLearnFields({
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-3 pb-2 pt-1">
-      <p className="text-sm text-ink-faint">
-        Repeat until every card is correct. Answers update your review schedule.
-      </p>
+      <p className="text-sm text-ink-faint">Answers update your review schedule.</p>
       <Select
         className="simple-learn-select w-full"
-        aria-label="Simple Learn scope"
+        aria-label="What to practise"
         value={lessonId}
         onChange={(event) => onLessonChange(event.target.value)}
         onKeyDown={(event) => {
@@ -85,7 +83,7 @@ function SimpleLearnFields({
           )
         }
       >
-        Start Simple Learn
+        Start practising
       </Button>
     </div>
   );

@@ -319,8 +319,8 @@ Simple mode). Course settings expose **Learn first**, enabled by default. Turnin
 
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
-- **Anytime Simple Learn:** the Study sheet has a collapsed Simple Learn option for the whole
-  course or a chosen lesson; lesson pages preselect their own lesson. Explicit `?mode=simple`
+- **Anytime Simple Learn:** the Study sheet has a collapsed **Practise until all correct** option
+  (Simple Learn) for the whole course or a chosen lesson; lesson pages preselect their own lesson. Explicit `?mode=simple`
   sessions include all cards in that scope regardless of introduction, due date, lesson lock,
   readiness or daily limits. Suspended and buried cards remain excluded; archived courses
   remain read-only. These optional passes record FSRS reviews but do not write lesson exposures,

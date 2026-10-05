@@ -185,9 +185,9 @@ beforeEach(() => {
 describe('LessonView View mode', () => {
   it('preselects this lesson for an optional Simple Learn pass', async () => {
     renderPage();
-    fireEvent.click(screen.getByText('Simple Learn'));
-    expect(await screen.findByLabelText('Simple Learn scope')).toHaveValue(lesson.id);
-    fireEvent.click(screen.getByRole('button', { name: 'Start Simple Learn' }));
+    fireEvent.click(screen.getByText('Practise until all correct'));
+    expect(await screen.findByLabelText('What to practise')).toHaveValue(lesson.id);
+    fireEvent.click(screen.getByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenCalledWith(`/lesson/${lesson.id}/learn?mode=simple`);
   });
 

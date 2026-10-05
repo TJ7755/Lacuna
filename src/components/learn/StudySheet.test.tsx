@@ -85,12 +85,12 @@ beforeEach(() => {
 describe('StudySheet', () => {
   it('offers whole-course and lesson Simple Learn without changing the main action', async () => {
     renderSheet('chem');
-    fireEvent.click(screen.getByText('Simple Learn'));
+    fireEvent.click(screen.getByText('Practise until all correct'));
     expect(screen.getByRole('button', { name: 'Continue: Atomic structure' })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Simple Learn' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
-    fireEvent.change(screen.getByLabelText('Simple Learn scope'), { target: { value: 'l1' } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Simple Learn' }));
+    fireEvent.change(screen.getByLabelText('What to practise'), { target: { value: 'l1' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/lesson/l1/learn?mode=simple');
   });
 

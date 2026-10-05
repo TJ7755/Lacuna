@@ -14,8 +14,8 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await page.getByRole('link', { name: 'Course', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-  await sheet.locator('summary').filter({ hasText: 'Simple Learn' }).click();
-  await sheet.getByRole('button', { name: 'Start Simple Learn' }).click();
+  await sheet.locator('summary').filter({ hasText: 'Practise until all correct' }).click();
+  await sheet.getByRole('button', { name: 'Start practising' }).click();
   await page.getByRole('button', { name: /Show answer/i }).last().click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
