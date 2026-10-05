@@ -109,16 +109,13 @@
   align-items: center;
 }
 .study-transition-actions button {
-  /* Keep the shared Button hover scale from moving labels during the arrow reveal. */
-  transform: none !important;
   min-height: 52px;
-  padding: 12px;
+  padding: 12px 24px;
   font-size: 14px;
 }
 .study-transition-actions .study-transition-continue {
   min-width: 140px;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 /* Reserve the landing CTA's arrow space so neighbouring actions never move on hover. */
 .study-transition-arrow {
@@ -209,8 +206,8 @@
   .study-transition *::after {
     animation: none;
   }
+  /* The arrow stays: hiding it left its space empty and the label off-centre. */
   .study-transition-arrow svg {
-    visibility: hidden;
     transition: none;
   }
 }

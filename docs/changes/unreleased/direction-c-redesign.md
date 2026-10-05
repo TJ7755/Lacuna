@@ -151,3 +151,6 @@
   courses would, above Archived.
 - A lesson with one note no longer opens on an empty band in View mode: the
   note's tab and control row folds away and slides in for Edit.
+- Study: the step screen's Continue keeps its arrow with reduced motion (it
+  used to hide it and leave the label off-centre) and gets its press animation
+  back; the notes before a lesson sit on the shared card surface.
