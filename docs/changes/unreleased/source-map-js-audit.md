@@ -1,0 +1,1 @@
+- Updated source-map-js to 1.2.2 (GHSA-68fv-2mgg-jv7q) and serialize-javascript to 7.1.2 in the root, relay and handwriting lockfiles
