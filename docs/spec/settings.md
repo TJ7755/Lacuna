@@ -236,6 +236,9 @@ per-course on/off override for scheduling optimisation, a review-count gate, and
 before/after log loss; applying takes a restore-point snapshot first and **Reset to
 defaults** is always available.
 
+Lesson rename, reorder and deletion failures use the existing negative notification.
+The editor or confirmation remains available for retry; failed writes do not dismiss it.
+
 - **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
   through the existing `updateCourse` path as it's edited — there is no staged
   "Save changes" bar and no local draft state to lose. Text and numeric fields (rename,

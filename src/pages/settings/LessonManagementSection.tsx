@@ -8,6 +8,7 @@ import { useLessons } from '../../state/useCourseData';
 import { updateLesson, deleteLesson, reorderLessons } from '../../db/lessonRepository';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useActionFocus } from '../../hooks/useActionFocus';
+import { useToast } from '../../components/ui/Toast';
 
 export interface LessonManagementSectionProps {
   courseId: string;
@@ -29,6 +30,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   const deleteButtons = useRef(new Map<string, HTMLButtonElement>());
   const renameOpener = useRef<HTMLElement | null>(null);
   const { remember, restore } = useActionFocus();
+  const { notify } = useToast();
 
   useEffect(() => {
     if (!editingId) restore(renameOpener.current);
@@ -43,11 +45,15 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   }
 
   async function commitRename() {
-    if (editingId) {
-      const name = nameDraft.trim();
-      if (name) await updateLesson(editingId, { name });
+    try {
+      if (editingId) {
+        const name = nameDraft.trim();
+        if (name) await updateLesson(editingId, { name });
+      }
+      setEditingId(null);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not rename the lesson.', 'negative');
     }
-    setEditingId(null);
   }
 
   async function move(index: number, direction: -1 | 1) {
@@ -56,12 +62,20 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
     if (target < 0 || target >= lessons.length) return;
     const orderedIds = lessons.map((l) => l.id);
     [orderedIds[index], orderedIds[target]] = [orderedIds[target], orderedIds[index]];
-    await reorderLessons(courseId, orderedIds);
+    try {
+      await reorderLessons(courseId, orderedIds);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not reorder the lessons.', 'negative');
+    }
   }
 
   async function remove(id: string) {
-    await deleteLesson(id);
-    setConfirmDeleteId(null);
+    try {
+      await deleteLesson(id);
+      setConfirmDeleteId(null);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not delete the lesson.', 'negative');
+    }
   }
 
   return (
