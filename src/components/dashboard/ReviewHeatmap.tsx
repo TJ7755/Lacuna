@@ -13,8 +13,8 @@ import { formatDate, startOfDay } from '../../utils/datetime';
 import { MOTION_EASING } from '../ui/motion';
 import type { Card } from '../../db/types';
 
-/** How many weeks of history the calendar shows. */
-const WEEKS = 26;
+/** Historical default for consumers without a period selector. */
+const DEFAULT_DAYS = 26 * 7;
 /** Weekday names shown beside the grid, by Monday-indexed row. */
 const WEEKDAY_LABELS: Record<number, string> = { 0: 'Mon', 3: 'Thu', 6: 'Sun' };
 /** Longest the diagonal fade-in may take to sweep across the grid, in seconds. */
@@ -23,10 +23,14 @@ const WAVE_SECONDS = 0.6;
 interface Cell {
   day: number;
   count: number;
-  future: boolean;
+  outsidePeriod: boolean;
 }
 
-export function clampTooltipLeft(cellRect: Pick<DOMRect, 'left' | 'width'>, tooltipWidth: number, viewportWidth: number) {
+export function clampTooltipLeft(
+  cellRect: Pick<DOMRect, 'left' | 'width'>,
+  tooltipWidth: number,
+  viewportWidth: number,
+) {
   const preferred = cellRect.left + cellRect.width / 2 - tooltipWidth / 2;
   return Math.min(Math.max(preferred, 8), Math.max(8, viewportWidth - tooltipWidth - 8));
 }
@@ -35,38 +39,40 @@ export function clampTooltipLeft(cellRect: Pick<DOMRect, 'left' | 'width'>, tool
  * A contribution-style review calendar (reviews per local day), theme-aware via the
  * accent colour. Built entirely from existing review logs; nothing is persisted.
  */
-export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: ReviewActivity }) {
+export function ReviewHeatmap({
+  cards,
+  activity,
+  days = DEFAULT_DAYS,
+}: {
+  cards: Card[];
+  activity?: ReviewActivity;
+  days?: number;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [sectionRef, revealed] = useRevealOnce<HTMLElement>(m === 0);
   const { columns, total, max, monthLabels } = useMemo(() => {
     const buckets = bucketReviewsByDay(reviewTimestamps(cards, activity));
     const today = startOfDay(Date.now());
+    const periodStart = addDays(today, 1 - days);
     // Monday-indexed weekday so weeks read left-to-right, Monday at the top.
-    const weekday = (new Date(today).getDay() + 6) % 7;
+    const weekday = (new Date(periodStart).getDay() + 6) % 7;
     // DST-safe: use date arithmetic instead of raw ms subtraction.
-    const gridEnd = (() => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + (6 - weekday));
-      return startOfDay(d.getTime());
-    })();
-    const gridStart = (() => {
-      const d = new Date(gridEnd);
-      d.setDate(d.getDate() - (WEEKS * 7 - 1));
-      return startOfDay(d.getTime());
-    })();
+    const gridStart = addDays(periodStart, -weekday);
+    const weeks = Math.ceil((days + weekday) / 7);
 
     const cols: Cell[][] = [];
     let maxCount = 0;
     let sum = 0;
-    for (let w = 0; w < WEEKS; w += 1) {
+    for (let w = 0; w < weeks; w += 1) {
       const col: Cell[] = [];
       for (let d = 0; d < 7; d += 1) {
         const day = addDays(gridStart, w * 7 + d);
-        const count = buckets.get(day) ?? 0;
+        const outsidePeriod = day < periodStart || day > today;
+        const count = outsidePeriod ? 0 : (buckets.get(day) ?? 0);
         maxCount = Math.max(maxCount, count);
         sum += count;
-        col.push({ day, count, future: day > today });
+        col.push({ day, count, outsidePeriod });
       }
       cols.push(col);
     }
@@ -75,7 +81,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
     const labels: { weekIndex: number; text: string }[] = [];
     let lastLabelWeek = -Infinity;
     for (let w = 0; w < cols.length; w += 1) {
-      const firstDay = new Date(cols[w][0].day);
+      const firstDay = new Date(Math.max(cols[w][0].day, periodStart));
       const prev = w > 0 ? new Date(cols[w - 1][0].day) : null;
       const isNewMonth = !prev || firstDay.getMonth() !== prev.getMonth();
       if (isNewMonth && w - lastLabelWeek >= 3) {
@@ -88,7 +94,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
     }
 
     return { columns: cols, total: sum, max: maxCount, monthLabels: labels };
-  }, [cards, activity]);
+  }, [cards, activity, days]);
 
   const navigableCells = useMemo(
     () =>
@@ -96,11 +102,16 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
         .flatMap((column, weekIndex) =>
           column.map((cell, dayIndex) => ({ cell, weekIndex, dayIndex })),
         )
-        .filter(({ cell }) => !cell.future),
+        .filter(({ cell }) => !cell.outsidePeriod),
     [columns],
   );
   const [activeDay, setActiveDay] = useState<number | null>(null);
-  const [tooltip, setTooltip] = useState<{ label: string; rect: DOMRect } | null>(null);
+  const effectiveActiveDay = navigableCells.some(({ cell }) => cell.day === activeDay)
+    ? activeDay
+    : navigableCells[0]?.cell.day;
+  const [tooltip, setTooltip] = useState<{ label: string; rect: DOMRect; period: number } | null>(
+    null,
+  );
   const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLSpanElement>(null);
@@ -117,12 +128,12 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
         typeof window === 'undefined' ? 0 : window.innerWidth,
       ),
     );
-  }, [tooltip]);
+  }, [tooltip, days]);
 
   // Five intensity bands, GitHub-style, expressed as accent opacity so they track
   // the chosen accent colour and the light/dark theme automatically.
   function cellStyle(cell: Cell): React.CSSProperties {
-    if (cell.future) return { visibility: 'hidden' };
+    if (cell.outsidePeriod) return { visibility: 'hidden' };
     if (cell.count === 0) return { background: 'hsl(var(--line) / 0.7)' };
     const band = max <= 1 ? 1 : Math.ceil((cell.count / max) * 4);
     const alpha = [0.25, 0.45, 0.65, 0.85, 1][Math.min(band, 4)];
@@ -131,20 +142,18 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
 
   function showTooltip(cell: Cell, target: HTMLElement) {
     const label = `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`;
-    setTooltip({ label, rect: target.getBoundingClientRect() });
+    setTooltip({ label, rect: target.getBoundingClientRect(), period: days });
   }
 
   function moveCell(key: string) {
-    const firstDay = navigableCells[0]?.cell.day;
-    const current = navigableCells.find(({ cell }) => cell.day === (activeDay ?? firstDay));
+    const current = navigableCells.find(({ cell }) => cell.day === effectiveActiveDay);
     if (!current) return;
     const horizontal = key === 'ArrowRight' || key === 'ArrowLeft';
-    const delta = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : key === 'ArrowDown' ? 1 : -1;
-    const target = navigableCells.find(
-      ({ weekIndex, dayIndex }) =>
-        weekIndex === current.weekIndex + (horizontal ? delta : 0) &&
-        dayIndex === current.dayIndex + (horizontal ? 0 : delta),
-    );
+    const delta =
+      key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : key === 'ArrowDown' ? 1 : -1;
+    // Vertical movement follows the next date even when Sunday ends a column.
+    const targetDay = addDays(current.cell.day, horizontal ? delta * 7 : delta);
+    const target = navigableCells.find(({ cell }) => cell.day === targetDay);
     if (!target) return;
     setActiveDay(target.cell.day);
     gridRef.current
@@ -152,7 +161,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
       ?.focus();
   }
 
-  const cellCount = WEEKS * 7;
+  const cellCount = columns.length * 7;
   return (
     <section
       ref={sectionRef}
@@ -162,17 +171,19 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4">
         <h2 className="font-display text-lg font-semibold tracking-tight">When you studied</h2>
         <span className="text-sm text-ink-soft tabular-nums">
-          {total} review{total === 1 ? '' : 's'} in {WEEKS} weeks
+          {total} review{total === 1 ? '' : 's'} in {days} days
         </span>
       </div>
       <div className="overflow-x-auto pb-1">
         <div
           ref={gridRef}
           role="grid"
-          aria-label="Review activity by day"
-          className="grid min-w-[480px] gap-[4px]"
+          aria-label={`Review activity over the last ${days} days`}
+          className="grid gap-[4px]"
           style={{
-            gridTemplateColumns: `28px repeat(${WEEKS}, minmax(0, 1fr))`,
+            gridTemplateColumns: `28px repeat(${columns.length}, minmax(0, 1fr))`,
+            minWidth: Math.min(480, 28 + columns.length * 24),
+            maxWidth: 28 + columns.length * 32,
           }}
         >
           {monthLabels.map((label) => (
@@ -198,7 +209,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
           {columns.flatMap((col, w) =>
             col.map((cell, d) => {
               const placement = { gridColumn: w + 2, gridRow: d + 2 };
-              if (cell.future) {
+              if (cell.outsidePeriod) {
                 return (
                   <span
                     key={cell.day}
@@ -210,9 +221,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
                 );
               }
               const label = `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`;
-              const active =
-                activeDay === cell.day ||
-                (activeDay === null && navigableCells[0]?.cell.day === cell.day);
+              const active = effectiveActiveDay === cell.day;
               // A diagonal wave: the delay grows with distance from the top-left corner.
               const delay = Math.min(((w + d) / cellCount) * WAVE_SECONDS * 4, WAVE_SECONDS) * m;
               return (
@@ -256,7 +265,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
           )}
         </div>
       </div>
-      {tooltip && typeof document !== 'undefined'
+      {tooltip?.period === days && typeof document !== 'undefined'
         ? createPortal(
             <span
               ref={tooltipRef}

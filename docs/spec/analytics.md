@@ -36,13 +36,15 @@ Pure aggregates over stored history, in local time:
   study per day**, shown as a small bar sparkline with a "minutes to clear"
   total.
 - **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a
-  contribution-style calendar of reviews per **local** calendar day (a 26-week
-  grid), built from review logs and theme-aware via accent-opacity bands.
-  Expected by anyone arriving from Anki. The header carries the count and the
-  week range; a **month-name row** above the cells shows a short month label on
+  contribution-style calendar of reviews per **local** calendar day over the selected
+  7-, 30- or 90-day period, built from review logs and theme-aware via accent-opacity
+  bands. The header carries the matching count and day range; a **month-name row**
+  above the cells shows a short month label on
   the first column of each new month so the calendar is readable without a
-  separate legend. Weekday labels (Mon/Wed/Fri) line up exactly with their
-  cells.
+  separate legend. Weekday labels (Mon/Thu/Sun) line up exactly with their cells.
+  Short periods keep compact cells instead of stretching a few weeks across the page.
+  One calendar date enters the tab order; arrow keys move between dates, including
+  vertically across week boundaries. Changing period keeps a reachable tab stop.
 
 ### Per-card analysis (`CardAnalytics`)
 

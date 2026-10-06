@@ -190,7 +190,7 @@ export function Analytics() {
       </Rise>
 
       <Rise index={2}>
-        <ReviewHeatmap cards={cards} activity={activity} />
+        <ReviewHeatmap cards={cards} activity={activity} days={days} />
       </Rise>
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
