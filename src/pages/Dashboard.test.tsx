@@ -344,7 +344,7 @@ describe('Dashboard', () => {
     expect(cards).toHaveTextContent('2');
   });
 
-  it('opens the course menu under its More button without navigating, then dismisses it', () => {
+  it('opens the course menu under its More button without navigating, then dismisses it', async () => {
     setCourseData();
     render(<Dashboard />);
     const more = screen.getByRole('button', { name: 'More for Test Course' });
@@ -361,7 +361,7 @@ describe('Dashboard', () => {
     });
 
     fireEvent.click(more);
-    const menu = screen.getByRole('menu', { name: 'Actions for Test Course' });
+    const menu = await screen.findByRole('menu', { name: 'Actions for Test Course' });
     expect(menu).toHaveStyle({ left: '340px', top: '106px' });
     expect(mockNavigate).not.toHaveBeenCalled();
 
@@ -369,39 +369,39 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('closes the course menu with Escape and returns focus to the More button', () => {
+  it('closes the course menu with Escape and returns focus to the More button', async () => {
     setCourseData();
     render(<Dashboard />);
     const more = screen.getByRole('button', { name: 'More for Test Course' });
 
     fireEvent.click(more);
-    const menu = screen.getByRole('menu');
+    const menu = await screen.findByRole('menu');
     expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveFocus();
     fireEvent.keyDown(menu, { key: 'Escape' });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(more).toHaveFocus();
   });
 
-  it('cancels archiving from the confirmation dialog', () => {
+  it('cancels archiving from the confirmation dialog', async () => {
     setCourseData();
     render(<Dashboard />);
 
     fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
-    expect(screen.getByRole('dialog', { name: 'Archive Test Course?' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+    expect(await screen.findByRole('dialog', { name: 'Archive Test Course?' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])('dismisses the course menu on Tab (shift: %s)', (shiftKey) => {
+  it.each([false, true])('dismisses the course menu on Tab (shift: %s)', async (shiftKey) => {
     setCourseData();
     render(<Dashboard />);
     const more = screen.getByRole('button', { name: 'More for Test Course' });
     fireEvent.click(more);
     expect(more).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Archive' }), {
+    fireEvent.keyDown(await screen.findByRole('menuitem', { name: 'Archive' }), {
       key: 'Tab',
       shiftKey,
     });
@@ -410,19 +410,19 @@ describe('Dashboard', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('keeps the Archive menu action at the shared minimum target size', () => {
+  it('keeps the Archive menu action at the shared minimum target size', async () => {
     setCourseData();
     render(<Dashboard />);
     fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveClass('min-h-11');
+    expect(await screen.findByRole('menuitem', { name: 'Archive' })).toHaveClass('min-h-11');
   });
 
   it.each([false, true])('returns focus after archiving (last course: %s)', async (lastCourse) => {
     setCourseData(lastCourse ? [mockCourse] : [mockCourse, course('course-2', 'Second Course')]);
     const { rerender } = render(<Dashboard />);
     fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
-    const confirm = screen.getByRole('button', { name: 'Archive course' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+    const confirm = await screen.findByRole('button', { name: 'Archive course' });
     confirm.focus();
     fireEvent.click(confirm);
     await waitFor(() => expect(mockNotify).toHaveBeenCalled());
@@ -446,8 +446,8 @@ describe('Dashboard', () => {
     const { rerender } = render(<Dashboard />);
 
     fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Archive course' }));
 
     await waitFor(() =>
       expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }),
@@ -477,8 +477,8 @@ describe('Dashboard', () => {
     render(<Dashboard />);
 
     fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Archive course' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The course could not be archived. Nothing was changed.',
