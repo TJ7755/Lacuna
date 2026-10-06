@@ -15,10 +15,7 @@ import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { StepSwap } from '../components/ui/StepSwap';
-import {
-  continuesWithoutPause,
-  mayContinueWithoutPause,
-} from '../course/studyFlowContinuation';
+import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -133,14 +130,17 @@ function CourseStudyFlowInner() {
   // restart the session.
   const frozenScopeRef = useRef<{
     step: StudyFlowStep | null;
+    serial: number;
     ids?: string[];
     milestoneIds?: string[];
   }>({
     step: null,
+    serial: 0,
   });
   if (frozenScopeRef.current.step !== displayStep) {
     frozenScopeRef.current = {
       step: displayStep,
+      serial: frozenScopeRef.current.serial + 1,
       ids:
         displayStep?.kind === 'practice' && displayStep.mode === 'curricular'
           ? [
@@ -184,7 +184,13 @@ function CourseStudyFlowInner() {
       };
     }
     return null;
-  }, [committedMilestoneLessonIds, committedScopeLessonIds, courseId, displayStep, revisionSession]);
+  }, [
+    committedMilestoneLessonIds,
+    committedScopeLessonIds,
+    courseId,
+    displayStep,
+    revisionSession,
+  ]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {
@@ -330,7 +336,10 @@ function CourseStudyFlowInner() {
       />
     );
   } else if (request && displayStep && flowIdentity) {
-    scene = 'learn';
+    // One scene per committed step. A finished session never serves another card,
+    // so StepSwap must not hand the next step to the outgoing Learn instance when
+    // the planner answers before its exit completes (#402).
+    scene = `learn-${frozenScopeRef.current.serial}`;
     body = (
       <LearnMode
         request={request}

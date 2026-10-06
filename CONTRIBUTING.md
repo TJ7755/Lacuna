@@ -6,7 +6,7 @@ work. Keep changes narrow, prove behaviour, and make the risk legible to a human
 
 ## Before you start
 
-Use Bun 1.4.0, matching CI. Check it before installing anything:
+Use Bun 1.4.2, matching CI. Check it before installing anything:
 
 ```bash
 bun --version
