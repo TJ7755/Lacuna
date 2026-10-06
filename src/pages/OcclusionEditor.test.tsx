@@ -137,6 +137,16 @@ beforeEach(() => {
 });
 
 describe('OcclusionEditor', () => {
+  it('aligns with course pages and offers one full-size destination-aware Back link', () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    expect(container.firstElementChild).toHaveClass('max-w-[1190px]', 'w-full');
+    const back = screen.getByRole('link', { name: 'Back to Cards' });
+    expect(back).toHaveAttribute('href', '/course/course-1/cards');
+    expect(back).toHaveClass('min-h-11');
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
   it('gives the occlusion name a visible label and keeps Tab in document order', () => {
     mockCourse = course;
     renderNew();

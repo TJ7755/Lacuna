@@ -4,6 +4,7 @@ import type { Ref } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SequenceEditor } from './SequenceEditor';
 import type { Course, Sequence } from '../db/types';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 let mockCourse: Course | undefined;
 let mockSequence: Sequence | null | undefined;
@@ -140,6 +141,16 @@ beforeEach(() => {
 });
 
 describe('SequenceEditor', () => {
+  it('aligns with course pages and offers one full-size destination-aware Back link', () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
+    const back = screen.getByRole('link', { name: 'Back to Cards' });
+    expect(back).toHaveAttribute('href', '/course/course-1/cards');
+    expect(back).toHaveClass('min-h-11');
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
   it('keeps the editor header free of a repeated preset description', () => {
     mockCourse = course;
     const { container } = renderNew();
@@ -531,7 +542,7 @@ describe('SequenceEditor', () => {
       mockSequence = editingSequence;
       renderEdit({ origin: { path: '/course/course-1/lesson/lesson-1', label: 'Cells' } });
 
-      const link = screen.getByRole('link', { name: 'Cells' });
+      const link = screen.getByRole('link', { name: 'Back to Cells' });
       expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
     });
 
@@ -542,7 +553,7 @@ describe('SequenceEditor', () => {
       mockSequence = editingSequence;
       renderEdit();
 
-      const link = screen.getByRole('link', { name: 'Cards' });
+      const link = screen.getByRole('link', { name: 'Back to Cards' });
       expect(link).toHaveAttribute('href', '/course/course-1/cards');
     });
   });

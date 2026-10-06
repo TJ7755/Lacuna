@@ -37,7 +37,7 @@ import {
 import { useReturn } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 export function OcclusionEditor() {
   const { occlusionId, courseId, lessonId } = useParams<{
@@ -259,29 +259,16 @@ export function OcclusionEditor() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10" {...editorKeys}>
-      {/* Breadcrumb */}
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-          {course?.name}
-        </Link>
-        <ChevronRight />
-        <Link {...returnTo.linkProps} className="transition-colors hover:text-ink">
-          {backLabel}
-        </Link>
-        <ChevronRight />
-        <span className="text-ink-soft">{editing ? 'Edit occlusion' : 'New occlusion'}</span>
-      </nav>
-
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`} {...editorKeys}>
       <div>
         <header className="relative mb-8">
           <div className="relative">
             <Link
               {...returnTo.linkProps}
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+              className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
-              Back
+              Back to {backLabel}
             </Link>
             <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
               {editing ? 'Edit occlusion' : 'New occlusion'}
@@ -291,7 +278,9 @@ export function OcclusionEditor() {
 
         <div className="flex flex-col gap-5">
           <div>
-            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-faint">Name</label>
+            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-faint">
+              Name
+            </label>
             <input
               id={nameId}
               type="text"
@@ -381,20 +370,13 @@ export function OcclusionEditor() {
 
 function OcclusionEditorSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <Skeleton className="mb-6 h-4 w-24" />
-      <SectionCard as="div" className="mb-8">
-        <Skeleton className="mb-1 h-3 w-20" />
-        <Skeleton className="h-10 w-48" />
-      </SectionCard>
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
+      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
+      <Skeleton className="mb-8 h-10 w-48" />
       <div className="flex flex-col gap-5">
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
     </div>
   );
-}
-
-function ChevronRight() {
-  return <span className="text-ink-faint/60">/</span>;
 }
