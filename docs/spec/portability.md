@@ -51,6 +51,8 @@ do not shift when moving between import paths. New course remains focused on cre
 Source changes use the shared step crossfade. Back and an empty-form Escape return
 keyboard focus to the source that opened the form; motion honours the user's speed
 and reduced-motion setting.
+The initial paste or package step uses the full card width; destination choices
+and the preview share a two-column layout only when reviewing the import.
 
 The screen reuses the card import dialogue's input and review components inline.
 After reviewing content, choose a new course with an explicit study target, a new

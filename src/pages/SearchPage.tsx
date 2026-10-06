@@ -27,6 +27,7 @@ import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -129,7 +130,7 @@ export function SearchPage() {
   const active = trimmed !== '' || filters.size > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
+    <div className={`${PAGE_FRAME} py-10 [&>*]:max-w-3xl`}>
       <header className="mb-10">
         <div className="relative">
           <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">

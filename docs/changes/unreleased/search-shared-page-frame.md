@@ -1,0 +1,1 @@
+- Search aligns its heading and reading column with the shared page frame used by Share and Archived.

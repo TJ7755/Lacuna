@@ -277,6 +277,12 @@ A row that mounts without a ref (Study mode) and gains one (Author mode) stays u
 drag reordering silently half-works. Remount the element when its ref first becomes meaningful,
 for example with a `key` on the mode, or attach the ref to a plain element.
 
+## Interrupted exits can revive a view
+
+AnimatePresence can revive a keyed view during its exit without remounting it.
+Mount-only autofocus misses fast close/reopen actions; focus the incoming form
+when its active step changes, after departing controls become inert.
+
 ## Card save feedback owns its navigation
 
 A saved card appears in the live list before the editor’s confirmation delay ends.

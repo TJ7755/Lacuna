@@ -182,7 +182,8 @@ keyboard shortcuts on keyboard).
 - Content is centred in a max-width frame per page: dashboard `max-w-6xl`; course overview
   Cards, Questions, Analytics, Settings and persistent course navigation 1190px;
   lesson view `max-w-3xl`;
-  editor `max-w-4xl`; learn/report/search `max-w-3xl`. Horizontal padding responds to
+  editor `max-w-4xl`; learn/report `max-w-3xl`. Search and Share use the shared page
+  frame with a left-aligned `max-w-3xl` inner reading column. Horizontal padding responds to
   screen width. The course overview pairs a compact winding path with a lesson companion
   on desktop and stacks those surfaces below 900px. All surfaces inherit Settings colours.
 - Course sections share their heading size (36px, rising to 44px on desktop), top spacing
