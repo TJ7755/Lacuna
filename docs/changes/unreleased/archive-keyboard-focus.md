@@ -1,0 +1,1 @@
+- Restoring an archived course keeps keyboard focus on the next restoration action, or the page heading when the list becomes empty. Archived uses the shared page-title scale and spacing.

@@ -30,6 +30,30 @@ beforeEach(() => {
 });
 
 describe('ArchivedCourses', () => {
+  it('moves focus to the next restoration action when a restored course disappears', async () => {
+    const next = { ...archived, id: 'course-2', name: 'Finished chemistry' };
+    courses = [archived, next];
+    const { rerender } = render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    const restore = screen.getByRole('button', { name: 'Unarchive Finished biology' });
+    restore.focus();
+    fireEvent.click(restore);
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalled());
+    courses = [next];
+    rerender(<ArchivedCourses />);
+    expect(screen.getByRole('button', { name: 'Unarchive Finished chemistry' })).toHaveFocus();
+  });
+
+  it('returns focus to the heading when the last archived course disappears', async () => {
+    const { rerender } = render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    const restore = screen.getByRole('button', { name: 'Unarchive Finished biology' });
+    restore.focus();
+    fireEvent.click(restore);
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalled());
+    courses = [];
+    rerender(<ArchivedCourses />);
+    expect(screen.getByRole('heading', { name: 'Archived' })).toHaveFocus();
+  });
+
   it('uses an open page header with contained course cards', () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
 
