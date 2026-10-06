@@ -55,6 +55,10 @@ Shared conventions:
 
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
 - Springs for tactile controls and shared-layout indicators.
+- Expanding action surfaces and disclosures share a physical spring with stiffness 420,
+  damping 36 and mass 1. Motion speed scales stiffness by the inverse square of the
+  multiplier and damping by its inverse, preserving the damping ratio. Reduced motion
+  removes the interpolation; text remains at its natural size as the surface expands.
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
 - `LayoutGroup` coordinates reflow animations across sibling elements (e.g. Settings' and
   Help's active-tab underline).

@@ -248,12 +248,6 @@ function AppShellLayout() {
           <Sidebar
             collapsed={!wideDesktop || collapsed}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
-            onOpenPalette={() => {
-              paletteReturnFocusRef.current =
-                document.activeElement instanceof HTMLElement ? document.activeElement : null;
-              setPaletteOpen(true);
-            }}
-            onOpenStudySheet={() => studySheet.value.openStudySheet()}
             collapseControl={wideDesktop}
             aiAction={
               aiSettings.enabled && aiSession && aiDesktop
@@ -370,15 +364,6 @@ function AppShellLayout() {
                   collapsed={false}
                   onToggleCollapsed={() => setMobileOpen(false)}
                   toggleLabel="Close navigation"
-                  onOpenPalette={() => {
-                    paletteReturnFocusRef.current = mobileTriggerRef.current;
-                    setMobileOpen(false);
-                    setPaletteOpen(true);
-                  }}
-                  onOpenStudySheet={() => {
-                    setMobileOpen(false);
-                    studySheet.value.openStudySheet();
-                  }}
                 />
               </motion.div>
             </motion.div>

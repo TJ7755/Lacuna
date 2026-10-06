@@ -137,6 +137,19 @@ beforeEach(() => {
 });
 
 describe('OcclusionEditor', () => {
+  it('gives the occlusion name a visible label and keeps Tab in document order', () => {
+    mockCourse = course;
+    renderNew();
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    fireEvent(name, event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+  it('opens directly on the task without a decorative subtitle', () => {
+    mockCourse = course;
+    renderNew();
+    expect(screen.queryByText(/Mask parts of a diagram to test recall/)).not.toBeInTheDocument();
+  });
   it('shows a skeleton while loading', () => {
     renderNew();
     expect(screen.queryByText('New occlusion')).not.toBeInTheDocument();
@@ -235,7 +248,7 @@ describe('OcclusionEditor', () => {
     });
   });
 
-  it('is keyboard-first: name focused, Tab to Save once complete, Ctrl+Enter saves, Escape cancels', async () => {
+  it('keeps the editor controls in Tab order once complete and saves with Ctrl+Enter', async () => {
     mockCourse = course;
     const { container } = renderNew();
     const name = screen.getByPlaceholderText('e.g. The plant cell');
@@ -243,8 +256,10 @@ describe('OcclusionEditor', () => {
     await uploadDiagram();
     drawBox(container, [40, 30], [200, 180]);
     fireEvent.change(name, { target: { value: 'Plant cell' } });
-    fireEvent.keyDown(name, { key: 'Tab' });
-    expect(screen.getByRole('button', { name: 'Add occlusion' })).toHaveFocus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    fireEvent(name, tab);
+    expect(tab.defaultPrevented).toBe(false);
+    expect(name).toHaveFocus();
     await act(async () => {
       fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true });
       await vi.waitFor(() => expect(createOcclusion).toHaveBeenCalled());

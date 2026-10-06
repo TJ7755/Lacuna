@@ -140,6 +140,11 @@ beforeEach(() => {
 });
 
 describe('SequenceEditor', () => {
+  it('keeps the editor header free of a repeated preset description', () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    expect(container.querySelector('header p')).toBeNull();
+  });
   it('shows a skeleton while loading', () => {
     renderNew();
     expect(screen.queryByText('New sequence')).not.toBeInTheDocument();
@@ -157,14 +162,12 @@ describe('SequenceEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Item 1 content' })).toBeInTheDocument();
   });
 
-  it('updates the editor introduction when the preset changes', () => {
+  it('shows the selected preset description with its choice rather than repeating it in the header', () => {
     mockCourse = course;
     renderNew();
 
     fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
-    expect(
-      screen.getByRole('heading', { name: 'New sequence' }).nextElementSibling,
-    ).toHaveTextContent(
+    expect(screen.getByRole('button', { name: /Script \/ dialogue/ })).toHaveTextContent(
       'A scripted scene — only your lines are recalled; other speakers cue them.',
     );
   });
@@ -188,9 +191,7 @@ describe('SequenceEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     expect(itemsHeading(2)).toBeInTheDocument();
 
-    const values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     expect(values[1]).toHaveFocus();
     expect(values[1].scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
     expect(values[1]).toHaveAccessibleName('Item 2 content');
@@ -203,15 +204,11 @@ describe('SequenceEditor', () => {
     const first = screen.getByRole('textbox', { name: 'Item 1 content' });
     fireEvent.change(first, { target: { value: 'First' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
-    let values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    let values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[1], { target: { value: 'Third' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add item below item 1' }));
-    values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    values = screen.getAllByPlaceholderText('Item content');
     expect(values).toHaveLength(3);
     expect(values[0]).toHaveValue('First');
     expect(values[1]).toHaveFocus();
@@ -222,24 +219,18 @@ describe('SequenceEditor', () => {
     mockCourse = course;
     renderNew();
 
-    const first = screen.getByPlaceholderText(
-      'Item content',
-    );
+    const first = screen.getByPlaceholderText('Item content');
     expect(first).toHaveAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
     fireEvent.change(first, { target: { value: 'First' } });
     fireEvent.keyDown(first, { key: 'Enter', ctrlKey: true });
 
-    let values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    let values = screen.getAllByPlaceholderText('Item content');
     expect(values).toHaveLength(2);
     expect(values[1]).toHaveFocus();
     fireEvent.change(values[1], { target: { value: 'Second' } });
     fireEvent.keyDown(values[1], { key: 'Enter', metaKey: true });
 
-    values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    values = screen.getAllByPlaceholderText('Item content');
     expect(values).toHaveLength(3);
     expect(values[0]).toHaveValue('First');
     expect(values[1]).toHaveValue('Second');
@@ -292,42 +283,32 @@ describe('SequenceEditor', () => {
       target: { value: 'First' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
-    const values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[1], { target: { value: 'Second' } });
 
     // Move the second item up so it becomes first.
     const moveUpButtons = screen.getAllByTitle('Move up');
     fireEvent.click(moveUpButtons[1]);
 
-    const reordered = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    const reordered = screen.getAllByPlaceholderText('Item content');
     expect(reordered[0]).toHaveValue('Second');
     expect(reordered[1]).toHaveValue('First');
 
     fireEvent.click(screen.getAllByTitle('Delete item')[1]);
     expect(itemsHeading(1)).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('Item content'),
-    ).toHaveValue('Second');
+    expect(screen.getByPlaceholderText('Item content')).toHaveValue('Second');
   });
 
   it('shows a live preview count that grows as items are added', () => {
     mockCourse = course;
     renderNew();
 
-    const values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[0], { target: { value: 'First item' } });
     expect(screen.getByText('1 card generated')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
-    const updatedValues = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    const updatedValues = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(updatedValues[1], { target: { value: 'Second item' } });
     expect(screen.getByText('2 cards generated')).toBeInTheDocument();
   });
@@ -339,9 +320,7 @@ describe('SequenceEditor', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
       target: { value: 'My sequence' },
     });
-    const values = screen.getAllByPlaceholderText(
-      'Item content',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[0], { target: { value: 'First item' } });
 
     await act(async () => {
@@ -429,10 +408,9 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content'),
-        { target: { value: 'Indeed I am.' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Line content'), {
+        target: { value: 'Indeed I am.' },
+      });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
 
       expect(screen.getByText('Add sequence')).toBeDisabled();
@@ -449,10 +427,9 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content'),
-        { target: { value: 'Indeed I am.' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Line content'), {
+        target: { value: 'Indeed I am.' },
+      });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
 
@@ -486,10 +463,9 @@ describe('SequenceEditor', () => {
         fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
           target: { value: 'Sonnet 18' },
         });
-        fireEvent.change(
-          screen.getByPlaceholderText('Line content'),
-          { target: { value: 'Shall I compare thee to a summer’s day?' } },
-        );
+        fireEvent.change(screen.getByPlaceholderText('Line content'), {
+          target: { value: 'Shall I compare thee to a summer’s day?' },
+        });
         fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
         fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'NARRATOR' } });
 
@@ -524,10 +500,9 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content'),
-        { target: { value: 'Indeed I am.' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Line content'), {
+        target: { value: 'Indeed I am.' },
+      });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'BOB' } });

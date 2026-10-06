@@ -5,7 +5,14 @@
 // sizing (§6.2). Pointer events unify mouse and touch, so drawing works on a touch
 // screen without any dedicated optimisation (§6.10.5).
 
-import { useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { UploadIcon } from '../ui/icons';
@@ -36,6 +43,7 @@ interface OcclusionCanvasProps {
   onToolChange: (tool: OcclusionDrawTool) => void;
   onRegionDrawn: (rect: DrawnRegionRect) => void;
   onSelectRegion: (id: string) => void;
+  onRegionChanged?: (id: string, rect: DrawnRegionRect) => void;
   onFileSelected: (file: File) => void;
   uploading: boolean;
   /** True while the "replace this diagram?" warning is showing in place of the
@@ -54,6 +62,7 @@ export function OcclusionCanvas({
   onToolChange,
   onRegionDrawn,
   onSelectRegion,
+  onRegionChanged,
   onFileSelected,
   uploading,
   confirmingReplace,
@@ -64,6 +73,52 @@ export function OcclusionCanvas({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<{ rect: DOMRect; startX: number; startY: number } | null>(null);
   const [draft, setDraft] = useState<DrawnRegionRect | null>(null);
+  const instructionsId = useId();
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey)
+      return;
+    if (event.key === 'Escape' && draft) {
+      event.preventDefault();
+      event.stopPropagation();
+      setDraft(null);
+      return;
+    }
+    if ((event.key === 'Enter' || event.key === ' ') && tool !== 'select') {
+      event.preventDefault();
+      if (draft) {
+        onRegionDrawn(draft);
+        setDraft(null);
+      } else {
+        setDraft({ x: 0.4, y: 0.4, w: 0.2, h: 0.2 });
+      }
+      return;
+    }
+    const selected =
+      tool === 'select' ? regions.find((region) => region.id === selectedRegionId) : undefined;
+    const rect = draft ?? selected;
+    if (!rect || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const dx = event.key === 'ArrowRight' ? 0.01 : event.key === 'ArrowLeft' ? -0.01 : 0;
+    const dy = event.key === 'ArrowDown' ? 0.01 : event.key === 'ArrowUp' ? -0.01 : 0;
+    const round = (value: number) => Math.round(value * 100) / 100;
+    const next = event.shiftKey
+      ? {
+          x: rect.x,
+          y: rect.y,
+          w: round(Math.max(0.01, Math.min(1 - rect.x, rect.w + dx))),
+          h: round(Math.max(0.01, Math.min(1 - rect.y, rect.h + dy))),
+        }
+      : {
+          x: round(Math.max(0, Math.min(1 - rect.w, rect.x + dx))),
+          y: round(Math.max(0, Math.min(1 - rect.h, rect.y + dy))),
+          w: rect.w,
+          h: rect.h,
+        };
+    if (draft) setDraft(next);
+    else if (selected) onRegionChanged?.(selected.id, next);
+  }
 
   function fractionFromPoint(rect: DOMRect, clientX: number, clientY: number) {
     return {
@@ -119,15 +174,34 @@ export function OcclusionCanvas({
     visual: region.id === selectedRegionId ? 'selected' : 'draft',
   }));
   if (draft) {
-    maskRegions.push({ id: '__draft__', x: draft.x, y: draft.y, w: draft.w, h: draft.h, visual: 'draft' });
+    maskRegions.push({
+      id: '__draft__',
+      x: draft.x,
+      y: draft.y,
+      w: draft.w,
+      h: draft.h,
+      visual: 'draft',
+    });
   }
 
   return (
     <div className="min-w-0 bg-surface">
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
-        <ToolButton label="Draw label box" active={tool === 'label'} onClick={() => onToolChange('label')} />
-        <ToolButton label="Draw feature" active={tool === 'feature'} onClick={() => onToolChange('feature')} />
-        <ToolButton label="Select" active={tool === 'select'} onClick={() => onToolChange('select')} />
+        <ToolButton
+          label="Draw label box"
+          active={tool === 'label'}
+          onClick={() => onToolChange('label')}
+        />
+        <ToolButton
+          label="Draw feature"
+          active={tool === 'feature'}
+          onClick={() => onToolChange('feature')}
+        />
+        <ToolButton
+          label="Select"
+          active={tool === 'select'}
+          onClick={() => onToolChange('select')}
+        />
         <div className="flex-1" />
         {confirmingReplace ? (
           <ConfirmInline
@@ -165,11 +239,22 @@ export function OcclusionCanvas({
           <div
             ref={containerRef}
             data-testid="occlusion-canvas"
+            role="group"
+            aria-label={tool === 'select' ? 'Position selected region' : 'Draw a region'}
+            aria-describedby={instructionsId}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setDraft(null);
+            }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className={cn('touch-none', tool !== 'select' && 'cursor-crosshair')}
+            className={cn(
+              'touch-none rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+              tool !== 'select' && 'cursor-crosshair',
+            )}
           >
             <OcclusionMaskLayer
               assetUrl={assetUrl}
@@ -183,10 +268,13 @@ export function OcclusionCanvas({
             Upload a diagram to begin.
           </div>
         )}
-        <p className="mt-2 text-xs text-ink-faint">
-          Drag to draw. Coordinates are stored as fractions of the image, so masks hold their place at
-          any size.
-        </p>
+        {assetUrl && (
+          <p id={instructionsId} className="mt-2 text-xs text-ink-soft">
+            {tool === 'select'
+              ? 'Select a region, then focus the diagram. Arrow keys move it; Shift + arrows resize it.'
+              : 'Drag to draw, or press Enter to start a box. Arrow keys move it; Shift + arrows resize it. Enter adds it; Escape cancels.'}
+          </p>
+        )}
       </div>
     </div>
   );

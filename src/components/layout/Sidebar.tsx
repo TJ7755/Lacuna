@@ -27,7 +27,6 @@ import {
   SunIcon,
 } from '../ui/icons';
 import { useSidebarData } from '../../state/useCourseData';
-import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
 import { prefetchRoute } from '../../routes/prefetch';
 import { formatDate } from '../../utils/datetime';
@@ -39,13 +38,6 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   toggleLabel?: string;
-  /** Opens quick search instead of routing to /search. When omitted (surfaces
-   *  without palette wiring, e.g. LearnMode's nav drawer) the item falls back
-   *  to a plain link to the full content-search page. */
-  onOpenPalette?: () => void;
-  /** Raises the study sheet instead of routing to /learn. Omitted on surfaces without
-   *  sheet wiring, where Review today falls back to the full-screen session. */
-  onOpenStudySheet?: () => void;
   collapseControl?: boolean;
   aiAction?: {
     active: boolean;
@@ -66,9 +58,6 @@ const FOOTER_NAV = new Set(['share', 'settings', 'help']);
 
 /** The course glyph tracks the window height so rows can give up space as they shrink. */
 const GLYPH_SIZE = 'clamp(28px, 4.6dvh, 40px)';
-
-const SHORTCUT_LABEL =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 
 /** Static (non-shared-layout) active state: the white pill, as NavItem draws it. */
 const ACTIVE_PILL = 'bg-surface font-semibold text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
@@ -135,7 +124,7 @@ function NavItem({
 }
 
 /** A sidebar entry that performs an action rather than routing, styled to sit with the
- *  links around it. Used by Review today, which raises the study sheet. */
+ *  links around it. Used by the optional AI panel toggle. */
 function ActionNavItem({
   onClick,
   icon,
@@ -169,45 +158,6 @@ function ActionNavItem({
     >
       <span className="shrink-0">{icon}</span>
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
-    </button>
-  );
-}
-
-/** Opens the palette without leaving the current page. */
-function SearchNavItem({
-  onOpenPalette,
-  collapsed,
-  compact,
-}: {
-  onOpenPalette: () => void;
-  collapsed: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onOpenPalette}
-      title={collapsed ? 'Search' : undefined}
-      className={cn(
-        'group flex min-h-11 w-full items-center gap-3 rounded-xl text-left transition-colors duration-150',
-        compact ? 'px-3 py-2 text-xs' : 'h-11 px-3 text-[15px] short:h-9 short:min-h-9',
-        collapsed && 'justify-center px-0',
-        IDLE_ITEM,
-      )}
-    >
-      <span className="shrink-0">
-        <SearchIcon />
-      </span>
-      {!collapsed && (
-        <>
-          <span className="flex-1 truncate">Search</span>
-          {!compact && (
-            <kbd className="rounded-md border border-line-strong bg-surface px-1.5 py-px font-sans text-xs font-normal text-ink-soft">
-              {SHORTCUT_LABEL}
-            </kbd>
-          )}
-        </>
-      )}
     </button>
   );
 }
@@ -277,7 +227,6 @@ const CourseRow = memo(function CourseRow({
   m: number;
 }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const isMultiLesson = lessons.length > 1;
   const isExpanded = expanded.has(courseId);
   const isCourseActive =
@@ -320,7 +269,9 @@ const CourseRow = memo(function CourseRow({
           className={({ isActive }) =>
             cn(
               'flex items-center gap-3 rounded-xl transition-colors duration-150',
-              compact ? 'min-h-11 px-3 py-1.5 text-xs' : 'h-full min-h-11 px-3 py-1 text-[15px] short:min-h-10',
+              compact
+                ? 'min-h-11 px-3 py-1.5 text-xs'
+                : 'h-full min-h-11 px-3 py-1 text-[15px] short:min-h-10',
               isActive ? ACTIVE_PILL : 'text-ink hover:bg-ink/5',
             )
           }
@@ -345,24 +296,16 @@ const CourseRow = memo(function CourseRow({
         )}
       >
         <SidebarHoverCard title={courseName} details={details}>
-          <div
-            role="link"
-            tabIndex={0}
-            onClick={() => navigate(`/course/${courseId}`)}
+          <NavLink
+            to={`/course/${courseId}`}
             onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
             onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
             onFocus={() => prefetchRoute(`/course/${courseId}`)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void navigate(`/course/${courseId}`);
-              }
-            }}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
           >
             <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
             <span className="min-w-0 flex-1 truncate font-semibold">{courseName}</span>
-          </div>
+          </NavLink>
         </SidebarHoverCard>
         <button
           type="button"
@@ -374,9 +317,7 @@ const CourseRow = memo(function CourseRow({
           aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
           className={cn(
             'relative flex shrink-0 items-center justify-center rounded-lg text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
-            // The visible button stays small; the invisible ::after gives a 44px target.
-            "after:absolute after:content-['']",
-            compact ? 'h-6 w-6 after:-inset-2.5' : 'h-8 w-8 after:-inset-1.5',
+            'h-11 w-11',
           )}
         >
           <motion.span
@@ -415,8 +356,6 @@ export function Sidebar({
   collapsed,
   onToggleCollapsed,
   toggleLabel,
-  onOpenPalette,
-  onOpenStudySheet,
   collapseControl = true,
   aiAction,
 }: SidebarProps) {
@@ -430,7 +369,7 @@ export function Sidebar({
   const m = speedMultiplier(motionSpeed);
 
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
-  const [creatingCourse, setCreatingCourse] = useState(false);
+  const navigate = useNavigate();
 
   const sidebarCourses = useMemo(
     () => courses?.filter((course) => !course.archived) ?? [],
@@ -472,68 +411,49 @@ export function Sidebar({
   }, [sidebarCourses, summaries, data?.stats, data?.forecasts]);
 
   const visibleNav = sidebarSettings.navItems.filter((n) => n.visible);
-  const renderNavItem = (n: (typeof visibleNav)[number]) =>
-    n.id === 'search' && onOpenPalette ? (
-      <SearchNavItem
-        key={n.id}
-        onOpenPalette={onOpenPalette}
-        collapsed={collapsed}
-        compact={sidebarSettings.compactMode}
-      />
-    ) : n.id === 'today' && onOpenStudySheet ? (
-      <ActionNavItem
-        key={n.id}
-        onClick={onOpenStudySheet}
-        icon={<CardsIcon />}
-        label={n.label}
-        collapsed={collapsed}
-        compact={sidebarSettings.compactMode}
-      />
-    ) : (
-      <NavItem
-        key={n.id}
-        to={n.id === 'dashboard' ? '/' : n.id === 'today' ? '/learn' : `/${n.id}`}
-        end={n.id === 'dashboard'}
-        icon={
-          n.id === 'dashboard' ? (
-            <ClockIcon />
-          ) : n.id === 'today' ? (
-            <CardsIcon />
-          ) : n.id === 'search' ? (
-            <SearchIcon />
-          ) : n.id === 'share' ? (
-            <ShareIcon />
-          ) : n.id === 'analytics' ? (
-            <ChartIcon />
-          ) : n.id === 'settings' ? (
-            <SettingsIcon />
-          ) : n.id === 'help' ? (
-            <HelpIcon />
-          ) : (
-            <DashboardIcon />
-          )
-        }
-        label={n.id === 'search' ? 'Search content' : (NAV_LABELS[n.id] ?? n.label)}
-        collapsed={collapsed}
-        compact={sidebarSettings.compactMode}
-        details={
-          n.id === 'dashboard' && data?.stats
-            ? [
-                {
-                  icon: <FlameIcon width={14} height={14} />,
-                  label: 'Day streak',
-                  value: data.stats.streak,
-                },
-                {
-                  icon: <CheckIcon width={14} height={14} />,
-                  label: 'Reviewed today',
-                  value: data.stats.reviewedToday,
-                },
-              ]
-            : undefined
-        }
-      />
-    );
+  const renderNavItem = (n: (typeof visibleNav)[number]) => (
+    <NavItem
+      key={n.id}
+      to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+      end={n.id === 'dashboard'}
+      icon={
+        n.id === 'dashboard' ? (
+          <ClockIcon />
+        ) : n.id === 'search' ? (
+          <SearchIcon />
+        ) : n.id === 'share' ? (
+          <ShareIcon />
+        ) : n.id === 'analytics' ? (
+          <ChartIcon />
+        ) : n.id === 'settings' ? (
+          <SettingsIcon />
+        ) : n.id === 'help' ? (
+          <HelpIcon />
+        ) : (
+          <DashboardIcon />
+        )
+      }
+      label={NAV_LABELS[n.id] ?? n.label}
+      collapsed={collapsed}
+      compact={sidebarSettings.compactMode}
+      details={
+        n.id === 'dashboard' && data?.stats
+          ? [
+              {
+                icon: <FlameIcon width={14} height={14} />,
+                label: 'Day streak',
+                value: data.stats.streak,
+              },
+              {
+                icon: <CheckIcon width={14} height={14} />,
+                label: 'Reviewed today',
+                value: data.stats.reviewedToday,
+              },
+            ]
+          : undefined
+      }
+    />
+  );
 
   function toggleCourse(id: string) {
     setExpandedCourses((prev) => {
@@ -636,10 +556,13 @@ export function Sidebar({
             </span>
             <button
               type="button"
-              onClick={() => setCreatingCourse(true)}
+              onClick={() => {
+                if (toggleLabel === 'Close navigation') onToggleCollapsed();
+                void navigate('/', { state: { createCourse: true } });
+              }}
               title="New course"
               aria-label="New course"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
             >
               <PlusIcon width={13} height={13} />
             </button>
@@ -647,7 +570,7 @@ export function Sidebar({
         )}
         <div
           className={cn(
-            'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
+            'flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
             sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
           )}
         >
@@ -731,7 +654,14 @@ export function Sidebar({
           <div className="mt-0.5 [&_a]:text-sm [&_a]:text-ink-faint">
             <NavItem
               to="/archived"
-              icon={<ArchiveIcon />}
+              icon={
+                <span
+                  className="grid shrink-0 place-items-center"
+                  style={{ width: sidebarSettings.compactMode ? 28 : GLYPH_SIZE }}
+                >
+                  <ArchiveIcon />
+                </span>
+              }
               label="Archived"
               collapsed={collapsed}
               compact={sidebarSettings.compactMode}
@@ -783,10 +713,6 @@ export function Sidebar({
           </button>
         )}
       </div>
-
-      <AnimatePresence>
-        {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
-      </AnimatePresence>
     </aside>
   );
 }

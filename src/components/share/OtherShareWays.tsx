@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { referencedAssetHashes } from '../../db/assets';
@@ -15,6 +15,7 @@ import { collapse, motionTransition } from '../ui/motion';
 import { SectionCard } from '../ui/SectionCard';
 import { useToast } from '../ui/Toast';
 import { CopyButton } from './CopyButton';
+import { useActionFocus } from '../../hooks/useActionFocus';
 
 /** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
@@ -40,7 +41,17 @@ function mediaCardLabel(card: Card, index: number): string {
 }
 
 /** A read-only generated output with its Copy button. */
-function Output({ label, value, rows }: { label: string; value: string; rows: number }) {
+function Output({
+  label,
+  value,
+  rows,
+  inputRef,
+}: {
+  label: string;
+  value: string;
+  rows: number;
+  inputRef?: Ref<HTMLTextAreaElement>;
+}) {
   const { notify } = useToast();
   const [copied, setCopied] = useState(false);
   const timeout = useRef<number | null>(null);
@@ -65,6 +76,7 @@ function Output({ label, value, rows }: { label: string; value: string; rows: nu
   return (
     <div className="flex flex-col gap-2">
       <textarea
+        ref={inputRef}
         readOnly
         aria-label={label}
         value={value}
@@ -96,15 +108,13 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
   const [qr, setQr] = useState('');
   const [text, setText] = useState('');
   const mounted = useRef(true);
-  useEffect(
-    () => {
-      mounted.current = true;
-      return () => {
-        mounted.current = false;
-      };
-    },
-    [],
-  );
+  const actionFocus = useActionFocus();
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // Two ways a card carries media a code cannot: an asset embed in its Markdown
   // (images, audio), and an occlusion diagram, which lives on `Occlusion.assetHash`
@@ -122,6 +132,7 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
   );
 
   async function run<T>(task: () => Promise<T>, fallback: string): Promise<T | undefined> {
+    actionFocus.remember();
     setBusy(true);
     try {
       const result = await task();
@@ -159,6 +170,7 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
   }
 
   function createText() {
+    actionFocus.remember();
     if (!cards?.length) {
       notify('This course has no cards to export.', 'negative');
       return;
@@ -233,7 +245,12 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
         return (
           <>
             {code ? (
-              <Output label="Generated share code" value={code} rows={4} />
+              <Output
+                inputRef={actionFocus.restore}
+                label="Generated share code"
+                value={code}
+                rows={4}
+              />
             ) : (
               <Button variant="primary" onClick={() => void createCode()} disabled={busy}>
                 {busy ? 'Creating…' : 'Create share code'}
@@ -256,7 +273,7 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
                 >
                   <QRCode value={qr} size={224} level="L" bgColor="#ffffff" fgColor="#000000" />
                 </motion.div>
-                <Output label="QR code text" value={qr} rows={2} />
+                <Output inputRef={actionFocus.restore} label="QR code text" value={qr} rows={2} />
               </div>
             ) : (
               <Button variant="primary" onClick={() => void createQr()} disabled={busy}>
@@ -271,7 +288,12 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
         return (
           <>
             {text ? (
-              <Output label="Generated plain-text export" value={text} rows={6} />
+              <Output
+                inputRef={actionFocus.restore}
+                label="Generated plain-text export"
+                value={text}
+                rows={6}
+              />
             ) : (
               <Button variant="primary" onClick={createText} disabled={!cards?.length}>
                 Export cards as plain text

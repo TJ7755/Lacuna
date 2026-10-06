@@ -214,17 +214,48 @@ describe('SharePage', () => {
   it('creates links after StrictMode replays the mount effect', async () => {
     given(mockCourse);
     mockPublishShareLink.mockResolvedValue({ shareId: 'a'.repeat(32), revision: 1 });
-    render(<StrictMode><SharePage /></StrictMode>);
+    render(
+      <StrictMode>
+        <SharePage />
+      </StrictMode>,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
     expect(await screen.findByRole('textbox', { name: 'Share link' })).toBeInTheDocument();
   });
 
   it('generates share codes after StrictMode replays the mount effect', async () => {
     given(mockCourse);
-    render(<StrictMode><SharePage /></StrictMode>);
+    render(
+      <StrictMode>
+        <SharePage />
+      </StrictMode>,
+    );
     otherWay('Share code');
     fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
-    expect(await screen.findByRole('textbox', { name: 'Generated share code' })).toHaveValue('LAC2-test-code');
+    expect(await screen.findByRole('textbox', { name: 'Generated share code' })).toHaveValue(
+      'LAC2-test-code',
+    );
+  });
+  it('moves keyboard focus to the link after creating it', async () => {
+    given(mockCourse);
+    mockPublishShareLink.mockResolvedValue({ shareId: 'a'.repeat(32), revision: 1 });
+    render(<SharePage />);
+    const create = screen.getByRole('button', { name: 'Create share link' });
+    create.focus();
+    fireEvent.click(create);
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveFocus());
+  });
+
+  it('moves focus from a generated code action to its output', async () => {
+    given(mockCourse);
+    render(<SharePage />);
+    otherWay('Share code');
+    const create = screen.getByRole('button', { name: 'Create share code' });
+    create.focus();
+    fireEvent.click(create);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveFocus(),
+    );
   });
   it('opens on a course with the share link as the one primary action', () => {
     given(mockCourse);

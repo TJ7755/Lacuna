@@ -409,10 +409,9 @@ export function SequenceEditor() {
               <ChevronLeftIcon width={16} height={16} />
               Back
             </Link>
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
               {editing ? 'Edit sequence' : 'New sequence'}
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">{preset.description}</p>
           </div>
         </header>
 

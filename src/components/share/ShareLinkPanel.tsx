@@ -19,6 +19,7 @@ import { motionTransition, scaledSpring } from '../ui/motion';
 import { SectionCard } from '../ui/SectionCard';
 import { useToast } from '../ui/Toast';
 import { CopyButton } from './CopyButton';
+import { useActionFocus } from '../../hooks/useActionFocus';
 
 type LinkState = { shareId: string; revision: number };
 
@@ -49,17 +50,15 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
   const [confirmingReplace, setConfirmingReplace] = useState(false);
   const mounted = useRef(true);
   const copyTimeout = useRef<number | null>(null);
+  const actionFocus = useActionFocus();
 
-  useEffect(
-    () => {
-      mounted.current = true;
-      return () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
       mounted.current = false;
       if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
-      };
-    },
-    [],
-  );
+    };
+  }, []);
 
   const storedShareId = course.distribution?.shareId;
   useEffect(() => {
@@ -93,6 +92,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
     courseRevision > link.revision;
 
   async function publish(replaceLink = false) {
+    actionFocus.remember();
     setBusy(true);
     try {
       const result = replaceLink
@@ -122,6 +122,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
   }
 
   async function stop() {
+    actionFocus.remember();
     setConfirmingStop(false);
     setBusy(true);
     try {
@@ -197,6 +198,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
 
           {state === 'none' && (
             <Button
+              ref={actionFocus.restore}
               variant="primary"
               size="lg"
               className={
@@ -215,6 +217,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <input
+                    ref={actionFocus.restore}
                     readOnly
                     aria-label="Share link"
                     value={url}

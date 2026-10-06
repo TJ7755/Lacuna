@@ -8,7 +8,7 @@
 // and the lesson-scoped course/:courseId/lesson/:lessonId/occlusion/new variant.
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useEditorKeys } from '../hooks/dialogKeys';
 import { Link, useParams } from 'react-router-dom';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
@@ -127,6 +127,7 @@ export function OcclusionEditor() {
   const labelCount = regions.filter((r) => r.role === 'label').length;
   const featureCount = regions.length - labelCount;
   const saveRef = useRef<HTMLButtonElement>(null);
+  const nameId = useId();
   const editorKeys = useEditorKeys({
     onCancel: returnTo.goBack,
     onSubmit: () => void handleSave(),
@@ -282,29 +283,20 @@ export function OcclusionEditor() {
               <ChevronLeftIcon width={16} height={16} />
               Back
             </Link>
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
               {editing ? 'Edit occlusion' : 'New occlusion'}
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">
-              Mask parts of a diagram to test recall — one card per box, none of it typed by hand.
-            </p>
           </div>
         </header>
 
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 text-sm text-ink-faint">Name</div>
+            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-faint">Name</label>
             <input
+              id={nameId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                // Name is the only text field: once the occlusion is complete, Tab goes to Save.
-                if (e.key === 'Tab' && !e.shiftKey && canSave) {
-                  e.preventDefault();
-                  saveRef.current?.focus();
-                }
-              }}
               autoFocus
               placeholder="e.g. The plant cell"
               className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
@@ -321,6 +313,7 @@ export function OcclusionEditor() {
               onToolChange={setTool}
               onRegionDrawn={addRegion}
               onSelectRegion={setSelectedRegionId}
+              onRegionChanged={updateRegion}
               onFileSelected={handleFileSelected}
               uploading={uploading}
               confirmingReplace={confirmingReplace}

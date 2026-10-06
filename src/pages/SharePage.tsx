@@ -83,7 +83,7 @@ export function SharePage() {
           </Link>
         </SectionCard>
       ) : (
-        <FadeInView key={course.id}>
+        <FadeInView key={course.id} y={0}>
           <ShareLinkPanel
             course={course}
             highlight={searchParams.get('highlight') === 'share-link'}

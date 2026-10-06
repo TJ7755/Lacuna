@@ -28,21 +28,22 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 +----------+--------------------------------------------+
 ```
 
-- **Sidebar** (`Sidebar`): brand; primary nav (Dashboard, Review today, Search, Share,
-  Analytics, Settings, Help — each independently hideable); a fixed **Archived** destination below
-  the **Courses** heading; a separately scrolling live course list (each with an accent dot when
-  active and an optional due-count badge); a **streak badge** on the Dashboard
-  item that springs in when a streak is active; footer with a theme toggle and a
+- **Sidebar** (`Sidebar`): brand; navigation destinations (Today, Search, Share,
+  Progress, Settings, Help — each independently hideable); a fixed **Archived** destination below
+  the **Courses** heading, with its text aligned to course names; the live course list
+  contains countdown and forecast glyphs and prevents horizontal overflow. Its overflow
+  has no visible scrollbar, whilst keyboard focus can still reveal long course lists.
+  The footer contains a theme toggle and a
   collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
   sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
   per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
   (configured in Settings → Sidebar) and take effect immediately. Its height follows the shell
   body rather than the viewport so the footer remains visible below the Electron titlebar.
-- **Search navigation:** when the compact overlay is available, the sidebar entry is
-  **Quick search**, opens that overlay directly, and shows the platform-native shortcut hint
-  inline: `⌘K` on macOS and `Ctrl+K` on Windows and Linux (collapsed sidebar: as a title tooltip).
-  Surfaces without overlay wiring (for example, LearnMode's own nav drawer) expose **Search
-  content** as a plain `/search` link instead.
+- **Search navigation:** the sidebar always opens `/search`, consistently with the other
+  navigation destinations. Quick search remains available through `Ctrl/Cmd+K`.
+  Study actions live on Today and course pages rather than appearing as a different kind
+  of sidebar entry. Stored navigation preferences retain order and visibility whilst
+  retiring the old Review today entry and refreshing destination names.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger or a deliberate
   left-edge rightward swipe; the scrim closes it; it auto-closes on navigation. The edge
   gesture rejects vertical movement and starts on non-interactive content only, so ordinary

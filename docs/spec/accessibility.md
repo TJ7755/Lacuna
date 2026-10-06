@@ -11,6 +11,15 @@
   presses are visible without `:hover`.
 - Copy is **British English** throughout; **no emojis** in product copy or UI.
 
+- Keyboard and assistive-technology clicks receive the same press acknowledgement as
+  pointer activation. Animated departing steps are inert and hidden from assistive
+  technology; their incoming headings can receive focus without entering the Tab order.
+- Diagram authoring supports Enter or Space to begin and commit a region, arrows to
+  move it, Shift and arrows to resize it, and Escape to cancel a draft. In Select mode,
+  the same arrows position the selected region. Region buttons announce their names
+  and selected state. The name field follows normal Tab order; Ctrl/Cmd+Enter saves.
+- Generated sharing links and codes receive focus when they replace the focused action,
+  without taking focus away from a different control chosen whilst work is pending.
 - Cards search has an accessible name; typed study answers retain a visible label.
   The new-course name input is associated with its visible label; activating that
   label focuses the input.
@@ -23,6 +32,8 @@
 - Step-completion actions are visible and usable during their entrance sequence. Departing
   course pages are inert and hidden from assistive technology while the next page enters.
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
+- Restoring an archived course moves focus to the next restoration action, or the
+  page heading when no archived courses remain, without overriding focus moved elsewhere.
 - Settings and Help expose the same native section selector below desktop widths, so
   their topics remain reachable with a keyboard when the section rail is hidden.
 
