@@ -196,13 +196,15 @@ function AppShellLayout() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setPaletteOpen((open) => {
-          if (!open) {
-            paletteReturnFocusRef.current =
-              document.activeElement instanceof HTMLElement ? document.activeElement : null;
-          }
-          return !open;
-        });
+        if (!paletteOpen) {
+          paletteReturnFocusRef.current = mobileOpen
+            ? mobileTriggerRef.current
+            : document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null;
+          setMobileOpen(false);
+        }
+        setPaletteOpen(!paletteOpen);
         return;
       }
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
@@ -226,7 +228,7 @@ function AppShellLayout() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate]);
+  }, [navigate, mobileOpen, paletteOpen]);
 
   return (
     // Arriving from the landing page's Get Started transition, the shell

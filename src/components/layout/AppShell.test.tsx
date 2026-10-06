@@ -18,13 +18,11 @@ vi.mock('./Sidebar', () => ({
     toggleLabel = 'Toggle navigation',
     collapsed,
     aiAction,
-    onOpenPalette,
   }: {
     onToggleCollapsed: () => void;
     toggleLabel?: string;
     collapsed: boolean;
     aiAction?: { onClick: () => void; triggerRef: React.RefObject<HTMLButtonElement> };
-    onOpenPalette?: () => void;
   }) => (
     <aside data-collapsed={collapsed || undefined}>
       <button type="button" data-sidebar-close onClick={onToggleCollapsed} aria-label={toggleLabel}>
@@ -35,11 +33,7 @@ vi.mock('./Sidebar', () => ({
           AI
         </button>
       )}
-      {onOpenPalette && (
-        <button type="button" onClick={onOpenPalette}>
-          Quick search
-        </button>
-      )}
+      <a href="#/search">Search</a>
     </aside>
   ),
 }));
@@ -272,12 +266,13 @@ describe('AppShell mobile navigation', () => {
     fireEvent.click(navigationTrigger);
 
     const navigation = screen.getByRole('dialog', { name: 'Navigation' });
-    const quickSearch = within(navigation).getByRole('button', { name: 'Quick search' });
+    const quickSearch = within(navigation).getByRole('link', { name: 'Search' });
     quickSearch.focus();
-    fireEvent.click(quickSearch);
+    fireEvent.keyDown(quickSearch, { key: 'k', ctrlKey: true });
 
     const searchInput = await screen.findByRole('combobox');
     await waitFor(() => expect(searchInput).toHaveFocus());
+    expect(navigation).not.toBeInTheDocument();
     fireEvent.keyDown(searchInput, { key: 'Escape' });
 
     await waitFor(() => expect(navigationTrigger).toHaveFocus());
