@@ -1,0 +1,1 @@
+- Fixed due review leaving an empty card area after the last answer: the study flow planned the next step from the previous course read, and handed it to the finished Learn session instead of starting a new one (#402)
