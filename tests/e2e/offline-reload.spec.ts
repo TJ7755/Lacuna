@@ -76,7 +76,7 @@ test('reloads a visited card library with persisted data while offline', async (
       .getByRole('navigation', { name: 'Course sections' })
       .getByRole('link', { name: 'Cards' })
       .click();
-    const cardsMain = page.locator('main[data-route-path$="/cards"]');
+    const cardsMain = page.locator('main:has([data-route-content$="/cards"])');
     await expect(cardsMain.getByRole('heading', { name: 'Cards', level: 1 })).toBeVisible();
     await expect(cardsMain.getByText(front, { exact: true })).toHaveCount(1);
     await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();

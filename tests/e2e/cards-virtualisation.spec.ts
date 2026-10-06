@@ -33,7 +33,7 @@ test('bounds off-screen lesson rows and reveals later cards when scrolling', asy
   });
   await expect.poll(() => rows.count()).toBeLessThanOrEqual(22);
 
-  const main = page.locator('main[data-route-path$="/cards"]');
+  const main = page.locator('main:has([data-route-content$="/cards"])');
   await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect(page.getByText(
     'Recall item 0-1-99: explain the relationship between energy and motion.', { exact: true },

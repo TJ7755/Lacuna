@@ -38,7 +38,7 @@ test('opens course navigation and returns to the dashboard', async ({ page }) =>
     .click();
   const sections = page.getByRole('navigation', { name: 'Course sections' });
   await sections.getByRole('link', { name: 'Cards' }).click();
-  await expect(page.locator('main[data-route-path$="/cards"]')).toBeVisible();
+  await expect(page.locator('main:has([data-route-content$="/cards"])')).toBeVisible();
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('link', { name: 'Today', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
@@ -70,7 +70,7 @@ test('navigates a visited card library while offline', async ({ page, context })
   await createMobileCourse(page, 'Mobile offline');
   await addCard(page, 'Mobile offline front', 'Mobile offline back');
   await page.getByRole('navigation', { name: 'Course sections' }).getByRole('link', { name: 'Cards' }).click();
-  const cards = page.locator('main[data-route-path$="/cards"]');
+  const cards = page.locator('main:has([data-route-content$="/cards"])');
   await expect(cards.getByText('Mobile offline front', { exact: true }).first()).toBeVisible();
   await context.setOffline(true);
   try {
