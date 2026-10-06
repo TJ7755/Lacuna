@@ -37,10 +37,15 @@ test('Add returns to its own corner without enlarging its disappearing text', as
   await page.getByRole('button', { name: 'Edit mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
   await expect(add).toBeVisible();
-  // The label's width depends on the web font, so measure once it has loaded.
-  await page.evaluate(() => document.fonts.ready);
-  // Layout widths, so the page's entrance scale cannot skew the comparison.
-  const closedWidth = await add.locator('..').evaluate((el) => (el as HTMLElement).offsetWidth);
+  // Closed, the surface fits its own trigger. Compare layout widths, which neither the
+  // page's entrance scale nor a late web-font swap can skew.
+  const closedFit = () =>
+    add.evaluate(
+      (trigger) =>
+        (trigger.parentElement as HTMLElement).offsetWidth -
+        Math.ceil(parseFloat(getComputedStyle(trigger).width)),
+    );
+  await expect.poll(closedFit).toBe(0);
   await add.click();
   await expect(page.getByRole('menu', { name: 'Add', exact: true })).toBeVisible();
   await expect
@@ -79,14 +84,7 @@ test('Add returns to its own corner without enlarging its disappearing text', as
     expect(Math.abs(sample.height - measured.baseline.height)).toBeLessThanOrEqual(1);
     expect(Math.abs(sample.top - measured.baseline.top)).toBeLessThanOrEqual(1);
   }
-  await expect
-    .poll(() =>
-      page
-        .getByRole('button', { name: 'Add', exact: true })
-        .locator('..')
-        .evaluate((el) => (el as HTMLElement).offsetWidth),
-    )
-    .toBe(closedWidth);
+  await expect.poll(closedFit).toBe(0);
   await add.click();
   await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name' }).press('Escape');
@@ -122,7 +120,6 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
     await document.fonts.ready;
     const surface = document.querySelector<HTMLElement>('button[aria-label="Add"]')!.parentElement!;
     const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Add"]')!;
-    const closed = surface.getBoundingClientRect().width;
     const widths: number[] = [];
     for (let toggle = 0; toggle < 2; toggle++) {
       trigger.click();
@@ -131,6 +128,8 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
         widths.push(surface.getBoundingClientRect().width);
       }
     }
+    // Closed, the surface fits its own trigger's layout width.
+    const closed = Math.ceil(parseFloat(getComputedStyle(trigger).width));
     return { closed, samples: widths };
   });
   expect(samples).toContain(216);
