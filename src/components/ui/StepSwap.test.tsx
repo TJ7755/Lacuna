@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type * as MotionReact from 'motion/react';
 import { StepSwap, stepSwapTiming } from './StepSwap';
 
 const presence = vi.hoisted(() => ({ current: true }));
 vi.mock('motion/react', async () => ({
-  ...(await vi.importActual<typeof import('motion/react')>('motion/react')),
+  ...(await vi.importActual<typeof MotionReact>('motion/react')),
   useIsPresent: () => presence.current,
 }));
 beforeEach(() => {
