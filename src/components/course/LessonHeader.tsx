@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { EditIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+import { useActionFocus } from '../../hooks/useActionFocus';
 
 interface LessonHeaderProps {
   title: string;
@@ -38,13 +39,21 @@ export function LessonHeader({
   const [draft, setDraft] = useState(title);
   const [saving, setSaving] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const renameButton = useRef<HTMLButtonElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const { remember, restore } = useActionFocus();
 
   useEffect(() => {
-    if (!editing) setDraft(title);
-  }, [editing, title]);
+    if (!editing) {
+      setDraft(title);
+      restore(opener.current?.isConnected ? opener.current : renameButton.current);
+    }
+  }, [editing, title, restore]);
 
   function start() {
     if (!onRename || saving) return;
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    remember();
     setDraft(title);
     setEditing(true);
   }
@@ -107,6 +116,7 @@ export function LessonHeader({
           {actions?.(start)}
           {onRename && !actions && !editing && (
             <button
+              ref={renameButton}
               type="button"
               onClick={start}
               aria-label="Rename lesson"

@@ -20,6 +20,8 @@
   and selected state. The name field follows normal Tab order; Ctrl/Cmd+Enter saves.
 - Generated sharing links and codes receive focus when they replace the focused action,
   without taking focus away from a different control chosen whilst work is pending.
+- Ending an inline lesson rename returns focus to its opening control after Enter or
+  Escape. Saving on blur preserves focus on the next control the learner has chosen.
 - Cards search has an accessible name; typed study answers retain a visible label.
   The new-course name input is associated with its visible label; activating that
   label focuses the input.

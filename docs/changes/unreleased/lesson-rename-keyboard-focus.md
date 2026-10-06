@@ -1,0 +1,1 @@
+- Keep keyboard focus on the lesson rename or actions control after saving with Enter or cancelling with Escape, whilst preserving focus moved to another control when saving on blur.
