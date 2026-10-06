@@ -20,6 +20,7 @@ const mockDeferBreak = vi.fn();
 let mockFlows: FlowData[] = [];
 const mockFlowListeners = new Set<() => void>();
 const seenLearnRequests: unknown[] = [];
+let learnMounts = 0;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -83,6 +84,9 @@ vi.mock('./LearnMode', () => ({
     sessionId?: string;
   }) => {
     seenLearnRequests.push(request);
+    React.useEffect(() => {
+      learnMounts += 1;
+    }, []);
     return (
       <div>
         <pre data-testid="learn-request">{JSON.stringify(request)}</pre>
@@ -238,6 +242,7 @@ beforeEach(() => {
   mockFlows = [];
   mockFlowListeners.clear();
   seenLearnRequests.length = 0;
+  learnMounts = 0;
 });
 
 describe('CourseStudyFlow', () => {
@@ -299,6 +304,26 @@ describe('CourseStudyFlow', () => {
 
     await waitFor(() => expect(request()).toMatchObject({ nodeKey: 'auto-2' }));
     expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
+  });
+
+  it('starts a fresh Learn session when due review continues into Practice', async () => {
+    const practice: StudyFlowStep = {
+      kind: 'practice',
+      nodeKey: 'end',
+      mode: 'recurring',
+      label: 'Practice',
+    };
+    mockFlows = [flow(practice, 0), flow({ ...practice }, 1)];
+    renderFlow('/course/course-1/study?review=due');
+    await screen.findByTestId('learn-request');
+    expect(learnMounts).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear step' }));
+
+    // A finished Learn session never serves another card, so reusing its
+    // instance for the next step leaves an empty card area (#402).
+    await waitFor(() => expect(request()).toMatchObject({ mode: 'recurring' }));
+    await waitFor(() => expect(learnMounts).toBe(2));
   });
 
   it('keeps the hand-off when Practice stops at the daily review goal', async () => {

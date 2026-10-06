@@ -27,6 +27,8 @@ interface CourseStudyFlowRecords {
   practiceNodes: PracticeNode[];
   milestones: PracticeMilestone[];
   performance: UserPerformance[];
+  /** The refresh key this read answered, so callers can tell a stale result from a fresh one. */
+  generation: number;
 }
 
 /** Shared course reads for the path preview and the active study conductor. */
@@ -44,6 +46,7 @@ export function useCourseStudyFlowRecords(courseId: string | undefined, refreshK
         practiceNodes: [],
         milestones: [],
         performance: [],
+        generation: refreshKey,
       };
     }
     const [courseRecord, assessments] = await db.transaction(
@@ -67,6 +70,7 @@ export function useCourseStudyFlowRecords(courseId: string | undefined, refreshK
         practiceNodes: [],
         milestones: [],
         performance: [],
+        generation: refreshKey,
       };
     }
     const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
@@ -97,6 +101,7 @@ export function useCourseStudyFlowRecords(courseId: string | undefined, refreshK
       practiceNodes,
       milestones,
       performance,
+      generation: refreshKey,
     };
   }, [courseId, refreshKey]);
 }

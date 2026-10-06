@@ -85,7 +85,9 @@ export function useCourseStudyFlow(
       course: records.course,
       snapshot,
       decision: planNextStudyStep(snapshot),
-      generation: refreshKey,
+      // Until the live query answers the new refresh key, `records` is the previous
+      // read: label it with that read's key, or the conductor would plan from stale data.
+      generation: records.generation,
     };
-  }, [records, refreshKey]);
+  }, [records]);
 }
