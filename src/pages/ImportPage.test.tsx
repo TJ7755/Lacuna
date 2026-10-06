@@ -206,7 +206,10 @@ it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
     fireEvent.click(screen.getByRole('button', { name: new RegExp(source) }));
     fireEvent.click(await screen.findByRole('button', { name: 'Back to import sources' }));
     expect(screen.getByText('Drop a file here')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Back to import sources' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Back to import sources' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: new RegExp(source) })).toHaveFocus();
     expect(mocks.importCards).not.toHaveBeenCalled();
     expect(mocks.importShare).not.toHaveBeenCalled();
     expect(mocks.navigate).not.toHaveBeenCalled();

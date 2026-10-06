@@ -48,6 +48,9 @@ or choosing a file selects its import path automatically. The welcome import lin
 opens the same screen. Each selected import path uses the editors’ muted left-chevron Back control above
 the title. Its navigation row stays reserved on the chooser so the heading and content
 do not shift when moving between import paths. New course remains focused on creating an empty course.
+Source changes use the shared step crossfade. Back and an empty-form Escape return
+keyboard focus to the source that opened the form; motion honours the user's speed
+and reduced-motion setting.
 
 The screen reuses the card import dialogue's input and review components inline.
 After reviewing content, choose a new course with an explicit study target, a new

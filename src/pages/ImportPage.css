@@ -1,17 +1,3 @@
-@keyframes import-arrive {
-  from {
-    opacity: 0;
-  }
-}
-.import-arrive {
-  animation: import-arrive 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.import-page > .import-arrive:nth-child(2) {
-  animation-delay: 40ms;
-}
-.import-page > .import-arrive:nth-child(3) {
-  animation-delay: 80ms;
-}
 .import-sources {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -33,17 +19,14 @@
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 0.2s;
+    transform var(--import-motion-duration) cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow var(--import-motion-duration);
 }
 .import-sources button:hover {
   transform: translateY(-2px);
   box-shadow:
     0 1px 2px hsl(var(--ink) / 0.06),
     0 22px 44px -26px hsl(var(--ink) / 0.3);
-}
-.import-sources button:active {
-  transform: scale(0.98);
 }
 .import-sources button:focus-visible {
   outline: 2px solid hsl(var(--accent));
@@ -77,11 +60,11 @@
   border-radius: 24px;
   background: hsl(var(--ink) / 0.04);
   text-align: center;
-  transition: background-color 0.2s;
+  transition: background-color var(--import-motion-duration);
 }
 .import-drop > svg {
   color: hsl(var(--ink-soft));
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--import-motion-duration) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .import-drop[data-dragging='true'] {
   background: hsl(var(--accent-soft));
@@ -160,11 +143,12 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .import-arrive {
-    animation: none;
-  }
   .import-sources button,
   .import-drop > svg {
     transition: none;
+  }
+  .import-sources button:hover,
+  .import-drop[data-dragging='true'] > svg {
+    transform: none;
   }
 }
