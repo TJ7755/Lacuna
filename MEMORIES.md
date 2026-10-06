@@ -268,3 +268,8 @@ A visible preview can stop delivering `requestAnimationFrame` callbacks while DO
 Motion transitions then appear frozen and screenshots can time out. Starting a T3 preview recording
 restored frame delivery during Questions review. Check frame delivery before treating this as an app
 animation defect, and stop the recording after verification.
+## PR description edits restart CI
+
+CI subscribes to the pull-request `edited` event so retargeted branches receive checks.
+Editing a PR description also restarts CI and cancels its current run. Finalise the
+review text before waiting for merge gates, rather than updating it mid-run.

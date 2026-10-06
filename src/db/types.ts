@@ -96,6 +96,13 @@ export interface ReviewLog {
    * unpenalised `responseTimeSec` so the penalty can later be fitted from real data.
    */
   hintUsed?: boolean;
+  /**
+   * Whether this answer came within PRIMING_WINDOW_MS of an earlier answer to the same
+   * card in the same session (see src/fsrs/primedReview.ts). Optional and additive:
+   * absent on history written before this field existed, which reads as not primed.
+   * The review still updates FSRS; only the short-term predictor discounts it.
+   */
+  primed?: boolean;
   stabilityBefore: number | null;
   stabilityAfter: number;
   difficultyBefore: number | null;
@@ -1259,11 +1266,14 @@ export interface LineageIdMapping {
   /** Adopted optional Question Set path activity IDs from v5 shares. */
   questionSetPracticeNodeIds?: string[];
   /** Last imported authored placement, used to reject local edits on update. */
-  questionSetPracticeNodeSnapshots?: Record<string, {
-    questionSetId: string;
-    afterLessonId: string;
-    name: string;
-  }>;
+  questionSetPracticeNodeSnapshots?: Record<
+    string,
+    {
+      questionSetId: string;
+      afterLessonId: string;
+      name: string;
+    }
+  >;
   /** Originating sequence ids already adopted as local ids. */
   sequenceIds: string[];
   /** Originating occlusion ids already adopted as local ids. Absent on mappings written

@@ -1,7 +1,7 @@
 # Security maintenance
 
 The repository security workflow (`.github/workflows/security.yml`) runs on pull requests and
-pushes to `master`/`main`, with an additional weekly scheduled run. Every audit job uses Bun 1.4.0,
+pushes to `master`/`main`, with an additional weekly scheduled run. Every audit job uses Bun 1.4.2,
 `bun install --frozen-lockfile`, and `bun audit --audit-level=high` for one lockfile workspace:
 
 - the root application;

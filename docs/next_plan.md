@@ -66,7 +66,7 @@ forecast is a later milestone, not a prerequisite for authoring and self-marking
 
 The React 19, TypeScript 7, Vite 8, Vitest 5 and ESLint 10 migrations are delivered, alongside
 Electron 44/Electron Builder 26, root and relay audit jobs, and release provenance checks.
-CI uses Node.js 24 and Bun 1.4.0; package manifests and lockfiles define exact dependencies. Remaining
+CI uses Node.js 24 and Bun 1.4.2; package manifests and lockfiles define exact dependencies. Remaining
 work is signing/notarisation before wider rollout and the
 complete managed-device matrix; every critical or high finding still needs a fix or a named owner
 and review date.

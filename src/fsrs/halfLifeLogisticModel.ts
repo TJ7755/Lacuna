@@ -8,6 +8,7 @@ import type {
 } from './cramAllocator';
 import { forgettingCurve } from './forwardSim';
 import { MS_PER_DAY } from './params';
+import { lacksUnprimedRetest } from './primedReview';
 
 const MODEL_NAME = 'half-life-logistic-v3-routed';
 const FEATURE_NAMES = [
@@ -174,22 +175,22 @@ function cardValidationReason(card: Card): Exclude<MemoryModelFallbackReason, 'm
   if (latest === undefined || card.lastReviewed === null || card.stability === null) {
     return 'unsupported';
   }
-  if (
-    !(
-      Number.isFinite(latest.timestamp) &&
-      Number.isFinite(card.lastReviewed) &&
-      Number.isFinite(card.stability) &&
-      card.stability > 0 &&
-      card.history.every(
-        (review) =>
-          Number.isFinite(review.timestamp) &&
-          [1, 2, 3, 4].includes(review.grade) &&
-          (review.correct === undefined || typeof review.correct === 'boolean'),
-      )
+  if (!(
+    Number.isFinite(latest.timestamp) &&
+    Number.isFinite(card.lastReviewed) &&
+    Number.isFinite(card.stability) &&
+    card.stability > 0 &&
+    card.history.every(
+      (review) =>
+        Number.isFinite(review.timestamp) &&
+        [1, 2, 3, 4].includes(review.grade) &&
+        (review.correct === undefined || typeof review.correct === 'boolean'),
     )
-  ) {
+  )) {
     return 'corrupt';
   }
+  // A primed answer is not independent evidence; claim nothing until a spaced retest.
+  if (lacksUnprimedRetest(card.history)) return 'unsupported';
   return [0, 1, 2, 3].includes(card.state) ? null : 'unsupported';
 }
 
