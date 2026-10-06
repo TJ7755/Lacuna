@@ -53,6 +53,8 @@ export function CourseTabs({ courseId }: { courseId: string }) {
               to={to}
               draggable={false}
               onDragStart={(event) => event.preventDefault()}
+              // The held indicator is this control's own press feedback.
+              data-press=""
               aria-current={active ? 'page' : undefined}
               // The accessible name stays the full label at every width, so the shortened
               // mobile text is a visual abbreviation rather than a different control.

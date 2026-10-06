@@ -94,24 +94,23 @@ export function ImportPage() {
       style={{ '--import-motion-duration': `${200 * multiplier}ms` } as CSSProperties}
       {...keys}
     >
-      <header className="mb-8">
-        <div className="mb-3 flex min-h-11 items-center">
-          {source && (
-            <button
-              type="button"
-              disabled={busy}
-              aria-label="Back to import sources"
-              onClick={reset}
-              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
-            >
-              <ChevronLeftIcon width={16} height={16} />
-              Back
-            </button>
-          )}
-        </div>
+      {/* The title keeps the same place as every other page; Back joins its row. */}
+      <header className="mb-8 flex min-h-11 flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Import
         </h1>
+        {source && (
+          <button
+            type="button"
+            disabled={busy}
+            aria-label="Back to import sources"
+            onClick={reset}
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeftIcon width={16} height={16} />
+            Back
+          </button>
+        )}
       </header>
       <StepSwap stepKey={source ?? 'sources'}>
         {!source ? (

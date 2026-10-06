@@ -82,7 +82,7 @@ export function Settings() {
   }, []);
 
   return (
-    <div className={`${PAGE_FRAME} pb-12`}>
+    <div className={`${PAGE_FRAME} pb-12 pt-4 md:pt-2`}>
       <header className={PAGE_HEADER}>
         <h1 className={PAGE_TITLE}>Settings</h1>
         <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
