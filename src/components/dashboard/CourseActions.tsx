@@ -3,7 +3,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { m as motion } from 'motion/react';
+import { m as motion, useIsPresent } from 'motion/react';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { Button } from '../ui/Button';
 import { updateCourse } from '../../db/courseRepository';
@@ -90,7 +90,8 @@ export function ArchiveCourseDialog({
   onClose: () => void;
   onArchived: () => void;
 }) {
-  const trapRef = useFocusTrap(true, {
+  const present = useIsPresent();
+  const trapRef = useFocusTrap(present, {
     autoFocusSelector: '[data-confirm-archive]',
     returnFocus: false,
   });
@@ -115,6 +116,8 @@ export function ArchiveCourseDialog({
     <motion.div
       ref={trapRef}
       data-course-archive-dialog
+      inert={!present}
+      aria-hidden={!present || undefined}
       className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
