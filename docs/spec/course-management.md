@@ -25,6 +25,10 @@
   state. Linked rows are labelled, excluded from destructive bulk selection, and use
   **Remove from lesson** instead of deleting the underlying shared card; removal also clears
   that lesson's exposure record.
+  While a lesson has no cards, its card panel's **New card** is the primary action and the
+  management section becomes **More ways to add cards** (sequence, occlusion, link, import)
+  without the answer-mode control. A one-lesson course with no cards and no notes disables
+  **Study** and its `S` shortcut, because the study flow would open an empty notes step.
 - **Cards** (`/course/:courseId/cards`) lists every direct-recall Card in a course regardless of
   lesson, sharing `CardList` with the lesson view's Card section. The old `/bank` route redirects
   here.

@@ -77,7 +77,11 @@ export function LessonCardsList({
           aria-hidden={editable ? undefined : true}
           onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           className={cn(
-            'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-ink/[0.06] px-4 text-sm font-semibold text-ink transition-colors hover:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+            'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+            // The first card is the lesson's next step, so it leads until one exists.
+            cards.length === 0
+              ? 'bg-accent text-accent-fg hover:brightness-105'
+              : 'bg-ink/[0.06] text-ink hover:bg-ink/10',
             !editable && 'pointer-events-none',
           )}
         >

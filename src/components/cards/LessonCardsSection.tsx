@@ -105,7 +105,13 @@ export function LessonCardsSection({
     <section className={className}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
-          Manage <span className="text-ink-faint">({lessonCards.length})</span>
+          {lessonCards.length === 0 ? (
+            'More ways to add cards'
+          ) : (
+            <>
+              Manage <span className="text-ink-faint">({lessonCards.length})</span>
+            </>
+          )}
         </h2>
         {lessonCards.length > 0 && (
           <Button
@@ -119,7 +125,10 @@ export function LessonCardsSection({
         )}
       </div>
 
-      <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
+      {/* Answering applies to cards, so it waits until the lesson has one. */}
+      {lessonCards.length > 0 && (
+        <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
+      )}
 
       {pendingUnlink && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
@@ -154,38 +163,29 @@ export function LessonCardsSection({
           }
         />
       ) : lessonCards.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
-          <p className="mb-4 text-sm text-ink-soft">No cards in this lesson yet.</p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button
-              variant="primary"
-              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New card
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New sequence
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New occlusion
-            </Button>
-            <Button variant="secondary" onClick={() => setLinking(true)}>
-              <PlusIcon width={18} height={18} />
-              Link existing cards
-            </Button>
-            <Button variant="secondary" onClick={() => void prepareEmptyImport()}>
-              Import cards
-            </Button>
-          </div>
+        // New card leads in the lesson's card panel; these are the other ways in.
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
+          >
+            <PlusIcon width={18} height={18} />
+            New sequence
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+          >
+            <PlusIcon width={18} height={18} />
+            New occlusion
+          </Button>
+          <Button variant="secondary" onClick={() => setLinking(true)}>
+            <PlusIcon width={18} height={18} />
+            Link existing cards
+          </Button>
+          <Button variant="secondary" onClick={() => void prepareEmptyImport()}>
+            Import cards
+          </Button>
         </div>
       ) : links === undefined || !lessonSchedulingConfig ? (
         // Membership determines whether a row may delete the underlying card. Never

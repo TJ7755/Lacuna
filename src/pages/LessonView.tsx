@@ -76,6 +76,8 @@ interface LessonViewProps {
   /** The single course-level Study action for the inline one-lesson course. */
   showStudyNow?: boolean;
   onStudy?: () => void;
+  /** Cards anywhere in the inline one-lesson course, including its unassigned bank. */
+  courseCardCount?: number;
   /** Whether the inline one-lesson course has reached cards eligible for immediate practice. */
   practiceNowEnabled?: boolean;
   /** Opens path-native manual-practice creation for an inline one-lesson course. */
@@ -90,6 +92,7 @@ export function LessonView({
   showStudyNow = false,
   onStudy,
   practiceNowEnabled = false,
+  courseCardCount,
   onAddPractice,
   onAddCheckpoint,
 }: LessonViewProps) {
@@ -130,14 +133,21 @@ export function LessonView({
   const lessonDeck = useLessonBackingDeck(courseId, lessonId);
 
   const shortcutArchived = course?.archived === true;
+  // With no cards and no notes, the inline course's study flow has nothing to show.
+  const nothingToStudy =
+    showStudyNow &&
+    (courseCardCount ?? 0) === 0 &&
+    lessonCards?.length === 0 &&
+    notes?.length === 0;
   usePageShortcuts({
-    s: shortcutArchived
-      ? undefined
-      : showStudyNow
-        ? (onStudy ?? (() => navigate(`/course/${courseId}/study`)))
-        : !isInline && lessonCards && lessonCards.length > 0
-          ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
-          : undefined,
+    s:
+      shortcutArchived || nothingToStudy
+        ? undefined
+        : showStudyNow
+          ? (onStudy ?? (() => navigate(`/course/${courseId}/study`)))
+          : !isInline && lessonCards && lessonCards.length > 0
+            ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
+            : undefined,
     n:
       courseId &&
       lessonId &&
@@ -334,6 +344,7 @@ export function LessonView({
                 <Button
                   variant="primary"
                   size="lg"
+                  disabled={nothingToStudy}
                   onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
                 >
                   <PlayIcon width={18} height={18} />

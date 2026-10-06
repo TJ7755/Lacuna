@@ -274,8 +274,14 @@ export function CoursePath() {
     [authoring, nodes, studyFlowSnapshot],
   );
 
+  // A one-lesson course renders LessonView inline, which owns S for its own Study action.
+  const inlineLesson =
+    lessons?.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set');
   usePageShortcuts({
-    s: dataLoaded && course && !archived ? () => openStudySheet(courseId) : undefined,
+    s:
+      dataLoaded && course && !archived && !inlineLesson
+        ? () => openStudySheet(courseId)
+        : undefined,
   });
 
   // Loading state — a skeleton while course/lesson data resolves.
@@ -352,7 +358,7 @@ export function CoursePath() {
   // No redirect — this is a rendering branch. The
   // course header (and its review entry point) is bypassed here, so a pending
   // merge review gets the same entry above the lesson.
-  if (lessons.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set')) {
+  if (inlineLesson) {
     return (
       <>
         {!archived && pendingUpdate && (
@@ -372,6 +378,7 @@ export function CoursePath() {
             showStudyNow={!archived}
             onStudy={() => openStudySheet(courseId)}
             practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
+            courseCardCount={courseCards?.length ?? 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
           />

@@ -143,6 +143,7 @@ function renderInline(
   showStudyNow = false,
   practiceNowEnabled = false,
   pathActions?: { onAddPractice: () => void; onAddCheckpoint: () => void },
+  courseCardCount = 1,
 ) {
   return render(
     <MemoryRouter initialEntries={['/course/course-1']}>
@@ -153,6 +154,7 @@ function renderInline(
           lessonId="lesson-1"
           showStudyNow={showStudyNow}
           practiceNowEnabled={practiceNowEnabled}
+          courseCardCount={courseCardCount}
           onAddPractice={pathActions?.onAddPractice}
           onAddCheckpoint={pathActions?.onAddCheckpoint}
         />
@@ -332,6 +334,20 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Practice Now' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
+  });
+
+  it('withholds Study only when the course has no cards and the lesson no notes', () => {
+    mockLessonCards = [];
+    mockNotes = [];
+    const { unmount } = renderInline(true, false, undefined, 0);
+    expect(screen.getByRole('button', { name: 'Study' })).toBeDisabled();
+    fireEvent.keyDown(window, { key: 's' });
+    expect(mockNavigate).not.toHaveBeenCalledWith('/course/course-1/study');
+    unmount();
+
+    mockNotes = [note];
+    renderInline(true, false, undefined, 0);
+    expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
   });
 
   it('disables course-wide practice when no reached card is eligible', () => {
