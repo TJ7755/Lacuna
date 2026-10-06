@@ -1,5 +1,6 @@
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { useSectionDeepLink } from '../hooks/useSectionDeepLink';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { AppearanceSection } from './settings/AppearanceSection';
@@ -54,32 +55,12 @@ const SETTINGS_ANCHOR_IDS = new Set([
   'settings-data-links',
 ]);
 
-function settingsAnchorId(hash: string): string | null {
-  const fragment = hash.slice(hash.lastIndexOf('#') + 1);
-  if (!fragment || fragment.startsWith('/')) return null;
-  try {
-    const id = decodeURIComponent(fragment);
-    return SETTINGS_ANCHOR_IDS.has(id) ? id : null;
-  } catch {
-    return null;
-  }
-}
-
 export function Settings() {
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
   const { activeSection, goToSection } = useSectionRail(SETTINGS_SECTIONS, motionMultiplier);
 
-  useEffect(() => {
-    function scrollToDeepLink() {
-      const id = settingsAnchorId(window.location.hash);
-      if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' });
-    }
-
-    scrollToDeepLink();
-    window.addEventListener('hashchange', scrollToDeepLink);
-    return () => window.removeEventListener('hashchange', scrollToDeepLink);
-  }, []);
+  useSectionDeepLink(SETTINGS_ANCHOR_IDS);
 
   return (
     <div className={`${PAGE_FRAME} pb-12 pt-4 md:pt-2`}>

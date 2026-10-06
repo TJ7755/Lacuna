@@ -26,11 +26,37 @@ function createMediaQueryList(matches: boolean) {
 
 describe('HelpPage', () => {
   beforeEach(() => {
+    window.history.replaceState(null, '', '/');
     Object.defineProperty(globalThis, 'IntersectionObserver', {
       configurable: true,
       value: MockIntersectionObserver,
     });
     window.matchMedia = vi.fn().mockReturnValue(createMediaQueryList(true));
+  });
+
+  it('opens a recognised topic from the final HashRouter fragment and follows changes', () => {
+    const scroll = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scroll;
+    window.history.replaceState(null, '', '/#/help#card-types');
+    const { unmount } = render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    expect(scroll).toHaveBeenCalledWith({ block: 'start' });
+    expect(scroll.mock.instances.at(-1)).toBe(document.getElementById('card-types'));
+
+    window.history.replaceState(null, '', '/#/help#%6f%63clusions');
+    fireEvent(window, new Event('hashchange'));
+    expect(scroll.mock.instances.at(-1)).toBe(document.getElementById('occlusions'));
+    const calls = scroll.mock.calls.length;
+    window.history.replaceState(null, '', '/#/help#%invalid');
+    fireEvent(window, new Event('hashchange'));
+    expect(scroll).toHaveBeenCalledTimes(calls);
+    unmount();
+    window.history.replaceState(null, '', '/#/help#card-types');
+    fireEvent(window, new Event('hashchange'));
+    expect(scroll).toHaveBeenCalledTimes(calls);
   });
 
   it('uses the shared balanced rail layout without a decorative header eyebrow', () => {

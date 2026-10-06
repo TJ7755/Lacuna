@@ -1,5 +1,6 @@
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
+import { useSectionDeepLink } from '../hooks/useSectionDeepLink';
 import { Link } from 'react-router-dom';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
@@ -38,6 +39,8 @@ const HELP_SECTIONS = [
   { id: 'occlusions', label: 'Diagrams' },
   { id: 'tips', label: 'Tips & best practice' },
 ];
+
+const HELP_ANCHOR_IDS = new Set(HELP_SECTIONS.map((section) => section.id));
 
 const FOOTER_LINK_CLASS =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line-strong bg-surface-raised px-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
@@ -100,20 +103,7 @@ export function HelpPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const { activeSection, goToSection } = useSectionRail(HELP_SECTIONS, m);
-
-  // If the user navigated directly to a hash (e.g. /help#card-types), scroll
-  // to it and highlight the correct sidebar item on mount.
-  useEffect(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && HELP_SECTIONS.some((s) => s.id === hash)) {
-      const el = document.getElementById(hash);
-      if (el) {
-        window.requestAnimationFrame(() => {
-          el.scrollIntoView({ behavior: 'instant', block: 'start' });
-        });
-      }
-    }
-  }, []);
+  useSectionDeepLink(HELP_ANCHOR_IDS);
 
   const sections = useMemo<Section[]>(
     () => [

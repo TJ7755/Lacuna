@@ -430,6 +430,8 @@ Settings and Search align with the shared page frame; Search keeps a narrower re
 column on that frame’s left edge. The editor and course settings add a sticky bottom
 action bar. Help’s footer presents its destination links directly, without a descriptive
 caption that repeats them.
+Help and Settings topic links read the final fragment of the hash route, validate it
+against their section IDs and follow later fragment changes through the same shared hook.
 
 
 [Specification index](../SPEC.md)
