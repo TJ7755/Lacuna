@@ -23,5 +23,7 @@
 - Step-completion actions are visible and usable during their entrance sequence. Departing
   course pages are inert and hidden from assistive technology while the next page enters.
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
+- Settings and Help expose the same native section selector below desktop widths, so
+  their topics remain reachable with a keyboard when the section rail is hidden.
 
 [Specification index](../SPEC.md)

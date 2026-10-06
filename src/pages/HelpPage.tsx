@@ -1,9 +1,10 @@
-import { PAGE_FRAME } from '../components/course/coursePageLayout';
-import { useMemo, useState, useEffect } from 'react';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
+import { useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
-import { SectionRail } from '../components/ui/SectionRail';
+import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
+import { SectionCard as SurfaceCard } from '../components/ui/SectionCard';
 import {
   PlayIcon,
   CheckIcon,
@@ -49,13 +50,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6 md:p-8">
+    <SurfaceCard as="div" className="md:p-7">
       <div className="mb-5 flex items-center gap-3">
         <span className="text-accent">{icon}</span>
-        <h2 className="font-display text-3xl tracking-tight">{label}</h2>
+        <h2 className="font-display text-2xl font-semibold tracking-tight">{label}</h2>
       </div>
       {children}
-    </div>
+    </SurfaceCard>
   );
 }
 
@@ -96,35 +97,13 @@ function ModeCard({
 export function HelpPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const [activeSection, setActiveSection] = useState<string>(HELP_SECTIONS[0].id);
-
-  // Track which section is currently visible using IntersectionObserver.
-  useEffect(() => {
-    const intersecting = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) intersecting.add(entry.target.id);
-          else intersecting.delete(entry.target.id);
-        });
-        const top = HELP_SECTIONS.find((s) => intersecting.has(s.id));
-        if (top) setActiveSection(top.id);
-      },
-      { rootMargin: '-20% 0px -60% 0px', threshold: 0 },
-    );
-    HELP_SECTIONS.forEach((section) => {
-      const el = document.getElementById(section.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
+  const { activeSection, goToSection } = useSectionRail(HELP_SECTIONS, m);
 
   // If the user navigated directly to a hash (e.g. /help#card-types), scroll
   // to it and highlight the correct sidebar item on mount.
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (hash && HELP_SECTIONS.some((s) => s.id === hash)) {
-      setActiveSection(hash);
       const el = document.getElementById(hash);
       if (el) {
         window.requestAnimationFrame(() => {
@@ -151,8 +130,8 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Courses</h3>
                 <p className="text-sm text-ink-soft">
                   A course is the top-level subject you are studying &mdash; a module, a subject, an
-                  exam. Today lists your courses; opening one takes you to its path. A
-                  course with a single lesson skips the path and opens straight into that lesson.
+                  exam. Today lists your courses; opening one takes you to its path. A course with a
+                  single lesson skips the path and opens straight into that lesson.
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
@@ -815,68 +794,71 @@ export function HelpPage() {
   );
 
   return (
-    <div className={`${PAGE_FRAME} flex gap-6 py-8 md:py-10`}>
-      <div className="min-w-0 flex-1">
-        <div>
-          <header className="mb-12 md:mb-16">
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">Help</h1>
-          </header>
+    <div className={`${PAGE_FRAME} pb-12`}>
+      <header className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Help</h1>
+      </header>
+      <div className="flex flex-row-reverse gap-8">
+        <div className="min-w-0 flex-1">
+          <div>
+            <SectionRailMobileJumper
+              sections={HELP_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={goToSection}
+              label="Jump to help topic"
+            />
 
-          {/* Sections */}
-          <div className="flex flex-col gap-8">
-            {sections.map((s) => (
-              <section key={s.id} id={s.id} className="scroll-mt-8">
-                <SectionCard icon={s.icon} label={s.label}>
-                  {s.content}
-                </SectionCard>
-              </section>
-            ))}
-          </div>
-
-          {/* Footer */}
-          <div className="mt-4 border-t border-line py-10 text-left">
-            <div className="mb-3 text-accent">
-              <InfoIcon width={20} height={20} />
+            {/* Sections */}
+            <div className="flex flex-col gap-8">
+              {sections.map((s) => (
+                <section key={s.id} id={s.id} className="scroll-mt-20">
+                  <SectionCard icon={s.icon} label={s.label}>
+                    {s.content}
+                  </SectionCard>
+                </section>
+              ))}
             </div>
-            <p className="mb-3 text-base text-ink-soft">
-              Still have questions? Check the settings pages for more granular controls, or explore
-              the analytics page to understand your study patterns.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/settings">
-                <Button variant="secondary" size="sm">
-                  <SettingsIcon width={16} height={16} />
-                  Settings
-                </Button>
-              </Link>
-              <Link to="/analytics">
-                <Button variant="secondary" size="sm">
-                  <ChartIcon width={16} height={16} />
-                  Analytics
-                </Button>
-              </Link>
-              <Link to="/method">
-                <Button variant="secondary" size="sm">
-                  <SparklesIcon width={16} height={16} />
-                  How the scheduler works
-                </Button>
-              </Link>
+
+            {/* Footer */}
+            <div className="mt-4 border-t border-line py-10 text-left">
+              <div className="mb-3 text-accent">
+                <InfoIcon width={20} height={20} />
+              </div>
+              <p className="mb-3 text-base text-ink-soft">
+                Still have questions? Check the settings pages for more granular controls, or
+                explore the analytics page to understand your study patterns.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/settings">
+                  <Button variant="secondary" size="sm">
+                    <SettingsIcon width={16} height={16} />
+                    Settings
+                  </Button>
+                </Link>
+                <Link to="/analytics">
+                  <Button variant="secondary" size="sm">
+                    <ChartIcon width={16} height={16} />
+                    Analytics
+                  </Button>
+                </Link>
+                <Link to="/method">
+                  <Button variant="secondary" size="sm">
+                    <SparklesIcon width={16} height={16} />
+                    How the scheduler works
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <SectionRail
-        sections={HELP_SECTIONS}
-        activeSection={activeSection}
-        onNavigate={(id) => {
-          document.getElementById(id)?.scrollIntoView({
-            behavior: m > 0 ? 'smooth' : 'instant',
-            block: 'start',
-          });
-        }}
-        motionMultiplier={m}
-      />
+        <SectionRail
+          sections={HELP_SECTIONS}
+          activeSection={activeSection}
+          onNavigate={goToSection}
+          motionMultiplier={m}
+        />
+      </div>
     </div>
   );
 }

@@ -181,6 +181,12 @@ keyboard shortcuts on keyboard).
   editor `max-w-4xl`; learn/report/search `max-w-3xl`. Horizontal padding responds to
   screen width. The course overview pairs a compact winding path with a lesson companion
   on desktop and stacks those surfaces below 900px. All surfaces inherit Settings colours.
+- Course sections share their heading size (36px, rising to 44px on desktop), top spacing
+  and content edges. Course Settings uses the available column beside its section rail
+  rather than adding a second narrow centred frame. Settings and Help use the same heading
+  rhythm, left section rail and card surfaces; below 1280px, both expose the compact section
+  jumper. Persistent course navigation shows the course name only when the page's course
+  heading is out of view, including headings loaded asynchronously.
 - Cards/sections: the shared `SectionCard` uses `rounded-3xl bg-surface p-5/6` with a
   soft layered ink shadow. Settings cards share its surface tokens; `DialogPanel`, `Input`
   and `Skeleton` retain the shared primitives throughout the redesign. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.

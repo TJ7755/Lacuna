@@ -5,7 +5,11 @@ import { Skeleton } from '../components/ui/Skeleton';
 // Route: /course/:courseId/cards
 // British English throughout.
 
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import {
+  COURSE_PAGE_FRAME,
+  COURSE_PAGE_HEADER,
+  COURSE_PAGE_TITLE,
+} from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -174,8 +178,8 @@ export function CardsPage() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4 pt-6 md:pt-8">
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Cards</h1>
+      <header className={COURSE_PAGE_HEADER}>
+        <h1 className={COURSE_PAGE_TITLE}>Cards</h1>
         <div role="group" aria-label="Add content" className="flex flex-wrap items-center gap-2">
           <Menu
             label="More ways to add"
@@ -341,17 +345,11 @@ function LessonBucket({
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
-          onEditCard={(card) =>
-            go(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)
-          }
+          onEditCard={(card) => go(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)}
           sequences={sequences}
-          onEditSequence={(sequenceId) =>
-            go(`/course/${courseId}/sequence/${sequenceId}/edit`)
-          }
+          onEditSequence={(sequenceId) => go(`/course/${courseId}/sequence/${sequenceId}/edit`)}
           occlusions={occlusions}
-          onEditOcclusion={(occlusionId) =>
-            go(`/course/${courseId}/occlusion/${occlusionId}/edit`)
-          }
+          onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
       )}
     </section>
@@ -397,13 +395,9 @@ function UnassignedBucket({
           assignableLessons={assignableLessons}
           onEditCard={(card) => go(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
-          onEditSequence={(sequenceId) =>
-            go(`/course/${courseId}/sequence/${sequenceId}/edit`)
-          }
+          onEditSequence={(sequenceId) => go(`/course/${courseId}/sequence/${sequenceId}/edit`)}
           occlusions={occlusions}
-          onEditOcclusion={(occlusionId) =>
-            go(`/course/${courseId}/occlusion/${occlusionId}/edit`)
-          }
+          onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
       )}
     </section>

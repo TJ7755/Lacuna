@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HelpPage } from './HelpPage';
@@ -42,7 +42,9 @@ describe('HelpPage', () => {
 
     const heading = screen.getByRole('heading', { level: 1, name: 'Help' });
     const header = heading.closest('header');
-    const contentColumn = header?.parentElement?.parentElement;
+    const contentColumn = screen
+      .getByRole('heading', { name: 'Courses & lessons' })
+      .closest('section')?.parentElement?.parentElement?.parentElement;
     const rail = screen.getByRole('button', { name: 'Courses & lessons' }).closest('aside');
 
     expect(screen.queryByText('Documentation')).not.toBeInTheDocument();
@@ -55,10 +57,29 @@ describe('HelpPage', () => {
       screen.queryByText(/Everything you need to know about using Lacuna/),
     ).not.toBeInTheDocument();
 
-    const courseSection = screen.getByRole('heading', { name: 'Courses & lessons' }).closest('section');
+    const courseSection = screen
+      .getByRole('heading', { name: 'Courses & lessons' })
+      .closest('section');
     const sectionCard = courseSection?.firstElementChild;
     const courseExplanation = screen.getByRole('heading', { name: 'Courses' }).parentElement;
-    expect(sectionCard).toHaveClass('rounded-2xl', 'border', 'bg-surface', 'p-6', 'md:p-8');
+    expect(sectionCard).toHaveClass('rounded-3xl', 'bg-surface', 'p-6', 'md:p-7');
+    expect(sectionCard).not.toHaveClass('border');
     expect(courseExplanation).not.toHaveClass('rounded-xl', 'bg-surface-raised', 'p-5');
   });
+
+  it('offers the same compact section jumper as Settings on smaller screens', () => {
+    window.matchMedia = vi.fn().mockReturnValue(createMediaQueryList(false));
+    const scroll = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scroll;
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: 'Jump to help topic' }), {
+      target: { value: 'card-types' },
+    });
+    expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+  });
+
 });

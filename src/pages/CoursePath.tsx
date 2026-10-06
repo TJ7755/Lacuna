@@ -274,7 +274,9 @@ export function CoursePath() {
     [authoring, nodes, studyFlowSnapshot],
   );
 
-  usePageShortcuts({ s: dataLoaded && course && !archived ? () => openStudySheet(courseId) : undefined });
+  usePageShortcuts({
+    s: dataLoaded && course && !archived ? () => openStudySheet(courseId) : undefined,
+  });
 
   // Loading state — a skeleton while course/lesson data resolves.
   if (!dataLoaded) {
@@ -363,9 +365,7 @@ export function CoursePath() {
             </Link>
           </div>
         )}
-        <Suspense
-          fallback={<Skeleton className="min-h-[50vh] rounded-2xl bg-ink/[0.03]" />}
-        >
+        <Suspense fallback={<Skeleton className="min-h-[50vh] rounded-2xl bg-ink/[0.03]" />}>
           <LazyLessonView
             courseId={courseId}
             lessonId={lessons[0].id}
@@ -431,8 +431,8 @@ export function CoursePath() {
       })),
   ];
   return (
-    <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-7`}>
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
+    <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+      <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <CourseHeader
           className="min-w-0 flex-[1_1_320px] py-0 md:py-0"
           title={course.name}

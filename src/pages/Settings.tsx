@@ -1,4 +1,4 @@
-import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { useEffect, type ReactNode } from 'react';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
@@ -82,11 +82,9 @@ export function Settings() {
   }, []);
 
   return (
-    <div className={`${PAGE_FRAME} pb-10 pt-12 md:py-10`}>
-      <header className="mb-6 flex items-baseline justify-between gap-4">
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-          Settings
-        </h1>
+    <div className={`${PAGE_FRAME} pb-12`}>
+      <header className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Settings</h1>
         <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
       </header>
       <div className="flex flex-row-reverse gap-8">

@@ -632,7 +632,7 @@ describe('CoursePath Edit mode', () => {
   it('creates manual practice from the path', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Practice' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Practice' }));
     expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -648,7 +648,7 @@ describe('CoursePath Edit mode', () => {
   it('creates a checkpoint from the path', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
     expect(screen.getByRole('dialog', { name: 'Add checkpoint' })).toBeInTheDocument();
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();
@@ -673,7 +673,7 @@ describe('CoursePath Edit mode', () => {
     const opener = screen.getByRole('button', { name: 'Add' });
     opener.focus();
     fireEvent.click(opener);
-    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -686,7 +686,7 @@ describe('CoursePath Edit mode', () => {
     const opener = screen.getByRole('button', { name: 'Add' });
     opener.focus();
     fireEvent.click(opener);
-    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
 
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();
@@ -698,7 +698,7 @@ describe('CoursePath Edit mode', () => {
   it('keeps Tab trapped in the checkpoint editor when its date picker is open', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Checkpoint' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
     fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
 
     const done = screen.getByRole('button', { name: 'Done' });
@@ -856,7 +856,7 @@ describe('CoursePath Edit mode', () => {
     mockLessons = [];
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Lesson' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
 
     await waitFor(() => {
@@ -868,7 +868,7 @@ describe('CoursePath Edit mode', () => {
   it('creates a lesson from a populated path', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Lesson' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
 
     await waitFor(() => {
@@ -904,9 +904,9 @@ describe('CoursePath overview', () => {
     const add = screen.getByRole('button', { name: 'Add' });
     fireEvent.click(add);
     expect(add).toHaveAttribute('aria-expanded', 'true');
-    const options = screen.getByRole('group', { name: 'Add to course' });
+    const options = screen.getByRole('menu', { name: 'Add' });
     expect(add.parentElement).toContainElement(options);
-    fireEvent.click(screen.getByRole('button', { name: 'Lesson' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), { target: { value: 'Energy' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
     await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
@@ -935,11 +935,12 @@ describe('CoursePath overview', () => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
     renderPage();
     const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
     fireEvent.click(add);
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(add, { key: 'Escape' });
     expect(add).toHaveAttribute('aria-expanded', 'false');
     expect(add).toHaveFocus();
-    expect(screen.queryByRole('group', { name: 'Add to course' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu', { name: 'Add' })).not.toBeInTheDocument();
     fireEvent.click(add);
     fireEvent.pointerDown(document.body);
     expect(add).toHaveAttribute('aria-expanded', 'false');

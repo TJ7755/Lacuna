@@ -1,7 +1,11 @@
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { Input } from '../components/ui/Field';
 import { Skeleton } from '../components/ui/Skeleton';
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import {
+  COURSE_PAGE_FRAME,
+  COURSE_PAGE_HEADER,
+  COURSE_PAGE_TITLE,
+} from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -291,10 +295,8 @@ export function CourseSettings() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
-      <header className="mb-8 pt-6 md:pt-8">
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-          Course settings
-        </h1>
+      <header className={COURSE_PAGE_HEADER}>
+        <h1 className={COURSE_PAGE_TITLE}>Course settings</h1>
       </header>
       <div className="flex flex-row-reverse gap-8">
         <div className="min-w-0 flex-1">
@@ -304,7 +306,7 @@ export function CourseSettings() {
               activeSection={activeSection}
               onNavigate={goToSection}
             />
-            <div className="mx-auto max-w-3xl">
+            <div>
               <SettingsCard id="course-settings-goal" className="scroll-mt-24">
                 <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
                   Goal and dates
@@ -563,14 +565,11 @@ function CourseSettingsSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
       <Skeleton className="mb-8 mt-6 h-10 w-64 rounded-full bg-ink/10 md:mt-8" />
-      <div className="mx-auto flex max-w-3xl flex-col gap-5">
+      <div className="flex flex-col gap-5">
         {[40, 32, 24].map((height) => (
           <div key={height} className="space-y-4 rounded-3xl bg-surface p-7">
             <Skeleton className="h-6 w-40 rounded-full bg-ink/10" />
-            <Skeleton
-              className="w-full rounded-2xl bg-ink/10"
-              style={{ height: height * 4 }}
-            />
+            <Skeleton className="w-full rounded-2xl bg-ink/10" style={{ height: height * 4 }} />
           </div>
         ))}
       </div>

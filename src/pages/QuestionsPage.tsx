@@ -1,4 +1,8 @@
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import {
+  COURSE_PAGE_FRAME,
+  COURSE_PAGE_HEADER,
+  COURSE_PAGE_TITLE,
+} from '../components/course/coursePageLayout';
 import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQuestionSetAttempts';
 import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
@@ -83,9 +87,9 @@ export function QuestionsPage() {
   if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
     <div ref={root} className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
+      <header className={COURSE_PAGE_HEADER}>
         <div>
-          <h1 tabIndex={-1} className="font-display text-4xl tracking-tight md:text-5xl">
+          <h1 tabIndex={-1} className={COURSE_PAGE_TITLE}>
             Questions
           </h1>
         </div>
