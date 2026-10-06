@@ -201,9 +201,12 @@ export function SequenceEditor() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
           Back to Today
         </Link>
       </div>
@@ -211,9 +214,12 @@ export function SequenceEditor() {
   }
   if (lessonMode && lesson === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
+        <Link
+          to={courseId ? `/course/${courseId}` : '/'}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
           {courseId ? 'Back to course' : 'Back to Today'}
         </Link>
       </div>
@@ -221,9 +227,12 @@ export function SequenceEditor() {
   }
   if (editing && sequence === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
-        <Link to={backPath} className="text-accent underline">
+        <Link
+          to={backPath}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
           Back to {backLabel}
         </Link>
       </div>

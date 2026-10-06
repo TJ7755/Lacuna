@@ -6,14 +6,15 @@ import { SequenceEditor } from './SequenceEditor';
 import type { Course, Sequence } from '../db/types';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
-let mockCourse: Course | undefined;
+let mockCourse: Course | null | undefined;
+let mockLesson: null | undefined;
 let mockSequence: Sequence | null | undefined;
 const createSequence = vi.fn().mockResolvedValue(undefined);
 const updateSequence = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
-  useLesson: () => undefined,
+  useLesson: () => mockLesson,
   useSequence: () => mockSequence,
 }));
 
@@ -107,11 +108,21 @@ function itemsHeading(count: number) {
   return screen.getByText((_content, element) => element?.textContent === `Items (${count})`);
 }
 
-function renderNew() {
+function renderNew(lessonMode = false) {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/sequence/new']}>
+    <MemoryRouter
+      initialEntries={[
+        lessonMode
+          ? '/course/course-1/lesson/lesson-1/sequence/new'
+          : '/course/course-1/sequence/new',
+      ]}
+    >
       <Routes>
         <Route path="/course/:courseId/sequence/new" element={<SequenceEditor />} />
+        <Route
+          path="/course/:courseId/lesson/:lessonId/sequence/new"
+          element={<SequenceEditor />}
+        />
         <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
@@ -131,6 +142,7 @@ function renderEdit(state?: unknown) {
 
 beforeEach(() => {
   mockCourse = undefined;
+  mockLesson = undefined;
   mockSequence = undefined;
   createSequence.mockClear();
   updateSequence.mockClear();
@@ -141,6 +153,27 @@ beforeEach(() => {
 });
 
 describe('SequenceEditor', () => {
+  it.each(['course', 'lesson', 'sequence'] as const)(
+    'keeps the missing-%s state aligned and its Back target full-size',
+    (missing) => {
+      mockCourse = missing === 'course' ? null : course;
+      mockLesson = missing === 'lesson' ? null : undefined;
+      mockSequence = missing === 'sequence' ? null : undefined;
+      const { container } = missing === 'sequence' ? renderEdit() : renderNew(missing === 'lesson');
+      expect(screen.getByText(`This ${missing} could not be found.`)).toBeInTheDocument();
+      expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
+      const back = screen.getByRole('link');
+      expect(back).toHaveClass('min-h-11');
+      expect(back).toHaveAttribute(
+        'href',
+        missing === 'course'
+          ? '/'
+          : missing === 'lesson'
+            ? '/course/course-1'
+            : '/course/course-1/cards',
+      );
+    },
+  );
   it('aligns with course pages and offers one full-size destination-aware Back link', () => {
     mockCourse = course;
     const { container } = renderNew();

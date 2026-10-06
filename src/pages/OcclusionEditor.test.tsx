@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OcclusionEditor } from './OcclusionEditor';
 import type { Course, Occlusion } from '../db/types';
 
-let mockCourse: Course | undefined;
+let mockCourse: Course | null | undefined;
+let mockLesson: null | undefined;
 let mockOcclusion: Occlusion | null | undefined;
 const mockNotify = vi.fn();
 const createOcclusion = vi.fn().mockResolvedValue(undefined);
@@ -17,7 +18,7 @@ const resolveAssetUrl = vi.fn().mockResolvedValue('blob:diagram');
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
-  useLesson: () => undefined,
+  useLesson: () => mockLesson,
   useOcclusion: () => mockOcclusion,
 }));
 
@@ -67,11 +68,21 @@ const course: Course = {
   practiceMaxGap: 3,
 };
 
-function renderNew() {
+function renderNew(lessonMode = false) {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/occlusion/new']}>
+    <MemoryRouter
+      initialEntries={[
+        lessonMode
+          ? '/course/course-1/lesson/lesson-1/occlusion/new'
+          : '/course/course-1/occlusion/new',
+      ]}
+    >
       <Routes>
         <Route path="/course/:courseId/occlusion/new" element={<OcclusionEditor />} />
+        <Route
+          path="/course/:courseId/lesson/:lessonId/occlusion/new"
+          element={<OcclusionEditor />}
+        />
         <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
@@ -124,6 +135,7 @@ async function uploadDiagram() {
 
 beforeEach(() => {
   mockCourse = undefined;
+  mockLesson = undefined;
   mockOcclusion = undefined;
   mockNotify.mockClear();
   createOcclusion.mockClear();
@@ -137,6 +149,28 @@ beforeEach(() => {
 });
 
 describe('OcclusionEditor', () => {
+  it.each(['course', 'lesson', 'occlusion'] as const)(
+    'keeps the missing-%s state aligned and its Back target full-size',
+    (missing) => {
+      mockCourse = missing === 'course' ? null : course;
+      mockLesson = missing === 'lesson' ? null : undefined;
+      mockOcclusion = missing === 'occlusion' ? null : undefined;
+      const { container } =
+        missing === 'occlusion' ? renderEdit() : renderNew(missing === 'lesson');
+      expect(screen.getByText(`This ${missing} could not be found.`)).toBeInTheDocument();
+      expect(container.firstElementChild).toHaveClass('max-w-[1190px]', 'w-full');
+      const back = screen.getByRole('link');
+      expect(back).toHaveClass('min-h-11');
+      expect(back).toHaveAttribute(
+        'href',
+        missing === 'course'
+          ? '/'
+          : missing === 'lesson'
+            ? '/course/course-1'
+            : '/course/course-1/cards',
+      );
+    },
+  );
   it('aligns with course pages and offers one full-size destination-aware Back link', () => {
     mockCourse = course;
     const { container } = renderNew();

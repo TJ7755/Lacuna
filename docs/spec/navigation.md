@@ -433,7 +433,7 @@ Settings and Search align with the shared page frame; Search keeps a narrower re
 column on that frame’s left edge. The editor and course settings add a sticky bottom
 action bar. Help’s footer presents its destination links directly, without a descriptive
 caption that repeats them.
-Sequence and diagram editors share the course page frame in loaded and loading states.
+Sequence and diagram editors share the course page frame in loaded, loading and not-found states.
 Their single 44px Back link names and retains the originating lesson or Cards destination,
 without repeating a breadcrumb or the task title above the main heading.
 Help and Settings topic links read the final fragment of the hash route, validate it
