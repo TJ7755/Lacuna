@@ -83,7 +83,11 @@ describe('HelpPage', () => {
   });
 
   it('provides a single keyboard target for each footer destination', () => {
-    render(<MemoryRouter><HelpPage /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
     for (const name of ['Settings', 'Analytics', 'How the scheduler works']) {
       const link = screen.getByRole('link', { name });
       expect(link.querySelector('button')).toBeNull();
@@ -91,4 +95,20 @@ describe('HelpPage', () => {
     }
   });
 
+  it('presents footer destinations directly without a repeated descriptive caption', () => {
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.queryByText(/Still have questions\? Check the settings pages/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('href', '/analytics');
+    expect(screen.getByRole('link', { name: 'How the scheduler works' })).toHaveAttribute(
+      'href',
+      '/method',
+    );
+  });
 });

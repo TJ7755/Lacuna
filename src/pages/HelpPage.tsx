@@ -823,13 +823,6 @@ export function HelpPage() {
 
             {/* Footer */}
             <div className="mt-4 border-t border-line py-10 text-left">
-              <div className="mb-3 text-accent">
-                <InfoIcon width={20} height={20} />
-              </div>
-              <p className="mb-3 text-base text-ink-soft">
-                Still have questions? Check the settings pages for more granular controls, or
-                explore the analytics page to understand your study patterns.
-              </p>
               <div className="flex flex-wrap gap-2">
                 <Link to="/settings" className={FOOTER_LINK_CLASS}>
                   <SettingsIcon width={16} height={16} />
