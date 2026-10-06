@@ -47,7 +47,6 @@ function Output({ label, value, rows }: { label: string; value: string; rows: nu
   useEffect(
     () => () => {
       if (timeout.current) window.clearTimeout(timeout.current);
-      };
     },
     [],
   );
@@ -101,7 +100,8 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
     () => {
       mounted.current = true;
       return () => {
-      mounted.current = false;
+        mounted.current = false;
+      };
     },
     [],
   );
