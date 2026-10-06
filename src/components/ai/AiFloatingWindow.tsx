@@ -1,8 +1,19 @@
-import { useState, type HTMLAttributes, type ReactNode } from 'react';
+import { useState, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { scaledSpring } from '../ui/motion';
 import { useDraggableWindow } from './useDraggableWindow';
+
+function FloatingWindowSurface({
+  windowRef,
+  inert,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { windowRef: RefObject<HTMLDivElement | null> }) {
+  const present = useIsPresent();
+  return (
+    <div {...props} ref={windowRef} inert={inert || !present} aria-hidden={!present || undefined} />
+  );
+}
 
 /** What the panel's header needs to behave as the window's title bar. */
 export interface AiWindowControls {
@@ -39,8 +50,8 @@ export function AiFloatingWindow({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div
-          ref={windowRef}
+        <FloatingWindowSurface
+          windowRef={windowRef}
           inert={inert}
           className="fixed z-40 w-[420px] max-w-[calc(100vw-1rem)]"
           style={position ? { left: position.left, top: position.top } : { right: 24, bottom: 24 }}
@@ -65,7 +76,7 @@ export function AiFloatingWindow({
               handleProps,
             })}
           </motion.div>
-        </div>
+        </FloatingWindowSurface>
       )}
     </AnimatePresence>,
     document.body,
