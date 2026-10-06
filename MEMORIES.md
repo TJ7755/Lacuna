@@ -9,6 +9,12 @@ Git can check text files out with CRLF line endings on Windows. Normalise those
 line endings before format-sensitive file assertions; otherwise valid workflows
 fail their policy tests despite matching the committed content.
 
+## Persisted editing modes in browser tests
+
+Clicking Edit mode returns before the IndexedDB write and live-query update finish.
+Wait for an edit-only control to appear before testing authoring or its Tab order;
+otherwise keyboard navigation correctly follows the previous mode's controls.
+
 ## Live users and rollout
 
 Real beta users depend on Lacuna (confirmed 13 September 2026). Preserve their study data

@@ -9,6 +9,7 @@ test('Tab leaves Other ways from its trigger in both directions', async ({ page 
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
   const trigger = page.getByRole('button', { name: 'Other ways to study' });
   for (const [key, target] of [
     ['Tab', 'Add'],
