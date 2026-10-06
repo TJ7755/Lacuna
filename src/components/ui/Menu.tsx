@@ -3,7 +3,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
 import { ChevronDownIcon } from './icons';
-import { MOTION_EASING } from './motion';
+import { expandingActionSpring, MOTION_EASING } from './motion';
 
 export interface MenuItem {
   /** Visible label. Also the accessible name, so write it as the action it performs. */
@@ -62,10 +62,7 @@ export function Menu({
   );
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerHeight = size === 'md' ? 48 : 44;
-  const transition =
-    multiplier === 0
-      ? { duration: 0 }
-      : { type: 'spring' as const, visualDuration: 0.3 * multiplier, bounce: 0 };
+  const transition = expandingActionSpring(multiplier);
 
   // Only the surface changes dimensions; its text never inherits a layout scale.
   useEffect(() => {

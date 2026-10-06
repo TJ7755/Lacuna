@@ -1,0 +1,4 @@
+- Course creation now expands from New course on Today, keeping the current page visible and returning keyboard focus after cancellation. The sidebar shortcut opens the same form; validation and explicit study-target choices are preserved.
+- Today course rows lift immediately on hover or keyboard focus, without inheriting their arrival delay.
+- Expanding action menus and course creation use one physical spring, with consistent damping across motion speeds and instant expansion for reduced motion.
+- Add lesson uses the same expanding disclosure motion; Escape works throughout the form and restores focus to its trigger.

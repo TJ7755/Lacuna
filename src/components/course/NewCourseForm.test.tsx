@@ -26,15 +26,29 @@ describe('NewCourseForm', () => {
     vi.restoreAllMocks();
   });
 
+  it('can expand inline without a modal or keyboard trap, and cancels with Escape', () => {
+    const onClose = vi.fn();
+    const { container } = render(<NewCourseForm onClose={onClose} inline />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const form = screen.getByRole('form', { name: 'New course' });
+    expect(container).toContainElement(form);
+    const input = screen.getByRole('textbox', { name: 'Course name' });
+    expect(input).toHaveFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    create.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('associates the visible course name label with the input', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     const input = screen.getByRole('textbox', { name: 'Course name' });
     expect(screen.getByLabelText('Course name')).toBe(input);
-    expect(screen.getByText('Course name', { selector: 'label' })).toHaveAttribute(
-      'for',
-      input.id,
-    );
+    expect(screen.getByText('Course name', { selector: 'label' })).toHaveAttribute('for', input.id);
     expect(input).not.toHaveAttribute('placeholder');
   });
 

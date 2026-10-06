@@ -1,4 +1,5 @@
 import { m as motion } from 'motion/react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -28,6 +29,8 @@ export function TodayQueue({
   onStudy: (id: string) => void;
   onMenu: (id: string, position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
 }) {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const liftTransition = { duration: 0.16 * multiplier, delay: 0, ease: MOTION_EASING.emphasised };
   const firstDue = rows.findIndex((row) => row.due > 0);
   return (
     <section aria-label="Today, most urgent first" className="flex flex-col gap-2">
@@ -38,15 +41,24 @@ export function TodayQueue({
           <motion.div
             key={row.id}
             layout={multiplier > 0 ? 'position' : false}
-            initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
-            animate={{ opacity: 1, y: 0 }}
+            initial={multiplier > 0 ? { opacity: 0 } : false}
+            animate={{
+              opacity: 1,
+              y: multiplier > 0 && focusedId === row.id ? -2 : 0,
+              transition: { y: liftTransition },
+            }}
             transition={{
               duration: 0.46 * multiplier,
               delay: (0.25 + index * 0.06) * multiplier,
               ease: MOTION_EASING.emphasised,
             }}
-            whileHover={multiplier > 0 ? { y: -2 } : undefined}
-            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)]"
+            whileHover={multiplier > 0 ? { y: -2, transition: liftTransition } : undefined}
+            onFocusCapture={() => setFocusedId(row.id)}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                setFocusedId(null);
+            }}
+            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)] focus-within:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)]"
           >
             <span
               aria-hidden="true"
@@ -61,7 +73,9 @@ export function TodayQueue({
             >
               {row.name}
               {row.hasPendingUpdate && (
-                <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">Update available</span>
+                <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">
+                  Update available
+                </span>
               )}
             </Link>
             {done ? (
@@ -70,7 +84,12 @@ export function TodayQueue({
                   className="grid h-6 w-6 place-items-center rounded-full bg-positive text-surface"
                   initial={multiplier > 0 ? { scale: 0, rotate: -90 } : false}
                   animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 15, delay: (0.5 + index * 0.06) * multiplier }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 500,
+                    damping: 15,
+                    delay: (0.5 + index * 0.06) * multiplier,
+                  }}
                 >
                   <CheckIcon width={14} height={14} />
                 </motion.span>

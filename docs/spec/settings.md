@@ -23,10 +23,11 @@ its navigation cannot drift from the rendered groups.
 - **Motion:** a **motion-speed** setting with three steps (**Slow**, **Normal** and
   **Fast**) that multiplies animation and transition durations in the app by a single value.
   It is persisted to `localStorage`; the separate `prefers-reduced-motion` preference disables
-  motion regardless of this setting. Overlay dialogs (new course, card edit, archive,
+  motion regardless of this setting. Overlay dialogs (card edit, archive,
   the mobile drawer, the Learn touch sheet) skip enter/exit when the multiplier is 0
   rather than playing a zero-duration keyframe. Expanding panels (share codes, import
-  previews, card-list choosers) fade; they do not animate `height` or `margin`.
+  previews, card-list choosers) fade. The New course surface grows from its trigger using the
+  same physical spring as course action menus and inline disclosures, with a separate content fade.
 - **Input mode** (v0.0.2): `auto` (default — initially uses the primary pointer, then follows mouse/keyboard
   or touch/pen activity), `touch`, or `keyboard`. The choice drives whether the
   app renders bottom sheets vs. dropdowns, shows or hides swipe hints, and swaps

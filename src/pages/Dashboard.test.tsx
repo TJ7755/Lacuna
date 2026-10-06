@@ -14,6 +14,7 @@ vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ state: null }),
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
   ),

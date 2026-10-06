@@ -1,11 +1,10 @@
 import { AnimatePresence, m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
-
-const EASE = [0.16, 1, 0.3, 1] as const;
+import { expandingActionSpring } from './motion';
 
 export function animatedDisclosureTiming(multiplier: number) {
-  return { duration: 0.22 * multiplier, ease: EASE };
+  return { height: expandingActionSpring(multiplier), opacity: { duration: 0.12 * multiplier } };
 }
 
 /**

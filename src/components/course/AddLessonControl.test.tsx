@@ -19,6 +19,10 @@ vi.mock('../../db/lessonRepository', () => ({
 vi.mock('../ui/Toast', () => ({
   useToast: () => ({ notify: vi.fn() }),
 }));
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['off'],
+  speedMultiplier: () => 0,
+}));
 
 describe('defaultLessonName', () => {
   it('suggests the next lesson number', () => {
@@ -29,6 +33,14 @@ describe('defaultLessonName', () => {
 });
 
 describe('AddLessonControl', () => {
+  it('cancels with Escape from any form control and returns focus to Add lesson', async () => {
+    render(<AddLessonControl courseId="course-1" lessonCount={1} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    cancel.focus();
+    fireEvent.keyDown(cancel, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Add lesson' })).toHaveFocus();
+  });
   it('creates a lesson and calls onCreated', async () => {
     const onCreated = vi.fn();
     render(<AddLessonControl courseId="course-1" lessonCount={1} onCreated={onCreated} />);
@@ -57,7 +69,9 @@ it('offers an import into a new lesson without creating it before confirmation',
   fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
   fireEvent.click(screen.getByRole('button', { name: 'Import cards' }));
   // The importer is a lazy chunk, and its first load can be slow on a cold run.
-  expect(await screen.findByLabelText('Lesson title', {}, { timeout: 5000 })).toHaveValue('Lesson 2');
+  expect(await screen.findByLabelText('Lesson title', {}, { timeout: 5000 })).toHaveValue(
+    'Lesson 2',
+  );
   expect(screen.getByLabelText('Paste your cards')).toHaveValue('');
   expect(createLesson).not.toHaveBeenCalled();
 });

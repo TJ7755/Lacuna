@@ -48,6 +48,13 @@ export function scaledSpring(multiplier: number, stiffness: number, damping: num
   };
 }
 
+/** Shared physical spring for surfaces that expand from an action button. */
+export function expandingActionSpring(multiplier: number) {
+  const spring = scaledSpring(multiplier, 420, 36);
+  if (spring.type !== 'spring') return { duration: 0 } as const;
+  return { ...spring, mass: 1 };
+}
+
 /**
  * Shared height-collapse configuration for disclosures: expands to auto height and
  * collapses to zero, scaling timing by the motion multiplier and becoming inert

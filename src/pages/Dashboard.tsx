@@ -5,7 +5,7 @@ import { ModalBackdrop } from '../components/ui/ModalBackdrop';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
@@ -18,10 +18,10 @@ import { WeekPanel } from '../components/dashboard/WeekPanel';
 import { TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
 import { Button } from '../components/ui/Button';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { CardsIcon, ClockIcon, PlusIcon } from '../components/ui/icons';
+import { CardsIcon, ClockIcon } from '../components/ui/icons';
 import { CountUp } from '../components/ui/Celebration';
 import { MOTION_EASING } from '../components/ui/motion';
-import { NewCourseForm } from '../components/course/NewCourseForm';
+import { NewCourseControl } from '../components/course/NewCourseControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { urgencyOrder } from '../state/dashboardForecasts';
 import { weekSummary } from '../state/weekSummary';
@@ -48,7 +48,14 @@ export function Dashboard() {
   const stats = data?.stats;
   const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
+  const location = useLocation();
   const [creatingCourse, setCreatingCourse] = useState(false);
+  useEffect(() => {
+    if (location.state?.createCourse) {
+      setCreatingCourse(true);
+      void navigate('/', { replace: true, state: null });
+    }
+  }, [location.state, navigate]);
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
@@ -118,7 +125,9 @@ export function Dashboard() {
   );
 
   const firstCourseId = rows?.[0]?.id;
-  usePageShortcuts({ s: firstCourseId ? () => navigate(`/course/${firstCourseId}/study`) : undefined });
+  usePageShortcuts({
+    s: firstCourseId ? () => navigate(`/course/${firstCourseId}/study`) : undefined,
+  });
 
   const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
   // A non-empty queue never reads as zero minutes.
@@ -155,22 +164,9 @@ export function Dashboard() {
           <Button variant="ghost" onClick={() => navigate('/import')}>
             Import
           </Button>
-          {activeCourses && activeCourses.length > 0 && (
-            <Button
-              variant="secondary"
-              onClick={() => setCreatingCourse(true)}
-              className="shrink-0 whitespace-nowrap border-[1.5px] border-ink"
-            >
-              <PlusIcon width={16} height={16} />
-              New course
-            </Button>
-          )}
+          <NewCourseControl open={creatingCourse} onOpenChange={setCreatingCourse} />
         </div>
       </div>
-
-      <AnimatePresence>
-        {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
-      </AnimatePresence>
 
       <SyncStatus />
 
@@ -179,10 +175,7 @@ export function Dashboard() {
           <CourseSkeleton />
         </DelayedFallback>
       ) : rows.length === 0 ? (
-        <EmptyState
-          hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
-          onCreateCourse={() => setCreatingCourse(true)}
-        />
+        <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
       ) : (
         <div className="flex flex-col gap-6">
           {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
@@ -372,8 +365,8 @@ function ArchiveCourseDialog({
           Archive {course.name}?
         </h2>
         <p id="archive-course-description" className="mt-2 text-sm leading-relaxed text-ink-soft">
-          This removes the course from active study and Today. Its lessons, cards and review
-          history are preserved.
+          This removes the course from active study and Today. Its lessons, cards and review history
+          are preserved.
         </p>
         {error && (
           <p role="alert" className="mt-4 text-sm text-negative">
@@ -413,13 +406,7 @@ function CourseSkeleton() {
   );
 }
 
-function EmptyState({
-  hasArchivedCourses,
-  onCreateCourse,
-}: {
-  hasArchivedCourses: boolean;
-  onCreateCourse: () => void;
-}) {
+function EmptyState({ hasArchivedCourses }: { hasArchivedCourses: boolean }) {
   return (
     <div className="relative flex flex-col items-center justify-center px-4 py-20 text-center">
       <div className="relative flex flex-col items-center">
@@ -432,10 +419,6 @@ function EmptyState({
             ? 'Restore a course from Archived or start another one.'
             : 'Start a course to organise your lessons and cards.'}
         </p>
-        <Button variant="primary" onClick={onCreateCourse}>
-          <PlusIcon width={16} height={16} />
-          New course
-        </Button>
       </div>
     </div>
   );

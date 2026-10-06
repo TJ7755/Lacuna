@@ -15,13 +15,14 @@ import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 interface NewCourseFormProps {
   onClose: () => void;
+  inline?: boolean;
 }
 
 /** Create an empty course with an explicit study target. */
-export function NewCourseForm({ onClose }: NewCourseFormProps) {
+export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
-  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input, textarea' });
+  const trapRef = useFocusTrap(!inline, { autoFocusSelector: 'input, textarea' });
   const nameInputRef = useRef<HTMLInputElement>(null);
   const nameInputId = useId();
   const datePickerRef = useRef<HTMLDivElement>(null);
@@ -73,25 +74,19 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
     }
   }
 
-  return createPortal(
-    <DialogPanel
-      label="New course"
-      trapRef={trapRef}
-      onBackdropClick={onClose}
-      className="max-w-md"
-      overlayClassName="will-change-transform-opacity"
-      onKeyDown={dialogKeyDown({
-        onCancel: onClose,
-        onSubmit: () => void handleCreate(),
-        enterSubmits: true,
-        ignore: (target, key) =>
-          key === 'Escape'
-            ? !!target.closest('[data-date-time-picker-popover]')
-            : !!target.closest('[data-date-time-picker]'),
-      })}
-    >
-      <DialogHeader title="New course" onClose={onClose} closeLabel="Close" />
-
+  const onKeyDown = dialogKeyDown({
+    onCancel: () => {
+      if (!saving) onClose();
+    },
+    onSubmit: () => void handleCreate(),
+    enterSubmits: true,
+    ignore: (target, key) =>
+      key === 'Escape'
+        ? !!target.closest('[data-date-time-picker-popover]')
+        : !!target.closest('[data-date-time-picker]'),
+  });
+  const fields = (
+    <>
       <div className="flex flex-col gap-5 px-6 py-6">
         <div className="flex flex-col gap-2">
           <label htmlFor={nameInputId} className="text-sm text-ink-faint">
@@ -140,13 +135,49 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
       </div>
 
       <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
-        <Button variant="ghost" onClick={onClose} disabled={saving}>
+        <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={() => void handleCreate()} disabled={!canCreate}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() => void handleCreate()}
+          disabled={!canCreate}
+        >
           {saving ? 'Creating…' : 'Create'}
         </Button>
       </footer>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <form
+        aria-label="New course"
+        onKeyDown={onKeyDown}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleCreate();
+        }}
+      >
+        {fields}
+      </form>
+    );
+  }
+
+  return createPortal(
+    <DialogPanel
+      label="New course"
+      trapRef={trapRef}
+      onBackdropClick={() => {
+        if (!saving) onClose();
+      }}
+      className="max-w-md"
+      overlayClassName="will-change-transform-opacity"
+      onKeyDown={onKeyDown}
+    >
+      <DialogHeader title="New course" onClose={onClose} closeLabel="Close" />
+      {fields}
     </DialogPanel>,
     document.body,
   );

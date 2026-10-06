@@ -2,6 +2,7 @@ import { m as motion } from 'motion/react';
 import { CardsIcon, FlagIcon, FileTextIcon, HelpIcon, PlusIcon } from '../ui/icons';
 import { Menu } from '../ui/Menu';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { expandingActionSpring } from '../ui/motion';
 
 export type CourseAddKind = 'lesson' | 'practice' | 'question-set' | 'checkpoint';
 
@@ -38,11 +39,7 @@ export function AddCourseControl({
           <motion.span
             aria-hidden="true"
             animate={{ rotate: open && multiplier > 0 ? 45 : 0 }}
-            transition={
-              multiplier === 0
-                ? { duration: 0 }
-                : { type: 'spring', visualDuration: 0.3 * multiplier, bounce: 0 }
-            }
+            transition={expandingActionSpring(multiplier)}
           >
             <PlusIcon width={15} height={15} />
           </motion.span>

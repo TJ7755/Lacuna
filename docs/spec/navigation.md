@@ -132,7 +132,9 @@ Courses                                              [ + New course ]
 ```
 
 Header with title and New-course button; a motivation strip (`StudySignals`); an inline
-new-course composer which requires an explicit **Exam date** or **Steady retention** target (the
+new-course composer which expands from its Today trigger; the sidebar shortcut opens that same
+composer. It uses ordinary keyboard navigation, focuses Course name on opening, and returns focus
+to its trigger after Escape or Cancel. It requires an explicit **Exam date** or **Steady retention** target (the
 dated choice starts with a seven-day suggestion only after it is selected); a course grid ordered
 by a configurable **sort** (recent, ready to study,
 mastery, exam date, name, or created — Settings → Sidebar has no sort control; the sort lives on

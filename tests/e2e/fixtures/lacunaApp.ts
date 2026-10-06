@@ -2,7 +2,10 @@ import { expect, type Page } from '@playwright/test';
 
 export async function chooseScheduledStudy(page: Page) {
   const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-  await sheet.getByRole('button', { name: /^(Start|Continue):/ }).first().click();
+  await sheet
+    .getByRole('button', { name: /^(Start|Continue):/ })
+    .first()
+    .click();
   await expect(sheet).toBeHidden();
 }
 
@@ -16,13 +19,16 @@ export async function enterFreshLacuna(page: Page) {
 
 export async function createCourse(page: Page, courseName: string) {
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
-  await page.getByRole('textbox', { name: 'Course name' }).fill(courseName);
-  await page.getByRole('radio', { name: /Steady retention/ }).click();
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  const form = page.getByRole('form', { name: 'New course' });
+  await form.getByRole('textbox', { name: 'Course name' }).fill(courseName);
+  await form.getByRole('radio', { name: /Steady retention/ }).click();
+  await form.getByRole('button', { name: 'Create', exact: true }).click();
 
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await expect(
-    page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: courseName, exact: true }),
+    page
+      .getByRole('navigation', { name: 'Courses' })
+      .getByRole('link', { name: courseName, exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
 }

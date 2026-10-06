@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AnimatedDisclosure, animatedDisclosureTiming } from './AnimatedDisclosure';
+import { expandingActionSpring } from './motion';
 
 describe('animatedDisclosureTiming', () => {
   it('follows the global speed and reduced-motion multipliers', () => {
-    expect(animatedDisclosureTiming(1.4).duration).toBeCloseTo(0.308);
-    expect(animatedDisclosureTiming(0.6).duration).toBeCloseTo(0.132);
-    expect(animatedDisclosureTiming(0).duration).toBe(0);
+    expect(animatedDisclosureTiming(1.4).height).toEqual(expandingActionSpring(1.4));
+    expect(animatedDisclosureTiming(1.4).opacity.duration).toBeCloseTo(0.168);
+    expect(animatedDisclosureTiming(0.6).height).toEqual(expandingActionSpring(0.6));
+    expect(animatedDisclosureTiming(0.6).opacity.duration).toBeCloseTo(0.072);
+    expect(animatedDisclosureTiming(0)).toEqual({
+      height: { duration: 0 },
+      opacity: { duration: 0 },
+    });
   });
 });
 
