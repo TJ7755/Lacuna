@@ -34,3 +34,26 @@ it('reports no title on pages without one', () => {
   const { result } = renderHook(() => useCourseTitleInView('/course/c1/cards'));
   expect(result.current).toBe(false);
 });
+
+it('finds a title that renders after the route has changed', async () => {
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      constructor(callback: typeof report) {
+        report = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+  report = () => {};
+  document.body.innerHTML = '<div data-route-content="/course/c1"></div>';
+  const { result } = renderHook(() => useCourseTitleInView('/course/c1'));
+  // A lazy page puts its title in after the shell has already rendered.
+  await act(async () => {
+    document.querySelector('[data-route-content]')!.innerHTML = '<h1 data-course-title>Biology</h1>';
+    await Promise.resolve();
+  });
+  act(() => report([{ isIntersecting: true }]));
+  expect(result.current).toBe(true);
+});

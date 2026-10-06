@@ -206,3 +206,4 @@
   drafts autosave). Tab from the last text field reaches the primary action. In the
   sequence editor Ctrl/Cmd+Enter inside an item still adds the next item. The new
   `useEditorKeys` hook never stops propagation, so the shell shortcuts keep working.
+- The course bar now hides the course name whenever the page title is on screen, including on a page that renders its title after the route changes.
