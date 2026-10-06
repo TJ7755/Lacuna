@@ -43,12 +43,13 @@ Pure aggregates over stored history, in local time:
 - **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a
   contribution-style calendar of reviews per **local** calendar day over the selected
   7-, 30- or 90-day period, built from review logs and theme-aware via accent-opacity
-  bands. The header carries the matching count and day range; a **month-name row**
-  above the cells shows a short month label on
+  bands. The header carries the matching count and day range. Seven- and 30-day
+  periods use a full-width daily strip with weekday or date labels and compact
+  fixed-height cells. Longer periods use a **month-name row** above the cells, with a short month label on
   the first column of each new month so the calendar is readable without a
   separate legend. Weekday labels (Mon/Thu/Sun) line up exactly with their cells.
-  Short periods keep compact cells instead of stretching a few weeks across the page.
-  One calendar date enters the tab order; arrow keys move between dates, including
+  One calendar date enters the tab order; horizontal arrows follow consecutive dates
+  in a daily strip or consecutive weeks in a calendar. Vertical arrows move between dates, including
   vertically across week boundaries. Changing period keeps a reachable tab stop.
 
 ### Per-card analysis (`CardAnalytics`)

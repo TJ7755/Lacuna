@@ -38,6 +38,18 @@ function makeCard(): Card {
 }
 
 describe('ReviewHeatmap', () => {
+  it.each([7, 30])('uses the available width for a compact %i-day strip', (days) => {
+    render(<ReviewHeatmap cards={[]} days={days} />);
+    const grid = screen.getByRole('grid');
+    expect(grid).toHaveStyle({ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` });
+    expect(grid.style.maxWidth).toBe('');
+    const cells = screen.getAllByRole('gridcell');
+    fireEvent.focus(cells[0]);
+    fireEvent.keyDown(cells[0], { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(cells[1]);
+    expect(cells[1]).toHaveStyle({ gridRow: '2' });
+  });
+
   it('limits dates and totals to the selected calendar-day period', () => {
     const card = makeCard();
     const older = new Date(today);

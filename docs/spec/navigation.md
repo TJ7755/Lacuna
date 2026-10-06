@@ -12,17 +12,17 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 |          |                                            |
 | Lacuna   |  <main> -- routed page, scrolls            |
 |          |  independently; page transitions           |
-| > Dash.. |  animate here                              |
-| > Review |                                            |
-| > Quick  |  (^K)                                      |
+| > Today  |  animate here                              |
+| > Search |                                            |
 | > Share  |                                            |
-| > Analyt.|                                            |
+| > Progr..|                                            |
 | > Setting|                                            |
 | > Help   |                                            |
 |          |                                            |
 | COURSES  |                                            |
 | - Organ..|                                            |
 | - French |                                            |
+| Archived |                                            |
 |          |                                            |
 | [v] coll |                                            |
 +----------+--------------------------------------------+
@@ -35,7 +35,7 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   has no visible scrollbar, whilst keyboard focus can still reveal long course lists.
   The footer contains a theme toggle and a
   collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
-  sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
+  white pill within its row. State (`collapsed`), compact mode, due-count visibility, and
   per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
   (configured in Settings → Sidebar) and take effect immediately. Its height follows the shell
   body rather than the viewport so the footer remains visible below the Electron titlebar.

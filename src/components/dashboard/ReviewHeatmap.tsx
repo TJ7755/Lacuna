@@ -50,6 +50,7 @@ export function ReviewHeatmap({
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const compact = days <= 30;
   const [sectionRef, revealed] = useRevealOnce<HTMLElement>(m === 0);
   const { columns, total, max, monthLabels } = useMemo(() => {
     const buckets = bucketReviewsByDay(reviewTimestamps(cards, activity));
@@ -152,7 +153,7 @@ export function ReviewHeatmap({
     const delta =
       key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : key === 'ArrowDown' ? 1 : -1;
     // Vertical movement follows the next date even when Sunday ends a column.
-    const targetDay = addDays(current.cell.day, horizontal ? delta * 7 : delta);
+    const targetDay = addDays(current.cell.day, horizontal && !compact ? delta * 7 : delta);
     const target = navigableCells.find(({ cell }) => cell.day === targetDay);
     if (!target) return;
     setActiveDay(target.cell.day);
@@ -181,35 +182,69 @@ export function ReviewHeatmap({
           aria-label={`Review activity over the last ${days} days`}
           className="grid gap-[4px]"
           style={{
-            gridTemplateColumns: `28px repeat(${columns.length}, minmax(0, 1fr))`,
-            minWidth: Math.min(480, 28 + columns.length * 24),
-            maxWidth: 28 + columns.length * 32,
+            gridTemplateColumns: compact
+              ? `repeat(${days}, minmax(0, 1fr))`
+              : `28px repeat(${columns.length}, minmax(0, 1fr))`,
+            minWidth: compact ? days * 12 : Math.min(480, 28 + columns.length * 24),
+            maxWidth: compact ? undefined : 28 + columns.length * 32,
           }}
         >
-          {monthLabels.map((label) => (
-            <span
-              key={label.weekIndex}
-              aria-hidden="true"
-              className="whitespace-nowrap pb-1 text-xs leading-none text-ink-faint"
-              style={{ gridColumn: label.weekIndex + 2, gridRow: 1 }}
-            >
-              {label.text}
-            </span>
-          ))}
-          {Object.entries(WEEKDAY_LABELS).map(([row, text]) => (
-            <span
-              key={row}
-              aria-hidden="true"
-              className="flex items-center text-xs text-ink-faint"
-              style={{ gridColumn: 1, gridRow: Number(row) + 2 }}
-            >
-              {text}
-            </span>
-          ))}
+          {compact &&
+            navigableCells.map(({ cell }, index) => {
+              if (days > 7 && index % 5 !== 0 && index !== days - 1) return null;
+              const date = new Date(cell.day);
+              return (
+                <span
+                  key={cell.day}
+                  aria-hidden="true"
+                  className="whitespace-nowrap pb-1 text-xs leading-none text-ink-faint"
+                  style={{
+                    gridColumn: index + 1,
+                    gridRow: 1,
+                    justifySelf: index === days - 1 ? 'end' : 'start',
+                  }}
+                >
+                  {date.toLocaleDateString(
+                    'en-GB',
+                    days <= 7
+                      ? { weekday: 'short', day: 'numeric' }
+                      : { day: 'numeric', month: 'short' },
+                  )}
+                </span>
+              );
+            })}
+          {!compact &&
+            monthLabels.map((label) => (
+              <span
+                key={label.weekIndex}
+                aria-hidden="true"
+                className="whitespace-nowrap pb-1 text-xs leading-none text-ink-faint"
+                style={{ gridColumn: label.weekIndex + 2, gridRow: 1 }}
+              >
+                {label.text}
+              </span>
+            ))}
+          {!compact &&
+            Object.entries(WEEKDAY_LABELS).map(([row, text]) => (
+              <span
+                key={row}
+                aria-hidden="true"
+                className="flex items-center text-xs text-ink-faint"
+                style={{ gridColumn: 1, gridRow: Number(row) + 2 }}
+              >
+                {text}
+              </span>
+            ))}
           {columns.flatMap((col, w) =>
             col.map((cell, d) => {
-              const placement = { gridColumn: w + 2, gridRow: d + 2 };
+              const index = compact
+                ? navigableCells.findIndex(({ cell: candidate }) => candidate.day === cell.day)
+                : -1;
+              const placement = compact
+                ? { gridColumn: index + 1, gridRow: 2 }
+                : { gridColumn: w + 2, gridRow: d + 2 };
               if (cell.outsidePeriod) {
+                if (compact) return null;
                 return (
                   <span
                     key={cell.day}
@@ -248,8 +283,8 @@ export function ReviewHeatmap({
                   }}
                   initial={m > 0 ? { opacity: 0, scale: 0.5 } : false}
                   animate={revealed ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
-                  whileHover={m > 0 ? { scale: 1.18 } : undefined}
-                  whileFocus={m > 0 ? { scale: 1.18 } : undefined}
+                  whileHover={m > 0 ? { scale: compact ? 1.035 : 1.18 } : undefined}
+                  whileFocus={m > 0 ? { scale: compact ? 1.035 : 1.18 } : undefined}
                   data-press=""
                   whileTap={m > 0 ? { scale: 0.9 } : undefined}
                   transition={{
@@ -257,7 +292,7 @@ export function ReviewHeatmap({
                     delay,
                     ease: MOTION_EASING.emphasised,
                   }}
-                  className="aspect-square rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+                  className={`${compact ? 'h-9' : 'aspect-square'} rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-accent/70`}
                   style={{ ...placement, ...cellStyle(cell) }}
                 />
               );
