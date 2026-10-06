@@ -27,12 +27,13 @@ function renderMenu(overrides?: {
 }
 
 describe('Menu', () => {
-  it('inverts its trigger while open without a competing background', () => {
+  it('expands the trigger surface around its choices without a detached panel', () => {
     const { trigger } = renderMenu();
-    expect(trigger).toHaveClass('bg-surface-raised');
     fireEvent.click(trigger);
-    expect(trigger).toHaveClass('bg-ink', 'text-paper');
-    expect(trigger).not.toHaveClass('bg-surface-raised');
+    const surface = trigger.closest('[data-expanding-action]');
+    expect(surface).not.toBeNull();
+    expect(surface).toContainElement(screen.getByRole('menu'));
+    expect(trigger).toHaveClass('text-ink');
   });
 
   it('keeps its items out of the document until opened', () => {
@@ -144,6 +145,22 @@ describe('Menu', () => {
       transitionDuration: duration,
     });
   });
+});
+
+it('opens on the first enabled entry when the leading entry is disabled', () => {
+  render(
+    <Menu
+      label="Actions"
+      items={[
+        { label: 'Unavailable', disabled: true, onSelect: vi.fn() },
+        { label: 'Available', onSelect: vi.fn() },
+      ]}
+    >
+      Actions
+    </Menu>,
+  );
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Actions' }), { key: 'ArrowDown' });
+  expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Available' }));
 });
 
 describe('Menu opened by pointer', () => {

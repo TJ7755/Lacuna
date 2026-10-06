@@ -12,26 +12,24 @@ export function useCourseTitleInView(pathname: string): boolean {
   useEffect(() => {
     setInView(false);
     if (typeof IntersectionObserver === 'undefined') return;
-    let observer: IntersectionObserver | undefined;
-    const attach = () => {
-      const page =
-        (pathname && document.querySelector(`[data-route-content="${CSS.escape(pathname)}"]`)) || document;
-      const title = page.querySelector('[data-course-title]');
-      if (!title) return false;
-      observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
+    // The shell mounts before lazy pages and their course data. Wait for this
+    // route's title rather than permanently missing it during its loading state.
+    const waitForTitle = new MutationObserver(observeTitle);
+    function observeTitle() {
+      const page = pathname
+        ? document.querySelector(`[data-route-content="${CSS.escape(pathname)}"]`)
+        : document;
+      const title = page?.querySelector('[data-course-title]');
+      if (!title) return;
       observer.observe(title);
-      return true;
-    };
-    // A lazy page renders its title after the route changes, so wait for it to arrive.
-    const waiting = attach()
-      ? undefined
-      : new MutationObserver(() => {
-          if (attach()) waiting?.disconnect();
-        });
-    waiting?.observe(document.body, { childList: true, subtree: true });
+      waitForTitle.disconnect();
+    }
+    waitForTitle.observe(document.body, { childList: true, subtree: true });
+    observeTitle();
     return () => {
-      waiting?.disconnect();
-      observer?.disconnect();
+      observer.disconnect();
+      waitForTitle.disconnect();
     };
   }, [pathname]);
   return inView;

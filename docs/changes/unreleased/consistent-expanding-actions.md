@@ -1,0 +1,1 @@
+- Unified Add and Other ways around one expanding action surface, preserving fixed-size text and the original corner-anchored spring. Action menus support arrow keys, Home, End and Escape, skip unavailable entries and restore focus on dismissal.

@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { useCourseTitleInView } from './CourseSectionNavigation';
 
@@ -35,25 +35,20 @@ it('reports no title on pages without one', () => {
   expect(result.current).toBe(false);
 });
 
-it('finds a title that renders after the route has changed', async () => {
-  vi.stubGlobal(
-    'IntersectionObserver',
-    class {
-      constructor(callback: typeof report) {
-        report = callback;
-      }
-      observe() {}
-      disconnect() {}
-    },
-  );
-  report = () => {};
-  document.body.innerHTML = '<div data-route-content="/course/c1"></div>';
-  const { result } = renderHook(() => useCourseTitleInView('/course/c1'));
-  // A lazy page puts its title in after the shell has already rendered.
-  await act(async () => {
-    document.querySelector('[data-route-content]')!.innerHTML = '<h1 data-course-title>Biology</h1>';
-    await Promise.resolve();
+it('observes the course title when asynchronous route content arrives', async () => {
+  const observe = vi.fn();
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(callback: typeof report) { report = callback; }
+    observe = observe;
+    disconnect() {}
   });
+  document.body.innerHTML = '<div data-route-content="/course/c1"><p>Loading…</p></div>';
+  const { result } = renderHook(() => useCourseTitleInView('/course/c1'));
+  const title = document.createElement('h1');
+  title.dataset.courseTitle = '';
+  title.textContent = 'Biology';
+  document.querySelector('[data-route-content]')!.append(title);
+  await waitFor(() => expect(observe).toHaveBeenCalledWith(title));
   act(() => report([{ isIntersecting: true }]));
   expect(result.current).toBe(true);
 });
