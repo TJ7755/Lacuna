@@ -1,7 +1,18 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { useState } from 'react';
 import { ConfirmInline, ConfirmInlineSwap, inlineConfirmTiming } from './ConfirmInline';
+
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 1,
+}));
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 describe('ConfirmInline', () => {
   it('renders the message and default labels', () => {
@@ -70,6 +81,41 @@ describe('ConfirmInline', () => {
 });
 
 describe('ConfirmInlineSwap', () => {
+  it('disables retained controls in both directions and refocuses a rapidly revived confirmation', async () => {
+    function Harness() {
+      const [active, setActive] = useState(false);
+      return (
+        <LazyMotion features={domAnimation}>
+          <ConfirmInlineSwap
+            active={active}
+            message="Delete?"
+            onConfirm={vi.fn()}
+            onCancel={() => setActive(false)}
+          >
+            <button onClick={() => setActive(true)}>Delete note</button>
+          </ConfirmInlineSwap>
+        </LazyMotion>
+      );
+    }
+    render(<Harness />);
+    const trigger = screen.getByRole('button', { name: 'Delete note' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(trigger).toBeInTheDocument();
+    expect(trigger.closest('[inert]')).not.toBeNull();
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    expect(cancel).toHaveFocus();
+    fireEvent.click(cancel);
+    expect(cancel).toBeInTheDocument();
+    expect(cancel.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    fireEvent.click(trigger);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBe(cancel);
+    expect(cancel.closest('[inert]')).toBeNull();
+    expect(cancel).toHaveFocus();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 250)));
+  });
   it('animates at the global multiplier', () => {
     expect(inlineConfirmTiming(1.4).duration).toBeCloseTo(0.224);
     expect(inlineConfirmTiming(0.6).duration).toBeCloseTo(0.096);

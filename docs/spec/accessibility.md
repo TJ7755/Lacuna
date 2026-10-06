@@ -14,6 +14,9 @@
 - Keyboard and assistive-technology clicks receive the same press acknowledgement as
   pointer activation. Animated departing steps are inert and hidden from assistive
   technology; their incoming headings can receive focus without entering the Tab order.
+  Data-settings modals release their focus trap as soon as closing starts. Inline
+  confirmation swaps disable their outgoing controls in both directions, and fast
+  reopening restores focus to the revived form or confirmation.
 - Diagram authoring supports Enter or Space to begin and commit a region, arrows to
   move it, Shift and arrows to resize it, and Escape to cancel a draft. In Select mode,
   the same arrows position the selected region. Region buttons announce their names

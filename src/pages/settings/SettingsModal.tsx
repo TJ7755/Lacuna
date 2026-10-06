@@ -3,7 +3,7 @@
 
 import { type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { cn } from '../../components/ui/cn';
 import { ModalBackdrop } from '../../components/ui/ModalBackdrop';
 import { scaledSpring } from '../../components/ui/motion';
@@ -27,18 +27,22 @@ function ModalPanel({
   multiplier: number;
   children: ReactNode;
 }) {
-  const trapRef = useFocusTrap(true, { autoFocusSelector });
+  const present = useIsPresent();
+  const trapRef = useFocusTrap(present, { autoFocusSelector });
 
   return (
     <motion.div
       ref={trapRef}
+      inert={!present}
+      aria-hidden={!present || undefined}
+      style={{ pointerEvents: present ? undefined : 'none' }}
       className="fixed inset-0 z-50 flex flex-col p-4"
       initial={multiplier > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
       exit={multiplier > 0 ? { opacity: 0 } : undefined}
       transition={{ duration: 0.18 * multiplier }}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') {
+        if (present && event.key === 'Escape') {
           event.stopPropagation();
           onClose();
         }

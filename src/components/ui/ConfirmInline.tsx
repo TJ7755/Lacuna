@@ -3,8 +3,15 @@
 // window.confirm() (blocks in tests, looks native nowhere). See NoteRow.tsx and
 // Settings.tsx's backup-restore list for the hand-rolled versions this replaces.
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import {
+  forwardRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
 
@@ -38,6 +45,22 @@ export function inlineConfirmTiming(multiplier: number) {
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled])';
 
+/** Retain the visual exit without retaining its interactive controls. */
+const SwapSurface = forwardRef<HTMLDivElement, ComponentProps<typeof motion.div>>(
+  function SwapSurface(props, ref) {
+    const present = useIsPresent();
+    return (
+      <motion.div
+        {...props}
+        ref={ref}
+        inert={!present}
+        aria-hidden={!present || undefined}
+        style={{ ...props.style, pointerEvents: present ? props.style?.pointerEvents : 'none' }}
+      />
+    );
+  },
+);
+
 export function ConfirmInline({
   message,
   confirmLabel = 'Yes',
@@ -51,11 +74,13 @@ export function ConfirmInline({
 }: ConfirmInlineProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const present = useIsPresent();
 
   useEffect(() => {
+    if (!present) return;
     if (focusOnMount === 'confirm') confirmRef.current?.focus();
     if (focusOnMount === 'cancel') cancelRef.current?.focus();
-  }, [focusOnMount]);
+  }, [focusOnMount, present]);
 
   return (
     <div className={cn('flex items-center gap-1', className)}>
@@ -136,7 +161,7 @@ export function ConfirmInlineSwap({
     >
       <AnimatePresence initial={false} mode="popLayout">
         {active ? (
-          <motion.div
+          <SwapSurface
             key="confirmation"
             initial={multiplier > 0 ? { opacity: 0, scale: 0.98 } : false}
             animate={{ opacity: 1, scale: 1 }}
@@ -153,9 +178,9 @@ export function ConfirmInlineSwap({
                 onCancel();
               }}
             />
-          </motion.div>
+          </SwapSurface>
         ) : (
-          <motion.div
+          <SwapSurface
             key="trigger"
             data-confirm-trigger=""
             initial={multiplier > 0 ? { opacity: 0, scale: 0.98 } : false}
@@ -165,7 +190,7 @@ export function ConfirmInlineSwap({
             className="flex items-center"
           >
             {children}
-          </motion.div>
+          </SwapSurface>
         )}
       </AnimatePresence>
     </motion.div>
