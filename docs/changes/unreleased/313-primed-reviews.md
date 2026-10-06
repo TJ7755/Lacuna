@@ -1,0 +1,1 @@
+- Answers given within 10 minutes of an earlier answer to the same card in the same session are now recorded as primed. Until a card clears an unprimed retest, revision readiness makes no short-term recall claim for it instead of trusting an immediate repeat; FSRS scheduling is unchanged (#313)

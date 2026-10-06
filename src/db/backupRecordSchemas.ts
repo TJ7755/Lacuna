@@ -78,6 +78,7 @@ export const review = object({
   responseTimeSec: number,
   distracted: flag,
   hintUsed: flag.optional(),
+  primed: flag.optional(),
   stabilityBefore: number.nullable(),
   stabilityAfter: number,
   difficultyBefore: number.nullable(),
