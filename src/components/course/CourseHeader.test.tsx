@@ -1,8 +1,35 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CourseHeader } from './CourseHeader';
 
+// Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
+
 describe('CourseHeader', () => {
+  it('removes the rename field immediately on Escape and restores the edit control without overlapping titles', async () => {
+    render(
+      <LazyMotion features={domAnimation}>
+        <CourseHeader title="Mechanics" onRename={vi.fn()} />
+      </LazyMotion>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
+    const input = screen.getByRole('textbox', { name: 'course name' });
+    expect(screen.queryByRole('heading', { name: 'Mechanics' })).not.toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(input).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mechanics' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rename course' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
+    expect(screen.getByRole('textbox', { name: 'course name' })).toHaveFocus();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  });
   it('keeps the course visibility marker on the stable header during renaming', () => {
     render(<CourseHeader title="Mechanics" onRename={vi.fn()} />);
     const header = screen.getByRole('heading', { name: 'Mechanics' }).closest('header');
