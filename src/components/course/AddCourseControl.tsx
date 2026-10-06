@@ -8,8 +8,8 @@ export type CourseAddKind = 'lesson' | 'practice' | 'question-set' | 'checkpoint
 
 const options = [
   { kind: 'lesson', name: 'Lesson', Icon: FileTextIcon },
-  { kind: 'practice', name: 'Practice', Icon: CardsIcon },
-  { kind: 'question-set', name: 'Practice Qs', Icon: HelpIcon },
+  { kind: 'practice', name: 'Card practice', Icon: CardsIcon },
+  { kind: 'question-set', name: 'Practice questions', Icon: HelpIcon },
   { kind: 'checkpoint', name: 'Checkpoint', Icon: FlagIcon },
 ] as const;
 
@@ -27,7 +27,6 @@ export function AddCourseControl({
   return (
     <Menu
       label="Add"
-      triggerWidth={84}
       items={visible.map(({ kind, name, Icon }) => ({
         label: name,
         icon: <Icon width={17} height={17} />,

@@ -61,16 +61,17 @@ export function Menu({
     12 + items.reduce((height, item) => height + (item.description ? 64 : 44), 0),
   );
   const panelRef = useRef<HTMLDivElement>(null);
-  const triggerHeight = size === 'md' ? 48 : 44;
+  const [triggerHeight, setTriggerHeight] = useState(size === 'md' ? 48 : 44);
   const transition = expandingActionSpring(multiplier);
 
   // Only the surface changes dimensions; its text never inherits a layout scale.
+  // Both axes are measured so enlarged text grows the surface instead of clipping it.
   useEffect(() => {
     const trigger = triggerRef.current;
-    if (!trigger || triggerWidth) return;
+    if (!trigger) return;
     const measure = () => {
-      const width = trigger.getBoundingClientRect().width;
-      if (width > 0) setMeasuredWidth(width);
+      if (!triggerWidth && trigger.offsetWidth > 0) setMeasuredWidth(trigger.offsetWidth);
+      if (trigger.offsetHeight > 0) setTriggerHeight(trigger.offsetHeight);
     };
     measure();
     const observer = new ResizeObserver(measure);

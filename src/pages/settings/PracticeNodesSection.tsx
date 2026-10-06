@@ -32,12 +32,12 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
     <div className="flex flex-col gap-3">
       <p className="text-xs text-ink-faint">
         Automatic practice appears when due work builds up and follows the thresholds above.
-        Existing manual practice nodes stay on the course path and can limit lessons, card count and
+        Card practice you add stays on the course path and can limit lessons, card count and
         order.
       </p>
 
       {manualNodes?.length === 0 && (
-        <p className="text-xs text-ink-faint">No manual practice nodes yet.</p>
+        <p className="text-xs text-ink-faint">No card practice yet.</p>
       )}
 
       {manualNodes?.map((node) => (

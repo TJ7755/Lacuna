@@ -9,16 +9,16 @@ describe('AddCourseControl', () => {
     fireEvent.keyDown(trigger, { key: 'ArrowDown' });
     expect(document.activeElement).toHaveTextContent('Lesson');
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
-    expect(document.activeElement).toHaveTextContent('Practice');
+    expect(document.activeElement).toHaveTextContent('Card practice');
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
     expect(document.activeElement).toBe(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
-  it('offers Practice Qs and reports its kind', () => {
+  it('offers Practice questions and reports its kind', () => {
     const onAdd = vi.fn();
     render(<AddCourseControl onAdd={onAdd} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Practice Qs' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Practice questions' }));
     expect(onAdd).toHaveBeenCalledWith('question-set');
   });
 

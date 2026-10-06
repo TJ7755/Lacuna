@@ -13,34 +13,8 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { PlusIcon } from '../ui/icons';
 import './question-set-path.css';
 import '../question-sets/question-sets.css';
-
-export function AddQuestionSetPractice({
-  courseId,
-  afterLessonId,
-}: {
-  courseId: string;
-  afterLessonId?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button variant="secondary" size="sm" disabled={!afterLessonId} onClick={() => setOpen(true)}>
-        <PlusIcon width={16} height={16} />
-        Add Practice Qs
-      </Button>
-      {open && (
-        <QuestionSetPathEditor
-          courseId={courseId}
-          afterLessonId={afterLessonId}
-          onClose={() => setOpen(false)}
-        />
-      )}
-    </>
-  );
-}
 
 export function QuestionSetPathEditor({
   courseId,
@@ -89,7 +63,7 @@ export function QuestionSetPathEditor({
       className="qs-path-dialog"
       role="dialog"
       aria-modal="true"
-      aria-label={node ? 'Edit Practice Qs' : 'Add Practice Qs'}
+      aria-label={node ? 'Edit practice questions' : 'Add practice questions'}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !busy) {
           event.stopPropagation();
@@ -104,7 +78,7 @@ export function QuestionSetPathEditor({
       />
       <section className="qs-path-panel">
         <header>
-          <h2>{node ? 'Edit Practice Qs' : 'Add Practice Qs'}</h2>
+          <h2>{node ? 'Edit practice questions' : 'Add practice questions'}</h2>
         </header>
         <div className="qs-path-fields">
           <QuestionSetChoices

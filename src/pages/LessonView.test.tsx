@@ -224,8 +224,7 @@ describe('LessonView View mode', () => {
     expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     expect(container.querySelector('[data-lesson-workspace-mode="study"]')).not.toBeNull();
     expect(mockUpdateCourse).not.toHaveBeenCalled();
     expect(mockUpdateLesson).not.toHaveBeenCalled();
@@ -312,8 +311,7 @@ describe('LessonView View mode', () => {
     ).toHaveAttribute('href', '/course/course-1/settings');
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
     expect(screen.getByText('A note')).toBeInTheDocument();
     expect(screen.queryByText('Add note')).not.toBeInTheDocument();
@@ -388,7 +386,8 @@ describe('LessonView Edit mode', () => {
 
   it('opens a newly created lesson from the inline path', async () => {
     renderInline();
-    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
 
     await waitFor(() => {
@@ -402,8 +401,10 @@ describe('LessonView Edit mode', () => {
     const onAddCheckpoint = vi.fn();
 
     renderInline(false, false, { onAddPractice, onAddCheckpoint });
-    fireEvent.click(screen.getByRole('button', { name: 'Add practice' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
 
     expect(onAddPractice).toHaveBeenCalledOnce();
     expect(onAddCheckpoint).toHaveBeenCalledOnce();

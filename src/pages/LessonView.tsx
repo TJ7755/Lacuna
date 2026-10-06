@@ -1,6 +1,6 @@
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
-import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
+import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
 // (title, one meta line, a Study/Edit pill and the study action) sits above a large
@@ -14,6 +14,7 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 // (via optional courseId/lessonId props that take precedence over route params).
 // British English throughout.
 
+import { useRef, useState } from 'react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { m as motion } from 'motion/react';
@@ -31,11 +32,12 @@ import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
 import { learntCardCount } from '../components/cards/lessonCardRow';
-import { PlayIcon, PlusIcon } from '../components/ui/icons';
+import { PlayIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { riseIn } from '../components/course/riseIn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
+import { AddCourseControl } from '../components/course/AddCourseControl';
 import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
@@ -95,6 +97,13 @@ export function LessonView({
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
+  const [addingLesson, setAddingLesson] = useState(false);
+  const [addingQuestionSet, setAddingQuestionSet] = useState(false);
+  const addRef = useRef<HTMLDivElement>(null);
+  const restoreAdd = () => {
+    setAddingLesson(false);
+    addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+  };
 
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
@@ -220,30 +229,40 @@ export function LessonView({
         />
       )}
       {isInline && courseId && authoring && (
-        <div
-          role="group"
-          aria-label="Add to path"
-          className="mb-6 flex flex-wrap justify-end gap-2"
-        >
-          <AddLessonControl
-            courseId={courseId}
-            lessonCount={lessons.length}
-            onCreated={(createdLesson) =>
-              navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
-            }
-          />
-          {onAddPractice && (
-            <Button variant="secondary" size="sm" onClick={onAddPractice}>
-              <PlusIcon width={16} height={16} />
-              Add practice
-            </Button>
-          )}
-          <AddQuestionSetPractice courseId={courseId} afterLessonId={lesson.id} />
-          {onAddCheckpoint && (
-            <Button variant="secondary" size="sm" onClick={onAddCheckpoint}>
-              <PlusIcon width={16} height={16} />
-              Add checkpoint
-            </Button>
+        <div className="mb-6 flex flex-col gap-3">
+          <div ref={addRef} role="group" aria-label="Add to path" className="flex justify-end">
+            <AddCourseControl
+              kinds={[
+                'lesson',
+                ...(onAddPractice ? (['practice'] as const) : []),
+                'question-set',
+                ...(onAddCheckpoint ? (['checkpoint'] as const) : []),
+              ]}
+              onAdd={(kind) => {
+                if (kind === 'lesson') setAddingLesson(true);
+                else if (kind === 'practice') onAddPractice?.();
+                else if (kind === 'question-set') setAddingQuestionSet(true);
+                else onAddCheckpoint?.();
+              }}
+            />
+          </div>
+          <AnimatedDisclosure open={addingLesson}>
+            <AddLessonControl
+              initiallyOpen
+              courseId={courseId}
+              lessonCount={lessons.length}
+              onCancel={restoreAdd}
+              onCreated={(createdLesson) =>
+                navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
+              }
+            />
+          </AnimatedDisclosure>
+          {addingQuestionSet && (
+            <QuestionSetPathEditor
+              courseId={courseId}
+              afterLessonId={lesson.id}
+              onClose={() => setAddingQuestionSet(false)}
+            />
           )}
         </div>
       )}

@@ -140,7 +140,8 @@ export function AddLessonControl({
           </div>
         </AnimatedDisclosure>
       </div>
-      {!open && (
+      {/* A caller that supplies onCancel owns the trigger and the collapse. */}
+      {!open && !onCancel && (
         <Button
           ref={trigger}
           variant="secondary"

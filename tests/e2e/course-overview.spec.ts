@@ -144,7 +144,7 @@ test('practice editing keeps an unobstructed 44px touch target with a long name'
     .click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Practice', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Card practice', exact: true }).click();
   const name = 'Practice with a long name covering several lines';
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('combobox', { name: 'Position on the path' }).selectOption('');

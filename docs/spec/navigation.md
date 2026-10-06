@@ -261,8 +261,9 @@ as a preference. Selecting a visible manual Practice node or assessment on the p
 generic choice and enters that exact scope. A secondary **Practice Now** action beside **Study**
 enters course-wide ad-hoc Practice directly when reached, exposed cards are eligible. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
-nodes remain editable on the path, and Edit mode exposes one **Add practice** action beside the
-other path-authoring actions rather than repeating insertion controls at every gap. Course Settings
+nodes remain editable on the path, and Edit mode exposes one **Add** menu (Lesson, Card practice,
+Practice questions, Checkpoint) rather than repeating insertion controls at every gap; the chosen
+form opens in its own bounded area beneath the menu, on single- and multi-lesson courses alike. Course Settings
 explains the distinction, lists existing manual nodes and links back to the path instead of
 duplicating the editor.
 The learner leaves only through an explicit finish action. The step union reserves an

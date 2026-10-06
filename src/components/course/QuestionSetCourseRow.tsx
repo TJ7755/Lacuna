@@ -9,7 +9,7 @@ import { ChevronRightIcon, EditIcon, HelpIcon } from '../ui/icons';
 import { QuestionSetPathEditor } from './QuestionSetPathEditor';
 import { useQuestionSetPathData } from './useQuestionSetPathData';
 
-/** A Practice Qs stop in the course's lesson list; it opens the set directly. */
+/** A Practice questions stop in the course's lesson list; it opens the set directly. */
 export function QuestionSetCourseRow({
   node,
   index,
@@ -36,13 +36,13 @@ export function QuestionSetCourseRow({
     ? 'Unavailable'
     : progress
       ? `${progress.answeredParts}/${progress.totalParts} answered`
-      : 'Practice Qs';
+      : 'Practice questions';
 
   return (
     <>
       <motion.button
         type="button"
-        aria-label={`Practice Qs: ${name}`}
+        aria-label={`Practice questions: ${name}`}
         disabled={unavailable}
         onClick={() =>
           navigate(`/course/${courseId}/question-sets/${node.questionSetId}`, {

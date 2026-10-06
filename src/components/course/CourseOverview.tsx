@@ -10,6 +10,7 @@ import { MOTION_EASING } from '../ui/motion';
 import { cn } from '../ui/cn';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
 
@@ -87,8 +88,8 @@ export function CourseOverview(props: CourseOverviewProps) {
             </div>
           )}
         </div>
-        {authoring && addingLesson && (
-          <div className="mb-3">
+        {authoring && (
+          <AnimatedDisclosure open={addingLesson} innerClassName="pb-3">
             <AddLessonControl
               initiallyOpen
               courseId={props.courseId}
@@ -96,7 +97,7 @@ export function CourseOverview(props: CourseOverviewProps) {
               onCancel={restoreAdd}
               onCreated={props.onLessonCreated}
             />
-          </div>
+          </AnimatedDisclosure>
         )}
         <p id="lesson-path-reorder-instructions" className="sr-only">
           In Edit mode, drag this lesson to reorder; with touch, hold first. Alternatively, press
@@ -179,7 +180,7 @@ export function CourseOverview(props: CourseOverviewProps) {
               if (lesson) lessonNumber += 1;
               const name = lesson
                 ? lesson.lesson.name
-                : (practice?.practiceNode?.name ?? 'Practice');
+                : (practice?.practiceNode?.name ?? 'Card practice');
               const pct = lesson
                 ? (detail?.masteryPct ?? 0)
                 : Math.round((progress?.fraction ?? 0) * 100);

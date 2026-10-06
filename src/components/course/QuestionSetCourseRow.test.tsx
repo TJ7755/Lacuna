@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ activityData: undefined as unknown }));
 
 vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => mocks.activityData }));
 vi.mock('./QuestionSetPathEditor', () => ({
-  QuestionSetPathEditor: () => <div role="dialog" aria-label="Edit Practice Qs" />,
+  QuestionSetPathEditor: () => <div role="dialog" aria-label="Edit practice questions" />,
 }));
 
 const node: QuestionSetPathNode = {
@@ -66,7 +66,7 @@ describe('QuestionSetCourseRow', () => {
     mocks.activityData = { content, attempt: null, exam: undefined };
     renderRow(false);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Practice Qs: Cell structure' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Practice questions: Cell structure' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/course/course-1/question-sets/set-1');
   });
@@ -83,14 +83,14 @@ describe('QuestionSetCourseRow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Cell structure' }));
 
-    expect(screen.getByRole('dialog', { name: 'Edit Practice Qs' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Edit practice questions' })).toBeInTheDocument();
   });
 
   it('disables a set that no longer belongs to the course', () => {
     mocks.activityData = { content: undefined, attempt: null, exam: undefined };
     renderRow(false);
 
-    expect(screen.getByRole('button', { name: 'Practice Qs: Practice Qs' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Practice questions: Practice Qs' })).toBeDisabled();
     expect(screen.getByText('Unavailable')).toBeInTheDocument();
   });
 });

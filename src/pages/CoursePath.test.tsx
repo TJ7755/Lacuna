@@ -336,7 +336,7 @@ describe('CoursePath View mode', () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Practice Qs: Question set' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Practice questions: Question set' }));
     expect(mockNavigate).toHaveBeenCalledWith(
       `/course/${course.id}/question-sets/${activity.questionSetId}`,
       expect.objectContaining({ state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }) }),
@@ -579,8 +579,7 @@ describe('CoursePath View mode', () => {
   it('hides path-authoring actions', () => {
     renderPage();
 
-    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
   });
 
   it('keeps a locked distributed copy in View mode across every path authoring gate', () => {
@@ -614,8 +613,7 @@ describe('CoursePath View mode', () => {
     expect(screen.getByText('Authoring is locked for shared courses')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' })).toBeInTheDocument();
     expect(
@@ -632,15 +630,15 @@ describe('CoursePath Edit mode', () => {
   it('creates manual practice from the path', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Practice' }));
-    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
+    expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(mockCreatePracticeNode).toHaveBeenCalledWith(
         'course-1',
-        expect.objectContaining({ type: 'manual', name: 'Practice', position: 1 }),
+        expect.objectContaining({ type: 'manual', name: 'Card practice', position: 1 }),
       );
     });
   });
@@ -808,14 +806,14 @@ describe('CoursePath Edit mode', () => {
       onAddPractice: () => void;
     };
     act(() => lessonViewProps.onAddPractice());
-    expect(screen.getByRole('dialog', { name: 'Add manual practice' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(mockCreatePracticeNode).toHaveBeenCalledWith(
         'course-1',
-        expect.objectContaining({ type: 'manual', name: 'Practice', position: 0 }),
+        expect.objectContaining({ type: 'manual', name: 'Card practice', position: 0 }),
       );
     });
   });
@@ -849,7 +847,7 @@ describe('CoursePath Edit mode', () => {
     mockPracticeNodes = [practiceNode];
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Edit Weekly review' }));
-    expect(screen.getByRole('dialog', { name: 'Edit manual practice' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Edit card practice' })).toBeInTheDocument();
   });
 
   it('creates a lesson from an empty path', async () => {
