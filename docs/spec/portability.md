@@ -222,6 +222,12 @@ time; outputs survive switching between them and clear for another course. When
 a link's uploaded revision is behind the course, **Send revision n** becomes the
 primary action. Receiving lives on **Import → Lacuna course**.
 
+This applies the choice-architecture principles of structuring complex choices and
+providing feedback: one recommended route stays prominent, alternatives remain
+available, and results and revision status explain what an action produced. These
+are design principles, rather than a claim that this particular interface has been
+experimentally validated. See [Thaler, Sunstein and Balz, Choice Architecture](https://dl1.cuni.cz/pluginfile.php/958113/mod_resource/content/0/06%20Thaler%2C%20Sunstein%2C%20Balz%20%282012%29%20Choice%20Architecture.pdf).
+
 ### Share links (`relay/src/shares.ts`, `src/shareLinks/`, `/s/:code`)
 
 A hosted variant of the course file for classroom distribution. The teacher

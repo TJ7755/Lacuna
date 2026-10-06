@@ -4,7 +4,7 @@ import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures
 test('opens quick search from the keyboard and restores focus on Escape', async ({ page }) => {
   await enterFreshLacuna(page);
 
-  const quickSearch = page.getByRole('button', { name: /^Search/ });
+  const quickSearch = page.getByRole('link', { name: 'Search', exact: true });
   await quickSearch.focus();
   const shortcut = await page.evaluate(() =>
     navigator.platform.startsWith('Mac') ? 'Meta+K' : 'Control+K',

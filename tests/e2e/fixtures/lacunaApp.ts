@@ -21,7 +21,10 @@ export async function createCourse(page: Page, courseName: string) {
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   const form = page.getByRole('form', { name: 'New course' });
   await form.getByRole('textbox', { name: 'Course name' }).fill(courseName);
-  await form.getByRole('radio', { name: /Steady retention/ }).click();
+  const steadyRetention = form.getByRole('radio', { name: /Steady retention/ });
+  await steadyRetention.focus();
+  await steadyRetention.press('Space');
+  await expect(steadyRetention).toBeChecked();
   await form.getByRole('button', { name: 'Create', exact: true }).click();
 
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);

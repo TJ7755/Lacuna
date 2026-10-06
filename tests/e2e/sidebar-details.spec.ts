@@ -9,9 +9,12 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   const sidebar = page.getByRole('complementary');
   const course = sidebar.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
   await expect(course).toHaveAccessibleName('Welcome to Lacuna');
-  // The only shortcut hint is Search's own.
-  await expect(sidebar.locator('kbd')).toHaveCount(1);
-  await expect(sidebar.getByRole('button', { name: /^Search/ }).locator('kbd')).toHaveCount(1);
+  // Navigation entries all open destinations; quick search remains a global shortcut.
+  await expect(sidebar.locator('kbd')).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Search', exact: true })).toHaveAttribute(
+    'href',
+    '#/search',
+  );
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await course.hover();
   const card = page.getByRole('tooltip');
@@ -19,10 +22,12 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   await expect(card.getByText('Ready to study', { exact: true })).toBeVisible();
   await expect(card.getByText('New cards', { exact: true })).toBeVisible();
   await expect(card.getByText('Exam', { exact: true })).toBeVisible();
-  await expect.poll(async () => {
-    const [popup, row] = await Promise.all([card.boundingBox(), course.boundingBox()]);
-    return Math.abs(popup!.y + popup!.height / 2 - row!.y - row!.height / 2);
-  }).toBeLessThan(2);
+  await expect
+    .poll(async () => {
+      const [popup, row] = await Promise.all([card.boundingBox(), course.boundingBox()]);
+      return Math.abs(popup!.y + popup!.height / 2 - row!.y - row!.height / 2);
+    })
+    .toBeLessThan(2);
   expect((await card.boundingBox())!.x).toBeGreaterThanOrEqual(
     (await sidebar.boundingBox())!.x + (await sidebar.boundingBox())!.width,
   );
