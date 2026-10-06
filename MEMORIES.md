@@ -1,5 +1,11 @@
 # Lacuna memories
 
+## File assertions on Windows
+
+Git can check text files out with CRLF line endings on Windows. Normalise those
+line endings before format-sensitive file assertions; otherwise valid workflows
+fail their policy tests despite matching the committed content.
+
 Read [AGENTS.md](AGENTS.md) for working rules. Keep this file to facts an agent would
 otherwise get wrong; specialist detail belongs in [engineering notes](docs/maintenance/engineering-notes.md).
 
