@@ -382,6 +382,31 @@ describe('Dashboard', () => {
     expect(more).toHaveFocus();
   });
 
+  it.each(['ContextMenu', 'F10'])('opens the course actions with %s on the course link', (key) => {
+    setCourseData();
+    render(<Dashboard />);
+    const link = screen.getByRole('link', { name: 'Test Course' });
+    link.focus();
+    fireEvent.keyDown(link, { key, shiftKey: key === 'F10' });
+    expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveFocus();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('opens visible course actions on right-click while preserving selected text menus', () => {
+    setCourseData();
+    render(<Dashboard />);
+    const link = screen.getByRole('link', { name: 'Test Course' });
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.selectNodeContents(link);
+    selection.addRange(range);
+    expect(fireEvent.contextMenu(link)).toBe(true);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    selection.removeAllRanges();
+    expect(fireEvent.contextMenu(link)).toBe(false);
+    expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveFocus();
+  });
+
   it('cancels archiving from the confirmation dialog', () => {
     setCourseData();
     render(<Dashboard />);

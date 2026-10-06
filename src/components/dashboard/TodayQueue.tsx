@@ -1,11 +1,12 @@
 import { m as motion } from 'motion/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
 import { STATUS_COLOUR, type ForecastStatus } from './ForecastChart';
+import { contextMenuHandlers } from '../ui/contextMenu';
 
 export interface QueueRow {
   id: string;
@@ -32,6 +33,15 @@ export function TodayQueue({
   openMenuId?: string;
 }) {
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const menuButtons = useRef(new Map<string, HTMLButtonElement>());
+  const openActions = (rowId: string) => {
+    const trigger = menuButtons.current.get(rowId);
+    if (!trigger) return null;
+    return () => {
+      const box = trigger.getBoundingClientRect();
+      onMenu(rowId, { x: box.right - 160, y: box.bottom + 6 }, trigger);
+    };
+  };
   const liftTransition = { duration: 0.16 * multiplier, delay: 0, ease: MOTION_EASING.emphasised };
   const firstDue = rows.findIndex((row) => row.due > 0);
   return (
@@ -42,6 +52,7 @@ export function TodayQueue({
         return (
           <motion.div
             key={row.id}
+            {...contextMenuHandlers(() => openActions(row.id))}
             layout={multiplier > 0 ? 'position' : false}
             initial={multiplier > 0 ? { opacity: 0 } : false}
             animate={{
@@ -138,16 +149,17 @@ export function TodayQueue({
               </>
             )}
             <button
+              ref={(button) => {
+                if (button) menuButtons.current.set(row.id, button);
+                else menuButtons.current.delete(row.id);
+              }}
               type="button"
               aria-label={`More for ${row.name}`}
               aria-haspopup="menu"
               aria-expanded={openMenuId === row.id}
               aria-controls={openMenuId === row.id ? 'dashboard-course-actions' : undefined}
               data-course-menu-trigger={row.id}
-              onClick={(event) => {
-                const box = event.currentTarget.getBoundingClientRect();
-                onMenu(row.id, { x: box.right - 160, y: box.bottom + 6 }, event.currentTarget);
-              }}
+              onClick={() => openActions(row.id)?.()}
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
             >
               <MoreIcon width={18} height={18} />

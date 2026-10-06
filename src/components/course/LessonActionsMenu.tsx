@@ -3,7 +3,7 @@
 // the lesson heading and the course path rows. Deletion reuses deleteLesson, which
 // removes notes and unassigns cards, and offers Undo from the lesson's snapshot.
 
-import { useRef, useState, type KeyboardEvent, type MouseEvent, type Ref } from 'react';
+import { useRef, useState, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
@@ -22,37 +22,14 @@ import { Field, Input } from '../ui/Field';
 import { ChevronDownIcon, EditIcon, MoreIcon, TrashIcon } from '../ui/icons';
 import { Menu, type MenuHandle } from '../ui/Menu';
 import { useToast } from '../ui/Toast';
-
-/** Leave the browser's own menu wherever it edits or copies text. */
-function wantsNativeMenu(target: EventTarget | null): boolean {
-  if (window.getSelection()?.toString()) return true;
-  return (
-    target instanceof Element &&
-    target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]') !==
-      null
-  );
-}
+import { contextMenuHandlers } from '../ui/contextMenu';
 
 /**
  * Right-click, the context-menu key and Shift+F10 on the element these handlers are
  * spread onto open the lesson's actions menu instead of the browser's.
  */
 export function lessonContextMenu(menu: () => MenuHandle | null | undefined) {
-  return {
-    onContextMenu: (event: MouseEvent) => {
-      const handle = menu();
-      if (!handle || wantsNativeMenu(event.target)) return;
-      event.preventDefault();
-      handle.open();
-    },
-    onKeyDown: (event: KeyboardEvent) => {
-      const handle = menu();
-      if (!handle || !(event.key === 'F10' && event.shiftKey)) return;
-      if (wantsNativeMenu(event.target)) return;
-      event.preventDefault();
-      handle.open();
-    },
-  };
+  return contextMenuHandlers(() => menu()?.open);
 }
 
 /**
