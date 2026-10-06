@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HelpPage } from './HelpPage';
@@ -110,5 +110,20 @@ describe('HelpPage', () => {
       'href',
       '/method',
     );
+  });
+
+  it('explains how to share diagrams with their media using a course file', () => {
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    const guidance = screen.getByRole('heading', { name: 'Sharing a diagram' }).parentElement;
+    expect(guidance).not.toBeNull();
+    expect(within(guidance!).getByText(/Share → Other ways → Course file/)).toBeInTheDocument();
+    expect(within(guidance!).getByText(/preserves the diagram and its image/)).toBeInTheDocument();
+    expect(
+      within(guidance!).getByText(/Share codes cannot carry image or audio files/),
+    ).toBeInTheDocument();
   });
 });

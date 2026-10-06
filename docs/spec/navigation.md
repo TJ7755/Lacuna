@@ -424,9 +424,12 @@ The measurement render is hidden from accessibility and pointer interaction, and
 audio autoplay. Generated sequence cards keep the current cue on the card's vertical centre line;
 their sequence label and recall instruction sit above and below that shared cue/answer anchor.
 
-**Card editor**, **Course settings**, **Settings**, **Search** follow the same
-centred-column pattern with an eyebrow + display title and `rounded-2xl` sections; the
-editor and course settings add a sticky bottom action bar.
+**Card editor**, **Course settings**, **Settings** and **Search** use display titles
+without decorative eyebrows and the shared surface-card language. Course settings,
+Settings and Search align with the shared page frame; Search keeps a narrower reading
+column on that frame’s left edge. The editor and course settings add a sticky bottom
+action bar. Help’s footer presents its destination links directly, without a descriptive
+caption that repeats them.
 
 
 [Specification index](../SPEC.md)

@@ -732,8 +732,9 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Sharing a diagram</h3>
                 <p className="text-sm text-ink-soft">
                   Share codes cannot carry image or audio files, so a shared diagram card arrives as
-                  text with no picture. To move diagrams between machines, export a full backup from
-                  Settings instead.
+                  text with no picture. Share → Other ways → Course file preserves the diagram and
+                  its image when moving a course between devices. Use a full backup from Settings to
+                  move every course and its study history.
                 </p>
               </div>
             </div>
