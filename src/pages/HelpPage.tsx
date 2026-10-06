@@ -2,7 +2,6 @@ import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/course
 import { useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { Button } from '../components/ui/Button';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
 import { SectionCard as SurfaceCard } from '../components/ui/SectionCard';
 import {
@@ -39,6 +38,9 @@ const HELP_SECTIONS = [
   { id: 'occlusions', label: 'Diagrams' },
   { id: 'tips', label: 'Tips & best practice' },
 ];
+
+const FOOTER_LINK_CLASS =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line-strong bg-surface-raised px-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
 
 function SectionCard({
   icon,
@@ -829,23 +831,17 @@ export function HelpPage() {
                 explore the analytics page to understand your study patterns.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Link to="/settings">
-                  <Button variant="secondary" size="sm">
-                    <SettingsIcon width={16} height={16} />
-                    Settings
-                  </Button>
+                <Link to="/settings" className={FOOTER_LINK_CLASS}>
+                  <SettingsIcon width={16} height={16} />
+                  Settings
                 </Link>
-                <Link to="/analytics">
-                  <Button variant="secondary" size="sm">
-                    <ChartIcon width={16} height={16} />
-                    Analytics
-                  </Button>
+                <Link to="/analytics" className={FOOTER_LINK_CLASS}>
+                  <ChartIcon width={16} height={16} />
+                  Analytics
                 </Link>
-                <Link to="/method">
-                  <Button variant="secondary" size="sm">
-                    <SparklesIcon width={16} height={16} />
-                    How the scheduler works
-                  </Button>
+                <Link to="/method" className={FOOTER_LINK_CLASS}>
+                  <SparklesIcon width={16} height={16} />
+                  How the scheduler works
                 </Link>
               </div>
             </div>

@@ -82,4 +82,13 @@ describe('HelpPage', () => {
     expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
+  it('provides a single keyboard target for each footer destination', () => {
+    render(<MemoryRouter><HelpPage /></MemoryRouter>);
+    for (const name of ['Settings', 'Analytics', 'How the scheduler works']) {
+      const link = screen.getByRole('link', { name });
+      expect(link.querySelector('button')).toBeNull();
+      expect(link).toHaveClass('min-h-11');
+    }
+  });
+
 });

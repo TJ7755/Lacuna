@@ -1,0 +1,1 @@
+- Fixed duplicate keyboard targets in Help's footer: each destination is now one accessible link with the shared press feedback and a full-size touch target.
