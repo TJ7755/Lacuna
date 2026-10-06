@@ -11,7 +11,10 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await page.getByRole('textbox', { name: 'Back' }).fill('Retrieving information from memory.');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
   await sheet.locator('summary').filter({ hasText: 'Practise until all correct' }).click();

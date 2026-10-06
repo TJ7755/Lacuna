@@ -11,9 +11,9 @@ async function openSeededDashboard(page: Page) {
 test('first launch reaches the seeded dashboard', async ({ page }) => {
   await openSeededDashboard(page);
   await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
-  const searchButton = page.getByRole('button', { name: /^Search/ });
-  await expect(searchButton).toContainText('Search');
-  await expect(searchButton.locator('kbd')).toHaveCount(1);
+  await expect(
+    page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Search' }),
+  ).toBeVisible();
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByRole('dialog', { name: 'Quick search' })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Search all content' })).toBeFocused();
@@ -27,7 +27,10 @@ test('creates a course with its first lesson', async ({ page }) => {
   await page.locator('label').filter({ hasText: /^Course name$/ }).click();
   await expect(nameInput).toBeFocused();
   await nameInput.fill('Browser smoke course');
-  await page.getByRole('radio', { name: /Steady retention/ }).click();
+  const steady = page.getByRole('radio', { name: /Steady retention/ });
+  await steady.focus();
+  await steady.press('Space');
+  await expect(steady).toBeChecked();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
@@ -36,7 +39,10 @@ test('creates a course with its first lesson', async ({ page }) => {
 test('keeps the New Course calendar visible and focused', async ({ page }) => {
   await openSeededDashboard(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
-  await page.getByRole('radio', { name: /Exam date/ }).click();
+  const examDate = page.getByRole('radio', { name: /Exam date/ });
+  await examDate.focus();
+  await examDate.press('Space');
+  await expect(examDate).toBeChecked();
   await page.getByRole('button', { name: 'Exam date and time' }).click();
 
   const calendar = page.getByRole('dialog', { name: 'Choose date and time' });

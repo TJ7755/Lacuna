@@ -4,7 +4,10 @@ import { chooseScheduledStudy, enterFreshLacuna } from './fixtures/lacunaApp';
 async function createMobileCourse(page: Page, courseName: string) {
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   await page.getByRole('textbox', { name: 'Course name' }).fill(courseName);
-  await page.getByRole('radio', { name: /Steady retention/ }).click();
+  const steady = page.getByRole('radio', { name: /Steady retention/ });
+  await steady.focus();
+  await steady.press('Space');
+  await expect(steady).toBeChecked();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
@@ -45,7 +48,10 @@ test('studies a card with touch controls', async ({ page }) => {
   await enterFreshLacuna(page);
   await createMobileCourse(page, 'Mobile study');
   await addCard(page, 'Mobile study front', 'Mobile study back');
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();

@@ -17,7 +17,8 @@ for (const width of [390, 1000, 1920]) {
     const measure = () =>
       page.locator('[data-course-page-navigation]').evaluate((navigation) => {
         const frame = navigation.parentElement!;
-        const back = navigation.querySelector('a')!.getBoundingClientRect();
+        // The tabs, not the course name, which slides in only once the title scrolls away.
+        const back = navigation.querySelector('nav[aria-label="Course sections"]')!.getBoundingClientRect();
         const title = navigation.closest('main')!.querySelector('h1')!.getBoundingClientRect();
         const bounds = frame.getBoundingClientRect();
         return {

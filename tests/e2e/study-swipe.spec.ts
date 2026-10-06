@@ -22,7 +22,10 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
             await page.getByRole('button', { name: 'Add card', exact: true }).click();
             await expect(page).not.toHaveURL(/\/cards\/new$/);
           }
-          await page.getByRole('link', { name: 'Course', exact: true }).click();
+          await page
+            .getByRole('navigation', { name: 'Course sections' })
+            .getByRole('link', { name: 'Path', exact: true })
+            .click();
           await page.getByRole('button', { name: 'Study', exact: true }).click();
           await chooseScheduledStudy(page);
           await page.getByRole('button', { name: 'Continue', exact: true }).click();

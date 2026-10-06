@@ -45,7 +45,10 @@ for (const width of [1280, 390]) {
       .fill('Import greeting\thello\n{{c1::Paris}} is in France');
     await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
     await importer.getByLabel('Course title').fill('Import regression');
-    await importer.getByRole('radio', { name: /Steady retention/ }).check();
+    const steady = importer.getByRole('radio', { name: /Steady retention/ });
+    await steady.focus();
+    await steady.press('Space');
+    await expect(steady).toBeChecked();
     await importer.getByRole('checkbox', { name: 'Also create reverse' }).check();
     await expect(importer.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
     await importer.getByRole('button', { name: 'Back', exact: true }).click();

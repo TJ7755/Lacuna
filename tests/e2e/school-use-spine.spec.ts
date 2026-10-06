@@ -28,7 +28,10 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
   ).toBeVisible();
   await expect(page.getByText(front, { exact: true }).first()).toBeVisible();
 
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
