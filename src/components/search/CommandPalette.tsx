@@ -1,7 +1,7 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
 import {
   cardEditPath,
@@ -21,6 +21,11 @@ import { StudyDrawing } from '../ui/StudyDrawing';
 
 /** A single ordered list of navigation, Card and Question hits. */
 type PaletteHit = ScopedSearchResult | CourseContentHit;
+
+function PaletteResults(props: HTMLMotionProps<'ul'>) {
+  const present = useIsPresent();
+  return <motion.ul {...props} inert={!present} aria-hidden={!present || undefined} />;
+}
 
 /** Where a palette hit deep-links to. */
 function hitPath(hit: PaletteHit): string {
@@ -280,7 +285,7 @@ function CommandPaletteDialog({
                     Nothing matches &ldquo;{deferredQuery}&rdquo;.
                   </motion.p>
                 ) : (
-                  <motion.ul
+                  <PaletteResults
                     key="results"
                     id="palette-listbox"
                     role="listbox"
@@ -394,7 +399,7 @@ function CommandPaletteDialog({
                         </motion.li>
                       );
                     })}
-                  </motion.ul>
+                  </PaletteResults>
                 )}
               </AnimatePresence>
             </div>

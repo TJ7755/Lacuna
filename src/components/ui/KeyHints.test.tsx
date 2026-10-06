@@ -1,6 +1,16 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { KeyHints } from './KeyHints';
+
+// Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 vi.mock('../../state/shortcuts', () => ({
   SHORTCUT_GROUPS: [
@@ -13,9 +23,7 @@ vi.mock('../../state/shortcuts', () => ({
     },
     {
       title: 'Navigation',
-      shortcuts: [
-        { description: 'Open search', keys: ['/'] },
-      ],
+      shortcuts: [{ description: 'Open search', keys: ['/'] }],
     },
   ],
 }));
@@ -39,6 +47,23 @@ vi.mock('../../state/shortcutBindings', () => ({
 }));
 
 describe('KeyHints', () => {
+  it('retires the closing overlay and revives its controls on rapid reopening', async () => {
+    const view = (open: boolean) => (
+      <LazyMotion features={domAnimation}>
+        <KeyHints open={open} onClose={vi.fn()} />
+      </LazyMotion>
+    );
+    const { rerender } = render(view(true));
+    const close = screen.getByRole('button', { name: 'Close' });
+    rerender(view(false));
+    expect(close).toBeInTheDocument();
+    expect(close.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    rerender(view(true));
+    expect(screen.getByRole('button', { name: 'Close' })).toBe(close);
+    expect(close.closest('[inert]')).toBeNull();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  });
   it('renders nothing when closed', () => {
     const { container } = render(<KeyHints open={false} onClose={vi.fn()} />);
     expect(container.firstChild).toBeNull();

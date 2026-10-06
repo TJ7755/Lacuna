@@ -1,9 +1,20 @@
 import { ModalBackdrop } from './ModalBackdrop';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
+import type { RefObject } from 'react';
 import { SHORTCUT_GROUPS } from '../../state/shortcuts';
 import { useShortcutBindings, formatBinding } from '../../state/shortcutBindings';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { CloseIcon } from './icons';
+
+function HintsOverlay({
+  trapRef,
+  ...props
+}: HTMLMotionProps<'div'> & { trapRef: RefObject<HTMLDivElement | null> }) {
+  const present = useIsPresent();
+  return (
+    <motion.div {...props} ref={trapRef} inert={!present} aria-hidden={!present || undefined} />
+  );
+}
 
 /**
  * A keyboard-shortcuts cheatsheet, opened with "?" from anywhere. Its contents come from
@@ -59,8 +70,8 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          ref={trapRef}
+        <HintsOverlay
+          trapRef={trapRef}
           className="fixed inset-0 z-[60] flex items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -104,9 +115,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
             <div className="grid gap-6 px-6 py-6 sm:grid-cols-2">
               {liveGroups.map((group) => (
                 <div key={group.title}>
-                  <h3 className="mb-2 text-sm text-ink-faint">
-                    {group.title}
-                  </h3>
+                  <h3 className="mb-2 text-sm text-ink-faint">{group.title}</h3>
                   <ul className="flex flex-col gap-2">
                     {group.shortcuts.map((s) => (
                       <li
@@ -131,7 +140,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
               ))}
             </div>
           </motion.div>
-        </motion.div>
+        </HintsOverlay>
       )}
     </AnimatePresence>
   );

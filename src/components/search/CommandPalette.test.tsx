@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import { StrictMode, useEffect, useRef, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { CommandPalette } from './CommandPalette';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
 import type { FixedQuestionDefinition, QuestionDefinition } from '../../questions/types';
@@ -115,7 +116,40 @@ vi.mock('../../state/useSearchData', () => ({
   useSearchData: dataHooks.useSearchData,
 }));
 
+// Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
+
 describe('CommandPalette', () => {
+  it('retires the retained result list as soon as the query is cleared', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(
+      <LazyMotion features={domAnimation}>
+        <CommandPalette open onClose={vi.fn()} />
+      </LazyMotion>,
+      { wrapper: MemoryRouter },
+    );
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+    const result = screen.getByRole('option', { name: /Palatine/ });
+    fireEvent.change(input, { target: { value: '' } });
+    expect(result).toBeInTheDocument();
+    expect(result.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('option', { name: /Palatine/ })).not.toBeInTheDocument();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  });
   beforeEach(() => {
     dataHooks.useSearchData.mockClear();
     localStorage.clear();
