@@ -49,6 +49,35 @@ describe('installPressFeedback', () => {
 
     expect(animate).not.toHaveBeenCalled();
   });
+
+  it.each(['button', 'a', 'summary'])('acknowledges keyboard activation of a %s', (tag) => {
+    const control = sized(document.createElement(tag), 100, 44);
+    if (tag === 'a') control.setAttribute('href', '#/share');
+    document.body.append(control);
+    control.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+    expect(animate).toHaveBeenCalledTimes(1);
+    expect(animate.mock.instances[0]).toBe(control);
+    expect(animate.mock.calls[0][0].at(-1)).toEqual({ scale: '1' });
+  });
+
+  it('acknowledges keyboard activation of the shared Button without duplicating pointer feedback', () => {
+    const button = document.createElement('button');
+    button.dataset.press = '';
+    document.body.append(button);
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(animate).not.toHaveBeenCalled();
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+    expect(animate).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels a held press when uninstalled', () => {
+    const button = document.createElement('button');
+    document.body.append(button);
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    const animation = animate.mock.results[0].value;
+    uninstall();
+    expect(animation.cancel).toHaveBeenCalled();
+  });
 });
 
 describe('pressDepth', () => {
