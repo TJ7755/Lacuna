@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Menu } from './Menu';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { createRef } from 'react';
+import { Menu, type MenuHandle } from './Menu';
 
 beforeEach(() => localStorage.clear());
 
@@ -27,6 +28,45 @@ function renderMenu(overrides?: {
 }
 
 describe('Menu', () => {
+  it('does not queue an invisible imperative opening while every action is disabled', () => {
+    const handle = createRef<MenuHandle>();
+    const view = (disabled: boolean) => (
+      <Menu
+        label="Actions"
+        handle={handle}
+        items={[{ label: 'Rename', disabled, onSelect: vi.fn() }]}
+      >
+        Actions
+      </Menu>
+    );
+    const { rerender } = render(view(true));
+    act(() => handle.current!.open());
+    rerender(view(false));
+    expect(screen.getByRole('button', { name: 'Actions' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('moves focus to an available action if the focused action becomes disabled', () => {
+    const view = (disabled: boolean) => (
+      <Menu
+        label="Actions"
+        items={[
+          { label: 'Rename', disabled, onSelect: vi.fn() },
+          { label: 'Delete', onSelect: vi.fn() },
+        ]}
+      >
+        Actions
+      </Menu>
+    );
+    const { rerender } = render(view(false));
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Actions' }), { key: 'ArrowDown' });
+    expect(screen.getByRole('menuitem', { name: 'Rename' })).toHaveFocus();
+    rerender(view(true));
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toHaveFocus();
+  });
   it('moves the Tab origin back to its trigger before removing the focused menu item', () => {
     const { trigger } = renderMenu();
     fireEvent.keyDown(trigger, { key: 'ArrowDown' });

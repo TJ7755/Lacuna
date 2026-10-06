@@ -112,7 +112,9 @@ export function Menu({
     return () => observer.disconnect();
   }, [open, items.length]);
 
-  const enabled = items.filter((item) => !item.disabled);
+  const firstEnabledIndex = items.findIndex((item) => !item.disabled);
+  const activeItemUnavailable = !items[activeIndex] || !!items[activeIndex]?.disabled;
+  const activeItemLabel = items[activeIndex]?.label;
 
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
@@ -132,10 +134,16 @@ export function Menu({
   }, [open, close]);
 
   useEffect(() => {
-    if (open && activeIndex >= 0) itemRefs.current[activeIndex]?.focus();
-  }, [open, activeIndex]);
+    if (!open) return;
+    if (firstEnabledIndex < 0) close(false);
+    else if (activeIndex >= 0) {
+      if (activeItemUnavailable) setActiveIndex(firstEnabledIndex);
+      else itemRefs.current[activeIndex]?.focus();
+    }
+  }, [open, activeIndex, activeItemUnavailable, activeItemLabel, firstEnabledIndex, close]);
 
   function openAt(index: number) {
+    if (firstEnabledIndex < 0) return;
     if (items[index]?.disabled) {
       index =
         index === items.length - 1
@@ -203,7 +211,7 @@ export function Menu({
     }
   }
 
-  if (enabled.length === 0) return null;
+  if (firstEnabledIndex < 0) return null;
 
   return (
     <div
