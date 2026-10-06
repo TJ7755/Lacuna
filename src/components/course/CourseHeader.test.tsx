@@ -3,6 +3,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { CourseHeader } from './CourseHeader';
 
 describe('CourseHeader', () => {
+  it('keeps the course visibility marker on the stable header during renaming', () => {
+    render(<CourseHeader title="Mechanics" onRename={vi.fn()} />);
+    const header = screen.getByRole('heading', { name: 'Mechanics' }).closest('header');
+    expect(header).toHaveAttribute('data-course-title');
+    fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
+    expect(screen.getByRole('textbox', { name: 'course name' }).closest('header')).toBe(header);
+    expect(header).toHaveAttribute('data-course-title');
+  });
+
+  it('does not mistake a lesson heading for the course identity', () => {
+    const { container } = render(<CourseHeader title="Momentum" renameLabel="lesson" />);
+    expect(container.querySelector('[data-course-title]')).toBeNull();
+  });
+
   it('places exam context after the title and actions in a labelled calendar row', () => {
     render(
       <CourseHeader eyebrow="Exam 1 June 2027" title="Mechanics">

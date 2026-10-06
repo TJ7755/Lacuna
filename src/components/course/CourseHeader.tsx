@@ -1,6 +1,6 @@
 // Shared "course cockpit" header: schedule metadata, display title, and caller
-// content beneath — typically a line of course facts. Used by CoursePath
-// (full course) and, in a leaner form, LessonView.
+// content beneath — typically a line of course facts. Used by CoursePath;
+// LessonHeader carries the lesson-specific header.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -79,7 +79,10 @@ export function CourseHeader({
   }
 
   return (
-    <header className={cn('relative py-6 md:py-8', className)}>
+    <header
+      data-course-title={renameLabel === 'course' ? '' : undefined}
+      className={cn('relative py-6 md:py-8', className)}
+    >
       <div className="relative">
         <div className="mb-2.5 flex min-w-0 items-center gap-2">
           <AnimatePresence initial={false} mode="popLayout">
@@ -108,7 +111,6 @@ export function CourseHeader({
             ) : (
               <motion.h1
                 key="display-title"
-                data-course-title=""
                 onDoubleClick={startRename}
                 title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
                 layout={motionMultiplier > 0 ? 'size' : undefined}
