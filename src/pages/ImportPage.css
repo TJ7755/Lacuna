@@ -89,6 +89,22 @@
 .card-import-page .card-import-scroll {
   overflow: visible;
 }
+/* The initial page step has no destination options; keep its focus heading out of flow. */
+.card-import-page
+  .card-import-body:has(.card-import-input):not(
+    :has(.card-import-title-label, .card-import-destination)
+  ) {
+  grid-template-columns: 1fr;
+}
+.card-import-page
+  .card-import-body:has(.card-import-input):not(
+    :has(.card-import-title-label, .card-import-destination)
+  )
+  > .card-import-options {
+  position: absolute;
+  padding: 0;
+  background: none;
+}
 .import-destination {
   display: flex;
   flex-direction: column;
