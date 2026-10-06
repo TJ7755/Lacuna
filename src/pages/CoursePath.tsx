@@ -434,7 +434,7 @@ export function CoursePath() {
     <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <CourseHeader
-          className="min-w-0 flex-[1_1_320px] py-0 md:py-0"
+          className="min-w-0 flex-[1_1_320px]"
           title={course.name}
           onRename={
             authoring

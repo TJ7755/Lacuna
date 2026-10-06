@@ -81,7 +81,7 @@ export function CourseHeader({
   return (
     <header
       data-course-title={renameLabel === 'course' ? '' : undefined}
-      className={cn('relative py-6 md:py-8', className)}
+      className={cn('relative', className)}
     >
       <div className="relative">
         <div className="mb-2.5 flex min-w-0 items-center gap-2">
