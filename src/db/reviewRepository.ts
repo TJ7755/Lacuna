@@ -16,6 +16,7 @@ import {
   reviewHistoryEntryIdForEvent,
 } from './reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { isPrimedReview } from '../fsrs/primedReview';
 import { db } from './schema';
 import type {
   Card,
@@ -350,6 +351,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           responseTimeSec,
           distracted,
           hintUsed: hintUsed ?? false,
+          ...(isPrimedReview(cardBefore.history, sessionId, now) ? { primed: true } : {}),
           marksEarned,
           marksAvailable,
           lineVerdicts,
