@@ -2,7 +2,7 @@
 // and a trailing slot for the mode pill and study actions. Leaner than
 // CourseHeader, which carries the course cockpit's schedule row.
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { EditIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 
@@ -13,6 +13,12 @@ interface LessonHeaderProps {
   /** Small line under the title; callers compose it from real figures. */
   meta?: ReactNode;
   description?: string;
+  /**
+   * Replaces the rename button with a lesson actions menu; receives the function that
+   * starts the in-place rename. `contextMenu` handlers open the same menu from the title.
+   */
+  actions?: (startRename: () => void) => ReactNode;
+  contextMenu?: Pick<HTMLAttributes<HTMLDivElement>, 'onContextMenu' | 'onKeyDown'>;
   /** Right-hand controls: the mode pill and the study actions. */
   children?: ReactNode;
   className?: string;
@@ -23,6 +29,8 @@ export function LessonHeader({
   onRename,
   meta,
   description,
+  actions,
+  contextMenu,
   children,
   className,
 }: LessonHeaderProps) {
@@ -67,7 +75,7 @@ export function LessonHeader({
   return (
     <header className={cn('flex flex-wrap items-end gap-x-6 gap-y-4', className)}>
       <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2">
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="flex min-w-0 items-center gap-1" {...contextMenu}>
           {editing ? (
             <input
               ref={input}
@@ -96,7 +104,8 @@ export function LessonHeader({
               {title}
             </h1>
           )}
-          {onRename && !editing && (
+          {actions?.(start)}
+          {onRename && !actions && !editing && (
             <button
               type="button"
               onClick={start}

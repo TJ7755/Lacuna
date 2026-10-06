@@ -530,6 +530,7 @@ export function CoursePath() {
         archived={archived}
         announcement={lessonReorder.announcement}
         reorderFor={lessonReorder.interactionFor}
+        onLessonMove={lessonReorder.moveBy}
         detailForLesson={detailForLesson}
         lockHint={(id) => lockHintFor(course, id, effectiveDates)}
         practiceProgress={practiceProgressByKey}

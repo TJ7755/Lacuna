@@ -223,7 +223,7 @@ describe('LessonView View mode', () => {
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     expect(container.querySelector('[data-lesson-workspace-mode="study"]')).not.toBeNull();
     expect(mockUpdateCourse).not.toHaveBeenCalled();
@@ -312,7 +312,7 @@ describe('LessonView View mode', () => {
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
     expect(screen.getByText('A note')).toBeInTheDocument();
     expect(screen.queryByText('Add note')).not.toBeInTheDocument();
   });
@@ -356,7 +356,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 describe('LessonView title editing', () => {
   it('hides the lesson rename control in View mode', () => {
     renderPage();
-    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 });
@@ -412,7 +412,8 @@ describe('LessonView Edit mode', () => {
 
   it('renames the lesson from its header', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Rename lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lesson actions: Test lesson' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
     const input = screen.getByRole('textbox', { name: 'lesson name' });
     fireEvent.change(input, { target: { value: 'Renamed lesson' } });
     fireEvent.blur(input);

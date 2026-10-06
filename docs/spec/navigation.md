@@ -230,6 +230,15 @@ keyboard equivalent with live announcements. Reordering persists through the sam
 attached to its stable lesson anchor, while manual and automatic Practice positions and
 one-way lesson unlock ratchets are deliberately left unchanged.
 
+In Edit mode each path row and the lesson heading carry a visible **Lesson actions** menu
+(`LessonActionsMenu`) with Rename, Move up, Move down and Delete lesson. Right-click, the
+context-menu key and Shift+F10 on the row or title open the same menu, except over text
+fields or a text selection, which keep the browser's menu. Deletion confirms with the actual
+consequence (notes deleted, cards kept without a lesson), uses `deleteLesson`, and offers Undo
+from `snapshotLesson`/`restoreLesson`. Focus then moves to the next lesson row, or to the
+course page heading when the open lesson was deleted. Shared locked copies and archived
+courses never show the menu.
+
 Assessment placement and coverage are independent. Prefix coverage includes every ordered
 lesson through the placement anchor; custom coverage is an explicit, non-contiguous lesson
 set that cannot extend past that anchor. An unanchored (`afterLessonId: null`) checkpoint sits

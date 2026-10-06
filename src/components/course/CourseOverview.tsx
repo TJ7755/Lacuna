@@ -13,6 +13,12 @@ import { AddLessonControl } from './AddLessonControl';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
+import {
+  focusAfterLessonDeletion,
+  LessonActionsMenu,
+  lessonContextMenu,
+} from './LessonActionsMenu';
+import type { MenuHandle } from '../ui/Menu';
 
 export interface LessonNodeDetail {
   cardCount: number;
@@ -32,6 +38,7 @@ interface CourseOverviewProps {
   detailForLesson: (id: string) => LessonNodeDetail;
   lockHint: (id: string) => string | undefined;
   reorderFor: (id: string) => LessonReorderInteraction;
+  onLessonMove: (id: string, delta: -1 | 1) => void;
   practiceProgress: Map<
     string,
     { fraction: number; completed: boolean; assessment?: AssessmentPracticeOption }
@@ -64,6 +71,7 @@ export function CourseOverview(props: CourseOverviewProps) {
     setAddingLesson(false);
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
+  const lessonMenus = useRef(new Map<string, MenuHandle>());
   let lessonNumber = 0;
 
   return (
@@ -203,8 +211,20 @@ export function CourseOverview(props: CourseOverviewProps) {
                 else if (practice) props.onPracticeOpen(practice);
               };
 
+              const lessonId = lesson?.lesson.id;
+              const position = lessonNumber - 1;
               return (
-                <motion.li key={node.id} {...arrive} className="relative flex flex-col">
+                <motion.li
+                  key={node.id}
+                  {...arrive}
+                  // Each animated row is its own stacking context; lift the one whose
+                  // menu is open above the rows after it.
+                  className="relative flex flex-col has-[[aria-expanded=true]]:z-20"
+                  data-path-lesson={lessonId}
+                  {...(authoring && lessonId
+                    ? lessonContextMenu(() => lessonMenus.current.get(lessonId))
+                    : {})}
+                >
                   <motion.button
                     // Motion keeps the first ref it is given, so remount when authoring
                     // starts or the reorder hook never sees this row.
@@ -236,6 +256,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                     className={cn(
                       'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
                       'hover:bg-ink/[0.03] disabled:cursor-default',
+                      authoring && (lesson || practice) && 'pr-[60px]',
                       reorder?.lifted &&
                         'bg-surface shadow-[0_18px_40px_-20px_hsl(var(--ink)/0.45)]',
                     )}
@@ -288,18 +309,49 @@ export function CourseOverview(props: CourseOverviewProps) {
                         />
                       </span>
                     </span>
-                    <ChevronRightIcon
-                      width={16}
-                      height={16}
-                      className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
-                    />
+                    {!(authoring && (lesson || practice)) && (
+                      <ChevronRightIcon
+                        width={16}
+                        height={16}
+                        className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
+                      />
+                    )}
                   </motion.button>
+                  {authoring && lesson && (
+                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                      <LessonActionsMenu
+                        lesson={lesson.lesson}
+                        position={position}
+                        count={props.lessonCount}
+                        onMove={(delta) => props.onLessonMove(lesson.lesson.id, delta)}
+                        handle={(menu) => {
+                          if (menu) lessonMenus.current.set(lesson.lesson.id, menu);
+                          else lessonMenus.current.delete(lesson.lesson.id);
+                        }}
+                        onDeleted={() => {
+                          const following = nodes
+                            .slice(index + 1)
+                            .find((candidate) => candidate.nodeType === 'lesson');
+                          const preceding = nodes
+                            .slice(0, index)
+                            .reverse()
+                            .find((candidate) => candidate.nodeType === 'lesson');
+                          focusAfterLessonDeletion(
+                            [following, preceding]
+                              .filter((candidate) => candidate !== undefined)
+                              .map((candidate) => `[data-path-lesson="${candidate.id}"] > button`)
+                              .concat('#course-path-heading', 'main h1'),
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
                   {authoring && practice && (
                     <button
                       type="button"
                       aria-label={`Edit ${name}`}
                       onClick={() => props.onPracticeEdit(practice)}
-                      className="absolute right-10 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
+                      className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
                     >
                       <EditIcon width={14} height={14} />
                     </button>

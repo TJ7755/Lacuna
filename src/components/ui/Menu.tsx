@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
@@ -15,6 +24,11 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
+/** Opens the menu from elsewhere, such as a context-menu gesture on the item it acts on. */
+export interface MenuHandle {
+  open: () => void;
+}
+
 interface MenuProps {
   /** Trigger contents. Keep it short; the accessible name comes from `label`. */
   children: ReactNode | ((open: boolean) => ReactNode);
@@ -28,8 +42,9 @@ interface MenuProps {
   /** Trigger height and weight: the compact toolbar size, or a full-size control. */
   size?: 'sm' | 'md';
   className?: string;
-  /** Optional fixed trigger width for compact icon-and-label controls. */
+  /** Optional fixed trigger width for compact icon-only controls. */
   triggerWidth?: number;
+  handle?: Ref<MenuHandle>;
 }
 
 /**
@@ -47,6 +62,7 @@ export function Menu({
   size = 'sm',
   className,
   triggerWidth,
+  handle,
 }: MenuProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
@@ -124,6 +140,8 @@ export function Menu({
     setOpen(true);
     setActiveIndex(index);
   }
+
+  useImperativeHandle(handle, () => ({ open: () => openAt(0) }));
 
   function onTriggerKeyDown(event: React.KeyboardEvent) {
     // A pointer open leaves focus on the trigger, so Escape and Tab have to close from
@@ -205,11 +223,15 @@ export function Menu({
         }}
         transition={transition}
         className={cn(
-          'absolute top-0 overflow-hidden border bg-surface-raised',
+          'absolute top-0 overflow-hidden border',
+          // An icon-only trigger repeats down lists, so it stays unframed until opened.
+          triggerWidth && !open ? 'bg-transparent hover:bg-ink/5' : 'bg-surface-raised',
           align === 'end' ? 'right-0' : 'left-0',
           open
             ? 'border-transparent shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]'
-            : 'border-line-strong',
+            : triggerWidth
+              ? 'border-transparent'
+              : 'border-line-strong',
         )}
       >
         <motion.button
@@ -226,7 +248,8 @@ export function Menu({
           transition={transition}
           className={cn(
             'absolute top-0 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]',
-            size === 'md' ? 'min-h-12 px-5' : 'min-h-11 px-4',
+            size === 'md' ? 'min-h-12' : 'min-h-11',
+            triggerWidth ? 'px-0' : size === 'md' ? 'px-5' : 'px-4',
             align === 'end' ? 'right-0' : 'left-0',
           )}
           style={triggerWidth ? { width: triggerWidth } : undefined}

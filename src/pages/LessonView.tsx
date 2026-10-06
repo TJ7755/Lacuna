@@ -50,7 +50,14 @@ import {
 } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
-import { updateLesson } from '../db/lessonRepository';
+import { reorderLessons, updateLesson } from '../db/lessonRepository';
+import { moveLessonIds } from '../components/course/useLessonPathReorder';
+import {
+  focusAfterLessonDeletion,
+  LessonActionsMenu,
+  lessonContextMenu,
+} from '../components/course/LessonActionsMenu';
+import type { MenuHandle } from '../components/ui/Menu';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
 import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
@@ -100,6 +107,7 @@ export function LessonView({
   const [addingLesson, setAddingLesson] = useState(false);
   const [addingQuestionSet, setAddingQuestionSet] = useState(false);
   const addRef = useRef<HTMLDivElement>(null);
+  const lessonMenu = useRef<MenuHandle>(null);
   const restoreAdd = () => {
     setAddingLesson(false);
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
@@ -203,6 +211,7 @@ export function LessonView({
         ? undefined
         : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
   });
+  const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
   return (
@@ -292,6 +301,31 @@ export function LessonView({
                   }
                 : undefined
             }
+            actions={
+              authoring && courseId
+                ? (startRename) => (
+                    <LessonActionsMenu
+                      lesson={lesson}
+                      position={lessonPosition}
+                      count={lessons.length}
+                      handle={lessonMenu}
+                      onRename={startRename}
+                      onMove={(delta) => {
+                        const ids = lessons.map((candidate) => candidate.id);
+                        reorderLessons(
+                          courseId,
+                          moveLessonIds(ids, lesson.id, lessonPosition + delta),
+                        ).catch(() => notify('Lesson order could not be saved.', 'negative'));
+                      }}
+                      onDeleted={() => {
+                        if (!isInline) void navigate(`/course/${courseId}`);
+                        focusAfterLessonDeletion(['#course-path-heading', 'main h1']);
+                      }}
+                    />
+                  )
+                : undefined
+            }
+            contextMenu={authoring ? lessonContextMenu(() => lessonMenu.current) : undefined}
           >
             {archived ? (
               <ArchivedCourseRestoreNotice />
