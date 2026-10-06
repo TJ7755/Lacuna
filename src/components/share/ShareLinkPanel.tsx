@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
 import type { Course } from '../../db/types';
@@ -22,6 +22,11 @@ import { CopyButton } from './CopyButton';
 import { useActionFocus } from '../../hooks/useActionFocus';
 
 type LinkState = { shareId: string; revision: number };
+
+function ShareLinkSurface(props: HTMLMotionProps<'div'>) {
+  const present = useIsPresent();
+  return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
+}
 
 function linkFromCourse(course: Course): LinkState | null {
   const distribution = course.distribution;
@@ -164,7 +169,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
         Share link
       </h2>
       <AnimatePresence mode="wait" initial={false}>
-        <motion.div
+        <ShareLinkSurface
           key={state}
           initial={m > 0 ? { opacity: 0, y: 8 } : false}
           animate={{ opacity: 1, y: 0 }}
@@ -273,7 +278,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
               </motion.div>
             </div>
           )}
-        </motion.div>
+        </ShareLinkSurface>
       </AnimatePresence>
     </SectionCard>
   );
