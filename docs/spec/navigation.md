@@ -54,6 +54,8 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   `/` opens **Search content**; `?` toggles the keyboard-hints overlay. Single-key
   shortcuts are inert while typing in an input/textarea. Quick search focuses its search field on
   opening; Escape closes it and restores focus to the control that opened it.
+  Opening quick search from the mobile drawer replaces the drawer and returns focus
+  to the navigation opener when search closes.
 - **Error boundaries:** one wraps the whole app, one wraps each page, and one wraps the
   Learn session.
 
