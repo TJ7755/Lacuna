@@ -143,7 +143,8 @@ function AppShellLayout() {
   }, [aiSession, aiSettings.enabled]);
 
   useEffect(() => {
-    if (aiWasOpenRef.current && !aiOpen) (aiOpenerRef.current === 'pill' ? aiPillRef : aiTriggerRef).current?.focus();
+    if (aiWasOpenRef.current && !aiOpen)
+      (aiOpenerRef.current === 'pill' ? aiPillRef : aiTriggerRef).current?.focus();
     aiWasOpenRef.current = aiOpen;
   }, [aiOpen]);
 
@@ -463,7 +464,11 @@ function AppShellLayout() {
       />
       <FinalExamLifecycleController />
       {hintsLoaded && (
-        <OverlayLoadBoundary label="Keyboard shortcuts" open={hintsOpen} onClose={() => setHintsOpen(false)}>
+        <OverlayLoadBoundary
+          label="Keyboard shortcuts"
+          open={hintsOpen}
+          onClose={() => setHintsOpen(false)}
+        >
           <Suspense fallback={null}>
             <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
           </Suspense>
