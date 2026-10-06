@@ -48,7 +48,10 @@ vi.mock('./ErrorBoundary', () => ({
 vi.mock('../../state/useSearchData', () => ({
   useSearchData: () => ({ cards: [], courses: [], lessons: [], notes: [], questions: [] }),
 }));
-vi.mock('../ui/KeyHints', () => ({ KeyHints: () => null }));
+vi.mock('../ui/KeyHints', () => ({
+  KeyHints: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog" aria-label="Keyboard shortcuts" /> : null,
+}));
 vi.mock('./LandingTransition', () => ({ consumeLandingArrival: () => false }));
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
@@ -132,26 +135,36 @@ afterEach(() => {
 });
 
 describe('AppShell native commands', () => {
-  it('opens Lacuna Help when the Electron menu requests it', async () => {
-    let openHelp: () => void = () => {
-      throw new Error('Help listener was not installed');
+  function installMenu() {
+    let run: (command: 'help' | 'settings' | 'shortcuts') => void = () => {
+      throw new Error('Menu listener was not installed');
     };
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
       value: {
         isElectron: true,
         platform: 'darwin',
-        onOpenHelp: (callback: () => void) => {
-          openHelp = callback;
+        onMenuCommand: (callback: typeof run) => {
+          run = callback;
           return vi.fn();
         },
       },
     });
+    return (command: 'help' | 'settings' | 'shortcuts') => run(command);
+  }
+
+  it('opens Lacuna Help when the Electron menu requests it', async () => {
+    const run = installMenu();
     renderShell();
-
-    act(() => openHelp());
-
+    act(() => run('help'));
     expect(await screen.findByRole('heading', { name: 'Help' })).toBeInTheDocument();
+  });
+
+  it('opens the keyboard shortcuts panel from the Electron Help menu', async () => {
+    const run = installMenu();
+    renderShell();
+    act(() => run('shortcuts'));
+    expect(await screen.findByRole('dialog', { name: /keyboard shortcuts/i })).toBeInTheDocument();
   });
 });
 

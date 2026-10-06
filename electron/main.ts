@@ -421,9 +421,9 @@ if (installationInProgress) {
   void app.whenReady().then(async () => {
     Menu.setApplicationMenu(
       Menu.buildFromTemplate(
-        createApplicationMenuTemplate(process.platform, isDev, () => {
+        createApplicationMenuTemplate(process.platform, isDev, (command) => {
           if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
-            mainWindow.webContents.send('navigation:open-help');
+            mainWindow.webContents.send('navigation:menu-command', command);
           }
         }),
       ),

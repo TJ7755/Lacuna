@@ -15,7 +15,7 @@ const electron = vi.hoisted(() => {
     }),
     api: () =>
       exposed as {
-        onOpenHelp(callback: () => void): () => void;
+        onMenuCommand(callback: (command: string) => void): () => void;
         ai: {
           requestRestart(): Promise<void>;
           onRestartRequested(callback: () => void): () => void;
@@ -95,14 +95,16 @@ describe('Electron preload AI request lifecycle', () => {
     expect(onRestart).toHaveBeenCalledOnce();
   });
 
-  it('forwards native Help commands and removes its listener', () => {
-    const onOpenHelp = vi.fn();
-    const stopListening = electron.api().onOpenHelp(onOpenHelp);
+  it('forwards only known native menu commands and removes its listener', () => {
+    const onCommand = vi.fn();
+    const stopListening = electron.api().onMenuCommand(onCommand);
 
-    electron.emit('navigation:open-help', undefined);
+    electron.emit('navigation:menu-command', 'help');
+    electron.emit('navigation:menu-command', 'settings');
+    electron.emit('navigation:menu-command', 'javascript:alert(1)');
     stopListening();
-    electron.emit('navigation:open-help', undefined);
+    electron.emit('navigation:menu-command', 'shortcuts');
 
-    expect(onOpenHelp).toHaveBeenCalledOnce();
+    expect(onCommand.mock.calls).toEqual([['help'], ['settings']]);
   });
 });

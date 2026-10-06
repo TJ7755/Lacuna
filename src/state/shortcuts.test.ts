@@ -33,7 +33,7 @@ describe('SHORTCUT_GROUPS', () => {
 
   it('lists the page shortcuts', () => {
     const pages = SHORTCUT_GROUPS.find((group) => group.title === 'Pages');
-    expect(pages?.shortcuts.map((s) => s.keys[0])).toEqual(['S', 'N', '/']);
+    expect(pages?.shortcuts.map((s) => s.keys[0])).toEqual(['S', 'N', '/', 'Shift', 'Alt']);
   });
 
   it('distinguishes quick search from the full content-search page', () => {

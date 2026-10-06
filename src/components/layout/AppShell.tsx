@@ -159,7 +159,18 @@ function AppShellLayout() {
   // New pages start at the top; returning to a page puts it back where it was left.
   useScrollMemory(mainRef);
 
-  useEffect(() => window.electronAPI?.onOpenHelp?.(() => navigate('/help')), [navigate]);
+  useEffect(
+    () =>
+      window.electronAPI?.onMenuCommand?.((command) => {
+        if (command === 'help') void navigate('/help');
+        else if (command === 'settings') void navigate('/settings');
+        else {
+          setHintsLoaded(true);
+          setHintsOpen(true);
+        }
+      }),
+    [navigate],
+  );
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
