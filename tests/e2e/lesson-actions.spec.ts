@@ -11,7 +11,8 @@ async function openWelcomeInEditMode(page: Page) {
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
 }
 
-function pathLessonNames(page: Page) {
+async function pathLessonNames(page: Page) {
+  await expect(page.locator('[data-path-lesson] > button').first()).toBeVisible();
   return page
     .getByRole('list', { name: 'Course path' })
     .locator('[data-path-lesson] > button')

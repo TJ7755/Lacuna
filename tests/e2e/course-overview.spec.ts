@@ -36,6 +36,9 @@ test('Add returns to its own corner without enlarging its disappearing text', as
     .click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
+  await expect(add).toBeVisible();
+  // Layout widths, so the page's entrance scale cannot skew the comparison.
+  const closedWidth = await add.locator('..').evaluate((el) => (el as HTMLElement).offsetWidth);
   await add.click();
   await expect(page.getByRole('menu', { name: 'Add', exact: true })).toBeVisible();
   await expect
@@ -79,9 +82,9 @@ test('Add returns to its own corner without enlarging its disappearing text', as
       page
         .getByRole('button', { name: 'Add', exact: true })
         .locator('..')
-        .evaluate((el) => Math.round(el.getBoundingClientRect().width)),
+        .evaluate((el) => (el as HTMLElement).offsetWidth),
     )
-    .toBe(84);
+    .toBe(closedWidth);
   await add.click();
   await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name' }).press('Escape');
@@ -113,9 +116,10 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
     .click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
-  const samples = await page.evaluate(async () => {
+  const { closed, samples } = await page.evaluate(async () => {
     const surface = document.querySelector<HTMLElement>('button[aria-label="Add"]')!.parentElement!;
     const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Add"]')!;
+    const closed = surface.getBoundingClientRect().width;
     const widths: number[] = [];
     for (let toggle = 0; toggle < 2; toggle++) {
       trigger.click();
@@ -124,13 +128,13 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
         widths.push(surface.getBoundingClientRect().width);
       }
     }
-    return widths;
+    return { closed, samples: widths };
   });
   expect(samples).toContain(216);
-  expect(samples.at(-1)).toBe(84);
-  expect(samples.every((width) => Math.abs(width - 84) < 1 || Math.abs(width - 216) < 1)).toBe(
-    true,
-  );
+  expect(samples.at(-1)).toBe(closed);
+  expect(
+    samples.every((width) => Math.abs(width - closed) < 1 || Math.abs(width - 216) < 1),
+  ).toBe(true);
 });
 
 test('practice editing keeps an unobstructed 44px touch target with a long name', async ({

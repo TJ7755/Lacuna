@@ -86,7 +86,10 @@ export function Menu({
     const trigger = triggerRef.current;
     if (!trigger) return;
     const measure = () => {
-      if (!triggerWidth && trigger.offsetWidth > 0) setMeasuredWidth(trigger.offsetWidth);
+      // Layout width ignores any ancestor's entrance scale; round up so a fractional
+      // label width is never clipped by the surface.
+      const width = Math.ceil(parseFloat(getComputedStyle(trigger).width));
+      if (!triggerWidth && width > 0) setMeasuredWidth(width);
       if (trigger.offsetHeight > 0) setTriggerHeight(trigger.offsetHeight);
     };
     measure();
