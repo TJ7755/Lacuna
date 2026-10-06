@@ -10,16 +10,27 @@ import { useEffect, useState } from 'react';
 export function useCourseTitleInView(pathname: string): boolean {
   const [inView, setInView] = useState(false);
   useEffect(() => {
-    const page =
-      (pathname && document.querySelector(`[data-route-content="${CSS.escape(pathname)}"]`)) || document;
-    const title = page.querySelector('[data-course-title]');
-    if (!title || typeof IntersectionObserver === 'undefined') {
-      setInView(false);
-      return;
-    }
+    setInView(false);
+    if (typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
-    observer.observe(title);
-    return () => observer.disconnect();
+    // The shell mounts before lazy pages and their course data. Wait for this
+    // route's title rather than permanently missing it during its loading state.
+    const waitForTitle = new MutationObserver(observeTitle);
+    function observeTitle() {
+      const page = pathname
+        ? document.querySelector(`[data-route-content="${CSS.escape(pathname)}"]`)
+        : document;
+      const title = page?.querySelector('[data-course-title]');
+      if (!title) return;
+      observer.observe(title);
+      waitForTitle.disconnect();
+    }
+    waitForTitle.observe(document.body, { childList: true, subtree: true });
+    observeTitle();
+    return () => {
+      observer.disconnect();
+      waitForTitle.disconnect();
+    };
   }, [pathname]);
   return inView;
 }
