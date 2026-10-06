@@ -42,7 +42,7 @@ export function SidebarSection() {
                 key={item.id}
                 className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
               >
-                <div className="flex flex-col gap-0.5">
+                <div className="flex shrink-0 gap-0.5">
                   <MoveButton
                     direction="up"
                     label={label}
@@ -134,14 +134,14 @@ function MoveButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+        'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
         !disabled ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
       )}
       aria-label={`Move ${label} ${direction}`}
     >
       <ChevronDownIcon
-        width={12}
-        height={12}
+        width={16}
+        height={16}
         className={direction === 'up' ? 'rotate-180' : undefined}
       />
     </button>
