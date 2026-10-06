@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { StrictMode } from 'react';
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
@@ -210,6 +211,21 @@ describe('defaultShareCourse', () => {
 });
 
 describe('SharePage', () => {
+  it('creates links after StrictMode replays the mount effect', async () => {
+    given(mockCourse);
+    mockPublishShareLink.mockResolvedValue({ shareId: 'a'.repeat(32), revision: 1 });
+    render(<StrictMode><SharePage /></StrictMode>);
+    fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
+    expect(await screen.findByRole('textbox', { name: 'Share link' })).toBeInTheDocument();
+  });
+
+  it('generates share codes after StrictMode replays the mount effect', async () => {
+    given(mockCourse);
+    render(<StrictMode><SharePage /></StrictMode>);
+    otherWay('Share code');
+    fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
+    expect(await screen.findByRole('textbox', { name: 'Generated share code' })).toHaveValue('LAC2-test-code');
+  });
   it('opens on a course with the share link as the one primary action', () => {
     given(mockCourse);
     render(<SharePage />);

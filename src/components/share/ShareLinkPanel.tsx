@@ -51,9 +51,12 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
   const copyTimeout = useRef<number | null>(null);
 
   useEffect(
-    () => () => {
+    () => {
+      mounted.current = true;
+      return () => {
       mounted.current = false;
       if (copyTimeout.current) window.clearTimeout(copyTimeout.current);
+      };
     },
     [],
   );
