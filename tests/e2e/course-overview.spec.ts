@@ -37,6 +37,8 @@ test('Add returns to its own corner without enlarging its disappearing text', as
   await page.getByRole('button', { name: 'Edit mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
   await expect(add).toBeVisible();
+  // The label's width depends on the web font, so measure once it has loaded.
+  await page.evaluate(() => document.fonts.ready);
   // Layout widths, so the page's entrance scale cannot skew the comparison.
   const closedWidth = await add.locator('..').evaluate((el) => (el as HTMLElement).offsetWidth);
   await add.click();
@@ -117,6 +119,7 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
   const { closed, samples } = await page.evaluate(async () => {
+    await document.fonts.ready;
     const surface = document.querySelector<HTMLElement>('button[aria-label="Add"]')!.parentElement!;
     const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Add"]')!;
     const closed = surface.getBoundingClientRect().width;

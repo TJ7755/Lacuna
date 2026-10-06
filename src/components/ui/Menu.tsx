@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -81,8 +82,9 @@ export function Menu({
   const transition = expandingActionSpring(multiplier);
 
   // Only the surface changes dimensions; its text never inherits a layout scale.
-  // Both axes are measured so enlarged text grows the surface instead of clipping it.
-  useEffect(() => {
+  // Both axes are measured so enlarged text grows the surface instead of clipping it,
+  // before the first paint so the surface never flashes at its default size.
+  useLayoutEffect(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
     const measure = () => {
