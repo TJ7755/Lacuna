@@ -23,6 +23,14 @@ test('short review periods fill their card with a compact daily strip', async ({
     await expect
       .poll(() => cells.last().evaluate((element) => getComputedStyle(element).opacity))
       .toBe('1');
-    await activity.screenshot({ path: testInfo.outputPath(`review-${days}-days.png`) });
+    if (process.env.AUDIT_CAPTURE_SCREENSHOTS !== 'off') {
+      await activity.screenshot({ path: testInfo.outputPath(`review-${days}-days.png`) });
+    }
   }
+  await page.getByRole('button', { name: '90 days', exact: true }).click();
+  const calendarCells = activity.getByRole('gridcell');
+  await expect(calendarCells).toHaveCount(90);
+  await calendarCells.first().focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(calendarCells.nth(7)).toBeFocused();
 });
