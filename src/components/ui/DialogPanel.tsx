@@ -1,4 +1,4 @@
-import { m as motion } from 'motion/react';
+import { m as motion, useIsPresent } from 'motion/react';
 import type { ComponentProps, KeyboardEvent, ReactNode, RefObject } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
@@ -44,9 +44,12 @@ export function DialogPanel({
 }: DialogPanelProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const present = useIsPresent();
   return (
     <motion.div
       ref={trapRef}
+      inert={!present}
+      aria-hidden={!present || undefined}
       className={cn('fixed inset-0 z-50 flex flex-col', overlayClassName)}
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}

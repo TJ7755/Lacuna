@@ -52,7 +52,7 @@ export function useFocusTrap(
     (autoFocus ?? firstUseful ?? focusables[0])?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!container) return;
+      if (!container || container.closest('[inert]')) return;
       if (e.key !== 'Tab') return;
 
       const elements = Array.from(

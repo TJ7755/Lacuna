@@ -1,0 +1,1 @@
+- Closing dialogs and inline disclosures immediately remove their controls from keyboard navigation and assistive technology while the visual exit finishes. A departing dialog no longer intercepts Tab, and reopening during exit restores its active controls.

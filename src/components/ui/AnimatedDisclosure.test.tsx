@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
 import { AnimatedDisclosure, animatedDisclosureTiming } from './AnimatedDisclosure';
 import { expandingActionSpring } from './motion';
+import { domAnimation, LazyMotion } from 'motion/react';
+
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 1,
+}));
 
 describe('animatedDisclosureTiming', () => {
   it('follows the global speed and reduced-motion multipliers', () => {
@@ -17,6 +23,25 @@ describe('animatedDisclosureTiming', () => {
 });
 
 describe('AnimatedDisclosure', () => {
+  it('makes departing controls inert immediately and revives them when reopened during exit', async () => {
+    const view = (open: boolean) => (
+      <LazyMotion features={domAnimation}>
+        <AnimatedDisclosure open={open}>
+          <button type="button">Optional action</button>
+        </AnimatedDisclosure>
+      </LazyMotion>
+    );
+    const { rerender } = render(view(true));
+    const control = screen.getByRole('button', { name: 'Optional action' });
+    rerender(view(false));
+    expect(control).toBeInTheDocument();
+    expect(control.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Optional action' })).not.toBeInTheDocument();
+    rerender(view(true));
+    expect(screen.getByRole('button', { name: 'Optional action' })).toBe(control);
+    expect(control.closest('[inert]')).toBeNull();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 200)));
+  });
   it('renders content only while it is open', () => {
     const { rerender } = render(
       <AnimatedDisclosure open={false}>
