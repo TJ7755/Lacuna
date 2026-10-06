@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { referencedAssetHashes } from '../../db/assets';
 import { publishCourse } from '../../db/courseRepository';
@@ -21,6 +21,11 @@ import { useActionFocus } from '../../hooks/useActionFocus';
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
 
 type Way = 'file' | 'code' | 'qr' | 'text';
+
+function ShareWaySurface(props: HTMLMotionProps<'div'>) {
+  const present = useIsPresent();
+  return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
+}
 
 const WAYS: Array<{ id: Way; label: string; icon: ReactNode }> = [
   { id: 'file', label: 'Course file', icon: <DownloadIcon width={16} height={16} /> },
@@ -326,9 +331,9 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
       </div>
       <AnimatePresence initial={false}>
         {way && (
-          <motion.div key="panel" {...collapse(m)} className="overflow-hidden">
+          <ShareWaySurface key="panel" {...collapse(m)} className="overflow-hidden">
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div
+              <ShareWaySurface
                 key={way}
                 initial={m > 0 ? { opacity: 0, x: 8 } : false}
                 animate={{ opacity: 1, x: 0 }}
@@ -338,9 +343,9 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
                 <SectionCard compact className="mt-4">
                   {panel(way)}
                 </SectionCard>
-              </motion.div>
+              </ShareWaySurface>
             </AnimatePresence>
-          </motion.div>
+          </ShareWaySurface>
         )}
       </AnimatePresence>
     </section>

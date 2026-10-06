@@ -35,6 +35,8 @@
   course pages are inert and hidden from assistive technology while the next page enters.
 - Closing shared dialogs and inline disclosures become inert and hidden immediately;
   departing focus traps leave Tab alone.
+  Sharing alternatives follow the same rule when switching or collapsing panels;
+  quickly reopening a retained panel restores its active state without losing selector focus.
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
 - Restoring an archived course moves focus to the next restoration action, or the
   page heading when no archived courses remain, without overriding focus moved elsewhere.
