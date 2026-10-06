@@ -153,6 +153,9 @@ a central route guard returns direct study, authoring or mutation URLs to that o
 **Unarchive** action restores study and authoring controls. A course card's context menu (right-click,
 keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
 lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
+The dashboard menu and archive confirmation load on demand and are precached with their
+static dependencies, so their first use also works offline. Closing confirmations become
+inert immediately while their exit animation finishes.
 
 Dashboard and navigation share one shell-owned live query, also supplying the final-exam
 controller. Desktop and mobile navigation consume the same derived result. Dashboard alone

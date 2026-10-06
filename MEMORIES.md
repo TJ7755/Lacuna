@@ -227,6 +227,8 @@ app-shell precache from emitted imports and rerun cold offline Cards reload afte
 Workers must use the ID and share-codec utilities without importing database initialisation.
 Course-file operations must load with the Share route: deferring their module until the first
 button click breaks first-use export/import after the user goes offline.
+Deferred shell controls also need precaching: runtime caching only protects scripts already
+visited, so first-use offline course menus need their emitted dependency graph in the shell cache.
 
 Build-time prerendering of a hash-routed page needs a browser shim: the landing
 tree reads `window` and `localStorage` during render, so its server entry installs

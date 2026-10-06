@@ -8,6 +8,13 @@ import {
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('precaches on-demand course actions and their static dependencies before first offline use', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/CourseActions-ACTIONS1.js', isEntry: false, imports: ['assets/action-ui-ACTION01.js'] },
+      { fileName: 'assets/action-ui-ACTION01.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/CourseActions-ACTIONS1.js', 'assets/action-ui-ACTION01.js']);
+  });
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
     expect(pwaInjectRegister).toBeNull();
   });
