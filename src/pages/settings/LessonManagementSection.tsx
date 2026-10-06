@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
@@ -7,6 +7,7 @@ import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons'
 import { useLessons } from '../../state/useCourseData';
 import { updateLesson, deleteLesson, reorderLessons } from '../../db/lessonRepository';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { useActionFocus } from '../../hooks/useActionFocus';
 
 export interface LessonManagementSectionProps {
   courseId: string;
@@ -26,8 +27,17 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   const [nameDraft, setNameDraft] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteButtons = useRef(new Map<string, HTMLButtonElement>());
+  const renameOpener = useRef<HTMLElement | null>(null);
+  const { remember, restore } = useActionFocus();
+
+  useEffect(() => {
+    if (!editingId) restore(renameOpener.current);
+  }, [editingId, restore]);
 
   function startEdit(id: string, currentName: string) {
+    renameOpener.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    remember();
     setEditingId(id);
     setNameDraft(currentName);
   }
@@ -68,29 +78,34 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
         >
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="flex flex-col">
-                <button
+              <div className="flex shrink-0 flex-col">
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => void move(index, -1)}
                   disabled={index === 0}
                   aria-label={`Move ${lesson.name} up`}
-                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                  className="min-w-11 px-0"
                 >
                   <ChevronDownIcon width={14} height={14} className="rotate-180" />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => void move(index, 1)}
                   disabled={index === lessons.length - 1}
                   aria-label={`Move ${lesson.name} down`}
-                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                  className="min-w-11 px-0"
                 >
                   <ChevronDownIcon width={14} height={14} />
-                </button>
+                </Button>
               </div>
               {editingId === lesson.id ? (
                 <input
                   autoFocus
+                  aria-label="Lesson name"
                   value={nameDraft}
                   onChange={(e) => setNameDraft(e.target.value)}
                   onBlur={() => void commitRename()}
