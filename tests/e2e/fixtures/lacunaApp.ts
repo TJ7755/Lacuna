@@ -35,3 +35,12 @@ export async function createCourse(page: Page, courseName: string) {
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
 }
+
+/** Gives the open lesson a note, so a new course has something to study. */
+export async function addLessonNote(page: Page, title: string) {
+  await page.getByRole('button', { name: 'Add note' }).click();
+  const field = page.getByRole('textbox', { name: 'Title' });
+  await field.fill(title);
+  await field.press('Control+Enter');
+  await expect(field).toBeHidden();
+}

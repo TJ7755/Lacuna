@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { addLessonNote, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('keeps optional Simple Learn tucked inside Study on desktop and mobile', async ({
   page,
 }, testInfo) => {
   await enterFreshLacuna(page);
   await createCourse(page, 'Anytime revision');
+  await addLessonNote(page, 'Overview');
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
   await expect(sheet).toBeVisible();

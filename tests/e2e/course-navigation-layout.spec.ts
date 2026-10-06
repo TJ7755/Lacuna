@@ -132,7 +132,7 @@ test('course navigation stays mounted while switching sections in both direction
   }
 });
 
-test('course pages slide together in the tab direction beneath stationary navigation', async ({
+test('course pages drift in the tab direction beneath stationary navigation', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -144,31 +144,36 @@ test('course pages slide together in the tab direction beneath stationary naviga
     await expect(page.locator('[data-route-content]')).toHaveCount(1);
     const navigation = page.locator('[data-course-page-navigation]');
     await navigation.evaluate((element, direction) => {
-      element.removeAttribute('data-observed-slide');
+      element.removeAttribute('data-observed-drift');
+      element.removeAttribute('data-observed-overlap');
       element.addEventListener(
         'click',
         () => {
           const deadline = performance.now() + 1500;
           const sample = () => {
             const pages = [...document.querySelectorAll('[data-route-content]')];
-            const offsets = pages.map(
-              (page) => new DOMMatrixReadOnly(getComputedStyle(page).transform).m41,
-            );
-            // popLayout retains the outgoing page first and mounts the incoming page last.
-            if (offsets.length === 2 && offsets[0] * direction < -1 && offsets[1] * direction > 1) {
-              element.setAttribute('data-observed-slide', 'true');
-            } else if (performance.now() < deadline) {
-              requestAnimationFrame(sample);
-            }
+            // The old page leaves at once, so two pages are never visible together.
+            const visible = pages.filter((page) => Number(getComputedStyle(page).opacity) > 0.05);
+            if (visible.length > 1) element.setAttribute('data-observed-overlap', 'true');
+            // The incoming page mounts last; it drifts in while it fades up.
+            const incoming = pages.at(-1);
+            const offset = incoming
+              ? new DOMMatrixReadOnly(getComputedStyle(incoming).transform).m41
+              : 0;
+            if (offset * direction > 1) element.setAttribute('data-observed-drift', 'true');
+            if (performance.now() < deadline) requestAnimationFrame(sample);
           };
           requestAnimationFrame(sample);
         },
         { once: true },
       );
     }, direction);
+    const box = await navigation.boundingBox();
     await navigation.getByRole('link', { name: label, exact: true }).click();
-    await expect(navigation).toHaveAttribute('data-observed-slide', 'true');
+    await expect(navigation).toHaveAttribute('data-observed-drift', 'true');
     await expect(page.locator('[data-route-content]')).toHaveCount(1);
+    await expect(navigation).not.toHaveAttribute('data-observed-overlap', 'true');
+    expect(await navigation.boundingBox()).toEqual(box);
   }
 });
 
