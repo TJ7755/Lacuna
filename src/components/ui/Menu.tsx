@@ -153,7 +153,8 @@ export function Menu({
       return;
     }
     if (event.key === 'Tab') {
-      close(false);
+      // Restore the native Tab origin before the focused item becomes inert or unmounts.
+      close(true);
       return;
     }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {

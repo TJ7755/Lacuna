@@ -1,6 +1,28 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
+test('Tab leaves Other ways from its trigger in both directions', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+  const trigger = page.getByRole('button', { name: 'Other ways to study' });
+  for (const [key, target] of [
+    ['Tab', 'Add'],
+    ['Shift+Tab', 'Study'],
+  ] as const) {
+    await trigger.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menu', { name: 'Other ways to study' })).toBeVisible();
+    await page.keyboard.press(key);
+    await expect(page.getByRole('menu', { name: 'Other ways to study' })).toBeHidden();
+    await expect(page.getByRole('button', { name: target, exact: true })).toBeFocused();
+  }
+});
+
 async function assertPanelContained(trigger: Locator, menu: Locator) {
   const panel = (await menu.boundingBox())!;
   const surface = (await trigger.locator('..').boundingBox())!;

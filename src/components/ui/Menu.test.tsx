@@ -27,6 +27,16 @@ function renderMenu(overrides?: {
 }
 
 describe('Menu', () => {
+  it('moves the Tab origin back to its trigger before removing the focused menu item', () => {
+    const { trigger } = renderMenu();
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' });
+    const item = screen.getByRole('menuitem', { name: 'New sequence' });
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    fireEvent(item, event);
+    expect(trigger).toHaveFocus();
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
   it('expands the trigger surface around its choices without a detached panel', () => {
     const { trigger } = renderMenu();
     fireEvent.click(trigger);
