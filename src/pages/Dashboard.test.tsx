@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
 import type { Course } from '../db/types';
 
@@ -166,12 +166,17 @@ function queueLinks() {
 
 describe('Dashboard', () => {
   it('renders skeleton when data is loading', async () => {
-    render(<Dashboard />);
-    // The placeholder is withheld until loading has lasted long enough to be worth
-    // showing, so a load that resolves quickly never flashes one. See DelayedFallback.
-    await waitFor(() => {
+    vi.useFakeTimers();
+    try {
+      render(<Dashboard />);
+      // Verify the actual delay, independently of load on the machine running the suite.
+      await act(() => vi.advanceTimersByTime(249));
+      expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
+      await act(() => vi.advanceTimersByTime(1));
       expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('withholds the loading skeleton while a load could still finish instantly', () => {
@@ -386,7 +391,7 @@ describe('Dashboard', () => {
     setCourseData();
     render(<Dashboard />);
     const link = screen.getByRole('link', { name: 'Test Course' });
-    link.focus();
+    act(() => link.focus());
     fireEvent.keyDown(link, { key, shiftKey: key === 'F10' });
     expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveFocus();
     expect(mockNavigate).not.toHaveBeenCalled();
