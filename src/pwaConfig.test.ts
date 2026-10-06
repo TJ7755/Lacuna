@@ -4,6 +4,7 @@ import {
   collectAppShellScripts,
   collectAppShellStyles,
   collectOfflineCardsDependencies,
+  collectOfflineImportRoute,
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
@@ -125,6 +126,27 @@ describe('service-worker asset caching', () => {
     expect(collectOfflineCardsDependencies(chunks)).toEqual([
       'assets/cardCore-CORE0001.js',
       'assets/validation-VALID001.js',
+    ]);
+  });
+
+  it('precaches the Import route so a course file can be received on first use offline', () => {
+    const chunks = [
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
+      {
+        fileName: 'assets/ImportPage-IMPORT01.js',
+        isEntry: false,
+        imports: ['assets/shared-SHARED01.js', 'assets/courseFile-COURSE01.js'],
+        viteMetadata: { importedCss: new Set(['assets/ImportPage-IMPORT01.css']) },
+      },
+      { fileName: 'assets/courseFile-COURSE01.js', isEntry: false, imports: [] },
+      { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
+    ];
+
+    expect(collectOfflineImportRoute(chunks)).toEqual([
+      'assets/ImportPage-IMPORT01.js',
+      'assets/courseFile-COURSE01.js',
+      'assets/ImportPage-IMPORT01.css',
     ]);
   });
 

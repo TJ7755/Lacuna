@@ -1,0 +1,1 @@
+- Precache the Import route so a received course file can be opened on first use offline (about 110 KiB gzipped at service-worker install), and size menu triggers before their first paint.

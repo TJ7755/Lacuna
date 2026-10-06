@@ -60,6 +60,25 @@ export function collectOfflineCardsDependencies(chunks: readonly StaticChunk[]):
   );
 }
 
+/**
+ * Receiving a course file must work on first use offline, and it now happens on Import,
+ * which a learner may never have opened online. Precache that route, its static imports
+ * and their stylesheets, leaving out what the shell already holds.
+ */
+export function collectOfflineImportRoute(chunks: readonly StaticChunk[]): string[] {
+  const route = chunks.find((chunk) =>
+    /^assets\/ImportPage-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+  );
+  if (!route) throw new Error('Could not find the Import route for offline precaching.');
+  const eager = new Set([...collectAppShellScripts(chunks), ...collectAppShellStyles(chunks)]);
+  const scripts = collectStaticImports(chunks, route);
+  const byFileName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+  const styles = scripts.flatMap((fileName) => [
+    ...(byFileName.get(fileName)?.viteMetadata?.importedCss ?? []),
+  ]);
+  return [...new Set([...scripts, ...styles])].filter((fileName) => !eager.has(fileName));
+}
+
 /** Precache the exact static entry graph, which Rolldown may split into many files. */
 export function appShellPrecachePlugin(): Plugin {
   let pwa: VitePluginPWAAPI;
@@ -80,13 +99,23 @@ export function appShellPrecachePlugin(): Plugin {
       );
       const eagerFiles = [...collectAppShellScripts(chunks), ...collectAppShellStyles(chunks)];
       const cardsDependencies = collectOfflineCardsDependencies(chunks);
+      const importRoute = collectOfflineImportRoute(chunks).filter(
+        (fileName) => !cardsDependencies.includes(fileName),
+      );
 
       pwa.extendManifestEntries((entries) => [
         ...entries,
-        ...[...eagerFiles, ...cardsDependencies].map((url) => ({ url, revision: null })),
+        ...[...eagerFiles, ...cardsDependencies, ...importRoute].map((url) => ({
+          url,
+          revision: null,
+        })),
       ]);
+      const importBytes = importRoute.reduce((total, fileName) => {
+        const output = bundle[fileName];
+        return total + (output?.type === 'chunk' ? output.code.length : 0);
+      }, 0);
       this.info(
-        `Application shell precache: ${eagerFiles.length} shell scripts and ${cardsDependencies.length} shared Cards dependencies.`,
+        `Application shell precache: ${eagerFiles.length} shell scripts, ${cardsDependencies.length} shared Cards dependencies and ${importRoute.length} Import route files (${Math.round(importBytes / 1024)} KiB of script).`,
       );
     },
   };
