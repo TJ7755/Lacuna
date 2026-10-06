@@ -38,10 +38,10 @@ describe('OtherShareWays exit', () => {
         <OtherShareWays course={course} cards={[]} />
       </LazyMotion>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Share code', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share code' }));
     await settle();
     const outgoing = screen.getByRole('button', { name: 'Create share code' });
-    const qr = screen.getByRole('button', { name: 'QR code', exact: true });
+    const qr = screen.getByRole('button', { name: 'QR code' });
     qr.focus();
     fireEvent.click(qr);
     expect(outgoing).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('OtherShareWays exit', () => {
         <OtherShareWays course={course} cards={[]} />
       </LazyMotion>,
     );
-    const toggle = screen.getByRole('button', { name: 'Share code', exact: true });
+    const toggle = screen.getByRole('button', { name: 'Share code' });
     fireEvent.click(toggle);
     await settle();
     const action = screen.getByRole('button', { name: 'Create share code' });
