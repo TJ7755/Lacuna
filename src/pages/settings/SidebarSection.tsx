@@ -40,9 +40,9 @@ export function SidebarSection() {
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors sm:grid-cols-[auto_minmax(0,1fr)_auto]"
               >
-                <div className="flex shrink-0 gap-0.5">
+                <div className="col-span-2 row-start-2 flex gap-0.5 sm:col-span-1 sm:col-start-1 sm:row-start-1">
                   <MoveButton
                     direction="up"
                     label={label}
@@ -66,18 +66,22 @@ export function SidebarSection() {
                     }}
                   />
                 </div>
-                <span className="flex-1 text-sm text-ink">{label}</span>
-                <PillSwitch
-                  checked={item.visible}
-                  disabled={!canHide}
-                  ariaLabel={`Show ${label}`}
-                  onChange={(checked) => {
-                    const next = sidebarSettings.navItems.map((navItem) =>
-                      navItem.id === item.id ? { ...navItem, visible: checked } : navItem,
-                    );
-                    setSidebarSettings({ navItems: next });
-                  }}
-                />
+                <span className="col-start-1 row-start-1 min-w-0 break-words text-sm text-ink sm:col-start-2">
+                  {label}
+                </span>
+                <div className="col-start-2 row-start-1 sm:col-start-3">
+                  <PillSwitch
+                    checked={item.visible}
+                    disabled={!canHide}
+                    ariaLabel={`Show ${label}`}
+                    onChange={(checked) => {
+                      const next = sidebarSettings.navItems.map((navItem) =>
+                        navItem.id === item.id ? { ...navItem, visible: checked } : navItem,
+                      );
+                      setSidebarSettings({ navItems: next });
+                    }}
+                  />
+                </div>
               </div>
             );
           })}

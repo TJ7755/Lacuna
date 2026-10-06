@@ -90,9 +90,9 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
           className="overflow-hidden rounded-2xl bg-ink/[0.03]"
         >
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="flex shrink-0 flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-2">
+              <div className="flex shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -127,10 +127,10 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                     if (e.key === 'Enter') void commitRename();
                     if (e.key === 'Escape') setEditingId(null);
                   }}
-                  className="min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                  className="min-w-0 flex-[1_1_8rem] rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
                 />
               ) : (
-                <span className="truncate text-sm text-ink">
+                <span className="min-w-0 flex-[1_1_8rem] truncate text-sm text-ink">
                   {lesson.name}
                   {lesson.isExtension && (
                     <span className="ml-2 text-xs text-ink-faint">(extension)</span>
@@ -138,7 +138,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"

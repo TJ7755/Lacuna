@@ -48,7 +48,9 @@ its navigation cannot drift from the rendered groups.
   optimisation controls sit behind native **Advanced practice timing** or **Advanced scheduling**
   disclosures. Workload and session-goal fields remain visible.
 - **Sidebar:** show due counts (on by default), compact mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Dashboard, Review today, Search, Share, Analytics, Settings, Help). **Archived** is fixed
+  entry (Today, Search, Share, Progress, Settings, Help). Navigation names and visibility switches
+  stay on one row, with 44px ordering controls wrapping beneath them on narrow screens; enlarged
+  text must leave every control inside its row. **Archived** is fixed
   beneath the **Courses** heading and is not hideable or reorderable; archived courses never appear
   in the ordinary course list. The rendered search
   trigger is **Quick search** when the overlay is available and **Search content** when it must link
@@ -238,6 +240,8 @@ defaults** is always available.
 
 Lesson rename, reorder and deletion failures use the existing negative notification.
 The editor or confirmation remains available for retry; failed writes do not dismiss it.
+Lesson names, editors and action groups wrap independently when narrow widths or
+enlarged text require more space, keeping both the name and keyboard controls usable.
 
 - **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
   through the existing `updateCourse` path as it's edited — there is no staged
