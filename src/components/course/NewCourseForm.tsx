@@ -1,4 +1,5 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
@@ -22,7 +23,8 @@ interface NewCourseFormProps {
 export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
-  const trapRef = useFocusTrap(!inline, { autoFocusSelector: 'input, textarea' });
+  const present = useIsPresent();
+  const trapRef = useFocusTrap(present && !inline, { autoFocusSelector: 'input, textarea' });
   const nameInputRef = useRef<HTMLInputElement>(null);
   const nameInputId = useId();
   const datePickerRef = useRef<HTMLDivElement>(null);
@@ -35,6 +37,9 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (present && inline) nameInputRef.current?.focus();
+  }, [present, inline]);
 
   const canCreate = !saving;
 
