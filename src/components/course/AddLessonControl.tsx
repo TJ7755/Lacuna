@@ -41,11 +41,13 @@ export function AddLessonControl({
   const [importingCards, setImportingCards] = useState(false);
   const [saving, setSaving] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
   const previouslyOpen = useRef(open);
   useEffect(() => {
+    if (open && !importingCards) nameInput.current?.focus();
     if (!open && previouslyOpen.current) trigger.current?.focus();
     previouslyOpen.current = open;
-  }, [open]);
+  }, [open, importingCards]);
 
   function startAdd() {
     setName(defaultLessonName(lessonCount));
@@ -61,7 +63,7 @@ export function AddLessonControl({
 
   async function save() {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (saving || !trimmed) return;
     setSaving(true);
     try {
       const lesson = await createLesson(courseId, trimmed);
@@ -108,6 +110,7 @@ export function AddLessonControl({
           >
             <Field label="Lesson name">
               <Input
+                ref={nameInput}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Elasticity"

@@ -1,6 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { AddLessonControl, defaultLessonName } from './AddLessonControl';
+import { domAnimation, LazyMotion } from 'motion/react';
+
+const motionPreference = vi.hoisted(() => ({ multiplier: 0 }));
+beforeEach(() => {
+  motionPreference.multiplier = 0;
+  createLesson.mockClear();
+});
 
 const createLesson = vi.fn().mockResolvedValue({
   id: 'lesson-new',
@@ -21,7 +28,7 @@ vi.mock('../ui/Toast', () => ({
 }));
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['off'],
-  speedMultiplier: () => 0,
+  speedMultiplier: () => motionPreference.multiplier,
 }));
 
 describe('defaultLessonName', () => {
@@ -33,6 +40,43 @@ describe('defaultLessonName', () => {
 });
 
 describe('AddLessonControl', () => {
+  it('does not create a second lesson when Enter repeats while creation is pending', async () => {
+    let finish!: (lesson: { id: string }) => void;
+    createLesson.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(<AddLessonControl courseId="course-1" lessonCount={1} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(createLesson).toHaveBeenCalledOnce();
+    await act(async () => {
+      finish({ id: 'lesson-new' });
+    });
+  });
+
+  it('refocuses the existing name field when reopened before its exit finishes', async () => {
+    motionPreference.multiplier = 1;
+    render(
+      <LazyMotion features={domAnimation}>
+        <AddLessonControl courseId="course-1" lessonCount={1} />
+      </LazyMotion>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    const name = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    const trigger = screen.getByRole('button', { name: 'Add lesson' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const reopened = screen.getByRole('textbox', { name: 'Lesson name' });
+    expect(reopened).toBe(name);
+    expect(reopened).toHaveFocus();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 250)));
+  });
   it('cancels with Escape from any form control and returns focus to Add lesson', async () => {
     render(<AddLessonControl courseId="course-1" lessonCount={1} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
