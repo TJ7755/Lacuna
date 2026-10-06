@@ -34,6 +34,7 @@ export function ImportPage() {
   const [file, setFile] = useState<File>();
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const pageRoot = useRef<HTMLDivElement>(null);
   const sourceButtons = useRef<Partial<Record<Source, HTMLButtonElement | null>>>({});
   const returnSource = useRef<Source | null>(null);
   const navigate = useNavigate();
@@ -41,10 +42,31 @@ export function ImportPage() {
   const draft = useImportDestination();
 
   useLayoutEffect(() => {
-    if (source || !returnSource.current) return;
+    if (source) {
+      // A fast return can revive an exiting form, so mount-only autofocus is insufficient.
+      const focusInput = () => {
+        const selector =
+          source === 'lacuna'
+            ? 'textarea[aria-label="Share link or code to import"]'
+            : source === 'anki'
+              ? '.card-import-package button'
+              : '#card-import-text';
+        const target = [...(pageRoot.current?.querySelectorAll<HTMLElement>(selector) ?? [])].find(
+          (element) => !element.closest('[inert]'),
+        );
+        target?.focus({ preventScroll: true });
+      };
+      if (multiplier === 0) {
+        focusInput();
+        return;
+      }
+      const frame = requestAnimationFrame(focusInput);
+      return () => cancelAnimationFrame(frame);
+    }
+    if (!returnSource.current) return;
     sourceButtons.current[returnSource.current]?.focus({ preventScroll: true });
     returnSource.current = null;
-  }, [source]);
+  }, [source, multiplier]);
 
   function chooseFile(next: File | undefined) {
     if (!next) return;
@@ -67,6 +89,7 @@ export function ImportPage() {
 
   return (
     <div
+      ref={pageRoot}
       className={`import-page ${PAGE_FRAME} py-10`}
       style={{ '--import-motion-duration': `${200 * multiplier}ms` } as CSSProperties}
       {...keys}
