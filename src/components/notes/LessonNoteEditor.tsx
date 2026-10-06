@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useEditorKeys } from '../../hooks/dialogKeys';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { Button } from '../ui/Button';
@@ -24,6 +24,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
   const [content, setContent] = useState(note?.content ?? '');
 
   const saveRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
   const canSave = name.trim().length > 0 && !busy;
 
   async function handleSave() {
@@ -37,10 +38,11 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
     <div className="flex flex-col gap-4" {...keys}>
       {/* Note title */}
       <div>
-        <label className="mb-1.5 block text-sm text-ink-faint">
+        <label htmlFor={titleId} className="mb-1.5 block text-sm text-ink-faint">
           Title
         </label>
         <input
+          id={titleId}
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}

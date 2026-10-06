@@ -9,6 +9,13 @@ function setup() {
   return { onSave, onCancel };
 }
 
+describe('LessonNoteEditor', () => {
+  it('names the title field for assistive technology', () => {
+    setup();
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveFocus();
+  });
+});
+
 describe('LessonNoteEditor keyboard', () => {
   it('opens on the title and saves with Ctrl+Enter from the body', () => {
     const { onSave } = setup();
