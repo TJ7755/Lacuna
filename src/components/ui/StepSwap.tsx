@@ -68,6 +68,8 @@ const StepSwapSurface = forwardRef<
       exit={motionEnabled ? 'exit' : undefined}
       transition={transition}
       style={{ pointerEvents: isPresent ? 'auto' : 'none' }}
+      inert={!isPresent}
+      aria-hidden={!isPresent || undefined}
       className={className}
     >
       {children}
@@ -117,7 +119,10 @@ export function StepSwap({
       root.querySelector<HTMLElement>(
         'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled])',
       );
-    target?.focus();
+    if (target?.matches('h1, h2') && !target.hasAttribute('tabindex')) {
+      target.tabIndex = -1;
+    }
+    target?.focus({ preventScroll: true });
   }, [stepKey, moveFocus]);
 
   return (
