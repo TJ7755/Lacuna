@@ -1,7 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type * as MotionReact from 'motion/react';
 import type { Note } from '../../db/types';
 import { LessonNotesCard } from './LessonNotesCard';
+
+const presence = vi.hoisted(() => ({ current: true }));
+vi.mock('motion/react', async () => ({
+  ...(await vi.importActual<typeof MotionReact>('motion/react')),
+  useIsPresent: () => presence.current,
+}));
 
 vi.mock('./AnnotatedNoteContent', () => ({
   AnnotatedNoteContent: ({ note }: { note: Note }) => <p>{note.content}</p>,
@@ -19,6 +26,14 @@ const note = (id: string, name: string) =>
   }) as Note;
 
 describe('LessonNotesCard', () => {
+  it('takes departing note actions out of the keyboard and accessibility tree', () => {
+    presence.current = false;
+    render(<LessonNotesCard lessonId="l1" notes={[note('n1', 'Why')]} editable />);
+    expect(screen.queryByRole('button', { name: 'Add note' })).not.toBeInTheDocument();
+    expect(screen.getByText('Add note').closest('[inert]')).not.toBeNull();
+    presence.current = true;
+  });
+
   it('leaves no empty bar above a single note in View mode', () => {
     const { container } = render(
       <LessonNotesCard lessonId="l1" notes={[note('n1', 'Why')]} editable={false} />,

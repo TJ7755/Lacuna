@@ -4,8 +4,8 @@
 // reorder controls that fade in without moving the text (the action row keeps its
 // height in both modes). Replaces the old collapsible NoteRow list.
 
-import { useState } from 'react';
-import { AnimatePresence, LayoutGroup, m as motion } from 'motion/react';
+import { useState, type ComponentProps } from 'react';
+import { AnimatePresence, LayoutGroup, m as motion, useIsPresent } from 'motion/react';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
@@ -139,7 +139,7 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
 
         <AnimatePresence initial={false}>
           {editable && !addingNote && !editingActive && (
-            <motion.div
+            <NoteActionsBar
               key="note-actions"
               initial={m > 0 ? { opacity: 0, scale: 0.9 } : false}
               animate={{ opacity: 1, scale: 1 }}
@@ -211,7 +211,7 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
                 <PlusIcon width={16} height={16} />
                 Add note
               </Button>
-            </motion.div>
+            </NoteActionsBar>
           )}
         </AnimatePresence>
       </motion.div>
@@ -258,4 +258,10 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
         ))}
     </article>
   );
+}
+
+/** The note actions, which leave the keyboard and accessibility tree as they start to exit. */
+function NoteActionsBar(props: ComponentProps<typeof motion.div>) {
+  const present = useIsPresent();
+  return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
 }
