@@ -288,3 +288,15 @@ when its active step changes, after departing controls become inert.
 A saved card appears in the live list before the editor’s confirmation delay ends.
 Cancel that delayed return as the route starts exiting (`useIsPresent`), on unmount
 and on card-identity changes, including async saves that finish after departure; otherwise navigation to Settings can be redirected to Cards.
+
+## Controls with their own press motion must opt out of the global press dip
+
+`installPressFeedback` scales every pressable element on pointer-down unless it carries `data-press`. A control that animates its own press (Button, Menu, course tabs) needs `data-press`, otherwise the two scales multiply and cancel: the course tab's held expansion vanished this way.
+
+## Browser specs: choose visually hidden radios from the keyboard; find routes by route content
+
+Card-style radio groups use `sr-only` inputs, which Playwright cannot click; focus the radio and press Space, as `createCourse` does. Route markers live on `[data-route-content]` (two exist during a transition), not on `main`; scope with `main:has([data-route-content$="/cards"])`.
+
+## Stacked animated rows trap open menus and dialogs
+
+Each `motion.li` with a transform is its own stacking context, so a popover inside a row renders beneath later rows whatever its z-index. Lift the row while its menu is open (`has-[[aria-expanded=true]]:z-20`) and portal dialogs to `document.body`.

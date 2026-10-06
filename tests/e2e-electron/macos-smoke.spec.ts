@@ -54,7 +54,10 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     const courseName = 'macOS storage smoke';
     await page.locator('main').getByRole('button', { name: 'New course' }).click();
     await page.getByRole('textbox', { name: 'Course name' }).fill(courseName);
-    await page.getByRole('radio', { name: /Steady retention/ }).click();
+    const steady = page.getByRole('radio', { name: /Steady retention/ });
+    await steady.focus();
+    await steady.press('Space');
+    await expect(steady).toBeChecked();
     await page.getByRole('button', { name: 'Create', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
     await expect.poll(() => courseStored(page, courseName)).toBe(true);

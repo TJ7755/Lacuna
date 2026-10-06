@@ -35,8 +35,7 @@ migration regression suite and checking upgrades from the previous published rel
 The prompter requested a [next-session brief](plans/direction-c-next-session.md)
 on 6 October 2026. First fix the stretched lesson creation controls, then assess
 discoverable lesson management, context menus and existing desktop menu commands.
-The brief records priorities and verification gaps; proposed features still need
-an implementation decision.
+The brief records priorities, the decisions taken and their outcome.
 
 ## Feature freeze
 

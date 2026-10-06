@@ -68,3 +68,25 @@ the relevant suite. Keep parallel browser output directories separate.
 Preserve the existing uncommitted Mermaid work and unknown `debug.log`. Follow
 [visual design](../spec/visual-design.md) and [accessibility](../spec/accessibility.md).
 Commit tested checkpoints and push to Direction C throughout the next session.
+
+## Outcome (6 October 2026)
+
+Decisions from the prompter: path practice kinds are named **Card practice** and **Practice
+questions** everywhere; lesson deletion confirms with its consequences and then offers Undo;
+"ready for review" includes green CI.
+
+1. The single-lesson toolbar uses the shared Add menu, and the new-lesson form opens in its own
+   bounded disclosure. `tests/e2e/lesson-add-toolbar.spec.ts` samples button heights through
+   opening and closing at 1280 and 390 px, under reduced motion and with enlarged text.
+2. `LessonActionsMenu` serves path rows and the lesson heading, opening from right-click, the
+   context-menu key or Shift+F10 except over text fields and selections. It reuses `deleteLesson`,
+   `snapshotLesson` and `restoreLesson`; `tests/e2e/lesson-actions.spec.ts` covers it.
+3. Menu inventory: the native menu gained only existing actions (Settings on Cmd/Ctrl+comma,
+   Keyboard Shortcuts in Help) through one whitelisted command channel. Quick search stays a
+   renderer shortcut, because a menu accelerator would consume Cmd/Ctrl+K. No web menu bar is
+   needed: every application action is already reachable from the sidebar, the course tabs or
+   the shortcuts sheet. The Today dashboard's course context menu remains a separate,
+   pointer-positioned menu with a single Archive action.
+4. An empty lesson leads with New card; the management section offers only the other ways to add
+   cards; a one-lesson course with nothing to study disables Study. The offline media-sharing test
+   passes against a fresh production preview after the stale route selectors were updated.
