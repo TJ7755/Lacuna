@@ -36,6 +36,9 @@
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
 - Restoring an archived course moves focus to the next restoration action, or the
   page heading when no archived courses remain, without overriding focus moved elsewhere.
+- Archiving from Today returns focus to the next course action, or the Today heading
+  when the queue becomes empty. Course menus announce their expanded state and close
+  on Tab before native navigation continues from their trigger.
 - Settings and Help expose the same native section selector below desktop widths, so
   their topics remain reachable with a keyboard when the section rail is hidden.
 

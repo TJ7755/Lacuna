@@ -395,6 +395,52 @@ describe('Dashboard', () => {
     expect(mockUpdateCourse).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])('dismisses the course menu on Tab (shift: %s)', (shiftKey) => {
+    setCourseData();
+    render(<Dashboard />);
+    const more = screen.getByRole('button', { name: 'More for Test Course' });
+    fireEvent.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Archive' }), {
+      key: 'Tab',
+      shiftKey,
+    });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(more).toHaveFocus();
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('keeps the Archive menu action at the shared minimum target size', () => {
+    setCourseData();
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
+    expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveClass('min-h-11');
+  });
+
+  it.each([false, true])('returns focus after archiving (last course: %s)', async (lastCourse) => {
+    setCourseData(lastCourse ? [mockCourse] : [mockCourse, course('course-2', 'Second Course')]);
+    const { rerender } = render(<Dashboard />);
+    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
+    const confirm = screen.getByRole('button', { name: 'Archive course' });
+    confirm.focus();
+    fireEvent.click(confirm);
+    await waitFor(() => expect(mockNotify).toHaveBeenCalled());
+    setCourseData(
+      lastCourse
+        ? [{ ...mockCourse, archived: true }]
+        : [{ ...mockCourse, archived: true }, course('course-2', 'Second Course')],
+    );
+    rerender(<Dashboard />);
+    await waitFor(() =>
+      expect(
+        lastCourse
+          ? screen.getByRole('heading', { name: 'Today' })
+          : screen.getByRole('button', { name: 'More for Second Course' }),
+      ).toHaveFocus(),
+    );
+  });
+
   it('archives a course, allows Undo and drops the archived course from the queue', async () => {
     setCourseData();
     const { rerender } = render(<Dashboard />);

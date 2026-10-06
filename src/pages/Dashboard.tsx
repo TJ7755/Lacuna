@@ -42,6 +42,9 @@ interface ArchiveTarget {
 }
 
 export function Dashboard() {
+  const frame = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const archiveFocus = useRef<{ courseId: string; index: number } | null>(null);
   const data = useCourseDashboardData();
   const courses = data?.courses;
   const summaries = data?.summaries;
@@ -117,6 +120,24 @@ export function Dashboard() {
     [rows, forecasts],
   );
 
+  useLayoutEffect(() => {
+    const pending = archiveFocus.current;
+    if (!pending || archiveTarget || !rows || rows.some((row) => row.id === pending.courseId))
+      return;
+    archiveFocus.current = null;
+    const active = document.activeElement;
+    // Preserve focus if another action was chosen whilst the archive was pending.
+    if (active && active !== document.body && !active.closest('[data-course-archive-dialog]'))
+      return;
+    const next = rows[Math.min(pending.index, rows.length - 1)];
+    const target = next
+      ? Array.from(
+          frame.current?.querySelectorAll<HTMLButtonElement>('[data-course-menu-trigger]') ?? [],
+        ).find((button) => button.dataset.courseMenuTrigger === next.id)
+      : heading.current;
+    target?.focus({ preventScroll: true });
+  }, [archiveTarget, rows]);
+
   const reviewActivity = data?.reviewActivity;
   const week = useMemo(
     () =>
@@ -137,8 +158,10 @@ export function Dashboard() {
   );
 
   return (
-    <div className={`${PAGE_FRAME} py-6 sm:py-10`}>
-      <h1 className="sr-only">Today</h1>
+    <div ref={frame} className={`${PAGE_FRAME} py-6 sm:py-10`}>
+      <h1 ref={heading} tabIndex={-1} className="sr-only focus-visible:shadow-none">
+        Today
+      </h1>
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft sm:mb-6">
         {rows && rows.length > 0 && (
           <p
@@ -192,6 +215,7 @@ export function Dashboard() {
           )}
           <TodayQueue
             rows={rows}
+            openMenuId={courseMenu?.course.id}
             multiplier={m}
             onStudy={(id) => navigate(`/course/${id}/study`)}
             onMenu={(id, position, trigger) => {
@@ -227,6 +251,13 @@ export function Dashboard() {
               archiveTarget.trigger.focus();
             }}
             onArchived={() => {
+              archiveFocus.current = {
+                courseId: archiveTarget.course.id,
+                index: Math.max(
+                  0,
+                  rows?.findIndex((row) => row.id === archiveTarget.course.id) ?? 0,
+                ),
+              };
               setArchiveTarget(null);
               notify(`${archiveTarget.course.name} archived`, 'positive', {
                 actionLabel: 'Undo',
@@ -278,6 +309,7 @@ function CourseContextMenu({
   return createPortal(
     <div
       ref={menuRef}
+      id="dashboard-course-actions"
       role="menu"
       aria-label={`Actions for ${course.name}`}
       className="fixed z-[70] min-w-40 rounded-xl border border-line-strong bg-surface-raised p-1.5 shadow-xl shadow-black/15"
@@ -288,12 +320,13 @@ function CourseContextMenu({
           event.preventDefault();
           onClose();
         }
+        if (event.key === 'Tab') onClose();
       }}
     >
       <button
         type="button"
         role="menuitem"
-        className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-none"
+        className="flex min-h-11 w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-none"
         onClick={onArchive}
       >
         Archive
@@ -336,6 +369,7 @@ function ArchiveCourseDialog({
   return createPortal(
     <motion.div
       ref={trapRef}
+      data-course-archive-dialog
       className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}

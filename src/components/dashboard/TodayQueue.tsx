@@ -23,11 +23,13 @@ export function TodayQueue({
   multiplier,
   onStudy,
   onMenu,
+  openMenuId,
 }: {
   rows: QueueRow[];
   multiplier: number;
   onStudy: (id: string) => void;
   onMenu: (id: string, position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
+  openMenuId?: string;
 }) {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const liftTransition = { duration: 0.16 * multiplier, delay: 0, ease: MOTION_EASING.emphasised };
@@ -139,6 +141,9 @@ export function TodayQueue({
               type="button"
               aria-label={`More for ${row.name}`}
               aria-haspopup="menu"
+              aria-expanded={openMenuId === row.id}
+              aria-controls={openMenuId === row.id ? 'dashboard-course-actions' : undefined}
+              data-course-menu-trigger={row.id}
               onClick={(event) => {
                 const box = event.currentTarget.getBoundingClientRect();
                 onMenu(row.id, { x: box.right - 160, y: box.bottom + 6 }, event.currentTarget);
