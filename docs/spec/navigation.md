@@ -201,7 +201,11 @@ Settings; each opens the same `AssessmentDetailSheet`. Practice gathers cards fr
 reached so far whose predicted retrievability remains below the mastery threshold at each
 card's applicable exam horizon; this is not the narrower `card.due` timestamp concept. Questions
 do not enter this pool or the Path conductor in v1; they are reached deliberately from the separate
-Questions tab.
+Questions tab. There each question set shows its question and mark counts, when it was last tried,
+its latest self-marked score and, after two or more finished attempts, the last five scores as bars.
+In View mode **Attempt** starts a Practice attempt at once (Paper mode is chosen on the set's own
+page) and **Continue** replaces it while an attempt is unfinished; Edit mode keeps the authoring
+links. An attempt that cannot be read leaves its set unscored instead of hiding the list.
 
 "Due" has one definition (`courseDueReviewCards`), shared by the course and lesson
 headers, path lesson rows, the study sheet and the **Review due cards** session: cards

@@ -491,6 +491,49 @@
 .qs-library-row:last-child {
   border-bottom: 0;
 }
+/* A set with its score and its own action: the title links, the button acts. */
+.qs-scored-row {
+  position: relative;
+}
+.qs-scored-row:hover {
+  background: transparent;
+}
+.qs-scored-title {
+  flex: 1;
+  min-width: 0;
+  border-radius: 12px;
+}
+.qs-scored-title::after {
+  /* The whole row opens the set, except where the score or the action sits above it. */
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.qs-scored-title:hover h2 {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.qs-scored-title:focus-visible {
+  outline: 2px solid hsl(var(--accent) / 0.6);
+  outline-offset: 4px;
+}
+.qs-scored-row > :not(.qs-scored-title) {
+  position: relative;
+  flex-shrink: 0;
+}
+.qs-scored-hint {
+  font-size: 12px;
+  color: hsl(var(--ink-soft));
+}
+@media (max-width: 560px) {
+  .qs-scored-row {
+    flex-wrap: wrap;
+    gap: 12px 16px;
+  }
+  .qs-scored-title {
+    flex-basis: 100%;
+  }
+}
 .qs-library-row > .qs-set-row {
   flex: 1;
   min-width: 0;
