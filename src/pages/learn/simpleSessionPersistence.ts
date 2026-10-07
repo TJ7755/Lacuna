@@ -111,7 +111,9 @@ function isEvents(value: unknown): value is SessionEvent[] {
         typeof (event as SessionEvent).grade === 'number' &&
         typeof (event as SessionEvent).responseTimeSec === 'number' &&
         Number.isFinite((event as SessionEvent).responseTimeSec) &&
-        typeof (event as SessionEvent).distracted === 'boolean',
+        typeof (event as SessionEvent).distracted === 'boolean' &&
+        ((event as SessionEvent).cardId === undefined ||
+          typeof (event as SessionEvent).cardId === 'string'),
     )
   );
 }

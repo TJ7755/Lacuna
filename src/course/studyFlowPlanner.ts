@@ -20,6 +20,18 @@ export type StudyFlowDecision =
   | { kind: 'empty' };
 
 /**
+ * The one due-review step, whether the planner reaches it at the end of the curriculum
+ * or the reader picks it from the study sheet: scheduled reviews due now that are not
+ * yet secure for the exam (see courseDueReviewCards).
+ */
+export const DUE_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
+  kind: 'practice',
+  nodeKey: 'due-review',
+  mode: 'recurring',
+  label: 'Review due cards',
+};
+
+/**
  * Chooses one step from the latest authoritative course snapshot. The caller
  * must rebuild the snapshot after each step rather than retaining a queue.
  */
@@ -65,15 +77,9 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
 
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
   if (snapshot.recurringPracticeEligibleCount > 0) {
-    const recurring: StudyFlowStep = {
-      kind: 'practice',
-      nodeKey: 'end',
-      mode: 'recurring',
-      label: 'Practice',
-    };
     return snapshot.assessmentOptions.length > 0
-      ? { kind: 'choice', step: recurring, assessments: snapshot.assessmentOptions }
-      : { kind: 'step', step: recurring };
+      ? { kind: 'choice', step: DUE_REVIEW_STEP, assessments: snapshot.assessmentOptions }
+      : { kind: 'step', step: DUE_REVIEW_STEP };
   }
   return hasCurriculum ? { kind: 'complete' } : { kind: 'empty' };
 }

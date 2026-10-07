@@ -36,6 +36,7 @@ import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle'
 import { HeaderStats } from '../components/course/HeaderStats';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
+import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import {
   canEditLessons,
   isLessonAuthoringMode,
@@ -105,6 +106,7 @@ export function LessonView({
   const examDates = useCourseAssessments(courseId);
   const notes = useNotes(lessonId);
   const lessonCards = useLessonCards(lessonId);
+  const studyFlow = useCourseStudyFlow(courseId);
 
   // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
   // Card membership remains independent from the scheduling implementation.
@@ -117,7 +119,8 @@ export function LessonView({
     lessons === undefined ||
     examDates === undefined ||
     notes === undefined ||
-    lessonCards === undefined
+    lessonCards === undefined ||
+    studyFlow === undefined
   ) {
     return (
       <DelayedFallback>
@@ -156,11 +159,10 @@ export function LessonView({
   // fsrs/eligibility.ts, fsrs/objective.ts).
   const now = Date.now();
   const lessonMastery = progressValue(lessonCards, course, now);
-  const {
-    nearestExam,
-    examUrgent,
-    dueCardCount: lessonDueCount,
-  } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now, lessons);
+  const { nearestExam, examUrgent } = courseHeaderStats(course, examDates, lessonMastery, now);
+  // Due means what Review due cards serves, counted within this lesson.
+  const dueReviewCardIds = studyFlow?.snapshot.dueReviewCardIds;
+  const lessonDueCount = lessonCards.filter((card) => dueReviewCardIds?.has(card.id)).length;
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
   const authoring = !archived && isLessonAuthoringMode(course);
 
@@ -275,7 +277,7 @@ export function LessonView({
                 disabled={!practiceNowEnabled}
                 onClick={() => navigate(`/course/${courseId}/study?review=due`)}
               >
-                Practice Now
+                Review due cards
               </Button>
               {/* The due count already leads the stat pills above, so this line
                 only speaks when there is something the pills don't say. */}

@@ -9,7 +9,7 @@ import {
   startActiveStudyFlow,
   touchActiveStudyFlow,
 } from '../state/activeStudyFlow';
-import type { StudyFlowStep } from '../course/studyFlowPlanner';
+import { DUE_REVIEW_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
@@ -50,14 +50,7 @@ function CourseStudyFlowInner() {
   const flow = useCourseStudyFlow(courseId, refreshKey);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
-    if (searchParams.get('review') === 'due') {
-      return {
-        kind: 'practice',
-        nodeKey: 'ad-hoc',
-        mode: 'recurring',
-        label: 'Review due cards',
-      };
-    }
+    if (searchParams.get('review') === 'due') return DUE_REVIEW_STEP;
     return entryAssessmentId
       ? {
           kind: 'practice',
@@ -180,7 +173,7 @@ function CourseStudyFlowInner() {
         nodeKey: displayStep.mode === 'curricular' ? displayStep.nodeKey : undefined,
         scopeLessonIds: committedScopeLessonIds,
         milestoneLessonIds: committedMilestoneLessonIds,
-        mode: displayStep.nodeKey === 'ad-hoc' ? 'ad-hoc' : displayStep.mode,
+        mode: displayStep.mode,
       };
     }
     return null;
@@ -258,12 +251,7 @@ function CourseStudyFlowInner() {
   const reviewDueCards = useCallback(() => {
     if (!courseId) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
-    setCurrentStep({
-      kind: 'practice',
-      nodeKey: 'ad-hoc',
-      mode: 'recurring',
-      label: 'Review due cards',
-    });
+    setCurrentStep(DUE_REVIEW_STEP);
     setTransition(null);
   }, [courseId, pomodoro]);
 
@@ -307,8 +295,7 @@ function CourseStudyFlowInner() {
         nextLabel={nextLabel}
         summary={transition.summary}
         canReviewDueCards={
-          (transition.completedStep.kind !== 'practice' ||
-            transition.completedStep.nodeKey !== 'ad-hoc') &&
+          transition.completedStep !== DUE_REVIEW_STEP &&
           !planningNextStep &&
           (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }

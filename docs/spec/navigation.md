@@ -198,12 +198,15 @@ card's applicable exam horizon; this is not the narrower `card.due` timestamp co
 do not enter this pool or the Path conductor in v1; they are reached deliberately from the separate
 Questions tab.
 
-"Due now" counts include scheduled reviews only while they remain below Practice's
-mastery threshold, plus new cards admitted by the daily cap. A review already secured
-for an exam later today is omitted even if its saved due timestamp has passed. Counts
-use the same per-card exam horizons as Practice; after an exam passes, the existing
-maintenance horizon applies. Future-scheduled cards can still be offered by Practice
-without being counted as due.
+"Due" has one definition (`courseDueReviewCards`), shared by the course and lesson
+headers, path lesson rows, the study sheet and the **Review due cards** session: cards
+introduced in reached lessons whose scheduled review has passed and which remain below
+Practice's mastery threshold. New cards are never due. A review already secured for an
+exam later today is omitted even if its saved due timestamp has passed. Counts use the
+same per-card exam horizons as Practice; after an exam passes, the existing maintenance
+horizon applies. Future-scheduled cards can still be offered by curricular Practice
+without being counted as due. The dashboard's **ready** figure is a separate measure:
+due reviews plus new cards admitted by the daily cap.
 
 Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
 course with exactly one lesson skips the path entirely and renders that lesson directly
@@ -249,15 +252,16 @@ action.
 The course header has one **Study** action. It launches the persistent course study
 conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the
 authoritative course state after every completed lesson or Practice step; it never stores a
-fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
+fixed queue. Lesson notes, Simple recall, curricular Practice, due review, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
 routes. Generic entry names the next course step, labels a lesson ready to begin **Start**
 when no due review competes with it, and otherwise offers due review separately. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
-generic choice and enters that exact scope. A secondary **Practice Now** action beside **Study**
-enters course-wide ad-hoc Practice directly when reached, exposed cards are eligible. It creates no
+generic choice and enters that exact scope. A secondary **Review due cards** action beside **Study**
+enters course-wide due review directly when any card is due. Once the curriculum is finished, the
+conductor's next step is that same due review, under the same name. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
 nodes remain editable on the path, and Author mode exposes one **Add practice** action beside the
 other path-authoring actions rather than repeating insertion controls at every gap. Course Settings

@@ -21,7 +21,10 @@ export function SessionReport({
   const c = useChartColours();
   const { events } = summary;
 
+  // Retries are further answers to the same card, not more cards: count each card once,
+  // so the figure matches the number of cards the session started with.
   const total = events.length;
+  const cardCount = new Set(events.map((e, index) => e.cardId ?? `answer-${index}`)).size;
   const correct = events.filter((e) => e.correct).length;
   const accuracy = total ? Math.round((correct / total) * 100) : 0;
   const distractions = events.filter((e) => e.distracted).length;
@@ -67,8 +70,8 @@ export function SessionReport({
 
       <dl className="session-report-facts">
         <div>
-          <dt>{total === 1 ? 'Card reviewed' : 'Cards reviewed'}</dt>
-          <dd>{total}</dd>
+          <dt>{cardCount === 1 ? 'Card reviewed' : 'Cards reviewed'}</dt>
+          <dd>{cardCount}</dd>
         </div>
         <div>
           <dt>Accuracy</dt>
@@ -161,8 +164,9 @@ export function SessionReport({
 
           {distractions > 0 && (
             <p className="session-report-distractions">
-              You left the page during {distractions} of {total} cards. Your grades were unaffected;
-              the timing may be less representative.
+              You left the page during {distractions} of {total}{' '}
+              {total === 1 ? 'answer' : 'answers'}. Your grades were unaffected; the timing may be
+              less representative.
             </p>
           )}
         </div>

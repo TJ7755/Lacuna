@@ -393,7 +393,7 @@ describe('CoursePath Study mode', () => {
     );
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename course' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
@@ -424,14 +424,14 @@ describe('CoursePath Study mode', () => {
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
 
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Practice Now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review due cards' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
 
   it('disables course-wide practice when no reached card is eligible', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Review due cards' })).toBeDisabled();
   });
 
   it.each([false, true])('only exposes pending updates on active multi-lesson courses (archived=%s)', (archived) => {
@@ -536,7 +536,7 @@ describe('CoursePath Study mode', () => {
       );
     } else {
       expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-      expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Review due cards' })).toBeDisabled();
       expect(screen.getByText('due now')).toHaveTextContent('0due now');
       expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
     }
