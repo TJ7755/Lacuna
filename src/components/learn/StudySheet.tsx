@@ -19,7 +19,9 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
-import { ChevronLeftIcon } from '../ui/icons';
+import { ArrowRightIcon, ChevronLeftIcon } from '../ui/icons';
+import { cn } from '../ui/cn';
+import { planStudySession } from '../../course/studySessionPlan';
 import { SimpleLearnOptions } from './SimpleLearnOptions';
 
 export function StudySheet({
@@ -183,36 +185,64 @@ function CourseStudyOptions({
 
   const decision = flow?.decision;
   const snapshot = flow?.snapshot;
-  const nextStep = decision?.kind === 'step' || decision?.kind === 'choice' ? decision.step : null;
   const assessments = decision?.kind === 'choice' ? decision.assessments : [];
-  const nextIsDueReview = nextStep?.kind === 'practice' && nextStep.mode === 'recurring';
+  const plan = flow ? planStudySession(flow) : undefined;
   const canReviewDueCards =
-    snapshot !== undefined && snapshot.recurringPracticeEligibleCount > 0 && !nextIsDueReview;
-
+    snapshot !== undefined && snapshot.recurringPracticeEligibleCount > 0 && !plan?.startsWithDueReview;
   return (
     <>
       {onBack && <AllCoursesButton onClick={onBack} />}
-      <SheetTitle>{title ?? '\u00a0'}</SheetTitle>
-
+      <div className="flex items-baseline justify-between gap-3">
+        <SheetTitle>{title ?? '\u00a0'}</SheetTitle>
+        {plan?.totalMinutes !== undefined && (
+          <span className="shrink-0 text-sm text-ink-soft tabular-nums">
+            About {plan.totalMinutes} min
+          </span>
+        )}
+      </div>
       {flow === undefined ? (
         <p className="py-2 text-sm text-ink-faint">Working out what is next…</p>
-      ) : nextStep ? (
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={() => start(nextIsDueReview ? '?review=due' : '')}
-        >
-          {nextIsDueReview ? (
-            <>
-              Review due cards
-              <span className="ml-2 text-sm opacity-70">
-                {snapshot?.recurringPracticeEligibleCount}
-              </span>
-            </>
-          ) : (
-            `Continue: ${nextStep.label}`
-          )}
-        </Button>
+      ) : plan && plan.steps.length > 0 ? (
+        <>
+          <ol
+            aria-label="Today's session"
+            className="overflow-hidden rounded-2xl border border-line"
+          >
+            {plan.steps.map((step, index) => (
+              <li
+                key={step.key}
+                className="flex items-center gap-3 border-t border-line px-4 py-3 first:border-t-0"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-semibold tabular-nums',
+                    index === 0 ? 'bg-accent text-accent-fg' : 'bg-ink/5 text-ink-soft',
+                  )}
+                >
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink [overflow-wrap:anywhere]">{step.title}</p>
+                  {step.detail && <p className="text-sm text-ink-soft">{step.detail}</p>}
+                </div>
+                {step.minutes !== undefined && (
+                  <span className="shrink-0 text-sm text-ink-soft tabular-nums">
+                    {step.minutes} min
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => start(plan.startsWithDueReview ? '?review=due' : '')}
+          >
+            Start session
+            <ArrowRightIcon width={18} height={18} aria-hidden="true" />
+          </Button>
+        </>
       ) : (
         <p className="py-1 text-sm text-ink-soft">
           {flow.decision.kind === 'empty'
@@ -223,25 +253,32 @@ function CourseStudyOptions({
         </p>
       )}
 
-      {canReviewDueCards && (
-        <Button variant="secondary" size="lg" onClick={() => start('?review=due')}>
-          Review due cards
-          <span className="ml-2 text-sm opacity-70">{snapshot.recurringPracticeEligibleCount}</span>
-        </Button>
+      {(canReviewDueCards || assessments.length > 0 || (course && !course.archived)) && (
+        <section aria-label="Other ways" className="mt-1 flex flex-col gap-2 border-t border-line pt-3">
+          <h3 className="text-sm font-semibold text-ink-soft">Other ways</h3>
+          {canReviewDueCards && (
+            <Button variant="secondary" onClick={() => start('?review=due')}>
+              Only review due cards
+              <span className="ml-1 text-sm opacity-70 tabular-nums">
+                {snapshot?.recurringPracticeEligibleCount}
+              </span>
+            </Button>
+          )}
+          {assessments.map((assessment) => (
+            <Button
+              key={assessment.assessmentId}
+              variant="secondary"
+              onClick={() => start(`?assessmentId=${encodeURIComponent(assessment.assessmentId)}`)}
+            >
+              Revise for {assessment.name}
+            </Button>
+          ))}
+          {course && !course.archived && (
+            // The section's own rule already separates it from the plan.
+            <SimpleLearnOptions courseId={courseId} className="border-t-0 pt-0" />
+          )}
+        </section>
       )}
-
-      {assessments.map((assessment) => (
-        <Button
-          key={assessment.assessmentId}
-          variant="secondary"
-          size="lg"
-          onClick={() => start(`?assessmentId=${encodeURIComponent(assessment.assessmentId)}`)}
-        >
-          Revise for {assessment.name}
-        </Button>
-      ))}
-
-      {course && !course.archived && <SimpleLearnOptions courseId={courseId} />}
 
       <Button variant="ghost" size="lg" onClick={onClose}>
         Done

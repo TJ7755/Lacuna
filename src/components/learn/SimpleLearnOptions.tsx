@@ -4,21 +4,24 @@ import { useLessons } from '../../state/useCourseData';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { ChevronDownIcon } from '../ui/icons';
+import { cn } from '../ui/cn';
 
 /** Keep optional passes tucked beneath the scheduled study choices. */
 export function SimpleLearnOptions({
   courseId,
   initialLessonId = '',
+  className,
 }: {
   courseId: string;
   initialLessonId?: string;
+  className?: string;
 }) {
   const [lessonId, setLessonId] = useState(initialLessonId);
   const [expanded, setExpanded] = useState(false);
 
   return (
     <details
-      className="border-t border-line pt-2"
+      className={cn('border-t border-line pt-2', className)}
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-3 text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">

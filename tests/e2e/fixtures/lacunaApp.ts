@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 export async function chooseScheduledStudy(page: Page) {
   const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
   await sheet
-    .getByRole('button', { name: /^(Start|Continue):/ })
+    .getByRole('button', { name: 'Start session' })
     .first()
     .click();
   await expect(sheet).toBeHidden();

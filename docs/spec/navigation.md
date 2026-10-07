@@ -269,8 +269,15 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, due review, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. Generic entry names the next course step, labels a lesson ready to begin **Start**
-when no due review competes with it, and otherwise offers due review separately. When an imminent
+routes. Study opens the study sheet, which previews today's session before **Start session**:
+the planner's next step (a lesson with its card and new-card counts, a Card practice or due review
+with its card count), then **Review due cards** when due reviews remain, marked as offered next
+because the between-steps screen offers them beside Continue. Each step and the session carry an
+"about N min" estimate from the course's mean review time, counting a new card as three reviews;
+a step with no cards has no estimate and the session total is then omitted. The sheet never shows
+steps beyond those two, since the planner decides one step at a time. Below the plan, **Other
+ways** offers due review on its own, each applicable named assessment and Practise until all
+correct. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the

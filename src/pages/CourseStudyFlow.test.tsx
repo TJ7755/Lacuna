@@ -202,6 +202,8 @@ function flow(
     snapshot: snapshot(practices),
     decision: { kind: 'step', step },
     generation,
+    lessonCardsById: new Map(),
+    meanReviewSeconds: 8,
   };
 }
 
@@ -215,6 +217,8 @@ function choiceFlow(
     snapshot: snapshot([], assessments),
     decision: { kind: 'choice', step, assessments },
     generation,
+    lessonCardsById: new Map(),
+    meanReviewSeconds: 8,
   };
 }
 

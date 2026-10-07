@@ -3,7 +3,7 @@ import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
-import type { Course } from '../../db/types';
+import type { Card, Course } from '../../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import { StudySheet } from './StudySheet';
 
@@ -13,8 +13,10 @@ const mockFlows: Record<
   string,
   {
     course: Course;
-    snapshot: { recurringPracticeEligibleCount: number };
+    snapshot: { recurringPracticeEligibleCount: number; practiceByKey: Map<string, unknown> };
     decision: { kind: 'step'; step: { kind: 'lesson'; lessonId: string; label: string } };
+    lessonCardsById: Map<string, Card[]>;
+    meanReviewSeconds: number;
   }
 > = {};
 
@@ -74,19 +76,38 @@ beforeEach(() => {
   mockCourses = [chemistry];
   mockFlows.chem = {
     course: chemistry,
-    snapshot: { recurringPracticeEligibleCount: 0 },
+    snapshot: { recurringPracticeEligibleCount: 0, practiceByKey: new Map() },
     decision: {
       kind: 'step',
       step: { kind: 'lesson', lessonId: 'l1', label: 'Atomic structure' },
     },
+    lessonCardsById: new Map([
+      ['l1', [{ lastReviewed: 1 }, { lastReviewed: null }] as Card[]],
+    ]),
+    meanReviewSeconds: 15,
   };
 });
 
 describe('StudySheet', () => {
+  it('previews the session it will start, with the due reviews offered after', () => {
+    mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
+    renderSheet('chem');
+    const steps = screen.getByRole('list', { name: "Today's session" });
+    expect(steps).toHaveTextContent('Learn Atomic structure');
+    expect(steps).toHaveTextContent('2 cards, 1 new');
+    expect(steps).toHaveTextContent('Review due cards6 cards, offered next');
+    // One review plus a new card counted three times is a minute; six reviews round up to two.
+    expect(screen.getByText('About 3 min')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study');
+    fireEvent.click(screen.getByRole('button', { name: /^Only review due cards/ }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?review=due');
+  });
+
   it('offers whole-course and lesson Simple Learn without changing the main action', async () => {
     renderSheet('chem');
     fireEvent.click(screen.getByText('Practise until all correct'));
-    expect(screen.getByRole('button', { name: 'Continue: Atomic structure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
     fireEvent.change(screen.getByLabelText('What to practise'), { target: { value: 'l1' } });
@@ -102,7 +123,7 @@ describe('StudySheet', () => {
 
     expect(screen.getByRole('heading', { name: 'Chemistry' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Which course?' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue: Atomic structure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Chemistry' })).toHaveFocus(),
     );

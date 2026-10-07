@@ -202,7 +202,7 @@ for (const width of [1280, 390]) {
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     await page
       .getByRole('dialog', { name: 'Choose what to study' })
-      .getByRole('button', { name: /^(Start|Continue):/ })
+      .getByRole('button', { name: 'Start session' })
       .first()
       .click();
     await page.setViewportSize({ width, height: 900 });
