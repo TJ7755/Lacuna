@@ -10,3 +10,4 @@
 - Keyboard users get a Skip to content link as the first Tab stop, so reaching Start no longer means tabbing through every course in the sidebar.
 - An empty Questions page says what a question set is.
 - Progress fits a phone: the 30-day activity strip no longer scrolls today out of view (its last date labels no longer collide), and charts no longer push their cards past the screen edge.
+- On a phone, a long course name shares its row with View and Edit, and each lesson group on Cards gives its name a full row above Select.

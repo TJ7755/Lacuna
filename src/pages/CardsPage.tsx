@@ -321,7 +321,7 @@ function LessonBucket({
 }) {
   const go = useCardsNavigate();
   const heading = (
-    <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
+    <div className="flex min-w-0 flex-1 items-center gap-1 px-1 max-sm:basis-full max-sm:justify-between">
       <h2 className="min-w-0 font-display text-xl font-semibold tracking-tight">
         {lesson.name} <span className="font-normal text-ink-faint">({cards.length})</span>
       </h2>
