@@ -151,3 +151,18 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
   }
   expect(short).toEqual([]);
 });
+
+test('the study sheet is a bounded panel on a wide window', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.locator('main').getByRole('button', { name: /^Study/ }).first().click();
+  const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
+  await expect(sheet).toBeVisible();
+  const panel = (await sheet.locator(':scope > div').last().boundingBox())!;
+  expect(panel.width).toBeLessThanOrEqual(672);
+  expect(Math.abs(panel.x + panel.width / 2 - 720)).toBeLessThanOrEqual(1);
+  expect(panel.y + panel.height).toBeLessThan(900);
+});
