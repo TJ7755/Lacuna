@@ -8,3 +8,4 @@
 - Every Study and Start action ends with the same forward arrow (the lesson page used a play icon before its label), and an empty notes card is headed Notes like the cards beside it.
 - Lesson names on the course path wrap to a second line on a phone instead of truncating, and the study header's navigation button shares the framed style of its neighbours.
 - Keyboard users get a Skip to content link as the first Tab stop, so reaching Start no longer means tabbing through every course in the sidebar.
+- An empty Questions page says what a question set is.

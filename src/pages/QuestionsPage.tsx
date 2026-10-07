@@ -159,7 +159,11 @@ export function QuestionsPage() {
         {rows.length === 0 && (
           <div className="qs-empty">
             <h2>{search ? 'No matching sets' : 'No question sets yet'}</h2>
-            {search && <p>Try a different search.</p>}
+            {search ? (
+              <p>Try a different search.</p>
+            ) : (
+              <p>Exam-style questions with mark schemes.</p>
+            )}
             {search && <button onClick={() => setSearch('')}>Clear search</button>}
             {!search && !author && !course.archived && canEditLessons(course) && (
               // View mode is read-only, so the way forward is the mode switch itself.
