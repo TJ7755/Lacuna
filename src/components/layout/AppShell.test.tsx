@@ -190,6 +190,18 @@ describe('AppShell mobile navigation', () => {
     });
   }
 
+  it('offers keyboard users a first stop that skips the sidebar to the page', () => {
+    renderShell();
+    const skip = screen.getByRole('link', { name: 'Skip to content' });
+    const firstFocusable = document.querySelector<HTMLElement>('a[href], button, [tabindex="0"]');
+    expect(firstFocusable).toBe(skip);
+    fireEvent.click(skip);
+    const main = screen.getByRole('main');
+    expect(main).toHaveFocus();
+    act(() => main.blur());
+    expect(main).not.toHaveAttribute('tabindex');
+  });
+
   it('uses the fixed Lacuna colours for mobile branding', () => {
     renderShell();
 

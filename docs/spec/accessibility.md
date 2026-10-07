@@ -5,6 +5,8 @@
 - Focus-visible rings on interactive controls; `aria-label`/`title` on icon
   buttons; `aria-pressed` on toggles and chips; `role="progressbar"` with value
   attributes on the bar.
+- The app shell's first Tab stop is **Skip to content**, which moves focus past the sidebar
+  to the page.
 - Tabular numerals for figures; balanced text wrapping for headings.
 - Every interactive element meets a **44px minimum target** (per WCAG 2.5.5 /
   Apple HIG), and touch-interactive elements carry explicit **active states** so

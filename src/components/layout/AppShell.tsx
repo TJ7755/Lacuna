@@ -253,6 +253,22 @@ function AppShellLayout() {
       transition={{ type: 'spring', duration: 0.32 * m, bounce: 0 }}
       className="flex h-screen overflow-hidden flex-col"
     >
+      {/* First stop for keyboard users: past the sidebar's courses to the page itself. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-full focus:bg-ink focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-paper"
+        onClick={(event) => {
+          // Hash routing owns the URL fragment, so move focus rather than navigate.
+          event.preventDefault();
+          const main = mainRef.current;
+          if (!main) return;
+          main.tabIndex = -1;
+          main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });
+          main.focus({ preventScroll: true });
+        }}
+      >
+        Skip to content
+      </a>
       <div ref={titlebarRef} className="shrink-0">
         <Titlebar />
       </div>
@@ -419,12 +435,13 @@ function AppShellLayout() {
 
           <main
             ref={mainRef}
+            id="main-content"
             // Bottom padding clears the mobile navigation bar, which is fixed and would
             // otherwise cover the last of the page's content.
             className={cn(
               // A stable gutter on every page keeps centred content from shifting between
               // pages that scroll and pages that do not.
-              'min-w-0 flex-1 overflow-y-auto overscroll-y-none [scrollbar-gutter:stable]',
+              'min-w-0 flex-1 overflow-y-auto overscroll-y-none outline-none [scrollbar-gutter:stable]',
               'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pl-0',
               inCourse && 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
             )}
