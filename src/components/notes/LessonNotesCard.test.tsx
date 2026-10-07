@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as MotionReact from 'motion/react';
 import type { Note } from '../../db/types';
@@ -38,6 +38,15 @@ describe('LessonNotesCard', () => {
     render(<LessonNotesCard lessonId="l1" notes={[]} editable />);
     expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add note' })).toBeInTheDocument();
+  });
+
+  it('offers Edit from an empty notes card in View mode, as the cards panel does', () => {
+    const onSwitchToEdit = vi.fn();
+    render(
+      <LessonNotesCard lessonId="l1" notes={[]} editable={false} onSwitchToEdit={onSwitchToEdit} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Edit to add notes' }));
+    expect(onSwitchToEdit).toHaveBeenCalledOnce();
   });
 
   it('leaves no empty bar above a single note in View mode', () => {

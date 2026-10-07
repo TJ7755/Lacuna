@@ -213,6 +213,13 @@ export function LessonView({
   const dueReviewCardIds = studyFlow?.snapshot.dueReviewCardIds;
   const lessonDueCount = lessonCards.filter((card) => dueReviewCardIds?.has(card.id)).length;
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
+  const switchToEdit =
+    !archived && canEditLessons(course)
+      ? () =>
+          void updateCourse(course.id, { lessonViewMode: 'edit' }).catch(() => {
+            notify('Could not switch to Edit. Try again.', 'negative');
+          })
+      : undefined;
   const authoring = !archived && isLessonAuthoringMode(course);
   const metaParts = lessonMetaParts({
     learnt: learntCardCount(lessonCards),
@@ -401,6 +408,7 @@ export function LessonView({
                 lessonId={lessonId}
                 notes={notes}
                 editable={viewMode === 'edit'}
+                onSwitchToEdit={switchToEdit}
                 className="flex-[3_1_560px]"
               />
             )}
@@ -411,14 +419,7 @@ export function LessonView({
                 cards={lessonCards}
                 editable={viewMode === 'edit'}
                 onNavigate={navigate}
-                onSwitchToEdit={
-                  !archived && canEditLessons(course)
-                    ? () =>
-                        void updateCourse(course.id, { lessonViewMode: 'edit' }).catch(() => {
-                          notify('Could not switch to Edit. Try again.', 'negative');
-                        })
-                    : undefined
-                }
+                onSwitchToEdit={switchToEdit}
                 className="flex-[2_1_340px]"
                 footer={
                   !archived && !isInline ? (

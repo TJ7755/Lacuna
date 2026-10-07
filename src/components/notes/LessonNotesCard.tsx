@@ -22,13 +22,21 @@ interface LessonNotesCardProps {
   notes: Note[];
   /** Edit mode: shows the add, edit, delete and reorder controls. */
   editable: boolean;
+  /** Offered beside the empty state in View mode, as the cards panel does. */
+  onSwitchToEdit?: () => void;
   className?: string;
 }
 
 const ICON_BUTTON =
   'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-30';
 
-export function LessonNotesCard({ lessonId, notes, editable, className }: LessonNotesCardProps) {
+export function LessonNotesCard({
+  lessonId,
+  notes,
+  editable,
+  onSwitchToEdit,
+  className,
+}: LessonNotesCardProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -257,7 +265,14 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
             )}
           </motion.div>
         ) : (
-          <p className="py-6 text-center text-base text-ink-soft">No notes yet.</p>
+          <div className="flex flex-col items-start gap-3 py-4">
+            <p className="text-sm text-ink-soft">No notes yet.</p>
+            {!editable && onSwitchToEdit && (
+              <Button variant="secondary" size="sm" onClick={onSwitchToEdit}>
+                Switch to Edit to add notes
+              </Button>
+            )}
+          </div>
         ))}
     </article>
   );

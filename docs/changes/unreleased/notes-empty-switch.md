@@ -1,0 +1,1 @@
+- An empty notes panel in View mode offers Switch to Edit to add notes, matching the cards panel beside it, and uses the same left-aligned empty state.
