@@ -203,7 +203,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                     : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
                 : `${pct}% secured`;
               const label = practice
-                ? `Manual practice: ${name}, ${pct}% secured`
+                ? `Card practice: ${name}, ${pct}% secured`
                 : locked && authoring
                   ? `${name}, locked for study`
                   : name;

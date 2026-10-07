@@ -116,12 +116,26 @@ vi.mock('../state/useCourseData', () => ({
 
 vi.mock('../state/useCourseStudyFlowRecords', () => ({
   useCourseStudyFlowRecords: () => {
-    if (mockCourse === undefined || mockLessons === undefined || mockAssessments === undefined ||
-        mockCourseCards === undefined || mockPracticeNodes === undefined || mockPerformance === undefined) return undefined;
+    if (
+      mockCourse === undefined ||
+      mockLessons === undefined ||
+      mockAssessments === undefined ||
+      mockCourseCards === undefined ||
+      mockPracticeNodes === undefined ||
+      mockPerformance === undefined
+    )
+      return undefined;
     return {
-      course: mockCourse, lessons: mockLessons, assessments: mockAssessments, cards: mockCourseCards,
-      practiceNodes: mockPracticeNodes, performance: mockPerformance, links: live.links,
-      exposures: live.exposures, completions: live.completions, milestones: live.milestones,
+      course: mockCourse,
+      lessons: mockLessons,
+      assessments: mockAssessments,
+      cards: mockCourseCards,
+      practiceNodes: mockPracticeNodes,
+      performance: mockPerformance,
+      links: live.links,
+      exposures: live.exposures,
+      completions: live.completions,
+      milestones: live.milestones,
     };
   },
 }));
@@ -309,15 +323,26 @@ beforeEach(() => {
 describe('CoursePath View mode', () => {
   it('displays checkpoint dates in the assessment time zone', () => {
     mockCourse = { ...course, timeZone: 'Europe/London' };
-    mockAssessments = [{
-      id: 'assessment-zone', courseId: course.id, kind: 'checkpoint', name: 'Zoned exam',
-      examDate: Date.UTC(2027, 0, 2, 1), timeZone: 'America/Los_Angeles',
-      afterLessonId: lesson1.id, coverageMode: 'prefix', excludedCardIds: [],
-      createdAt: 0, updatedAt: 0,
-    }];
+    mockAssessments = [
+      {
+        id: 'assessment-zone',
+        courseId: course.id,
+        kind: 'checkpoint',
+        name: 'Zoned exam',
+        examDate: Date.UTC(2027, 0, 2, 1),
+        timeZone: 'America/Los_Angeles',
+        afterLessonId: lesson1.id,
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
     renderPage();
     const deadlines = screen.getByRole('region', { name: 'Assessments' });
-    expect(within(deadlines).getByRole('button', { name: /^1\s*Jan\s*Zoned exam/ })).toBeInTheDocument();
+    expect(
+      within(deadlines).getByRole('button', { name: /^1\s*Jan\s*Zoned exam/ }),
+    ).toBeInTheDocument();
   });
 
   it('shows a one-lesson course as a path when it contains a Practice Qs activity', () => {
@@ -339,7 +364,9 @@ describe('CoursePath View mode', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Practice questions: Question set' }));
     expect(mockNavigate).toHaveBeenCalledWith(
       `/course/${course.id}/question-sets/${activity.questionSetId}`,
-      expect.objectContaining({ state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }) }),
+      expect.objectContaining({
+        state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }),
+      }),
     );
     expect(mockLessonViewProps).not.toHaveBeenCalled();
   });
@@ -433,62 +460,68 @@ describe('CoursePath View mode', () => {
     expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
   });
 
-  it.each([false, true])('only exposes pending updates on active multi-lesson courses (archived=%s)', (archived) => {
-    mockCourse = { ...course, archived };
-    mockPendingMerge = {
-      id: 'review-1',
-      courseId: 'course-1',
-      lineageId: 'lineage-1',
-      revision: 2,
-      diff: {
-        creates: { lessons: [], notes: [], cards: [] },
-        updates: { lessons: [], notes: [], cards: [] },
-        removals: { lessonIds: [], noteIds: [], cardIds: [] },
-        conflicts: [],
-      },
-      createdAt: 0,
-    };
+  it.each([false, true])(
+    'only exposes pending updates on active multi-lesson courses (archived=%s)',
+    (archived) => {
+      mockCourse = { ...course, archived };
+      mockPendingMerge = {
+        id: 'review-1',
+        courseId: 'course-1',
+        lineageId: 'lineage-1',
+        revision: 2,
+        diff: {
+          creates: { lessons: [], notes: [], cards: [] },
+          updates: { lessons: [], notes: [], cards: [] },
+          removals: { lessonIds: [], noteIds: [], cardIds: [] },
+          conflicts: [],
+        },
+        createdAt: 0,
+      };
 
-    renderPage();
+      renderPage();
 
-    if (archived) {
-      expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
-      return;
-    }
-    expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
-      'href',
-      '/course/course-1/updates',
-    );
-  });
+      if (archived) {
+        expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
+        return;
+      }
+      expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
+        'href',
+        '/course/course-1/updates',
+      );
+    },
+  );
 
-  it.each([false, true])('only exposes pending updates on active single-lesson courses (archived=%s)', (archived) => {
-    mockCourse = { ...course, archived };
-    mockLessons = [lesson1];
-    mockPendingMerge = {
-      id: 'review-1',
-      courseId: 'course-1',
-      lineageId: 'lineage-1',
-      revision: 2,
-      diff: {
-        creates: { lessons: [], notes: [], cards: [] },
-        updates: { lessons: [], notes: [], cards: [] },
-        removals: { lessonIds: [], noteIds: [], cardIds: [] },
-        conflicts: [],
-      },
-      createdAt: 0,
-    };
+  it.each([false, true])(
+    'only exposes pending updates on active single-lesson courses (archived=%s)',
+    (archived) => {
+      mockCourse = { ...course, archived };
+      mockLessons = [lesson1];
+      mockPendingMerge = {
+        id: 'review-1',
+        courseId: 'course-1',
+        lineageId: 'lineage-1',
+        revision: 2,
+        diff: {
+          creates: { lessons: [], notes: [], cards: [] },
+          updates: { lessons: [], notes: [], cards: [] },
+          removals: { lessonIds: [], noteIds: [], cardIds: [] },
+          conflicts: [],
+        },
+        createdAt: 0,
+      };
 
-    renderPage();
+      renderPage();
 
-    if (archived) {
-      expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
-      return;
-    }
-    expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
-      'href',
-      '/course/course-1/updates',
-    );
-  });
+      if (archived) {
+        expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
+        return;
+      }
+      expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
+        'href',
+        '/course/course-1/updates',
+      );
+    },
+  );
 
   it('exposes course-wide practice in a single-lesson course header', async () => {
     // Header practice serves scheduled reviews; unseen cards no longer count as due.
@@ -509,36 +542,45 @@ describe('CoursePath View mode', () => {
     });
   });
 
-  it.each([1, 2])('keeps study options available after all %i lessons are complete', async (count) => {
-    mockLessons = [lesson1, lesson2].slice(0, count);
-    mockCourseCards = mockLessons.map((lesson) => ({
-      ...makeCard(`card-${lesson.id}`, lesson.id),
-      state: 2,
-      stability: 10,
-      lastReviewed: Date.now(),
-      due: Date.now() + MS_PER_DAY,
-    }));
-    live.exposures = mockCourseCards.map((card) => ({
-      lessonId: card.primaryLessonId!,
-      cardId: card.id,
-      taughtAt: 1,
-      updatedAt: 1,
-    }));
+  it.each([1, 2])(
+    'keeps study options available after all %i lessons are complete',
+    async (count) => {
+      mockLessons = [lesson1, lesson2].slice(0, count);
+      mockCourseCards = mockLessons.map((lesson) => ({
+        ...makeCard(`card-${lesson.id}`, lesson.id),
+        state: 2,
+        stability: 10,
+        lastReviewed: Date.now(),
+        due: Date.now() + MS_PER_DAY,
+      }));
+      live.exposures = mockCourseCards.map((card) => ({
+        lessonId: card.primaryLessonId!,
+        cardId: card.id,
+        taughtAt: 1,
+        updatedAt: 1,
+      }));
 
-    renderPage();
+      renderPage();
 
-    if (count === 1) {
-      await waitFor(() =>
-        expect(mockLessonViewProps).toHaveBeenCalledWith(
-          expect.objectContaining({ showStudyNow: true, onStudy: expect.any(Function), practiceNowEnabled: false }),
-        ),
-      );
-    } else {
-      expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-      expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
-      expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
-    }
-  });
+      if (count === 1) {
+        await waitFor(() =>
+          expect(mockLessonViewProps).toHaveBeenCalledWith(
+            expect.objectContaining({
+              showStudyNow: true,
+              onStudy: expect.any(Function),
+              practiceNowEnabled: false,
+            }),
+          ),
+        );
+      } else {
+        expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
+        expect(
+          screen.queryByRole('button', { name: 'Other ways to study' }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
+      }
+    },
+  );
 
   it('hides start, end and mid-path Manual practice', () => {
     renderPage();
@@ -552,6 +594,14 @@ describe('CoursePath View mode', () => {
     renderPage();
     expect(screen.getByText('Weekly review')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Weekly review' })).not.toBeInTheDocument();
+  });
+
+  it('names a practice node as Card practice for assistive technology', () => {
+    showCompletedPractice();
+    renderPage();
+    expect(
+      screen.getByRole('button', { name: /^Card practice: Weekly review/ }),
+    ).toBeInTheDocument();
   });
 
   it('hides Add lesson on an empty path', () => {
@@ -888,7 +938,6 @@ describe('CoursePath Edit mode', () => {
   });
 });
 
-
 describe('CoursePath overview', () => {
   it('opens a lesson straight from its row', () => {
     renderPage();
@@ -905,7 +954,9 @@ describe('CoursePath overview', () => {
     const options = screen.getByRole('menu', { name: 'Add' });
     expect(add.parentElement).toContainElement(options);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), { target: { value: 'Energy' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), {
+      target: { value: 'Energy' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
     await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
@@ -924,8 +975,13 @@ describe('CoursePath overview', () => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
     mockReorderLessons.mockResolvedValue(undefined);
     renderPage();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Dynamics' }), { key: 'ArrowUp', altKey: true });
-    await waitFor(() => expect(mockReorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']));
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Dynamics' }), {
+      key: 'ArrowUp',
+      altKey: true,
+    });
+    await waitFor(() =>
+      expect(mockReorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']),
+    );
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -944,5 +1000,4 @@ describe('CoursePath overview', () => {
     expect(add).toHaveAttribute('aria-expanded', 'false');
     expect(mockCreateLesson).not.toHaveBeenCalled();
   });
-
 });

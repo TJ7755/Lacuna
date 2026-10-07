@@ -155,24 +155,24 @@ export function HelpPage() {
                   A lesson holds the notes and cards for one topic. Notes are Markdown blocks where
                   you write out explanations, examples or source material &mdash; add, reorder and
                   edit them directly on the lesson page. Add further lessons from the course path,
-                  from course settings under Lessons, or from a single-lesson course view. Cards are
-                  the flashcards you actually get quizzed on; create them from the lesson page or
-                  the course&apos;s Cards tab.
+                  from course settings under Lessons, or from Add on a single-lesson course in Edit.
+                  Cards are the flashcards you actually get quizzed on; create them from the lesson
+                  page or the course&apos;s Cards tab.
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Cards</h3>
                 <p className="text-sm text-ink-soft">
-                  Every course has a Cards tab listing all of its Cards in one place, regardless of
+                  Every course has a Cards tab listing all of its cards in one place, regardless of
                   which lesson they belong to. Use it to browse, search, edit or bulk-manage cards.
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
-                  Course Settings holds exam dates, the study objective, scheduling optimisation,
-                  lesson and manual-practice management, and course deletion. Full backup and
-                  recovery lives in global Settings; course sharing lives under Share.
+                  Course settings hold exam dates, the study objective, scheduling optimisation,
+                  lessons and Card practice, and course deletion. Full backup and recovery lives in
+                  global Settings; course sharing lives under Share.
                 </p>
               </div>
             </div>
