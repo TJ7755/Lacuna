@@ -190,3 +190,17 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
   expect(y).toBeGreaterThanOrEqual(-1);
   expect(y).toBeLessThanOrEqual(1);
 });
+
+test('Today puts the study queue above the sharing announcement on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  const queue = page.getByRole('region', { name: 'Today, most urgent first' });
+  const banner = page.getByRole('region', { name: 'New sharing features' });
+  await expect(banner).toBeVisible();
+  const queueBox = (await queue.boundingBox())!;
+  expect((await banner.boundingBox())!.y).toBeGreaterThanOrEqual(queueBox.y + queueBox.height);
+  // The first course's Start is on the first screen.
+  const start = (await queue.getByRole('button', { name: /^Start / }).first().boundingBox())!;
+  expect(start.y + start.height).toBeLessThanOrEqual(844);
+});

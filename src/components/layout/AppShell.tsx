@@ -30,9 +30,6 @@ import { AiFloatingWindow } from '../ai/AiFloatingWindow';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 
-const SharingAnnouncement = lazy(() =>
-  import('./SharingAnnouncement').then((module) => ({ default: module.SharingAnnouncement })),
-);
 
 const AiPanel = lazy(loadAiPanel);
 const StudySheet = lazy(() =>
@@ -449,14 +446,6 @@ function AppShellLayout() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerCancel}
           >
-            {/* Only on Today: elsewhere it would push each page's own work down the screen. */}
-            {location.pathname === '/' && (
-              <ErrorBoundary fallback={null}>
-                <Suspense fallback={null}>
-                  <SharingAnnouncement />
-                </Suspense>
-              </ErrorBoundary>
-            )}
             <ErrorBoundary label="this page">
               <StudySheetProvider value={studySheet.value}>
                 <RouteTransitions

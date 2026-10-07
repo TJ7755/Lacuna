@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
+import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import {
   ForecastChart,
   forecastStatus,
@@ -28,6 +29,11 @@ import { useToast } from '../components/ui/Toast';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
 // The course actions open on demand, so they stay out of the first-load bundle.
+const SharingAnnouncement = lazy(() =>
+  import('../components/layout/SharingAnnouncement').then((module) => ({
+    default: module.SharingAnnouncement,
+  })),
+);
 const CourseContextMenu = lazy(() =>
   import('../components/dashboard/CourseActions').then((module) => ({
     default: module.CourseContextMenu,
@@ -213,6 +219,12 @@ export function Dashboard() {
               setCourseMenu({ course, position, trigger });
             }}
           />
+          {/* Below the queue, so the day's work is always the first thing on Today. */}
+          <ErrorBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <SharingAnnouncement />
+            </Suspense>
+          </ErrorBoundary>
           {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
             <motion.section
               aria-label="Forecast and this week"
