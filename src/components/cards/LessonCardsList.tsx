@@ -1,5 +1,6 @@
 // "Cards in this lesson" — the compact card list beside the lesson's note. Each row
-// is a status dot, the card's front on one line and a "type · state" caption. In
+// is the card's front on one line, its kind beneath and when it next comes up, as on
+// the Cards page; an occlusion card leads with its diagram. In
 // Edit mode a pencil and a New card button fade in; their slots are always laid
 // out, so nothing shifts when the mode changes. Bulk management (selecting,
 // deleting, importing, linking) lives in LessonCardsSection below.
@@ -12,16 +13,12 @@ import { cn } from '../ui/cn';
 import { Button } from '../ui/Button';
 import { motionTransition } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { summariseLessonCard, type CardStatusTone } from './lessonCardRow';
+import { cardKindLabel, cardScheduleLabel, orderOcclusionSiblings, plainFront } from './lessonCardRow';
+import { ScheduleChip } from './ScheduleChip';
+import { OcclusionThumbnail } from './OcclusionThumbnail';
+import { useOcclusions } from '../../state/useCourseData';
+import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import type { Card } from '../../db/types';
-
-const DOT_CLASS: Record<CardStatusTone, string> = {
-  new: 'bg-line-strong',
-  learning: 'bg-warning',
-  review: 'bg-positive',
-  lapsed: 'bg-negative',
-  paused: 'bg-ink-faint',
-};
 
 /** Rows shown before the list hands over to the full Cards page. */
 const VISIBLE_ROWS = 8;
@@ -52,7 +49,8 @@ export function LessonCardsList({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const now = Date.now();
-  const visible = cards.slice(0, VISIBLE_ROWS);
+  const occlusions = useOcclusions(courseId);
+  const visible = orderOcclusionSiblings(cards, occlusions ?? []).slice(0, VISIBLE_ROWS);
   const fade = {
     initial: false as const,
     animate: editable ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 },
@@ -106,20 +104,21 @@ export function LessonCardsList({
       ) : (
         <ul className="flex flex-col">
           {visible.map((card) => {
-            const row = summariseLessonCard(card, now);
+            const occlusion =
+              card.occlusionRegionId && occlusions
+                ? occlusionForRegionId(occlusions, card.occlusionRegionId)
+                : undefined;
             return (
               <li
                 key={card.id}
                 className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-ink/[0.03]"
               >
-                <span
-                  aria-hidden="true"
-                  className={cn('h-2 w-2 shrink-0 rounded-full', DOT_CLASS[row.tone])}
-                />
+                {occlusion && <OcclusionThumbnail card={card} occlusion={occlusion} />}
                 <span className="flex min-w-0 flex-1 flex-col leading-snug">
-                  <span className="truncate text-ink">{row.front}</span>
-                  <span className="text-[13px] text-ink-soft">{row.caption}</span>
+                  <span className="line-clamp-2 text-ink [overflow-wrap:anywhere]">{plainFront(card)}</span>
+                  <span className="text-[13px] text-ink-soft">{cardKindLabel(card)}</span>
                 </span>
+                <ScheduleChip schedule={cardScheduleLabel(card, now)} />
                 <motion.span
                   {...fade}
                   aria-hidden={editable ? undefined : true}

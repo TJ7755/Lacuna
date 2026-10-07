@@ -15,7 +15,8 @@ import { resolveOcclusionAnswerText } from '../../db/occlusionGeneration';
 import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
-import { cardKindLabel, cardScheduleLabel, type CardScheduleTone } from './lessonCardRow';
+import { cardKindLabel, cardScheduleLabel } from './lessonCardRow';
+import { ScheduleChip } from './ScheduleChip';
 import { OcclusionThumbnail } from './OcclusionThumbnail';
 
 const CardContent = lazy(() =>
@@ -25,13 +26,6 @@ const CardContent = lazy(() =>
 /** Rows stagger by this much, up to STAGGER_CAP_S, so a full window still lands quickly. */
 const STAGGER_STEP_S = 0.03;
 const STAGGER_CAP_S = 0.25;
-
-const SCHEDULE_CHIP_CLASS: Record<CardScheduleTone, string> = {
-  new: 'bg-accent-soft text-accent-ink',
-  due: 'bg-warning/15 text-ink',
-  scheduled: 'bg-positive/10 text-ink-soft',
-  paused: 'bg-ink/5 text-ink-faint',
-};
 
 export const CardRow = React.memo(function CardRow({
   card,
@@ -457,14 +451,7 @@ export const CardRow = React.memo(function CardRow({
                   'sm:[@media(hover:hover)]:group-hover:opacity-0 sm:[@media(hover:hover)]:group-focus-within:opacity-0',
               )}
             >
-              <span
-                className={cn(
-                  'whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-                  SCHEDULE_CHIP_CLASS[schedule.tone],
-                )}
-              >
-                {schedule.label}
-              </span>
+              <ScheduleChip schedule={schedule} />
               <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-faint">
                 {flagged && <FlagIcon width={12} height={12} className="text-accent" aria-label="Flagged" />}
                 {leech && (

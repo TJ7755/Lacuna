@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Card } from '../../db/types';
 import {
+  cardKindLabel,
   cardScheduleLabel,
   learntCardCount,
+  orderOcclusionSiblings,
   plainFront,
-  summariseLessonCard,
 } from './lessonCardRow';
 
 function card(overrides: Partial<Card> = {}): Card {
@@ -43,22 +44,11 @@ describe('lessonCardRow', () => {
     );
   });
 
-  it('classifies state and kind in the caption', () => {
-    expect(summariseLessonCard(card(), 0)).toMatchObject({ tone: 'new', caption: 'Front / back · New' });
-    expect(
-      summariseLessonCard(card({ type: 'cloze', state: 2, lastReviewed: 1 }), 0),
-    ).toMatchObject({ tone: 'review', caption: 'Cloze · Review' });
-    expect(
-      summariseLessonCard(card({ state: 3, lastReviewed: 1 }), 0),
-    ).toMatchObject({ tone: 'lapsed', caption: 'Front / back · Relearning' });
-  });
-
-  it('treats suspended and buried cards as paused', () => {
-    expect(summariseLessonCard(card({ suspended: true, state: 2, lastReviewed: 1 }), 0).tone).toBe(
-      'paused',
-    );
-    expect(summariseLessonCard(card({ buriedUntil: 10 }), 5).tone).toBe('paused');
-    expect(summariseLessonCard(card({ buriedUntil: 10 }), 20).tone).toBe('new');
+  it('names each card kind', () => {
+    expect(cardKindLabel(card())).toBe('Front / back');
+    expect(cardKindLabel(card({ type: 'cloze' }))).toBe('Cloze');
+    expect(cardKindLabel(card({ type: 'basic_reversed' }))).toBe('Reversed');
+    expect(cardKindLabel(card({ occlusionRegionId: 'r1' }))).toBe('Occlusion');
   });
 
   it('counts only cards that have left the New state as learnt', () => {
@@ -90,5 +80,21 @@ describe('lessonCardRow', () => {
     expect(
       cardScheduleLabel(card({ ...reviewed, due: now, buriedUntil: now + 1 }), now).label,
     ).toBe('Buried');
+  });
+
+  it('gathers the cards of an occlusion in region order where the first appears', () => {
+    const occlusion = { id: 'o', regions: [{ id: 'r1' }, { id: 'r2' }, { id: 'r3' }] } as never;
+    const a = card({ id: 'a' });
+    const r3 = card({ id: 'r3', occlusionRegionId: 'r3' });
+    const b = card({ id: 'b' });
+    const r1 = card({ id: 'r1', occlusionRegionId: 'r1' });
+    const r2 = card({ id: 'r2', occlusionRegionId: 'r2' });
+    expect(orderOcclusionSiblings([a, r3, b, r1, r2], [occlusion]).map((c) => c.id)).toEqual([
+      'a',
+      'r1',
+      'r2',
+      'r3',
+      'b',
+    ]);
   });
 });

@@ -1,19 +1,8 @@
-// Pure summary of a card for the compact "Cards in this lesson" list: a status tone,
-// a one-line plain-text front, and a "type · state" caption. No React so it can be
-// tested directly.
+// Pure descriptions of a card for the card lists: its kind, a one-line plain-text front
+// and when it next comes up. No React so they can be tested directly.
 
 import { parseAudioCardFront } from '../../media/audio';
-import type { Card } from '../../db/types';
-
-export type CardStatusTone = 'new' | 'learning' | 'review' | 'lapsed' | 'paused';
-
-export interface LessonCardRowSummary {
-  tone: CardStatusTone;
-  front: string;
-  caption: string;
-}
-
-const STATE_LABELS = ['New', 'Learning', 'Review', 'Relearning'] as const;
+import type { Card, Occlusion } from '../../db/types';
 
 /** Human label for a card's kind, covering generated and structured cards. */
 export function cardKindLabel(card: Card): string {
@@ -40,27 +29,6 @@ export function plainFront(card: Card): string {
       .replace(/\s+/g, ' ')
       .trim() || 'Untitled card'
   );
-}
-
-export function summariseLessonCard(card: Card, now: number): LessonCardRowSummary {
-  const paused =
-    card.suspended === true ||
-    (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now);
-  const tone: CardStatusTone = paused
-    ? 'paused'
-    : card.lastReviewed === null || card.state === 0
-      ? 'new'
-      : card.state === 3
-        ? 'lapsed'
-        : card.state === 2
-          ? 'review'
-          : 'learning';
-  const stateLabel = paused ? 'Paused' : STATE_LABELS[card.state] ?? 'New';
-  return {
-    tone,
-    front: plainFront(card),
-    caption: `${cardKindLabel(card)} · ${stateLabel}`,
-  };
 }
 
 export type CardScheduleTone = 'new' | 'due' | 'scheduled' | 'paused';
@@ -90,4 +58,36 @@ export function cardScheduleLabel(
 /** Cards that have been seen and left the New state. */
 export function learntCardCount(cards: readonly Card[]): number {
   return cards.filter((card) => card.lastReviewed !== null && card.state !== 0).length;
+}
+
+/**
+ * Cards in their given order, except that each occlusion's cards are gathered where its
+ * first card appears and follow its regions, so "Label 1 of 4" leads its siblings.
+ */
+export function orderOcclusionSiblings(cards: readonly Card[], occlusions: readonly Occlusion[]): Card[] {
+  const owner = new Map<string, { id: string; index: number }>();
+  for (const occlusion of occlusions) {
+    occlusion.regions.forEach((region, index) => owner.set(region.id, { id: occlusion.id, index }));
+  }
+  const siblings = new Map<string, Card[]>();
+  for (const card of cards) {
+    const found = card.occlusionRegionId ? owner.get(card.occlusionRegionId) : undefined;
+    if (found) siblings.set(found.id, [...(siblings.get(found.id) ?? []), card]);
+  }
+  const ordered: Card[] = [];
+  const placed = new Set<string>();
+  for (const card of cards) {
+    const found = card.occlusionRegionId ? owner.get(card.occlusionRegionId) : undefined;
+    if (!found) {
+      ordered.push(card);
+    } else if (!placed.has(found.id)) {
+      placed.add(found.id);
+      ordered.push(
+        ...siblings
+          .get(found.id)!
+          .sort((a, b) => owner.get(a.occlusionRegionId!)!.index - owner.get(b.occlusionRegionId!)!.index),
+      );
+    }
+  }
+  return ordered;
 }
