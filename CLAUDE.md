@@ -17,6 +17,12 @@ Changes to nonce, AAD, KDF or keybag layout need `/security-review` and a human 
 
 ---
 
+## Pull requests
+
+You are explicitly allowed to merge or close any pull request, including your own and Dependabot's, once you judge it done (CI green on the current head, no merge conflict, no open review thread), unless I have said otherwise for that pull request. You do not need to ask first. Crypto changes (above) still need the human read before merging. When asked to clear the pull request queue, merge or close every pull request in scope; leaving one open is not finishing.
+
+---
+
 ## Other
 
 - Background as many commands as possible so I can keep chatting to you while they run.
