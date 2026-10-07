@@ -17,8 +17,10 @@ export function useChartStyle() {
       c,
       m,
       xAxis: { tick, tickLine: false, axisLine: { stroke: c.line }, minTickGap: 12, tickMargin: 8 },
-      yAxis: { tick, tickLine: false, axisLine: false, tickCount: 4, width: 'auto' as const },
+      yAxis: { tick, tickLine: false, axisLine: false, tickCount: 5, width: 'auto' as const },
       tooltip: {
+        // Recharts defaults to " : ", which reads as "Reviews : 3".
+        separator: ': ',
         contentStyle: {
           background: c.surface,
           border: 'none',

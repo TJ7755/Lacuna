@@ -21,7 +21,7 @@ import { buildQuestionAnalytics } from '../questions/analytics';
 import { Rise } from '../components/analytics/Arrival';
 import { KpiRow } from '../components/analytics/KpiRow';
 import { CourseForecastCard } from '../components/analytics/CourseForecastCard';
-import { reviewVolume, studyTimeSeries } from '../components/analytics/prepare';
+import { reviewVolume, studyTimeSeries, totalStudyMinutes } from '../components/analytics/prepare';
 import { masteryFraction } from '../fsrs/progress';
 
 function CourseAnalyticsSkeleton() {
@@ -61,10 +61,7 @@ export function CourseAnalytics() {
     return {
       mastery: Math.round(masteryFraction(cards, course) * 100),
       reviews: reviewVolume(cards, 30, now, reviewHistory).reduce((sum, p) => sum + p.reviews, 0),
-      minutes: studyTimeSeries(cards, 30, now, reviewHistory).reduce(
-        (sum, p) => sum + p.minutes,
-        0,
-      ),
+      minutes: totalStudyMinutes(studyTimeSeries(cards, 30, now, reviewHistory)),
     };
   }, [course, cards, reviewHistory]);
   const questionAnalytics = useMemo(

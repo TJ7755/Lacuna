@@ -187,10 +187,17 @@ export function studyTimeSeries(
     points.push({
       day,
       label: new Date(day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      minutes: Number.isFinite(seconds) ? Math.round(seconds / 60) : 0,
+      // Unrounded: rounding each day to whole minutes erased short sessions.
+      minutes: Number.isFinite(seconds) ? seconds / 60 : 0,
     });
   }
   return points;
+}
+
+/** Whole minutes across a series; any study at all reads as at least 1 minute. */
+export function totalStudyMinutes(points: readonly StudyTimePoint[]): number {
+  const total = points.reduce((sum, point) => sum + point.minutes, 0);
+  return total > 0 ? Math.max(1, Math.round(total)) : 0;
 }
 
 export interface RetentionByAgePoint {

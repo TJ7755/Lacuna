@@ -158,6 +158,7 @@ export function SessionReport({
                       width={32}
                     />
                     <Tooltip
+                      separator=": "
                       cursor={{ fill: c.line, opacity: 0.4 }}
                       contentStyle={{
                         background: c.surface,

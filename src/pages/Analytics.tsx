@@ -14,6 +14,7 @@ import { useChartColours } from '../components/analytics/useChartColours';
 import {
   forecastSeries,
   studyTimeSeries,
+  totalStudyMinutes,
   retentionByAge,
   leechCountByCourse,
   reviewVolume,
@@ -186,7 +187,7 @@ export function Analytics() {
             { label: 'Reviews', value: volume.reduce((sum, point) => sum + point.reviews, 0) },
             {
               label: 'Study time',
-              value: studyTime.reduce((sum, point) => sum + point.minutes, 0),
+              value: totalStudyMinutes(studyTime),
               unit: 'min',
             },
             { label: 'Recall', value: overallRecall(retention), unit: '%' },
@@ -255,7 +256,7 @@ export function Analytics() {
             title="Study time"
             data={{
               columns: ['Date', 'Minutes'],
-              rows: studyTime.map((point) => [point.label, point.minutes]),
+              rows: studyTime.map((point) => [point.label, Math.round(point.minutes * 10) / 10]),
             }}
             emptyDrawing="time"
             empty={!hasReviews}
@@ -267,7 +268,7 @@ export function Analytics() {
               yKey="minutes"
               name="Time"
               colour={c.accent}
-              format={(value) => `${value} min`}
+              format={(value) => `${Math.round(Number(value) * 10) / 10} min`}
               xInterval={xInterval}
             />
           </ChartCard>

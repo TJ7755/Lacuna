@@ -159,6 +159,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                 />
                 <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
                 <Tooltip
+                  separator=": "
                   contentStyle={tooltipStyle}
                   labelFormatter={(value) =>
                     new Date(Number(value)).toLocaleDateString('en-GB', {
