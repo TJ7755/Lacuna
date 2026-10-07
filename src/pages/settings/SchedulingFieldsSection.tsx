@@ -252,37 +252,37 @@ export function SchedulingFieldsSection({
               </label>
               <fieldset className="block text-sm text-ink-soft">
                 <legend className="mb-2">When a card becomes a leech</legend>
-                <div className="flex flex-col gap-2">
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <Input
+                <div className="flex flex-col">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2">
+                    <input
                       type="radio"
                       name="leechAction"
                       value="suspend"
                       checked={leechAction === 'suspend'}
                       onChange={(e) => onLeechActionChange(e.target.value as 'suspend')}
-                      className="accent-accent"
+                      className="h-4 w-4 accent-accent"
                     />
                     <span className="text-sm text-ink-soft">Auto-suspend the card</span>
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <Input
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2">
+                    <input
                       type="radio"
                       name="leechAction"
                       value="tag"
                       checked={leechAction === 'tag'}
                       onChange={(e) => onLeechActionChange(e.target.value as 'tag')}
-                      className="accent-accent"
+                      className="h-4 w-4 accent-accent"
                     />
                     <span className="text-sm text-ink-soft">Add a &apos;leech&apos; tag</span>
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2">
-                    <Input
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2">
+                    <input
                       type="radio"
                       name="leechAction"
                       value="none"
                       checked={leechAction === 'none'}
                       onChange={(e) => onLeechActionChange(e.target.value as 'none')}
-                      className="accent-accent"
+                      className="h-4 w-4 accent-accent"
                     />
                     <span className="text-sm text-ink-soft">
                       Show the badge only, take no action

@@ -127,7 +127,16 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
         'a[href], button, select, input:not([type=hidden]), [role=button], [role=switch]',
       );
       for (const el of controls) {
-        if (el.closest('[inert], [aria-hidden=true], label') || el.matches(':disabled')) continue;
+        if (el.closest('[inert], [aria-hidden=true]') || el.matches(':disabled')) continue;
+        // A radio or checkbox is operated through its label row, so that row is its target.
+        const row = el.closest('label');
+        if (row && el.matches('input[type=radio], input[type=checkbox]')) {
+          const box = row.getBoundingClientRect();
+          if (box.height && box.height < 43.5)
+            out.push(`${location.hash} label ${Math.round(box.width)}x${Math.round(box.height)} ${row.textContent!.trim().slice(0, 40)}`);
+          continue;
+        }
+        if (row) continue;
         el.scrollIntoView({ block: 'center', inline: 'center' });
         const r = el.getBoundingClientRect();
         // A visually hidden control (the skip link) is 1px until focused.
