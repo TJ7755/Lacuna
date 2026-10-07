@@ -54,7 +54,6 @@ test('studies a card with touch controls', async ({ page }) => {
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('[data-study-face="front"]').getByText('Mobile study front')).toBeVisible();
   await page.getByRole('button', { name: /Show answer/i }).last().tap();
   await expect(page.locator('[data-study-face="back"]').getByText('Mobile study back')).toBeVisible();

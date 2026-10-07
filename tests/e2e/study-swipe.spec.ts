@@ -28,7 +28,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
             .click();
           await page.getByRole('button', { name: 'Study', exact: true }).click();
           await chooseScheduledStudy(page);
-          await page.getByRole('button', { name: 'Continue', exact: true }).click();
           await page.setViewportSize({ width, height: 900 });
           const front = page.locator('[data-study-face="front"]');
           await expect

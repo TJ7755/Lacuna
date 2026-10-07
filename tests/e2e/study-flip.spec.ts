@@ -57,7 +57,6 @@ test('slows both flip phases, follows live speed changes and skips reduced-motio
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('[data-study-face="front"]')).toBeVisible();
 
   for (const [speed, phaseDuration] of [

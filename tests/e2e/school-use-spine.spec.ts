@@ -34,7 +34,6 @@ test('authors, persists and studies a card through the keyboard', async ({ page 
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   const studyCard = page.locator('[data-study-card-id]');
   await expect(

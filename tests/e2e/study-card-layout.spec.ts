@@ -68,7 +68,6 @@ test('keeps both study-card faces at the larger height across viewport changes',
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
   await page.goto('/#/');
   await page.getByRole('button', { name: 'Start Stable card' }).click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
@@ -143,7 +142,6 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   const studyCourse = page.getByRole('button', { name: 'Start Monarchs' });
   await expect(studyCourse).toBeVisible();
   await studyCourse.click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
 
@@ -207,7 +205,6 @@ for (const width of [1280, 390]) {
       .getByRole('button', { name: /^(Start|Continue):/ })
       .first()
       .click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.setViewportSize({ width, height: 900 });
     await page.getByPlaceholder('Type your answer…').fill('timetable');
     const card = page.locator('[data-study-card-id]').first();

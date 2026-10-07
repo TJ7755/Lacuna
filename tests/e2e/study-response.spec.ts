@@ -18,7 +18,6 @@ test('makes the revealed answer readable during the deliberate card flip', async
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const reveal = page.getByRole('button', { name: /Show answer/i }).last();
   await expect(reveal).toBeVisible();
   await expect(
