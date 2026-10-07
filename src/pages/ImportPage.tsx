@@ -95,24 +95,25 @@ export function ImportPage() {
       style={{ '--import-motion-duration': `${200 * multiplier}ms` } as CSSProperties}
       {...keys}
     >
-      <header className="mb-8">
-        <div className="mb-3 flex min-h-11 items-center">
-          {source && (
-            <button
-              type="button"
-              disabled={busy}
-              aria-label="Back to import sources"
-              onClick={reset}
-              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
-            >
-              <ChevronLeftIcon width={16} height={16} />
-              Back
-            </button>
-          )}
-        </div>
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+      {/* Back shares the title's row, so the title sits where every page's does and
+          stays put as the steps change. */}
+      <header className="mb-8 flex items-start justify-between gap-4">
+        {/* At least the button's height, so the row does not grow when Back appears. */}
+        <h1 className="min-h-11 font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Import
         </h1>
+        {source && (
+          <button
+            type="button"
+            disabled={busy}
+            aria-label="Back to import sources"
+            onClick={reset}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          >
+            <ChevronLeftIcon width={16} height={16} />
+            All sources
+          </button>
+        )}
       </header>
       <StepSwap stepKey={source ?? 'sources'}>
         {!source ? (
