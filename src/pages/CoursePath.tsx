@@ -16,7 +16,7 @@ import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { buildPath, lessonEffectiveReleaseDates } from '../course/path';
-import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
+import { lessonCardMembership } from '../course/studyPools';
 import {
   currentAssessmentPracticeContext,
   type AssessmentPracticeOption,
@@ -151,8 +151,8 @@ export function CoursePath() {
 
   // Live review-due count and mean review time, feeding shouldInsertPractice
   // (addendum 2 §H). Deliberately review-only (dueCards): practice-node pacing
-  // is about FSRS review pressure, unlike the header's dueCardCount which also
-  // admits new cards (see courseHeaderStats).
+  // is about FSRS review pressure, so it ignores mastery, unlike the header's
+  // due count (see courseDueReviewCards).
   const now = Date.now();
   const { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate } = useMemo(() => {
     const currentPractice = course
@@ -392,28 +392,25 @@ export function CoursePath() {
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
-  // Header stats: nearest exam + urgency + dueCardCount use the same maths as
-  // LessonView's (see courseHeaderStats — due here means scheduled reviews
-  // due now); mastery is passed in
-  // from the course-level summary (extension-lesson cards already excluded
-  // there).
-  const { nearestExam, mastery, dueCardCount } = courseHeaderStats(
+  // Header stats: nearest exam + urgency use the same maths as LessonView's
+  // (see courseHeaderStats); mastery is passed in from the course-level summary
+  // (extension-lesson cards already excluded there). The due count is the
+  // snapshot's, so it matches the Review due cards session it opens.
+  const { nearestExam, mastery } = courseHeaderStats(
     course,
     assessments,
-    courseCards,
     summary?.mastery ?? 0,
     now,
-    lessons,
   );
+  const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
+  const dueCardCount = dueReviewCardIds?.size ?? 0;
 
   // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
     const cards = lessonCardsById.get(lessonId) ?? [];
     return {
       cardCount: cards.length,
-      dueCount: dueStudyPool(cards, course, examDateContext!, now).filter(
-        (card) => card.state !== 0,
-      ).length,
+      dueCount: cards.filter((card) => dueReviewCardIds?.has(card.id)).length,
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
@@ -423,9 +420,9 @@ export function CoursePath() {
   const forecastPct = Math.round((forecast?.atEnd ?? mastery) * 100);
   const otherWays = [
     {
-      label: 'Practise freely',
+      label: 'Review due cards',
       description: 'Due reviews without waiting for the schedule',
-      disabled: (studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) === 0,
+      disabled: dueCardCount === 0,
       onSelect: () => navigate(`/course/${courseId}/study?review=due`),
     },
     ...assessments

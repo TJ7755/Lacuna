@@ -20,6 +20,7 @@ const mockDeferBreak = vi.fn();
 let mockFlows: FlowData[] = [];
 const mockFlowListeners = new Set<() => void>();
 const seenLearnRequests: unknown[] = [];
+let learnMounts = 0;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -83,6 +84,9 @@ vi.mock('./LearnMode', () => ({
     sessionId?: string;
   }) => {
     seenLearnRequests.push(request);
+    React.useEffect(() => {
+      learnMounts += 1;
+    }, []);
     return (
       <div>
         <pre data-testid="learn-request">{JSON.stringify(request)}</pre>
@@ -183,6 +187,7 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    dueReviewCardIds: new Set(),
     assessmentOptions,
   };
 }
@@ -238,6 +243,7 @@ beforeEach(() => {
   mockFlows = [];
   mockFlowListeners.clear();
   seenLearnRequests.length = 0;
+  learnMounts = 0;
 });
 
 describe('CourseStudyFlow', () => {
@@ -301,6 +307,26 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
   });
 
+  it('starts a fresh Learn session when due review continues into Practice', async () => {
+    const practice: StudyFlowStep = {
+      kind: 'practice',
+      nodeKey: 'end',
+      mode: 'recurring',
+      label: 'Practice',
+    };
+    mockFlows = [flow(practice, 0), flow({ ...practice }, 1)];
+    renderFlow('/course/course-1/study?review=due');
+    await screen.findByTestId('learn-request');
+    expect(learnMounts).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear step' }));
+
+    // A finished Learn session never serves another card, so reusing its
+    // instance for the next step leaves an empty card area (#402).
+    await waitFor(() => expect(request()).toMatchObject({ mode: 'recurring' }));
+    await waitFor(() => expect(learnMounts).toBe(2));
+  });
+
   it('keeps the hand-off when Practice stops at the daily review goal', async () => {
     mockFlows = [
       flow({ kind: 'practice', nodeKey: 'auto-1', mode: 'curricular', label: 'Practice' }, 0, [
@@ -354,7 +380,7 @@ describe('CourseStudyFlow', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('starts a course-wide ad-hoc Practice request from the due-review query', async () => {
+  it('starts a course-wide due-review request from the due-review query', async () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?review=due');
 
@@ -362,7 +388,7 @@ describe('CourseStudyFlow', () => {
     expect(request()).toEqual({
       kind: 'practice',
       courseId: 'course-1',
-      mode: 'ad-hoc',
+      mode: 'recurring',
     });
   });
 
@@ -375,7 +401,7 @@ describe('CourseStudyFlow', () => {
     renderFlow('/course/course-1/study?review=due');
 
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'ad-hoc' });
+    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'recurring' });
   });
 
   it('starts an exact manual Practice node from its direct query', async () => {

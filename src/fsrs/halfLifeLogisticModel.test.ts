@@ -311,6 +311,32 @@ describe('half-life-logistic-v3 runtime', () => {
     ).toEqual({ valid: false, reason: 'unsupported' });
   });
 
+  it('claims no short-term recall until a card clears an unprimed retest (#313)', () => {
+    const model = createHalfLifeLogisticModel(-0.5);
+    const [first] = card().history;
+    const primed = { ...first, timestamp: REVIEWED_AT + 30_000, grade: 4 as const, primed: true };
+    const window = { now: REVIEWED_AT + 60_000, assessmentAt: REVIEWED_AT + 86_400_000 };
+    const lastReviewed = REVIEWED_AT + 30_000;
+
+    expect(
+      model?.validate({ card: card({ history: [first, primed], lastReviewed }), ...window }),
+    ).toEqual({ valid: false, reason: 'unsupported' });
+    // A genuinely spaced retest, or history from before the flag existed, still counts.
+    const retest = { ...first, timestamp: REVIEWED_AT + 50_000 };
+    expect(
+      model?.validate({
+        card: card({ history: [first, primed, retest], lastReviewed: REVIEWED_AT + 50_000 }),
+        ...window,
+      }),
+    ).toEqual({ valid: true });
+    expect(
+      model?.validate({
+        card: card({ history: [first, { ...primed, primed: undefined }], lastReviewed }),
+        ...window,
+      }),
+    ).toEqual({ valid: true });
+  });
+
   it('aggregates readiness only when every prediction carries valid uncertainty', () => {
     const readiness = readinessFromPredictions([
       { probability: 0.8, standardDeviation: 0.2 },

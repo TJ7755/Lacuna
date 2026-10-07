@@ -2,7 +2,7 @@
   "name": "lacuna-handwriting-maths",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.2",
   "type": "module",
   "description": "Appendix A.2 prototype: handwritten maths input. Exploratory, not shipped.",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "typescript": "^7.0.2",
-    "vite": "^8.3.1",
-    "vitest": "5.0.2"
+    "vite": "^8.3.2",
+    "vitest": "5.0.3"
   }
 }

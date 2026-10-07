@@ -10,16 +10,13 @@ import {
   startActiveStudyFlow,
   touchActiveStudyFlow,
 } from '../state/activeStudyFlow';
-import type { StudyFlowStep } from '../course/studyFlowPlanner';
+import { DUE_REVIEW_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { StepSwap } from '../components/ui/StepSwap';
-import {
-  continuesWithoutPause,
-  mayContinueWithoutPause,
-} from '../course/studyFlowContinuation';
+import { continuesWithoutPause, mayContinueWithoutPause } from '../course/studyFlowContinuation';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -53,14 +50,7 @@ function CourseStudyFlowInner() {
   const flow = useCourseStudyFlow(courseId, refreshKey);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
-    if (searchParams.get('review') === 'due') {
-      return {
-        kind: 'practice',
-        nodeKey: 'ad-hoc',
-        mode: 'recurring',
-        label: 'Review due cards',
-      };
-    }
+    if (searchParams.get('review') === 'due') return DUE_REVIEW_STEP;
     return entryAssessmentId
       ? {
           kind: 'practice',
@@ -135,14 +125,17 @@ function CourseStudyFlowInner() {
   // restart the session.
   const frozenScopeRef = useRef<{
     step: StudyFlowStep | null;
+    serial: number;
     ids?: string[];
     milestoneIds?: string[];
   }>({
     step: null,
+    serial: 0,
   });
   if (frozenScopeRef.current.step !== displayStep) {
     frozenScopeRef.current = {
       step: displayStep,
+      serial: frozenScopeRef.current.serial + 1,
       ids:
         displayStep?.kind === 'practice' && displayStep.mode === 'curricular'
           ? [
@@ -182,11 +175,17 @@ function CourseStudyFlowInner() {
         nodeKey: displayStep.mode === 'curricular' ? displayStep.nodeKey : undefined,
         scopeLessonIds: committedScopeLessonIds,
         milestoneLessonIds: committedMilestoneLessonIds,
-        mode: displayStep.nodeKey === 'ad-hoc' ? 'ad-hoc' : displayStep.mode,
+        mode: displayStep.mode,
       };
     }
     return null;
-  }, [committedMilestoneLessonIds, committedScopeLessonIds, courseId, displayStep, revisionSession]);
+  }, [
+    committedMilestoneLessonIds,
+    committedScopeLessonIds,
+    courseId,
+    displayStep,
+    revisionSession,
+  ]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {
@@ -254,12 +253,7 @@ function CourseStudyFlowInner() {
   const reviewDueCards = useCallback(() => {
     if (!courseId) return;
     if (pomodoro.breakPending) pomodoro.deferBreak();
-    setCurrentStep({
-      kind: 'practice',
-      nodeKey: 'ad-hoc',
-      mode: 'recurring',
-      label: 'Review due cards',
-    });
+    setCurrentStep(DUE_REVIEW_STEP);
     setTransition(null);
   }, [courseId, pomodoro]);
 
@@ -303,8 +297,7 @@ function CourseStudyFlowInner() {
         nextLabel={nextLabel}
         summary={transition.summary}
         canReviewDueCards={
-          (transition.completedStep.kind !== 'practice' ||
-            transition.completedStep.nodeKey !== 'ad-hoc') &&
+          transition.completedStep !== DUE_REVIEW_STEP &&
           !planningNextStep &&
           (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }
@@ -332,7 +325,10 @@ function CourseStudyFlowInner() {
       />
     );
   } else if (request && displayStep && flowIdentity) {
-    scene = 'learn';
+    // One scene per committed step. A finished session never serves another card,
+    // so StepSwap must not hand the next step to the outgoing Learn instance when
+    // the planner answers before its exit completes (#402).
+    scene = `learn-${frozenScopeRef.current.serial}`;
     body = (
       <LearnMode
         request={request}

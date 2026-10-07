@@ -308,3 +308,9 @@ Card-style radio groups use `sr-only` inputs, which Playwright cannot click; foc
 ## Stacked animated rows trap open menus and dialogs
 
 Each `motion.li` with a transform is its own stacking context, so a popover inside a row renders beneath later rows whatever its z-index. Lift the row while its menu is open (`has-[[aria-expanded=true]]:z-20`) and portal dialogs to `document.body`.
+
+## PR description edits restart CI
+
+CI subscribes to the pull-request `edited` event so retargeted branches receive checks.
+Editing a PR description also restarts CI and cancels its current run. Finalise the
+review text before waiting for merge gates, rather than updating it mid-run.

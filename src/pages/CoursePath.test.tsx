@@ -423,7 +423,7 @@ describe('CoursePath View mode', () => {
 
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Practise freely/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Review due cards/ }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });

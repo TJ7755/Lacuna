@@ -41,6 +41,7 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    dueReviewCardIds: new Set(),
     assessmentOptions,
   };
 }
@@ -107,10 +108,15 @@ describe('planNextStudyStep', () => {
     });
   });
 
-  it('falls back to recurring course Practice after the curriculum', () => {
+  it('falls back to due review after the curriculum', () => {
     expect(planNextStudyStep(snapshot([lessonNode('1', 'completed')], [], 3))).toEqual({
       kind: 'step',
-      step: { kind: 'practice', nodeKey: 'end', mode: 'recurring', label: 'Practice' },
+      step: {
+        kind: 'practice',
+        nodeKey: 'due-review',
+        mode: 'recurring',
+        label: 'Review due cards',
+      },
     });
   });
 

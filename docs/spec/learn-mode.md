@@ -108,7 +108,8 @@ behaviour.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
 
-Recurring and ad-hoc **Review due cards** requests use the existing `due` filter, as do
+**Review due cards** requests (from the study sheet, the header, or the conductor once
+the curriculum is finished) use the existing `due` filter, as do
 explicit due-filtered sessions. In FSRS mode their session context uses due-review
 eligibility: selection rechecks the updated due dates after every answer, including
 learning and relearning steps. Once no cards in the captured scope are due, the session
@@ -479,8 +480,9 @@ FSRS or calibration twice. Legacy history without provenance remains readable.
 
 The session **auto-ends** when the objective is met (all cards secured, or no card
 offers a meaningful gain in Σ R), or on manual exit. The report shows: progress
-before -> after (with the objective label), and stat tiles for **cards reviewed,
-accuracy, mean correct time, focus %**, plus a grade-distribution bar chart and a
+before -> after (with the objective label), and stat tiles for **cards reviewed
+(distinct cards, so a retried card counts once), accuracy (per answer), mean correct
+time, focus %**, plus a grade-distribution bar chart and a
 focus note when distractions occurred. Reaching the goal shows a celebratory tick
 badge; otherwise "Keep studying" is offered.
 

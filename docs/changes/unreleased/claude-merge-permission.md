@@ -1,0 +1,1 @@
+- CLAUDE.md now explicitly allows Claude to merge or close pull requests it judges done, unless told otherwise for a given pull request; crypto changes still need a human read first.

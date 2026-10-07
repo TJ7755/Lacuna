@@ -1534,7 +1534,10 @@ export function useLearnSession({
       simpleQueue.current = simpleQueue.current.map((card) =>
         card.id === updated.id ? updated : card,
       );
-      events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
+      events.current = [
+        ...events.current,
+        { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
+      ];
 
       if (correct) {
         if (lessonExposureIdRef.current) {
@@ -1706,7 +1709,10 @@ export function useLearnSession({
       }
       if (!revisionPlanRef.current) decrementCooldowns(cooldowns.current, updated.id);
 
-      events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
+      events.current = [
+        ...events.current,
+        { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
+      ];
       setSessionCardOutcomes(nextOutcomes);
 
       const reviewNow = Date.now();

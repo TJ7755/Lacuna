@@ -98,7 +98,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         ? 'practice'
         : 'deck';
   const dueReviewRequest =
-    request?.kind === 'practice' && (request.mode === 'recurring' || request.mode === 'ad-hoc');
+    request?.kind === 'practice' && request.mode === 'recurring';
   const filterParams = useMemo(() => {
     const filters = searchParams.getAll('filter') as CardFilter[];
     return dueReviewRequest && !filters.includes('due') ? [...filters, 'due' as const] : filters;

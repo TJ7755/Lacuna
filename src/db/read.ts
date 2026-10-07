@@ -38,7 +38,11 @@ import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from 
 import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { courseHeaderStats, type CourseHeaderStats } from '../course/headerStats';
+import {
+  courseDueReviewCards,
+  courseHeaderStats,
+  type CourseHeaderStats,
+} from '../course/headerStats';
 import { performanceForCourseBackingDecks } from './backingDecks';
 import {
   resolveAssessmentCoverage,
@@ -143,7 +147,7 @@ export async function getCard(cardId: string): Promise<Card | null> {
  * Cards a study session would serve right now for a course: due reviews below
  * Practice mastery plus new cards admitted under the course's newCardsPerDay cap,
  * ranked by the course's objective (sortByObjective) and capped at `limit` when
- * given. Mirrors the "due now" semantics in src/course/headerStats.ts.
+ * given. The header's due count (courseDueReviewCards) leaves the new cards out.
  */
 export async function listDueCards(
   courseId: string,
@@ -209,7 +213,8 @@ export async function getWeakCards(
 // ---------------------------------------------------------------------------
 
 export interface CourseStats {
-  header: CourseHeaderStats;
+  /** Header stats plus the due count every course header shows (courseDueReviewCards). */
+  header: CourseHeaderStats & { dueCardCount: number };
   /** Total lessons on the course path (extension lessons included; contrast CourseSummary in useCourseData.ts). */
   lessonCount: number;
   /** Total cards belonging to the course. */
@@ -236,7 +241,25 @@ export async function getCourseStats(
   const perf = await performanceForCourseBackingDecks(courseId, cards);
   const examDateContext = makeExamDateContext(course, lessons, assessments);
   const mastery = progressValue(availableCards(cards, now), course, now, examDateContext);
-  const header = courseHeaderStats(course, assessments, cards, mastery, now);
+  const lessonIds = lessons.map((lesson) => lesson.id);
+  const [links, exposures] = lessonIds.length
+    ? await Promise.all([
+        db.lessonCards.where('lessonId').anyOf(lessonIds).toArray(),
+        db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray(),
+      ])
+    : [[], []];
+  const header = {
+    ...courseHeaderStats(course, assessments, mastery, now),
+    dueCardCount: courseDueReviewCards({
+      course,
+      lessons,
+      assessments,
+      cards,
+      links,
+      exposures,
+      now,
+    }).length,
+  };
   const deckSeconds = buildDeckSecondsMap(perf);
   const studyStats = computeStudyStats(cards, deckSeconds, now);
   return { header, lessonCount: lessons.length, cardCount: cards.length, studyStats };

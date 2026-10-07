@@ -134,7 +134,12 @@ describe('buildCourseStudyFlowSnapshot', () => {
           ? { kind: 'complete' }
           : {
               kind: 'step',
-              step: { kind: 'practice', nodeKey: 'end', mode: 'recurring', label: 'Practice' },
+              step: {
+                kind: 'practice',
+                nodeKey: 'due-review',
+                mode: 'recurring',
+                label: 'Review due cards',
+              },
             },
       );
       if (dueOffset > 0) {

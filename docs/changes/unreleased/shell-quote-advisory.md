@@ -1,0 +1,1 @@
+- Override `shell-quote` to 1.12.0 so the root audit passes against GHSA-pqg4-j6r4-53mv; `concurrently` 10.0.5, the latest release, still pins the vulnerable 1.9.0.

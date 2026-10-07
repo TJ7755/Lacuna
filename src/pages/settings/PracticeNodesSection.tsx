@@ -33,7 +33,7 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
       <p className="text-xs text-ink-faint">
         Automatic practice appears when due work builds up and follows the thresholds above.
         Card practice you add stays on the course path and can limit lessons, card count and
-        order.
+        order. Use Review due cards in Other ways for reviews due now.
       </p>
 
       {manualNodes?.length === 0 && (

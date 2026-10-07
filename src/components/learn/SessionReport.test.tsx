@@ -71,6 +71,23 @@ describe('SessionReport', () => {
     expect(screen.getByText('Focus')).toBeInTheDocument();
   });
 
+  it('counts a retried card once in Cards reviewed', () => {
+    render(
+      <SessionReport
+        summary={{
+          ...mockSummary,
+          events: [
+            { cardId: 'a', grade: 1, correct: false, responseTimeSec: 1, distracted: false },
+            { cardId: 'b', grade: 3, correct: true, responseTimeSec: 1, distracted: false },
+            { cardId: 'a', grade: 3, correct: true, responseTimeSec: 1, distracted: false },
+          ],
+        }}
+        onReturn={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Cards reviewed').nextElementSibling).toHaveTextContent('2');
+  });
+
   it('shows the progress bar section', () => {
     render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
     expect(screen.getByText('Expected marks')).toBeInTheDocument();
