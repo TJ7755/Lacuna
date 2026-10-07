@@ -22,7 +22,8 @@ export async function addLessonCard(page: Page, courseId: string, front: string)
   await page.getByRole('textbox', { name: 'Back' }).fill(`${front} answer`);
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/[^/]+$`));
-  await expect(page.getByText(front, { exact: true })).toBeVisible();
+  // The editor can still be animating out with the same text in its Front field.
+  await expect(page.getByText(front, { exact: true }).last()).toBeVisible();
 }
 
 export async function editOnlyCard(page: Page, courseId: string, front: string): Promise<void> {
