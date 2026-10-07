@@ -1,21 +1,18 @@
 .study-transition {
   min-height: 100svh;
-  padding: 40px 24px;
+  padding: 0 0 40px;
   background: hsl(var(--paper));
 }
 .study-transition-main {
   --path-gutter: 74px;
-  max-width: 720px;
+  /* The 720px column plus its 24px gutters, now that the page itself has none. */
+  max-width: 768px;
+  padding: 0 24px;
   min-height: 70svh;
   margin: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-.study-transition-timer {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 24px;
 }
 .study-transition-completed,
 .study-transition-destination.has-next {

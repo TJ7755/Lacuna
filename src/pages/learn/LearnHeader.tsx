@@ -370,10 +370,9 @@ export function LearnHeader({
             disabled={!canUndo}
             aria-label="Undo last answer"
             title="Undo"
-            className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 disabled:opacity-40',
-              !canUndo && 'md:hidden',
-            )}
+            // Always laid out, disabled until there is an answer to undo, so the controls
+            // before it (the timer among them) never shift when the first answer lands.
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 disabled:opacity-40"
           >
             <UndoIcon width={18} height={18} />
           </button>

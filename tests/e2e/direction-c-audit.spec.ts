@@ -232,3 +232,38 @@ for (const width of [390, 1280]) {
     expect(new Set(Object.values(heights)).size, JSON.stringify(heights)).toBe(1);
   });
 }
+
+for (const width of [390, 1280]) {
+  test(`the timer keeps its place as a study step ends at ${width}px`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await enterFreshLacuna(page);
+    await page.getByRole('region', { name: 'Today, most urgent first' })
+      .getByRole('button', { name: /^Start Welcome to Lacuna/ }).click();
+    const timer = page.getByRole('button', { name: 'Pomodoro timer' });
+    const progress = page.getByRole('main', { name: 'Study progress' });
+    let inLearn: { x: number; y: number } | null = null;
+    for (let step = 0; step < 80 && !(await progress.isVisible()); step++) {
+      const reveal = page.getByRole('button', { name: /Show answer/i }).last();
+      if (await reveal.isVisible()) {
+        inLearn ??= (await timer.boundingBox())!;
+        await reveal.click();
+        continue;
+      }
+      for (const name of ['Yes', 'Good', 'Continue']) {
+        const button = page.getByRole('button', { name, exact: true }).last();
+        if (await button.isVisible()) {
+          await button.click();
+          break;
+        }
+      }
+      await page.waitForTimeout(150);
+    }
+    await expect(progress).toBeVisible();
+    const between = (await timer.boundingBox())!;
+    expect(inLearn).not.toBeNull();
+    expect(Math.abs(between.x - inLearn!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(between.y - inLearn!.y)).toBeLessThanOrEqual(1);
+  });
+}

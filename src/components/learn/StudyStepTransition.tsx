@@ -62,10 +62,18 @@ export function StudyStepTransition({
       style={{ '--step-motion': m } as CSSProperties}
       data-motion={m === 0 ? 'off' : 'on'}
     >
-      <main className="study-transition-main" aria-label="Study progress">
-        <div className="study-transition-timer">
+      {/* Learn's header geometry, so the timer stays where it was as a step ends: the
+          same frame, and room for the navigation, card-action and Undo buttons that
+          follow the timer there. */}
+      <div className="mx-auto flex min-h-[84px] w-full max-w-[1000px] items-center justify-end gap-2 px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] md:gap-4 md:px-8">
+        <div className="hidden min-[340px]:block">
           <PomodoroTimer />
         </div>
+        <span aria-hidden="true" className="w-11 shrink-0 max-md:hidden" />
+        <span aria-hidden="true" className="w-11 shrink-0" />
+        <span aria-hidden="true" className="w-11 shrink-0" />
+      </div>
+      <main className="study-transition-main" aria-label="Study progress">
         <div className={`study-transition-completed ${hasNext ? 'has-next' : ''}`}>
           <span
             className="study-transition-tick"
