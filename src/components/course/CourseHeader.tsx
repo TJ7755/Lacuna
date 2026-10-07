@@ -104,7 +104,7 @@ export function CourseHeader({
                 if (event.key === 'Enter') void commitRename();
                 if (event.key === 'Escape') cancelRename();
               }}
-              aria-label={`${renameLabel} name`}
+              aria-label={renameLabel === 'course' ? 'Course name' : 'Lesson name'}
               disabled={savingTitle}
               layout={motionMultiplier > 0 ? 'size' : undefined}
               initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}

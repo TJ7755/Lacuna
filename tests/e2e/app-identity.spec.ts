@@ -33,8 +33,8 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(course).toHaveCSS('font-family', /Bricolage Grotesque/);
       await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
       await page.getByRole('button', { name: 'Rename course', exact: true }).click();
-      await expect(page.getByRole('textbox', { name: 'course name', exact: true })).toBeFocused();
-      await page.getByRole('textbox', { name: 'course name', exact: true }).press('Escape');
+      await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toBeFocused();
+      await page.getByRole('textbox', { name: 'Course name', exact: true }).press('Escape');
       await expect(course).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,

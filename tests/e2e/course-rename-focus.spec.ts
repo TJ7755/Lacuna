@@ -8,7 +8,7 @@ test('opening the course rename field focuses and selects its title', async ({ p
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   await page.getByRole('button', { name: 'Rename course', exact: true }).click();
-  const input = page.getByRole('textbox', { name: 'course name', exact: true });
+  const input = page.getByRole('textbox', { name: 'Course name', exact: true });
   await expect(input).toBeFocused();
   expect(await input.evaluate((element: HTMLInputElement) =>
     element.selectionStart === 0 && element.selectionEnd === element.value.length,

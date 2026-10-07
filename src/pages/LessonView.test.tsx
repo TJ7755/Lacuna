@@ -461,7 +461,7 @@ describe('LessonView Edit mode', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Lesson actions: Test lesson' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
-    const input = screen.getByRole('textbox', { name: 'lesson name' });
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
     fireEvent.change(input, { target: { value: 'Renamed lesson' } });
     fireEvent.blur(input);
 

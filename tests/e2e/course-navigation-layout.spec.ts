@@ -331,7 +331,7 @@ test('a long course name truncates beside the section tabs instead of running un
   await openSeededCourse(page);
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   await page.getByRole('button', { name: 'Rename course', exact: true }).click();
-  const input = page.getByRole('textbox', { name: 'course name', exact: true });
+  const input = page.getByRole('textbox', { name: 'Course name', exact: true });
   const longName = 'A-level Mathematics: Pure, Statistics and Mechanics (Edexcel 9MA0)';
   await input.fill(longName);
   await input.press('Enter');

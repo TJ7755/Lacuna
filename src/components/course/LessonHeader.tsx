@@ -91,7 +91,7 @@ export function LessonHeader({
               autoFocus
               value={draft}
               disabled={saving}
-              aria-label="lesson name"
+              aria-label="Lesson name"
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setDraft(event.target.value)}
               onBlur={() => void commit()}

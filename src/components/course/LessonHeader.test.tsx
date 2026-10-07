@@ -11,7 +11,7 @@ describe('LessonHeader keyboard rename', () => {
     const trigger = screen.getByRole('button', { name: 'Rename lesson' });
     trigger.focus();
     fireEvent.click(trigger);
-    const input = screen.getByRole('textbox', { name: 'lesson name' });
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
     expect(input).toHaveFocus();
     fireEvent.change(input, { target: { value: 'Organelles' } });
     fireEvent.keyDown(input, { key });

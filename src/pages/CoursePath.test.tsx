@@ -928,7 +928,7 @@ describe('CoursePath Edit mode', () => {
   it('renames the course from its header', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    const input = screen.getByRole('textbox', { name: 'course name' });
+    const input = screen.getByRole('textbox', { name: 'Course name' });
     fireEvent.change(input, { target: { value: 'Further mechanics' } });
     fireEvent.blur(input);
 

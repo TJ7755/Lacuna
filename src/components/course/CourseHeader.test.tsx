@@ -20,14 +20,14 @@ describe('CourseHeader', () => {
       </LazyMotion>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    const input = screen.getByRole('textbox', { name: 'course name' });
+    const input = screen.getByRole('textbox', { name: 'Course name' });
     expect(screen.queryByRole('heading', { name: 'Mechanics' })).not.toBeInTheDocument();
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(input).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mechanics' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rename course' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    expect(screen.getByRole('textbox', { name: 'course name' })).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Course name' })).toHaveFocus();
     await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
   });
   it('keeps the course visibility marker on the stable header during renaming', () => {
@@ -35,7 +35,7 @@ describe('CourseHeader', () => {
     const header = screen.getByRole('heading', { name: 'Mechanics' }).closest('header');
     expect(header).toHaveAttribute('data-course-title');
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    expect(screen.getByRole('textbox', { name: 'course name' }).closest('header')).toBe(header);
+    expect(screen.getByRole('textbox', { name: 'Course name' }).closest('header')).toBe(header);
     expect(header).toHaveAttribute('data-course-title');
   });
 
@@ -70,7 +70,7 @@ describe('CourseHeader', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    const input = screen.getByRole('textbox', { name: 'course name' });
+    const input = screen.getByRole('textbox', { name: 'Course name' });
     fireEvent.change(input, { target: { value: 'Further mechanics' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -89,7 +89,7 @@ describe('CourseHeader', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
 
-    expect(screen.getByRole('textbox', { name: 'course name' })).toHaveStyle({ opacity: '0' });
+    expect(screen.getByRole('textbox', { name: 'Course name' })).toHaveStyle({ opacity: '0' });
   });
 
   it('supports double-click editing and rejects a blank name', () => {
@@ -104,7 +104,7 @@ describe('CourseHeader', () => {
     );
 
     fireEvent.doubleClick(screen.getByRole('heading', { name: 'Algebra' }));
-    const input = screen.getByRole('textbox', { name: 'lesson name' });
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
     fireEvent.change(input, { target: { value: '   ' } });
     fireEvent.blur(input);
 
