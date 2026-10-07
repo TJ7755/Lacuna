@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Course, CourseAssessment, Lesson, ReviewLog } from '../db/types';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  Lesson,
+  LessonCardExposure,
+  ReviewLog,
+} from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import { courseHeaderStats } from './headerStats';
+import { courseDueReviewCards, courseHeaderStats } from './headerStats';
 import { computeCourseSummaries } from '../state/courseSummaries';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { eligiblePracticePool } from './studyPools';
@@ -83,6 +90,37 @@ function review(timestamp: number): ReviewLog {
   };
 }
 
+const LESSON: Lesson = {
+  id: 'lesson',
+  courseId: 'course',
+  name: 'Lesson',
+  orderIndex: 0,
+  isExtension: false,
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+function exposure(lessonId: string, cardId: string): LessonCardExposure {
+  return { lessonId, cardId, taughtAt: 0, updatedAt: 0 };
+}
+
+/** Due count with every card introduced in a reached lesson, so only scheduling decides. */
+function dueCount(course: Course, cards: Card[], now = NOW, lessons: Lesson[] = [LESSON]): number {
+  const placed = cards.map((card) => ({
+    ...card,
+    primaryLessonId: card.primaryLessonId ?? lessons[0].id,
+  }));
+  return courseDueReviewCards({
+    course,
+    lessons,
+    assessments: [],
+    cards: placed,
+    links: [],
+    exposures: placed.map((card) => exposure(card.primaryLessonId!, card.id)),
+    now,
+  }).length;
+}
+
 describe('courseHeaderStats', () => {
   it('uses the primary lesson exam override in headers and dashboard counts', () => {
     const course = makeCourse();
@@ -104,7 +142,7 @@ describe('courseHeaderStats', () => {
       stability: 2,
       lastReviewed: NOW - MS_PER_DAY,
     });
-    expect(courseHeaderStats(course, [], [card], 0, NOW, [lesson]).dueCardCount).toBe(0);
+    expect(dueCount(course, [card], NOW, [lesson])).toBe(0);
     expect(computeCourseSummaries([course], [lesson], [card], [], NOW)[course.id].eligible).toBe(0);
   });
 
@@ -123,13 +161,13 @@ describe('courseHeaderStats', () => {
       const cards = [secured, weak];
       const context = makeExamDateContext(course, [], []);
       expect(eligiblePracticePool(cards, course, context, NOW)).toEqual([weak]);
-      expect(courseHeaderStats(course, [], cards, 0, NOW).dueCardCount).toBe(1);
+      expect(dueCount(course, cards)).toBe(1);
       expect(computeCourseSummaries([course], [], cards, [], NOW)[course.id].eligible).toBe(1);
-      expect(courseHeaderStats(course, [], [secured], 0, NOW).dueCardCount).toBe(0);
+      expect(dueCount(course, [secured])).toBe(0);
       // Once the exam passes, ordinary Practice uses the maintenance horizon.
       const afterExam = course.examDate! + 1;
       expect(eligiblePracticePool(cards, course, context, afterExam)).toHaveLength(2);
-      expect(courseHeaderStats(course, [], cards, 0, afterExam).dueCardCount).toBe(2);
+      expect(dueCount(course, cards, afterExam)).toBe(2);
     },
   );
 
@@ -141,11 +179,10 @@ describe('courseHeaderStats', () => {
       makeExamDate('past', NOW - MS_PER_DAY),
     ];
 
-    expect(courseHeaderStats(course, examDates, [], 0.73, NOW)).toEqual({
+    expect(courseHeaderStats(course, examDates, 0.73, NOW)).toEqual({
       nearestExam: NOW + 2 * MS_PER_DAY,
       examUrgent: true,
       mastery: 0.73,
-      dueCardCount: 0,
     });
   });
 
@@ -158,9 +195,7 @@ describe('courseHeaderStats', () => {
       makeCard('new-capped', { createdAt: 3 }),
     ];
 
-    expect(
-      courseHeaderStats(makeCourse({ newCardsPerDay: 2 }), [], cards, 0, NOW).dueCardCount,
-    ).toBe(1);
+    expect(dueCount(makeCourse({ newCardsPerDay: 2 }), cards)).toBe(1);
   });
 
   it('does not turn the remaining new-card budget into a due count', () => {
@@ -174,9 +209,7 @@ describe('courseHeaderStats', () => {
       makeCard('new-capped', { createdAt: 2 }),
     ];
 
-    expect(
-      courseHeaderStats(makeCourse({ newCardsPerDay: 2 }), [], cards, 0, NOW).dueCardCount,
-    ).toBe(0);
+    expect(dueCount(makeCourse({ newCardsPerDay: 2 }), cards)).toBe(0);
   });
 
   it('excludes suspended, future-buried and future review cards', () => {
@@ -187,14 +220,43 @@ describe('courseHeaderStats', () => {
       makeCard('future', { state: 2, due: NOW + 1 }),
     ];
 
-    expect(courseHeaderStats(makeCourse(), [], cards, 0, NOW).dueCardCount).toBe(1);
+    expect(dueCount(makeCourse(), cards)).toBe(1);
   });
 
   it('reports zero due cards for an archived course', () => {
     const cards = [makeCard('due', { state: 2, due: NOW }), makeCard('new')];
 
-    expect(courseHeaderStats(makeCourse({ archived: true }), [], cards, 0, NOW).dueCardCount).toBe(
-      0,
-    );
+    expect(dueCount(makeCourse({ archived: true }), cards)).toBe(0);
+  });
+
+  it('counts only reviews a Review due cards session can serve', () => {
+    const course = makeCourse({ unlockMode: 'semi-linear' });
+    const later: Lesson = { ...LESSON, id: 'later', orderIndex: 1 };
+    const overdue = {
+      state: 2 as const,
+      stability: 0.5,
+      due: NOW - 1,
+      lastReviewed: NOW - MS_PER_DAY,
+    };
+    const cards = [
+      makeCard('served', { ...overdue, primaryLessonId: LESSON.id }),
+      makeCard('unintroduced', { ...overdue, primaryLessonId: LESSON.id }),
+      makeCard('locked-lesson', { ...overdue, primaryLessonId: later.id }),
+      makeCard('no-lesson', overdue),
+    ];
+    const due = courseDueReviewCards({
+      course,
+      lessons: [LESSON, later],
+      assessments: [],
+      cards,
+      links: [],
+      exposures: [
+        exposure(LESSON.id, 'served'),
+        exposure(later.id, 'locked-lesson'),
+        exposure(LESSON.id, 'no-lesson'),
+      ],
+      now: NOW,
+    });
+    expect(due.map((card) => card.id)).toEqual(['served']);
   });
 });

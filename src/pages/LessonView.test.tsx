@@ -21,6 +21,7 @@ let mockLessons: Lesson[] | undefined;
 let mockExamDates: unknown[] | undefined;
 let mockNotes: Note[] | undefined;
 let mockLessonCards: Card[] | undefined;
+let mockDueReviewCardIds: Set<string>;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -52,6 +53,10 @@ vi.mock('../state/useCourseData', () => ({
   useSequences: () => [],
   useOcclusions: () => [],
   useLessonBackingDeck: () => undefined,
+}));
+
+vi.mock('../state/useCourseStudyFlow', () => ({
+  useCourseStudyFlow: () => ({ snapshot: { dueReviewCardIds: mockDueReviewCardIds } }),
 }));
 
 vi.mock('../db/lessonRepository', () => ({
@@ -162,6 +167,7 @@ function renderInline(
 }
 
 beforeEach(() => {
+  mockDueReviewCardIds = new Set();
   mockLesson = lesson;
   mockCourse = course;
   mockLessons = [lesson];
@@ -206,6 +212,21 @@ describe('LessonView Study mode', () => {
     expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
   });
 
+  it('counts only what Review due cards would serve as due', () => {
+    // Overdue but never introduced in a lesson: due review cannot serve it yet.
+    mockLessonCards = [
+      {
+        ...makeCard('unintroduced'),
+        state: 2,
+        stability: 1,
+        lastReviewed: Date.now() - 2 * MS_PER_DAY,
+        due: Date.now() - MS_PER_DAY,
+      },
+    ];
+    renderInline(true);
+    expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
+  });
+
   it('keeps an archived single-lesson course read-only', () => {
     mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
 
@@ -221,7 +242,7 @@ describe('LessonView Study mode', () => {
     );
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Practice Now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
@@ -298,14 +319,15 @@ describe('LessonView inline (single-lesson course) rendering', () => {
   it('shows one generic course Study action', () => {
     renderInline(true);
 
-    expect(screen.getByRole('button', { name: 'Study' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
+    // The due-review shortcut is the header's secondary action, not a second Study.
+    expect(screen.getAllByRole('button', { name: 'Review due cards' })).toHaveLength(1);
   });
 
   it('starts course-wide practice from the header when eligible', () => {
     renderInline(true, true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Practice Now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review due cards' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
@@ -313,7 +335,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
   it('disables course-wide practice when no reached card is eligible', () => {
     renderInline(true);
 
-    expect(screen.getByRole('button', { name: 'Practice Now' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Review due cards' })).toBeDisabled();
   });
 
   it('shows the course navigation with a Settings link', () => {

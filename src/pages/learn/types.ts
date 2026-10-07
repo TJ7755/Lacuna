@@ -58,11 +58,11 @@ export type LearnSessionRequest =
       kind: 'practice';
       courseId: string;
       nodeKey?: string;
-      /** Current curricular session scope; omitted for recurring and ad-hoc review. */
+      /** Current curricular session scope; omitted for due review. */
       scopeLessonIds?: string[];
       /** Fixed lesson prefix the node's milestone is measured and persisted against. */
       milestoneLessonIds?: string[];
-      mode: 'curricular' | 'recurring' | 'ad-hoc';
+      mode: 'curricular' | 'recurring';
       assessmentId?: never;
     }
   | {

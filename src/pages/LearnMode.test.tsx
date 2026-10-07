@@ -162,7 +162,7 @@ describe('LearnMode course/lesson scope', () => {
     localStorage.clear();
   });
 
-  it.each(['ad-hoc', 'recurring'] as const)(
+  it.each(['recurring'] as const)(
     'finishes %s due review after a slow Yes instead of repeating tomorrow’s card',
     async (mode) => {
       const course = await createCourse('Biology');

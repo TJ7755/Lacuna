@@ -1,6 +1,7 @@
 // Shared header-stat maths for CourseHeader consumers (CoursePath, LessonView):
-// the nearest exam date, its urgency flag, and the due-card count for a given
-// card scope. Pure — same convention as path.ts, no database access.
+// the nearest exam date and its urgency flag, plus the one definition of "due"
+// that every due count and Review due cards session share. Pure — same
+// convention as path.ts, no database access.
 //
 // Mastery is deliberately NOT computed here: CoursePath derives it from the
 // course-level CourseSummary (which excludes extension-lesson cards, see
@@ -12,39 +13,79 @@
 //
 // British English throughout.
 
-import type { Card, Course, CourseAssessment, Lesson } from '../db/types';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  Lesson,
+  LessonCardExposure,
+  LessonCardLink,
+} from '../db/types';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { dueReviewPool } from './studyPools';
-import { nearestExamDate, examIsUrgent } from './path';
+import { dueReviewPool, practiceCardScope } from './studyPools';
+import {
+  nearestExamDate,
+  examIsUrgent,
+  isLessonUnlocked,
+  lessonEffectiveReleaseDates,
+} from './path';
 
 export interface CourseHeaderStats {
   nearestExam?: number;
   examUrgent: boolean;
   mastery: number;
-  dueCardCount: number;
 }
 
-/**
- * Bundles the four stats every course/lesson header renders. `cards` is the
- * card set to derive `dueCardCount` from — course-wide cards for CoursePath,
- * a single lesson's cards for LessonView.
- */
+/** Bundles the exam and mastery stats every course/lesson header renders. */
 export function courseHeaderStats(
   course: Course,
   assessments: CourseAssessment[],
-  cards: Card[],
   mastery: number,
   now: number = Date.now(),
-  lessons: Lesson[] = [],
 ): CourseHeaderStats {
   const nearestExam = nearestExamDate(course, assessments, now);
-  // Count scheduled reviews below Practice mastery using the same
-  // lesson/assessment horizons as the session.
-  const context = makeExamDateContext(course, lessons, assessments);
-  return {
-    nearestExam,
-    examUrgent: examIsUrgent(nearestExam, now),
-    mastery,
-    dueCardCount: dueReviewPool(cards, course, context, now).length,
-  };
+  return { nearestExam, examUrgent: examIsUrgent(nearestExam, now), mastery };
+}
+
+export interface CourseDueReviewInput {
+  course: Course;
+  lessons: Lesson[];
+  assessments: CourseAssessment[];
+  /** Cards to count: the whole course, or one lesson's members. */
+  cards: Card[];
+  links: LessonCardLink[];
+  exposures: LessonCardExposure[];
+  now?: number;
+}
+
+/**
+ * The cards a Review due cards session serves: introduced cards in reached lessons
+ * whose review is due now and which are not yet secure at their exam horizon. The
+ * study-flow snapshot applies the same rules to its recurring scope, so every due
+ * count matches the session it opens.
+ */
+export function courseDueReviewCards({
+  course,
+  lessons,
+  assessments,
+  cards,
+  links,
+  exposures,
+  now = Date.now(),
+}: CourseDueReviewInput): Card[] {
+  const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
+  const reachedLessonIds = new Set(
+    lessons
+      .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, lessons, now))
+      .map((lesson) => lesson.id),
+  );
+  const scope = practiceCardScope(
+    cards,
+    links,
+    exposures,
+    { reachedLessonIds, requireExposure: course.learnFirst !== false },
+    now,
+    course.leechThreshold,
+  );
+  return dueReviewPool(scope, course, makeExamDateContext(course, lessons, assessments), now);
 }

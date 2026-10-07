@@ -2,6 +2,8 @@ import type { Grade } from '../../db/types';
 
 /** A single answered card within a Learn session, retained for the end report. */
 export interface SessionEvent {
+  /** Absent on events persisted before distinct-card reporting. */
+  cardId?: string;
   grade: Grade;
   correct: boolean;
   responseTimeSec: number;

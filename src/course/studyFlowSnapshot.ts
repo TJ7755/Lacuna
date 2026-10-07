@@ -40,6 +40,8 @@ export interface CourseStudyFlowSnapshot {
   activeManualNodeKeys: ReadonlySet<string>;
   completedManualNodeKeys: ReadonlySet<string>;
   recurringPracticeEligibleCount: number;
+  /** Cards behind recurringPracticeEligibleCount, for lesson-level due counts. */
+  dueReviewCardIds: ReadonlySet<string>;
   assessmentOptions: AssessmentPracticeOption[];
 }
 
@@ -255,13 +257,10 @@ export function buildCourseStudyFlowSnapshot({
   }
 
   // Recurring review contains scheduled reviews due now; unseen and future weak
-  // cards still belong to curricular Practice.
-  const recurringPracticeEligibleCount = dueReviewPool(
-    recurringScope,
-    course,
-    examDateContext,
-    now,
-  ).length;
+  // cards still belong to curricular Practice. Same rules as courseDueReviewCards.
+  const dueReviewCardIds = new Set(
+    dueReviewPool(recurringScope, course, examDateContext, now).map((card) => card.id),
+  );
   const activeManualNodeKeys = new Set(
     [...practiceByKey.values()]
       .filter((practice) => practice.nodeType === 'practice-manual' && practice.active)
@@ -280,7 +279,8 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey,
     activeManualNodeKeys,
     completedManualNodeKeys,
-    recurringPracticeEligibleCount,
+    recurringPracticeEligibleCount: dueReviewCardIds.size,
+    dueReviewCardIds,
     assessmentOptions: recurringAssessmentOptions,
   };
 }

@@ -202,7 +202,16 @@ function CourseStudyOptions({
           size="lg"
           onClick={() => start(nextIsDueReview ? '?review=due' : '')}
         >
-          {nextIsDueReview ? 'Review due cards' : `Continue: ${nextStep.label}`}
+          {nextIsDueReview ? (
+            <>
+              Review due cards
+              <span className="ml-2 text-sm opacity-70">
+                {snapshot?.recurringPracticeEligibleCount}
+              </span>
+            </>
+          ) : (
+            `Continue: ${nextStep.label}`
+          )}
         </Button>
       ) : (
         <p className="py-1 text-sm text-ink-soft">

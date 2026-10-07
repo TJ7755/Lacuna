@@ -187,6 +187,7 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    dueReviewCardIds: new Set(),
     assessmentOptions,
   };
 }
@@ -379,7 +380,7 @@ describe('CourseStudyFlow', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('starts a course-wide ad-hoc Practice request from the due-review query', async () => {
+  it('starts a course-wide due-review request from the due-review query', async () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?review=due');
 
@@ -387,7 +388,7 @@ describe('CourseStudyFlow', () => {
     expect(request()).toEqual({
       kind: 'practice',
       courseId: 'course-1',
-      mode: 'ad-hoc',
+      mode: 'recurring',
     });
   });
 
@@ -400,7 +401,7 @@ describe('CourseStudyFlow', () => {
     renderFlow('/course/course-1/study?review=due');
 
     await screen.findByTestId('learn-request');
-    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'ad-hoc' });
+    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'recurring' });
   });
 
   it('starts an exact manual Practice node from its direct query', async () => {
