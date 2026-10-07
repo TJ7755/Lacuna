@@ -101,11 +101,29 @@ tabs; card-row hover no longer shows the swipe tray; the sidebar marks a clipped
 noteless lessons start on their first card; Skip to content; question-writing toolbar in plain
 words with Ctrl/Cmd+B and I and a live maths preview; Help's terms; empty-state routes.
 
+Decided by the prompter afterwards: MathLive stays out of this pull request; new courses
+default to Steady retention; the single-lesson Add menu joins the lesson header.
+
+## Detail pass (7 October 2026, second session)
+
+Applied the three decisions above, then audited hover, press, focus and hit areas with seeded
+data, following *Nudge* choice architecture: a reversible default, consistent mappings, and the
+next action offered where a panel is empty. Fixed: counts pluralise ("1 card"); study time keeps
+seconds, so a short session no longer reads as 0 minutes; sidebar course names wrap to two lines;
+card kinds share one set of labels; the course-settings Assessments card has a heading; Card
+practice and practice are named consistently; rename fields are capitalised; an empty notes panel
+offers Switch to Edit like the cards panel; the study sheet is a bounded panel on desktop; and every control on the phone pages tested reaches
+the 44 px target, checked by a hit-area probe in `tests/e2e/direction-c-audit.spec.ts`.
+
 Left for the prompter to decide:
 
-- **Visual maths input.** Teachers still type `$...$`; the live preview helps, but a visual
-  equation editor (MathLive is the usual choice) would remove LaTeX entirely. New dependency.
-- **New course default.** The form requires choosing Exam date or Steady retention before
-  Create; a default would remove a step but guess wrong for some.
-- **Single-lesson Add row.** In Edit mode the Add menu sits on its own row above the lesson
-  title; it could join the header, at the cost of reworking the tested toolbar layout.
+- **Import title offset.** The Import title sits about 57 px lower than other pages' titles,
+  because an empty Back row keeps it still while steps change (`import-navigation.spec.ts`).
+- **Pomodoro timer on the between-steps screen.** It sits at the top of the centred column
+  rather than where Learn's header puts it, so it moves when a step ends. Matching Learn means
+  copying that header's button geometry or sharing the header.
+- **Sharing promotion on Today.** The banner sits above the study queue on a phone, pushing the
+  day's work below the fold for new users until dismissed.
+- **Two New card buttons in Edit mode.** The cards panel and the Manage section each offer one.
+- **Tag chips.** Chip remove buttons and tag suggestions are smaller than 44 px; Backspace
+  removes the last tag, but a pointer needs precision.
