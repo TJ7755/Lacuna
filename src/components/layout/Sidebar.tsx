@@ -33,7 +33,6 @@ import { formatDate } from '../../utils/datetime';
 import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
 import { CourseGlyph, glyphLoad, type GlyphStatus } from '../course/CourseGlyph';
 import { forecastStatus } from '../dashboard/ForecastChart';
-import { scrollEdgeMask, useScrollEdges } from '../../hooks/useScrollEdges';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -371,7 +370,6 @@ export function Sidebar({
 
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
-  const [courseScroller, courseEdges] = useScrollEdges<HTMLDivElement>();
 
   const sidebarCourses = useMemo(
     () => courses?.filter((course) => !course.archived) ?? [],
@@ -571,17 +569,9 @@ export function Sidebar({
           </motion.div>
         )}
         <div
-          ref={courseScroller}
-          data-scroll-edges={[courseEdges.top && 'top', courseEdges.bottom && 'bottom']
-            .filter(Boolean)
-            .join(' ')}
-          // The scrollbar is hidden, so a fade marks the edge with more courses beyond it.
-          style={{
-            maskImage: scrollEdgeMask(courseEdges),
-            WebkitMaskImage: scrollEdgeMask(courseEdges),
-          }}
+          // The scrollbar is hidden, so a shadow marks the edge with more courses beyond it.
           className={cn(
-            'flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+            'scroll-edge-shadows flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
             sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
           )}
         >

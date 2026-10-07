@@ -323,3 +323,9 @@ launches its own browser and fails there with a Cache `match` TypeError on any r
 passes it. To screenshot populated states, seed through the repositories with
 `page.evaluate` on a Vite server without file watching: an HMR full reload mid-seed
 destroys the evaluation.
+
+## Initial JavaScript budget is nearly full
+
+`perf:check` caps first-load JavaScript at 280,000 gzipped bytes and the shell sits within
+a few dozen bytes of it (7 October 2026). Shell, sidebar and Today additions need offsetting:
+prefer CSS utilities in `src/index.css` over hooks or long class strings in initial chunks.

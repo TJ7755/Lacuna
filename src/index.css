@@ -313,6 +313,42 @@
     will-change: transform, opacity;
   }
 
+  /*
+   * Shadows at a scroller's hidden edges, for lists whose scrollbar is hidden. The chrome-coloured
+   * covers scroll with the content and hide each shadow once its edge is reached: no script.
+   */
+  .scroll-edge-shadows {
+    background:
+      linear-gradient(hsl(var(--chrome)) 40%, hsl(var(--chrome) / 0)) top / 100% 28px no-repeat local,
+      linear-gradient(hsl(var(--chrome) / 0), hsl(var(--chrome)) 60%) bottom / 100% 28px no-repeat
+        local,
+      radial-gradient(farthest-side at 50% 0, hsl(var(--ink) / 0.22), transparent) top / 100% 12px
+        no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, hsl(var(--ink) / 0.22), transparent) bottom / 100%
+        12px no-repeat scroll;
+  }
+
+  /* The shell's first Tab stop; hidden until it receives focus. */
+  .skip-link:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .skip-link:focus {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    border-radius: 9999px;
+    padding: 0.625rem 1rem;
+    background: hsl(var(--ink));
+    color: hsl(var(--paper));
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
   /* Electron titlebar drag regions. */
   .titlebar-drag {
     -webkit-app-region: drag;

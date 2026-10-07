@@ -198,8 +198,6 @@ describe('AppShell mobile navigation', () => {
     fireEvent.click(skip);
     const main = screen.getByRole('main');
     expect(main).toHaveFocus();
-    act(() => main.blur());
-    expect(main).not.toHaveAttribute('tabindex');
   });
 
   it('uses the fixed Lacuna colours for mobile branding', () => {

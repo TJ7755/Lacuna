@@ -41,6 +41,12 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Review today' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review today' })).not.toBeInTheDocument();
   });
+  it('shades the hidden edges of its scrollbar-less course list', () => {
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+    const archived = screen.getByRole('link', { name: 'Archived' });
+    expect(archived.closest('.scroll-edge-shadows')).not.toBeNull();
+  });
+
   it('shows the brand without a tagline', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
     expect(screen.getByText('Lacuna')).toBeInTheDocument();

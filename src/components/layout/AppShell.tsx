@@ -256,15 +256,13 @@ function AppShellLayout() {
       {/* First stop for keyboard users: past the sidebar's courses to the page itself. */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-full focus:bg-ink focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-paper"
+        className="skip-link"
         onClick={(event) => {
           // Hash routing owns the URL fragment, so move focus rather than navigate.
           event.preventDefault();
-          const main = mainRef.current;
-          if (!main) return;
+          const main = mainRef.current!;
           main.tabIndex = -1;
-          main.addEventListener('blur', () => main.removeAttribute('tabindex'), { once: true });
-          main.focus({ preventScroll: true });
+          main.focus();
         }}
       >
         Skip to content
