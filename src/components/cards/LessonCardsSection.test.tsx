@@ -69,7 +69,9 @@ vi.mock('./CardList', () => ({
     linkedCardIds,
     onUnlinkCard,
     context,
+    onNewCard,
   }: {
+    onNewCard?: () => void;
     onLinkExisting?: () => void;
     linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
@@ -92,6 +94,11 @@ vi.mock('./CardList', () => ({
     return (
       <div>
         {initiallyImporting && <span data-testid="initially-importing">true</span>}
+        {onNewCard && (
+          <button type="button" onClick={onNewCard}>
+            New card
+          </button>
+        )}
         <button type="button" onClick={onLinkExisting}>
           Open linked-card picker
         </button>
@@ -204,6 +211,8 @@ describe('LessonCardsSection', () => {
     );
     expect(screen.getByRole('heading', { name: 'Manage (1)' })).toBeInTheDocument();
     expect(screen.getByText('Answer by')).toBeInTheDocument();
+    // The lesson's card panel already leads with New card; Manage does not repeat it.
+    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
   });
 
   it('prepares and opens the importer for an empty lesson', async () => {

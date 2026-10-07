@@ -206,7 +206,7 @@ export function LessonCardsSection({
             importTargetName: lessonName,
           })}
           hideHeader
-          onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+          // New card leads in the lesson's card panel above, so Manage offers only the rest.
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
           onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
           onLinkExisting={() => setLinking(true)}
