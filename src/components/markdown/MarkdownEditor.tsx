@@ -4,6 +4,7 @@ import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { modifierShortcutLabel } from '../../electron/runtime';
@@ -545,7 +546,7 @@ export function MarkdownEditor({
             )}
           />
           {/* Maths is written as $...$; show how it reads without leaving the Write tab. */}
-          {showsMathsPreview && (
+          <AnimatedDisclosure open={showsMathsPreview}>
             <div
               data-maths-preview=""
               className="border-t border-line px-4 py-2 text-sm text-ink-soft"
@@ -553,7 +554,7 @@ export function MarkdownEditor({
               <span className="mr-2 text-xs text-ink-faint">Preview</span>
               <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
             </div>
-          )}
+          </AnimatedDisclosure>
         </div>
         {!hidePreview && (
           <div
