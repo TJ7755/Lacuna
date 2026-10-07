@@ -139,9 +139,13 @@ export function HelpPage() {
                     revision plan. Checkpoints never block course progress.
                   </li>
                   <li>
-                    <strong className="text-ink">Practice sessions:</strong> nodes that gather up
-                    due cards from the lessons studied so far, so you keep reviewing older material
-                    as you move through the course.
+                    <strong className="text-ink">Card practice:</strong> stops that gather up due
+                    cards from the lessons studied so far, so you keep reviewing older material as
+                    you move through the course.
+                  </li>
+                  <li>
+                    <strong className="text-ink">Practice questions:</strong> a question set placed
+                    after a lesson, opened straight from the path.
                   </li>
                 </ul>
               </div>
@@ -205,7 +209,7 @@ export function HelpPage() {
                 title="Assessment revision"
                 description="A time-budgeted revision plan for one named checkpoint or final exam."
                 whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a course Practice milestone."
-                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
+                whenToUse="Choose it from a relevant Card practice stop, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
                 tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
               />
             </div>
@@ -605,9 +609,10 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Questions are post-instruction application problems, kept separate from direct-recall
-              Cards. Open a course&apos;s Questions tab to author or practise them; they do not
-              appear in lesson Card study, Practice nodes, assessment revision or the course path.
+              Questions are exam-style problems with mark schemes, kept separate from recall cards.
+              Open a course&apos;s Questions tab to write or practise them. A question set can also
+              sit on the course path as a Practice questions stop; questions never appear in card
+              study, Card practice or assessment revision.
             </p>
             <div className="space-y-3">
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">

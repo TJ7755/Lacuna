@@ -54,6 +54,9 @@ export function ArchivedCourses() {
       {archived === undefined ? null : archived.length === 0 ? (
         <div className="border-t border-line py-10">
           <h2 className="font-display text-2xl">No archived courses</h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            Courses you archive from Today wait here, ready to restore.
+          </p>
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">

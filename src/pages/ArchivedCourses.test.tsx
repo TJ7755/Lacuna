@@ -30,6 +30,13 @@ beforeEach(() => {
 });
 
 describe('ArchivedCourses', () => {
+  it('tells someone with nothing archived where archiving happens', () => {
+    courses = [{ ...archived, archived: false }];
+    render(<ArchivedCourses />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('heading', { name: 'No archived courses' })).toBeInTheDocument();
+    expect(screen.getByText(/archive from Today/)).toBeInTheDocument();
+  });
+
   it('moves focus to the next restoration action when a restored course disappears', async () => {
     const next = { ...archived, id: 'course-2', name: 'Finished chemistry' };
     courses = [archived, next];
