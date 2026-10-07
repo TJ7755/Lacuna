@@ -82,7 +82,7 @@ export function TodayQueue({
               to={row.href}
               onPointerEnter={() => prefetchRoute(row.href)}
               onFocus={() => prefetchRoute(row.href)}
-              className="min-w-0 flex-1 truncate font-display text-lg font-semibold sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
+              className="line-clamp-2 min-w-0 flex-1 break-words font-display text-lg font-semibold leading-tight sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
             >
               {row.name}
               {row.hasPendingUpdate && (
