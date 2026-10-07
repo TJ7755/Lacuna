@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { m as motion } from 'motion/react';
 import { CloseIcon, TagIcon } from './icons';
 
@@ -13,6 +13,7 @@ interface TagInputProps {
 /** Chip-style tag editor. Enter or comma commits a tag; Backspace on empty removes the last. */
 export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagInputProps) {
   const [draft, setDraft] = useState('');
+  const input = useRef<HTMLInputElement>(null);
 
   function addTag(raw: string) {
     const tag = raw.trim().replace(/,+$/, '').trim();
@@ -41,7 +42,16 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 py-2 focus-within:border-accent">
+      {/* The whole box focuses the input, so the target is the box, not the one-line field. */}
+      <div
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) {
+            e.preventDefault();
+            input.current?.focus();
+          }
+        }}
+        className="flex min-h-11 cursor-text flex-wrap items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 py-2 focus-within:border-accent"
+      >
         <TagIcon width={15} height={15} className="text-ink-faint" />
         {tags.map((tag) => (
           <motion.span
@@ -63,6 +73,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
           </motion.span>
         ))}
         <input
+          ref={input}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}

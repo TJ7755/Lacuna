@@ -437,7 +437,7 @@ export function MarkdownEditor({
             type="button"
             title="Insert image"
             onClick={() => fileInputRef.current?.click()}
-            className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
           >
             <ImageIcon width={15} height={15} />
           </button>

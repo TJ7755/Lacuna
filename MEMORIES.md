@@ -330,3 +330,10 @@ destroys the evaluation.
 stood at about 274,300 (7 October 2026). Asset hashes inside chunks move the figure by tens of
 bytes between builds. Prefer CSS utilities in `src/index.css` over hooks or long class strings
 in initial chunks, and add on-demand start-up chunks to the shell precache list.
+
+## Widening a hit area
+
+`line-clamp-*` sets `overflow: hidden`, so padding on a clamped element shows the clamped
+line, and a widening `::before` is clipped for clicks too. Make the link the flex box with
+`min-h-11` and clamp an inner span. A `border` on an `overflow-hidden` wrapper also eats
+into its button's target; an inset ring does not.

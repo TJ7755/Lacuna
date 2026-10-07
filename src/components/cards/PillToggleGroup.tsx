@@ -56,7 +56,10 @@ export function PillToggleGroup<T extends string>({
               onClick={() => onChange(option.value)}
               className={cn(
                 'relative flex shrink-0 items-center justify-center whitespace-nowrap rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-                size === 'md' ? 'min-h-11 px-4 text-sm' : 'min-h-9 px-3.5 text-sm',
+                size === 'md'
+                  ? 'min-h-11 px-4 text-sm'
+                  : // The pseudo-element reaches over the track's padding to the 44 px minimum.
+                    "min-h-9 px-3.5 text-sm before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']",
                 active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >

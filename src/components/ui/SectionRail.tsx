@@ -194,7 +194,7 @@ export function SectionRailMobileJumper({
   return (
     <div
       className={cn(
-        'sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-2 shadow-sm',
+        'sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-0.5 shadow-sm',
         className,
       )}
     >
@@ -203,7 +203,7 @@ export function SectionRailMobileJumper({
         <select
           value={activeSection}
           onChange={(event) => onNavigate(event.target.value)}
-          className="w-full appearance-none rounded-lg bg-transparent py-1.5 pl-2 pr-8 text-sm font-medium text-ink outline-none"
+          className="min-h-11 w-full appearance-none rounded-lg bg-transparent pl-3.5 pr-10 text-sm font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
@@ -212,7 +212,7 @@ export function SectionRailMobileJumper({
           ))}
         </select>
         <ChevronDownIcon
-          className="pointer-events-none absolute right-2 text-ink-faint"
+          className="pointer-events-none absolute right-3.5 text-ink-faint"
           width={16}
           height={16}
         />

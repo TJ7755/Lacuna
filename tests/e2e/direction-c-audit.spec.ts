@@ -103,3 +103,51 @@ test('card row actions meet the 44px target on a phone', async ({ page }) => {
     expect(Math.min(box.width, box.height), name).toBeGreaterThanOrEqual(44);
   }
 });
+
+test('controls on phone pages reach the 44px target', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+  await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+  const course = new URL(page.url()).hash.slice(1);
+  const short: string[] = [];
+  for (const route of ['/', course, `${course}/settings`, '/settings', `${course}/cards/new`]) {
+    await page.goto(`/#${route}`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+    const found = await page.evaluate(() => {
+      const out: string[] = [];
+      const controls = document.querySelectorAll<HTMLElement>(
+        'a[href], button, select, input:not([type=hidden]), [role=button], [role=switch]',
+      );
+      for (const el of controls) {
+        if (el.closest('[inert], [aria-hidden=true], label') || el.matches(':disabled')) continue;
+        el.scrollIntoView({ block: 'center', inline: 'center' });
+        const r = el.getBoundingClientRect();
+        // A visually hidden control (the skip link) is 1px until focused.
+        if (r.width <= 1 || r.height <= 1 || getComputedStyle(el).visibility === 'hidden') continue;
+        // Links within running text are exempt, as in WCAG 2.5.8.
+        if (getComputedStyle(el).display === 'inline') continue;
+        // Probe the hit area itself, so a pseudo-element that widens it counts.
+        const hits = (x: number, y: number) => {
+          const at = document.elementFromPoint(x, y);
+          // A text field's whole box focuses it, so the box is its target.
+          return !!at && (at === el || el.contains(at) || (at.contains(el) && at.matches('.cursor-text')));
+        };
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        // 21 rather than 22 tolerates sub-pixel edges and a neighbour's sliding indicator.
+        const ok = hits(cx - 21, cy) && hits(cx + 21, cy) && hits(cx, cy - 21) && hits(cx, cy + 21);
+        if (!ok) {
+          const name = el.getAttribute('aria-label') || el.title || el.textContent || el.tagName;
+          out.push(`${location.hash} ${Math.round(r.width)}x${Math.round(r.height)} ${name.trim().slice(0, 40)}`);
+        }
+      }
+      return out;
+    });
+    short.push(...found);
+  }
+  expect(short).toEqual([]);
+});

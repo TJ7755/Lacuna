@@ -468,7 +468,7 @@ export function CoursePath() {
             <Link
               to={`/course/${courseId}/analytics`}
               className={cn(
-                'inline-flex items-center gap-2 hover:underline',
+                '-my-2.5 inline-flex items-center gap-2 py-2.5 hover:underline',
                 status === 'ahead'
                   ? 'text-positive'
                   : status === 'behind'

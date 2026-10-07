@@ -82,14 +82,16 @@ export function TodayQueue({
               to={row.href}
               onPointerEnter={() => prefetchRoute(row.href)}
               onFocus={() => prefetchRoute(row.href)}
-              className="line-clamp-2 min-w-0 flex-1 break-words font-display text-lg font-semibold leading-tight sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
+              className="flex min-h-11 min-w-0 flex-1 items-center font-display text-lg font-semibold leading-tight sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
             >
-              {row.name}
-              {row.hasPendingUpdate && (
-                <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">
-                  Update available
-                </span>
-              )}
+              <span className="line-clamp-2 break-words">
+                {row.name}
+                {row.hasPendingUpdate && (
+                  <span className="ml-2 align-middle text-xs max-sm:hidden font-bold text-accent-ink">
+                    Update available
+                  </span>
+                )}
+              </span>
             </Link>
             {done ? (
               <span className="inline-flex items-center gap-2 text-sm font-semibold text-positive">

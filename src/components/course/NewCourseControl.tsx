@@ -34,7 +34,8 @@ export function NewCourseControl({
           borderRadius: open ? 24 : 22,
         }}
         transition={transition}
-        className={`absolute right-0 top-0 overflow-hidden border bg-surface-raised ${open ? 'border-transparent shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]' : 'border-line-strong'}`}
+        // An inset ring rather than a border, so the button fills the full 44px.
+        className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${open ? 'ring-transparent shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]' : 'ring-line-strong'}`}
       >
         <motion.button
           ref={trigger}
@@ -48,7 +49,7 @@ export function NewCourseControl({
           data-press=""
           whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
           transition={transition}
-          className="absolute right-0 top-0 flex min-h-[42px] w-[150px] items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]"
+          className="absolute right-0 top-0 flex min-h-11 w-[152px] items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]"
         >
           <motion.span
             aria-hidden="true"
