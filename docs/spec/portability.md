@@ -55,7 +55,7 @@ The initial paste or package step uses the full card width; destination choices
 and the preview share a two-column layout only when reviewing the import.
 
 The screen reuses the card import dialogue's input and review components inline.
-After reviewing content, choose a new course with an explicit study target, a new
+After reviewing content, choose a new course (Steady retention unless Exam date is chosen), a new
 lesson in an existing active course, or an existing lesson. Undo retains the content
 and destination settings. Confirmation imports through the existing atomic writer
 and opens the destination. Anki scheduling and media are preserved.

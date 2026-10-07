@@ -52,14 +52,14 @@ describe('NewCourseForm', () => {
     expect(input).not.toHaveAttribute('placeholder');
   });
 
-  it('requires an explicit scheduling target before showing an exam date', () => {
+  it('defaults to steady retention and shows the exam date only once chosen', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     expect(screen.getByRole('dialog', { name: 'New course' }).parentElement?.parentElement).toBe(
       document.body,
     );
     expect(screen.getByRole('radio', { name: /Exam date/ })).not.toBeChecked();
-    expect(screen.getByRole('radio', { name: /Steady retention/ })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
     expect(screen.queryByRole('button', { name: 'Exam date and time' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -96,26 +96,12 @@ describe('NewCourseForm', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course');
   });
 
-  it('does not create a named course until its scheduling target is chosen', () => {
-    render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText('Course name'), {
-      target: { value: 'Biology' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Choose an exam date or steady retention.');
-    expect(screen.getByRole('radio', { name: /Exam date/ })).toHaveFocus();
-    expect(mocks.createCourse).not.toHaveBeenCalled();
-  });
-
   it('creates a steady-retention course without fabricating an exam date', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Spanish' },
     });
-    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() =>

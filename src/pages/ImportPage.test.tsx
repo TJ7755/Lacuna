@@ -85,7 +85,7 @@ it('reviews before asking for a destination, retaining the draft on Undo and fai
   await reviewText();
   expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'French basics' } });
-  fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+  expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(mocks.importCards).not.toHaveBeenCalled();

@@ -19,7 +19,7 @@ interface NewCourseFormProps {
   inline?: boolean;
 }
 
-/** Create an empty course with an explicit study target. */
+/** Create an empty course; steady retention is the default study target. */
 export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -28,14 +28,12 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const nameInputId = useId();
   const datePickerRef = useRef<HTMLDivElement>(null);
-  const targetRef = useRef<HTMLFieldSetElement>(null);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const [timeZone] = useState(getLocalTimeZone);
   const [examDate, setExamDate] = useState(defaultExamDate);
   const [examDateValid, setExamDateValid] = useState(true);
-  const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode | null>(null);
-  const [targetError, setTargetError] = useState<string | null>(null);
+  const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode>('steady');
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (present && inline) nameInputRef.current?.focus();
@@ -49,11 +47,6 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
     if (!trimmedName) {
       setNameError('Enter a course name before creating the course.');
       nameInputRef.current?.focus();
-      return;
-    }
-    if (schedulingMode === null) {
-      setTargetError('Choose an exam date or steady retention.');
-      targetRef.current?.querySelector<HTMLInputElement>('input')?.focus();
       return;
     }
     if (schedulingMode === 'exam' && (!examDateValid || !Number.isFinite(examDate))) {
@@ -127,10 +120,7 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
         <CourseStudyTarget
           schedulingMode={schedulingMode}
           setSchedulingMode={setSchedulingMode}
-          targetError={targetError}
-          setTargetError={setTargetError}
           saving={saving}
-          targetRef={targetRef}
           datePickerRef={datePickerRef}
           examDate={examDate}
           setExamDate={setExamDate}

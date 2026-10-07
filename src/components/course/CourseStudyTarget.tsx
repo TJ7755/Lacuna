@@ -74,10 +74,7 @@ export function StudyTargetTiles({
 export function CourseStudyTarget({
   schedulingMode,
   setSchedulingMode,
-  targetError,
-  setTargetError,
   saving,
-  targetRef,
   datePickerRef,
   examDate,
   setExamDate,
@@ -86,10 +83,7 @@ export function CourseStudyTarget({
 }: {
   schedulingMode: CourseSchedulingMode | null;
   setSchedulingMode: (mode: CourseSchedulingMode) => void;
-  targetError?: string | null;
-  setTargetError?: (error: string | null) => void;
   saving?: boolean;
-  targetRef?: Ref<HTMLFieldSetElement>;
   datePickerRef?: Ref<HTMLDivElement>;
   examDate: number;
   setExamDate: (date: number) => void;
@@ -98,22 +92,14 @@ export function CourseStudyTarget({
 }) {
   return (
     <>
-      <fieldset ref={targetRef} aria-describedby={targetError ? 'course-target-error' : undefined}>
+      <fieldset>
         <legend className="mb-2 text-sm text-ink-faint">Study target</legend>
         <StudyTargetTiles
           name="course-scheduling-mode"
           value={schedulingMode}
-          onChange={(mode) => {
-            setSchedulingMode(mode);
-            setTargetError?.(null);
-          }}
+          onChange={setSchedulingMode}
           disabled={saving}
         />
-        {targetError && (
-          <p id="course-target-error" role="alert" className="mt-2 text-sm text-negative">
-            {targetError}
-          </p>
-        )}
       </fieldset>
 
       {schedulingMode === 'exam' && (
