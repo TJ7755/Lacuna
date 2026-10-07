@@ -39,6 +39,11 @@ vi.mock('../../db/cardRepository', () => ({
   unsuspendCard: vi.fn(),
 }));
 
+// Occlusion thumbnails resolve their diagram from the asset store.
+vi.mock('../../db/assetCache', () => ({
+  resolveAssetUrl: () => Promise.resolve('blob:diagram'),
+}));
+
 vi.mock('../../fsrs/leech', () => ({
   isLeech: vi.fn(() => false),
 }));
