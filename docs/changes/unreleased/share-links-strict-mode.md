@@ -1,0 +1,1 @@
+- Make the `addLessonCard` e2e fixture tolerate the outgoing card editor, whose Front field still holds the new text while it animates out; this removes the strict-mode flake in the share-links spec.
