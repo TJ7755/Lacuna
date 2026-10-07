@@ -11,3 +11,4 @@
 - An empty Questions page says what a question set is.
 - Progress fits a phone: the 30-day activity strip no longer scrolls today out of view (its last date labels no longer collide), and charts no longer push their cards past the screen edge.
 - On a phone, a long course name shares its row with View and Edit, and each lesson group on Cards gives its name a full row above Select.
+- Quick search highlights matches flush with the rest of the word ("Integration", not "Integ ration") and in the darker accent ink for contrast.

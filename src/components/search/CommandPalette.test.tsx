@@ -144,6 +144,8 @@ describe('CommandPalette', () => {
     fireEvent.change(input, { target: { value: 'Palatine' } });
     await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
     const result = screen.getByRole('option', { name: /Palatine/ });
+    // The match highlight sits flush, so a partly matched word does not split apart.
+    expect(result.querySelector('mark')!.className).not.toMatch(/\bpx-/);
     fireEvent.change(input, { target: { value: '' } });
     expect(result).toBeInTheDocument();
     expect(result.closest('[inert]')).not.toBeNull();

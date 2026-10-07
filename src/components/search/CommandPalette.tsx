@@ -69,7 +69,8 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === query.trim().toLowerCase() ? (
-          <mark key={i} className="rounded bg-accent/15 px-0.5 text-accent">
+          // No side padding: it would open a gap inside the matched word.
+          <mark key={i} className="rounded-sm bg-accent/15 text-accent-ink">
             {part}
           </mark>
         ) : (
