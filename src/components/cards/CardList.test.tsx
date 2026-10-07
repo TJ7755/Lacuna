@@ -188,6 +188,17 @@ describe('CardList', () => {
     expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
   });
 
+  it('tints a hovered row without letting the swipe tray show through', () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    const row = container.querySelector('[data-card-id]')!;
+    // Every background the row can take must be opaque, or the tray behind it shows.
+    const backgrounds = row.className.split(/\s+/).filter((name) => /(^|:)bg-/.test(name));
+    expect(backgrounds.length).toBeGreaterThan(0);
+    for (const name of backgrounds) expect(name).not.toContain('/');
+  });
+
   it('renders empty state when no cards', () => {
     const onNewCard = vi.fn();
     const onEditCard = vi.fn();

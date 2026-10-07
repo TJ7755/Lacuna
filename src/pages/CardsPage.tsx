@@ -320,21 +320,24 @@ function LessonBucket({
   occlusions: Occlusion[];
 }) {
   const go = useCardsNavigate();
+  const heading = (
+    <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
+      <h2 className="min-w-0 font-display text-xl font-semibold tracking-tight">
+        {lesson.name} <span className="font-normal text-ink-faint">({cards.length})</span>
+      </h2>
+      <Link
+        to={`/course/${courseId}/lesson/${lesson.id}`}
+        className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+      >
+        Open lesson
+      </Link>
+    </div>
+  );
   return (
     <section className={BUCKET_CLASS}>
-      <div className="mb-3 flex items-center justify-between gap-3 px-1">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
-          {lesson.name} <span className="font-normal text-ink-faint">({cards.length})</span>
-        </h2>
-        <Link
-          to={`/course/${courseId}/lesson/${lesson.id}`}
-          className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-        >
-          Open lesson
-        </Link>
-      </div>
-      {deck && (
+      {deck ? (
         <CardList
+          heading={heading}
           cards={cards}
           context={courseCardListContext({
             schedulingConfig: deck,
@@ -351,6 +354,8 @@ function LessonBucket({
           occlusions={occlusions}
           onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
+      ) : (
+        <div className="mb-3">{heading}</div>
       )}
     </section>
   );
@@ -374,15 +379,16 @@ function UnassignedBucket({
   occlusions: Occlusion[];
 }) {
   const go = useCardsNavigate();
+  const heading = (
+    <h2 className="px-1 font-display text-xl font-semibold tracking-tight">
+      Unassigned <span className="font-normal text-ink-faint">({cards.length})</span>
+    </h2>
+  );
   return (
     <section className={BUCKET_CLASS}>
-      <div className="mb-3 px-1">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
-          Unassigned <span className="font-normal text-ink-faint">({cards.length})</span>
-        </h2>
-      </div>
-      {deck && (
+      {deck ? (
         <CardList
+          heading={heading}
           cards={cards}
           context={courseCardListContext({
             schedulingConfig: deck,
@@ -399,6 +405,8 @@ function UnassignedBucket({
           occlusions={occlusions}
           onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
+      ) : (
+        <div className="mb-3">{heading}</div>
       )}
     </section>
   );

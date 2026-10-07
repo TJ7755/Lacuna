@@ -74,6 +74,8 @@ interface CardListBaseProps {
   onEditCard: (card: Card) => void;
   /** When true, suppresses the internal "Cards (N)" heading row. */
   hideHeader?: boolean;
+  /** Replaces the default heading, sharing its row with the list's actions. */
+  heading?: React.ReactNode;
   /** Opens the card importer on first mount. */
   initiallyImporting?: boolean;
   /** When supplied with courseId, enables bulk lesson assignment. */
@@ -99,6 +101,7 @@ export function CardList({
   onLinkExisting,
   onEditCard,
   hideHeader = false,
+  heading,
   initiallyImporting = false,
   assignableLessons,
   courseId,
@@ -464,13 +467,19 @@ export function CardList({
 
   return (
     <div>
-      <div className={cn('mb-4 flex flex-wrap items-center gap-2', hideHeader && 'justify-end')}>
-        {!hideHeader && (
-          <h2 className="font-display text-2xl">
-            Cards <span className="text-ink-faint">({cards.length})</span>
-          </h2>
+      <div
+        className={cn(
+          'mb-4 flex flex-wrap items-center gap-2',
+          hideHeader && !heading && 'justify-end',
         )}
-        <div className={cn('flex items-center gap-2', !hideHeader && 'ml-auto')}>
+      >
+        {heading ??
+          (!hideHeader && (
+            <h2 className="font-display text-2xl">
+              Cards <span className="text-ink-faint">({cards.length})</span>
+            </h2>
+          ))}
+        <div className={cn('flex items-center gap-2', (!hideHeader || heading !== undefined) && 'ml-auto')}>
           {selectableCards.length > 0 && (
             <Button
               variant={selectMode ? 'primary' : 'ghost'}
@@ -1280,8 +1289,12 @@ const CardRow = React.memo(function CardRow({
         onPointerCancel={handlePointerCancel}
         data-card-id={card.id}
         className={cn(
-          'relative z-10 cursor-pointer rounded-2xl px-4 py-3 transition-colors',
-          selected ? 'bg-accent-soft' : 'bg-surface hover:bg-ink/[0.04] active:bg-ink/[0.07]',
+          'relative z-10 cursor-pointer rounded-2xl px-4 py-3 transition-[background-color,box-shadow]',
+          // The tint is an inset shadow over an opaque surface: a translucent background
+          // would show the swipe tray behind the row on hover.
+          selected
+            ? 'bg-accent-soft'
+            : 'bg-surface hover:shadow-[inset_0_0_0_100vmax_hsl(var(--ink)/0.04)] active:shadow-[inset_0_0_0_100vmax_hsl(var(--ink)/0.07)]',
         )}
       >
         <button

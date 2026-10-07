@@ -62,7 +62,9 @@ vi.mock('../components/cards/CardList', () => ({
     onNewCard,
     context,
     quietNewCard,
+    heading,
   }: {
+    heading?: React.ReactNode;
     quietNewCard?: boolean;
     cards: Card[];
     courseId?: string;
@@ -85,6 +87,7 @@ vi.mock('../components/cards/CardList', () => ({
     }
     return (
       <div data-testid="card-list" data-quiet-new-card={quietNewCard ? 'true' : undefined}>
+        {heading}
         <span data-testid="card-list-count">{cards.length}</span>
         <span data-testid="card-list-course">{courseId}</span>
         <span data-testid="card-list-assignable">
@@ -265,6 +268,16 @@ describe('CardsPage', () => {
     expect(screen.getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Supply/ })).toBeInTheDocument();
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
+  });
+
+  it('hands each group heading to its card list, sharing a row with the list actions', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    renderPage();
+    const list = screen.getByTestId('card-list');
+    expect(within(list).getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: 'Open lesson' })).toBeInTheDocument();
   });
 
   it('offers New card once, in the page header, not again in each group', () => {
