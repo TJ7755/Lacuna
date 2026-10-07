@@ -78,7 +78,7 @@ export function CoursePageNavigation({
           aria-hidden={identityHidden || undefined}
           tabIndex={identityHidden ? -1 : undefined}
           className={cn(
-            'inline-flex min-h-11 min-w-0 shrink items-center gap-2.5 justify-self-start font-bold text-ink transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none',
+            'inline-flex min-h-11 min-w-0 max-w-full shrink items-center gap-2.5 justify-self-start font-bold text-ink transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none',
             identityHidden && 'pointer-events-none translate-y-1 opacity-0',
           )}
         >

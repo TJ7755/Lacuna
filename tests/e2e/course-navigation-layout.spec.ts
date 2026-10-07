@@ -323,3 +323,25 @@ test('the selection follows pointer distance continuously between section centre
     .toBeLessThan(2);
   await page.mouse.up();
 });
+
+test('a long course name truncates beside the section tabs instead of running under them', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openSeededCourse(page);
+  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+  await page.getByRole('button', { name: 'Rename course', exact: true }).click();
+  const input = page.getByRole('textbox', { name: 'course name', exact: true });
+  const longName = 'A-level Mathematics: Pure, Statistics and Mechanics (Edexcel 9MA0)';
+  await input.fill(longName);
+  await input.press('Enter');
+  await page
+    .locator('nav[aria-label="Course sections"]:visible')
+    .getByRole('link', { name: 'Cards', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Cards', exact: true })).toBeVisible();
+  const navigation = page.locator('[data-course-page-navigation]');
+  const name = await navigation.getByRole('link', { name: longName }).boundingBox();
+  const tabs = await navigation.locator('nav[aria-label="Course sections"]').boundingBox();
+  expect(name!.x + name!.width).toBeLessThanOrEqual(tabs!.x);
+});
