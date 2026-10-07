@@ -12,6 +12,7 @@
 | Card editor            | `Ctrl/Cmd+Enter`   | Save (and add another, for new cards) |
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
 | Sequence item editor   | `Ctrl/Cmd+Enter`   | Insert and focus the next item        |
+| Text editors           | `Ctrl/Cmd+B` / `Ctrl/Cmd+I` | Bold / italic                |
 | Learn                  | `Space` / `Up`     | Show answer                           |
 | Learn                  | `Down`             | Hide answer                           |
 | Learn (silent grading) | `Y` / `Right`      | Yes (correct)                         |

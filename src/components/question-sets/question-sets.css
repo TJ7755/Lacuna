@@ -344,7 +344,8 @@
 }
 .qs-image-form {
   margin: 20px 0;
-  padding: 16px;
+  /* Sits on the card's own surface, so it aligns with the fields above it. */
+  padding: 0;
   border: 0;
   border-radius: 8px;
   background: hsl(var(--surface));

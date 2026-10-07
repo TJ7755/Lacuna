@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type Ref } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode, type Ref } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
@@ -6,6 +6,7 @@ import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { modifierShortcutLabel } from '../../electron/runtime';
 
 interface MarkdownEditorProps {
   value: string;
@@ -47,8 +48,10 @@ interface MarkdownEditorProps {
 }
 
 type ToolbarAction = {
-  label: string;
+  label: ReactNode;
   title: string;
+  /** Letter pressed with Cmd/Ctrl inside the editor. */
+  shortcut?: string;
   apply: (sel: Selection) => Replacement;
 };
 
@@ -258,8 +261,18 @@ export function MarkdownEditor({
   }
 
   const actions: ToolbarAction[] = [
-    { label: 'B', title: 'Bold', apply: (s) => wrap(s, '**', '**', 'bold text') },
-    { label: 'I', title: 'Italic', apply: (s) => wrap(s, '_', '_', 'italic text') },
+    {
+      label: <strong>B</strong>,
+      title: 'Bold',
+      shortcut: 'B',
+      apply: (s) => wrap(s, '**', '**', 'bold text'),
+    },
+    {
+      label: <em className="font-serif">I</em>,
+      title: 'Italic',
+      shortcut: 'I',
+      apply: (s) => wrap(s, '_', '_', 'italic text'),
+    },
     { label: 'H', title: 'Heading', apply: (s) => linePrefix(s, '## ', 'Heading') },
     { label: '•', title: 'Bullet list', apply: (s) => linePrefix(s, '- ', 'List item') },
     { label: '1.', title: 'Numbered list', apply: (s) => linePrefix(s, '1. ', 'List item') },
@@ -270,9 +283,10 @@ export function MarkdownEditor({
       apply: (s) => wrap(s, '```\n', '\n```', 'code'),
     },
     { label: 'Link', title: 'Link', apply: (s) => wrap(s, '[', '](https://)', 'text') },
-    { label: '$x$', title: 'Inline maths', apply: (s) => wrap(s, '$', '$', 'x^2') },
+    // Named in words: a teacher need not know the dollar-sign syntax to find maths.
+    { label: 'Maths', title: 'Inline maths', apply: (s) => wrap(s, '$', '$', 'x^2') },
     {
-      label: '$$',
+      label: 'Maths block',
       title: 'Block maths',
       apply: (s) => wrap(s, '$$\n', '\n$$', 'x = y'),
     },
@@ -348,6 +362,8 @@ export function MarkdownEditor({
   }
 
   const rows = Math.max(minRows, value.split('\n').length + 1);
+  const showsMathsPreview =
+    !hidePreview && layout !== 'split' && mobileTab === 'write' && /\$[^$\n]+\$/.test(value);
 
   return (
     <div className="rounded-xl border border-line bg-surface">
@@ -370,9 +386,14 @@ export function MarkdownEditor({
             <button
               key={a.title}
               type="button"
-              title={a.title}
+              aria-label={a.title}
+              title={a.shortcut ? `${a.title} (${modifierShortcutLabel(a.shortcut)})` : a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+              className={cn(
+                'min-h-11 min-w-11 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10',
+                typeof a.label === 'string' && /^[^A-Za-z]/.test(a.label) && 'font-mono',
+                typeof a.label !== 'string' && 'text-sm',
+              )}
             >
               {a.label}
             </button>
@@ -437,6 +458,7 @@ export function MarkdownEditor({
             <button
               key={tab}
               type="button"
+              aria-pressed={mobileTab === tab}
               onClick={() => setMobileTab(tab)}
               className={cn(
                 'min-h-11 rounded-md px-2 text-xs capitalize',
@@ -477,6 +499,15 @@ export function MarkdownEditor({
                 }
                 return;
               }
+              const shortcut =
+                (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey
+                  ? actions.find((action) => action.shortcut?.toLowerCase() === e.key.toLowerCase())
+                  : undefined;
+              if (shortcut) {
+                e.preventDefault();
+                runAction(shortcut);
+                return;
+              }
               if (e.ctrlKey && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
                 redo();
@@ -513,6 +544,16 @@ export function MarkdownEditor({
               dragOver && 'ring-2 ring-inset ring-accent/60',
             )}
           />
+          {/* Maths is written as $...$; show how it reads without leaving the Write tab. */}
+          {showsMathsPreview && (
+            <div
+              data-maths-preview=""
+              className="border-t border-line px-4 py-2 text-sm text-ink-soft"
+            >
+              <span className="mr-2 text-xs text-ink-faint">Preview</span>
+              <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
+            </div>
+          )}
         </div>
         {!hidePreview && (
           <div

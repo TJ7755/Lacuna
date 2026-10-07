@@ -68,7 +68,7 @@ export function QuestionSetQuestionStep({
                   ? 'Does this question have separate parts, such as (a) and (b)?'
                   : 'Does this part have subparts, such as (i) and (ii)?'}
               </p>
-              <Button variant="ghost" onClick={onSplit}>
+              <Button variant="secondary" onClick={onSplit}>
                 {active.depth === 0 ? 'Use separate parts' : 'Use subparts'}
               </Button>
             </div>

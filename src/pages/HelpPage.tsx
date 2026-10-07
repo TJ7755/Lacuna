@@ -437,6 +437,11 @@ export function HelpPage() {
                     <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>
                   </tr>
                   <tr>
+                    <td className="px-4 py-3 text-ink-soft">Bold or italic</td>
+                    <td className="px-4 py-3 font-medium text-ink">Ctrl/Cmd+B, Ctrl/Cmd+I</td>
+                    <td className="px-4 py-3 text-ink-soft">Text editors</td>
+                  </tr>
+                  <tr>
                     <td className="px-4 py-3 text-ink-soft">Cancel</td>
                     <td className="px-4 py-3 font-medium text-ink">Esc</td>
                     <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>
