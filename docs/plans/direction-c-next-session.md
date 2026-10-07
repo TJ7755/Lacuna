@@ -90,3 +90,22 @@ questions** everywhere; lesson deletion confirms with its consequences and then 
 4. An empty lesson leads with New card; the management section offers only the other ways to add
    cards; a one-lesson course with nothing to study disables Study. The offline media-sharing test
    passes against a fresh production preview after the stale route selectors were updated.
+
+## Review pass (7 October 2026)
+
+Merged master (unified due counts: Practise freely and Practice Now are now Review due cards),
+then audited every page at 1440 and 390 px, light and dark, with seeded data up to 13 courses,
+2,205 cards and 6,248 reviews. Fixed: Today leads with the study queue; forecast axis, legend and
+Progress charts fit their data and a phone; a long course name no longer runs under the section
+tabs; card-row hover no longer shows the swipe tray; the sidebar marks a clipped course list;
+noteless lessons start on their first card; Skip to content; question-writing toolbar in plain
+words with Ctrl/Cmd+B and I and a live maths preview; Help's terms; empty-state routes.
+
+Left for the prompter to decide:
+
+- **Visual maths input.** Teachers still type `$...$`; the live preview helps, but a visual
+  equation editor (MathLive is the usual choice) would remove LaTeX entirely. New dependency.
+- **New course default.** The form requires choosing Exam date or Steady retention before
+  Create; a default would remove a step but guess wrong for some.
+- **Single-lesson Add row.** In Edit mode the Add menu sits on its own row above the lesson
+  title; it could join the header, at the cost of reworking the tested toolbar layout.
