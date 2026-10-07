@@ -62,7 +62,7 @@ export function TodayQueue({
             }}
             transition={{
               duration: 0.46 * multiplier,
-              delay: (0.25 + index * 0.06) * multiplier,
+              delay: (0.05 + index * 0.06) * multiplier,
               ease: MOTION_EASING.emphasised,
             }}
             whileHover={multiplier > 0 ? { y: -2, transition: liftTransition } : undefined}
@@ -101,7 +101,7 @@ export function TodayQueue({
                     type: 'spring',
                     stiffness: 500,
                     damping: 15,
-                    delay: (0.5 + index * 0.06) * multiplier,
+                    delay: (0.3 + index * 0.06) * multiplier,
                   }}
                 >
                   <CheckIcon width={14} height={14} />

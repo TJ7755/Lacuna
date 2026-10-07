@@ -349,6 +349,20 @@ describe('Dashboard', () => {
     expect(cards).toHaveTextContent('2');
   });
 
+  it('leads with what to study, above the forecast', () => {
+    setCourseData([mockCourse], {
+      summaries: { 'course-1': summary(3) },
+      reviewActivity: new Map([['card-1', [Date.now()]]]),
+    });
+    mockForecasts = { 'course-1': forecast(0.9) };
+    render(<Dashboard />);
+
+    const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
+    const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
+    expect(queue.compareDocumentPosition(forecastPanel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
+  });
+
   it('opens the course menu under its More button without navigating, then dismisses it', async () => {
     setCourseData();
     render(<Dashboard />);

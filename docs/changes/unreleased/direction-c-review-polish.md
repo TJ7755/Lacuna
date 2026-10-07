@@ -1,0 +1,1 @@
+- Today leads with the courses to study, so Start is visible without scrolling; the exam-day forecast and week panel follow beneath. The day's total now reads "30 cards" rather than a bare number.

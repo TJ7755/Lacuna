@@ -171,6 +171,7 @@ export function Dashboard() {
               <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
                 <CountUp value={totalCards} multiplier={m} />
               </strong>
+              {totalCards === 1 ? 'card' : 'cards'}
             </span>
             <span className="inline-flex items-center gap-2" aria-hidden="true">
               <ClockIcon width={20} height={20} />
@@ -199,18 +200,7 @@ export function Dashboard() {
         <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
       ) : (
         <div className="flex flex-col gap-6">
-          {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
-            <motion.section
-              aria-label="Forecast and this week"
-              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
-              initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.5 * m, ease: MOTION_EASING.emphasised }}
-            >
-              {lines.length > 0 && <ForecastChart lines={lines} now={Date.now()} multiplier={m} />}
-              {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
-            </motion.section>
-          )}
+          {/* What to study leads; the forecast explains it underneath. */}
           <TodayQueue
             rows={rows}
             openMenuId={courseMenu?.course.id}
@@ -223,6 +213,18 @@ export function Dashboard() {
               setCourseMenu({ course, position, trigger });
             }}
           />
+          {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
+            <motion.section
+              aria-label="Forecast and this week"
+              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
+              initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.5 * m, delay: 0.15 * m, ease: MOTION_EASING.emphasised }}
+            >
+              {lines.length > 0 && <ForecastChart lines={lines} now={Date.now()} multiplier={m} />}
+              {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
+            </motion.section>
+          )}
         </div>
       )}
 
