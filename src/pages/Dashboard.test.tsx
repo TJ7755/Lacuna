@@ -31,6 +31,8 @@ vi.mock('../state/useCourseData', () => ({
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
   speedMultiplier: () => 1,
+  // The sharing announcement's error boundary reads it.
+  getMotionMultiplier: () => 1,
 }));
 
 vi.mock('../components/dashboard/SyncStatus', () => ({ SyncStatus: () => null }));
