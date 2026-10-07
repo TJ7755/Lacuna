@@ -10,6 +10,7 @@ import { SectionCard } from '../components/ui/SectionCard';
 import { Skeleton } from '../components/ui/Skeleton';
 import type { Course } from '../db/types';
 import { useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
+import { countOf } from '../utils/plural';
 
 /**
  * The course a visit opens on, so sharing starts one tap from done: the course
@@ -25,10 +26,6 @@ export function defaultShareCourse(
     courses.find((course) => !course.archived) ??
     courses[0]
   );
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 /** Share one course: a link by default, with a file, code, QR code or text as alternatives. */
@@ -55,7 +52,7 @@ export function SharePage() {
               const summary = summaries?.[candidate.id];
               return {
                 label: candidate.name,
-                description: `${plural(summary?.lessonCount ?? 0, 'lesson')} · ${plural(summary?.cardCount ?? 0, 'card')}`,
+                description: `${countOf(summary?.lessonCount ?? 0, 'lesson')} · ${countOf(summary?.cardCount ?? 0, 'card')}`,
                 onSelect: () => setChosenId(candidate.id),
               };
             })}

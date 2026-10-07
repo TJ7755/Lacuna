@@ -18,6 +18,7 @@ import {
   ChevronLeftIcon,
 } from '../components/ui/icons';
 import './ImportPage.css';
+import { countOf } from '../utils/plural';
 
 type Source = 'lacuna' | 'anki' | 'text';
 const sources = [
@@ -194,7 +195,7 @@ export function ImportPage() {
             onImport={async (content) => {
               if (!draft.destination) throw new Error('Choose a destination and study target.');
               const result = await importCardsToDestination(draft.destination, content);
-              notify(`${result.count} cards imported.`, 'positive');
+              notify(`${countOf(result.count, 'card')} imported.`, 'positive');
               void navigate(
                 `/course/${result.courseId}${result.lesson ? `/lesson/${result.lesson.id}` : ''}`,
               );

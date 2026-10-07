@@ -22,6 +22,7 @@ import type { CardFilter } from '../../db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';
+import { countOf } from '../../utils/plural';
 
 function computeHeaderInfo({
   singleDeck,
@@ -211,8 +212,7 @@ export function LearnHeader({
             )}
             {mode !== 'simple' && !plannedRevision && (
               <span className="ml-auto hidden shrink-0 pl-3 text-ink-soft tabular-nums md:inline">
-                {Math.round(predictedRecall * 100)}%{' '}
-                {forecastLabel(singleDeck)}
+                {Math.round(predictedRecall * 100)}% {forecastLabel(singleDeck)}
               </span>
             )}
           </div>
@@ -483,7 +483,7 @@ function SessionSegments({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
-      title={`${cardIds.length} cards in this session`}
+      title={`${countOf(cardIds.length, 'card')} in this session`}
     >
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {progressAnnouncement}

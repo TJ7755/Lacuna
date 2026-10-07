@@ -92,7 +92,7 @@ describe('CardImportDialog', () => {
     paste(Array.from({ length: 2501 }, (_, i) => `${i}\tanswer`).join('\n'));
     await review();
     fireEvent.click(screen.getByRole('checkbox'));
-    expect(screen.getByRole('button', { name: 'Import 5002 cards' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Import 5,002 cards' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('5,002');
   });
   it('keeps failures retryable and blocks closing or double submission while saving', async () => {
@@ -107,7 +107,7 @@ describe('CardImportDialog', () => {
     render(<CardImportDialog targetName="French" onCancel={onCancel} onImport={onImport} />);
     paste('Q\tA');
     await review();
-    fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
     fireEvent.click(screen.getByRole('button', { name: 'Importing…' }));
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onCancel).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('CardImportDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     await screen.findByText('CARDS.APKG');
     await review();
-    fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
     await waitFor(() => expect(onImport).toHaveBeenCalledWith({ kind: 'apkg', result }, ''));
   });
   it('leaves the title and close to the Import page when shown on it', () => {
@@ -187,7 +187,7 @@ it('supports an inline review with destination validation and preserves input on
   paste('bonjour\thello');
   await review();
   expect(screen.getByText('Choose a destination')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(onImport).not.toHaveBeenCalled();

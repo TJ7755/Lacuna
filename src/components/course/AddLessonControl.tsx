@@ -8,6 +8,7 @@ import type { Lesson } from '../../db/types';
 import { Field, Input } from '../ui/Field';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
+import { countOf } from '../../utils/plural';
 
 /** Suggested name for the next lesson in a course (e.g. "Lesson 2"). */
 export function defaultLessonName(lessonCount: number): string {
@@ -90,7 +91,7 @@ export function AddLessonControl({
           );
           setImportingCards(false);
           setOpen(false);
-          notify(`${result.count} cards imported.`, 'positive');
+          notify(`${countOf(result.count, 'card')} imported.`, 'positive');
           onCreated?.(result.lesson!);
         }}
       />

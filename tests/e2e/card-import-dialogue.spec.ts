@@ -89,7 +89,7 @@ for (const width of [1280, 390]) {
     await dialog.getByRole('button', { name: 'Back', exact: true }).click();
     expect((await importedCards(page)).length).toBe(before + 3);
     await dialog.getByRole('button', { name: 'Review cards', exact: true }).click();
-    await dialog.getByRole('button', { name: 'Import 1 cards' }).click();
+    await dialog.getByRole('button', { name: 'Import 1 card' }).click();
     await expect(dialog).toBeHidden();
     await expect.poll(async () => (await importedCards(page)).length).toBe(before + 4);
   });

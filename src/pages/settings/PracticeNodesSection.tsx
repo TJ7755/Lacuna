@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { ChevronRightIcon } from '../../components/ui/icons';
 import { useLessons, usePracticeNodes } from '../../state/useCourseData';
+import { countOf } from '../../utils/plural';
 
 export interface PracticeNodesSectionProps {
   courseId: string;
@@ -31,14 +32,12 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-ink-faint">
-        Automatic practice appears when due work builds up and follows the thresholds above.
-        Card practice you add stays on the course path and can limit lessons, card count and
-        order. Use Review due cards in Other ways for reviews due now.
+        Automatic practice appears when due work builds up and follows the thresholds above. Card
+        practice you add stays on the course path and can limit lessons, card count and order. Use
+        Review due cards in Other ways for reviews due now.
       </p>
 
-      {manualNodes?.length === 0 && (
-        <p className="text-xs text-ink-faint">No card practice yet.</p>
-      )}
+      {manualNodes?.length === 0 && <p className="text-xs text-ink-faint">No card practice yet.</p>}
 
       {manualNodes?.map((node) => (
         <div
@@ -50,9 +49,9 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
             <div className="mt-0.5 text-xs text-ink-faint">
               {describePosition(node.position)}
               {node.lessonIds && node.lessonIds.length > 0
-                ? ` · ${node.lessonIds.length} lesson${node.lessonIds.length === 1 ? '' : 's'}`
+                ? ` · ${countOf(node.lessonIds.length, 'lesson')}`
                 : ' · all lessons'}
-              {node.cardCount ? ` · ${node.cardCount} cards` : ''}
+              {node.cardCount ? ` · ${countOf(node.cardCount, 'card')}` : ''}
               {node.randomize ? ' · randomised' : ''}
             </div>
           </div>

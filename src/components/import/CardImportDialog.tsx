@@ -20,6 +20,7 @@ import { useCardImportSource } from './useCardImportSource';
 import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
 import './CardImportDialog.css';
+import { countOf } from '../../utils/plural';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
@@ -323,7 +324,11 @@ export function CardImportDialog({
               disabled={!canContinue || busy || (step === 'review' && !canImport)}
               onClick={() => void confirm()}
             >
-              {busy ? 'Importing…' : step === 'input' ? 'Review cards' : `Import ${count} cards`}
+              {busy
+                ? 'Importing…'
+                : step === 'input'
+                  ? 'Review cards'
+                  : `Import ${countOf(count, 'card')}`}
               <span aria-hidden="true">→</span>
             </Button>
           </div>

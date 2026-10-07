@@ -83,7 +83,7 @@ async function reviewText() {
 it('reviews before asking for a destination, retaining the draft on Undo and failure', async () => {
   open();
   await reviewText();
-  expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'French basics' } });
   expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
@@ -92,10 +92,10 @@ it('reviews before asking for a destination, retaining the draft on Undo and fai
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
   expect(await screen.findByLabelText('Course title')).toHaveValue('French basics');
   mocks.importCards.mockRejectedValueOnce(new Error('Storage full'));
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Storage full');
   expect(screen.getByLabelText('Course title')).toHaveValue('French basics');
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course/lesson/new-lesson'),
   );
@@ -111,7 +111,7 @@ it('imports into an existing lesson without asking for a new study target', asyn
   fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'french' } });
   fireEvent.change(screen.getByLabelText('Lesson'), { target: { value: 'greetings' } });
   expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(
       { kind: 'existing', schedulingUnitId: 'greetings' },
@@ -155,7 +155,7 @@ it('creates a lesson in an existing course with the imported cards', async () =>
   await reviewText();
   fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'french' } });
   fireEvent.change(screen.getByLabelText('Lesson title'), { target: { value: 'Verbs' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(
       { kind: 'lesson', courseId: 'french', title: 'Verbs' },
@@ -176,7 +176,7 @@ it('reads a text file before configuring a new course with an exam target', asyn
   });
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
   expect(screen.getByRole('button', { name: 'Exam date and time' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(
       {

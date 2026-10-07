@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
 import { FileTextIcon, UploadIcon } from '../ui/icons';
 import type { useCardImportSource } from './useCardImportSource';
+import { countOf } from '../../utils/plural';
 
 export function CardImportInput({
   source,
@@ -85,7 +86,7 @@ export function CardImportInput({
         <span>
           {source.reading
             ? 'Reading file…'
-            : `${source.apkg?.cards.length ?? source.result.cards.length} cards detected`}
+            : `${countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')} detected`}
         </span>
         <span>
           {source.apkg

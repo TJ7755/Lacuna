@@ -23,6 +23,7 @@ import { ChevronDownIcon, EditIcon, MoreIcon, TrashIcon } from '../ui/icons';
 import { Menu, type MenuHandle } from '../ui/Menu';
 import { useToast } from '../ui/Toast';
 import { contextMenuHandlers } from '../ui/contextMenu';
+import { countOf } from '../../utils/plural';
 
 /**
  * Right-click, the context-menu key and Shift+F10 on the element these handlers are
@@ -187,17 +188,13 @@ function RenameLessonDialog({ lesson, onClose }: { lesson: Lesson; onClose: () =
   );
 }
 
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
-
 /** What deleteLesson removes and what it keeps, in the learner's terms. */
 export function lessonDeletionConsequence(noteCount: number, cardCount: number): string {
   const notes =
-    noteCount > 0 ? `Its ${plural(noteCount, 'note')} will be deleted.` : 'It has no notes.';
+    noteCount > 0 ? `Its ${countOf(noteCount, 'note')} will be deleted.` : 'It has no notes.';
   const cards =
     cardCount > 0
-      ? `Its ${plural(cardCount, 'card')} ${cardCount === 1 ? 'stays' : 'stay'} in the course without a lesson.`
+      ? `Its ${countOf(cardCount, 'card')} ${cardCount === 1 ? 'stays' : 'stay'} in the course without a lesson.`
       : 'It has no cards.';
   return `${notes} ${cards}`;
 }

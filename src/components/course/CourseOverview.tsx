@@ -19,6 +19,7 @@ import {
   lessonContextMenu,
 } from './LessonActionsMenu';
 import type { MenuHandle } from '../ui/Menu';
+import { countOf } from '../../utils/plural';
 
 export interface LessonNodeDetail {
   cardCount: number;
@@ -199,7 +200,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                   ? (props.lockHint(lesson.lesson.id) ?? 'Locked')
                   : done && pct >= SECURE
                     ? 'Secure'
-                    : `${detail?.cardCount ?? 0} cards${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
+                    : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
                 : `${pct}% secured`;
               const label = practice
                 ? `Manual practice: ${name}, ${pct}% secured`

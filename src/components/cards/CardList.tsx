@@ -50,6 +50,7 @@ import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 import { BulkBarButton, CardBulkBar } from './CardBulkBar';
 import { summariseLessonCard, type CardStatusTone } from './lessonCardRow';
+import { countOf } from '../../utils/plural';
 
 const CardContent = lazy(() =>
   import('./CardContent').then((module) => ({ default: module.CardContent })),
@@ -256,15 +257,11 @@ export function CardList({
     restoreCards(snapshot).catch(() => notify('Could not undo that change.', 'negative'));
   }
 
-  function plural(n: number) {
-    return n === 1 ? '' : 's';
-  }
-
   async function handleSuspend(suspended: boolean) {
     const n = selected.size;
     await applyBulk(
       (ids) => setCardsSuspended(ids, suspended),
-      `${n} card${plural(n)} ${suspended ? 'suspended' : 'resumed'}.`,
+      `${countOf(n, 'card')} ${suspended ? 'suspended' : 'resumed'}.`,
       `Could not ${suspended ? 'suspend' : 'resume'} the selected cards.`,
     );
   }
@@ -275,7 +272,7 @@ export function CardList({
     const n = selected.size;
     await applyBulk(
       (ids) => addTagToCards(ids, tag),
-      `Tagged ${n} card${plural(n)} "${tag}".`,
+      `Tagged ${countOf(n, 'card')} "${tag}".`,
       'Could not tag the selected cards.',
     );
   }
@@ -286,7 +283,7 @@ export function CardList({
     const n = selected.size;
     await applyBulk(
       (ids) => removeTagFromCards(ids, tag),
-      `Removed "${tag}" from ${n} card${plural(n)}.`,
+      `Removed "${tag}" from ${countOf(n, 'card')}.`,
       'Could not remove the tag from the selected cards.',
     );
   }
@@ -356,7 +353,7 @@ export function CardList({
     until.setHours(0, 0, 0, 0);
     await applyBulk(
       (ids) => buryCards(ids, until.getTime()),
-      `${n} card${plural(n)} buried until tomorrow.`,
+      `${countOf(n, 'card')} buried until tomorrow.`,
       'Could not bury the selected cards.',
     );
   }
@@ -366,13 +363,13 @@ export function CardList({
     if (rescheduleMode === 'new') {
       await applyBulk(
         (ids) => rescheduleCards(ids, { reset: true }),
-        `${n} card${plural(n)} reset to new.`,
+        `${countOf(n, 'card')} reset to new.`,
         'Could not reset the selected cards.',
       );
     } else {
       await applyBulk(
         (ids) => rescheduleCards(ids, { due: Date.now() }),
-        `${n} card${plural(n)} made due now.`,
+        `${countOf(n, 'card')} made due now.`,
         'Could not reschedule the selected cards.',
       );
     }
@@ -479,7 +476,12 @@ export function CardList({
               Cards <span className="text-ink-faint">({cards.length})</span>
             </h2>
           ))}
-        <div className={cn('flex items-center gap-2', (!hideHeader || heading !== undefined) && 'ml-auto')}>
+        <div
+          className={cn(
+            'flex items-center gap-2',
+            (!hideHeader || heading !== undefined) && 'ml-auto',
+          )}
+        >
           {selectableCards.length > 0 && (
             <Button
               variant={selectMode ? 'primary' : 'ghost'}
@@ -539,7 +541,7 @@ export function CardList({
                   >
                     <div>
                       <label className="block text-sm text-ink-soft">
-                        Tag for {selected.size} card{plural(selected.size)}
+                        Tag for {countOf(selected.size, 'card')}
                         <Input
                           list="bulk-tag-suggestions"
                           value={tagValue}
@@ -597,7 +599,7 @@ export function CardList({
                     <div>
                       <fieldset className="space-y-2">
                         <legend className="mb-2 text-sm text-ink-soft">
-                          Reschedule {selected.size} card{plural(selected.size)}
+                          Reschedule {countOf(selected.size, 'card')}
                         </legend>
                         <label className="flex items-center gap-2 text-sm text-ink">
                           <input
