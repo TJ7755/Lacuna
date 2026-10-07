@@ -17,7 +17,7 @@ interface CourseAnalyticsProps {
 }
 
 /** Lets a chart card fill its grid row so neighbours line up. */
-const CELL = '[&>section]:h-full';
+const CELL = 'min-w-0 [&>section]:h-full';
 
 /**
  * Course-scoped analytics: predicted exam-day trajectory, stability profile and

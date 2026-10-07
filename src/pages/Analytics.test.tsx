@@ -85,6 +85,8 @@ describe('Analytics', () => {
       render(<Analytics />);
       const chart = screen.getByRole('region', { name: 'Predicted exam-day score' });
       expect(chart).toHaveAttribute('data-rows', '30');
+      // A grid cell that may not shrink lets a chart's first measurement overflow a phone.
+      expect(chart.parentElement).toHaveClass('min-w-0');
       fireEvent.click(screen.getByRole('button', { name: '7 days' }));
       expect(chart).toHaveAttribute('data-rows', '7');
     } finally {

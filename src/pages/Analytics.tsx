@@ -31,7 +31,7 @@ import { addDays } from '../fsrs/heatmap';
 import { startOfDay } from '../utils/datetime';
 
 /** Lets a chart card fill its grid row so neighbours line up. */
-const CELL = '[&>section]:h-full';
+const CELL = 'min-w-0 [&>section]:h-full';
 
 type Period = '7' | '30' | '90';
 

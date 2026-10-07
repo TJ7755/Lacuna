@@ -51,3 +51,20 @@ for (const width of [390, 1440]) {
     }
   });
 }
+
+test('Progress fits a phone, with today in view on the 30-day strip', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await enterFreshLacuna(page);
+  await page.goto('/#/analytics');
+  const strip = page.getByRole('grid', { name: 'Review activity over the last 30 days' });
+  await expect(strip).toBeVisible();
+  expect(
+    await strip.evaluate((grid) => {
+      const scroller = grid.parentElement!;
+      return scroller.scrollWidth - scroller.clientWidth;
+    }),
+  ).toBeLessThanOrEqual(1);
+  expect(
+    await page.locator('main').evaluate((main) => main.scrollWidth - main.clientWidth),
+  ).toBeLessThanOrEqual(1);
+});

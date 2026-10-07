@@ -9,3 +9,4 @@
 - Lesson names on the course path wrap to a second line on a phone instead of truncating, and the study header's navigation button shares the framed style of its neighbours.
 - Keyboard users get a Skip to content link as the first Tab stop, so reaching Start no longer means tabbing through every course in the sidebar.
 - An empty Questions page says what a question set is.
+- Progress fits a phone: the 30-day activity strip no longer scrolls today out of view (its last date labels no longer collide), and charts no longer push their cards past the screen edge.

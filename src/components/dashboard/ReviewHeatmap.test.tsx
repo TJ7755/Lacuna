@@ -50,6 +50,18 @@ describe('ReviewHeatmap', () => {
     expect(cells[1]).toHaveStyle({ gridRow: '2' });
   });
 
+  it('fits a 30-day strip on a phone and keeps its last date labels apart', () => {
+    render(<ReviewHeatmap cards={[]} days={30} />);
+    const grid = screen.getByRole('grid');
+    expect(parseInt(grid.style.minWidth, 10)).toBeLessThanOrEqual(240);
+    const columns = [...grid.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')]
+      .map((label) => Number(label.style.gridColumn))
+      .filter(Number.isFinite);
+    const [beforeLast, last] = columns.slice(-2);
+    expect(last).toBe(30);
+    expect(last - beforeLast).toBeGreaterThanOrEqual(7);
+  });
+
   it('limits dates and totals to the selected calendar-day period', () => {
     const card = makeCard();
     const older = new Date(today);

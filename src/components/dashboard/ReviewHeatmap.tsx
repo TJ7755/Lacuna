@@ -180,18 +180,21 @@ export function ReviewHeatmap({
           ref={gridRef}
           role="grid"
           aria-label={`Review activity over the last ${days} days`}
-          className="grid gap-[4px]"
+          className={compact ? 'grid gap-[2px] sm:gap-[4px]' : 'grid gap-[4px]'}
           style={{
             gridTemplateColumns: compact
               ? `repeat(${days}, minmax(0, 1fr))`
               : `28px repeat(${columns.length}, minmax(0, 1fr))`,
-            minWidth: compact ? days * 12 : Math.min(480, 28 + columns.length * 24),
+            // A daily strip fits a phone's card (30 days at 8px), so today is never scrolled away.
+            minWidth: compact ? days * 8 : Math.min(480, 28 + columns.length * 24),
             maxWidth: compact ? undefined : 28 + columns.length * 32,
           }}
         >
           {compact &&
             navigableCells.map(({ cell }, index) => {
-              if (days > 7 && index % 5 !== 0 && index !== days - 1) return null;
+              const last = index === days - 1;
+              // Every fifth day, plus today; a fifth day too near today would collide with it.
+              if (days > 7 && !last && (index % 5 !== 0 || index > days - 7)) return null;
               const date = new Date(cell.day);
               return (
                 <span
