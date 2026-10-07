@@ -115,15 +115,31 @@ practice and practice are named consistently; rename fields are capitalised; an 
 offers Switch to Edit like the cards panel; the study sheet is a bounded panel on desktop; and every control on the phone pages tested reaches
 the 44 px target, checked by a hit-area probe in `tests/e2e/direction-c-audit.spec.ts`.
 
+## Redesign round (7 October 2026, third session)
+
+The prompter judged the branch not yet ready and chose, from published mockups, a session plan for
+the study sheet, a slim card list with image-occlusion previews, and scored question sets. Done:
+
+- **Study sheet:** "Today's session" lists the planner's next step with card counts and an
+  estimate, then the due reviews offered after it, under one **Start session**; other ways sit
+  below. `src/course/studySessionPlan.ts` holds the estimate rules.
+- **Cards:** one panel for the course with lesson headings that stay in view; slim rows with the
+  answer and when each card next comes up; occlusion cards show their diagram and the region's
+  answer, in region order. The lesson page's card list uses the same rows. On phones the row
+  actions move to the expanded row and the swipe tray, so the question has the width.
+- **Questions:** each set shows when it was last tried, its latest score and a short history,
+  with **Attempt** (Practice mode) or **Continue**. One unreadable attempt no longer blanks the list.
+- **Elsewhere:** the course bar now really sticks; View mode drops an empty notes panel; Edit mode
+  has one New card; the study sheet is bounded on desktop; Today's queue leads the sharing
+  announcement; the Import and Share titles align with every page; the Pomodoro timer keeps its
+  place between Learn and the between-steps screen (Learn's Undo is always laid out); the leech
+  options are proper radios.
+
 Left for the prompter to decide:
 
-- **Import title offset.** The Import title sits about 57 px lower than other pages' titles,
-  because an empty Back row keeps it still while steps change (`import-navigation.spec.ts`).
-- **Pomodoro timer on the between-steps screen.** It sits at the top of the centred column
-  rather than where Learn's header puts it, so it moves when a step ends. Matching Learn means
-  copying that header's button geometry or sharing the header.
-- **Sharing promotion on Today.** The banner sits above the study queue on a phone, pushing the
-  day's work below the fold for new users until dismissed.
-- **Two New card buttons in Edit mode.** The cards panel and the Manage section each offer one.
-- **Tag chips.** Chip remove buttons and tag suggestions are smaller than 44 px; Backspace
-  removes the last tag, but a pointer needs precision.
+- **Sharing announcement size.** It now sits below the queue but keeps its chosen copy and
+  illustration; the mockup's one-line version would drop the illustration.
+- **Tag chips.** Chip remove buttons and tag suggestions are smaller than 44 px; making them
+  44 px would make the tag editor much taller. Backspace removes the last tag.
+- **Card question text for occlusions.** Rows read "Label 1 of 4 — Label the plant cell", the
+  stored fallback text; a shorter generated title would need a data change.
