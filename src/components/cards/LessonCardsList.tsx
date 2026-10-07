@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { PlusIcon, EditIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+import { Button } from '../ui/Button';
 import { motionTransition } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { summariseLessonCard, type CardStatusTone } from './lessonCardRow';
@@ -33,6 +34,8 @@ interface LessonCardsListProps {
   onNavigate: (path: string) => void;
   /** Optional content under the rows, e.g. the Simple Learn disclosure. */
   footer?: ReactNode;
+  /** Offered beside an empty View-mode list, where cards can only be added in Edit. */
+  onSwitchToEdit?: () => void;
   className?: string;
 }
 
@@ -44,6 +47,7 @@ export function LessonCardsList({
   onNavigate,
   footer,
   className,
+  onSwitchToEdit,
 }: LessonCardsListProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -91,7 +95,14 @@ export function LessonCardsList({
       </div>
 
       {visible.length === 0 ? (
-        <p className="py-4 text-sm text-ink-soft">No cards yet.</p>
+        <div className="flex flex-col items-start gap-3 py-4">
+          <p className="text-sm text-ink-soft">No cards yet.</p>
+          {!editable && onSwitchToEdit && (
+            <Button variant="secondary" size="sm" onClick={onSwitchToEdit}>
+              Switch to Edit to add cards
+            </Button>
+          )}
+        </div>
       ) : (
         <ul className="flex flex-col">
           {visible.map((card) => {

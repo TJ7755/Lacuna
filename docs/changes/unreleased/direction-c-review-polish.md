@@ -13,3 +13,4 @@
 - On a phone, a long course name shares its row with View and Edit, and each lesson group on Cards gives its name a full row above Select.
 - Quick search highlights matches flush with the rest of the word ("Integration", not "Integ ration") and in the darker accent ink for contrast.
 - Help uses the current names (Card practice, Practice questions) and no longer says question sets never appear on the course path; an empty Archived page says where archiving happens.
+- An empty lesson in View mode offers Switch to Edit to add cards, as the Questions page already did.

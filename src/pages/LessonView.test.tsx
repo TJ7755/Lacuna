@@ -191,6 +191,15 @@ beforeEach(() => {
 });
 
 describe('LessonView View mode', () => {
+  it('offers the way into Edit when a lesson has no cards yet', async () => {
+    mockLessonCards = [];
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Edit to add cards' }));
+    await waitFor(() =>
+      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' }),
+    );
+  });
+
   it('preselects this lesson for an optional Simple Learn pass', async () => {
     renderPage();
     fireEvent.click(screen.getByText('Practise until all correct'));

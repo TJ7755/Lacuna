@@ -34,6 +34,7 @@ import { LessonCardsList } from '../components/cards/LessonCardsList';
 import { learntCardCount } from '../components/cards/lessonCardRow';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
+import { updateCourse } from '../db/courseRepository';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { riseIn } from '../components/course/riseIn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
@@ -402,6 +403,14 @@ export function LessonView({
                 cards={lessonCards}
                 editable={viewMode === 'edit'}
                 onNavigate={navigate}
+                onSwitchToEdit={
+                  !archived && canEditLessons(course)
+                    ? () =>
+                        void updateCourse(course.id, { lessonViewMode: 'edit' }).catch(() => {
+                          notify('Could not switch to Edit. Try again.', 'negative');
+                        })
+                    : undefined
+                }
                 className="flex-[2_1_340px]"
                 footer={
                   !archived && !isInline ? (
