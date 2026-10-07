@@ -7,7 +7,7 @@ import { FontScaleProvider } from './state/FontScaleContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
-import { isFirstRun, seedIfFirstRun } from './db/seed';
+import { seedWorkPending } from './db/seedFlags';
 import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
 import { stampMissingLessonViewModes } from './db/courseRepository';
 import { requestPersistentStorage } from './db/persistence';
@@ -178,15 +178,19 @@ export function App() {
         // from the prerendered landing page explicitly chose to enter, so the
         // handover skips the bounce back to the welcome route.
         const enteredFromLanding = consumeLandingHandover();
-        if (
-          (await isFirstRun()) &&
-          !isPublicEntry(window.location.hash) &&
-          !enteredFromLanding
-        ) {
-          window.location.hash = '#/welcome';
-        }
+        // The welcome course's content loads only while seeding work remains.
+        if (seedWorkPending()) {
+          const { isFirstRun, seedIfFirstRun } = await import('./db/seed');
+          if (
+            (await isFirstRun()) &&
+            !isPublicEntry(window.location.hash) &&
+            !enteredFromLanding
+          ) {
+            window.location.hash = '#/welcome';
+          }
 
-        await seedIfFirstRun();
+          await seedIfFirstRun();
+        }
       } catch (error) {
         if (import.meta.env.DEV) {
           console.error('Failed to initialise Lacuna:', error);

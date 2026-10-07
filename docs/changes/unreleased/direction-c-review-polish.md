@@ -14,3 +14,4 @@
 - Quick search highlights matches flush with the rest of the word ("Integration", not "Integ ration") and in the darker accent ink for contrast.
 - Help uses the current names (Card practice, Practice questions) and no longer says question sets never appear on the course path; an empty Archived page says where archiving happens.
 - An empty lesson in View mode offers Switch to Edit to add cards, as the Questions page already did.
+- First load is about 5.7 KB (gzipped) lighter: the welcome course's content now loads only while its seed or one-off asset repair is still pending, and the service worker precaches it for offline starts.

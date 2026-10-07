@@ -2,10 +2,9 @@ import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
 import { installHostedFontLinks, installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
 import { renderApp } from './appRoot';
+// Flags only: the landing decision below never pulls the database into the initial graph.
+import { SEED_FLAG_KEY } from './db/seedFlags';
 
-// Mirrors the private FLAG_KEY in src/db/seed.ts. Kept as a literal so the
-// landing decision below never pulls the database into the initial module graph.
-const SEED_FLAG_KEY = 'lacuna-seeded';
 
 installStaleChunkRecovery();
 installHostedFontLinks();

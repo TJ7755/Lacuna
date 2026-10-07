@@ -15,6 +15,12 @@ describe('service-worker asset caching', () => {
       { fileName: 'assets/action-ui-ACTION01.js', isEntry: false, imports: [] },
     ])).toEqual(['assets/app-ENTRY001.js', 'assets/CourseActions-ACTIONS1.js', 'assets/action-ui-ACTION01.js']);
   });
+  it('precaches the welcome-course seed that start-up loads on demand', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/seed-SEEDCHK1.js', isEntry: false, imports: [] },
+    ])).toContain('assets/seed-SEEDCHK1.js');
+  });
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
     expect(pwaInjectRegister).toBeNull();
   });

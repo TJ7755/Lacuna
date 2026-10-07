@@ -87,6 +87,20 @@ describe('App initialisation', () => {
     persistence.reject(new Error('denied'));
   });
 
+  it('skips the welcome-course seed once seeding and its asset repair are done', async () => {
+    localStorage.setItem('lacuna-seeded', '1');
+    localStorage.setItem('lacuna-seed-assets-v3', '1');
+    try {
+      render(<App />);
+      await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
+      expect(dependencies.isFirstRun).not.toHaveBeenCalled();
+      expect(dependencies.seedIfFirstRun).not.toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('lacuna-seeded');
+      localStorage.removeItem('lacuna-seed-assets-v3');
+    }
+  });
+
   it('does not request browser persistence in Electron', async () => {
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
