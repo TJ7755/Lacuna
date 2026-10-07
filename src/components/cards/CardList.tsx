@@ -42,14 +42,15 @@ import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useIsTouchMode } from '../../state/inputMode';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { sequenceForItemId } from '../../db/sequenceGeneration';
-import { occlusionForRegionId } from '../../db/occlusionGeneration';
+import { occlusionForRegionId, resolveOcclusionAnswerText } from '../../db/occlusionGeneration';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
 import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 import { BulkBarButton, CardBulkBar } from './CardBulkBar';
-import { cardKindLabel, summariseLessonCard, type CardStatusTone } from './lessonCardRow';
+import { cardKindLabel, cardScheduleLabel, type CardScheduleTone } from './lessonCardRow';
+import { OcclusionThumbnail } from './OcclusionThumbnail';
 import { countOf } from '../../utils/plural';
 
 const CardContent = lazy(() =>
@@ -77,6 +78,8 @@ interface CardListBaseProps {
   hideHeader?: boolean;
   /** Replaces the default heading, sharing its row with the list's actions. */
   heading?: React.ReactNode;
+  /** Keeps the heading row in view below the course bar while its cards scroll past. */
+  stickyHeader?: boolean;
   /** Opens the card importer on first mount. */
   initiallyImporting?: boolean;
   /** When supplied with courseId, enables bulk lesson assignment. */
@@ -103,6 +106,7 @@ export function CardList({
   onEditCard,
   hideHeader = false,
   heading,
+  stickyHeader = false,
   initiallyImporting = false,
   assignableLessons,
   courseId,
@@ -172,6 +176,14 @@ export function CardList({
         group.cards.push(card);
         byOwner.set(key, group);
       }
+    }
+    // An occlusion's cards follow its regions, so "Label 1 of 4" comes first.
+    for (const group of byOwner.values()) {
+      if (group.kind !== 'occlusion') continue;
+      const order = new Map((group.owner as Occlusion).regions.map((region, i) => [region.id, i]));
+      group.cards.sort(
+        (a, b) => (order.get(a.occlusionRegionId!) ?? 0) - (order.get(b.occlusionRegionId!) ?? 0),
+      );
     }
     return [...byOwner.values()];
   }, [cards, sequences, occlusions]);
@@ -466,8 +478,12 @@ export function CardList({
     <div>
       <div
         className={cn(
-          'mb-4 flex flex-wrap items-center gap-2',
+          'mb-2 flex flex-wrap items-center gap-2',
           hideHeader && !heading && 'justify-end',
+          // Sits under the 64px course bar, on the panel's own surface so rows pass beneath.
+          // Phones keep it in the flow: there it wraps to two rows beneath the app bar.
+          stickyHeader &&
+            'sm:sticky sm:top-16 sm:z-[15] sm:-mx-4 sm:bg-surface/95 sm:px-4 sm:py-1 sm:backdrop-blur-md md:-mx-5 md:px-5',
         )}
       >
         {heading ??
@@ -767,6 +783,7 @@ export function CardList({
               linkedCardIds={linkedCardIds}
               onUnlinkCard={onUnlinkCard}
               motionMultiplier={m}
+              occlusions={occlusions}
             />
           ))}
           {looseCards.length > 0 && (
@@ -785,6 +802,7 @@ export function CardList({
               linkedCardIds={linkedCardIds}
               onUnlinkCard={onUnlinkCard}
               motionMultiplier={m}
+              occlusions={occlusions}
             />
           )}
         </>
@@ -795,12 +813,11 @@ export function CardList({
 
 const VIRTUAL_THRESHOLD = 50;
 
-const STATUS_DOT_CLASS: Record<CardStatusTone, string> = {
-  new: 'bg-line-strong',
-  learning: 'bg-warning',
-  review: 'bg-positive',
-  lapsed: 'bg-negative',
-  paused: 'bg-ink-faint',
+const SCHEDULE_CHIP_CLASS: Record<CardScheduleTone, string> = {
+  new: 'bg-accent-soft text-accent-ink',
+  due: 'bg-warning/15 text-ink',
+  scheduled: 'bg-positive/10 text-ink-soft',
+  paused: 'bg-ink/5 text-ink-faint',
 };
 
 /** Longest possible entry animation: the capped stagger plus one row's fade. */
@@ -829,6 +846,7 @@ export function CardListBody({
   linkedCardIds,
   onUnlinkCard,
   motionMultiplier,
+  occlusions,
 }: {
   cards: Card[];
   schedulingConfig: SchedulerConfig;
@@ -844,8 +862,14 @@ export function CardListBody({
   linkedCardIds?: ReadonlySet<string>;
   onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
+  /** Occlusions that may own these cards, so occlusion rows can show their diagram. */
+  occlusions?: Occlusion[];
 }) {
   const enabled = cards.length > VIRTUAL_THRESHOLD;
+  const occlusionOf = (card: Card) =>
+    card.occlusionRegionId !== undefined && card.occlusionRegionId !== null && occlusions
+      ? occlusionForRegionId(occlusions, card.occlusionRegionId)
+      : undefined;
   const { totalHeight, virtualItems, measureRef, containerRef } = useVirtualList({
     itemCount: cards.length,
     estimateSize: 100,
@@ -887,6 +911,7 @@ export function CardListBody({
             onUnlink={() => onUnlinkCard?.(card)}
             onToggleFlag={onToggleFlag}
             motionMultiplier={motionMultiplier}
+            occlusion={occlusionOf(card)}
           />
         ))}
       </div>
@@ -921,6 +946,7 @@ export function CardListBody({
               onToggleFlag={onToggleFlag}
               motionMultiplier={motionMultiplier}
               skipAnimation={introDone}
+              occlusion={occlusionOf(card)}
             />
           </div>
         );
@@ -946,6 +972,7 @@ const CardRow = React.memo(function CardRow({
   onToggleFlag,
   motionMultiplier,
   skipAnimation,
+  occlusion,
 }: {
   card: Card;
   schedulingConfig: SchedulerConfig;
@@ -964,22 +991,21 @@ const CardRow = React.memo(function CardRow({
   onToggleFlag: (card: Card) => void;
   motionMultiplier?: number;
   skipAnimation?: boolean;
+  /** The occlusion that generated this card, so the row can show its diagram. */
+  occlusion?: Occlusion;
 }) {
-  const [hovered, setHovered] = useState(false);
   const m = motionMultiplier ?? 1;
   const isTouchMode = useIsTouchMode();
-  const showBack = hovered;
 
-  // Lazy-render: only parse the back side when it is actually visible.
-  const contentSide = useMemo(() => (showBack ? 'back' : 'front'), [showBack]);
-
-  const reviewed = card.lastReviewed !== null;
   const tags = card.tags ?? [];
-  const buried =
-    card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
-  const statusTone = summariseLessonCard(card, Date.now()).tone;
+  const schedule = cardScheduleLabel(card, Date.now());
+  // An occlusion card's stored back repeats its front; the region's answer says more.
+  const occlusionAnswer =
+    occlusion && card.occlusionRegionId
+      ? resolveOcclusionAnswerText(occlusion, card.occlusionRegionId)
+      : undefined;
   // Generated cards are owned by their Sequence or Occlusion: content edits and deletes
   // happen there, never here, so selection and deletion are suppressed regardless of
   // selectMode/hover. Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully
@@ -1146,14 +1172,6 @@ const CardRow = React.memo(function CardRow({
     }
   }, [selectMode, generated, linked, onToggle, onToggleExpand, dragX]);
 
-  const handleMouseEnter = useCallback(() => {
-    if (!selectMode) setHovered(true);
-  }, [selectMode]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (!selectMode) setHovered(false);
-  }, [selectMode]);
-
   const handleFlagClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -1277,8 +1295,6 @@ const CardRow = React.memo(function CardRow({
               }
         }
         onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1301,11 +1317,11 @@ const CardRow = React.memo(function CardRow({
           aria-pressed={selectMode && !generated && !linked ? selected : undefined}
           className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
-        <div className="relative flex items-start gap-4">
+        <div className="relative flex items-center gap-3 sm:gap-4">
           {selectMode && !generated && !linked && (
             <span
               className={cn(
-                'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
+                'grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
                 selected ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
               )}
             >
@@ -1313,70 +1329,29 @@ const CardRow = React.memo(function CardRow({
             </span>
           )}
 
+          {occlusion && isOcclusionGenerated && (
+            <OcclusionThumbnail card={card} occlusion={occlusion} />
+          )}
+
           <div className="min-w-0 flex-1">
-            <div className="relative max-h-24 overflow-hidden text-[15px] font-semibold text-ink [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={showBack ? 'back' : 'front'}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.12 * m }}
-                >
-                  <Suspense
-                    fallback={
-                      <Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />
-                    }
-                  >
-                    <CardContent card={card} side={contentSide} />
-                  </Suspense>
-                </motion.div>
-              </AnimatePresence>
+            {/* Two lines of question and one of answer, clipped on a line boundary. */}
+            <div className="max-h-10 overflow-hidden text-[15px] font-semibold leading-5 text-ink [&_*]:leading-5">
+              <Suspense
+                fallback={<Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />}
+              >
+                <CardContent card={card} side="front" />
+              </Suspense>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-faint">
-              <span
-                aria-hidden="true"
-                className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT_CLASS[statusTone])}
-              />
-              {/* A generated card's badge already names its kind. */}
-              {generated && !isSequenceGenerated ? (
-                <GeneratedCardBadge kind="occlusion" />
+            <div
+              data-card-answer
+              className="mt-0.5 max-h-5 overflow-hidden text-[13px] leading-5 text-ink-soft [&_*]:leading-5"
+            >
+              {occlusionAnswer !== undefined ? (
+                occlusionAnswer
               ) : (
-                <span>{cardKindLabel(card)}</span>
-              )}
-              {showBack && (
-                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
-                  Back
-                </span>
-              )}
-              {reviewed ? (
-                <span className="tabular-nums">· Stability {card.stability!.toFixed(1)} d</span>
-              ) : (
-                <span className="font-semibold text-accent-ink">· New</span>
-              )}
-              {card.suspended && (
-                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-xs text-ink-faint">
-                  Suspended
-                </span>
-              )}
-              {!card.suspended && buried && (
-                <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-xs text-ink-faint">
-                  Buried
-                </span>
-              )}
-              {leech && (
-                <span
-                  title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
-                  className="rounded-lg bg-negative/10 px-2 py-0.5 text-xs font-medium text-negative"
-                >
-                  Leech
-                </span>
-              )}
-              {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
-              {linked && (
-                <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
-                  Linked
-                </span>
+                <Suspense fallback={null}>
+                  <CardContent card={card} side="back" />
+                </Suspense>
               )}
             </div>
             {tags.length > 0 && (
@@ -1394,70 +1369,107 @@ const CardRow = React.memo(function CardRow({
             )}
           </div>
 
-          {!selectMode && (
-            <div className="flex shrink-0 items-center gap-1">
-              {card.suspended && (
-                <button
-                  type="button"
-                  onClick={handleResumeClick}
-                  title="Resume card"
-                  className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
-                >
-                  Resume
-                </button>
+          {/* The schedule and the actions share one cell: hovering or focusing the row
+              swaps one for the other, so the actions take no width of their own. */}
+          <div className="grid shrink-0 items-center justify-items-end">
+            <div
+              className={cn(
+                'flex flex-col items-end gap-1 transition-opacity [grid-area:1/1]',
+                !selectMode &&
+                  'sm:[@media(hover:hover)]:group-hover:opacity-0 sm:[@media(hover:hover)]:group-focus-within:opacity-0',
               )}
-              <motion.button
-                type="button"
-                onClick={handleFlagHoverClick}
-                title={flagged ? 'Remove flag' : 'Flag card'}
-                aria-pressed={flagged}
-                data-press=""
-                whileTap={{ scale: 0.85 }}
-                whileHover={{ scale: 1.08 }}
+            >
+              <span
                 className={cn(
-                  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
-                  flagged
-                    ? 'text-accent opacity-100'
-                    : 'text-ink-faint opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                  'whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
+                  SCHEDULE_CHIP_CLASS[schedule.tone],
                 )}
               >
-                <FlagIcon width={16} height={16} />
-              </motion.button>
-              <motion.button
-                type="button"
-                onClick={handleEditClick}
-                title="Edit card"
-                data-press=""
-                whileTap={{ scale: 0.85 }}
-                whileHover={{ scale: 1.08 }}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible"
-              >
-                <EditIcon width={16} height={16} />
-              </motion.button>
-              {removable && (
+                {schedule.label}
+              </span>
+              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-faint">
+                {flagged && <FlagIcon width={12} height={12} className="text-accent" aria-label="Flagged" />}
+                {leech && (
+                  <span
+                    title={`Failed ${card.lapses} times. Consider rewording or splitting this card.`}
+                    className="font-semibold text-negative"
+                  >
+                    Leech
+                  </span>
+                )}
+                {linked && <span className="font-semibold text-accent-ink">Linked</span>}
+                {/* A generated card's badge already names its kind. */}
+                {isOcclusionGenerated ? (
+                  <GeneratedCardBadge kind="occlusion" />
+                ) : (
+                  <span>{cardKindLabel(card)}</span>
+                )}
+              </span>
+            </div>
+            {!selectMode && (
+              // Narrow and touch screens reach these through the swipe tray and the expanded row.
+              <div className="flex items-center gap-0.5 opacity-0 transition-opacity [grid-area:1/1] focus-within:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:hidden [@media(hover:none)]:hidden">
+                {card.suspended && (
+                  <button
+                    type="button"
+                    onClick={handleResumeClick}
+                    title="Resume card"
+                    className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+                  >
+                    Resume
+                  </button>
+                )}
                 <motion.button
                   type="button"
-                  onClick={linked ? handleUnlinkClick : handleDeleteClick}
-                  title={linked ? 'Remove from lesson' : 'Delete card'}
+                  onClick={handleFlagHoverClick}
+                  title={flagged ? 'Remove flag' : 'Flag card'}
+                  aria-pressed={flagged}
                   data-press=""
                   whileTap={{ scale: 0.85 }}
                   whileHover={{ scale: 1.08 }}
                   className={cn(
-                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible',
-                    linked
-                      ? 'hover:bg-ink/5 hover:text-ink'
-                      : 'hover:bg-negative/10 hover:text-negative',
+                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 transition-colors hover:bg-ink/5 hover:text-accent',
+                    flagged ? 'text-accent' : 'text-ink-faint',
                   )}
                 >
-                  {linked ? (
-                    <CloseIcon width={16} height={16} />
-                  ) : (
-                    <TrashIcon width={16} height={16} />
-                  )}
+                  <FlagIcon width={16} height={16} />
                 </motion.button>
-              )}
-            </div>
-          )}
+                <motion.button
+                  type="button"
+                  onClick={handleEditClick}
+                  title="Edit card"
+                  data-press=""
+                  whileTap={{ scale: 0.85 }}
+                  whileHover={{ scale: 1.08 }}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+                >
+                  <EditIcon width={16} height={16} />
+                </motion.button>
+                {removable && (
+                  <motion.button
+                    type="button"
+                    onClick={linked ? handleUnlinkClick : handleDeleteClick}
+                    title={linked ? 'Remove from lesson' : 'Delete card'}
+                    data-press=""
+                    whileTap={{ scale: 0.85 }}
+                    whileHover={{ scale: 1.08 }}
+                    className={cn(
+                      'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint transition-colors',
+                      linked
+                        ? 'hover:bg-ink/5 hover:text-ink'
+                        : 'hover:bg-negative/10 hover:text-negative',
+                    )}
+                  >
+                    {linked ? (
+                      <CloseIcon width={16} height={16} />
+                    ) : (
+                      <TrashIcon width={16} height={16} />
+                    )}
+                  </motion.button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <AnimatePresence>
           {expanded && (
@@ -1470,6 +1482,38 @@ const CardRow = React.memo(function CardRow({
               onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">
+                {/* The row's own actions, for touch screens where they do not appear on hover. */}
+                {!selectMode && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={handleEditClick}>
+                      <EditIcon width={15} height={15} />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      aria-pressed={flagged}
+                      onClick={handleFlagHoverClick}
+                    >
+                      <FlagIcon width={15} height={15} />
+                      {flagged ? 'Unflag' : 'Flag'}
+                    </Button>
+                    {card.suspended && (
+                      <Button size="sm" variant="secondary" onClick={handleResumeClick}>
+                        Resume
+                      </Button>
+                    )}
+                    {removable && (
+                      <Button
+                        size="sm"
+                        variant={linked ? 'secondary' : 'danger'}
+                        onClick={linked ? handleUnlinkClick : handleDeleteClick}
+                      >
+                        {linked ? 'Remove from lesson' : 'Delete'}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <ExpandedCardAnalytics
                   card={card}
                   schedulingConfig={schedulingConfig}

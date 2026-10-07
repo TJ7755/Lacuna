@@ -706,5 +706,22 @@ describe('CardList', () => {
       fireEvent.click(screen.getByText('Select all'));
       expect(screen.getByText('1 selected')).toBeInTheDocument();
     });
+
+    it('previews an occlusion card as its diagram and answers with the region it asks about', async () => {
+      const { container } = render(
+        <CardList
+          cards={[occlusionCard]}
+          context={mockContext}
+          onEditCard={vi.fn()}
+          occlusions={[{ ...occlusion, regions: [{ ...occlusion.regions[0], answerText: 'Aorta' }] }]}
+        />,
+      );
+      expect(container.querySelector('[data-occlusion-thumbnail]')).not.toBeNull();
+      expect(container.querySelector('[data-card-answer]')).toHaveTextContent(/^Aorta$/);
+      // The stored fallback back repeats the front, so it is not what the row shows.
+      await waitFor(() =>
+        expect(container.querySelector('[data-card-answer]')).not.toHaveTextContent('Label 1 of 1'),
+      );
+    });
   });
 });

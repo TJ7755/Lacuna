@@ -63,6 +63,30 @@ export function summariseLessonCard(card: Card, now: number): LessonCardRowSumma
   };
 }
 
+export type CardScheduleTone = 'new' | 'due' | 'scheduled' | 'paused';
+
+/**
+ * When a card next comes up, as a short label for the card list. "Due" agrees with the
+ * Cards page's Due filter (`due <= now`), so the chip and the filter never disagree.
+ */
+export function cardScheduleLabel(
+  card: Card,
+  now: number,
+): { label: string; tone: CardScheduleTone } {
+  if (card.suspended === true) return { label: 'Suspended', tone: 'paused' };
+  if (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now)
+    return { label: 'Buried', tone: 'paused' };
+  if (card.lastReviewed === null || card.due === null) return { label: 'New', tone: 'new' };
+  if (card.due <= now) return { label: 'Due', tone: 'due' };
+  // Calendar days, so a card due at 9am tomorrow reads "Tomorrow" at 11pm tonight.
+  const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0);
+  const days = Math.round((startOfDay(card.due) - startOfDay(now)) / 86_400_000);
+  return {
+    label: days <= 0 ? 'Later today' : days === 1 ? 'Tomorrow' : `In ${days} days`,
+    tone: 'scheduled',
+  };
+}
+
 /** Cards that have been seen and left the New state. */
 export function learntCardCount(cards: readonly Card[]): number {
   return cards.filter((card) => card.lastReviewed !== null && card.state !== 0).length;

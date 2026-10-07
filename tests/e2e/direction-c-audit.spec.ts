@@ -91,17 +91,21 @@ test('card row actions meet the 44px target on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await page
-    .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
-    .click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('link', { name: 'Cards', exact: true }).first().click();
-  // The row's inline actions carry a title; the swipe tray's buttons are full-height already.
-  await expect(page.locator('button[title="Edit card"]').first()).toBeAttached();
-  for (const name of ['Flag card', 'Edit card']) {
-    const box = (await page.locator(`button[title="${name}"]`).first().boundingBox())!;
+  // A phone reaches a card's actions by opening the row, where they are full buttons.
+  const row = page.locator('[data-card-id]').first();
+  await row.click();
+  for (const name of ['Edit', 'Flag']) {
+    const button = row.getByRole('button', { name, exact: true });
+    await expect(button).toBeVisible();
+    const box = (await button.boundingBox())!;
     expect(Math.min(box.width, box.height), name).toBeGreaterThanOrEqual(44);
   }
+  // And the question keeps the width: the hidden hover actions take none of it.
+  const question = row.locator('[data-card-answer]');
+  expect((await question.boundingBox())!.width).toBeGreaterThan(180);
 });
 
 test('controls on phone pages reach the 44px target', async ({ page }) => {

@@ -243,7 +243,7 @@ export function CardsPage() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className={`${BUCKET_CLASS} flex flex-col`}>
           {lessonsWithCards.map((lesson, index) => (
             <motion.div
               key={lesson.id}
@@ -293,9 +293,12 @@ export function CardsPage() {
   );
 }
 
-/** Each lesson's cards sit on one borderless surface, like the cards elsewhere. */
+/** The course's cards share one borderless surface; lessons are divided within it. */
 const BUCKET_CLASS =
   'rounded-3xl bg-surface p-4 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-5';
+
+/** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
+const LESSON_SECTION_CLASS = 'pt-2 [div+div>&]:mt-3 [div+div>&]:border-t [div+div>&]:border-line [div+div>&]:pt-5';
 
 interface AssignableLesson {
   id: string;
@@ -334,7 +337,7 @@ function LessonBucket({
     </div>
   );
   return (
-    <section className={BUCKET_CLASS}>
+    <section className={LESSON_SECTION_CLASS}>
       {deck ? (
         <CardList
           heading={heading}
@@ -346,6 +349,7 @@ function LessonBucket({
             importTargetName: lesson.name,
           })}
           hideHeader
+          stickyHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) => go(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)}
@@ -385,7 +389,7 @@ function UnassignedBucket({
     </h2>
   );
   return (
-    <section className={BUCKET_CLASS}>
+    <section className={LESSON_SECTION_CLASS}>
       {deck ? (
         <CardList
           heading={heading}
@@ -397,6 +401,7 @@ function UnassignedBucket({
             importTargetName: courseName,
           })}
           hideHeader
+          stickyHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) => go(`/course/${courseId}/cards/${card.id}/edit`)}

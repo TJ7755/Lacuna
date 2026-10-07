@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { PathIcon, ImageIcon } from '../ui/icons';
 import { CardListBody } from './CardList';
-import type { Card, SchedulerConfig } from '../../db/types';
+import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
 
 /** The minimal shape of a generated card's owner (a Sequence or an Occlusion) this group needs. */
 interface GeneratedCardOwner {
@@ -30,6 +30,7 @@ interface GeneratedCardGroupProps {
   linkedCardIds?: ReadonlySet<string>;
   onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
+  occlusions?: Occlusion[];
 }
 
 const KIND_META = {
@@ -49,6 +50,7 @@ export function GeneratedCardGroup({
   linkedCardIds,
   onUnlinkCard,
   motionMultiplier,
+  occlusions,
 }: GeneratedCardGroupProps) {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const { Icon, editLabel } = KIND_META[kind];
@@ -89,6 +91,7 @@ export function GeneratedCardGroup({
           linkedCardIds={linkedCardIds}
           onUnlinkCard={onUnlinkCard}
           motionMultiplier={motionMultiplier}
+          occlusions={occlusions}
         />
       </div>
     </div>

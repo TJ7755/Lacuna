@@ -68,8 +68,8 @@ to reveal a **forgetting curve** and **vital statistics** for that individual ca
 - **Grade distribution** — animated mini-bars for Again / Hard / Good / Easy
   counts.
 - Expansion is toggled by clicking the card row; only one card may be expanded
-  at a time. Hover still reveals the card back (desktop), while the expanded
-  panel captures click events so interacting with the chart does not collapse
+  at a time. The expanded panel leads with the row's Edit, Flag and Delete actions
+  (the only way to reach them on phones and touch screens) and captures click events so interacting with the chart does not collapse
   the view. The row is keyboard-accessible (`Enter`/`Space` toggles expansion).
 
 ### Course analytics (`/course/:courseId/analytics`, `src/components/analytics/CourseAnalytics.tsx`)
