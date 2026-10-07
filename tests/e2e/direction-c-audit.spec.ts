@@ -68,3 +68,21 @@ test('Progress fits a phone, with today in view on the 30-day strip', async ({ p
     await page.locator('main').evaluate((main) => main.scrollWidth - main.clientWidth),
   ).toBeLessThanOrEqual(1);
 });
+
+test('sidebar course names wrap to a second line instead of truncating', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  const courses = page.getByRole('navigation', { name: 'Courses' });
+  const link = courses.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
+  const name = link.getByText('Welcome to Lacuna', { exact: true });
+  expect(
+    await name.evaluate(
+      (element) =>
+        element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight,
+    ),
+  ).toBe(true);
+  // The glyph already sets the row height, so the second line costs no space.
+  expect((await link.boundingBox())!.height).toBeLessThanOrEqual(56);
+  expect((await name.boundingBox())!.height).toBeGreaterThan(30);
+});

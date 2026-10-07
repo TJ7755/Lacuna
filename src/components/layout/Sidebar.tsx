@@ -277,7 +277,15 @@ const CourseRow = memo(function CourseRow({
           }
         >
           <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
-          <span className="min-w-0 flex-1 truncate font-semibold">{courseName}</span>
+          <span
+            className={cn(
+              'min-w-0 flex-1 font-semibold',
+              // Two lines fit beside the glyph without growing the row.
+              compact ? 'truncate' : 'line-clamp-2 leading-tight [overflow-wrap:anywhere]',
+            )}
+          >
+            {courseName}
+          </span>
         </NavLink>
       </SidebarHoverCard>
     );
@@ -304,7 +312,15 @@ const CourseRow = memo(function CourseRow({
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
           >
             <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
-            <span className="min-w-0 flex-1 truncate font-semibold">{courseName}</span>
+            <span
+              className={cn(
+                'min-w-0 flex-1 font-semibold',
+                // Two lines fit beside the glyph without growing the row.
+                compact ? 'truncate' : 'line-clamp-2 leading-tight [overflow-wrap:anywhere]',
+              )}
+            >
+              {courseName}
+            </span>
           </NavLink>
         </SidebarHoverCard>
         <button
