@@ -14,15 +14,19 @@ function size(element: HTMLElement, scrollHeight: number, clientHeight: number) 
 }
 
 describe('useScrollEdges', () => {
-  it('reports the edges that hide content as the list scrolls', () => {
+  it('reports the edges that hide content as the list scrolls', async () => {
     let edges = { top: false, bottom: false };
     const { getByTestId } = render(<List onEdges={(next) => (edges = next)} />);
     const list = getByTestId('list');
     size(list, 600, 200);
-    act(() => list.dispatchEvent(new Event('scroll')));
+    await act(async () => {
+      list.dispatchEvent(new Event('scroll'));
+    });
     expect(edges).toEqual({ top: false, bottom: true });
     list.scrollTop = 400;
-    act(() => list.dispatchEvent(new Event('scroll')));
+    await act(async () => {
+      list.dispatchEvent(new Event('scroll'));
+    });
     expect(edges).toEqual({ top: true, bottom: false });
   });
 

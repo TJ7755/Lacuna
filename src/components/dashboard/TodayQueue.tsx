@@ -1,7 +1,7 @@
 import { m as motion } from 'motion/react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
+import { ArrowRightIcon, CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
@@ -131,20 +131,7 @@ export function TodayQueue({
                   )}
                 >
                   Start
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                    className="transition-transform duration-200 group-hover:translate-x-0.5"
-                  >
-                    <path d="M5 12h14M13 6l6 6-6 6" />
-                  </svg>
+                  <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-0.5" />
                 </button>
               </>
             )}

@@ -34,6 +34,12 @@ describe('LessonNotesCard', () => {
     presence.current = true;
   });
 
+  it('names an empty notes card beside its Add note action', () => {
+    render(<LessonNotesCard lessonId="l1" notes={[]} editable />);
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add note' })).toBeInTheDocument();
+  });
+
   it('leaves no empty bar above a single note in View mode', () => {
     const { container } = render(
       <LessonNotesCard lessonId="l1" notes={[note('n1', 'Why')]} editable={false} />,

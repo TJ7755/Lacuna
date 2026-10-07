@@ -133,6 +133,9 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
               })}
             </LayoutGroup>
           </div>
+        ) : sortedNotes.length === 0 ? (
+          // Names the empty card, as its neighbour names the cards.
+          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Notes</h2>
         ) : (
           <span />
         )}

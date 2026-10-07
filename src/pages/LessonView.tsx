@@ -32,7 +32,7 @@ import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
 import { learntCardCount } from '../components/cards/lessonCardRow';
-import { PlayIcon } from '../components/ui/icons';
+import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { riseIn } from '../components/course/riseIn';
@@ -349,8 +349,8 @@ export function LessonView({
                   disabled={nothingToStudy}
                   onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
                 >
-                  <PlayIcon width={18} height={18} />
                   Study
+                  <ArrowRightIcon />
                 </Button>
                 <Button
                   variant="secondary"
@@ -369,8 +369,8 @@ export function LessonView({
                 disabled={lessonCards.length === 0}
                 onClick={() => navigate(lessonStudyPath)}
               >
-                <PlayIcon width={18} height={18} />
                 Study
+                <ArrowRightIcon />
               </Button>
             )}
           </LessonHeader>

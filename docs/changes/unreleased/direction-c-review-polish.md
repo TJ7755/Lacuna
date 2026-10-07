@@ -5,3 +5,4 @@
 - A long course name now truncates beside the course section tabs instead of running underneath them. Hovering a card row no longer shows the swipe tray's buttons through it, and each lesson group on Cards keeps Select and its add menu on the heading row.
 - The sidebar course list fades the edge that hides more courses, and Today's course names wrap to two lines on a phone rather than truncating.
 - Text editors name their controls in words ("Maths" rather than "$x$"; Bold and Italic for screen readers), take Ctrl/Cmd+B and Ctrl/Cmd+I, and show a live preview beneath the Write tab once the text contains maths. The question editor's image button lines up with its fields and "Use separate parts" reads as a button.
+- Every Study and Start action ends with the same forward arrow (the lesson page used a play icon before its label), and an empty notes card is headed Notes like the cards beside it.

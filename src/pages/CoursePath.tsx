@@ -34,7 +34,7 @@ import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { Button } from '../components/ui/Button';
-import { CalendarIcon, CardsIcon, GaugeIcon } from '../components/ui/icons';
+import { ArrowRightIcon, CalendarIcon, CardsIcon, GaugeIcon } from '../components/ui/icons';
 import { Menu } from '../components/ui/Menu';
 import { cn } from '../components/ui/cn';
 import { forecastStatus } from '../components/dashboard/ForecastChart';
@@ -495,19 +495,7 @@ export function CoursePath() {
               onClick={() => openStudySheet(courseId)}
             >
               Study{dueCardCount > 0 ? ` ${dueCardCount}` : ''}
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
+              <ArrowRightIcon />
             </Button>
             <Menu label="Other ways to study" items={otherWays} chevron size="md">
               Other ways
