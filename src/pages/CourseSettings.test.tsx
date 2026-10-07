@@ -211,6 +211,7 @@ describe('CourseSettings', () => {
   it('renders the grouped section headings and no "Save changes" bar', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Goal and dates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Daily study' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Lessons' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Auto-practice' })).toBeInTheDocument();

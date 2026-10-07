@@ -375,6 +375,9 @@ export function CourseSettings() {
               </SettingsCard>
 
               <SettingsCard>
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Assessments
+                </h2>
                 <ExamDatesSection
                   courseId={course.id}
                   timeZone={timeZone}
