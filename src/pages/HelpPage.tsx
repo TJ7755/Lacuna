@@ -208,9 +208,9 @@ export function HelpPage() {
               <ModeCard
                 title="Assessment revision"
                 description="A time-budgeted revision plan for one named checkpoint or final exam."
-                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a course Practice milestone."
+                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a course practice milestone."
                 whenToUse="Choose it from a relevant Card practice stop, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
-                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
+                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary practice ordering."
               />
             </div>
           </div>

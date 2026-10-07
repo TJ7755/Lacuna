@@ -358,7 +358,7 @@ function CourseStudyFlowInner() {
         detail={
           flow?.decision.kind === 'empty'
             ? 'Add a lesson before starting this study flow.'
-            : 'There is no lesson or Practice work ready right now.'
+            : 'There is no lesson or practice ready right now.'
         }
         onExit={finishFlow}
       />
