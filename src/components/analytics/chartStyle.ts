@@ -17,7 +17,7 @@ export function useChartStyle() {
       c,
       m,
       xAxis: { tick, tickLine: false, axisLine: { stroke: c.line }, minTickGap: 12, tickMargin: 8 },
-      yAxis: { tick, tickLine: false, axisLine: false, tickCount: 4, width: 36 },
+      yAxis: { tick, tickLine: false, axisLine: false, tickCount: 4, width: 'auto' as const },
       tooltip: {
         contentStyle: {
           background: c.surface,

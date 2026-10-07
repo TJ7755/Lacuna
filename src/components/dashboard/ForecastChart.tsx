@@ -126,7 +126,8 @@ export function ForecastChart({
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
 
   const geometry = useMemo(() => {
-    const end = Math.max(now + 14 * 86_400_000, ...lines.map((line) => line.forecast.end));
+    // The axis ends with the furthest line, so a lone exam next week fills the width.
+    const end = Math.max(now + 86_400_000, ...lines.map((line) => line.forecast.end));
     const ticks = recallTicks([
       target,
       ...lines.flatMap((line) => line.forecast.outlook.map((point) => point.recall)),
@@ -155,7 +156,7 @@ export function ForecastChart({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-        <h2 id={titleId} className="font-display text-2xl">
+        <h2 id={titleId} className="shrink-0 font-display text-2xl">
           Exam-day forecast
         </h2>
         <ul className="flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
@@ -174,7 +175,9 @@ export function ForecastChart({
                   className="h-2.5 w-2.5 rounded-full"
                   style={{ background: STATUS_COLOUR[line.status] }}
                 />
-                {line.name}
+                <span className="max-w-[14rem] truncate" title={line.name}>
+                  {line.name}
+                </span>
                 <strong className={'font-bold tabular-nums ' + STATUS_TEXT[line.status]}>
                   {Math.round(line.forecast.atEnd * 100)}%
                 </strong>

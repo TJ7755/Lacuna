@@ -116,7 +116,7 @@ export function ChartCard({
       )}
       {!empty && data && data.rows.length > 0 && (
         <details className="mt-3 text-sm">
-          <summary className="inline-flex min-h-11 w-fit cursor-pointer items-center rounded-full px-3 text-ink-soft hover:bg-ink/[0.05] focus-visible:outline-2 focus-visible:outline-accent">
+          <summary className="-ml-3 inline-flex min-h-11 w-fit cursor-pointer items-center rounded-full px-3 text-ink-soft hover:bg-ink/[0.05] focus-visible:outline-2 focus-visible:outline-accent">
             View data
           </summary>
           <div

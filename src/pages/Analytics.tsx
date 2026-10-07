@@ -27,6 +27,8 @@ import { CourseComparison } from '../components/analytics/CourseComparison';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { FadeInView } from '../components/ui/FadeInView';
+import { addDays } from '../fsrs/heatmap';
+import { startOfDay } from '../utils/datetime';
 
 /** Lets a chart card fill its grid row so neighbours line up. */
 const CELL = '[&>section]:h-full';
@@ -139,7 +141,11 @@ export function Analytics() {
     () => predictionAccuracySeries(cards, activeReviewHistory),
     [cards, activeReviewHistory],
   );
-  const trajectory = useMemo(() => globalTrajectorySeries(courseHistory), [courseHistory]);
+  // Follows the period selector like the other time series.
+  const trajectory = useMemo(() => {
+    const from = addDays(startOfDay(Date.now()), 1 - days);
+    return globalTrajectorySeries(courseHistory).filter((point) => point.day >= from);
+  }, [courseHistory, days]);
   const activity = useMemo(
     () => reviewActivityFromHistory(activeReviewHistory),
     [activeReviewHistory],

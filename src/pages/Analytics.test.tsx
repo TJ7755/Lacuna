@@ -2,13 +2,23 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Analytics } from './Analytics';
 
+const live = vi.hoisted(() => ({
+  history: [] as {
+    timestamp: number;
+    deckId: string;
+    courseId: string;
+    averagePredictedRetrievability: number;
+  }[],
+  courses: [] as { id: string; name: string; archived?: boolean }[],
+}));
+
 vi.mock('../state/useData', () => ({
   useAllCards: () => [],
   useAllReviewHistory: () => [],
-  useAllSessionHistory: () => [],
+  useAllSessionHistory: () => live.history,
 }));
 
-vi.mock('../state/useCourseData', () => ({ useCourses: () => [] }));
+vi.mock('../state/useCourseData', () => ({ useCourses: () => live.courses }));
 
 vi.mock('../components/analytics/useChartColours', () => ({
   useChartColours: () => ({
@@ -27,12 +37,14 @@ vi.mock('../components/analytics/ChartCard', () => ({
     title,
     description,
     emptyMessage,
+    data,
   }: {
     title: string;
     description?: string;
     emptyMessage?: string;
+    data?: { rows: unknown[] };
   }) => (
-    <section>
+    <section aria-label={title} data-rows={data?.rows.length}>
       <h2>{title}</h2>
       {description && <p>{description}</p>}
       {emptyMessage && <p>{emptyMessage}</p>}
@@ -60,6 +72,27 @@ vi.mock('recharts', () => ({
 }));
 
 describe('Analytics', () => {
+  it('limits the exam-day score trajectory to the selected period', () => {
+    const DAY = 86_400_000;
+    live.courses = [{ id: 'c', name: 'Course' }];
+    live.history = Array.from({ length: 60 }, (_, index) => ({
+      timestamp: Date.now() - index * DAY,
+      deckId: 'd',
+      courseId: 'c',
+      averagePredictedRetrievability: 0.8,
+    }));
+    try {
+      render(<Analytics />);
+      const chart = screen.getByRole('region', { name: 'Predicted exam-day score' });
+      expect(chart).toHaveAttribute('data-rows', '30');
+      fireEvent.click(screen.getByRole('button', { name: '7 days' }));
+      expect(chart).toHaveAttribute('data-rows', '7');
+    } finally {
+      live.courses = [];
+      live.history = [];
+    }
+  });
+
   it('uses chart titles without redundant explanatory subtitles', () => {
     render(<Analytics />);
 

@@ -1,1 +1,3 @@
 - Today leads with the courses to study, so Start is visible without scrolling; the exam-day forecast and week panel follow beneath. The day's total now reads "30 cards" rather than a bare number.
+- The exam-day forecast's time axis now ends at the furthest exam rather than at least a fortnight out, so a near exam no longer leaves half the chart empty. Long course names in its legend truncate instead of squeezing the title, and Today's minute estimates no longer wrap.
+- Progress: the exam-day score chart follows the 7/30/90-day period like its neighbours, chart axes size to their labels (100% was clipped to 00%), and View data aligns with each card's edge.

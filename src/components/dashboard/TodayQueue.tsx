@@ -115,7 +115,7 @@ export function TodayQueue({
                   <span className="sr-only">Cards due:</span>
                   {row.due}
                 </span>
-                <span className="hidden w-[72px] items-center gap-1.5 text-ink-soft tabular-nums sm:inline-flex">
+                <span className="hidden min-w-[72px] items-center gap-1.5 whitespace-nowrap text-ink-soft tabular-nums sm:inline-flex">
                   <ClockIcon width={16} height={16} aria-hidden="true" />
                   {Math.max(1, Math.round(row.minutes))} min
                 </span>
