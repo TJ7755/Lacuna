@@ -227,6 +227,26 @@ export function LessonView({
   const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
+  const addToPath =
+    isInline && courseId && authoring ? (
+      <div ref={addRef} role="group" aria-label="Add to path">
+        <AddCourseControl
+          kinds={[
+            'lesson',
+            ...(onAddPractice ? (['practice'] as const) : []),
+            'question-set',
+            ...(onAddCheckpoint ? (['checkpoint'] as const) : []),
+          ]}
+          onAdd={(kind) => {
+            if (kind === 'lesson') setAddingLesson(true);
+            else if (kind === 'practice') onAddPractice?.();
+            else if (kind === 'question-set') setAddingQuestionSet(true);
+            else onAddCheckpoint?.();
+          }}
+        />
+      </div>
+    ) : null;
+
   return (
     <div className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}>
       {!isInline && (
@@ -250,45 +270,6 @@ export function LessonView({
           }
         />
       )}
-      {isInline && courseId && authoring && (
-        <div className="mb-6 flex flex-col gap-3">
-          <div ref={addRef} role="group" aria-label="Add to path" className="flex justify-end">
-            <AddCourseControl
-              kinds={[
-                'lesson',
-                ...(onAddPractice ? (['practice'] as const) : []),
-                'question-set',
-                ...(onAddCheckpoint ? (['checkpoint'] as const) : []),
-              ]}
-              onAdd={(kind) => {
-                if (kind === 'lesson') setAddingLesson(true);
-                else if (kind === 'practice') onAddPractice?.();
-                else if (kind === 'question-set') setAddingQuestionSet(true);
-                else onAddCheckpoint?.();
-              }}
-            />
-          </div>
-          <AnimatedDisclosure open={addingLesson}>
-            <AddLessonControl
-              initiallyOpen
-              courseId={courseId}
-              lessonCount={lessons.length}
-              onCancel={restoreAdd}
-              onCreated={(createdLesson) =>
-                navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
-              }
-            />
-          </AnimatedDisclosure>
-          {addingQuestionSet && (
-            <QuestionSetPathEditor
-              courseId={courseId}
-              afterLessonId={lesson.id}
-              onClose={() => setAddingQuestionSet(false)}
-            />
-          )}
-        </div>
-      )}
-
       <div className="flex flex-col gap-6">
         <motion.div {...riseIn(0, motionMultiplier)}>
           <LessonHeader
@@ -374,6 +355,7 @@ export function LessonView({
                 <ArrowRightIcon />
               </Button>
             )}
+            {addToPath}
           </LessonHeader>
           {/* The due count already leads the meta line, so this only speaks when
               there is something it does not say. */}
@@ -381,6 +363,32 @@ export function LessonView({
             <p className="mt-3 text-sm text-ink-faint">
               {lessonCards.length === 0 ? 'Add cards to begin studying.' : 'Nothing due right now.'}
             </p>
+          )}
+          {addToPath && courseId && (
+            <>
+              <AnimatedDisclosure open={addingLesson}>
+                <div className="pt-4">
+                  <AddLessonControl
+                    initiallyOpen
+                    courseId={courseId}
+                    lessonCount={lessons.length}
+                    onCancel={restoreAdd}
+                    onCreated={(createdLesson) =>
+                      navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
+                    }
+                  />
+                </div>
+              </AnimatedDisclosure>
+              {addingQuestionSet && (
+                <div className="pt-4">
+                  <QuestionSetPathEditor
+                    courseId={courseId}
+                    afterLessonId={lesson.id}
+                    onClose={() => setAddingQuestionSet(false)}
+                  />
+                </div>
+              )}
+            </>
           )}
         </motion.div>
 

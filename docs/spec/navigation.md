@@ -261,7 +261,8 @@ assessment uses the same authoring and resolution rules, and each course retains
 In Edit mode, **Add checkpoint** creates one at the end of the visible path and selecting an
 existing checkpoint opens the same assessment editor used by Course Settings. View mode retains
 the read-only detail and revision behaviour. Inline single-lesson courses expose the same creation
-action.
+action through an **Add** menu in the lesson header, beside Study; the chosen form opens beneath
+the header.
 
 The course header has one **Study** action. It launches the persistent course study
 conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the

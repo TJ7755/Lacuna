@@ -1,10 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-// Sample every control (2px allows the press spring's overshoot) in the single-lesson "Add to path" group across animation frames.
+// Sample every control (2px allows the press spring's overshoot) in the single-lesson header, which
+// holds the "Add to path" group beside Study, across animation frames.
 async function sampleButtonHeights(page: Page, frames: number) {
   return page.evaluate(async (count) => {
-    const group = document.querySelector('[role="group"][aria-label="Add to path"]');
+    const group = document
+      .querySelector('[role="group"][aria-label="Add to path"]')
+      ?.closest('header');
     const heights: number[][] = [];
     for (let frame = 0; frame < count; frame += 1) {
       await new Promise(requestAnimationFrame);
@@ -30,6 +33,11 @@ for (const { width, reducedMotion } of [
     await createCourse(page, 'Toolbar course');
     await page.setViewportSize({ width, height: 900 });
     const group = page.getByRole('group', { name: 'Add to path' });
+    // The Add menu belongs to the lesson header, never on a row of its own above the title.
+    const title = page.getByRole('heading', { level: 1, name: 'Lesson 1' });
+    expect((await group.boundingBox())!.y).toBeGreaterThanOrEqual(
+      (await title.boundingBox())!.y - 24,
+    );
     const closed = await sampleButtonHeights(page, 1);
     const closedMax = Math.max(...closed[0]);
     expect(closedMax).toBeLessThanOrEqual(48);
