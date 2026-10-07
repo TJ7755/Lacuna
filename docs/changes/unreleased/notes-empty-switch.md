@@ -1,1 +1,1 @@
-- An empty notes panel in View mode offers Switch to Edit to add notes, matching the cards panel beside it, and uses the same left-aligned empty state.
+- In View mode a lesson with no notes no longer shows an empty Notes panel; its cards take the width. Edit mode keeps the panel, where the first note is added.

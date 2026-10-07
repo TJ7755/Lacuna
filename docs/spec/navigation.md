@@ -382,7 +382,10 @@ modes resolved by `src/course/lessonViewMode.ts`:
 - **Study** (the default): notes render read-only via `LessonNotesStudyView`
   (`src/components/notes/`, reusing `MarkdownView` for each note's body), and cards show a
   summary — count, due count, mastery % — via `LessonCardsSummary` (`src/components/cards/`)
-  rather than an editable table.
+  rather than an editable table. A lesson without notes shows no notes panel in this mode, so
+  its card list takes the width. That list's rows match the Cards page: the front (up to two
+  lines), the card's kind, when it next comes up, and an occlusion card's diagram, with each
+  occlusion's cards kept together in region order.
 - **Author**: the full notes/cards CRUD, extracted into `LessonNotesSection`
   (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
   component stays a thin layout/data shell. Path authoring chrome — Add lesson, Manual

@@ -290,7 +290,8 @@ describe('LessonView View mode', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
     expect(screen.getByText('front')).toBeInTheDocument();
-    expect(screen.getByText('Front / back · New')).toBeInTheDocument();
+    expect(screen.getAllByText('Front / back').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('New').length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Edit card' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
     expect(screen.queryByText('Add your first card')).not.toBeInTheDocument();
@@ -365,6 +366,18 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Review due cards' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
+  });
+
+  it('leaves out an empty notes panel in View mode but keeps it in Edit', () => {
+    mockNotes = [];
+    const { unmount } = renderPage();
+    expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
+    unmount();
+
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
   });
 
   it('withholds Study only when the course has no cards and the lesson no notes', () => {

@@ -399,16 +399,16 @@ export function LessonView({
           )}
         </motion.div>
 
-        {/* Notes and cards. The two columns are identical in both modes; Edit mode
-            fades the edit controls in place and reveals card management beneath. */}
+        {/* Notes and cards. Edit mode fades the edit controls in place and reveals card
+            management beneath. View mode leaves out a lesson's empty notes, so its cards
+            take the width; Edit keeps the panel, where the first note is added. */}
         <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
           <motion.div {...riseIn(1, motionMultiplier)} className="flex flex-wrap items-start gap-6">
-            {lessonId && (
+            {lessonId && (viewMode === 'edit' || notes.length > 0) && (
               <LessonNotesCard
                 lessonId={lessonId}
                 notes={notes}
                 editable={viewMode === 'edit'}
-                onSwitchToEdit={switchToEdit}
                 className="flex-[3_1_560px]"
               />
             )}
