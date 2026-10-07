@@ -49,7 +49,9 @@ export function CourseSectionNavigation({
   const archived = course?.archived === true;
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} mb-4 pt-8`}>
+    // The bar's own `sticky` would end with this short wrapper, so the wrapper sticks
+    // instead; its negative offset lets the top padding scroll away first.
+    <div className={`${COURSE_PAGE_FRAME} sticky -top-8 z-20 mb-4 pt-8`}>
       <CoursePageNavigation
         courseId={courseId}
         course={course ?? undefined}

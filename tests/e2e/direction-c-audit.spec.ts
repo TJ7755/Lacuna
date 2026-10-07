@@ -166,3 +166,20 @@ test('the study sheet is a bounded panel on a wide window', async ({ page }) => 
   expect(Math.abs(panel.x + panel.width / 2 - 720)).toBeLessThanOrEqual(1);
   expect(panel.y + panel.height).toBeLessThan(900);
 });
+
+test('the course bar stays at the top while a course page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Settings', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/course\/[^/]+\/settings$/);
+  const bar = page.locator('[data-course-page-navigation]');
+  await page.locator('main').evaluate((main) => main.scrollTo(0, 900));
+  await expect.poll(async () => (await bar.boundingBox())!.y).toBeGreaterThanOrEqual(-1);
+  expect((await bar.boundingBox())!.y).toBeLessThanOrEqual(1);
+});
