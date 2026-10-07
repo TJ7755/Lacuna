@@ -11,11 +11,11 @@ async function openCourse(page: Page, width: number) {
 }
 
 for (const width of [390, 1000, 1920]) {
-  test(`Study and Practice Now share a row and height at ${width}px`, async ({ page }) => {
+  test(`Study and Review due cards share a row and height at ${width}px`, async ({ page }) => {
     await openCourse(page, width);
     const study = await page.getByRole('button', { name: 'Study', exact: true }).boundingBox();
     const practice = await page
-      .getByRole('button', { name: 'Practice Now', exact: true })
+      .getByRole('button', { name: 'Review due cards', exact: true })
       .boundingBox();
     expect(Math.abs(study!.y - practice!.y)).toBeLessThanOrEqual(1);
     expect(Math.abs(study!.height - practice!.height)).toBeLessThanOrEqual(1);
