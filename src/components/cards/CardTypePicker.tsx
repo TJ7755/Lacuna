@@ -7,7 +7,7 @@ import type { CardType } from '../../db/types';
 export type EditorCardType = CardType | 'numeric' | 'working' | 'audio';
 
 const TYPE_OPTIONS = [
-  { value: 'front_back', label: 'Front / Back' },
+  { value: 'front_back', label: 'Front / back' },
   { value: 'cloze', label: 'Cloze deletion' },
   { value: 'basic_reversed', label: 'Basic (reversed)' },
   { value: 'numeric', label: 'Numeric answer' },

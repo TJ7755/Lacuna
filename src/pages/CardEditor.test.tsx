@@ -389,7 +389,7 @@ describe('CardEditor — live preview', () => {
 
   it('marks the chosen card type as pressed and hides the flip for structured items', () => {
     renderNew();
-    expect(screen.getByRole('button', { name: 'Front / Back' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Front / back' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

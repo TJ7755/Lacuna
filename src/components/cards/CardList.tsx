@@ -49,7 +49,7 @@ import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types'
 import type { CardListContext } from './cardListContext';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 import { BulkBarButton, CardBulkBar } from './CardBulkBar';
-import { summariseLessonCard, type CardStatusTone } from './lessonCardRow';
+import { cardKindLabel, summariseLessonCard, type CardStatusTone } from './lessonCardRow';
 import { countOf } from '../../utils/plural';
 
 const CardContent = lazy(() =>
@@ -810,12 +810,6 @@ const INTRO_WINDOW_MS = 420;
 const STAGGER_STEP_S = 0.03;
 const STAGGER_CAP_S = 0.25;
 
-function cardTypeLabel(card: Card) {
-  if (card.sequenceItemId !== null && card.sequenceItemId !== undefined) return 'Sequence';
-  if (card.payload?.kind === 'working') return 'Working';
-  return card.type === 'cloze' ? 'Cloze' : 'Front / Back';
-}
-
 /** Renders the card list either as a simple grid (small decks) or a virtualised
  *  absolute-positioned list (large decks) to keep performance constant. Exported for
  *  reuse by {@link GeneratedCardGroup}, which renders a sequence's or occlusion's own
@@ -1302,7 +1296,7 @@ const CardRow = React.memo(function CardRow({
         <button
           type="button"
           data-card-details
-          aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${card.front || cardTypeLabel(card)}`}
+          aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${card.front || cardKindLabel(card)}`}
           aria-expanded={selectMode && !generated && !linked ? undefined : expanded}
           aria-pressed={selectMode && !generated && !linked ? selected : undefined}
           className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -1344,7 +1338,12 @@ const CardRow = React.memo(function CardRow({
                 aria-hidden="true"
                 className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_DOT_CLASS[statusTone])}
               />
-              <span>{cardTypeLabel(card)}</span>
+              {/* A generated card's badge already names its kind. */}
+              {generated && !isSequenceGenerated ? (
+                <GeneratedCardBadge kind="occlusion" />
+              ) : (
+                <span>{cardKindLabel(card)}</span>
+              )}
               {showBack && (
                 <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                   Back
@@ -1374,7 +1373,6 @@ const CardRow = React.memo(function CardRow({
                 </span>
               )}
               {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
-              {generated && !isSequenceGenerated && <GeneratedCardBadge kind="occlusion" />}
               {linked && (
                 <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                   Linked

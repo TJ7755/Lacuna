@@ -119,7 +119,7 @@ export function CardEditOverlay({
           </div>
           <div className="flex gap-2">
             {([
-              { key: 'front_back' as const, label: 'Front / Back' },
+              { key: 'front_back' as const, label: 'Front / back' },
               { key: 'cloze' as const, label: 'Cloze deletion' },
               { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
             ]).map((t) => (

@@ -337,7 +337,7 @@ describe('CardList', () => {
     render(<CardList cards={[workingCard]} context={mockContext} onEditCard={vi.fn()} />);
 
     expect(screen.getByText('Working')).toBeInTheDocument();
-    expect(screen.queryByText('Front / Back')).not.toBeInTheDocument();
+    expect(screen.queryByText('Front / back')).not.toBeInTheDocument();
   });
 
   it('shows select mode when Select button is clicked', () => {
@@ -657,7 +657,7 @@ describe('CardList', () => {
       );
       expect(screen.getByText('Sequence')).toBeInTheDocument();
       expect(screen.getAllByText('Sequence')).toHaveLength(1);
-      expect(screen.getAllByText('Front / Back')).toHaveLength(1);
+      expect(screen.getAllByText('Front / back')).toHaveLength(1);
 
       fireEvent.click(screen.getByText('Select'));
       // Only the ordinary card is selectable: "Select all" only ever selects it.
