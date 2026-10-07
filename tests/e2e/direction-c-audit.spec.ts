@@ -183,7 +183,10 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
     .click();
   await expect(page).toHaveURL(/\/course\/[^/]+\/settings$/);
   const bar = page.locator('[data-course-page-navigation]');
-  await page.locator('main').evaluate((main) => main.scrollTo(0, 900));
-  await expect.poll(async () => (await bar.boundingBox())!.y).toBeGreaterThanOrEqual(-1);
-  expect((await bar.boundingBox())!.y).toBeLessThanOrEqual(1);
+  const main = page.locator('main');
+  await main.evaluate((element) => element.scrollTo({ top: 900, behavior: 'instant' }));
+  await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThanOrEqual(900);
+  const y = (await bar.boundingBox())!.y;
+  expect(y).toBeGreaterThanOrEqual(-1);
+  expect(y).toBeLessThanOrEqual(1);
 });
