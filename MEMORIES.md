@@ -314,3 +314,12 @@ Each `motion.li` with a transform is its own stacking context, so a popover insi
 CI subscribes to the pull-request `edited` event so retargeted branches receive checks.
 Editing a PR description also restarts CI and cancels its current run. Finalise the
 review text before waiting for merge gates, rather than updating it mid-run.
+
+## Cloud-container browser runs
+
+The preinstalled Chromium (`/opt/pw-browsers/chromium`) is older than the repo's Playwright,
+so local runs need `launchOptions.executablePath` pointing at it. `offline-reload.spec.ts`
+launches its own browser and fails there with a Cache `match` TypeError on any revision; CI
+passes it. To screenshot populated states, seed through the repositories with
+`page.evaluate` on a Vite server without file watching: an HMR full reload mid-seed
+destroys the evaluation.
