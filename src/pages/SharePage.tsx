@@ -40,7 +40,8 @@ export function SharePage() {
   return (
     // Shares the page frame's left edge but keeps a narrower reading column.
     <div className={`${PAGE_FRAME} py-10 [&>*]:max-w-3xl`}>
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
+      {/* Top-aligned, so the course picker beside it never pushes the title down. */}
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-3">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Share</h1>
         {course && courses && courses.length > 1 && (
           <Menu

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const height of [650, 900]) {
   test(`sidebar course and archive labels align without horizontal scrolling at ${height}px`, async ({
@@ -204,3 +204,31 @@ test('Today puts the study queue above the sharing announcement on a phone', asy
   const start = (await queue.getByRole('button', { name: /^Start / }).first().boundingBox())!;
   expect(start.y + start.height).toBeLessThanOrEqual(844);
 });
+
+for (const width of [390, 1280]) {
+  test(`top-level page titles share one height at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await enterFreshLacuna(page);
+    // A second course gives Share its course picker beside the title.
+    await createCourse(page, 'Chemistry');
+    await page.setViewportSize({ width, height: 900 });
+    const heights: Record<string, number> = {};
+    for (const [route, name] of [
+      ['/settings', 'Settings'],
+      ['/analytics', 'Progress'],
+      ['/share', 'Share'],
+      ['/help', 'Help'],
+      ['/import', 'Import'],
+    ]) {
+      await page.goto(`/#${route}`);
+      const title = page.getByRole('heading', { level: 1, name, exact: true });
+      await expect(title).toBeVisible();
+      await page.evaluate(() =>
+        Promise.allSettled(document.getAnimations().map((animation) => animation.finished)),
+      );
+      heights[name] = Math.round((await title.boundingBox())!.y);
+    }
+    expect(new Set(Object.values(heights)).size, JSON.stringify(heights)).toBe(1);
+  });
+}
