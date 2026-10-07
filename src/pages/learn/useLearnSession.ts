@@ -1326,6 +1326,11 @@ export function useLearnSession({
       if (firstStudyLessonId && firstStudyLessonName) {
         const lessonNotes = await listNotes(firstStudyLessonId);
         if (cancelled) return;
+        // Nothing to read: start the cards rather than show an empty page to dismiss.
+        if (lessonNotes.length === 0 && cards.length > 0) {
+          serveNextRef.current();
+          return;
+        }
         setLessonNotesScreen({ lessonName: firstStudyLessonName, notes: lessonNotes });
         setPhase('notes');
         return;

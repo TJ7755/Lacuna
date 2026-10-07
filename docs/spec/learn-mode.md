@@ -48,6 +48,7 @@ learner may highlight source text and attach optional free-text annotations befo
 the card loop. Highlights and annotations persist on this device but are excluded from every
 portability format. The card loop then contains only lesson members without an exposure for
 that lesson, including both primary and explicitly linked cards.
+A lesson with cards but no notes starts directly on its first card.
 If the lesson has no cards, **Continue** records `LessonCompletion` and advances the path.
 Lesson authoring should favour fewer cards per pass and more lesson units where necessary;
 the aim is lower working-memory load, not less course content.

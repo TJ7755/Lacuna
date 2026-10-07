@@ -75,8 +75,11 @@ async function answerYesAndWaitForExposure(lessonId: string) {
   });
 }
 
+/** Leaves the notes screen; a lesson without notes opens on its first card instead. */
 async function continueFromNotes() {
-  fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+  const next = await screen.findAllByRole('button', { name: /^(continue|show answer)$/i });
+  const notesContinue = next.find((button) => /^continue$/i.test(button.textContent ?? ''));
+  if (notesContinue) fireEvent.click(notesContinue);
 }
 
 function studyFaceText(text: string | RegExp) {
