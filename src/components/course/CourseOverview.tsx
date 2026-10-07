@@ -281,8 +281,14 @@ export function CourseOverview(props: CourseOverviewProps) {
                       )}
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <span className="flex justify-between gap-3">
-                        <span className={cn('truncate font-bold', locked && 'text-ink-soft')}>
+                      <span className="flex items-baseline justify-between gap-3">
+                        {/* Wraps to a second line rather than losing the name on a phone. */}
+                        <span
+                          className={cn(
+                            'line-clamp-2 min-w-0 break-words font-bold',
+                            locked && 'text-ink-soft',
+                          )}
+                        >
                           {name}
                         </span>
                         <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">

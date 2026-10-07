@@ -249,7 +249,7 @@ export function LearnHeader({
           onClick={onOpenNav}
           aria-label="Open navigation"
           title="Open navigation"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 max-md:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 max-md:hidden"
         >
           <MenuIcon width={18} height={18} />
         </button>

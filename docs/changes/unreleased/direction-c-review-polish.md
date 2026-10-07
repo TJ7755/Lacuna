@@ -6,3 +6,4 @@
 - The sidebar course list fades the edge that hides more courses, and Today's course names wrap to two lines on a phone rather than truncating.
 - Text editors name their controls in words ("Maths" rather than "$x$"; Bold and Italic for screen readers), take Ctrl/Cmd+B and Ctrl/Cmd+I, and show a live preview beneath the Write tab once the text contains maths. The question editor's image button lines up with its fields and "Use separate parts" reads as a button.
 - Every Study and Start action ends with the same forward arrow (the lesson page used a play icon before its label), and an empty notes card is headed Notes like the cards beside it.
+- Lesson names on the course path wrap to a second line on a phone instead of truncating, and the study header's navigation button shares the framed style of its neighbours.
