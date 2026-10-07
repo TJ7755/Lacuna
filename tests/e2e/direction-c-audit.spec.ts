@@ -86,3 +86,20 @@ test('sidebar course names wrap to a second line instead of truncating', async (
   expect((await link.boundingBox())!.height).toBeLessThanOrEqual(56);
   expect((await name.boundingBox())!.height).toBeGreaterThan(30);
 });
+
+test('card row actions meet the 44px target on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .click();
+  await page.getByRole('link', { name: 'Cards', exact: true }).first().click();
+  // The row's inline actions carry a title; the swipe tray's buttons are full-height already.
+  await expect(page.locator('button[title="Edit card"]').first()).toBeAttached();
+  for (const name of ['Flag card', 'Edit card']) {
+    const box = (await page.locator(`button[title="${name}"]`).first().boundingBox())!;
+    expect(Math.min(box.width, box.height), name).toBeGreaterThanOrEqual(44);
+  }
+});

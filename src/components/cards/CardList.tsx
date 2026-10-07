@@ -1415,7 +1415,7 @@ const CardRow = React.memo(function CardRow({
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
                 className={cn(
-                  'min-h-11 rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
+                  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
                   flagged
                     ? 'text-accent opacity-100'
                     : 'text-ink-faint opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
@@ -1430,7 +1430,7 @@ const CardRow = React.memo(function CardRow({
                 data-press=""
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
-                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible"
               >
                 <EditIcon width={16} height={16} />
               </motion.button>
@@ -1443,7 +1443,7 @@ const CardRow = React.memo(function CardRow({
                   whileTap={{ scale: 0.85 }}
                   whileHover={{ scale: 1.08 }}
                   className={cn(
-                    'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible',
+                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 touch-visible',
                     linked
                       ? 'hover:bg-ink/5 hover:text-ink'
                       : 'hover:bg-negative/10 hover:text-negative',
