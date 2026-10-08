@@ -120,3 +120,50 @@ for (const width of [390, 1440]) {
     }
   });
 }
+
+test("a lesson's card list renders maths as the Cards page does", async ({ page }) => {
+  await openWelcomeCourse(page, 1440);
+  await page.getByText('Core concepts & rendering', { exact: true }).first().click();
+  const list = page.getByRole('complementary').filter({ hasText: 'Cards in this lesson' });
+  const row = list.getByRole('listitem').filter({ hasText: 'What is the derivative of' });
+  await expect(row.locator('.katex').first()).toBeVisible();
+  // KaTeX keeps the source in hidden MathML; outside the maths, no raw notation is left.
+  expect(
+    await row.evaluate((element) => {
+      const copy = element.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('.katex').forEach((maths) => maths.remove());
+      return copy.textContent;
+    }),
+  ).not.toContain('^');
+});
+
+test('a Markdown field marks focus on its whole frame, not an inner box', async ({ page }) => {
+  const course = await openWelcomeCourse(page, 1440);
+  await page.goto(`/#${course}/cards/new`);
+  const front = page.getByRole('textbox', { name: 'Front' });
+  await front.focus();
+  await page.keyboard.press('a');
+  // No visible inner ring: every shadow layer, if any, is transparent.
+  expect(
+    await front.evaluate((element) =>
+      getComputedStyle(element)
+        .boxShadow.split(/,(?![^(]*\))/)
+        .every((layer) => layer.trim() === 'none' || layer.includes('rgba(0, 0, 0, 0)')),
+    ),
+  ).toBe(true);
+  const frame = await front.evaluate((element) => {
+    let node = element.parentElement;
+    while (node && !node.className.includes('rounded-xl')) node = node.parentElement;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    return { border: getComputedStyle(node!).borderTopColor, accent };
+  });
+  const probe = await page.evaluate((accent) => {
+    const element = document.createElement('div');
+    element.style.color = `hsl(${accent})`;
+    document.body.append(element);
+    const colour = getComputedStyle(element).color;
+    element.remove();
+    return colour;
+  }, frame.accent);
+  expect(frame.border).toBe(probe);
+});
