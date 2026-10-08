@@ -5,3 +5,5 @@
 - Course settings' Lesson unlocking options line up as a list again; each radio had taken a text field's full-width styling and the three options scattered across the card.
 - Course settings no longer tells every course it is "managed by its author": the Shared course section and its Detach button appear again only on a locked shared copy.
 - Course settings' Scheduling optimisation card is headed like its neighbours, without the small "Advanced scheduling" label above it.
+- Progress: Workload ahead draws each day's due and new cards as stacked bars, so a course of all-new cards no longer spikes a line against the axis.
+- Course analytics: Lesson breakdown plots only mastery and completion; each lesson's card count moves to its tooltip ("Cell structure · 25 cards") instead of a dotted line on a hidden second scale. Chart tooltips list series in legend order rather than alphabetically.

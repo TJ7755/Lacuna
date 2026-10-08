@@ -21,6 +21,9 @@ export function useChartStyle() {
       tooltip: {
         // Recharts defaults to " : ", which reads as "Reviews : 3".
         separator: ': ',
+        // Recharts sorts rows by name by default; a constant keeps the series' own order,
+        // which is the legend's.
+        itemSorter: () => 0,
         contentStyle: {
           background: c.surface,
           border: 'none',

@@ -2,20 +2,21 @@
 // rather than in a repeated caption, and shares the chart look from chartStyle.
 
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   Line,
   LineChart,
+  Rectangle,
   Tooltip,
   XAxis,
   YAxis,
+  type BarShapeProps,
 } from 'recharts';
 import { ChartCard, ChartFrame } from './ChartCard';
 import { useChartStyle } from './chartStyle';
 import type { ForecastPoint, LessonBreakdownPoint } from './prepare';
 import type { PredictionAccuracyPoint } from '../../fsrs/calibration';
+import { countOf } from '../../utils/plural';
 
 const CHART_MARGIN = { top: 8, right: 12, bottom: 0, left: 0 };
 
@@ -25,7 +26,14 @@ const CHART_MARGIN = { top: 8, right: 12, bottom: 0, left: 0 };
  */
 const LESSON_TICK_CHARS = 22;
 export function lessonTickLabel(name: string): string {
-  return name.length > LESSON_TICK_CHARS ? `${name.slice(0, LESSON_TICK_CHARS - 1).trimEnd()}…` : name;
+  return name.length > LESSON_TICK_CHARS
+    ? `${name.slice(0, LESSON_TICK_CHARS - 1).trimEnd()}…`
+    : name;
+}
+
+/** Rounds a stacked bar's top corners only where it is the top of its column. */
+function stackTop(top: boolean): [number, number, number, number] {
+  return top ? [4, 4, 0, 0] : [0, 0, 0, 0];
 }
 
 /** Cards due and new cards per day for the next 30 days, stacked. */
@@ -55,35 +63,36 @@ export function WorkloadForecastCard({
       emptyMessage="Add cards to forecast reviews."
     >
       <ChartFrame>
-        <AreaChart data={forecast} margin={CHART_MARGIN}>
+        {/* Bars, not an area: each day's count stands alone, so a day of many new cards
+            reads as one tall bar rather than a spike dragging a line across its neighbours. */}
+        <BarChart data={forecast} margin={CHART_MARGIN} barCategoryGap="22%">
           <XAxis dataKey="label" interval={6} {...s.xAxis} />
           <YAxis allowDecimals={false} {...s.yAxis} />
-          <Tooltip {...s.tooltip} cursor={s.cursorLine} />
-          <Area
-            type="monotone"
+          <Tooltip {...s.tooltip} cursor={s.cursorBar} />
+          <Bar
             dataKey="due"
             name="Due"
-            stackId="1"
-            stroke={s.c.accent}
-            strokeWidth={2.5}
+            stackId="day"
+            maxBarSize={18}
             fill={s.c.accent}
-            fillOpacity={0.18}
-            dot={false}
+            shape={(props: BarShapeProps) => (
+              <Rectangle
+                {...props}
+                radius={stackTop((props.payload as ForecastPoint).newCards === 0)}
+              />
+            )}
             {...s.animate}
           />
-          <Area
-            type="monotone"
+          <Bar
             dataKey="newCards"
             name="New"
-            stackId="1"
-            stroke={s.c.positive}
-            strokeWidth={2.5}
+            stackId="day"
+            maxBarSize={18}
             fill={s.c.positive}
-            fillOpacity={0.18}
-            dot={false}
+            radius={stackTop(true)}
             {...s.animate}
           />
-        </AreaChart>
+        </BarChart>
       </ChartFrame>
     </ChartCard>
   );
@@ -177,7 +186,10 @@ export function PredictionAccuracyCard({ prediction }: { prediction: PredictionA
   );
 }
 
-/** Mastery and completion for each lesson, with its card count as a dotted line. */
+/**
+ * Mastery and completion for each lesson. Card counts stay in the tooltip and data table:
+ * plotted on a hidden second axis, a count read against the percentage scale.
+ */
 export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownPoint[] }) {
   const s = useChartStyle();
   const mean = (pick: (point: LessonBreakdownPoint) => number) =>
@@ -199,12 +211,6 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
       legend={[
         { label: 'Mastery', colour: s.c.accent, value: `${mean((p) => p.masteryPct)}%` },
         { label: 'Completion', colour: s.c.positive, value: `${mean((p) => p.completionPct)}%` },
-        {
-          label: 'Cards',
-          colour: s.c.inkFaint,
-          value: String(breakdown.reduce((sum, point) => sum + point.cardCount, 0)),
-          dashed: true,
-        },
       ]}
       emptyDrawing="course"
       empty={breakdown.length === 0}
@@ -222,18 +228,17 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
             height={72}
             tickFormatter={lessonTickLabel}
           />
-          <YAxis yAxisId="pct" domain={[0, 100]} unit="%" {...s.yAxis} width={44} />
-          <YAxis yAxisId="cards" orientation="right" allowDecimals={false} hide />
+          <YAxis domain={[0, 100]} unit="%" {...s.yAxis} width={44} />
           <Tooltip
             {...s.tooltip}
             cursor={s.cursorBar}
-            formatter={(v, name) => {
-              if (name === 'cardCount') return [v, 'Cards'];
-              return [`${v}%`, name === 'masteryPct' ? 'Mastery' : 'Completion'];
+            labelFormatter={(name, payload) => {
+              const cards = (payload[0]?.payload as LessonBreakdownPoint | undefined)?.cardCount;
+              return cards === undefined ? name : `${name} · ${countOf(cards, 'card')}`;
             }}
+            formatter={(v, name) => [`${v}%`, name === 'masteryPct' ? 'Mastery' : 'Completion']}
           />
           <Bar
-            yAxisId="pct"
             dataKey="masteryPct"
             radius={[8, 8, 0, 0]}
             maxBarSize={24}
@@ -241,21 +246,10 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
             {...s.animate}
           />
           <Bar
-            yAxisId="pct"
             dataKey="completionPct"
             radius={[8, 8, 0, 0]}
             maxBarSize={24}
             fill={s.c.positive}
-            {...s.animate}
-          />
-          <Line
-            yAxisId="cards"
-            type="monotone"
-            dataKey="cardCount"
-            stroke={s.c.inkFaint}
-            strokeWidth={2}
-            strokeDasharray="4 4"
-            dot={{ r: 3, fill: s.c.inkFaint, strokeWidth: 0 }}
             {...s.animate}
           />
         </BarChart>
