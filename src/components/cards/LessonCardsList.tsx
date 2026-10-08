@@ -1,11 +1,11 @@
 // "Cards in this lesson" — the compact card list beside the lesson's note. Each row
-// is the card's front on one line, its kind beneath and when it next comes up, as on
-// the Cards page; an occlusion card leads with its diagram. In
+// is the card's front, rendered as on the Cards page so maths shows as maths, its kind
+// beneath and when it next comes up; an occlusion card leads with its diagram. In
 // Edit mode a pencil and a New card button fade in; their slots are always laid
 // out, so nothing shifts when the mode changes. Bulk management (selecting,
 // deleting, importing, linking) lives in LessonCardsSection below.
 
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { PlusIcon, EditIcon } from '../ui/icons';
@@ -19,6 +19,10 @@ import { OcclusionThumbnail } from './OcclusionThumbnail';
 import { useOcclusions } from '../../state/useCourseData';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import type { Card } from '../../db/types';
+
+const CardContent = lazy(() =>
+  import('./CardContent').then((module) => ({ default: module.CardContent })),
+);
 
 /** Rows shown before the list hands over to the full Cards page. */
 const VISIBLE_ROWS = 8;
@@ -114,10 +118,14 @@ export function LessonCardsList({
                 className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-ink/[0.03]"
               >
                 {occlusion && <OcclusionThumbnail card={card} occlusion={occlusion} />}
-                <span className="flex min-w-0 flex-1 flex-col leading-snug">
-                  <span className="line-clamp-2 text-ink [overflow-wrap:anywhere]">{plainFront(card)}</span>
+                <div className="flex min-w-0 flex-1 flex-col leading-snug">
+                  <div className="card-row-clamp line-clamp-2 max-h-[3.75rem] text-ink [overflow-wrap:anywhere]">
+                    <Suspense fallback={plainFront(card)}>
+                      <CardContent card={card} side="front" />
+                    </Suspense>
+                  </div>
                   <span className="text-[13px] text-ink-soft">{cardKindLabel(card)}</span>
-                </span>
+                </div>
                 <ScheduleChip schedule={cardScheduleLabel(card, now)} />
                 <motion.span
                   {...fade}
