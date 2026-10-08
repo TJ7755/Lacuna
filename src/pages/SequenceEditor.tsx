@@ -519,7 +519,7 @@ export function SequenceEditor() {
                           type="button"
                           onClick={() => deleteChunkLabel(i)}
                           title="Delete chunk"
-                          className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                          className="hit-target rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                         >
                           Delete
                         </button>

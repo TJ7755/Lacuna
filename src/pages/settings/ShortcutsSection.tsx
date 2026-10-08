@@ -33,7 +33,7 @@ export function ShortcutsSection() {
             type="button"
             onClick={() => setCapturingAction(action)}
             className={cn(
-              'flex items-center justify-between rounded-lg border px-4 py-2.5 text-left transition-colors',
+              'flex items-center justify-between rounded-xl border px-4 py-2.5 text-left transition-colors',
               capturingAction === action
                 ? 'border-accent bg-accent-soft'
                 : 'border-line hover:border-line-strong',

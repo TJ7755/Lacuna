@@ -80,7 +80,7 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
                   onClick={() => toggleLesson(lesson.id)}
                   aria-pressed={active}
                   className={cn(
-                    'rounded-lg border px-3 py-1 text-xs transition-colors',
+                    'hit-target rounded-full border px-3 py-1 text-xs transition-colors',
                     active
                       ? 'border-accent bg-accent-soft text-accent'
                       : 'border-line text-ink-soft hover:border-line-strong',

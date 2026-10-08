@@ -106,7 +106,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
                 onClick={onClose}
                 aria-label="Close"
                 title="Close (Esc)"
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
               >
                 <CloseIcon width={18} height={18} />
               </button>

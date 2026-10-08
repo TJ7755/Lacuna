@@ -616,7 +616,7 @@ export function DateTimePicker({
                   <button
                     type="button"
                     onClick={() => navigateHeader(-1)}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
                     aria-label={`Previous ${headerUnit}`}
                   >
                     <ChevronLeftIcon width={16} height={16} />
@@ -628,7 +628,7 @@ export function DateTimePicker({
                       else if (pickerMode === 'months') enterMode('years');
                       else enterMode('months');
                     }}
-                    className="flex min-h-11 items-center justify-center rounded-lg px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
+                    className="flex min-h-11 items-center justify-center rounded-full px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
                     aria-label={
                       pickerMode === 'days'
                         ? 'Open month selector'
@@ -642,7 +642,7 @@ export function DateTimePicker({
                   <button
                     type="button"
                     onClick={() => navigateHeader(1)}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
                     aria-label={`Next ${headerUnit}`}
                   >
                     <ChevronRightIcon width={16} height={16} />
@@ -758,7 +758,7 @@ export function DateTimePicker({
                               onFocus={() => setMonthFocusIndex(i)}
                               onClick={() => selectMonth(i)}
                               className={cn(
-                                'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
+                                'rounded-xl px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
                                 isSelected
                                   ? 'bg-accent text-accent-fg'
                                   : isCurrent
@@ -804,7 +804,7 @@ export function DateTimePicker({
                               onFocus={() => setYearFocusIndex(i)}
                               onClick={() => selectYear(i)}
                               className={cn(
-                                'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
+                                'rounded-xl px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
                                 isSelected
                                   ? 'bg-accent text-accent-fg'
                                   : isCurrent
@@ -919,7 +919,7 @@ export function DateTimePicker({
                       onChange(ms);
                       setView({ year: nowComponents.year, month: nowComponents.month });
                     }}
-                    className="text-xs font-medium text-ink-soft transition-opacity hover:text-ink active:text-ink"
+                    className="hit-target text-xs font-medium text-ink-soft transition-opacity hover:text-ink active:text-ink"
                   >
                     Now
                   </button>
@@ -928,7 +928,7 @@ export function DateTimePicker({
                     onClick={() => {
                       if (commitTimeDrafts()) closePicker(true);
                     }}
-                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 active:opacity-80"
+                    className="hit-target rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 active:opacity-80"
                   >
                     Done
                   </button>

@@ -136,7 +136,7 @@ export function CourseHeader({
               onClick={startRename}
               aria-label={`Rename ${renameLabel}`}
               title={`Rename ${renameLabel}`}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <EditIcon width={17} height={17} />
             </button>

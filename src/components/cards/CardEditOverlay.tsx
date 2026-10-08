@@ -128,7 +128,7 @@ export function CardEditOverlay({
                 type="button"
                 onClick={() => setType(t.key)}
                 className={cn(
-                  'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
+                  'flex-1 hit-target rounded-full border px-4 py-2.5 text-sm transition-colors',
                   type === t.key
                     ? 'border-accent bg-accent-soft text-accent'
                     : 'border-line text-ink-soft hover:border-line-strong',

@@ -75,7 +75,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
                       <a
                         key={`${source.kind}-${source.id}`}
                         href={href}
-                        className="inline-flex min-h-11 items-center rounded-lg border border-line px-2.5 text-xs text-ink-soft hover:border-accent/50 hover:text-accent"
+                        className="inline-flex min-h-11 items-center rounded-full border border-line px-2.5 text-xs text-ink-soft hover:border-accent/50 hover:text-accent"
                       >
                         {source.label}
                       </a>

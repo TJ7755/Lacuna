@@ -87,7 +87,7 @@ export function NumericAnswerEditor({ value, onChange, invalid = false }: Numeri
                   onClick={() =>
                     onChange({ ...value, values: value.values.filter((_, i) => i !== index) })
                   }
-                  className="mt-2 min-h-11 rounded-lg px-3 text-sm text-negative transition-colors hover:bg-negative/10"
+                  className="mt-2 min-h-11 rounded-full px-3 text-sm text-negative transition-colors hover:bg-negative/10"
                 >
                   Remove answer
                 </button>
@@ -97,7 +97,7 @@ export function NumericAnswerEditor({ value, onChange, invalid = false }: Numeri
           <button
             type="button"
             onClick={() => onChange({ ...value, values: [...value.values, ''] })}
-            className="min-h-11 rounded-lg border border-line-strong px-4 text-sm text-ink-soft transition-colors hover:border-accent/60 hover:text-accent"
+            className="min-h-11 rounded-full border border-line-strong px-4 text-sm text-ink-soft transition-colors hover:border-accent/60 hover:text-accent"
           >
             Add accepted answer
           </button>

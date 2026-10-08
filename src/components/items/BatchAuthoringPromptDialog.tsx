@@ -114,7 +114,7 @@ export function BatchAuthoringPromptDialog({
           onClick={requestClose}
           aria-label="Close"
           title="Close (Esc)"
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
         >
           <CloseIcon width={18} height={18} />
         </button>
@@ -138,7 +138,7 @@ export function BatchAuthoringPromptDialog({
             aria-selected={mode === value}
             onClick={() => setMode(value)}
             className={cn(
-              'min-h-11 rounded-lg px-4 text-sm font-medium transition-colors',
+              'min-h-11 rounded-full px-4 text-sm font-medium transition-colors',
               mode === value
                 ? 'bg-accent-soft text-accent'
                 : 'text-ink-soft hover:bg-ink/5 hover:text-ink',

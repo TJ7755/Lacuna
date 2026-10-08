@@ -259,7 +259,7 @@ export function App() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-contrast transition hover:opacity-90 active:opacity-90"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-contrast transition hover:opacity-90 active:opacity-90"
           >
             Reload
           </button>

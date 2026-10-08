@@ -99,7 +99,7 @@ export function DialogHeader({ title, description, onClose, closeLabel }: Dialog
         aria-label={closeLabel}
         title="Close (Esc)"
         data-dialog-close
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <CloseIcon width={18} height={18} />
       </button>

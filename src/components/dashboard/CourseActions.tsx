@@ -57,7 +57,7 @@ export function CourseContextMenu({
       id="dashboard-course-actions"
       role="menu"
       aria-label={`Actions for ${course.name}`}
-      className="fixed z-[70] min-w-40 rounded-xl border border-line-strong bg-surface-raised p-1.5 shadow-xl shadow-black/15"
+      className="fixed z-[70] min-w-40 rounded-[18px] bg-surface-raised p-1.5 shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
       style={{ left: clampedPosition.x, top: clampedPosition.y }}
       onKeyDown={(event) => {
         event.stopPropagation();
@@ -71,7 +71,7 @@ export function CourseContextMenu({
       <button
         type="button"
         role="menuitem"
-        className="flex min-h-11 w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-none"
+        className="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-none"
         onClick={onArchive}
       >
         Archive

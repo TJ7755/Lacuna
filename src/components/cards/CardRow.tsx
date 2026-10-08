@@ -479,7 +479,7 @@ export const CardRow = React.memo(function CardRow({
                     type="button"
                     onClick={handleResumeClick}
                     title="Resume card"
-                    className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+                    className="min-h-11 rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
                   >
                     Resume
                   </button>
@@ -493,7 +493,7 @@ export const CardRow = React.memo(function CardRow({
                   whileTap={{ scale: 0.85 }}
                   whileHover={{ scale: 1.08 }}
                   className={cn(
-                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 transition-colors hover:bg-ink/5 hover:text-accent',
+                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 transition-colors hover:bg-ink/5 hover:text-accent',
                     flagged ? 'text-accent' : 'text-ink-faint',
                   )}
                 >
@@ -506,7 +506,7 @@ export const CardRow = React.memo(function CardRow({
                   data-press=""
                   whileTap={{ scale: 0.85 }}
                   whileHover={{ scale: 1.08 }}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
                 >
                   <EditIcon width={16} height={16} />
                 </motion.button>
@@ -519,7 +519,7 @@ export const CardRow = React.memo(function CardRow({
                     whileTap={{ scale: 0.85 }}
                     whileHover={{ scale: 1.08 }}
                     className={cn(
-                      'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-ink-faint transition-colors',
+                      'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-ink-faint transition-colors',
                       linked
                         ? 'hover:bg-ink/5 hover:text-ink'
                         : 'hover:bg-negative/10 hover:text-negative',

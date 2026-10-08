@@ -28,4 +28,15 @@ describe('design rules', () => {
       .map((path) => relative(SRC, path));
     expect(offenders).toEqual([]);
   });
+
+  // Buttons are pills (visual-design §3.1): a squared control reads as a leftover style.
+  it('gives no button or link a squared rounded-lg corner', () => {
+    const control = /<(?:button|Link|a|motion\.button)\b(?:(?!<|\/>)[\s\S])*?\brounded-lg\b/;
+    const offenders = sourceFiles(SRC)
+      .filter((path) => path.endsWith('.tsx'))
+      .filter((path) => !/^(pages[\\/]landing|components[\\/]welcome)/.test(relative(SRC, path)))
+      .filter((path) => control.test(readFileSync(path, 'utf8')))
+      .map((path) => relative(SRC, path));
+    expect(offenders).toEqual([]);
+  });
 });

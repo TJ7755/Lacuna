@@ -113,7 +113,7 @@ export function AiComposer({
             aria-label="Send message"
             disabled={disabled || sending || content.trim().length === 0}
             onClick={() => void send()}
-            className="flex h-8 min-w-16 items-center justify-center rounded-lg bg-accent px-4 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
+            className="hit-target flex h-8 min-w-16 items-center justify-center rounded-full bg-accent px-4 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
           >
             Send
           </button>

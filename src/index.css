@@ -299,6 +299,19 @@
 }
 
 @layer utilities {
+  /* A compact control keeps its look but takes a 44px target, centred on it. */
+  .hit-target {
+    position: relative;
+  }
+  .hit-target::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
   .text-balance {
     text-wrap: balance;
   }

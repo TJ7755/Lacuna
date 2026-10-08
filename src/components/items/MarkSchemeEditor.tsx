@@ -326,7 +326,7 @@ function FixtureRow({ fixture, scheme, onRemove, index }: { fixture: ItemFixture
       <span className={cn('rounded-lg px-2.5 py-1 text-xs font-medium', matches ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative')}>
         {matches ? 'Pass' : 'Mismatch'}
       </span>
-      <button type="button" onClick={onRemove} className="rounded-lg px-2 py-1 text-xs text-ink-faint hover:bg-ink/5 hover:text-ink">Remove</button>
+      <button type="button" onClick={onRemove} className="hit-target rounded-full px-2 py-1 text-xs text-ink-faint hover:bg-ink/5 hover:text-ink">Remove</button>
     </div>
   );
 }

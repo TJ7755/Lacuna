@@ -499,7 +499,7 @@ export function UnifiedImportPanel({
               setShareNotice(null);
             }}
             className={cn(
-              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 hit-target rounded-full border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
                 ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
@@ -516,7 +516,7 @@ export function UnifiedImportPanel({
               setShareNotice(null);
             }}
             className={cn(
-              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 hit-target rounded-full border px-4 py-2 text-sm font-medium transition-all',
               shareMode
                 ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
@@ -662,7 +662,7 @@ export function UnifiedImportPanel({
                       type="button"
                       onClick={() => setFormatOverride(formatOverride === f ? null : f)}
                       className={cn(
-                        'rounded-lg px-2.5 py-0.5 text-[10px] font-medium transition-all',
+                        'hit-target rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all',
                         formatOverride === f
                           ? 'border border-accent/40 bg-accent-soft text-accent'
                           : 'border border-transparent bg-ink/5 text-ink-faint hover:bg-ink/10',

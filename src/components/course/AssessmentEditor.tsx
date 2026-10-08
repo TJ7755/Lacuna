@@ -200,7 +200,7 @@ export function AssessmentEditor({
               aria-pressed={draft.coverageMode === mode}
               onClick={() => onChange({ ...draft, coverageMode: mode })}
               className={
-                'rounded-lg border px-3 py-2 text-sm transition-colors ' +
+                'hit-target rounded-full border px-3 py-2 text-sm transition-colors ' +
                 (draft.coverageMode === mode
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line text-ink-soft hover:border-line-strong')
@@ -225,7 +225,7 @@ export function AssessmentEditor({
                   aria-pressed={active}
                   onClick={() => toggleLesson(lesson.id)}
                   className={
-                    'rounded-lg border px-3 py-1 text-xs transition-colors ' +
+                    'hit-target rounded-full border px-3 py-1 text-xs transition-colors ' +
                     (active
                       ? 'border-accent bg-accent-soft text-accent'
                       : 'border-line text-ink-soft hover:border-line-strong')

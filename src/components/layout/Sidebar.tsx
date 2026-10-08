@@ -332,7 +332,7 @@ const CourseRow = memo(function CourseRow({
           aria-expanded={isExpanded}
           aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
           className={cn(
-            'relative flex shrink-0 items-center justify-center rounded-lg text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
+            'relative flex shrink-0 items-center justify-center rounded-full text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
             'h-11 w-11',
           )}
         >

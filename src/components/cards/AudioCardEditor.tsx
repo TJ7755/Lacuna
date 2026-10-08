@@ -139,7 +139,7 @@ export function AudioCardEditor({
               Choose or record an audio clip.
             </span>
           )}
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
             <UploadIcon width={16} height={16} />
             {parsed ? 'Replace' : 'Choose file'}
             <input

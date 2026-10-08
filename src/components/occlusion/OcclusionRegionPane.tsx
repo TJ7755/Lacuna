@@ -66,7 +66,7 @@ export function OcclusionRegionPane({
                   onClick={() => onSelect(region.id)}
                   aria-current={current}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
+                    'flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm transition-colors',
                     current ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                   )}
                 >
@@ -82,7 +82,7 @@ export function OcclusionRegionPane({
                   type="button"
                   onClick={() => onDelete(region.id)}
                   aria-label={`Delete ${name}`}
-                  className="shrink-0 rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                  className="hit-target shrink-0 rounded-full p-1.5 text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                 >
                   <CloseIcon width={14} height={14} />
                 </button>
@@ -173,7 +173,7 @@ function RoleButton({ label, active, onClick }: { label: string; active: boolean
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-11 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors',
         active
           ? 'border-accent bg-accent-soft text-accent-ink'
           : 'border-line text-ink-soft hover:border-line-strong hover:text-ink',

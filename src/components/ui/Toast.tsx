@@ -236,7 +236,7 @@ function ToastBar({
             toast.onDismiss?.();
             onDismiss();
           }}
-          className="shrink-0 rounded-lg p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+          className="hit-target shrink-0 rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
           aria-label="Dismiss"
         >
           <CloseIcon width={14} height={14} />

@@ -365,7 +365,7 @@ export function CoursePath() {
           <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
             <Link
               to={`/course/${courseId}/updates`}
-              className="inline-flex min-h-11 items-center rounded-lg bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+              className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
             >
               Review updates
             </Link>
