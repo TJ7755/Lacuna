@@ -27,6 +27,18 @@ for (const width of [390, 768, 1440]) {
   });
 }
 
+test('keeps the space between the link\'s two words', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await enterFreshLacuna(page);
+  const link = page
+    .getByRole('region', { name: 'New sharing features' })
+    .getByRole('link', { name: 'Explore sharing' });
+  // As separate flex items the words lost their space and read "Exploresharing".
+  expect(await link.evaluate((element) => (element as HTMLElement).innerText)).toBe(
+    'Explore sharing',
+  );
+});
+
 test('keeps the application usable when the optional announcement fails to load', async ({
   browser,
 }, testInfo) => {

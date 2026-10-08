@@ -51,7 +51,10 @@ export function SharingAnnouncement() {
           to="/share?highlight=share-link"
           onClick={dismiss}
         >
-          Explore<span className="sharing-announcement-action-detail"> sharing</span>
+          {/* One flex item, so the detail's leading space survives. */}
+          <span>
+            Explore<span className="sharing-announcement-action-detail"> sharing</span>
+          </span>
         </Link>
         <button
           type="button"
