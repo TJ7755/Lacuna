@@ -466,7 +466,11 @@ function AppShellLayout() {
           {studySheet.open && (
             <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
               <Suspense fallback={null}>
-                <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
+                <StudySheet
+                  courseId={studySheet.courseId}
+                  otherWays={studySheet.otherWays}
+                  onClose={studySheet.close}
+                />
               </Suspense>
             </OverlayLoadBoundary>
           )}

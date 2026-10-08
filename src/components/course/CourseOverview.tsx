@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import type { PathNode, PracticePathNode } from '../../course/path';
 import type { CourseAssessment, Lesson } from '../../db/types';
@@ -51,6 +51,8 @@ interface CourseOverviewProps {
   onAssessmentOpen: (id: string) => void;
   onAssessmentPractise: (id: string) => void;
   onAdd: (kind: Exclude<CourseAddKind, 'lesson'>) => void;
+  /** Rendered beneath the lessons, in the same column. */
+  summary?: (cardClassName: string) => ReactNode;
 }
 
 const CARD =
@@ -77,308 +79,314 @@ export function CourseOverview(props: CourseOverviewProps) {
 
   return (
     <div className="flex flex-wrap items-start gap-6">
-      <section
-        className={cn(CARD, 'min-w-0 flex-[2_1_520px] px-5 pb-3 pt-6 md:px-7 md:pt-7')}
-        aria-labelledby="course-path-heading"
-      >
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 id="course-path-heading" className="font-display text-[22px]">
-            Lessons
-          </h2>
+      <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-6">
+        <section
+          className={cn(CARD, 'min-w-0 px-5 pb-3 pt-6 md:px-7 md:pt-7')}
+          aria-labelledby="course-path-heading"
+        >
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 id="course-path-heading" className="font-display text-[22px]">
+              Lessons
+            </h2>
+            {authoring && (
+              <div ref={addRef}>
+                <AddCourseControl
+                  kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
+                  onAdd={(kind) => {
+                    if (kind === 'lesson') setAddingLesson(true);
+                    else props.onAdd(kind);
+                  }}
+                />
+              </div>
+            )}
+          </div>
           {authoring && (
-            <div ref={addRef}>
-              <AddCourseControl
-                kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
-                onAdd={(kind) => {
-                  if (kind === 'lesson') setAddingLesson(true);
-                  else props.onAdd(kind);
-                }}
+            <AnimatedDisclosure open={addingLesson} innerClassName="pb-3">
+              <AddLessonControl
+                initiallyOpen
+                courseId={props.courseId}
+                lessonCount={props.lessonCount}
+                onCancel={restoreAdd}
+                onCreated={props.onLessonCreated}
               />
-            </div>
+            </AnimatedDisclosure>
           )}
-        </div>
-        {authoring && (
-          <AnimatedDisclosure open={addingLesson} innerClassName="pb-3">
-            <AddLessonControl
-              initiallyOpen
-              courseId={props.courseId}
-              lessonCount={props.lessonCount}
-              onCancel={restoreAdd}
-              onCreated={props.onLessonCreated}
-            />
-          </AnimatedDisclosure>
-        )}
-        <p id="lesson-path-reorder-instructions" className="sr-only">
-          In Edit mode, drag this lesson to reorder; with touch, hold first. Alternatively, press
-          Alt and the up or down arrow key.
-        </p>
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {props.announcement}
-        </div>
-        {nodes.length === 0 ? (
-          <p className="py-12 text-center text-sm text-ink-soft">This course has no lessons yet.</p>
-        ) : (
-          <ol className="m-0 list-none p-0" aria-label="Course path">
-            {nodes.map((node, index) => {
-              const arrive = {
-                initial: m > 0 ? { opacity: 0, y: 10 } : false,
-                animate: { opacity: 1, y: 0 },
-                transition: {
-                  duration: 0.42 * m,
-                  delay: Math.min(index, 8) * 0.04 * m,
-                  ease: MOTION_EASING.emphasised,
-                },
-              } as const;
+          <p id="lesson-path-reorder-instructions" className="sr-only">
+            In Edit mode, drag this lesson to reorder; with touch, hold first. Alternatively, press
+            Alt and the up or down arrow key.
+          </p>
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {props.announcement}
+          </div>
+          {nodes.length === 0 ? (
+            <p className="py-12 text-center text-sm text-ink-soft">
+              This course has no lessons yet.
+            </p>
+          ) : (
+            <ol className="m-0 list-none p-0" aria-label="Course path">
+              {nodes.map((node, index) => {
+                const arrive = {
+                  initial: m > 0 ? { opacity: 0, y: 10 } : false,
+                  animate: { opacity: 1, y: 0 },
+                  transition: {
+                    duration: 0.42 * m,
+                    delay: Math.min(index, 8) * 0.04 * m,
+                    ease: MOTION_EASING.emphasised,
+                  },
+                } as const;
 
-              if (node.nodeType === 'checkpoint') {
-                const date = node.assessment.examDate;
-                return (
-                  <motion.li key={node.id} {...arrive} className="my-1.5 ml-[18px]">
-                    <div className="flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm">
-                      <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
-                      <button
-                        type="button"
-                        disabled={archived}
-                        onClick={() => props.onAssessmentOpen(node.assessment.id)}
-                        aria-label={`${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${node.assessment.name}`}
-                        className="min-h-11 flex-1 text-left"
-                      >
-                        <strong className="font-bold">{node.assessment.name}</strong>
-                        {date !== undefined && (
-                          <span className="text-ink-faint">
-                            {' · '}
-                            {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)}
-                          </span>
-                        )}
-                      </button>
-                      {!archived && (
+                if (node.nodeType === 'checkpoint') {
+                  const date = node.assessment.examDate;
+                  return (
+                    <motion.li key={node.id} {...arrive} className="my-1.5 ml-[18px]">
+                      <div className="flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm">
+                        <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
                         <button
                           type="button"
-                          onClick={() => props.onAssessmentPractise(node.assessment.id)}
-                          className="min-h-11 px-1 font-bold text-accent-ink hover:underline"
+                          disabled={archived}
+                          onClick={() => props.onAssessmentOpen(node.assessment.id)}
+                          aria-label={`${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${node.assessment.name}`}
+                          className="min-h-11 flex-1 text-left"
                         >
-                          Revise
+                          <strong className="font-bold">{node.assessment.name}</strong>
+                          {date !== undefined && (
+                            <span className="text-ink-faint">
+                              {' · '}
+                              {formatShortDate(date, node.assessment.timeZone ?? props.timeZone)}
+                            </span>
+                          )}
                         </button>
-                      )}
-                    </div>
-                  </motion.li>
-                );
-              }
+                        {!archived && (
+                          <button
+                            type="button"
+                            onClick={() => props.onAssessmentPractise(node.assessment.id)}
+                            className="min-h-11 px-1 font-bold text-accent-ink hover:underline"
+                          >
+                            Revise
+                          </button>
+                        )}
+                      </div>
+                    </motion.li>
+                  );
+                }
 
-              if (node.nodeType === 'practice-question-set') {
+                if (node.nodeType === 'practice-question-set') {
+                  return (
+                    <motion.li key={node.id} {...arrive} className="relative flex flex-col">
+                      <QuestionSetCourseRow
+                        node={node}
+                        index={index}
+                        authoring={authoring && !archived}
+                      />
+                    </motion.li>
+                  );
+                }
+
+                const lesson = node.nodeType === 'lesson' ? node : undefined;
+                const practice =
+                  node.nodeType === 'practice-manual' || node.nodeType === 'practice-auto'
+                    ? node
+                    : undefined;
+                const progress = practice ? practiceProgress.get(practice.nodeKey) : undefined;
+                const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
+                const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
+                const reorder =
+                  lesson && authoring ? props.reorderFor(lesson.lesson.id) : undefined;
+                if (lesson) lessonNumber += 1;
+                const name = lesson
+                  ? lesson.lesson.name
+                  : (practice?.practiceNode?.name ?? 'Card practice');
+                const pct = lesson
+                  ? (detail?.masteryPct ?? 0)
+                  : Math.round((progress?.fraction ?? 0) * 100);
+                const done = status === 'completed';
+                const locked = status === 'locked';
+                const state = lesson
+                  ? locked
+                    ? (props.lockHint(lesson.lesson.id) ?? 'Locked')
+                    : done && pct >= SECURE
+                      ? 'Secure'
+                      : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
+                  : `${pct}% secured`;
+                const label = practice
+                  ? `Card practice: ${name}, ${pct}% secured`
+                  : locked && authoring
+                    ? `${name}, locked for study`
+                    : name;
+                const open = () => {
+                  if (lesson) props.onLessonOpen(lesson.lesson.id);
+                  else if (practice) props.onPracticeOpen(practice);
+                };
+
+                const lessonId = lesson?.lesson.id;
+                const position = lessonNumber - 1;
                 return (
-                  <motion.li key={node.id} {...arrive} className="relative flex flex-col">
-                    <QuestionSetCourseRow
-                      node={node}
-                      index={index}
-                      authoring={authoring && !archived}
-                    />
-                  </motion.li>
-                );
-              }
-
-              const lesson = node.nodeType === 'lesson' ? node : undefined;
-              const practice =
-                node.nodeType === 'practice-manual' || node.nodeType === 'practice-auto'
-                  ? node
-                  : undefined;
-              const progress = practice ? practiceProgress.get(practice.nodeKey) : undefined;
-              const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
-              const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
-              const reorder = lesson && authoring ? props.reorderFor(lesson.lesson.id) : undefined;
-              if (lesson) lessonNumber += 1;
-              const name = lesson
-                ? lesson.lesson.name
-                : (practice?.practiceNode?.name ?? 'Card practice');
-              const pct = lesson
-                ? (detail?.masteryPct ?? 0)
-                : Math.round((progress?.fraction ?? 0) * 100);
-              const done = status === 'completed';
-              const locked = status === 'locked';
-              const state = lesson
-                ? locked
-                  ? (props.lockHint(lesson.lesson.id) ?? 'Locked')
-                  : done && pct >= SECURE
-                    ? 'Secure'
-                    : `${countOf(detail?.cardCount ?? 0, 'card')}${detail?.dueCount ? ` · ${detail.dueCount} due` : ''}${lesson.lesson.isExtension ? ' · Extension' : ''}`
-                : `${pct}% secured`;
-              const label = practice
-                ? `Card practice: ${name}, ${pct}% secured`
-                : locked && authoring
-                  ? `${name}, locked for study`
-                  : name;
-              const open = () => {
-                if (lesson) props.onLessonOpen(lesson.lesson.id);
-                else if (practice) props.onPracticeOpen(practice);
-              };
-
-              const lessonId = lesson?.lesson.id;
-              const position = lessonNumber - 1;
-              return (
-                <motion.li
-                  key={node.id}
-                  {...arrive}
-                  // Each animated row is its own stacking context; lift the one whose
-                  // menu is open above the rows after it.
-                  className="relative flex flex-col has-[[aria-expanded=true]]:z-20"
-                  data-path-lesson={lessonId}
-                  {...(authoring && lessonId
-                    ? lessonContextMenu(() => lessonMenus.current.get(lessonId))
-                    : {})}
-                >
-                  <motion.button
-                    // Motion keeps the first ref it is given, so remount when authoring
-                    // starts or the reorder hook never sees this row.
-                    key={authoring ? 'author' : 'study'}
-                    ref={reorder?.registerElement}
-                    type="button"
-                    aria-label={label}
-                    aria-describedby={
-                      reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined
-                    }
-                    aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
-                    aria-roledescription={reorder?.enabled ? 'sortable lesson' : undefined}
-                    title={locked && lesson ? props.lockHint(lesson.lesson.id) : undefined}
-                    disabled={locked && !authoring && !archived}
-                    onPointerDown={reorder?.onPointerDown}
-                    onPointerMove={reorder?.onPointerMove}
-                    onPointerUp={reorder?.onPointerUp}
-                    onPointerCancel={reorder?.onPointerCancel}
-                    onClickCapture={reorder?.onClickCapture}
-                    onKeyDown={reorder?.onKeyDown}
-                    onClick={open}
-                    style={{
-                      x: reorder?.offset?.x ?? 0,
-                      y: reorder?.offset?.y ?? 0,
-                      zIndex: reorder?.lifted ? 30 : undefined,
-                    }}
-                    data-press=""
-                    whileTap={m ? { scale: 0.99 } : undefined}
-                    className={cn(
-                      'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
-                      'hover:bg-ink/[0.03] disabled:cursor-default',
-                      authoring && (lesson || practice) && 'pr-[60px]',
-                      reorder?.lifted &&
-                        'bg-surface shadow-[0_18px_40px_-20px_hsl(var(--ink)/0.45)]',
-                    )}
+                  <motion.li
+                    key={node.id}
+                    {...arrive}
+                    // Each animated row is its own stacking context; lift the one whose
+                    // menu is open above the rows after it.
+                    className="relative flex flex-col has-[[aria-expanded=true]]:z-20"
+                    data-path-lesson={lessonId}
+                    {...(authoring && lessonId
+                      ? lessonContextMenu(() => lessonMenus.current.get(lessonId))
+                      : {})}
                   >
-                    <span
-                      aria-hidden="true"
+                    <motion.button
+                      // Motion keeps the first ref it is given, so remount when authoring
+                      // starts or the reorder hook never sees this row.
+                      key={authoring ? 'author' : 'study'}
+                      ref={reorder?.registerElement}
+                      type="button"
+                      aria-label={label}
+                      aria-describedby={
+                        reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined
+                      }
+                      aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
+                      aria-roledescription={reorder?.enabled ? 'sortable lesson' : undefined}
+                      title={locked && lesson ? props.lockHint(lesson.lesson.id) : undefined}
+                      disabled={locked && !authoring && !archived}
+                      onPointerDown={reorder?.onPointerDown}
+                      onPointerMove={reorder?.onPointerMove}
+                      onPointerUp={reorder?.onPointerUp}
+                      onPointerCancel={reorder?.onPointerCancel}
+                      onClickCapture={reorder?.onClickCapture}
+                      onKeyDown={reorder?.onKeyDown}
+                      onClick={open}
+                      style={{
+                        x: reorder?.offset?.x ?? 0,
+                        y: reorder?.offset?.y ?? 0,
+                        zIndex: reorder?.lifted ? 30 : undefined,
+                      }}
+                      data-press=""
+                      whileTap={m ? { scale: 0.99 } : undefined}
                       className={cn(
-                        'grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 text-sm font-bold tabular-nums',
-                        done
-                          ? 'border-positive bg-positive text-surface'
-                          : locked
-                            ? 'border-line-strong bg-surface text-ink-faint'
-                            : 'border-ink bg-surface text-ink',
+                        'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
+                        'hover:bg-ink/[0.03] disabled:cursor-default',
+                        authoring && (lesson || practice) && 'pr-[60px]',
+                        reorder?.lifted &&
+                          'bg-surface shadow-[0_18px_40px_-20px_hsl(var(--ink)/0.45)]',
                       )}
                     >
-                      {practice ? (
-                        <CardsIcon width={16} height={16} />
-                      ) : done && pct >= SECURE ? (
-                        <CheckIcon width={16} height={16} />
-                      ) : (
-                        lessonNumber
-                      )}
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      {/* The name wraps to a second line rather than losing itself on a phone,
-                          and keeps 8rem so the counts drop beneath it before a word breaks. */}
-                      <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                        <span
-                          className={cn(
-                            'line-clamp-2 min-w-[8rem] flex-[1_1_8rem] break-words font-bold',
-                            locked && 'text-ink-soft',
-                          )}
-                        >
-                          {name}
-                        </span>
-                        <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">
-                          {state}
-                        </span>
-                      </span>
                       <span
                         aria-hidden="true"
-                        className="block h-1 overflow-hidden rounded-full bg-line"
+                        className={cn(
+                          'grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 text-sm font-bold tabular-nums',
+                          done
+                            ? 'border-positive bg-positive text-surface'
+                            : locked
+                              ? 'border-line-strong bg-surface text-ink-faint'
+                              : 'border-ink bg-surface text-ink',
+                        )}
                       >
-                        <motion.span
-                          className={cn(
-                            'block h-1 origin-left rounded-full',
-                            done ? 'bg-positive' : 'bg-ink',
-                          )}
-                          style={{ width: `${locked ? 0 : pct}%` }}
-                          initial={m > 0 ? { scaleX: 0 } : false}
-                          animate={{ scaleX: 1 }}
-                          transition={{
-                            duration: 0.7 * m,
-                            delay: (0.15 + Math.min(index, 8) * 0.04) * m,
-                            ease: MOTION_EASING.emphasised,
+                        {practice ? (
+                          <CardsIcon width={16} height={16} />
+                        ) : done && pct >= SECURE ? (
+                          <CheckIcon width={16} height={16} />
+                        ) : (
+                          lessonNumber
+                        )}
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        {/* The name wraps to a second line rather than losing itself on a phone,
+                          and keeps 8rem so the counts drop beneath it before a word breaks. */}
+                        <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                          <span
+                            className={cn(
+                              'line-clamp-2 min-w-[8rem] flex-[1_1_8rem] break-words font-bold',
+                              locked && 'text-ink-soft',
+                            )}
+                          >
+                            {name}
+                          </span>
+                          <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">
+                            {state}
+                          </span>
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="block h-1 overflow-hidden rounded-full bg-line"
+                        >
+                          <motion.span
+                            className={cn(
+                              'block h-1 origin-left rounded-full',
+                              done ? 'bg-positive' : 'bg-ink',
+                            )}
+                            style={{ width: `${locked ? 0 : pct}%` }}
+                            initial={m > 0 ? { scaleX: 0 } : false}
+                            animate={{ scaleX: 1 }}
+                            transition={{
+                              duration: 0.7 * m,
+                              delay: (0.15 + Math.min(index, 8) * 0.04) * m,
+                              ease: MOTION_EASING.emphasised,
+                            }}
+                          />
+                        </span>
+                      </span>
+                      {!(authoring && (lesson || practice)) && (
+                        <ChevronRightIcon
+                          width={16}
+                          height={16}
+                          className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
+                        />
+                      )}
+                    </motion.button>
+                    {authoring && lesson && (
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                        <LessonActionsMenu
+                          lesson={lesson.lesson}
+                          position={position}
+                          count={props.lessonCount}
+                          onMove={(delta) => props.onLessonMove(lesson.lesson.id, delta)}
+                          handle={(menu) => {
+                            if (menu) lessonMenus.current.set(lesson.lesson.id, menu);
+                            else lessonMenus.current.delete(lesson.lesson.id);
+                          }}
+                          onDeleted={() => {
+                            const following = nodes
+                              .slice(index + 1)
+                              .find((candidate) => candidate.nodeType === 'lesson');
+                            const preceding = nodes
+                              .slice(0, index)
+                              .reverse()
+                              .find((candidate) => candidate.nodeType === 'lesson');
+                            focusAfterLessonDeletion(
+                              [following, preceding]
+                                .filter((candidate) => candidate !== undefined)
+                                .map((candidate) => `[data-path-lesson="${candidate.id}"] > button`)
+                                .concat('#course-path-heading', 'main h1'),
+                            );
                           }}
                         />
-                      </span>
-                    </span>
-                    {!(authoring && (lesson || practice)) && (
-                      <ChevronRightIcon
-                        width={16}
-                        height={16}
-                        className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
+                      </div>
+                    )}
+                    {authoring && practice && (
+                      <button
+                        type="button"
+                        aria-label={`Edit ${name}`}
+                        onClick={() => props.onPracticeEdit(practice)}
+                        className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
+                      >
+                        <EditIcon width={14} height={14} />
+                      </button>
+                    )}
+                    {reorder?.dropMarker && (
+                      <div
+                        aria-hidden="true"
+                        className={cn(
+                          'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-accent',
+                          reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
+                        )}
                       />
                     )}
-                  </motion.button>
-                  {authoring && lesson && (
-                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                      <LessonActionsMenu
-                        lesson={lesson.lesson}
-                        position={position}
-                        count={props.lessonCount}
-                        onMove={(delta) => props.onLessonMove(lesson.lesson.id, delta)}
-                        handle={(menu) => {
-                          if (menu) lessonMenus.current.set(lesson.lesson.id, menu);
-                          else lessonMenus.current.delete(lesson.lesson.id);
-                        }}
-                        onDeleted={() => {
-                          const following = nodes
-                            .slice(index + 1)
-                            .find((candidate) => candidate.nodeType === 'lesson');
-                          const preceding = nodes
-                            .slice(0, index)
-                            .reverse()
-                            .find((candidate) => candidate.nodeType === 'lesson');
-                          focusAfterLessonDeletion(
-                            [following, preceding]
-                              .filter((candidate) => candidate !== undefined)
-                              .map((candidate) => `[data-path-lesson="${candidate.id}"] > button`)
-                              .concat('#course-path-heading', 'main h1'),
-                          );
-                        }}
-                      />
-                    </div>
-                  )}
-                  {authoring && practice && (
-                    <button
-                      type="button"
-                      aria-label={`Edit ${name}`}
-                      onClick={() => props.onPracticeEdit(practice)}
-                      className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
-                    >
-                      <EditIcon width={14} height={14} />
-                    </button>
-                  )}
-                  {reorder?.dropMarker && (
-                    <div
-                      aria-hidden="true"
-                      className={cn(
-                        'pointer-events-none absolute inset-x-3 h-0.5 rounded-full bg-accent',
-                        reorder.dropMarker === 'before' ? '-top-px' : '-bottom-px',
-                      )}
-                    />
-                  )}
-                </motion.li>
-              );
-            })}
-          </ol>
-        )}
-      </section>
+                  </motion.li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+        {props.summary?.(CARD)}
+      </div>
       {props.assessments.length > 0 && (
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
           <section

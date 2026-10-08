@@ -1,5 +1,6 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-// The study decision as a bottom sheet rather than a full-screen route.
+// The study decision as a sheet rather than a full-screen route: a bottom sheet on a
+// phone, whose handle swipes it away, and the shared centred dialogue on wider screens.
 //
 // It used to be a page: tapping Study committed you to a screen that cost two taps to
 // leave, so an accidental tap was expensive and the decision did not feel reversible.
@@ -10,13 +11,15 @@ import { ModalBackdrop } from '../ui/ModalBackdrop';
 // Review today with no course, in which case it asks which course first. Picker and
 // course options share one sheet: the chrome stays put and the step crossfades.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useCourse, useCourses } from '../../state/useCourseData';
 import { useCourseStudyFlow } from '../../state/useCourseStudyFlow';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { DialogPanel } from '../ui/DialogPanel';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
 import { ArrowRightIcon, ChevronLeftIcon } from '../ui/icons';
@@ -26,10 +29,13 @@ import { SimpleLearnOptions } from './SimpleLearnOptions';
 
 export function StudySheet({
   courseId,
+  otherWays = true,
   onClose,
 }: {
   /** Null opens the sheet at the course picker; a course opens it at that course's options. */
   courseId: string | null;
+  /** False when the opener already offers Other ways beside its Study button. */
+  otherWays?: boolean;
   onClose: () => void;
 }) {
   // Chosen within the sheet when it opened without a course.
@@ -56,6 +62,7 @@ export function StudySheet({
         {scopedCourseId ? (
           <CourseStudyOptions
             courseId={scopedCourseId}
+            otherWays={otherWays}
             onBack={
               courseId === null
                 ? () => {
@@ -80,10 +87,56 @@ export function StudySheet({
   );
 }
 
+/** How far the handle must travel down before letting go closes the sheet. */
+const DISMISS_DISTANCE = 80;
+const LABEL = 'Choose what to study';
+
 function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const wide = useMediaQuery('(min-width: 768px)');
+  const trapRef = useFocusTrap(true);
+  if (wide) {
+    return (
+      <DialogPanel
+        label={LABEL}
+        trapRef={trapRef}
+        // Escape is handled by StudySheet for both forms.
+        onKeyDown={() => undefined}
+        onBackdropClick={onClose}
+        className="max-h-[85vh] max-w-2xl overflow-y-auto px-8 pb-7 pt-8"
+      >
+        {children}
+      </DialogPanel>
+    );
+  }
+  return (
+    <PhoneSheet trapRef={trapRef} onClose={onClose}>
+      {children}
+    </PhoneSheet>
+  );
+}
+
+function PhoneSheet({
+  children,
+  trapRef,
+  onClose,
+}: {
+  children: React.ReactNode;
+  trapRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const trapRef = useFocusTrap(true);
+  // The sheet follows the finger down from its handle; far enough closes it, otherwise
+  // it settles back.
+  const start = useRef<number | null>(null);
+  const [offset, setOffset] = useState(0);
+  const release = (clientY: number) => {
+    if (start.current === null) return;
+    const distance = clientY - start.current;
+    start.current = null;
+    if (distance >= DISMISS_DISTANCE) onClose();
+    else setOffset(0);
+  };
 
   return (
     <motion.div
@@ -95,7 +148,7 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
       className="fixed inset-0 z-50"
       role="dialog"
       aria-modal="true"
-      aria-label="Choose what to study"
+      aria-label={LABEL}
       onClick={onClose}
     >
       <ModalBackdrop shade={30} />
@@ -104,11 +157,34 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 120, opacity: 0 }}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl border-t border-line-strong md:bottom-6 md:mx-auto md:max-w-2xl md:rounded-3xl md:border bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5 shadow-2xl shadow-black/20"
+        style={{ bottom: -offset }}
+        className={cn(
+          'absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_-16px_40px_-20px_hsl(var(--ink)/0.35)]',
+          start.current === null && 'transition-[bottom] duration-200 ease-out',
+        )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-ink/15" aria-hidden="true" />
-        <div className="mx-auto max-w-xl">{children}</div>
+        {/* A tall, full-width strip, so the handle is easy to catch with a thumb. */}
+        <div
+          data-testid="study-sheet-handle"
+          aria-hidden="true"
+          className="-mx-6 flex h-8 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+          onPointerDown={(event) => {
+            start.current = event.clientY;
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            if (start.current !== null) setOffset(Math.max(0, event.clientY - start.current));
+          }}
+          onPointerUp={(event) => release(event.clientY)}
+          onPointerCancel={() => {
+            start.current = null;
+            setOffset(0);
+          }}
+        >
+          <div className="h-1.5 w-12 rounded-full bg-ink/15" />
+        </div>
+        <div className="mx-auto max-w-xl pt-2">{children}</div>
       </motion.div>
     </motion.div>
   );
@@ -155,10 +231,12 @@ function CoursePicker({
 
 function CourseStudyOptions({
   courseId,
+  otherWays,
   onBack,
   onClose,
 }: {
   courseId: string;
+  otherWays: boolean;
   onBack?: () => void;
   onClose: () => void;
 }) {
@@ -253,7 +331,7 @@ function CourseStudyOptions({
         </p>
       )}
 
-      {(canReviewDueCards || assessments.length > 0 || (course && !course.archived)) && (
+      {otherWays && (canReviewDueCards || assessments.length > 0 || (course && !course.archived)) && (
         <section aria-label="Other ways" className="mt-1 flex flex-col gap-2 border-t border-line pt-3">
           <h3 className="text-sm font-semibold text-ink-soft">Other ways</h3>
           {canReviewDueCards && (

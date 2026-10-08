@@ -275,19 +275,24 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, due review, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. Study opens the study sheet, which previews today's session before **Start session**:
+routes. Study opens the study sheet (a bottom sheet on a phone, whose handle swipes it away; the
+shared centred dialogue from 768px), which previews today's session before **Start session**:
 the planner's next step (a lesson with its card and new-card counts, a Card practice or due review
 with its card count), then **Review due cards** when due reviews remain, marked as offered next
 because the between-steps screen offers them beside Continue. Each step and the session carry an
 "about N min" estimate from the course's mean review time, counting a new card as three reviews;
 a step with no cards has no estimate and the session total is then omitted. The sheet never shows
-steps beyond those two, since the planner decides one step at a time. Below the plan, **Other
-ways** offers due review on its own, each applicable named assessment and Practise until all
-correct. When an imminent
+steps beyond those two, since the planner decides one step at a time. Opened from Today, the
+plan is followed by **Other ways**: due review on its own, each applicable named assessment and
+Practise until all correct. Opened from a course page, which has its own Other ways menu beside
+Study, the sheet leaves that section out. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
-generic choice and enters that exact scope. Beside **Study**, an **Other ways** menu offers
+generic choice and enters that exact scope. Before **Study**, a ring shows the course's reviews
+due today, filling as the day's are done and completing with a tick once none are due; the course's
+exam-day recall, card and lesson counts sit in one card beneath its lessons. Beside **Study**, an
+**Other ways** menu offers
 **Only review due cards** (course-wide due review, directly) and each upcoming assessment. Every
 course entry point is the same `CourseStudyActions` pair, a one-lesson course included, and
 Today's **Study** on a course row (and the S shortcut there) opens the same study sheet, so Study

@@ -34,10 +34,9 @@ import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { CourseStudyActions } from '../components/course/CourseStudyActions';
-import { CalendarIcon, CardsIcon, GaugeIcon } from '../components/ui/icons';
-import { cn } from '../components/ui/cn';
+import { CourseSummaryCard } from '../components/course/CourseSummaryCard';
 import { forecastStatus } from '../components/dashboard/ForecastChart';
-import { formatDate, formatShortDate } from '../utils/datetime';
+import { formatShortDate, startOfDay } from '../utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';
 import { isLessonAuthoringMode } from '../course/lessonViewMode';
@@ -59,6 +58,10 @@ interface PracticeNodeProgress {
   scopeVersion: string;
   assessment?: AssessmentPracticeOption;
 }
+
+
+// The course page's Other ways menu sits beside Study, so its session plan leaves them out.
+const PAGE_OFFERS_OTHER_WAYS = { otherWays: false };
 
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -280,7 +283,7 @@ export function CoursePath() {
   usePageShortcuts({
     s:
       dataLoaded && course && !archived && !inlineLesson
-        ? () => openStudySheet(courseId)
+        ? () => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)
         : undefined,
   });
 
@@ -372,11 +375,17 @@ export function CoursePath() {
           navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
       })),
   ];
+  // Course cards reviewed since the start of today fill the ring beside Study.
+  const todayStart = startOfDay(now, course.timeZone);
+  const doneToday = (courseCards ?? []).filter(
+    (card) => card.lastReviewed !== null && card.lastReviewed >= todayStart,
+  ).length;
   const studyActions = (disabled = false) => (
     <CourseStudyActions
       dueCount={dueCardCount}
+      doneToday={doneToday}
       disabled={disabled}
-      onStudy={() => openStudySheet(courseId)}
+      onStudy={() => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)}
       otherWays={otherWays}
     />
   );
@@ -404,7 +413,7 @@ export function CoursePath() {
             courseId={courseId}
             lessonId={lessons[0].id}
             studyActions={archived ? undefined : studyActions}
-            onStudy={() => openStudySheet(courseId)}
+            onStudy={() => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)}
             courseCardCount={courseCards?.length ?? 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
@@ -419,11 +428,10 @@ export function CoursePath() {
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
-  // Header stats: nearest exam + urgency use the same maths as LessonView's
-  // (see courseHeaderStats); mastery is passed in from the course-level summary
-  // (extension-lesson cards already excluded there). The due count is the
-  // snapshot's, so it matches the Review due cards session it opens.
-  const { nearestExam, mastery } = courseHeaderStats(
+  // Summary figures: mastery is passed in from the course-level summary (extension-lesson
+  // cards already excluded there) and stands in for the forecast until it loads. The due
+  // count is the snapshot's, so it matches the Review due cards session it opens.
+  const { mastery } = courseHeaderStats(
     course,
     assessments,
     summary?.mastery ?? 0,
@@ -465,36 +473,7 @@ export function CoursePath() {
               : undefined
           }
           renameLabel="course"
-        >
-          <div className="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-ink-soft">
-            {nearestExam !== undefined && (
-              <span className="inline-flex items-center gap-2">
-                <CalendarIcon width={16} height={16} aria-hidden="true" />
-                Exam{' '}
-                <strong className="text-ink">{formatDate(nearestExam, course.timeZone)}</strong>
-              </span>
-            )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-2',
-                status === 'ahead'
-                  ? 'text-positive'
-                  : status === 'behind'
-                    ? 'text-warning-fg'
-                    : 'text-ink-soft',
-              )}
-              aria-label={`${forecastPct}% ${nearestExam !== undefined ? 'exam-day forecast' : 'kept fresh'}`}
-            >
-              <GaugeIcon width={16} height={16} aria-hidden="true" />
-              <strong>{forecastPct}%</strong>
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <CardsIcon width={16} height={16} aria-hidden="true" />
-              {cardTotal} {cardTotal === 1 ? 'card' : 'cards'} in {lessonTotal}{' '}
-              {lessonTotal === 1 ? 'lesson' : 'lessons'}
-            </span>
-          </div>
-        </CourseHeader>
+        />
         {!archived && (
 studyActions()
         )}
@@ -509,6 +488,15 @@ studyActions()
       )}
       {archived && <ArchivedCourseRestoreNotice />}
       <CourseOverview
+        summary={(cardClassName) => (
+          <CourseSummaryCard
+            className={cardClassName}
+            recallPct={forecastPct}
+            status={status ?? 'steady'}
+            cards={cardTotal}
+            lessons={lessonTotal}
+          />
+        )}
         courseId={course.id}
         nodes={visibleNodes}
         lessonCount={lessons.length}

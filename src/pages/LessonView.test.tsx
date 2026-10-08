@@ -164,6 +164,7 @@ function renderInline(
               ? (disabled) => (
                   <CourseStudyActions
                     dueCount={0}
+                    doneToday={0}
                     disabled={disabled}
                     onStudy={mockOnStudy}
                     otherWays={[

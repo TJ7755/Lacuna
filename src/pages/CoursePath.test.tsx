@@ -168,8 +168,9 @@ vi.mock('../state/motionSpeed', () => ({
   speedMultiplier: () => 1,
 }));
 
+const mockOpenStudySheet = vi.hoisted(() => vi.fn());
 vi.mock('../components/learn/StudySheetContext', () => ({
-  useStudySheet: () => ({ openStudySheet: vi.fn() }),
+  useStudySheet: () => ({ openStudySheet: mockOpenStudySheet }),
 }));
 
 const course: Course = {
@@ -440,6 +441,22 @@ describe('CoursePath View mode', () => {
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
     expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
+  it('keeps course figures in one compact card under the lessons, not under the title', () => {
+    mockCourseCards = [makeCard('card-1', 'lesson-1')];
+    renderPage();
+
+    const summary = screen.getByRole('region', { name: 'Course summary' });
+    expect(summary).toHaveTextContent('Exam-day recall');
+    expect(summary).toHaveTextContent(/1\s*Card(?!s)/);
+    expect(screen.queryByText(/cards? in \d+ lessons?/)).not.toBeInTheDocument();
+  });
+
+  it('opens the session plan without its own Other ways, which sit beside Study', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1', { otherWays: false });
   });
 
   it('starts course-wide practice from the header', () => {

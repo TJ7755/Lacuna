@@ -61,11 +61,14 @@ const chemistry: Course = {
   practiceMaxGap: 5,
 };
 
-function renderSheet(courseId: string | null = null) {
+function renderSheet(
+  courseId: string | null = null,
+  { onClose = vi.fn(), otherWays = true }: { onClose?: () => void; otherWays?: boolean } = {},
+) {
   return render(
     <LazyMotion features={domAnimation}>
       <MemoryRouter>
-        <StudySheet courseId={courseId} onClose={vi.fn()} />
+        <StudySheet courseId={courseId} otherWays={otherWays} onClose={onClose} />
       </MemoryRouter>
     </LazyMotion>,
   );
@@ -144,5 +147,49 @@ describe('StudySheet', () => {
 
     expect(screen.getByRole('heading', { name: 'Chemistry' })).toBeInTheDocument();
     expect(screen.getByText('Working out what is next…')).toBeInTheDocument();
+  });
+
+  it('leaves Other ways to the course page that opened it', () => {
+    mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
+    renderSheet('chem', { otherWays: false });
+    expect(screen.queryByRole('region', { name: 'Other ways' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
+  });
+
+  it('closes when its handle is swiped down on a phone', () => {
+    const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: false,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    const onClose = vi.fn();
+    renderSheet('chem', { onClose });
+    const handle = screen.getByTestId('study-sheet-handle');
+    fireEvent.pointerDown(handle, { clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientY: 220, pointerId: 1 });
+    fireEvent.pointerUp(handle, { clientY: 220, pointerId: 1 });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    matchMedia.mockRestore();
+  });
+
+  it('opens as a centred dialogue without a handle on wider screens', () => {
+    const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes('min-width'),
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    renderSheet('chem');
+    // The shared centred panel, not a sheet pinned to the bottom edge.
+    expect(screen.getByRole('dialog', { name: 'Choose what to study' })).toHaveClass('m-auto');
+    expect(screen.queryByTestId('study-sheet-handle')).not.toBeInTheDocument();
+    matchMedia.mockRestore();
   });
 });
