@@ -167,3 +167,15 @@ test('a Markdown field marks focus on its whole frame, not an inner box', async 
   }, frame.accent);
   expect(frame.border).toBe(probe);
 });
+
+test('a switch sits centred in its settings row', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page.goto('/#/settings');
+  const toggle = page.getByRole('switch', { name: 'Show Today' });
+  await toggle.scrollIntoViewIfNeeded();
+  const row = await box(toggle.locator('xpath=ancestor::div[contains(@class,"grid")][1]'));
+  const knob = await box(toggle);
+  expect(Math.abs(knob.y + knob.height / 2 - (row.y + row.height / 2))).toBeLessThanOrEqual(1);
+});

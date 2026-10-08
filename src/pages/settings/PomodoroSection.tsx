@@ -44,7 +44,7 @@ export function PomodoroSection() {
       </div>
       <div className="mt-5 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">
-          <div className="text-sm">Auto-start breaks</div>
+          <div className="font-semibold text-ink">Auto-start breaks</div>
         </div>
         <PillSwitch
           checked={settings.autoStartBreaks}

@@ -26,4 +26,13 @@ describe('Sidebar navigation ordering', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset to defaults' }));
     expect(readStored().navItems).toEqual(DEFAULTS.navItems);
   });
+
+  it('uses the shared setting rows and tinted wells, like the other settings cards', () => {
+    render(<SidebarSection />);
+    for (const label of ['Show course hover details', 'Compact mode', 'Primary navigation'])
+      expect(screen.getByText(label)).toHaveClass('font-semibold', 'text-ink');
+    const row = screen.getByRole('button', { name: 'Move Today down' }).closest('.grid');
+    expect(row).toHaveClass('bg-ink/[0.04]');
+    expect(row).not.toHaveClass('border');
+  });
 });

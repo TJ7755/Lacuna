@@ -57,7 +57,7 @@ export function StudySection() {
       />
       <div className="mt-5 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm">Audio playback speed</div>
+          <div className="font-semibold text-ink">Audio playback speed</div>
         </div>
         <div className="flex shrink-0 gap-1" role="radiogroup" aria-label="Audio playback speed">
           {AUDIO_PLAYBACK_SPEEDS.map((speed) => (
@@ -77,7 +77,7 @@ export function StudySection() {
 
       <div className="mt-5 flex items-center justify-between gap-3 pl-0">
         <div className="min-w-0">
-          <div className="text-sm">Grading strictness</div>
+          <div className="font-semibold text-ink">Grading strictness</div>
           <p className="mt-1 text-sm text-ink-soft">
             How closely a typed answer must match. Lenient ignores case and punctuation, standard
             ignores case only, exact requires both to match.
@@ -100,7 +100,7 @@ export function StudySection() {
 
       <div className="mt-6 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">
-          <label htmlFor="start-in-focus-mode" className="text-sm">
+          <label htmlFor="start-in-focus-mode" className="font-semibold text-ink">
             Start Learn sessions in focus mode
           </label>
           <p className="mt-1 text-sm text-ink-soft">
@@ -138,7 +138,7 @@ export function CourseDefaultsSection() {
       />
 
       <div className="mt-6 pt-0">
-        <div className="text-sm">After the final exam</div>
+        <div className="font-semibold text-ink">After the final exam</div>
         <div className="mt-3 grid gap-2" role="radiogroup" aria-label="After the final exam">
           {FINAL_EXAM_POLICIES.map((policy) => (
             <button
@@ -268,7 +268,7 @@ function SettingToggle({
   return (
     <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 pt-0')}>
       <div className="min-w-0">
-        <div className="text-sm">{title}</div>
+        <div className="font-semibold text-ink">{title}</div>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
       </div>
       <PillSwitch checked={checked} onChange={onChange} ariaLabel={title} />

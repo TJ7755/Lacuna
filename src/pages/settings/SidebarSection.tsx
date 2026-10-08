@@ -3,7 +3,7 @@ import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon, MenuIcon } from '../../components/ui/icons';
 import { DEFAULT_NAV_ITEMS, useSidebarSettings } from '../../state/sidebarSettings';
-import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingRow, SettingsCard } from './SettingsUi';
 
 export function SidebarSection() {
   const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
@@ -17,20 +17,24 @@ export function SidebarSection() {
           Sidebar
         </SettingsSectionHeading>
       </div>
-      <SettingToggle
-        title="Show course hover details"
-        checked={sidebarSettings.showDueCounts}
-        onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
-      />
-      <SettingToggle
-        bordered
-        title="Compact mode"
-        checked={sidebarSettings.compactMode}
-        onChange={(checked) => setSidebarSettings({ compactMode: checked })}
-      />
+      {/* The shared rows, so these labels and switches line up with every other card's. */}
+      <SettingRow label="Show course hover details">
+        <PillSwitch
+          checked={sidebarSettings.showDueCounts}
+          onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
+          ariaLabel="Show course hover details"
+        />
+      </SettingRow>
+      <SettingRow label="Compact mode">
+        <PillSwitch
+          checked={sidebarSettings.compactMode}
+          onChange={(checked) => setSidebarSettings({ compactMode: checked })}
+          ariaLabel="Compact mode"
+        />
+      </SettingRow>
 
-      <div className="mt-6 pt-0">
-        <div className="mb-3 text-sm">Primary navigation</div>
+      <div className="mt-3">
+        <div className="py-3 font-semibold text-ink">Primary navigation</div>
         <div className="flex flex-col gap-2">
           {sidebarSettings.navItems.map((item, index) => {
             const canMoveUp = index > 0;
@@ -40,7 +44,7 @@ export function SidebarSection() {
             return (
               <div
                 key={item.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-ink/[0.04] px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
               >
                 <div className="col-span-2 row-start-2 flex gap-0.5 sm:col-span-1 sm:col-start-1 sm:row-start-1">
                   <MoveButton
@@ -97,27 +101,6 @@ export function SidebarSection() {
         </div>
       </div>
     </SettingsCard>
-  );
-}
-
-function SettingToggle({
-  title,
-  checked,
-  onChange,
-  bordered = false,
-}: {
-  title: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  bordered?: boolean;
-}) {
-  return (
-    <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 pt-0')}>
-      <div className="min-w-0">
-        <div className="text-sm">{title}</div>
-      </div>
-      <PillSwitch checked={checked} onChange={onChange} ariaLabel={title} />
-    </div>
   );
 }
 

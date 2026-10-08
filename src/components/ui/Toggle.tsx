@@ -21,7 +21,8 @@ export function Toggle({ checked, onChange, label, ariaLabel, id, disabled }: To
     <label
       htmlFor={id}
       className={cn(
-        'inline-flex items-center gap-3 select-none',
+        // Top-aligned, so a block parent's text baseline adds no gap beneath the switch.
+        'inline-flex items-center gap-3 select-none align-top',
         disabled ? 'cursor-not-allowed' : 'cursor-pointer',
       )}
     >
