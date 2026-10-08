@@ -29,7 +29,7 @@ import {
 import { useSidebarData } from '../../state/useCourseData';
 import type { Lesson } from '../../db/types';
 import { prefetchRoute } from '../../routes/prefetch';
-import { formatDate } from '../../utils/datetime';
+import { calendarDaysUntil, formatDate } from '../../utils/datetime';
 import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
 import { CourseGlyph, glyphLoad, type GlyphStatus } from '../course/CourseGlyph';
 import { forecastStatus } from '../dashboard/ForecastChart';
@@ -418,7 +418,7 @@ export function Sidebar({
       const forecast = data?.forecasts?.[course.id];
       const hasExam = course.examDate !== undefined && course.examDate > now;
       map.set(course.id, {
-        days: hasExam ? Math.ceil(((course.examDate as number) - now) / 86_400_000) : null,
+        days: hasExam ? calendarDaysUntil(course.examDate as number, now) : null,
         recall: forecast?.atEnd ?? summaries?.[course.id]?.mastery ?? 0,
         status: forecast ? forecastStatus(forecast) : hasExam ? 'ahead' : 'steady',
         load: glyphLoad(today?.byDeck.find((slice) => slice.sourceId === course.id)?.minutes ?? 0),

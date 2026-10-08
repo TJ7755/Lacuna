@@ -272,15 +272,22 @@ export function startOfDay(ms: number, timeZone?: string): number {
   return d.getTime();
 }
 
+/** Whole calendar days from today to the target's day (negative once it has passed). */
+export function calendarDaysUntil(
+  targetMs: number,
+  nowMs: number = Date.now(),
+  timeZone?: string,
+): number {
+  return Math.round((startOfDay(targetMs, timeZone) - startOfDay(nowMs, timeZone)) / MS_PER_DAY);
+}
+
 /** A short relative description of a future exam date, e.g. "in 7 days" or "today". */
 export function relativeExam(
   targetMs: number,
   nowMs: number = Date.now(),
   timeZone?: string,
 ): string {
-  const targetDay = startOfDay(targetMs, timeZone);
-  const today = startOfDay(nowMs, timeZone);
-  const days = Math.round((targetDay - today) / MS_PER_DAY);
+  const days = calendarDaysUntil(targetMs, nowMs, timeZone);
   if (days < 0) return 'past';
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';

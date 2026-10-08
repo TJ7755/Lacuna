@@ -107,6 +107,24 @@ describe('Sidebar', () => {
     expect(within(courseNavigation).queryByText('Finished course')).not.toBeInTheDocument();
     mockCourses = [];
   });
+  it('counts calendar days to an evening exam, not part-days', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 8, 16, 0));
+    mockCourses = [
+      {
+        id: 'active',
+        name: 'Active course',
+        archived: false,
+        examDate: new Date(2026, 9, 15, 23, 59).getTime(),
+      } as Course,
+    ];
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('link', { name: /Active course/ })).toHaveTextContent('7');
+    expect(screen.getByRole('link', { name: /Active course/ })).not.toHaveTextContent('8');
+    vi.useRealTimers();
+  });
+
   it('says no active courses when every course is archived', () => {
     mockCourses = [{ id: 'archived', name: 'Finished course', archived: true } as Course];
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });

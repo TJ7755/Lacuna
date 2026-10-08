@@ -51,7 +51,7 @@ import {
   resolveLessonViewMode,
 } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
-import { MS_PER_DAY } from '../fsrs/params';
+import { calendarDaysUntil } from '../utils/datetime';
 import { reorderLessons, updateLesson } from '../db/lessonRepository';
 import { moveLessonIds } from '../components/course/useLessonPathReorder';
 import {
@@ -231,7 +231,7 @@ export function LessonView({
     daysToExam:
       nearestExam === undefined
         ? undefined
-        : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
+        : Math.max(calendarDaysUntil(nearestExam, now), 0),
   });
   const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
