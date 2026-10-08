@@ -18,5 +18,11 @@ describe('NotFound', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('/definitely-not-a-route')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to Today' })).toHaveAttribute('href', '/');
+    // The shared borderless card surface, not an outlined box.
+    const card = screen
+      .getByRole('heading', { name: 'This page is not on the path.' })
+      .closest('section');
+    expect(card).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(card).not.toHaveClass('border');
   });
 });

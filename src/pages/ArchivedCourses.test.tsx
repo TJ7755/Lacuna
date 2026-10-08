@@ -35,6 +35,9 @@ describe('ArchivedCourses', () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
     expect(screen.getByRole('heading', { name: 'No archived courses' })).toBeInTheDocument();
     expect(screen.getByText(/archive from Today/)).toBeInTheDocument();
+    const empty = screen.getByRole('heading', { name: 'No archived courses' }).parentElement;
+    expect(empty).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(empty).not.toHaveClass('border-t');
   });
 
   it('moves focus to the next restoration action when a restored course disappears', async () => {

@@ -52,9 +52,10 @@ export function ArchivedCourses() {
       </header>
 
       {archived === undefined ? null : archived.length === 0 ? (
-        <div className="border-t border-line py-10">
+        // The shared card surface, as every page's empty state is, rather than a ruled line.
+        <div className={`${SECTION_CARD_SURFACE_CLASS} px-7 py-[54px] text-center`}>
           <h2 className="font-display text-2xl">No archived courses</h2>
-          <p className="mt-2 text-sm text-ink-soft">
+          <p className="mt-3 text-sm text-ink-soft">
             Courses you archive from Today wait here, ready to restore.
           </p>
         </div>
