@@ -37,42 +37,31 @@ export function SharingAnnouncement() {
 
   if (dismissed) return null;
   return (
-    <section aria-label="New sharing features" className="sharing-announcement">
-      <button
-        type="button"
-        className="sharing-announcement-close"
-        onClick={dismiss}
-        aria-label="Dismiss announcement"
-      >
-        <CloseIcon width={16} height={16} />
-      </button>
-      <div>
-        <h2>
-          Good revision
-          <br />
-          is worth sharing.
-        </h2>
-        <p>Send your whole course with one link. Lessons, cards and media come along.</p>
+    <div className="sharing-announcement-frame">
+      <section aria-label="New sharing features" className="sharing-announcement">
+        <span className="sharing-announcement-icon" aria-hidden="true">
+          <ShareIcon width={18} height={18} />
+        </span>
+        <p>
+          <strong>One link to share it all.</strong>{' '}
+          <span>Lessons, cards and media come along.</span>
+        </p>
         <Link
           className="sharing-announcement-action"
           to="/share?highlight=share-link"
           onClick={dismiss}
         >
-          Explore sharing <span aria-hidden="true">↗</span>
+          Explore<span className="sharing-announcement-action-detail"> sharing</span>
         </Link>
-      </div>
-      <div className="sharing-announcement-art" aria-hidden="true">
-        <div className="sharing-announcement-sheet">
-          <span>Your course</span>
-          <div />
-          <div />
-          <div />
-          <strong>Ready to pass on.</strong>
-        </div>
-        <div className="sharing-announcement-link">
-          <ShareIcon width={19} height={19} /> One link to share it all
-        </div>
-      </div>
-    </section>
+        <button
+          type="button"
+          className="sharing-announcement-close"
+          onClick={dismiss}
+          aria-label="Dismiss announcement"
+        >
+          <CloseIcon width={16} height={16} />
+        </button>
+      </section>
+    </div>
   );
 }

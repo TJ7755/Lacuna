@@ -1,28 +1,31 @@
 import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
-test('keeps the sharing illustration inside the banner beside the desktop sidebar', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 768, height: 900 });
-  await enterFreshLacuna(page);
+for (const width of [390, 768, 1440]) {
+  test(`keeps the sharing announcement to one slim row at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await enterFreshLacuna(page);
 
-  const banner = page.getByRole('region', { name: 'New sharing features' });
-  const message = banner.locator(':scope > div').first();
-  const illustration = banner.locator('.sharing-announcement-sheet');
-  await expect(banner).toBeVisible();
-  const bannerBounds = await banner.boundingBox();
-  const illustrationBounds = await illustration.boundingBox();
-  const messageBounds = await message.boundingBox();
-  expect(bannerBounds).not.toBeNull();
-  expect(illustrationBounds).not.toBeNull();
-  expect(messageBounds).not.toBeNull();
-  expect(illustrationBounds!.y).toBeGreaterThanOrEqual(messageBounds!.y + messageBounds!.height);
-  expect(illustrationBounds!.x).toBeGreaterThanOrEqual(bannerBounds!.x);
-  expect(illustrationBounds!.x + illustrationBounds!.width).toBeLessThanOrEqual(
-    bannerBounds!.x + bannerBounds!.width,
-  );
-});
+    const banner = page.getByRole('region', { name: 'New sharing features' });
+    await expect(banner).toBeVisible();
+    const bounds = (await banner.boundingBox())!;
+    // The 44px dismiss target plus the row's padding: no second row of content.
+    expect(bounds.height).toBeLessThanOrEqual(57);
+    // The message itself never wraps onto a second line.
+    expect((await banner.locator('p').boundingBox())!.height).toBeLessThanOrEqual(24);
+    for (const control of [
+      banner.getByRole('link', { name: 'Explore sharing' }),
+      banner.getByRole('button', { name: 'Dismiss announcement' }),
+    ]) {
+      const box = (await control.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+  });
+}
 
 test('keeps the application usable when the optional announcement fails to load', async ({
   browser,
