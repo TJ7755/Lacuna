@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type * as DashboardForecasts from '../state/dashboardForecasts';
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
 import type { Course } from '../db/types';
@@ -27,6 +28,27 @@ vi.mock('react-router-dom', () => ({
 let mockCourseDashboardData: unknown = undefined;
 let mockPendingUpdateIds = new Set<string>();
 
+// The chart's past line needs graded review history; tests supply one per forecast.
+vi.mock('../state/useData', () => ({ useAllReviewHistory: () => [] }));
+vi.mock('../state/dashboardForecasts', async (importOriginal) => ({
+  ...(await importOriginal<typeof DashboardForecasts>()),
+  dashboardForecastHistories: (
+    _courses: unknown,
+    _lessons: unknown,
+    _cards: unknown,
+    _history: unknown,
+    forecasts: Record<string, { ifStopped: number }>,
+  ) =>
+    Object.fromEntries(
+      Object.entries(forecasts).map(([id, value]) => [
+        id,
+        [
+          { at: Date.now() - DAY, recall: value.ifStopped / 2 },
+          { at: Date.now(), recall: value.ifStopped },
+        ],
+      ]),
+    ),
+}));
 vi.mock('../state/useCourseData', () => ({
   useCourseDashboardData: () => mockCourseDashboardData,
   usePendingUpdateCourseIds: () => mockPendingUpdateIds,
@@ -102,25 +124,8 @@ function summary(eligible: number) {
   return { lessonCount: 2, cardCount: 10, mastery: 0.3, unreviewed: 5, eligible };
 }
 
-function forecast(atEnd: number, hasExam = true) {
-  const now = Date.now();
-  return {
-    start: now,
-    end: now + 7 * DAY,
-    hasExam,
-    target: 0.9,
-    current: 0.8,
-    ifStopped: 0.5,
-    atEnd,
-    series: [
-      { at: now, recall: 0.8 },
-      { at: now + 7 * DAY, recall: atEnd },
-    ],
-    outlook: [
-      { at: now, recall: 0.5 },
-      { at: now + 7 * DAY, recall: atEnd },
-    ],
-  };
+function forecast(ifStopped: number, hasExam = true) {
+  return { end: Date.now() + 7 * DAY, hasExam, target: 0.9, ifStopped };
 }
 
 interface DataOptions {
@@ -327,8 +332,11 @@ describe('Dashboard', () => {
     expect(screen.getByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Exam-day forecast' })).toBeInTheDocument();
     const legend = screen.getByRole('list', { name: 'Courses' });
-    expect(within(legend).getByRole('button', { name: /Test Course\s*93%/ })).toBeInTheDocument();
-    expect(within(legend).getByRole('button', { name: /Second Course\s*71%/ })).toBeInTheDocument();
+    expect(within(legend).getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
+    expect(within(legend).getByRole('button', { name: 'Second Course' })).toBeInTheDocument();
+    // Each course's figure appears once, beside its point at today.
+    expect(screen.getAllByText('93%')).toHaveLength(1);
+    expect(screen.getAllByText('71%')).toHaveLength(1);
   });
 
   it('omits the forecast chart when no course has a forecast to draw', () => {

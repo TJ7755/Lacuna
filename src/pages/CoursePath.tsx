@@ -442,7 +442,7 @@ export function CoursePath() {
   const cardTotal = courseCards.length;
   const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
   const status = forecast ? forecastStatus(forecast) : undefined;
-  const forecastPct = Math.round((forecast?.atEnd ?? mastery) * 100);
+  const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
     <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
@@ -474,21 +474,20 @@ export function CoursePath() {
                 <strong className="text-ink">{formatDate(nearestExam, course.timeZone)}</strong>
               </span>
             )}
-            <Link
-              to={`/course/${courseId}/analytics`}
+            <span
               className={cn(
-                '-my-2.5 inline-flex items-center gap-2 py-2.5 hover:underline',
+                'inline-flex items-center gap-2',
                 status === 'ahead'
                   ? 'text-positive'
                   : status === 'behind'
                     ? 'text-warning-fg'
                     : 'text-ink-soft',
               )}
-              aria-label={`${forecastPct}% ${nearestExam !== undefined ? 'exam-day forecast' : 'kept fresh'}, open course analytics`}
+              aria-label={`${forecastPct}% ${nearestExam !== undefined ? 'exam-day forecast' : 'kept fresh'}`}
             >
               <GaugeIcon width={16} height={16} aria-hidden="true" />
               <strong>{forecastPct}%</strong>
-            </Link>
+            </span>
             <span className="inline-flex items-center gap-2">
               <CardsIcon width={16} height={16} aria-hidden="true" />
               {cardTotal} {cardTotal === 1 ? 'card' : 'cards'} in {lessonTotal}{' '}

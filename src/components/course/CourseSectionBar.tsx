@@ -12,12 +12,12 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { prefetchRoute } from '../../routes/prefetch';
-import { CardsIcon, FileTextIcon, PathIcon, SettingsIcon } from '../ui/icons';
+import { CardsIcon, ChartIcon, FileTextIcon, PathIcon, SettingsIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { COURSE_SECTIONS, courseIdFromPath, isCourseSectionCurrent } from './courseSections';
 
 /** Indexed by section, so it stays aligned with COURSE_SECTIONS rather than duplicating it. */
-const SECTION_ICONS = [PathIcon, CardsIcon, FileTextIcon, SettingsIcon];
+const SECTION_ICONS = [PathIcon, CardsIcon, FileTextIcon, ChartIcon, SettingsIcon];
 
 export function CourseSectionBar() {
   const { pathname } = useLocation();

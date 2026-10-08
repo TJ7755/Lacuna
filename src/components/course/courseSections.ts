@@ -13,6 +13,7 @@ export const COURSE_SECTIONS: CourseSection[] = [
   { label: 'Path', short: 'Path', suffix: '' },
   { label: 'Cards', short: 'Cards', suffix: '/cards' },
   { label: 'Questions', short: 'Questions', suffix: '/questions' },
+  { label: 'Progress', short: 'Progress', suffix: '/analytics' },
   { label: 'Settings', short: 'Settings', suffix: '/settings' },
 ];
 

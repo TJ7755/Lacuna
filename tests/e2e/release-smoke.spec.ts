@@ -85,8 +85,7 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
   await expect(navigation.getByRole('link', { name: 'Path' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Cards' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Questions' })).toBeVisible();
-  // Course analytics opens from the forecast figure rather than its own tab.
-  await expect(navigation.getByRole('link', { name: 'Analytics' })).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Progress' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Settings' })).toBeVisible();
 });
 

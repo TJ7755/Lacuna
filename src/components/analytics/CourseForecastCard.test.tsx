@@ -52,16 +52,39 @@ function reviewedCard(): Card {
 describe('CourseForecastCard', () => {
   it('draws the dashboard forecast with the course as its one line', () => {
     render(
-      <CourseForecastCard course={course} lessons={[]} cards={[reviewedCard()]} multiplier={0} />,
+      <CourseForecastCard course={course} lessons={[]} cards={[reviewedCard()]} history={[]} multiplier={0} />,
     );
 
     expect(screen.getByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Mathematics/ })).toBeInTheDocument();
   });
 
+  it('shows exam-day recall if study stopped now, so an unstudied course reads 0%', () => {
+    const unstudied = {
+      ...reviewedCard(),
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      state: 0,
+      due: null,
+    } as Card;
+    render(
+      <CourseForecastCard
+        course={course}
+        lessons={[]}
+        cards={[unstudied]}
+        history={[]}
+        multiplier={0}
+      />,
+    );
+
+    expect(screen.getByText('0%')).toBeInTheDocument();
+  });
+
   it('renders nothing for a course with no cards to forecast', () => {
     const { container } = render(
-      <CourseForecastCard course={course} lessons={[]} cards={[]} multiplier={0} />,
+      <CourseForecastCard course={course} lessons={[]} cards={[]} history={[]} multiplier={0} />,
     );
 
     expect(container).toBeEmptyDOMElement();

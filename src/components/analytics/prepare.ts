@@ -40,33 +40,6 @@ export interface TrajectoryPoint {
   retrievability: number;
 }
 
-/**
- * Aggregate per-card SessionHistory snapshots into one point per calendar day
- * (the last snapshot of each day), keeping the trajectory line legible.
- */
-export function trajectorySeries(history: SessionHistoryEntry[]): TrajectoryPoint[] {
-  const lastPerDay = new Map<number, SessionHistoryEntry>();
-  for (const entry of history) {
-    const day = startOfDay(entry.timestamp);
-    const existing = lastPerDay.get(day);
-    if (!existing || entry.timestamp >= existing.timestamp) {
-      lastPerDay.set(day, entry);
-    }
-  }
-  return [...lastPerDay.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([day, entry]) => ({
-      day,
-      label: new Date(day).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-      }),
-      retrievability: Number.isFinite(entry.averagePredictedRetrievability)
-        ? Math.round(entry.averagePredictedRetrievability * 100)
-        : 0,
-    }));
-}
-
 export interface StabilityBucket {
   range: string;
   count: number;

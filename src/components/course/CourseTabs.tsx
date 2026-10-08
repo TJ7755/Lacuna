@@ -1,4 +1,4 @@
-// Shared course-level tab navigation — Path, Cards, Questions, Settings —
+// Shared course-level tab navigation — Path, Cards, Questions, Progress, Settings —
 // rendered on every course surface so any section is one click from any
 // other. Active tab is derived from the current route rather than passed in,
 // so it never drifts out of sync with the URL. Styling matches the compact

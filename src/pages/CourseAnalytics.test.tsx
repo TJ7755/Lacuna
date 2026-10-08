@@ -17,7 +17,6 @@ vi.mock('../state/useCourseData', () => ({
   useLessons: () => [],
   useCourseCards: () => [],
   useCourseReviewHistory: () => [],
-  useCourseSessionHistory: () => [],
 }));
 
 vi.mock('../components/questions/useQuestionData', () => ({

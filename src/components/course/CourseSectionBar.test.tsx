@@ -10,14 +10,14 @@ vi.mock('../../routes/prefetch', () => ({ prefetchRoute }));
 describe('CourseSectionBar', () => {
   beforeEach(() => prefetchRoute.mockClear());
 
-  it('renders all four course sections and marks Questions active', () => {
+  it('renders all five course sections and marks Questions active', () => {
     render(
       <MemoryRouter initialEntries={['/course/course-1/questions']}>
         <CourseSectionBar />
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByRole('link')).toHaveLength(4);
+    expect(screen.getAllByRole('link')).toHaveLength(5);
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Path' })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute(

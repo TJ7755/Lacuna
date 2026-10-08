@@ -408,7 +408,7 @@ export function Sidebar({
     return map;
   }, [allLessons]);
 
-  // The glyph shares the dashboard's keep-to-schedule forecast, so a course reads
+  // The glyph shares the dashboard's stop-now forecast, so a course reads
   // the same everywhere; minutes come from today's workload forecast.
   const glyphs = useMemo(() => {
     const now = Date.now();
@@ -419,7 +419,7 @@ export function Sidebar({
       const hasExam = course.examDate !== undefined && course.examDate > now;
       map.set(course.id, {
         days: hasExam ? calendarDaysUntil(course.examDate as number, now) : null,
-        recall: forecast?.atEnd ?? summaries?.[course.id]?.mastery ?? 0,
+        recall: forecast?.ifStopped ?? summaries?.[course.id]?.mastery ?? 0,
         status: forecast ? forecastStatus(forecast) : hasExam ? 'ahead' : 'steady',
         load: glyphLoad(today?.byDeck.find((slice) => slice.sourceId === course.id)?.minutes ?? 0),
       });

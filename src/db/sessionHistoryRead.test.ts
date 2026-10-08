@@ -1,12 +1,9 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { startOfDay } from '../utils/datetime';
-import { trajectorySeries, globalTrajectorySeries } from '../components/analytics/prepare';
+import { globalTrajectorySeries } from '../components/analytics/prepare';
 import { db } from './schema';
-import {
-  listCourseDailySessionHistory,
-  listGlobalDailySessionHistory,
-} from './sessionHistoryRead';
+import { listGlobalDailySessionHistory } from './sessionHistoryRead';
 import type { SessionHistoryEntry } from './types';
 
 function sample(
@@ -40,13 +37,8 @@ describe('session-history read projections', () => {
     await db.sessionHistory.bulkAdd(all);
 
     const global = await listGlobalDailySessionHistory();
-    const course = await listCourseDailySessionHistory('course-1');
 
     expect(global).toHaveLength(3);
-    expect(course).toHaveLength(2);
     expect(globalTrajectorySeries(global)).toEqual(globalTrajectorySeries(all));
-    expect(trajectorySeries(course)).toEqual(
-      trajectorySeries(all.filter((entry) => entry.courseId === 'course-1')),
-    );
   });
 });

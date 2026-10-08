@@ -50,10 +50,18 @@ describe('CourseTabs', () => {
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('leaves course analytics, reached from the forecast, outside the tabs', () => {
+  it('marks Progress active on the course analytics route, between Questions and Settings', () => {
     renderAt('/course/course-1/analytics');
-    expect(screen.queryByRole('link', { name: 'Analytics' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { current: 'page' })).not.toBeInTheDocument();
+    const progress = screen.getByRole('link', { name: 'Progress' });
+    expect(progress).toHaveAttribute('aria-current', 'page');
+    expect(progress).toHaveAttribute('href', '/course/course-1/analytics');
+    expect(screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Path',
+      'Cards',
+      'Questions',
+      'Progress',
+      'Settings',
+    ]);
   });
 
   it('marks Settings active on the settings route', () => {

@@ -23,7 +23,9 @@ import { CountUp } from '../components/ui/Celebration';
 import { MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { urgencyOrder } from '../state/dashboardForecasts';
+import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
+import { forecastWindow, useForecastRange } from '../state/forecastRange';
+import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
@@ -115,15 +117,34 @@ export function Dashboard() {
     return urgencyOrder(unordered, Date.now());
   }, [activeCourses, forecasts, today, summaries, pendingUpdateIds]);
 
+  // The chart traces each forecast back over the chosen window, which needs graded
+  // review history; navigation's shared data carries only review timestamps.
+  const reviewHistory = useAllReviewHistory();
+  const [forecastRange] = useForecastRange();
+  const chartWindow = forecastWindow(forecastRange);
+  const histories = useMemo(() => {
+    if (!data || !forecasts || !reviewHistory) return undefined;
+    const now = Date.now();
+    return dashboardForecastHistories(
+      data.courses,
+      data.lessons,
+      data.allCards,
+      reviewHistory,
+      forecasts,
+      now - chartWindow.past * 86_400_000,
+      now,
+    );
+  }, [data, forecasts, reviewHistory, chartWindow.past]);
   const lines = useMemo<ForecastLine[]>(
     () =>
       (rows ?? []).flatMap((row) => {
         const forecast = forecasts?.[row.id];
-        return forecast && forecast.outlook.some((point) => point.recall > 0)
-          ? [{ id: row.id, name: row.name, status: row.status, forecast }]
+        const history = histories?.[row.id];
+        return forecast && history
+          ? [{ id: row.id, name: row.name, status: row.status, forecast, history }]
           : [];
       }),
-    [rows, forecasts],
+    [rows, forecasts, histories],
   );
 
   useLayoutEffect(() => {
@@ -235,7 +256,13 @@ export function Dashboard() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5 * m, delay: 0.15 * m, ease: MOTION_EASING.emphasised }}
             >
-              {lines.length > 0 && <ForecastChart lines={lines} now={Date.now()} multiplier={m} />}
+              {lines.length > 0 && <ForecastChart
+                  lines={lines}
+                  now={Date.now()}
+                  past={chartWindow.past}
+                  future={chartWindow.future}
+                  multiplier={m}
+                />}
               {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
             </motion.section>
           )}

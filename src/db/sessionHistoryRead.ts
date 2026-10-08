@@ -24,15 +24,3 @@ export async function listGlobalDailySessionHistory(): Promise<SessionHistoryEnt
   });
   return [...rows.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
-
-/** Return the exact one-point-per-day projection consumed by Course analytics. */
-export async function listCourseDailySessionHistory(
-  courseId: string,
-): Promise<SessionHistoryEntry[]> {
-  const rows = new Map<string, SessionHistoryEntry>();
-  await db.sessionHistory
-    .where('courseId')
-    .equals(courseId)
-    .each((entry) => keepLater(rows, String(startOfDay(entry.timestamp)), entry));
-  return [...rows.values()].sort((a, b) => a.timestamp - b.timestamp);
-}

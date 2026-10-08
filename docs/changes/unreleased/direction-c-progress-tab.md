@@ -1,0 +1,1 @@
+- Course pages gain a **Progress** tab (Path · Cards · Questions · Progress · Settings) for the course's analytics, which had no tab and no way back; the forecast figure in the course header is plain text. Course Progress drops its separate Predicted exam-day score chart, which the exam-day forecast above it now covers.

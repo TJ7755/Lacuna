@@ -78,8 +78,8 @@ Theme-aware Recharts panels scoped to one course's **deduplicated card set** —
 pool `progressValue` and the course path's mastery figure use (a card shared across
 lessons is counted once):
 
-- **Predicted exam-day score** over time (area chart of the daily `SessionHistory`
-  trajectory).
+- The **exam-day forecast** chart above them (shared with Today; see
+  [forward simulation](forward-simulation.md)) carries the exam-day trend.
 - **Lesson breakdown** — a bar chart of mastery and completion percentage per lesson, with
   card count overlaid as a line.
 - **Card stability profile** (histogram of cards by stability range; new cards distinct).

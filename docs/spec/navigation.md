@@ -190,9 +190,10 @@ An ordered path of lesson nodes, checkpoint assessments (informational, never bl
 and practice nodes, built by `src/course/path.ts` and shown by `CourseOverview` as a list in
 path order. The course row pairs the course's name (a link back to its Path) with
 the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`: Path · Cards ·
-Questions · Settings, active tab derived from the route), rendered on the four course surfaces
-and every normal or single-lesson view, so any section is one click from any other. Course
-analytics opens from the forecast figure in the course header rather than a tab. Lesson URLs keep
+Questions · Progress · Settings, active tab derived from the route), rendered on the five course
+surfaces and every normal or single-lesson view, so any section is one click from any other.
+Progress is the course analytics page; the forecast figure in the course header is plain text.
+Study lives on Path alone, the course's landing page, so it is the one default action. Lesson URLs keep
 Path active because a lesson belongs to the path; the phone `CourseSectionBar` shares the same
 rule (`isCourseSectionCurrent`). The course-owned `LessonViewModeToggle` appears
 beside that navigation on CoursePath and every Lesson view, so the same View/Edit decision

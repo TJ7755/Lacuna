@@ -1,43 +1,42 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ForecastChart } from './ForecastChart';
 import type { CourseForecast } from '../../fsrs/courseForecast';
 
 const DAY = 86_400_000;
+const NOW = Date.UTC(2026, 9, 8);
 
-function forecast(now: number, days: number): CourseForecast {
-  const end = now + days * DAY;
-  const outlook = [0, 1, 2].map((k) => ({
-    at: now + (k * (end - now)) / 2,
-    recall: 0.6 + k * 0.1,
-  }));
-  return {
-    start: now,
-    end,
-    hasExam: true,
-    target: 0.9,
-    current: 0.6,
-    ifStopped: 0.6,
-    atEnd: 0.8,
-    series: outlook,
-    outlook,
-  };
+function forecast(days: number): CourseForecast {
+  return { end: NOW + days * DAY, hasExam: true, target: 0.9, ifStopped: 0.62 };
+}
+
+function renderChart(days: number) {
+  const history = [0, 1, 2].map((k) => ({ at: NOW - (2 - k) * 9 * DAY, recall: 0.4 + k * 0.11 }));
+  return render(
+    <ForecastChart
+      lines={[{ id: 'c', name: 'Course', status: 'behind', forecast: forecast(days), history }]}
+      now={NOW}
+      past={18}
+      future={12}
+      multiplier={0}
+    />,
+  );
 }
 
 describe('ForecastChart axis', () => {
-  it('ends the time axis at the exam, so a near exam fills the width', () => {
-    const now = Date.UTC(2026, 9, 7);
-    const { container } = render(
-      <ForecastChart
-        lines={[{ id: 'c', name: 'Course', status: 'ahead', forecast: forecast(now, 7) }]}
-        now={now}
-        multiplier={0}
-      />,
-    );
-    const svg = container.querySelector('svg')!;
-    const width = Number(svg.getAttribute('viewBox')!.split(' ')[2]);
-    const examDot = container.querySelector('circle')!;
-    // The plot's right edge sits 16px inside the chart.
-    expect(Number(examDot.getAttribute('cx'))).toBeCloseTo(width - 16);
+  it('places today 60% across the plot and labels its stop-now figure once', () => {
+    const { container } = renderChart(7);
+    const width = Number(container.querySelector('svg')!.getAttribute('viewBox')!.split(' ')[2]);
+    const dot = container.querySelector('circle')!;
+    // The plot runs from 40px in to 16px short of the right edge.
+    expect(Number(dot.getAttribute('cx'))).toBeCloseTo(40 + 0.6 * (width - 56));
+    expect(screen.getAllByText('62%')).toHaveLength(1);
+    expect(screen.getByText(/· Exam/)).toBeInTheDocument();
+  });
+
+  it('points to an exam beyond the window from the axis edge', () => {
+    renderChart(40);
+    expect(screen.queryByText(/· Exam/)).not.toBeInTheDocument();
+    expect(screen.getByText(/^Exam .+ →$/)).toBeInTheDocument();
   });
 });

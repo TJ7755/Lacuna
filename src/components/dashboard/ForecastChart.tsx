@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
-import type { CourseForecast } from '../../fsrs/courseForecast';
+import type { CourseForecast, ForecastPoint } from '../../fsrs/courseForecast';
 
 export type ForecastStatus = 'ahead' | 'behind' | 'steady';
 
@@ -11,6 +11,8 @@ export interface ForecastLine {
   name: string;
   status: ForecastStatus;
   forecast: CourseForecast;
+  /** The stop-now figure over the chart's past days, ending today at `forecast.ifStopped`. */
+  history: ForecastPoint[];
 }
 
 export const STATUS_COLOUR: Record<ForecastStatus, string> = {
@@ -19,15 +21,9 @@ export const STATUS_COLOUR: Record<ForecastStatus, string> = {
   steady: 'hsl(var(--ink-faint))',
 };
 
-const STATUS_TEXT: Record<ForecastStatus, string> = {
-  ahead: 'text-positive',
-  behind: 'text-warning-fg',
-  steady: 'text-ink-soft',
-};
-
 export function forecastStatus(forecast: CourseForecast): ForecastStatus {
   if (!forecast.hasExam) return 'steady';
-  return forecast.atEnd + 0.005 >= forecast.target ? 'ahead' : 'behind';
+  return forecast.ifStopped + 0.005 >= forecast.target ? 'ahead' : 'behind';
 }
 
 const WIDE_WIDTH = 640;
@@ -58,10 +54,10 @@ function useChartSize() {
 }
 
 /**
- * Eases the stepped outlook into a calm curve for display: a short centred moving
+ * Eases a stepped series into a calm curve for display: a short centred moving
  * average that keeps the first and last points exact. A rising series stays rising.
  */
-export function easeOutlook(values: number[], radius = 3): number[] {
+export function easeSeries(values: number[], radius = 3): number[] {
   const n = values.length;
   return values.map((value, index) => {
     if (index === 0 || index === n - 1) return value;
@@ -105,18 +101,28 @@ export function smoothPath(points: { x: number; y: number }[]): string {
   return d;
 }
 
+const DAY = 86_400_000;
+/** Smallest vertical gap between today's percentage labels. */
+const LABEL_GAP = 22;
+
 /**
- * Exam-day forecast: each course's expected recall from today to its exam, on a shared,
- * proportional date axis, against the target. Lines draw in, the exam-day points land
- * with a small spring, and choosing a course in the legend brings its line forward.
+ * Exam-day forecast: how much of each course would be recalled on exam day if study
+ * stopped now, traced over recent days up to today against the target. The window runs
+ * `past` days back and `future` days ahead; nothing is projected after today, which only
+ * holds the exam markers. Lines draw in, today's points land with a small spring, and
+ * choosing a course in the legend brings its line forward.
  */
 export function ForecastChart({
   lines,
   now,
+  past,
+  future,
   multiplier,
 }: {
   lines: ForecastLine[];
   now: number;
+  past: number;
+  future: number;
   multiplier: number;
 }) {
   const titleId = useId();
@@ -126,32 +132,59 @@ export function ForecastChart({
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
 
   const geometry = useMemo(() => {
-    // The axis ends with the furthest line, so a lone exam next week fills the width.
-    const end = Math.max(now + 86_400_000, ...lines.map((line) => line.forecast.end));
+    const start = now - past * DAY;
+    const stop = now + future * DAY;
     const ticks = recallTicks([
       target,
-      ...lines.flatMap((line) => line.forecast.outlook.map((point) => point.recall)),
+      ...lines.flatMap((line) => line.history.map((point) => point.recall)),
     ]);
     const top = ticks[0];
     const bottom = ticks[ticks.length - 1];
-    const x = (at: number) => LEFT + ((at - now) / (end - now)) * (W - LEFT - RIGHT);
+    const x = (at: number) => LEFT + ((at - start) / (stop - start)) * (W - LEFT - RIGHT);
     const y = (recall: number) =>
       TOP + ((top - Math.max(bottom, Math.min(top, recall))) / (top - bottom)) * (H - TOP - BOTTOM);
-    // Date labels: today, then each exam, dropping any that would collide.
-    const marks: { at: number; label: string; strong: boolean }[] = [
-      { at: now, label: 'Today', strong: false },
-    ];
-    for (const line of [...lines].sort((a, b) => a.forecast.end - b.forecast.end)) {
-      if (!line.forecast.hasExam) continue;
-      const tooClose = marks.some((mark) => Math.abs(x(mark.at) - x(line.forecast.end)) < (narrow ? 88 : 64));
-      if (!tooClose)
-        marks.push({ at: line.forecast.end, label: formatShortDate(line.forecast.end), strong: true });
-    }
-    return { x, y, ticks, marks };
-  }, [lines, now, target, W, H, narrow]);
 
-  const { x, y, ticks, marks } = geometry;
+    // Date labels: the window's start and today, then each exam inside the window,
+    // dropping any that would collide.
+    const marks: { at: number; label: string; strong: boolean; anchor: 'start' | 'middle' | 'end' }[] = [
+      { at: start, label: formatShortDate(start), strong: false, anchor: 'start' },
+      { at: now, label: 'Today', strong: true, anchor: 'middle' },
+    ];
+    const exams = [
+      ...new Set(lines.filter((line) => line.forecast.hasExam).map((line) => line.forecast.end)),
+    ].sort((a, b) => a - b);
+    const inside = exams.filter((at) => at <= stop);
+    // A phone has room for the word alone: the date would collide with Today.
+    for (const at of inside) {
+      const tooClose = marks.some((mark) => Math.abs(x(mark.at) - x(at)) < (narrow ? 44 : 72));
+      if (!tooClose)
+        marks.push({
+          at,
+          label: narrow ? 'Exam' : `${formatShortDate(at)} · Exam`,
+          strong: true,
+          anchor: x(at) > W - RIGHT - 48 ? 'end' : 'middle',
+        });
+    }
+    const beyond = exams.find((at) => at > stop);
+
+    // Today's percentages sit beside their points, nudged apart where courses agree and
+    // stacked upwards from the baseline so a figure never sits on the axis.
+    const floor = y(bottom) - LABEL_GAP / 2;
+    const labels = lines
+      .map((line) => ({ id: line.id, y: y(line.forecast.ifStopped) }))
+      .sort((a, b) => b.y - a.y);
+    for (let i = 0; i < labels.length; i++) {
+      labels[i].y = Math.min(labels[i].y, i === 0 ? floor : labels[i - 1].y - LABEL_GAP);
+    }
+    const labelY = new Map(labels.map((label) => [label.id, label.y]));
+
+    return { x, y, ticks, marks, inside, beyond, labelY };
+  }, [lines, now, past, future, target, W, H, narrow]);
+
+  const { x, y, ticks, marks, inside, beyond, labelY } = geometry;
   const draw = multiplier > 0;
+  const plotTop = y(ticks[0]);
+  const plotBottom = y(ticks[ticks.length - 1]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -180,9 +213,6 @@ export function ForecastChart({
                 <span className="max-w-[14rem] truncate" title={line.name}>
                   {line.name}
                 </span>
-                <strong className={'font-bold tabular-nums ' + STATUS_TEXT[line.status]}>
-                  {Math.round(line.forecast.atEnd * 100)}%
-                </strong>
               </button>
             </li>
           ))}
@@ -206,9 +236,9 @@ export function ForecastChart({
           {lines
             .map(
               (line) =>
-                `${line.name}: ${Math.round(line.forecast.atEnd * 100)}% ${
-                  line.forecast.hasExam ? `on ${formatDate(line.forecast.end)}` : 'kept fresh'
-                }`,
+                `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% recalled ${
+                  line.forecast.hasExam ? `on ${formatDate(line.forecast.end)}` : 'in four weeks'
+                } if you stop now`,
             )
             .join('. ')}
         </desc>
@@ -228,28 +258,42 @@ export function ForecastChart({
               </text>
             );
           })}
-          {marks.map((mark, index) => (
+          {marks.map((mark) => (
             <text
               key={mark.at}
               x={x(mark.at)}
               y={H - 10}
-              textAnchor={index === 0 ? 'start' : 'middle'}
+              textAnchor={mark.anchor}
               className={mark.strong ? 'fill-ink' : undefined}
             >
               {mark.label}
             </text>
           ))}
+          {beyond !== undefined && (
+            <text x={W - RIGHT} y={H - 10} textAnchor="end" className="fill-ink">
+              Exam {formatShortDate(beyond)} →
+            </text>
+          )}
         </g>
-        <line
-          x1={LEFT}
-          x2={W - RIGHT}
-          y1={y(ticks[ticks.length - 1])}
-          y2={y(ticks[ticks.length - 1])}
-          className="stroke-line"
-        />
+        <line x1={LEFT} x2={W - RIGHT} y1={plotBottom} y2={plotBottom} className="stroke-line" />
+        {[now, ...inside].map((at) => (
+          <line key={at} x1={x(at)} x2={x(at)} y1={plotTop} y2={plotBottom} className="stroke-line" />
+        ))}
+        {sharedTarget && (
+          <line
+            x1={LEFT}
+            x2={W - RIGHT}
+            y1={y(target)}
+            y2={y(target)}
+            className="stroke-ink"
+            strokeWidth={1.2}
+            strokeDasharray="3 5"
+            strokeOpacity={0.7}
+          />
+        )}
         {lines.map((line, index) => {
-          const eased = easeOutlook(line.forecast.outlook.map((point) => point.recall));
-          const points = line.forecast.outlook.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
+          const eased = easeSeries(line.history.map((point) => point.recall));
+          const points = line.history.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
           const last = points[points.length - 1];
           const dimmed = focus !== null && focus !== line.id;
           const delay = 0.15 + index * 0.12;
@@ -268,7 +312,7 @@ export function ForecastChart({
                 animate={{ pathLength: 1 }}
                 transition={{ duration: 1.1 * multiplier, delay: delay * multiplier, ease: MOTION_EASING.emphasised }}
               />
-              {line.forecast.hasExam && last && (
+              {last && (
                 <>
                   <motion.circle
                     cx={last.x}
@@ -298,23 +342,21 @@ export function ForecastChart({
                       transition={{ duration: 0.9 * multiplier, delay: (delay + 1.05) * multiplier, ease: 'easeOut' }}
                     />
                   )}
+                  <text
+                    x={last.x + 12}
+                    y={labelY.get(line.id) ?? last.y}
+                    dominantBaseline="central"
+                    className="fill-ink stroke-surface font-display text-xl font-semibold tabular-nums"
+                    strokeWidth={6}
+                    paintOrder="stroke"
+                  >
+                    {Math.round(line.forecast.ifStopped * 100)}%
+                  </text>
                 </>
               )}
             </g>
           );
         })}
-        {sharedTarget && (
-          <line
-            x1={LEFT}
-            x2={W - RIGHT}
-            y1={y(target)}
-            y2={y(target)}
-            className="stroke-ink"
-            strokeWidth={1.2}
-            strokeDasharray="3 5"
-            strokeOpacity={0.7}
-          />
-        )}
       </svg>
     </div>
   );

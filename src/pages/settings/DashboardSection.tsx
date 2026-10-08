@@ -3,6 +3,7 @@ import { GridIcon } from '../../components/ui/icons';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric, type CourseCardMetric } from '../../state/courseCardMetric';
 import { useDashboardSort, type DashboardSort } from '../../state/dashboardSort';
+import { useForecastRange, type ForecastRange } from '../../state/forecastRange';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import {
   choiceChipClass,
@@ -20,10 +21,17 @@ const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
   { key: 'created', label: 'Created recently' },
 ];
 
+const RANGE_OPTIONS: { key: ForecastRange; label: string }[] = [
+  { key: 'fortnight', label: '2 weeks' },
+  { key: 'month', label: 'Month' },
+  { key: 'quarter', label: '3 months' },
+];
+
 export function DashboardSection() {
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [cardDetail, setCardDetail] = useCourseCardDetail();
   const [courseCardMetric, setCourseCardMetric] = useCourseCardMetric();
+  const [forecastRange, setForecastRange] = useForecastRange();
 
   return (
     <SettingsCard id="settings-dashboard">
@@ -68,6 +76,28 @@ export function DashboardSection() {
                 key={option.key}
                 type="button"
                 onClick={() => setCourseCardMetric(option.key)}
+                aria-pressed={active}
+                className={choiceChipClass(active)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-6 pt-0">
+        <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
+          Forecast range
+        </SettingsSubsectionHeading>
+        <div className="flex flex-wrap gap-2">
+          {RANGE_OPTIONS.map((option) => {
+            const active = forecastRange === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setForecastRange(option.key)}
                 aria-pressed={active}
                 className={choiceChipClass(active)}
               >

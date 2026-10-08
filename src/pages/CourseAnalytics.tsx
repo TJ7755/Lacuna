@@ -11,7 +11,6 @@ import {
   useLessons,
   useCourseCards,
   useCourseReviewHistory,
-  useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
 import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
@@ -53,7 +52,6 @@ export function CourseAnalytics() {
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
-  const history = useCourseSessionHistory(courseId);
   const questionData = useCourseQuestionData(courseId);
   const figures = useMemo(() => {
     if (!course || !cards || !reviewHistory) return null;
@@ -75,7 +73,6 @@ export function CourseAnalytics() {
     lessons === undefined ||
     cards === undefined ||
     reviewHistory === undefined ||
-    history === undefined ||
     questionData === undefined ||
     questionAnalytics === null
   ) {
@@ -123,7 +120,13 @@ export function CourseAnalytics() {
       )}
 
       <Rise index={2}>
-        <CourseForecastCard course={course} lessons={lessons} cards={cards} multiplier={m} />
+        <CourseForecastCard
+          course={course}
+          lessons={lessons}
+          cards={cards}
+          history={reviewHistory}
+          multiplier={m}
+        />
       </Rise>
 
       <Rise index={3}>
@@ -137,7 +140,6 @@ export function CourseAnalytics() {
           lessons={lessons}
           cards={cards}
           reviewHistory={reviewHistory}
-          history={history}
         />
       </Rise>
     </div>
