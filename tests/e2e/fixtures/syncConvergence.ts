@@ -59,7 +59,9 @@ export async function suppressStudyEndSync(page: Page): Promise<void> {
 async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
   await page.goto(`/#/course/${courseId}`);
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  const routeChoice = page.getByRole('button', { name: /Start:|Continue:/ }).first();
+  const routeChoice = page
+    .getByRole('dialog', { name: 'Choose what to study' })
+    .getByRole('button', { name: 'Start session' });
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   const studyCard = page.locator('[data-study-card-id]');
   await expect(routeChoice.or(continueButton).or(studyCard)).toBeVisible();

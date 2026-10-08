@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseScheduledStudy } from './fixtures/lacunaApp';
 
 async function openSeededDashboard(page: Page) {
   await page.goto('/');
@@ -95,10 +96,7 @@ test('starts a real lesson study interaction', async ({ page }) => {
   // Exact, because the dashboard also carries "Study Choose a course" and a per-course
   // "Study <name>" control. Without it, strict mode matches all three.
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await page
-    .getByRole('button', { name: /Start:|Continue:/ })
-    .first()
-    .click();
+  await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page
     .getByRole('button', { name: /Show answer/i })
