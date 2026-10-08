@@ -323,7 +323,9 @@ review text before waiting for merge gates, rather than updating it mid-run.
 ## Cloud-container browser runs
 
 The preinstalled Chromium (`/opt/pw-browsers/chromium`) is older than the repo's Playwright,
-so local runs need `launchOptions.executablePath` pointing at it. `offline-reload.spec.ts`
+so local runs need `launchOptions.executablePath` pointing at it, or symlinks from the expected
+`/opt/pw-browsers/chromium*-<revision>/` paths to it. A persistent profile keeps the service
+worker, which serves the previous build's assets; pass `serviceWorkers: 'block'` when reusing one. `offline-reload.spec.ts`
 launches its own browser and fails there with a Cache `match` TypeError on any revision; CI
 passes it. To screenshot populated states, seed through the repositories with
 `page.evaluate` on a Vite server without file watching: an HMR full reload mid-seed
@@ -342,3 +344,15 @@ in initial chunks, and add on-demand start-up chunks to the shell precache list.
 line, and a widening `::before` is clipped for clicks too. Make the link the flex box with
 `min-h-11` and clamp an inner span. A `border` on an `overflow-hidden` wrapper also eats
 into its button's target; an inset ring does not.
+
+## `cn` does not merge classes
+
+`components/ui/cn.ts` only joins strings: an override such as `mt-0` after `mt-2` wins or
+loses by Tailwind's stylesheet order, not by position. Use a class string without the
+conflicting utility (`inputFrameClassName` beside `inputClassName`) instead of overriding.
+
+## Theme-aware SVG images
+
+An SVG shown through `<img>` cannot read the app's CSS, but in Chromium its
+`prefers-color-scheme` follows the page's `color-scheme`, which `src/index.css` sets per theme.
+The Welcome course's seed drawings rely on this; keep `color-scheme` on `:root` and `.dark`.

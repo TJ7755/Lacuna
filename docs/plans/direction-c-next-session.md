@@ -186,3 +186,42 @@ Left for the prompter:
   are semibold; one rule for field labels across Settings would finish that consistency.
 - **Dialogs** keep `DialogPanel`'s outlined paper surface; it could move to the borderless card
   surface in one place if wanted.
+
+## Fifth pass (8 October 2026, fifth session)
+
+Decisions from the prompter: push to this branch; implement all four open items and restyle the
+seeded diagrams with a repair migration, following the theme; performance work may be
+structural if justified; mark the pull request ready for review but do not merge it. Mid-session:
+buttons must behave and look the same everywhere, following *Nudge*, because some find Lacuna
+hard to navigate.
+
+Done, each with a test that fails on the previous head:
+
+- **Open items:** Workload ahead draws stacked daily bars; Lesson breakdown plots mastery and
+  completion only, with each lesson's card count in its tooltip; one field-label rule
+  (`fieldLabelClassName`) across Settings, course settings, the assessment editor and the new-course
+  form, with selects and row inputs sharing the input frame (`inputFrameClassName`); dialogs use
+  Quick search's borderless card surface; the Welcome diagrams follow the theme through
+  `color-scheme` and a v4 repair replaces both earlier versions in existing data.
+- **Study, one action:** Today's rows say Study and open the same session plan as the course page;
+  a one-lesson course uses the course page's Study and Other ways (`CourseStudyActions`) instead of
+  its own Review due cards button; Other ways names the due-only session as the plan does. Large
+  buttons are 48px, level with a full-size menu. Link-styled buttons share `buttonClassName`.
+- **Bugs found on the way:** "Exploresharing" lost its space; the forecast title sank as its legend
+  wrapped; 100+ day exam counts overflowed the sidebar ring; card rows showed the swipe tray's red
+  tint at their corners; course settings' unlocking radios rendered as full-width text fields (also
+  on master); every course offered to detach from an author (the redesign dropped the guard); an
+  eyebrow label sat above Scheduling optimisation; Course comparison's pickers wrapped unevenly;
+  phone path rows broke lesson names mid-word in Edit mode; the storage error's Reload named a
+  colour that does not exist; the sidebar said Search where everything else says Search content.
+
+Left for the prompter:
+
+- **Google Fonts on the web build.** `webBootstrap.ts` still fetches Fraunces (the wordmark) and
+  JetBrains Mono from Google; both could be bundled like the other faces, which would remove the
+  only third-party font request for school users.
+- **Lesson-page Study.** On a lesson of a multi-lesson course, Study starts that lesson directly
+  rather than opening the plan. That is a different scope, but it shares the label; "Study lesson"
+  would make the difference visible.
+- **Forecast colours.** Exam-day forecast lines are coloured by status, so four on-track courses
+  draw four identical green lines; course colours (with status in the legend) would tell them apart.
