@@ -204,6 +204,16 @@ describe('CardList', () => {
     for (const name of backgrounds) expect(name).not.toContain('/');
   });
 
+  it('hides the swipe tray while the row is at rest', () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    // Its tinted buttons showed through the row's rounded corners on every row.
+    expect(container.querySelector<HTMLElement>('[data-card-swipe-tray]')!.style.visibility).toBe(
+      'hidden',
+    );
+  });
+
   it('renders empty state when no cards', () => {
     const onNewCard = vi.fn();
     const onEditCard = vi.fn();

@@ -2,7 +2,7 @@
 // an expandable analytics panel. Rendered by CardListBody, for ordinary and generated cards.
 
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
@@ -99,6 +99,9 @@ export const CardRow = React.memo(function CardRow({
     }
   }, [selectMode, expanded, dragX]);
   const springX = useSpring(dragX, { stiffness: 420, damping: 30, mass: 0.8 });
+  // The tray shows only once the row moves left: at rest its tinted buttons would
+  // otherwise show through the row's rounded corners.
+  const trayVisibility = useTransform(springX, (x) => (x < -0.5 ? 'visible' : 'hidden'));
   const swipeState = useRef({
     dragging: false,
     startX: 0,
@@ -303,11 +306,11 @@ export const CardRow = React.memo(function CardRow({
   return (
     <div className={cn('group relative rounded-2xl bg-surface transition-colors duration-200')}>
       {/* Action tray revealed behind the card on swipe-left */}
-      <div
+      <motion.div
         data-card-swipe-tray
         inert={!trayOpen}
         className="absolute inset-y-0 right-0 z-0 flex items-center overflow-hidden rounded-r-2xl"
-        style={{ width: trayWidth }}
+        style={{ width: trayWidth, visibility: trayVisibility }}
       >
         <div className="flex h-full w-full items-center">
           <button
@@ -351,7 +354,7 @@ export const CardRow = React.memo(function CardRow({
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       <motion.div
         ref={cardRef}

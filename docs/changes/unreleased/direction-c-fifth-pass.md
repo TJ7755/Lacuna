@@ -1,3 +1,4 @@
 - Today's sharing announcement reads "Explore sharing" again; the two words had lost their space ("Exploresharing").
 - The exam-day forecast's title keeps to the top of its card, level with the legend's first row, instead of sinking as the legend wraps.
 - A course whose exam is 100 or more days away no longer runs its day count into the sidebar ring.
+- Card rows no longer show a faint red tint at their right-hand corners: the swipe tray behind each row now appears only while the row moves.
