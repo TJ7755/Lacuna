@@ -188,13 +188,14 @@ Organic Chemistry                                          [Study]
 
 An ordered path of lesson nodes, checkpoint assessments (informational, never block progress)
 and practice nodes, built by `src/course/path.ts` and shown by `CourseOverview` as a list in
-path order. The course row pairs the course's name and status dot (a link back to its Path) with
+path order. The course row pairs the course's name (a link back to its Path) with
 the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`: Path · Cards ·
 Questions · Settings, active tab derived from the route), rendered on the four course surfaces
 and every normal or single-lesson view, so any section is one click from any other. Course
 analytics opens from the forecast figure in the course header rather than a tab. Lesson URLs keep
-Path active because a lesson belongs to the path. The course-owned `LessonViewModeToggle` appears
-beside that navigation on CoursePath and every Lesson view, so the same Study/Author decision
+Path active because a lesson belongs to the path; the phone `CourseSectionBar` shares the same
+rule (`isCourseSectionCurrent`). The course-owned `LessonViewModeToggle` appears
+beside that navigation on CoursePath and every Lesson view, so the same View/Edit decision
 follows the user through the workspace. Beside the lesson list, an Assessments panel lists the
 course's assessments with their dates, so exam dates are visible without opening Course
 Settings; each opens the same `AssessmentDetailSheet`. Practice gathers cards from lessons

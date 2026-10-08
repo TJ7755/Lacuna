@@ -12,7 +12,7 @@ import { prefetchRoute } from '../../routes/prefetch';
 import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
 import { useCourseTabSlider } from './useCourseTabSlider';
-import { COURSE_SECTIONS } from './courseSections';
+import { COURSE_SECTIONS, isCourseSectionCurrent } from './courseSections';
 
 export function CourseTabs({ courseId }: { courseId: string }) {
   const { pathname } = useLocation();
@@ -39,13 +39,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
       <LayoutGroup id={`course-tabs-${courseId}`}>
         {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {
           const to = `${base}${suffix}`;
-          // The Path tab (empty suffix) must match exactly so it doesn't stay
-          // "active" while on /cards, /questions, /analytics or /settings (all of which
-          // start with the same base path).
-          const active =
-            suffix === ''
-              ? pathname === to || pathname.startsWith(`${to}/lesson/`)
-              : pathname.startsWith(to);
+          const active = isCourseSectionCurrent(pathname, courseId, suffix);
           return (
             <Link
               key={label}
