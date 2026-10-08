@@ -36,6 +36,15 @@ export function glyphLoad(minutes: number): number {
 }
 
 /**
+ * The day count's size as a fraction of the glyph. Two digits sit at 0.375; longer counts
+ * shrink so they stay inside the ring's 26.5-unit opening rather than running into the stroke.
+ */
+export function glyphDaysScale(days: number): number {
+  const digits = String(days).length;
+  return digits <= 2 ? 0.375 : digits === 3 ? 0.32 : 0.24;
+}
+
+/**
  * A course at a glance: days to the exam in the centre (or an infinity sign when the
  * course has no date), the forecast as the ring's fill, and today's load as dots in
  * the ring's gap. Decorative; the caller supplies the accessible description.
@@ -58,6 +67,7 @@ export function CourseGlyph({
   multiplier: number;
 }) {
   const fill = glyphFill(recall);
+  const scale = days === null ? 0 : glyphDaysScale(days);
   return (
     <span
       aria-hidden="true"
@@ -70,7 +80,7 @@ export function CourseGlyph({
             className="block font-display font-semibold leading-none text-ink tabular-nums"
             style={
               {
-                fontSize: typeof size === 'number' ? size * 0.375 : `calc(${size} * 0.375)`,
+                fontSize: typeof size === 'number' ? size * scale : `calc(${size} * ${scale})`,
                 textBox: 'trim-both cap alphabetic',
               } as React.CSSProperties
             }
