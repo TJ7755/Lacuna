@@ -9,6 +9,7 @@ import { useToast } from '../ui/Toast';
 import { createCourse } from '../../db/courseRepository';
 import { createLesson } from '../../db/lessonRepository';
 import { cn } from '../ui/cn';
+import { fieldLabelClassName } from '../ui/Field';
 import { CourseStudyTarget } from './CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
@@ -87,7 +88,7 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
     <>
       <div className="flex flex-col gap-5 px-6 py-6">
         <div className="flex flex-col gap-2">
-          <label htmlFor={nameInputId} className="text-sm text-ink-faint">
+          <label htmlFor={nameInputId} className={fieldLabelClassName}>
             Course name
           </label>
           <input
@@ -104,9 +105,10 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
             aria-invalid={nameError ? 'true' : undefined}
             aria-describedby={nameError ? 'new-course-name-error' : undefined}
             className={cn(
-              'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
-              nameError ? 'border-negative' : 'border-line',
-              'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
+              // The text input's frame (Field's inputFrameClassName), red while invalid.
+              'w-full rounded-xl border-[1.5px] bg-surface px-3.5 py-2.5 text-ink',
+              nameError ? 'border-negative' : 'border-line focus:border-accent',
+              'placeholder:text-ink-faint focus:outline-none',
               'disabled:opacity-40',
             )}
           />

@@ -1,3 +1,4 @@
+import { fieldLabelClassName } from '../ui/Field';
 import type { Ref } from 'react';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DateTimePicker } from '../ui/DateTimePicker';
@@ -93,7 +94,7 @@ export function CourseStudyTarget({
   return (
     <>
       <fieldset>
-        <legend className="mb-2 text-sm text-ink-faint">Study target</legend>
+        <legend className={`mb-2 ${fieldLabelClassName}`}>Study target</legend>
         <StudyTargetTiles
           name="course-scheduling-mode"
           value={schedulingMode}

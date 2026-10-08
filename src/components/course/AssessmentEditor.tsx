@@ -10,7 +10,14 @@ import type {
 import { defaultExamDate } from '../../utils/datetime';
 import { DateTimePicker } from '../ui/DateTimePicker';
 import { StudyTargetTiles } from './CourseStudyTarget';
-import { Field, Input, inputClassName } from '../ui/Field';
+import {
+  Field,
+  Input,
+  inputClassName,
+  fieldLabelClassName,
+  inputFrameClassName,
+} from '../ui/Field';
+import { choiceChipClass } from '../ui/choiceChip';
 
 export interface AssessmentDraft {
   name: string;
@@ -156,7 +163,7 @@ export function AssessmentEditor({
 
       {kind === 'final' && (
         <fieldset>
-          <legend className="mb-2 text-sm text-ink-faint">Study target</legend>
+          <legend className={`mb-2 ${fieldLabelClassName}`}>Study target</legend>
           <StudyTargetTiles
             name="assessment-scheduling-mode"
             value={draft.schedulingMode}
@@ -174,7 +181,7 @@ export function AssessmentEditor({
         />
       )}
 
-      <label className="block text-sm text-ink-soft">
+      <label className={fieldLabelClassName}>
         Path position
         <select
           value={draft.afterLessonId ?? ''}
@@ -191,20 +198,15 @@ export function AssessmentEditor({
       </label>
 
       <fieldset>
-        <legend className="mb-2 text-sm text-ink-soft">Coverage</legend>
-        <div className="grid grid-cols-2 gap-2">
+        <legend className={`mb-2 ${fieldLabelClassName}`}>Coverage</legend>
+        <div className="flex flex-wrap gap-2">
           {(['prefix', 'custom'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
               aria-pressed={draft.coverageMode === mode}
               onClick={() => onChange({ ...draft, coverageMode: mode })}
-              className={
-                'hit-target rounded-full border px-3 py-2 text-sm transition-colors ' +
-                (draft.coverageMode === mode
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-line-strong')
-              }
+              className={choiceChipClass(draft.coverageMode === mode)}
             >
               {mode === 'prefix' ? 'Everything so far' : 'Choose lessons'}
             </button>
@@ -214,7 +216,7 @@ export function AssessmentEditor({
 
       {draft.coverageMode === 'custom' && (
         <fieldset>
-          <legend className="mb-2 text-sm text-ink-soft">Covered lessons</legend>
+          <legend className={`mb-2 ${fieldLabelClassName}`}>Covered lessons</legend>
           <div className="flex flex-wrap gap-2">
             {lessons.map((lesson) => {
               const active = draft.lessonIds.includes(lesson.id);
@@ -224,12 +226,7 @@ export function AssessmentEditor({
                   type="button"
                   aria-pressed={active}
                   onClick={() => toggleLesson(lesson.id)}
-                  className={
-                    'hit-target rounded-full border px-3 py-1 text-xs transition-colors ' +
-                    (active
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-line text-ink-soft hover:border-line-strong')
-                  }
+                  className={choiceChipClass(active)}
                 >
                   {lesson.name}
                 </button>
@@ -246,15 +243,15 @@ export function AssessmentEditor({
 
       {candidates.length > 0 && (
         <fieldset className="min-w-0">
-          <legend className="mb-2 text-sm text-ink-soft">Excluded cards</legend>
+          <legend className={`mb-2 ${fieldLabelClassName}`}>Excluded cards</legend>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search covered cards…"
-            className="mb-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className={`mb-2 w-full text-sm ${inputFrameClassName}`}
           />
-          <div className="max-h-56 overflow-y-auto rounded-lg border border-line">
+          <div className="max-h-56 overflow-y-auto rounded-xl border-[1.5px] border-line">
             {lessons
               .filter((lesson) => coveredLessonIds.has(lesson.id))
               .map((lesson) => {

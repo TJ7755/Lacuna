@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, CalendarIcon } from './icons';
+import { fieldLabelClassName } from './Field';
 import { cn } from './cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -540,7 +541,7 @@ export function DateTimePicker({
   return (
     <div ref={containerRef} className="relative" data-date-time-picker>
       {label && (
-        <span id={labelId} className="mb-2 block text-sm text-ink-soft">
+        <span id={labelId} className={`mb-2 ${fieldLabelClassName}`}>
           {label}
         </span>
       )}
@@ -574,10 +575,9 @@ export function DateTimePicker({
           }
         }}
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg border bg-surface px-3 py-2.5 text-left text-sm text-ink outline-none transition-colors',
-          open
-            ? 'border-accent ring-1 ring-accent/20'
-            : 'border-line-strong hover:border-line-strong',
+          // The text input's frame (Field's inputFrameClassName), with the accent while open.
+          'flex w-full items-center gap-3 rounded-xl border-[1.5px] bg-surface px-3.5 py-2.5 text-left text-sm text-ink outline-none transition-colors focus-visible:border-accent',
+          open ? 'border-accent' : 'border-line',
         )}
       >
         <CalendarIcon width={16} height={16} className="shrink-0 text-ink-faint" />

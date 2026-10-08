@@ -10,3 +10,4 @@
 - Settings and course settings label every field one way, small semibold ink with a regular hint beneath, where some sections used grey regular labels and others semibold. Selects, the Pomodoro and threshold inputs share the text field's frame, and course settings' fields focus in the accent like the rest.
 - Progress: Course comparison's two pickers share one even row instead of each stretching to its longest course name and wrapping.
 - Dialogs (lesson deletion, card editing, assessments, linking cards and the rest) use the borderless card surface of Quick search instead of an outlined paper panel.
+- Assessment, new-course and date fields follow the same label rule; the assessment editor's Coverage and lesson choices use the Settings choice chips instead of outlined orange buttons, and the date picker, course-name field and card search share the text field's frame.
