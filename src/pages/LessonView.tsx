@@ -341,7 +341,8 @@ export function LessonView({
                 disabled={lessonCards.length === 0}
                 onClick={() => navigate(lessonStudyPath)}
               >
-                Study
+                {/* Named for its scope: course-level Study opens the session plan instead. */}
+                Study lesson
                 <ArrowRightIcon />
               </Button>
             )}

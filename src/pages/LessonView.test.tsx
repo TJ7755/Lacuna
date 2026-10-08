@@ -272,7 +272,7 @@ describe('LessonView View mode', () => {
       '/archived',
     );
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Study/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
@@ -323,9 +323,10 @@ describe('LessonView View mode', () => {
     expect(screen.getByText(/^1 of 2 cards learnt · 1 note/)).toBeInTheDocument();
   });
 
-  it('starts the lesson from the primary Study action', () => {
+  it('starts the lesson from Study lesson, named apart from course-level Study', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Study lesson' }));
     expect(mockNavigate).toHaveBeenCalledWith('/lesson/lesson-1/learn');
   });
 

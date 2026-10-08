@@ -205,7 +205,8 @@ Done, each with a test that fails on the previous head:
   `color-scheme` and a v4 repair replaces both earlier versions in existing data.
 - **Study, one action:** Today's rows say Study and open the same session plan as the course page;
   a one-lesson course uses the course page's Study and Other ways (`CourseStudyActions`) instead of
-  its own Review due cards button; Other ways names the due-only session as the plan does. Large
+  its own Review due cards button; a lesson page's direct action is named **Study lesson**, so
+  Study always means the plan; Other ways names the due-only session as the plan does. Large
   buttons are 48px, level with a full-size menu. Link-styled buttons share `buttonClassName`.
 - **Bugs found on the way:** "Exploresharing" lost its space; the forecast title sank as its legend
   wrapped; 100+ day exam counts overflowed the sidebar ring; card rows showed the swipe tray's red
@@ -220,8 +221,5 @@ Left for the prompter:
 - **Google Fonts on the web build.** `webBootstrap.ts` still fetches Fraunces (the wordmark) and
   JetBrains Mono from Google; both could be bundled like the other faces, which would remove the
   only third-party font request for school users.
-- **Lesson-page Study.** On a lesson of a multi-lesson course, Study starts that lesson directly
-  rather than opening the plan. That is a different scope, but it shares the label; "Study lesson"
-  would make the difference visible.
 - **Forecast colours.** Exam-day forecast lines are coloured by status, so four on-track courses
   draw four identical green lines; course colours (with status in the legend) would tell them apart.

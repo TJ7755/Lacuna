@@ -18,3 +18,4 @@
 - New question set leads with + like New card and New course.
 - On a phone, a course path's lesson counts drop beneath the lesson name instead of squeezing it until words break mid-word ("Biologic al") in Edit mode.
 - The sidebar names its search entry **Search content**, as the page it opens, the Welcome course and the shortcuts sheet already did.
+- On a lesson of a multi-lesson course, the action that starts that lesson directly is named **Study lesson**, so **Study** always means the course's session plan.
