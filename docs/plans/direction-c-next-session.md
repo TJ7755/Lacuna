@@ -165,9 +165,9 @@ Fixed, each with a test that fails on the previous head:
   centred text; a wholly new lesson reads "5 new cards"; focus mode's exit is named as its menu
   item is.
 - **Surfaces and controls:** about thirty squared buttons became pills, with a `hit-target`
-  utility for 44px targets on compact controls; Quick search, the sidebar hover card, Today's
-  course menu (and its inset rows), the 404, the empty Archived page, course analytics' Questions section and several
-  panels moved to the card, popover or well surfaces; Markdown fields show focus on the whole
+  utility for 44px targets on compact controls; Quick search (now with inset rows), the sidebar
+  hover card, Today's course menu, the 404, the empty Archived page, course analytics' Questions
+  section and several panels moved to the card, popover or well surfaces; Markdown fields show focus on the whole
   frame; settings rows share one label style and switches sit centred; the Lesson breakdown's
   axis labels no longer clip. Design rules now catch squared buttons and stray uses of Fraunces.
 - **Motion:** layout animation never ran (`domAnimation` omits it), so every sliding pill jumped.
