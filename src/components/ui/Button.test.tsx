@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Button } from './Button';
+import { Button, buttonClassName } from './Button';
 import { scaledSpring } from './motion';
 
 beforeEach(() => localStorage.clear());
@@ -41,7 +41,15 @@ describe('Button', () => {
     const { container: sm } = render(<Button size="sm">Small</Button>);
     const { container: lg } = render(<Button size="lg">Large</Button>);
     expect(sm.querySelector('button')).toHaveClass('min-h-11');
-    expect(lg.querySelector('button')).toHaveClass('min-h-11');
+    // Large is a page's main action, level with a full-size Menu trigger (48px).
+    expect(lg.querySelector('button')).toHaveClass('min-h-12');
+  });
+
+  it('shares its look with links through buttonClassName', () => {
+    const { container } = render(<Button variant="primary">Go</Button>);
+    for (const name of buttonClassName('primary').split(' ')) {
+      expect(container.querySelector('button')).toHaveClass(name);
+    }
   });
 
   it('scales its CSS transition from the global motion setting', () => {

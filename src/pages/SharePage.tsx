@@ -1,3 +1,4 @@
+import { buttonClassName } from '../components/ui/buttonStyles';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
@@ -75,7 +76,7 @@ export function SharePage() {
           <h2 className="font-display text-2xl tracking-tight">Nothing to share yet</h2>
           <Link
             to="/"
-            className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-sm font-semibold text-accent-fg hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className={buttonClassName('primary')}
           >
             Create a course on Today
           </Link>

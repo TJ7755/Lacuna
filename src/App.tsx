@@ -1,3 +1,4 @@
+import { buttonClassName } from './components/ui/buttonStyles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { RouterProvider } from 'react-router-dom';
@@ -259,7 +260,7 @@ export function App() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-contrast transition hover:opacity-90 active:opacity-90"
+            className={buttonClassName('primary')}
           >
             Reload
           </button>

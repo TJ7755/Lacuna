@@ -130,6 +130,12 @@ describe('App initialisation', () => {
       'Free space in your browser or operating system, or leave private browsing, then reload Lacuna.',
     );
     expect(screen.getByRole('button', { name: 'Reload' })).toBeVisible();
+    // The shared primary button: a 44px target in the accent's own text colour (the
+    // hand-written classes named a token that does not exist).
+    expect(screen.getByRole('button', { name: 'Reload' })).toHaveClass(
+      'min-h-11',
+      'text-accent-fg',
+    );
     expect(screen.queryByRole('button', { name: /backup|export/i })).not.toBeInTheDocument();
     expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
   });

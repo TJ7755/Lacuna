@@ -1,3 +1,4 @@
+import { buttonClassName } from '../components/ui/buttonStyles';
 import { Link, useLocation } from 'react-router-dom';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 
@@ -16,7 +17,7 @@ export function NotFound() {
           </div>
           <Link
             to="/"
-            className="inline-flex min-h-11 items-center rounded-full bg-accent px-4 text-sm font-semibold text-accent-fg transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            className={buttonClassName('primary')}
           >
             Back to Today
           </Link>

@@ -1,3 +1,4 @@
+import { buttonClassName } from './buttonStyles';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -928,7 +929,7 @@ export function DateTimePicker({
                     onClick={() => {
                       if (commitTimeDrafts()) closePicker(true);
                     }}
-                    className="hit-target rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 active:opacity-80"
+                    className={buttonClassName('primary', 'sm')}
                   >
                     Done
                   </button>
