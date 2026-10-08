@@ -406,8 +406,8 @@ export const CardRow = React.memo(function CardRow({
           )}
 
           <div className="min-w-0 flex-1">
-            {/* Two lines of question and one of answer, clipped on a line boundary. */}
-            <div className="max-h-10 overflow-hidden text-[15px] font-semibold leading-5 text-ink [&_*]:leading-5">
+            {/* Two lines of question and one of answer, clamped by line so maths keeps its height. */}
+            <div className="card-row-clamp line-clamp-2 max-h-[3.75rem] text-[15px] font-semibold text-ink">
               <Suspense
                 fallback={<Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />}
               >
@@ -416,7 +416,7 @@ export const CardRow = React.memo(function CardRow({
             </div>
             <div
               data-card-answer
-              className="mt-0.5 max-h-5 overflow-hidden text-[13px] leading-5 text-ink-soft [&_*]:leading-5"
+              className="card-row-clamp mt-0.5 line-clamp-1 max-h-8 text-[13px] text-ink-soft"
             >
               {occlusionAnswer !== undefined ? (
                 occlusionAnswer

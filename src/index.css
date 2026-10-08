@@ -456,6 +456,10 @@
 .prose-lacuna > :first-child { margin-top: 0; }
 .prose-lacuna > :last-child { margin-bottom: 0; }
 .prose-lacuna p { margin: 0.6em 0; }
+/* Card-list previews: compact lines for text, while KaTeX keeps its own line height so a
+   fraction is shown whole rather than clipped. The height cap stops images growing a row. */
+.card-row-clamp { line-height: 1.25rem; }
+.card-row-clamp :not(.katex, .katex *) { line-height: inherit; }
 .prose-lacuna h1, .prose-lacuna h2, .prose-lacuna h3 { margin: 0.8em 0 0.4em; line-height: 1.2; }
 .prose-lacuna h1 { font-size: 1.5em; }
 .prose-lacuna h2 { font-size: 1.3em; }
@@ -608,13 +612,9 @@ pre.lacuna-mermaid[data-mermaid-error='true'] {
 .cloze-reveal {
   color: hsl(var(--accent-ink));
   font-weight: 600;
-  padding: 0.05em 0.3em;
-  border-radius: 4px;
   text-decoration: underline 0.16em hsl(var(--accent) / 0.55);
   text-decoration-skip-ink: auto;
   text-underline-offset: 0.18em;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 .cloze-reveal::selection {
   background-color: hsl(var(--accent) / 0.45);
