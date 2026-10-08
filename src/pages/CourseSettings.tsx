@@ -530,7 +530,7 @@ export function CourseSettings() {
                 reviewHistory={reviewHistory}
                 onUpdate={(changes) => updateCourse(course.id, changes)}
                 entityLabel="course"
-                headingLevel={3}
+                headingLevel={2}
               />
 
               {course.distributedCopy?.locked === true && (

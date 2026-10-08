@@ -41,7 +41,7 @@ export interface OptimisationPanelProps {
  * better), and applies the new weights only on explicit confirmation, taking a
  * restore-point snapshot first. Gated on a minimum review count, and on the
  * per-entity/global "Optimise scheduling" setting. The whole low-level workflow, including its
- * reset path, sits behind an Advanced scheduling disclosure.
+ * reset path, sits behind the card's disclosure.
  */
 export function OptimisationPanel({
   entity,
@@ -134,14 +134,13 @@ export function OptimisationPanel({
 
   return (
     <SettingsCard>
-      <div>
-        <span className="text-sm text-ink-faint">
-          Advanced scheduling
-        </span>
-        <SettingsSectionHeading level={headingLevel} className="mt-1 font-display text-xl">
-          Scheduling optimisation
-        </SettingsSectionHeading>
-      </div>
+      {/* Headed like its sibling cards, without an eyebrow label above the heading. */}
+      <SettingsSectionHeading
+        level={headingLevel}
+        className="font-display text-2xl font-semibold tracking-tight"
+      >
+        Scheduling optimisation
+      </SettingsSectionHeading>
 
       <details className="group">
         <summary

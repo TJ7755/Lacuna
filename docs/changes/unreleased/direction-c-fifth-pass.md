@@ -4,3 +4,4 @@
 - Card rows no longer show a faint red tint at their right-hand corners: the swipe tray behind each row now appears only while the row moves.
 - Course settings' Lesson unlocking options line up as a list again; each radio had taken a text field's full-width styling and the three options scattered across the card.
 - Course settings no longer tells every course it is "managed by its author": the Shared course section and its Detach button appear again only on a locked shared copy.
+- Course settings' Scheduling optimisation card is headed like its neighbours, without the small "Advanced scheduling" label above it.
