@@ -159,7 +159,7 @@ export function ForecastChart({
         <h2 id={titleId} className="shrink-0 font-display text-2xl">
           Exam-day forecast
         </h2>
-        <ul className="flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
+        <ul className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
           {lines.map((line) => (
             <li key={line.id}>
               <button

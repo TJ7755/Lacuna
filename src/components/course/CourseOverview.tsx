@@ -381,10 +381,11 @@ export function CourseOverview(props: CourseOverviewProps) {
       {props.assessments.length > 0 && (
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
           <section
-            className={cn(CARD, 'flex flex-col gap-3.5 p-6')}
+            className={cn(CARD, 'flex flex-col gap-3.5 px-5 pb-6 pt-6 md:px-7 md:pt-7')}
             aria-labelledby="course-assessments-heading"
           >
-            <h2 id="course-assessments-heading" className="font-display text-lg">
+            {/* Matches the Lessons card beside it, so the two headings share a line. */}
+            <h2 id="course-assessments-heading" className="font-display text-[22px]">
               Assessments
             </h2>
             {props.assessments.map((assessment) => {

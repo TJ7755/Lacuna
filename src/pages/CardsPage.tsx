@@ -183,7 +183,7 @@ export function CardsPage() {
         <div role="group" aria-label="Add content" className="flex flex-wrap items-center gap-2">
           <Menu
             label="More ways to add"
-            size="md"
+            triggerWidth={44}
             items={[
               {
                 label: 'New sequence',

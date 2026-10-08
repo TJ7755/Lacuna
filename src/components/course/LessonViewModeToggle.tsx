@@ -24,6 +24,8 @@ export function LessonViewModeToggle({
       options={OPTIONS}
       value={mode}
       onChange={onChange}
+      // The compact size keeps its track the height of the section tabs beside it.
+      size="sm"
       className="shrink-0"
     />
   );

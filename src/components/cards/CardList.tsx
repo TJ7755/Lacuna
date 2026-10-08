@@ -510,7 +510,7 @@ export function CardList({
            * importing are the occasional cases, and giving all five equal weight made the
            * header read as a toolbar dump with no primary action.
            */}
-          <Menu label="More ways to add cards" items={addMenuItems}>
+          <Menu label="More ways to add cards" items={addMenuItems} triggerWidth={44}>
             <MoreIcon width={16} height={16} />
           </Menu>
         </div>

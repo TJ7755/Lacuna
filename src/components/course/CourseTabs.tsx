@@ -1,10 +1,9 @@
-// Shared course-level tab navigation — Path, Cards, Questions, Analytics,
-// Settings — rendered on all five course surfaces so any section is one
-// click from any other. Active tab is derived from the current route rather
-// than passed in, so it never drifts out of sync with the URL. Styling
-// reuses the segmented-control styling already established by
-// LessonViewModeToggle (rounded-lg border, bg-ink/5 track, active item on
-// bg-surface with a soft shadow).
+// Shared course-level tab navigation — Path, Cards, Questions, Settings —
+// rendered on every course surface so any section is one click from any
+// other. Active tab is derived from the current route rather than passed in,
+// so it never drifts out of sync with the URL. Styling matches the compact
+// PillToggleGroup used by LessonViewModeToggle beside it (a 44px pill track
+// on bg-ink/[0.06], the active item on bg-surface with a soft shadow).
 
 import { LayoutGroup, m as motion } from 'motion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -80,7 +79,8 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                 void navigate(`${base}${COURSE_SECTIONS[next].suffix}`);
               }}
               className={cn(
-                'relative flex h-full items-center whitespace-nowrap rounded-full px-4 font-semibold transition-colors',
+                // The pseudo-element lifts the 36px pill to a 44px target, as PillToggleGroup's sm size does.
+                "relative flex h-full items-center whitespace-nowrap rounded-full px-4 font-semibold transition-colors before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']",
                 active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >
