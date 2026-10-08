@@ -294,7 +294,9 @@ function CommandPaletteDialog({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.12 * m }}
-                    className="py-1"
+                    // Inset rounded rows, as in every other menu; 6px + 10px keeps the
+                    // text on the search field's 16px edge.
+                    className="p-1.5"
                   >
                     {results.map((hit, i) => {
                       const key =
@@ -323,7 +325,7 @@ function CommandPaletteDialog({
                             onMouseEnter={() => setActive(i)}
                             onClick={() => go(i)}
                             className={
-                              'flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-all duration-150 ' +
+                              'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-all duration-150 ' +
                               (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
                             }
                           >
