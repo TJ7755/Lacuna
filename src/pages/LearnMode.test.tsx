@@ -880,7 +880,7 @@ describe('LearnMode course/lesson scope', () => {
 
     await continueFromNotes();
     expect(await screen.findByRole('button', { name: 'Show study controls' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Exit Focus Mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Leave focus mode' })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -1549,7 +1549,7 @@ describe('LearnMode course/lesson scope', () => {
 
       await continueFromNotes();
       fireEvent.click(await screen.findByRole('button', { name: 'Show study controls' }));
-      const exitFocus = await screen.findByRole('button', { name: 'Exit Focus Mode' });
+      const exitFocus = await screen.findByRole('button', { name: 'Leave focus mode' });
       expect(exitFocus).not.toHaveClass('hidden');
 
       fireEvent.click(exitFocus);

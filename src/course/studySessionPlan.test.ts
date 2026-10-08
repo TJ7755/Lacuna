@@ -30,6 +30,16 @@ describe('planStudySession', () => {
     expect(plan.startsWithDueReview).toBe(false);
   });
 
+  it('counts a wholly new lesson once rather than as cards and new cards', () => {
+    const plan = planStudySession({
+      decision: { kind: 'step', step: { kind: 'lesson', lessonId: 'l1', label: 'Cells' } },
+      snapshot: snapshot(0),
+      lessonCardsById: new Map([['l1', [card(false), card(false)]]]),
+      meanReviewSeconds: 12,
+    });
+    expect(plan.steps[0]?.detail).toBe('2 new cards');
+  });
+
   it('lists due reviews once when they are the step itself', () => {
     const plan = planStudySession({
       decision: { kind: 'step', step: DUE_REVIEW_STEP },

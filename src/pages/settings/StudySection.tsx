@@ -101,7 +101,7 @@ export function StudySection() {
       <div className="mt-6 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">
           <label htmlFor="start-in-focus-mode" className="text-sm">
-            Start Learn sessions in Focus Mode
+            Start Learn sessions in focus mode
           </label>
           <p className="mt-1 text-sm text-ink-soft">
             Hides session controls on open. Press Esc to leave.
@@ -110,7 +110,7 @@ export function StudySection() {
         <PillSwitch
           id="start-in-focus-mode"
           checked={startInFocusMode}
-          ariaLabel="Start Learn sessions in Focus Mode"
+          ariaLabel="Start Learn sessions in focus mode"
           onChange={setStartInFocusMode}
         />
       </div>

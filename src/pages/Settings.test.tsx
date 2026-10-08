@@ -129,7 +129,7 @@ describe('Settings', () => {
   it('updates the default Focus Mode preference', () => {
     render(<Settings />);
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in Focus Mode' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in focus mode' }));
 
     expect(setStartInFocusMode).toHaveBeenCalledWith(true);
   });

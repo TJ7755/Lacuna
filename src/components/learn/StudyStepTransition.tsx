@@ -65,7 +65,7 @@ export function StudyStepTransition({
       {/* Learn's header geometry, so the timer stays where it was as a step ends: the
           same frame, and room for the navigation, card-action and Undo buttons that
           follow the timer there. */}
-      <div className="mx-auto flex min-h-[84px] w-full max-w-[1000px] items-center justify-end gap-2 px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] md:gap-4 md:px-8">
+      <div className="mx-auto flex min-h-[84px] w-full max-w-4xl items-center justify-end gap-2 px-6 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] md:gap-4">
         <div className="hidden min-[340px]:block">
           <PomodoroTimer />
         </div>

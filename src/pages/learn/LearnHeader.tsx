@@ -201,7 +201,7 @@ export function LearnHeader({
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
-      <div className="mx-auto flex min-h-[84px] w-full max-w-[1000px] items-center gap-1 px-2 py-2.5 md:gap-4 md:px-8 max-md:gap-2 max-md:px-4">
+      <div className="mx-auto flex min-h-[84px] w-full max-w-4xl items-center gap-2 px-6 py-2.5 md:gap-4">
         <div className="min-w-10 flex-1 overflow-hidden">
           <div className="mb-2 flex min-w-0 items-baseline gap-1 text-[13px] md:text-sm">
             <h1 className="truncate font-bold text-ink" title={info.title}>
@@ -355,9 +355,9 @@ export function LearnHeader({
           <button
             type="button"
             onClick={onToggleFocus}
-            aria-label="Exit Focus Mode"
-            title="Exit Focus Mode (F)"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
+            aria-label="Leave focus mode"
+            title="Leave focus mode (F)"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
           >
             <FocusIcon width={19} height={19} />
           </button>

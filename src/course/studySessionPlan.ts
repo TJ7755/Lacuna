@@ -45,9 +45,11 @@ function describeStep(
       detail:
         cards.length === 0
           ? 'Notes only'
-          : fresh > 0
-            ? `${countOf(cards.length, 'card')}, ${fresh} new`
-            : countOf(cards.length, 'card'),
+          : fresh === cards.length
+            ? countOf(fresh, 'new card')
+            : fresh > 0
+              ? `${countOf(cards.length, 'card')}, ${fresh} new`
+              : countOf(cards.length, 'card'),
       minutes:
         cards.length === 0
           ? undefined
