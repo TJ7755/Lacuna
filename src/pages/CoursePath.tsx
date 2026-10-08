@@ -47,6 +47,7 @@ import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 
 const LazyLessonView = lazy(() =>
   import('./LessonView').then((module) => ({ default: module.LessonView })),
@@ -296,7 +297,7 @@ export function CoursePath() {
   // Course not found.
   if (course === null || summary === null) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
+      <div className={`${SECTION_CARD_SURFACE_CLASS} relative overflow-hidden p-10`}>
         <div className="relative">
           <p className="mb-4 text-ink-soft">This course could not be found.</p>
           <Link to="/" className="text-accent underline">

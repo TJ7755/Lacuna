@@ -225,7 +225,7 @@ function CommandPaletteDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.98 }}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl shadow-black/20 will-change-transform-opacity"
+            className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)] will-change-transform-opacity"
             onKeyDown={onKeyDown}
           >
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">

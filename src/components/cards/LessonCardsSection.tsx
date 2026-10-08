@@ -131,7 +131,7 @@ export function LessonCardsSection({
       )}
 
       {pendingUnlink && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink/[0.04] px-4 py-2.5">
           <span className="text-sm text-ink-soft">Remove card from this lesson?</span>
           <ConfirmInline
             message="Its teaching progress here will be reset."

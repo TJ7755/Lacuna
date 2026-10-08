@@ -168,6 +168,10 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Navigate')).toBeInTheDocument();
     expect(screen.getByText('Esc')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Search…');
+    // The popover surface: a soft shadow and hairline ring rather than an outline.
+    const panel = screen.getByRole('combobox').closest('.rounded-3xl');
+    expect(panel).not.toBeNull();
+    expect(panel).not.toHaveClass('border');
     expect(screen.queryByText('Type to search across every course.')).not.toBeInTheDocument();
 
     first.rerender(renderPalette(false));

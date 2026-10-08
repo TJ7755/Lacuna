@@ -246,7 +246,7 @@ export function RevisionPlanSetup({
                       .map((window) => (
                         <div
                           key={window.id}
-                          className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+                          className="flex items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 py-3"
                         >
                           <span className="min-w-0 flex-1 text-sm text-ink">
                             {formatPlanDay(window.day)}
