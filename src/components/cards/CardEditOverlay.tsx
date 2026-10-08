@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { TagInput } from '../ui/TagInput';
@@ -106,29 +107,19 @@ export function CardEditOverlay({
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-3xl"
       overlayClassName="pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] will-change-transform-opacity"
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        e.nativeEvent.stopImmediatePropagation();
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onCancel();
-        } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          void handleSave();
-        }
-      }}
+      onKeyDown={dialogKeyDown({ onCancel, onSubmit: () => void handleSave() })}
     >
       <DialogHeader title="Edit card" onClose={onCancel} closeLabel="Close editor" />
 
       <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6">
         {/* Card type selector */}
         <div>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+          <div className="mb-2 text-sm text-ink-faint">
             Card type
           </div>
           <div className="flex gap-2">
             {([
-              { key: 'front_back' as const, label: 'Front / Back' },
+              { key: 'front_back' as const, label: 'Front / back' },
               { key: 'cloze' as const, label: 'Cloze deletion' },
               { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
             ]).map((t) => (
@@ -137,7 +128,7 @@ export function CardEditOverlay({
                 type="button"
                 onClick={() => setType(t.key)}
                 className={cn(
-                  'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
+                  'flex-1 hit-target rounded-full border px-4 py-2.5 text-sm transition-colors',
                   type === t.key
                     ? 'border-accent bg-accent-soft text-accent'
                     : 'border-line text-ink-soft hover:border-line-strong',
@@ -188,7 +179,7 @@ export function CardEditOverlay({
               value={front}
               onChange={setFront}
               minRows={6}
-              placeholder="Question or prompt. Markdown, maths and images are supported."
+              placeholder="Question or prompt"
               onError={(m) => notify(m, 'negative')}
               onTabForward={() => backRef.current?.focus()}
             />
@@ -198,7 +189,7 @@ export function CardEditOverlay({
               value={back}
               onChange={setBack}
               minRows={6}
-              placeholder="Answer. Markdown, maths and images are supported."
+              placeholder="Answer"
               onError={(m) => notify(m, 'negative')}
               onTabBackward={() => frontRef.current?.focus()}
             />
@@ -207,12 +198,12 @@ export function CardEditOverlay({
 
         {/* Tags */}
         <div>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+          <div className="mb-2 text-sm text-ink-faint">Tags</div>
           <TagInput
             tags={tags}
             onChange={setTags}
             suggestions={tagSuggestions}
-            placeholder="Add tags to group cards for filtered study…"
+            placeholder="Add tags"
           />
         </div>
       </div>

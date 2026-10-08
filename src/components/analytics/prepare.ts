@@ -40,33 +40,6 @@ export interface TrajectoryPoint {
   retrievability: number;
 }
 
-/**
- * Aggregate per-card SessionHistory snapshots into one point per calendar day
- * (the last snapshot of each day), keeping the trajectory line legible.
- */
-export function trajectorySeries(history: SessionHistoryEntry[]): TrajectoryPoint[] {
-  const lastPerDay = new Map<number, SessionHistoryEntry>();
-  for (const entry of history) {
-    const day = startOfDay(entry.timestamp);
-    const existing = lastPerDay.get(day);
-    if (!existing || entry.timestamp >= existing.timestamp) {
-      lastPerDay.set(day, entry);
-    }
-  }
-  return [...lastPerDay.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([day, entry]) => ({
-      day,
-      label: new Date(day).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-      }),
-      retrievability: Number.isFinite(entry.averagePredictedRetrievability)
-        ? Math.round(entry.averagePredictedRetrievability * 100)
-        : 0,
-    }));
-}
-
 export interface StabilityBucket {
   range: string;
   count: number;
@@ -187,10 +160,17 @@ export function studyTimeSeries(
     points.push({
       day,
       label: new Date(day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      minutes: Number.isFinite(seconds) ? Math.round(seconds / 60) : 0,
+      // Unrounded: rounding each day to whole minutes erased short sessions.
+      minutes: Number.isFinite(seconds) ? seconds / 60 : 0,
     });
   }
   return points;
+}
+
+/** Whole minutes across a series; any study at all reads as at least 1 minute. */
+export function totalStudyMinutes(points: readonly StudyTimePoint[]): number {
+  const total = points.reduce((sum, point) => sum + point.minutes, 0);
+  return total > 0 ? Math.max(1, Math.round(total)) : 0;
 }
 
 export interface RetentionByAgePoint {
@@ -346,4 +326,27 @@ export function lessonBreakdown(
           lessonCards.length > 0 ? Math.round((reviewed / lessonCards.length) * 100) : 0,
       };
     });
+}
+
+/** Review timestamps grouped by card, in the shape the review heatmap reads. */
+export function reviewActivityFromHistory(
+  reviewHistory: readonly ReviewHistoryEntry[],
+): Map<string, number[]> {
+  const activity = new Map<string, number[]>();
+  for (const entry of reviewHistory) {
+    const list = activity.get(entry.cardId);
+    if (list) list.push(entry.timestamp);
+    else activity.set(entry.cardId, [entry.timestamp]);
+  }
+  return activity;
+}
+
+/**
+ * Observed recall across every review, weighting each age band by its review count.
+ * Null when nothing has been reviewed, so callers can show a dash rather than 0%.
+ */
+export function overallRecall(points: readonly RetentionByAgePoint[]): number | null {
+  const total = points.reduce((sum, point) => sum + point.count, 0);
+  if (total === 0) return null;
+  return Math.round(points.reduce((sum, point) => sum + point.retention * point.count, 0) / total);
 }

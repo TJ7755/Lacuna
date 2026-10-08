@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
@@ -188,8 +188,9 @@ describe('CourseSettings', () => {
   it('uses cards to group related course settings', () => {
     renderPage();
 
-    const basics = screen.getByLabelText('Course name').closest('section');
-    expect(basics).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+    const goal = screen.getByLabelText('Course name').closest('section');
+    expect(goal).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(goal).not.toHaveClass('border');
   });
 
   it('does not reset the optimiser when the same course rerenders', () => {
@@ -209,14 +210,32 @@ describe('CourseSettings', () => {
 
   it('renders the grouped section headings and no "Save changes" bar', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: 'Basics' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Study' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Content' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Goal and dates' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Daily study' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Lessons' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Auto-practice' })).toBeInTheDocument();
     // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
     // so assert on its presence rather than a specific role.
     expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);
     expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
+  });
+
+  it('offers detaching only on a locked shared copy', () => {
+    const { unmount } = renderPage();
+    expect(screen.queryByRole('heading', { name: 'Shared course' })).not.toBeInTheDocument();
+    unmount();
+    mockCourse = {
+      ...course,
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Shared course' })).toBeInTheDocument();
   });
 
   it('edits the final date through the shared assessment editor', () => {
@@ -302,9 +321,14 @@ describe('CourseSettings', () => {
     );
   });
 
-  it('commits the exam objective toggle immediately on change', () => {
+  it('commits the exam objective immediately on change', () => {
     renderPage();
-    fireEvent.click(screen.getByLabelText('Secure topics'));
+    const objective = screen.getByRole('group', { name: 'Exam objective' });
+    expect(within(objective).getByRole('button', { name: 'Most marks' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(within(objective).getByRole('button', { name: 'Secure topics' }));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ examObjective: 'securedTopics' }),

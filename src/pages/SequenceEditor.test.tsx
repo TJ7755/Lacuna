@@ -4,15 +4,17 @@ import type { Ref } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SequenceEditor } from './SequenceEditor';
 import type { Course, Sequence } from '../db/types';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
-let mockCourse: Course | undefined;
+let mockCourse: Course | null | undefined;
+let mockLesson: null | undefined;
 let mockSequence: Sequence | null | undefined;
 const createSequence = vi.fn().mockResolvedValue(undefined);
 const updateSequence = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
-  useLesson: () => undefined,
+  useLesson: () => mockLesson,
   useSequence: () => mockSequence,
 }));
 
@@ -37,6 +39,7 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
     placeholder,
     inputRef,
     onModEnter,
+    onTabForward,
     ariaLabel,
     ariaInvalid,
     ariaDescribedBy,
@@ -46,6 +49,7 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
     placeholder?: string;
     inputRef?: Ref<HTMLTextAreaElement>;
     onModEnter?: () => void;
+    onTabForward?: () => void;
     ariaLabel?: string;
     ariaInvalid?: boolean;
     ariaDescribedBy?: string;
@@ -58,6 +62,9 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
         if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           onModEnter();
+        } else if (onTabForward && e.key === 'Tab' && !e.shiftKey) {
+          e.preventDefault();
+          onTabForward();
         }
       }}
       aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
@@ -101,11 +108,21 @@ function itemsHeading(count: number) {
   return screen.getByText((_content, element) => element?.textContent === `Items (${count})`);
 }
 
-function renderNew() {
+function renderNew(lessonMode = false) {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/sequence/new']}>
+    <MemoryRouter
+      initialEntries={[
+        lessonMode
+          ? '/course/course-1/lesson/lesson-1/sequence/new'
+          : '/course/course-1/sequence/new',
+      ]}
+    >
       <Routes>
         <Route path="/course/:courseId/sequence/new" element={<SequenceEditor />} />
+        <Route
+          path="/course/:courseId/lesson/:lessonId/sequence/new"
+          element={<SequenceEditor />}
+        />
         <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
@@ -125,6 +142,7 @@ function renderEdit(state?: unknown) {
 
 beforeEach(() => {
   mockCourse = undefined;
+  mockLesson = undefined;
   mockSequence = undefined;
   createSequence.mockClear();
   updateSequence.mockClear();
@@ -135,6 +153,42 @@ beforeEach(() => {
 });
 
 describe('SequenceEditor', () => {
+  it.each(['course', 'lesson', 'sequence'] as const)(
+    'keeps the missing-%s state aligned and its Back target full-size',
+    (missing) => {
+      mockCourse = missing === 'course' ? null : course;
+      mockLesson = missing === 'lesson' ? null : undefined;
+      mockSequence = missing === 'sequence' ? null : undefined;
+      const { container } = missing === 'sequence' ? renderEdit() : renderNew(missing === 'lesson');
+      expect(screen.getByText(`This ${missing} could not be found.`)).toBeInTheDocument();
+      expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
+      const back = screen.getByRole('link');
+      expect(back).toHaveClass('min-h-11');
+      expect(back).toHaveAttribute(
+        'href',
+        missing === 'course'
+          ? '/'
+          : missing === 'lesson'
+            ? '/course/course-1'
+            : '/course/course-1/cards',
+      );
+    },
+  );
+  it('aligns with course pages and offers one full-size destination-aware Back link', () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
+    const back = screen.getByRole('link', { name: 'Back to Cards' });
+    expect(back).toHaveAttribute('href', '/course/course-1/cards');
+    expect(back).toHaveClass('min-h-11');
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
+  it('keeps the editor header free of a repeated preset description', () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    expect(container.querySelector('header p')).toBeNull();
+  });
   it('shows a skeleton while loading', () => {
     renderNew();
     expect(screen.queryByText('New sequence')).not.toBeInTheDocument();
@@ -152,14 +206,12 @@ describe('SequenceEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Item 1 content' })).toBeInTheDocument();
   });
 
-  it('updates the editor introduction when the preset changes', () => {
+  it('shows the selected preset description with its choice rather than repeating it in the header', () => {
     mockCourse = course;
     renderNew();
 
     fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
-    expect(
-      screen.getByRole('heading', { name: 'New sequence' }).nextElementSibling,
-    ).toHaveTextContent(
+    expect(screen.getByRole('button', { name: /Script \/ dialogue/ })).toHaveTextContent(
       'A scripted scene — only your lines are recalled; other speakers cue them.',
     );
   });
@@ -183,9 +235,7 @@ describe('SequenceEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     expect(itemsHeading(2)).toBeInTheDocument();
 
-    const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     expect(values[1]).toHaveFocus();
     expect(values[1].scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
     expect(values[1]).toHaveAccessibleName('Item 2 content');
@@ -198,15 +248,11 @@ describe('SequenceEditor', () => {
     const first = screen.getByRole('textbox', { name: 'Item 1 content' });
     fireEvent.change(first, { target: { value: 'First' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
-    let values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    let values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[1], { target: { value: 'Third' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add item below item 1' }));
-    values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    values = screen.getAllByPlaceholderText('Item content');
     expect(values).toHaveLength(3);
     expect(values[0]).toHaveValue('First');
     expect(values[1]).toHaveFocus();
@@ -217,24 +263,18 @@ describe('SequenceEditor', () => {
     mockCourse = course;
     renderNew();
 
-    const first = screen.getByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const first = screen.getByPlaceholderText('Item content');
     expect(first).toHaveAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
     fireEvent.change(first, { target: { value: 'First' } });
     fireEvent.keyDown(first, { key: 'Enter', ctrlKey: true });
 
-    let values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    let values = screen.getAllByPlaceholderText('Item content');
     expect(values).toHaveLength(2);
     expect(values[1]).toHaveFocus();
     fireEvent.change(values[1], { target: { value: 'Second' } });
     fireEvent.keyDown(values[1], { key: 'Enter', metaKey: true });
 
-    values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    values = screen.getAllByPlaceholderText('Item content');
     expect(values).toHaveLength(3);
     expect(values[0]).toHaveValue('First');
     expect(values[1]).toHaveValue('Second');
@@ -287,42 +327,32 @@ describe('SequenceEditor', () => {
       target: { value: 'First' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
-    const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[1], { target: { value: 'Second' } });
 
     // Move the second item up so it becomes first.
     const moveUpButtons = screen.getAllByTitle('Move up');
     fireEvent.click(moveUpButtons[1]);
 
-    const reordered = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const reordered = screen.getAllByPlaceholderText('Item content');
     expect(reordered[0]).toHaveValue('Second');
     expect(reordered[1]).toHaveValue('First');
 
     fireEvent.click(screen.getAllByTitle('Delete item')[1]);
     expect(itemsHeading(1)).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
-    ).toHaveValue('Second');
+    expect(screen.getByPlaceholderText('Item content')).toHaveValue('Second');
   });
 
   it('shows a live preview count that grows as items are added', () => {
     mockCourse = course;
     renderNew();
 
-    const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[0], { target: { value: 'First item' } });
     expect(screen.getByText('1 card generated')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
-    const updatedValues = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const updatedValues = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(updatedValues[1], { target: { value: 'Second item' } });
     expect(screen.getByText('2 cards generated')).toBeInTheDocument();
   });
@@ -334,9 +364,7 @@ describe('SequenceEditor', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
       target: { value: 'My sequence' },
     });
-    const values = screen.getAllByPlaceholderText(
-      'Item content. Markdown, maths and images are supported.',
-    );
+    const values = screen.getAllByPlaceholderText('Item content');
     fireEvent.change(values[0], { target: { value: 'First item' } });
 
     await act(async () => {
@@ -352,6 +380,38 @@ describe('SequenceEditor', () => {
       expect.arrayContaining([expect.objectContaining({ value: 'First item' })]),
       expect.objectContaining({ cueWindow: 2, generateLabelCards: false, mode: 'list' }),
     );
+  });
+
+  it('is keyboard-first: name focused, Tab from the last item reaches Save, Ctrl+Enter saves', async () => {
+    mockCourse = course;
+    renderNew();
+    const name = screen.getByRole('textbox', { name: 'Sequence name' });
+    expect(name).toHaveFocus();
+    fireEvent.change(name, { target: { value: 'My sequence' } });
+    const item = screen.getByRole('textbox', { name: 'Item 1 content' });
+    fireEvent.change(item, { target: { value: 'First item' } });
+    fireEvent.keyDown(item, { key: 'Tab' });
+    expect(screen.getByRole('button', { name: 'Add sequence' })).toHaveFocus();
+    await act(async () => {
+      fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true });
+      await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
+    });
+  });
+
+  it('keeps the editor open on Escape once something has been typed', async () => {
+    mockCourse = course;
+    renderNew();
+    const name = screen.getByRole('textbox', { name: 'Sequence name' });
+    fireEvent.input(name, { target: { value: 'x' } });
+    fireEvent.keyDown(name, { key: 'Escape' });
+    expect(screen.getByRole('heading', { name: 'New sequence' })).toBeInTheDocument();
+  });
+
+  it('cancels a pristine new sequence on Escape', async () => {
+    mockCourse = course;
+    renderNew();
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Sequence name' }), { key: 'Escape' });
+    await screen.findByText('Cards');
   });
 
   it('shows inline validation instead of silently ignoring a blank sequence', () => {
@@ -392,10 +452,9 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
-        { target: { value: 'Indeed I am.' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Line content'), {
+        target: { value: 'Indeed I am.' },
+      });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
 
       expect(screen.getByText('Add sequence')).toBeDisabled();
@@ -412,10 +471,9 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
-        { target: { value: 'Indeed I am.' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Line content'), {
+        target: { value: 'Indeed I am.' },
+      });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
 
@@ -449,10 +507,9 @@ describe('SequenceEditor', () => {
         fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
           target: { value: 'Sonnet 18' },
         });
-        fireEvent.change(
-          screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
-          { target: { value: 'Shall I compare thee to a summer’s day?' } },
-        );
+        fireEvent.change(screen.getByPlaceholderText('Line content'), {
+          target: { value: 'Shall I compare thee to a summer’s day?' },
+        });
         fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
         fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'NARRATOR' } });
 
@@ -487,10 +544,9 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
-        { target: { value: 'Indeed I am.' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Line content'), {
+        target: { value: 'Indeed I am.' },
+      });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'BOB' } });
@@ -519,7 +575,7 @@ describe('SequenceEditor', () => {
       mockSequence = editingSequence;
       renderEdit({ origin: { path: '/course/course-1/lesson/lesson-1', label: 'Cells' } });
 
-      const link = screen.getByRole('link', { name: 'Cells' });
+      const link = screen.getByRole('link', { name: 'Back to Cells' });
       expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
     });
 
@@ -530,7 +586,7 @@ describe('SequenceEditor', () => {
       mockSequence = editingSequence;
       renderEdit();
 
-      const link = screen.getByRole('link', { name: 'Cards' });
+      const link = screen.getByRole('link', { name: 'Back to Cards' });
       expect(link).toHaveAttribute('href', '/course/course-1/cards');
     });
   });

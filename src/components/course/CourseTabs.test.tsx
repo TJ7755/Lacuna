@@ -50,9 +50,18 @@ describe('CourseTabs', () => {
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('marks Analytics active on the analytics route', () => {
+  it('marks Progress active on the course analytics route, between Questions and Settings', () => {
     renderAt('/course/course-1/analytics');
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('aria-current', 'page');
+    const progress = screen.getByRole('link', { name: 'Progress' });
+    expect(progress).toHaveAttribute('aria-current', 'page');
+    expect(progress).toHaveAttribute('href', '/course/course-1/analytics');
+    expect(screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Path',
+      'Cards',
+      'Questions',
+      'Progress',
+      'Settings',
+    ]);
   });
 
   it('marks Settings active on the settings route', () => {
@@ -70,10 +79,6 @@ describe('CourseTabs', () => {
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute(
       'href',
       '/course/course-1/questions',
-    );
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
-      'href',
-      '/course/course-1/analytics',
     );
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
       'href',

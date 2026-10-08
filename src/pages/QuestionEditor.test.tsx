@@ -285,7 +285,7 @@ describe('QuestionEditor', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Generated family' }));
 
-    const family = screen.getByText('Built-in family').parentElement;
+    const family = screen.getByRole('heading', { name: 'Integer-root quadratic equations' }).parentElement;
     expect(family?.parentElement).toHaveStyle({ opacity: '0' });
   });
 

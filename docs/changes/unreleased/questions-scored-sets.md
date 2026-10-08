@@ -1,0 +1,2 @@
+- Questions: each set now shows when it was last tried, its latest score and, after a few attempts, a small history of scores, with **Attempt** (starting Practice mode) or **Continue** for an unfinished attempt beside it.
+- The Questions list no longer goes blank when one saved attempt cannot be read; that set is simply left unscored.

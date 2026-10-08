@@ -63,7 +63,7 @@ export function WorkingStudyFace({
   };
 
   return (
-    <section className="flex min-h-[22rem] flex-col justify-center rounded-3xl border border-line bg-surface px-6 py-10 shadow-xl shadow-black/5 md:min-h-[29rem] md:px-12 md:py-14">
+    <section className="flex min-h-[22rem] flex-col justify-center rounded-3xl border border-line bg-surface px-6 py-10 md:min-h-[29rem] md:px-12 md:py-14">
       <div className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl">
         <CardContent card={card} side="front" />
       </div>
@@ -98,7 +98,7 @@ export function WorkingStudyFace({
                   return (
                     <div
                       key={`${index}-${verdict.studentLine}`}
-                      className="rounded-xl border border-line bg-surface-raised px-4 py-3"
+                      className="rounded-2xl bg-ink/[0.04] px-4 py-3"
                     >
                       <div className="flex items-start gap-3">
                         <span
@@ -167,7 +167,7 @@ export function WorkingStudyFace({
             <>
               <label
                 htmlFor="working-answer"
-                className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint"
+                className="mb-2 block text-sm text-ink-faint"
               >
                 Your working
               </label>

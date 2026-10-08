@@ -55,9 +55,29 @@ it('reports a rejected workspace-mode save', async () => {
       />
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
   await waitFor(() => expect(mocks.notify).toHaveBeenCalledWith(
     'Could not save workspace mode. Try again.', 'negative',
   ));
   expect(mocks.updateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
+});
+
+it('fades the course name out of reach while the page title already shows it', () => {
+  const identity = { name: 'Biology' };
+  const { rerender } = render(
+    <MemoryRouter>
+      <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} identityHidden />
+    </MemoryRouter>,
+  );
+  expect(screen.queryByRole('link', { name: 'Biology' })).not.toBeInTheDocument();
+
+  rerender(
+    <MemoryRouter>
+      <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} />
+    </MemoryRouter>,
+  );
+  const link = screen.getByRole('link', { name: 'Biology' });
+  expect(link).toHaveAttribute('href', '/course/course-1');
+  // The name stands alone: no coloured status dot beside it.
+  expect(link.querySelector('[style]')).toBeNull();
 });

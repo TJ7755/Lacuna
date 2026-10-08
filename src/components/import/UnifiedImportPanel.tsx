@@ -465,7 +465,7 @@ export function UnifiedImportPanel({
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
+            <div className="rounded-2xl bg-negative/10 px-4 py-3 text-sm text-negative">
               Input truncated to {MAX_IMPORT_CHARS.toLocaleString()} characters to keep the import
               responsive.
             </div>
@@ -480,7 +480,7 @@ export function UnifiedImportPanel({
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
+            <div className="rounded-2xl bg-negative/10 px-4 py-3 text-sm text-negative">
               Only the first {MAX_IMPORT_ROWS.toLocaleString()} cards will be imported.
             </div>
           </motion.div>
@@ -499,9 +499,9 @@ export function UnifiedImportPanel({
               setShareNotice(null);
             }}
             className={cn(
-              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 hit-target rounded-full border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
-                ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
+                ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
             )}
           >
@@ -516,9 +516,9 @@ export function UnifiedImportPanel({
               setShareNotice(null);
             }}
             className={cn(
-              'flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-all',
+              'flex-1 hit-target rounded-full border px-4 py-2 text-sm font-medium transition-all',
               shareMode
-                ? 'border-accent/60 bg-accent-soft text-accent shadow-sm shadow-accent/10'
+                ? 'border-accent/60 bg-accent-soft text-accent'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
             )}
           >
@@ -551,7 +551,7 @@ export function UnifiedImportPanel({
             className="relative"
           >
             <div className="mb-2.5 flex items-center justify-between">
-              <label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+              <label className="text-sm font-medium text-ink-faint">
                 Paste your cards
               </label>
               <div className="flex items-center gap-2">
@@ -585,8 +585,8 @@ export function UnifiedImportPanel({
               className={cn(
                 'w-full resize-y rounded-2xl border bg-surface px-4 py-3 font-mono text-sm text-ink outline-none transition-all',
                 dragging
-                  ? 'border-accent ring-2 ring-accent/20 shadow-md shadow-accent/10'
-                  : 'border-line focus:border-accent/60 focus:shadow-sm focus:shadow-accent/5',
+                  ? 'border-accent ring-2 ring-accent/20'
+                  : 'border-line focus:border-accent/60',
               )}
             />
 
@@ -623,7 +623,7 @@ export function UnifiedImportPanel({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.15 * m }}
-                className="flex items-center gap-2.5 rounded-xl border border-accent/20 bg-accent-soft/50 px-3.5 py-2 text-xs text-accent"
+                className="flex items-center gap-2.5 rounded-2xl bg-accent-soft/60 px-3.5 py-2 text-xs text-accent"
               >
                 <Skeleton as="span" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                 {pasteNotification}
@@ -642,7 +642,7 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.12 * m }}
                 className="flex items-center gap-3"
               >
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+                <span className="text-sm font-medium text-ink-faint">
                   Detected
                 </span>
                 <FormatBadge format={effectiveFormat} confidence={detection.confidence} />
@@ -662,7 +662,7 @@ export function UnifiedImportPanel({
                       type="button"
                       onClick={() => setFormatOverride(formatOverride === f ? null : f)}
                       className={cn(
-                        'rounded-lg px-2.5 py-0.5 text-[10px] font-medium transition-all',
+                        'hit-target rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all',
                         formatOverride === f
                           ? 'border border-accent/40 bg-accent-soft text-accent'
                           : 'border border-transparent bg-ink/5 text-ink-faint hover:bg-ink/10',
@@ -702,7 +702,7 @@ export function UnifiedImportPanel({
                 animate={{ opacity: 1 }}
                 exit={m > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="rounded-2xl border border-line bg-surface p-5 shadow-sm shadow-black/5"
+                className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-5"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-xs font-medium text-ink-soft">
@@ -734,9 +734,9 @@ export function UnifiedImportPanel({
                             duration: 0.16 * m,
                             delay: Math.min(i * 0.03, 0.15) * m,
                           }}
-                          className="flex items-center gap-2.5 rounded-xl border border-line bg-surface-raised/50 px-3 py-2 text-sm"
+                          className="flex items-center gap-2.5 rounded-2xl bg-paper px-3 py-2 text-sm"
                         >
-                          <span className="shrink-0 rounded-lg bg-ink/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                          <span className="shrink-0 rounded-lg bg-ink/5 px-2 py-0.5 text-xs font-medium text-ink-faint">
                             {c.type === 'cloze' ? 'Cloze' : 'Basic'}
                           </span>
                           <span className="min-w-0 flex-1 truncate text-ink">{c.front}</span>
@@ -772,7 +772,7 @@ export function UnifiedImportPanel({
             animate={{ opacity: 1 }}
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5"
+            className="rounded-3xl bg-accent-soft/40 p-5"
           >
             <h3 className="mb-2 font-display text-lg font-medium text-ink">Anki package ready</h3>
             <p className="mb-3 text-sm leading-relaxed text-ink-soft">
@@ -806,7 +806,7 @@ export function UnifiedImportPanel({
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
+            <div className="rounded-2xl bg-negative/10 px-4 py-3 text-sm text-negative">
               {shareError}
             </div>
           </motion.div>
@@ -822,7 +822,7 @@ export function UnifiedImportPanel({
             exit={m > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
+            <div className="rounded-2xl bg-negative/10 px-4 py-3 text-sm text-negative">
               {apkgError}
             </div>
           </motion.div>
@@ -909,8 +909,8 @@ function ShareCodeImport({
 }) {
   return (
     <>
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60 focus-within:shadow-sm focus-within:shadow-accent/5">
-        <label className="mb-2.5 block text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60">
+        <label className="mb-2.5 block text-sm font-medium text-ink-faint">
           Share code
         </label>
         <textarea
@@ -932,7 +932,7 @@ function ShareCodeImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-4"
           >
-            <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 text-sm leading-relaxed text-ink-soft shadow-sm shadow-accent/5">
+            <div className="rounded-3xl bg-accent-soft/40 p-5 text-sm leading-relaxed text-ink-soft">
               {notice}
             </div>
           </motion.div>
@@ -948,7 +948,7 @@ function ShareCodeImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-4"
           >
-            <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5">
+            <div className="rounded-3xl bg-accent-soft/40 p-5">
               <h3 className="mb-2 font-display text-lg font-medium text-ink">
                 {pending.merge ? 'Course update' : 'Ready to import'}
               </h3>
@@ -995,7 +995,7 @@ function ShareCodeImport({
                   {pending.summary.deckNames.map((name, i) => (
                     <li
                       key={`${name}-${i}`}
-                      className="rounded-lg border border-accent/20 bg-accent-soft/50 px-3 py-1 text-xs font-medium text-accent"
+                      className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent"
                     >
                       {name}
                     </li>
@@ -1003,7 +1003,7 @@ function ShareCodeImport({
                 </ul>
               )}
               {!pending.merge && pending.summary.omittedImages && (
-                <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-ink-soft">
+                <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm leading-relaxed text-ink-soft">
                   This share code omitted media to keep the code small. Images and audio will appear
                   as placeholders after import.
                 </p>
@@ -1047,7 +1047,7 @@ function FormatBadge({ format, confidence }: { format: ImportFormat; confidence:
   return (
     <span
       className={cn(
-        'rounded-lg border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+        'rounded-lg border px-2.5 py-0.5 text-xs font-medium',
         colour,
       )}
     >

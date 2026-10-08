@@ -1,8 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
+import { useMemo } from 'react';
+import { useSectionDeepLink } from '../hooks/useSectionDeepLink';
 import { Link } from 'react-router-dom';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { Button } from '../components/ui/Button';
-import { SectionRail } from '../components/ui/SectionRail';
+import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
+import { SectionCard as SurfaceCard } from '../components/ui/SectionCard';
 import {
   PlayIcon,
   CheckIcon,
@@ -11,7 +13,6 @@ import {
   InfoIcon,
   ImageIcon,
   SparklesIcon,
-  ChevronLeftIcon,
   SettingsIcon,
   ChartIcon,
   CardsIcon,
@@ -39,6 +40,11 @@ const HELP_SECTIONS = [
   { id: 'tips', label: 'Tips & best practice' },
 ];
 
+const HELP_ANCHOR_IDS = new Set(HELP_SECTIONS.map((section) => section.id));
+
+const FOOTER_LINK_CLASS =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line-strong bg-surface-raised px-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
+
 function SectionCard({
   icon,
   label,
@@ -49,13 +55,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6 md:p-8">
+    <SurfaceCard as="div" className="md:p-7">
       <div className="mb-5 flex items-center gap-3">
         <span className="text-accent">{icon}</span>
-        <h2 className="font-display text-3xl tracking-tight">{label}</h2>
+        <h2 className="font-display text-2xl font-semibold tracking-tight">{label}</h2>
       </div>
       {children}
-    </div>
+    </SurfaceCard>
   );
 }
 
@@ -96,43 +102,8 @@ function ModeCard({
 export function HelpPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const [activeSection, setActiveSection] = useState<string>(HELP_SECTIONS[0].id);
-
-  // Track which section is currently visible using IntersectionObserver.
-  useEffect(() => {
-    const intersecting = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) intersecting.add(entry.target.id);
-          else intersecting.delete(entry.target.id);
-        });
-        const top = HELP_SECTIONS.find((s) => intersecting.has(s.id));
-        if (top) setActiveSection(top.id);
-      },
-      { rootMargin: '-20% 0px -60% 0px', threshold: 0 },
-    );
-    HELP_SECTIONS.forEach((section) => {
-      const el = document.getElementById(section.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  // If the user navigated directly to a hash (e.g. /help#card-types), scroll
-  // to it and highlight the correct sidebar item on mount.
-  useEffect(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && HELP_SECTIONS.some((s) => s.id === hash)) {
-      setActiveSection(hash);
-      const el = document.getElementById(hash);
-      if (el) {
-        window.requestAnimationFrame(() => {
-          el.scrollIntoView({ behavior: 'instant', block: 'start' });
-        });
-      }
-    }
-  }, []);
+  const { activeSection, goToSection } = useSectionRail(HELP_SECTIONS, m);
+  useSectionDeepLink(HELP_ANCHOR_IDS);
 
   const sections = useMemo<Section[]>(
     () => [
@@ -151,8 +122,8 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Courses</h3>
                 <p className="text-sm text-ink-soft">
                   A course is the top-level subject you are studying &mdash; a module, a subject, an
-                  exam. The dashboard lists your courses; opening one takes you to its path. A
-                  course with a single lesson skips the path and opens straight into that lesson.
+                  exam. Today lists your courses; opening one takes you to its path. A course with a
+                  single lesson skips the path and opens straight into that lesson.
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
@@ -168,9 +139,13 @@ export function HelpPage() {
                     revision plan. Checkpoints never block course progress.
                   </li>
                   <li>
-                    <strong className="text-ink">Practice sessions:</strong> nodes that gather up
-                    due cards from the lessons studied so far, so you keep reviewing older material
-                    as you move through the course.
+                    <strong className="text-ink">Card practice:</strong> stops that gather up due
+                    cards from the lessons studied so far, so you keep reviewing older material as
+                    you move through the course.
+                  </li>
+                  <li>
+                    <strong className="text-ink">Practice questions:</strong> a question set placed
+                    after a lesson, opened straight from the path.
                   </li>
                 </ul>
               </div>
@@ -180,24 +155,24 @@ export function HelpPage() {
                   A lesson holds the notes and cards for one topic. Notes are Markdown blocks where
                   you write out explanations, examples or source material &mdash; add, reorder and
                   edit them directly on the lesson page. Add further lessons from the course path,
-                  from course settings under Lessons, or from a single-lesson course view. Cards are
-                  the flashcards you actually get quizzed on; create them from the lesson page or
-                  the course&apos;s Cards tab.
+                  from course settings under Lessons, or from Add on a single-lesson course in Edit.
+                  Cards are the flashcards you actually get quizzed on; create them from the lesson
+                  page or the course&apos;s Cards tab.
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Cards</h3>
                 <p className="text-sm text-ink-soft">
-                  Every course has a Cards tab listing all of its Cards in one place, regardless of
+                  Every course has a Cards tab listing all of its cards in one place, regardless of
                   which lesson they belong to. Use it to browse, search, edit or bulk-manage cards.
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
-                  Course Settings holds exam dates, the study objective, scheduling optimisation,
-                  lesson and manual-practice management, and course deletion. Full backup and
-                  recovery lives in global Settings; course sharing lives under Share.
+                  Course settings hold exam dates, the study objective, scheduling optimisation,
+                  lessons and Card practice, and course deletion. Full backup and recovery lives in
+                  global Settings; course sharing lives under Share.
                 </p>
               </div>
             </div>
@@ -233,9 +208,9 @@ export function HelpPage() {
               <ModeCard
                 title="Assessment revision"
                 description="A time-budgeted revision plan for one named checkpoint or final exam."
-                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a course Practice milestone."
-                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
-                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
+                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a course practice milestone."
+                whenToUse="Choose it from a relevant Card practice stop, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
+                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary practice ordering."
               />
             </div>
           </div>
@@ -445,6 +420,36 @@ export function HelpPage() {
                     <td className="px-4 py-3 font-medium text-ink">?</td>
                     <td className="px-4 py-3 text-ink-soft">Any time</td>
                   </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Study</td>
+                    <td className="px-4 py-3 font-medium text-ink">S</td>
+                    <td className="px-4 py-3 text-ink-soft">Today, course and lesson pages</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">New card</td>
+                    <td className="px-4 py-3 font-medium text-ink">N</td>
+                    <td className="px-4 py-3 text-ink-soft">Cards page, lesson in edit mode</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Search cards</td>
+                    <td className="px-4 py-3 font-medium text-ink">/</td>
+                    <td className="px-4 py-3 text-ink-soft">Cards page</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Save or submit</td>
+                    <td className="px-4 py-3 font-medium text-ink">Ctrl/Cmd+Enter</td>
+                    <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Bold or italic</td>
+                    <td className="px-4 py-3 font-medium text-ink">Ctrl/Cmd+B, Ctrl/Cmd+I</td>
+                    <td className="px-4 py-3 text-ink-soft">Text editors</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-ink-soft">Cancel</td>
+                    <td className="px-4 py-3 font-medium text-ink">Esc</td>
+                    <td className="px-4 py-3 text-ink-soft">Dialogs and card editor</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -604,9 +609,10 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Questions are post-instruction application problems, kept separate from direct-recall
-              Cards. Open a course&apos;s Questions tab to author or practise them; they do not
-              appear in lesson Card study, Practice nodes, assessment revision or the course path.
+              Questions are exam-style problems with mark schemes, kept separate from recall cards.
+              Open a course&apos;s Questions tab to write or practise them. A question set can also
+              sit on the course path as a Practice questions stop; questions never appear in card
+              study, Card practice or assessment revision.
             </p>
             <div className="space-y-3">
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
@@ -726,8 +732,9 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Sharing a diagram</h3>
                 <p className="text-sm text-ink-soft">
                   Share codes cannot carry image or audio files, so a shared diagram card arrives as
-                  text with no picture. To move diagrams between machines, export a full backup from
-                  Settings instead.
+                  text with no picture. Share → Other ways → Course file preserves the diagram and
+                  its image when moving a course between devices. Use a full backup from Settings to
+                  move every course and its study history.
                 </p>
               </div>
             </div>
@@ -790,76 +797,58 @@ export function HelpPage() {
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-6 py-8 md:px-10 md:py-10">
-      <div className="min-w-0 flex-1">
-        <Link
-          to="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Back to dashboard
-        </Link>
+    <div className={`${PAGE_FRAME} pb-12 pt-4 md:pt-2`}>
+      <header className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Help</h1>
+      </header>
+      <div className="flex flex-row-reverse gap-8">
+        <div className="min-w-0 flex-1">
+          <div>
+            <SectionRailMobileJumper
+              sections={HELP_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={goToSection}
+              label="Jump to help topic"
+            />
 
-        <div>
-          <header className="mb-12 pt-2 md:mb-16 md:pt-4">
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">Help</h1>
-          </header>
-
-          {/* Sections */}
-          <div className="flex flex-col gap-8">
-            {sections.map((s) => (
-              <section key={s.id} id={s.id} className="scroll-mt-8">
-                <SectionCard icon={s.icon} label={s.label}>
-                  {s.content}
-                </SectionCard>
-              </section>
-            ))}
-          </div>
-
-          {/* Footer */}
-          <div className="mt-4 border-t border-line py-10 text-left">
-            <div className="mb-3 text-accent">
-              <InfoIcon width={20} height={20} />
+            {/* Sections */}
+            <div className="flex flex-col gap-8">
+              {sections.map((s) => (
+                <section key={s.id} id={s.id} className="scroll-mt-20">
+                  <SectionCard icon={s.icon} label={s.label}>
+                    {s.content}
+                  </SectionCard>
+                </section>
+              ))}
             </div>
-            <p className="mb-3 text-base text-ink-soft">
-              Still have questions? Check the settings pages for more granular controls, or explore
-              the analytics page to understand your study patterns.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/settings">
-                <Button variant="secondary" size="sm">
+
+            {/* Footer */}
+            <div className="mt-4 border-t border-line py-10 text-left">
+              <div className="flex flex-wrap gap-2">
+                <Link to="/settings" className={FOOTER_LINK_CLASS}>
                   <SettingsIcon width={16} height={16} />
                   Settings
-                </Button>
-              </Link>
-              <Link to="/analytics">
-                <Button variant="secondary" size="sm">
+                </Link>
+                <Link to="/analytics" className={FOOTER_LINK_CLASS}>
                   <ChartIcon width={16} height={16} />
                   Analytics
-                </Button>
-              </Link>
-              <Link to="/method">
-                <Button variant="secondary" size="sm">
+                </Link>
+                <Link to="/method" className={FOOTER_LINK_CLASS}>
                   <SparklesIcon width={16} height={16} />
                   How the scheduler works
-                </Button>
-              </Link>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <SectionRail
-        sections={HELP_SECTIONS}
-        activeSection={activeSection}
-        onNavigate={(id) => {
-          document.getElementById(id)?.scrollIntoView({
-            behavior: m > 0 ? 'smooth' : 'instant',
-            block: 'start',
-          });
-        }}
-        motionMultiplier={m}
-      />
+        <SectionRail
+          sections={HELP_SECTIONS}
+          activeSection={activeSection}
+          onNavigate={goToSection}
+          motionMultiplier={m}
+        />
+      </div>
     </div>
   );
 }

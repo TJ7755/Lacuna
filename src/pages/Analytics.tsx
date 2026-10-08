@@ -1,62 +1,63 @@
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo } from 'react';
-import { m as motion } from 'motion/react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { useMemo, useState } from 'react';
 import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
 import { useCourses } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { ChartCard } from '../components/analytics/ChartCard';
-import { FadeInView } from '../components/ui/FadeInView';
+import { Rise } from '../components/analytics/Arrival';
+import { KpiRow } from '../components/analytics/KpiRow';
+import { AreaTrend, Columns, HorizontalBars } from '../components/analytics/charts';
+import { PredictionAccuracyCard, WorkloadForecastCard } from '../components/analytics/SeriesCards';
 import { useChartColours } from '../components/analytics/useChartColours';
 import {
   forecastSeries,
   studyTimeSeries,
+  totalStudyMinutes,
   retentionByAge,
   leechCountByCourse,
   reviewVolume,
   stabilityProfile,
   globalTrajectorySeries,
+  overallRecall,
+  reviewActivityFromHistory,
 } from '../components/analytics/prepare';
 import { predictionAccuracySeries } from '../fsrs/calibration';
 import { CourseComparison } from '../components/analytics/CourseComparison';
-import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
+import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
+import { PillToggleGroup } from '../components/cards/PillToggleGroup';
+import { FadeInView } from '../components/ui/FadeInView';
+import { addDays } from '../fsrs/heatmap';
+import { startOfDay } from '../utils/datetime';
+
+/** Lets a chart card fill its grid row so neighbours line up. */
+const CELL = 'min-w-0 [&>section]:h-full';
+
+type Period = '7' | '30' | '90';
+
+const PERIODS = [
+  { value: '7', label: '7 days' },
+  { value: '30', label: '30 days' },
+  { value: '90', label: '90 days' },
+] as const;
+
+/** Label spacing that keeps the date axis to a handful of ticks at every period. */
+const X_INTERVAL: Record<Period, number> = { '7': 0, '30': 6, '90': 14 };
 
 function AnalyticsSkeleton() {
   return (
-    <div className="space-y-2 p-6">
-      <div className="py-4">
-        <Skeleton className="h-9 w-40 rounded-lg bg-ink/5" />
+    <div className={`${PAGE_FRAME} space-y-4 py-10`}>
+      <Skeleton className="h-11 w-48 rounded-lg bg-ink/5" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-3xl bg-ink/5" />
+        ))}
       </div>
+      <Skeleton className="h-56 rounded-3xl bg-ink/5" />
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="lg:col-span-2">
-          <SectionCard as="div" compact>
-            <div className="mb-4">
-              <Skeleton className="h-7 w-32 rounded-lg bg-ink/5" />
-            </div>
-            <Skeleton className="h-56 rounded-lg bg-ink/5" />
-          </SectionCard>
-        </div>
-        {Array.from({ length: 7 }).map((_, i) => (
-          <SectionCard as="div" compact key={i}>
-            <div className="mb-4">
-              <Skeleton className="h-7 w-36 rounded-lg bg-ink/5" />
-            </div>
-            <Skeleton className="h-56 rounded-lg bg-ink/5" />
-          </SectionCard>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-72 rounded-3xl bg-ink/5" />
         ))}
       </div>
     </div>
@@ -65,12 +66,14 @@ function AnalyticsSkeleton() {
 
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
-  const motionMult = speedMultiplier(motionSpeed);
+  const m = speedMultiplier(motionSpeed);
   const courses = useCourses();
   const allCards = useAllCards();
   const reviewHistory = useAllReviewHistory();
   const history = useAllSessionHistory();
   const c = useChartColours();
+  const [period, setPeriod] = useState<Period>('30');
+  const days = Number(period);
 
   const activeCourses = useMemo(
     () => (courses ?? []).filter((course) => !course.archived),
@@ -122,12 +125,12 @@ export function Analytics() {
 
   const forecast = useMemo(() => forecastSeries(cards), [cards]);
   const studyTime = useMemo(
-    () => studyTimeSeries(cards, 30, Date.now(), activeReviewHistory),
-    [cards, activeReviewHistory],
+    () => studyTimeSeries(cards, days, Date.now(), activeReviewHistory),
+    [cards, days, activeReviewHistory],
   );
   const volume = useMemo(
-    () => reviewVolume(cards, 30, Date.now(), activeReviewHistory),
-    [cards, activeReviewHistory],
+    () => reviewVolume(cards, days, Date.now(), activeReviewHistory),
+    [cards, days, activeReviewHistory],
   );
   const retention = useMemo(
     () => retentionByAge(cards, Date.now(), activeReviewHistory),
@@ -139,23 +142,18 @@ export function Analytics() {
     () => predictionAccuracySeries(cards, activeReviewHistory),
     [cards, activeReviewHistory],
   );
-  const trajectory = useMemo(() => globalTrajectorySeries(courseHistory), [courseHistory]);
+  // Follows the period selector like the other time series.
+  const trajectory = useMemo(() => {
+    const from = addDays(startOfDay(Date.now()), 1 - days);
+    return globalTrajectorySeries(courseHistory).filter((point) => point.day >= from);
+  }, [courseHistory, days]);
+  const activity = useMemo(
+    () => reviewActivityFromHistory(activeReviewHistory),
+    [activeReviewHistory],
+  );
 
-  const hasReviews = useMemo(() => activeReviewHistory.length > 0, [activeReviewHistory]);
-
-  const axisProps = {
-    stroke: c.inkFaint,
-    tick: { fill: c.inkFaint, fontSize: 11 },
-    tickLine: false,
-  };
-
-  const tooltipStyle = {
-    background: c.surface,
-    border: `1px solid ${c.line}`,
-    borderRadius: 10,
-    color: c.ink,
-    fontSize: 13,
-  } as const;
+  const hasReviews = activeReviewHistory.length > 0;
+  const xInterval = X_INTERVAL[period];
 
   if (
     courses === undefined ||
@@ -173,338 +171,188 @@ export function Analytics() {
   }
 
   return (
-    <div className="space-y-2 p-6">
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 * motionMult, ease: [0.25, 0.1, 0.25, 1] }}
-        className="py-4"
-      >
-        <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
-      </motion.header>
+    <div className={`${PAGE_FRAME} flex flex-col gap-4 py-10 md:gap-6`}>
+      <Rise index={0} className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+          Progress
+        </h1>
+        <PillToggleGroup label="Period" value={period} onChange={setPeriod} options={PERIODS} />
+      </Rise>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <FadeInView className="lg:col-span-2" delay={0} y={0}>
+      <Rise index={1}>
+        <KpiRow
+          label="Summary"
+          multiplier={m}
+          items={[
+            { label: 'Reviews', value: volume.reduce((sum, point) => sum + point.reviews, 0) },
+            {
+              label: 'Study time',
+              value: totalStudyMinutes(studyTime),
+              unit: 'min',
+            },
+            { label: 'Recall', value: overallRecall(retention), unit: '%' },
+            { label: 'Cards', value: cards.length },
+          ]}
+        />
+      </Rise>
+
+      <Rise index={2}>
+        <ReviewHeatmap cards={cards} activity={activity} days={days} />
+      </Rise>
+
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+        <FadeInView y={12} className={CELL}>
+          <ChartCard
+            title="Predicted exam-day score"
+            data={{
+              columns: ['Date', 'Predicted score (%)'],
+              rows: trajectory.map((point) => [point.label, point.retrievability]),
+            }}
+            emptyDrawing="prediction"
+            empty={trajectory.length < 2}
+            emptyMessage="Complete reviews to plot a trajectory."
+          >
+            <AreaTrend
+              data={trajectory}
+              xKey="label"
+              yKey="retrievability"
+              name="Predicted"
+              colour={c.accent}
+              domain={[0, 100]}
+              format={(value) => `${value}%`}
+              tickFormat={(value) => `${value}%`}
+            />
+          </ChartCard>
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <WorkloadForecastCard forecast={forecast} hasCards={cards.length > 0} />
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <ChartCard
+            title="Review volume"
+            data={{
+              columns: ['Date', 'Reviews'],
+              rows: volume.map((point) => [point.label, point.reviews]),
+            }}
+            emptyDrawing="activity"
+            empty={!hasReviews}
+            emptyMessage="Complete a review to see activity."
+          >
+            <Columns
+              data={volume}
+              xKey="label"
+              yKey="reviews"
+              name="Reviews"
+              colour={c.positive}
+              xInterval={xInterval}
+            />
+          </ChartCard>
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <ChartCard
+            title="Study time"
+            data={{
+              columns: ['Date', 'Minutes'],
+              rows: studyTime.map((point) => [point.label, Math.round(point.minutes * 10) / 10]),
+            }}
+            emptyDrawing="time"
+            empty={!hasReviews}
+            emptyMessage="Complete a review to see study time."
+          >
+            <AreaTrend
+              data={studyTime}
+              xKey="label"
+              yKey="minutes"
+              name="Time"
+              colour={c.accent}
+              format={(value) => `${Math.round(Number(value) * 10) / 10} min`}
+              xInterval={xInterval}
+            />
+          </ChartCard>
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <ChartCard
+            title="Observed recall by card age"
+            data={{
+              columns: ['Card age', 'Observed recall (%)', 'Reviews'],
+              rows: retention.map((point) => [point.ageLabel, point.retention, point.count]),
+            }}
+            emptyDrawing="recall"
+            empty={!hasReviews}
+            emptyMessage="Complete a review to see recall."
+          >
+            <Columns
+              data={retention}
+              xKey="ageLabel"
+              yKey="retention"
+              name="Observed recall"
+              colour={c.accent}
+              domain={[0, 100]}
+              xInterval={0}
+              format={(value, row) => `${value}% (n=${row.count ?? 0})`}
+              tickFormat={(value) => `${value}%`}
+            />
+          </ChartCard>
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <PredictionAccuracyCard prediction={prediction} />
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <ChartCard
+            title="Stability profile"
+            data={{
+              columns: ['Stability', 'Cards'],
+              rows: profile.map((point) => [point.range, point.count]),
+            }}
+            emptyDrawing="stability"
+            empty={cards.length === 0}
+            emptyMessage="Add cards to see stability."
+          >
+            <Columns
+              data={profile}
+              xKey="range"
+              yKey="count"
+              name="Cards"
+              colour={c.accent}
+              xInterval={0}
+              muted={(row) => row.range === 'New'}
+            />
+          </ChartCard>
+        </FadeInView>
+
+        <FadeInView y={12} className={CELL}>
+          <ChartCard
+            title="Leech count by course"
+            data={{
+              columns: ['Course', 'Leeches'],
+              rows: leeches.map((point) => [point.name, point.count]),
+            }}
+            emptyDrawing="leech"
+            empty={leeches.length === 0}
+            emptyMessage="No leech cards."
+          >
+            <HorizontalBars
+              data={leeches}
+              nameKey="name"
+              valueKey="count"
+              name="Leeches"
+              colour={c.accent}
+            />
+          </ChartCard>
+        </FadeInView>
+
+        <FadeInView y={12} className={`${CELL} lg:col-span-2`}>
           <CourseComparison
             courses={activeCourses}
             cards={cards}
             reviewHistory={activeReviewHistory}
           />
-        </FadeInView>
-
-        <FadeInView className="lg:col-span-2" delay={0.04} y={0}>
-          <ChartCard
-            title="Forecast"
-            data={{ columns: ['Date', 'Due cards', 'New cards'], rows: forecast.map((point) => [point.label, point.due, point.newCards]) }}
-            emptyDrawing="prediction"
-            empty={cards.length === 0}
-            emptyMessage="Add cards to forecast reviews."
-            delay={0}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={forecast} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-                <defs>
-                  <linearGradient id="dueFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="newFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={c.positive} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={c.positive} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="label" {...axisProps} />
-                <YAxis allowDecimals={false} {...axisProps} width={40} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: c.line }} />
-                <Area
-                  type="monotone"
-                  dataKey="due"
-                  isAnimationActive={false}
-                  stackId="1"
-                  stroke={c.accent}
-                  strokeWidth={2}
-                  fill="url(#dueFill)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="newCards"
-                  isAnimationActive={false}
-                  stackId="1"
-                  stroke={c.positive}
-                  strokeWidth={2}
-                  fill="url(#newFill)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.06} y={0}>
-          <ChartCard
-            title="Predicted exam-day score"
-            data={{ columns: ['Date', 'Predicted score (%)'], rows: trajectory.map((point) => [point.label, point.retrievability]) }}
-            emptyDrawing="prediction"
-            empty={trajectory.length < 2}
-            emptyMessage="Complete reviews to plot a trajectory."
-            delay={0.06}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-                <defs>
-                  <linearGradient id="trajFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="label" {...axisProps} />
-                <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(v) => [`${v}%`, 'Predicted']}
-                  cursor={{ stroke: c.line }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="retrievability"
-                  isAnimationActive={false}
-                  stroke={c.accent}
-                  strokeWidth={2}
-                  fill="url(#trajFill)"
-                  dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
-                  activeDot={{ r: 4 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.12} y={0}>
-          <ChartCard
-            title="Prediction accuracy"
-            data={{ columns: ['Date', 'Brier score', 'Predicted recall (%)', 'Actual recall (%)'], rows: prediction.map((point) => [point.label, point.brier.toFixed(3), Math.round(point.predicted * 100), Math.round(point.actual * 100)]) }}
-            emptyDrawing="accuracy"
-            description="Brier score · lower is better"
-            empty={prediction.length === 0}
-            emptyMessage="Complete reviews to measure accuracy."
-            delay={0.12}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={prediction} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="label" {...axisProps} minTickGap={8} />
-                <YAxis yAxisId="score" domain={[0, 1]} {...axisProps} width={40} />
-                <YAxis yAxisId="recall" orientation="right" domain={[0, 1]} hide />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ stroke: c.line }}
-                  formatter={(v, name) => {
-                    const value = typeof v === 'number' ? v : Number(v ?? 0);
-                    if (name === 'brier') return [value.toFixed(3), 'Brier score'];
-                    return [
-                      `${Math.round(value * 100)}%`,
-                      name === 'predicted' ? 'Predicted' : 'Actual',
-                    ];
-                  }}
-                />
-                <Line
-                  yAxisId="score"
-                  type="monotone"
-                  dataKey="brier"
-                  isAnimationActive={false}
-                  stroke={c.accent}
-                  strokeWidth={2}
-                  dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
-                />
-                <Line
-                  yAxisId="recall"
-                  type="monotone"
-                  dataKey="predicted"
-                  isAnimationActive={false}
-                  stroke={c.inkFaint}
-                  strokeDasharray="4 4"
-                  dot={false}
-                />
-                <Line
-                  yAxisId="recall"
-                  type="monotone"
-                  dataKey="actual"
-                  isAnimationActive={false}
-                  stroke={c.positive}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.18} y={0}>
-          <ChartCard
-            title="Review volume"
-            data={{ columns: ['Date', 'Reviews'], rows: volume.map((point) => [point.label, point.reviews]) }}
-            emptyDrawing="activity"
-            empty={!hasReviews}
-            emptyMessage="Complete a review to see activity."
-            delay={0.18}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
-                <YAxis allowDecimals={false} {...axisProps} width={32} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(v) => [v, 'Reviews']}
-                />
-                <Bar
-                  dataKey="reviews"
-                  isAnimationActive={false}
-                  fill={c.positive}
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.24} y={0}>
-          <ChartCard
-            title="Study time"
-            data={{ columns: ['Date', 'Minutes'], rows: studyTime.map((point) => [point.label, point.minutes]) }}
-            emptyDrawing="time"
-            empty={!hasReviews}
-            emptyMessage="Complete a review to see study time."
-            delay={0.24}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={studyTime} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-                <defs>
-                  <linearGradient id="timeFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
-                <YAxis allowDecimals={false} {...axisProps} width={40} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(v) => [`${v} min`, 'Time']}
-                  cursor={{ stroke: c.line }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="minutes"
-                  isAnimationActive={false}
-                  stroke={c.accent}
-                  strokeWidth={2}
-                  fill="url(#timeFill)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.3} y={0}>
-          <ChartCard
-            title="Observed recall by card age"
-            data={{ columns: ['Card age', 'Observed recall (%)', 'Reviews'], rows: retention.map((point) => [point.ageLabel, point.retention, point.count]) }}
-            emptyDrawing="recall"
-            empty={!hasReviews}
-            emptyMessage="Complete a review to see recall."
-            delay={0.3}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={retention} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="ageLabel" {...axisProps} interval={0} />
-                <YAxis domain={[0, 100]} unit="%" {...axisProps} width={40} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(value, _name, item) => [
-                    `${value}% (n=${item.payload?.count ?? 0})`,
-                    'Observed recall',
-                  ]}
-                />
-                <Bar
-                  dataKey="retention"
-                  isAnimationActive={false}
-                  fill={c.accent}
-                  radius={[6, 6, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.36} y={0}>
-          <ChartCard
-            title="Leech count by course"
-            data={{ columns: ['Course', 'Leeches'], rows: leeches.map((point) => [point.name, point.count]) }}
-            emptyDrawing="leech"
-            empty={leeches.length === 0}
-            emptyMessage="No leech cards."
-            delay={0.36}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={leeches} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  {...axisProps}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis allowDecimals={false} {...axisProps} width={32} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(v) => [v, 'Leeches']}
-                />
-                <Bar
-                  dataKey="count"
-                  isAnimationActive={false}
-                  fill={c.accent}
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
-        </FadeInView>
-
-        <FadeInView delay={0.42} y={0}>
-          <ChartCard
-            title="Stability profile"
-            data={{ columns: ['Stability', 'Cards'], rows: profile.map((point) => [point.range, point.count]) }}
-            emptyDrawing="stability"
-            empty={cards.length === 0}
-            emptyMessage="Add cards to see stability."
-            delay={0.42}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-                <CartesianGrid stroke={c.line} vertical={false} />
-                <XAxis dataKey="range" {...axisProps} interval={0} />
-                <YAxis allowDecimals={false} {...axisProps} width={32} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ fill: c.line, opacity: 0.4 }}
-                  formatter={(v) => [v, 'Cards']}
-                />
-                <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
-                  {profile.map((entry, i) => (
-                    <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>{' '}
-          </ChartCard>
         </FadeInView>
       </div>
     </div>

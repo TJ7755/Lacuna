@@ -1,12 +1,25 @@
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { PillToggleGroup } from '../components/cards/PillToggleGroup';
+import { Input, fieldLabelClassName } from '../components/ui/Field';
+import { Skeleton } from '../components/ui/Skeleton';
+import {
+  COURSE_PAGE_FRAME,
+  COURSE_PAGE_HEADER,
+  COURSE_PAGE_TITLE,
+} from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
-import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
+import {
+  PillSwitch,
+  SettingRow,
+  SettingsArrivalProvider,
+  SettingsCard,
+} from './settings/SettingsUi';
+import { TargetRecallCard } from './settings/TargetRecallCard';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import {
   deleteCourse,
   snapshotCourse,
@@ -30,24 +43,20 @@ import { LessonManagementSection } from './settings/LessonManagementSection';
 import { PracticeNodesSection } from './settings/PracticeNodesSection';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { DetachCourseSection } from './settings/DetachCourseSection';
-import { Skeleton } from '../components/ui/Skeleton';
-import { Field, Input } from '../components/ui/Field';
-import { SectionCard } from '../components/ui/SectionCard';
 
 const COURSE_SETTINGS_SECTIONS = [
-  { id: 'course-settings-basics', label: 'Basics' },
-  { id: 'course-settings-study', label: 'Study' },
+  { id: 'course-settings-goal', label: 'Goal and dates' },
+  { id: 'course-settings-study', label: 'Daily study' },
   { id: 'course-settings-content', label: 'Content' },
-  { id: 'course-settings-assessments', label: 'Assessments' },
   { id: 'course-settings-danger', label: 'Danger zone' },
 ];
 
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
  * scheduling fields, optimisation, unlock mode, auto-practice, exam dates and lesson
- * management, plus a danger zone. Author mode belongs beside the course content rather
- * than being duplicated here. Grouped under a shared scrollspy rail (Basics,
- * Study, Content, Assessments, Danger zone — see SectionRail) with one save model:
+ * management, plus a danger zone. Edit mode belongs beside the course content rather
+ * than being duplicated here. Laid out as one column of borderless cards (Goal and
+ * dates, Daily study, Lessons, Auto-practice, then the danger zone) with one save model:
  * every field commits instantly through `updateCourse` (text/numeric inputs on blur,
  * toggles/selects on change) rather than being staged behind a "Save changes" button,
  * matching the pattern ExamDates/LessonManagement/PracticeNodes already used. Course
@@ -55,21 +64,20 @@ const COURSE_SETTINGS_SECTIONS = [
  * DangerZoneSection), rather than a blocking confirmation.
  */
 export function CourseSettings() {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const { notify } = useToast();
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found"
   // (null), matching CoursePath's pattern — Dexie's .get() resolves to
   // undefined for a missing row, so useCourse alone cannot signal not-found.
   const course = useCourse(courseId);
-  // The sections do not exist while the course query is loading.
-  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m, !!course);
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
+  const { activeSection, goToSection } = useSectionRail(COURSE_SETTINGS_SECTIONS, m, !!course);
 
   const [name, setName] = useState('');
   const [examBoard, setExamBoard] = useState('');
@@ -156,7 +164,7 @@ export function CourseSettings() {
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
         <Link to="/" className="text-accent underline">
-          Back to dashboard
+          Back to Today
         </Link>
       </div>
     );
@@ -283,85 +291,101 @@ export function CourseSettings() {
   }
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <header className="relative mb-8 pt-6 md:pt-8">
-        <div className="relative">
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
-        </div>
+    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
+      <header className={COURSE_PAGE_HEADER}>
+        <h1 className={COURSE_PAGE_TITLE}>Course settings</h1>
       </header>
-      <div className="flex gap-8">
+      <div className="flex flex-row-reverse gap-8">
         <div className="min-w-0 flex-1">
-          <SectionRailMobileJumper
-            sections={COURSE_SETTINGS_SECTIONS}
-            activeSection={activeSection}
-            onNavigate={goToSection}
-          />
-
-          <div className="flex flex-col gap-10">
-            <div id="course-settings-basics" className="flex scroll-mt-20 flex-col gap-6">
-              <h2 className="font-display text-2xl">Basics</h2>
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <div className="flex flex-col gap-4">
-                  <Field label="Course name">
+          <SettingsArrivalProvider>
+            <SectionRailMobileJumper
+              sections={COURSE_SETTINGS_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={goToSection}
+            />
+            <div>
+              <SettingsCard id="course-settings-goal" className="scroll-mt-24">
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Goal and dates
+                </h2>
+                <div className="flex flex-col gap-5">
+                  <label className={fieldLabelClassName}>
+                    Course name
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={commitName}
                     />
-                  </Field>
-
-                  <Field label="Exam board">
-                    <Input
-                      value={examBoard}
-                      onChange={(e) => setExamBoard(e.target.value)}
-                      onBlur={commitExamBoard}
-                    />
-                  </Field>
-
-                  <Field label="Specification">
-                    <Input
-                      value={specification}
-                      onChange={(e) => setSpecification(e.target.value)}
-                      onBlur={commitSpecification}
-                    />
-                  </Field>
-
-                  <div className="block text-sm text-ink-soft">
-                    <div className="mb-2">Exam objective</div>
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs text-ink-faint">
-                        {objective === 'securedTopics'
-                          ? 'Secure as many topics as possible: prioritise cards a review would push to 90%+ on exam day. The progress bar shows the fraction of cards secured.'
-                          : 'Maximise your expected marks: prioritise the largest expected lift to exam-day retrievability. The progress bar shows your mean predicted retrievability.'}
-                      </p>
-                      <Toggle
-                        checked={objective === 'securedTopics'}
-                        onChange={(checked) => {
-                          const next: ExamObjective = checked ? 'securedTopics' : 'expectedMarks';
+                  </label>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <label className={fieldLabelClassName}>
+                      Exam board
+                      <Input
+                        value={examBoard}
+                        onChange={(e) => setExamBoard(e.target.value)}
+                        onBlur={commitExamBoard}
+                      />
+                    </label>
+                    <label className={fieldLabelClassName}>
+                      Specification
+                      <Input
+                        value={specification}
+                        onChange={(e) => setSpecification(e.target.value)}
+                        onBlur={commitSpecification}
+                      />
+                    </label>
+                  </div>
+                  <TargetRecallCard
+                    retention={retention}
+                    onChange={setRetention}
+                    onCommit={(value) => {
+                      setRetention(value);
+                      commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
+                    }}
+                  />
+                  <div>
+                    <SettingRow label="Exam objective">
+                      <PillToggleGroup
+                        label="Exam objective"
+                        size="sm"
+                        value={objective}
+                        onChange={(next: ExamObjective) => {
                           setObjective(next);
                           commitCourse({ examObjective: next });
                         }}
-                        label="Secure topics"
+                        options={[
+                          { value: 'expectedMarks', label: 'Most marks' },
+                          { value: 'securedTopics', label: 'Secure topics' },
+                        ]}
                       />
-                    </div>
+                    </SettingRow>
+                    <p className="text-sm text-ink-soft">
+                      {objective === 'securedTopics'
+                        ? 'Gets each card to 90% by exam day.'
+                        : 'Lifts your overall exam-day recall the most.'}
+                    </p>
                   </div>
                 </div>
-              </SectionCard>
-            </div>
+              </SettingsCard>
 
-            <div id="course-settings-study" className="flex scroll-mt-20 flex-col gap-6">
-              <h2 className="font-display text-2xl">Study</h2>
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <h3 className="mb-4 font-display text-xl">Scheduling</h3>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-ink-soft">Learn first</p>
-                      <p className="mt-1 text-xs text-ink-faint">
-                        Turn this off to start new cards directly in spaced repetition.
-                      </p>
-                    </div>
-                    <Toggle
+              <SettingsCard>
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Assessments
+                </h2>
+                <ExamDatesSection
+                  courseId={course.id}
+                  timeZone={timeZone}
+                  editFinalOnMount={searchParams.get('editFinalExam') === '1'}
+                />
+              </SettingsCard>
+
+              <SettingsCard id="course-settings-study" className="scroll-mt-24">
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Daily study
+                </h2>
+                <div className="flex flex-col gap-5">
+                  <SettingRow label="Learn first">
+                    <PillSwitch
                       checked={learnFirst}
                       onChange={(checked) => {
                         setLearnFirst(checked);
@@ -369,7 +393,7 @@ export function CourseSettings() {
                       }}
                       ariaLabel="Learn first"
                     />
-                  </div>
+                  </SettingRow>
                   <SchedulingFieldsSection
                     newCardsPerDay={newPerDay}
                     onNewCardsPerDayChange={setNewPerDay}
@@ -377,12 +401,6 @@ export function CourseSettings() {
                     maxReviewsPerDay={maxReviewsPerDay}
                     onMaxReviewsPerDayChange={setMaxReviewsPerDay}
                     onMaxReviewsPerDayBlur={commitMaxReviewsPerDay}
-                    retention={retention}
-                    onRetentionChange={setRetention}
-                    onRetentionCommit={(value) => {
-                      setRetention(value);
-                      commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
-                    }}
                     enableFuzz={enableFuzz}
                     onEnableFuzzChange={(checked) => {
                       setEnableFuzz(checked);
@@ -414,31 +432,41 @@ export function CourseSettings() {
                     onSessionTimeLimitBlur={commitSessionTimeLimit}
                   />
                 </div>
-              </SectionCard>
+              </SettingsCard>
 
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <UnlockModeSection
-                  unlockMode={unlockMode}
-                  onUnlockModeChange={(mode) => {
-                    setUnlockMode(mode);
-                    commitCourse({ unlockMode: mode });
-                  }}
-                  linearCadence={linearCadence}
-                  onAnchorDateChange={(ms) => {
-                    const next = { ...linearCadence, anchorDate: ms };
-                    setLinearCadence(next);
-                    commitLinearCadence(next);
-                  }}
-                  onIntervalDaysChange={(days) =>
-                    setLinearCadence((prev) => ({ ...prev, intervalDays: days }))
-                  }
-                  onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
-                  timeZone={timeZone}
-                />
-              </SectionCard>
+              <SettingsCard id="course-settings-content" className="scroll-mt-24">
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">Lessons</h2>
+                <div className="flex flex-col gap-8">
+                  <UnlockModeSection
+                    unlockMode={unlockMode}
+                    onUnlockModeChange={(mode) => {
+                      setUnlockMode(mode);
+                      commitCourse({ unlockMode: mode });
+                    }}
+                    linearCadence={linearCadence}
+                    onAnchorDateChange={(ms) => {
+                      const next = { ...linearCadence, anchorDate: ms };
+                      setLinearCadence(next);
+                      commitLinearCadence(next);
+                    }}
+                    onIntervalDaysChange={(days) =>
+                      setLinearCadence((prev) => ({ ...prev, intervalDays: days }))
+                    }
+                    onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
+                    timeZone={timeZone}
+                  />
+                  <LessonManagementSection courseId={course.id} />
+                  <div>
+                    <h3 className="mb-3 font-semibold text-ink">Practice nodes</h3>
+                    <PracticeNodesSection courseId={course.id} />
+                  </div>
+                </div>
+              </SettingsCard>
 
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <h3 className="mb-4 font-display text-xl">Auto-practice</h3>
+              <SettingsCard>
+                <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight">
+                  Auto-practice
+                </h2>
                 <PracticeSettingsSection
                   autoPractice={autoPractice}
                   onAutoPracticeChange={(checked) => {
@@ -488,55 +516,25 @@ export function CourseSettings() {
                     })
                   }
                 />
-              </SectionCard>
+              </SettingsCard>
 
-              <div>
-                <OptimisationPanel
-                  entity={course}
-                  cards={cards ?? []}
-                  reviewHistory={reviewHistory}
-                  onUpdate={(changes) => updateCourse(course.id, changes)}
-                  entityLabel="course"
-                  headingLevel={3}
-                />
-              </div>
-            </div>
+              <OptimisationPanel
+                entity={course}
+                cards={cards ?? []}
+                reviewHistory={reviewHistory}
+                onUpdate={(changes) => updateCourse(course.id, changes)}
+                entityLabel="course"
+                headingLevel={2}
+              />
 
-            <div id="course-settings-content" className="flex scroll-mt-20 flex-col gap-6">
-              <h2 className="font-display text-2xl">Content</h2>
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <h3 className="mb-4 font-display text-xl">Lessons</h3>
-                <LessonManagementSection courseId={course.id} />
-              </SectionCard>
-
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <h3 className="mb-4 font-display text-xl">Practice nodes</h3>
-                <PracticeNodesSection courseId={course.id} />
-              </SectionCard>
-            </div>
-
-            <div id="course-settings-assessments" className="flex scroll-mt-20 flex-col gap-6">
-              <h2 className="font-display text-2xl">Assessments</h2>
-              <SectionCard className="shadow-sm shadow-black/[0.02]">
-                <ExamDatesSection
-                  courseId={course.id}
-                  timeZone={timeZone}
-                  editFinalOnMount={searchParams.get('editFinalExam') === '1'}
-                />
-              </SectionCard>
-            </div>
-
-            <div id="course-settings-danger" className="flex scroll-mt-20 flex-col gap-6">
               {course.distributedCopy?.locked === true && (
-                <div>
-                  <DetachCourseSection
-                    courseId={course.id}
-                    autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
-                  />
-                </div>
+                <DetachCourseSection
+                  courseId={course.id}
+                  autoAcceptUpdates={course.distributedCopy.autoAcceptUpdates === true}
+                />
               )}
 
-              <div>
+              <div id="course-settings-danger" className="scroll-mt-24">
                 <DangerZoneSection
                   entityLabel="course"
                   entityName={course.name}
@@ -548,7 +546,7 @@ export function CourseSettings() {
                 />
               </div>
             </div>
-          </div>
+          </SettingsArrivalProvider>
         </div>
 
         <SectionRail
@@ -564,29 +562,15 @@ export function CourseSettings() {
 
 function CourseSettingsSkeleton() {
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <Skeleton className="mb-6 h-4 w-24" />
-      <div className="mb-8 space-y-3">
-        <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-10 w-48" />
-      </div>
-      <div className="flex flex-col gap-6">
-        <SectionCard as="div" className="space-y-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-24 w-full rounded-lg" />
-        </SectionCard>
-        <SectionCard as="div" className="space-y-3">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-8 w-32 rounded-lg" />
-        </SectionCard>
-        <div className="rounded-2xl border border-negative/30 bg-negative/5 p-6 space-y-3">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-8 w-28 rounded-lg" />
-        </div>
+    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
+      <Skeleton className="mb-8 mt-6 h-10 w-64 rounded-full bg-ink/10 md:mt-8" />
+      <div className="flex flex-col gap-5">
+        {[40, 32, 24].map((height) => (
+          <div key={height} className="space-y-4 rounded-3xl bg-surface p-7">
+            <Skeleton className="h-6 w-40 rounded-full bg-ink/10" />
+            <Skeleton className="w-full rounded-2xl bg-ink/10" style={{ height: height * 4 }} />
+          </div>
+        ))}
       </div>
     </div>
   );

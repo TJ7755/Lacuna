@@ -109,13 +109,13 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
             }
             setDetailsOpen(!detailsOpen);
           }}
-          className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-2 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-line bg-surface text-accent">
             <SparklesIcon width={14} height={14} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
+            <span className="block text-sm font-medium text-ink-faint">
               {statusLabel}
             </span>
             <span className="block max-w-52 truncate text-sm text-ink">{compactSummary}</span>
@@ -123,7 +123,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
         </button>
       ) : (
         <p className="max-w-48 px-2">
-          <span className="block text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
+          <span className="block text-sm font-medium text-ink-faint">
             {statusLabel}
           </span>
           <span className="block truncate text-sm text-ink">{compactSummary}</span>
@@ -133,7 +133,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
         <button
           type="button"
           onClick={props.onOpenConversation}
-          className="min-h-11 rounded-lg px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="min-h-11 rounded-full px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           Open
         </button>
@@ -143,7 +143,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           type="button"
           disabled={stoppableRun.status === 'stop_requested'}
           onClick={() => void props.session.stop(stoppableRun.runId)}
-          className="min-h-11 rounded-lg bg-negative/10 px-3 text-sm font-medium text-negative transition-colors hover:bg-negative/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="min-h-11 rounded-full bg-negative/10 px-3 text-sm font-medium text-negative transition-colors hover:bg-negative/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           {stoppableRun.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
         </button>
@@ -155,7 +155,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line-strong bg-paper shadow-xl shadow-black/15"
         >
           <div className="border-b border-line bg-surface px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
+            <p className="text-sm font-medium text-ink-faint">
               Current activity
             </p>
             <p className="mt-1 text-sm font-medium text-ink">
@@ -167,7 +167,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           </div>
           {latestReply && (
             <div className="border-b border-line px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
+              <p className="text-sm font-medium text-ink-faint">
                 Latest reply
               </p>
               <p className="mt-1 line-clamp-4 text-sm leading-5 text-ink-soft">
@@ -178,7 +178,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           <div className="px-4 py-3">
             <label
               htmlFor="ai-capsule-follow-up"
-              className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint"
+              className="text-sm font-medium text-ink-faint"
             >
               Queued follow-up
             </label>
@@ -202,7 +202,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
               type="button"
               disabled={stopPending || sendingFollowUp || followUp.trim().length === 0}
               onClick={() => void sendFollowUp()}
-              className="min-h-11 rounded-lg px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-11 rounded-full px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {sendingFollowUp
                 ? 'Queuing'
@@ -216,7 +216,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
                 setDetailsOpen(false);
                 props.onOpenConversation();
               }}
-              className="min-h-11 rounded-lg px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="min-h-11 rounded-full px-3 text-sm font-medium text-accent transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               Open conversation
             </button>

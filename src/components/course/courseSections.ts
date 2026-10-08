@@ -13,7 +13,7 @@ export const COURSE_SECTIONS: CourseSection[] = [
   { label: 'Path', short: 'Path', suffix: '' },
   { label: 'Cards', short: 'Cards', suffix: '/cards' },
   { label: 'Questions', short: 'Questions', suffix: '/questions' },
-  { label: 'Analytics', short: 'Analytics', suffix: '/analytics' },
+  { label: 'Progress', short: 'Progress', suffix: '/analytics' },
   { label: 'Settings', short: 'Settings', suffix: '/settings' },
 ];
 
@@ -44,4 +44,20 @@ export function courseSectionPath(courseId: string, index: number): string | nul
   const section = COURSE_SECTIONS[index];
   if (!section) return null;
   return `/course/${courseId}${section.suffix}`;
+}
+
+/**
+ * Whether a section is the current one on this route. Path must match exactly, or it would
+ * stay current on every sibling section; a lesson belongs to the path, so its pages keep
+ * Path current. The tab bar and the phone section bar share this so they always agree.
+ */
+export function isCourseSectionCurrent(
+  pathname: string,
+  courseId: string,
+  suffix: string,
+): boolean {
+  const to = `/course/${courseId}${suffix}`;
+  return suffix === ''
+    ? pathname === to || pathname.startsWith(`${to}/lesson/`)
+    : pathname === to || pathname.startsWith(`${to}/`);
 }

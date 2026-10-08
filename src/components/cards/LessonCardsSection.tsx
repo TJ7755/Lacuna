@@ -1,5 +1,5 @@
-// Card-list section for LessonView — demoted heading, empty state, and the
-// resolving-deck skeleton. Extracted from LessonView.tsx alongside
+// Card-management section for LessonView's Edit mode, shown beneath the compact
+// LessonCardsList — heading, empty state, and the resolving-deck skeleton. Extracted from LessonView.tsx alongside
 // LessonNotesSection so the page component stays a thin layout/data shell.
 
 import { useState } from 'react';
@@ -104,8 +104,14 @@ export function LessonCardsSection({
   return (
     <section className={className}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-xl text-ink-soft">
-          Cards <span className="text-ink-faint">({lessonCards.length})</span>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+          {lessonCards.length === 0 ? (
+            'More ways to add cards'
+          ) : (
+            <>
+              Manage <span className="text-ink-faint">({lessonCards.length})</span>
+            </>
+          )}
         </h2>
         {lessonCards.length > 0 && (
           <Button
@@ -119,10 +125,13 @@ export function LessonCardsSection({
         )}
       </div>
 
-      <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
+      {/* Answering applies to cards, so it waits until the lesson has one. */}
+      {lessonCards.length > 0 && (
+        <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
+      )}
 
       {pendingUnlink && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink/[0.04] px-4 py-2.5">
           <span className="text-sm text-ink-soft">Remove card from this lesson?</span>
           <ConfirmInline
             message="Its teaching progress here will be reset."
@@ -154,38 +163,29 @@ export function LessonCardsSection({
           }
         />
       ) : lessonCards.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
-          <p className="mb-4 text-sm text-ink-soft">No cards in this lesson yet.</p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button
-              variant="primary"
-              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New card
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New sequence
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
-            >
-              <PlusIcon width={18} height={18} />
-              New occlusion
-            </Button>
-            <Button variant="secondary" onClick={() => setLinking(true)}>
-              <PlusIcon width={18} height={18} />
-              Link existing cards
-            </Button>
-            <Button variant="secondary" onClick={() => void prepareEmptyImport()}>
-              Import cards
-            </Button>
-          </div>
+        // New card leads in the lesson's card panel; these are the other ways in.
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
+          >
+            <PlusIcon width={18} height={18} />
+            New sequence
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+          >
+            <PlusIcon width={18} height={18} />
+            New occlusion
+          </Button>
+          <Button variant="secondary" onClick={() => setLinking(true)}>
+            <PlusIcon width={18} height={18} />
+            Link existing cards
+          </Button>
+          <Button variant="secondary" onClick={() => void prepareEmptyImport()}>
+            Import cards
+          </Button>
         </div>
       ) : links === undefined || !lessonSchedulingConfig ? (
         // Membership determines whether a row may delete the underlying card. Never
@@ -206,7 +206,7 @@ export function LessonCardsSection({
             importTargetName: lessonName,
           })}
           hideHeader
-          onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+          // New card leads in the lesson's card panel above, so Manage offers only the rest.
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
           onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
           onLinkExisting={() => setLinking(true)}

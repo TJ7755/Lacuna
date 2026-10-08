@@ -16,12 +16,10 @@ const CONTROL_FILES = [
   'src/components/cards/CardEditOverlay.tsx',
   'src/components/sequences/ScriptPasteImport.tsx',
   'src/components/items/BatchAuthoringPromptDialog.tsx',
-  'src/components/notes/NoteRow.tsx',
   'src/components/notes/AnnotatedNoteContent.tsx',
   'src/components/occlusion/OcclusionRegionPane.tsx',
   'src/components/occlusion/OcclusionCanvas.tsx',
   'src/components/import/MergeReviewPanel.tsx',
-  'src/components/course/CourseCard.tsx',
   'src/pages/settings/AppearanceSection.tsx',
 ];
 

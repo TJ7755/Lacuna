@@ -26,25 +26,40 @@ describe('NewCourseForm', () => {
     vi.restoreAllMocks();
   });
 
+  it('can expand inline without a modal or keyboard trap, and cancels with Escape', () => {
+    const onClose = vi.fn();
+    const { container } = render(<NewCourseForm onClose={onClose} inline />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const form = screen.getByRole('form', { name: 'New course' });
+    expect(container).toContainElement(form);
+    const input = screen.getByRole('textbox', { name: 'Course name' });
+    expect(input).toHaveFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    create.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('associates the visible course name label with the input', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     const input = screen.getByRole('textbox', { name: 'Course name' });
     expect(screen.getByLabelText('Course name')).toBe(input);
-    expect(screen.getByText('Course name', { selector: 'label' })).toHaveAttribute(
-      'for',
-      input.id,
-    );
+    expect(screen.getByText('Course name', { selector: 'label' })).toHaveAttribute('for', input.id);
+    expect(input).not.toHaveAttribute('placeholder');
   });
 
-  it('requires an explicit scheduling target before showing an exam date', () => {
+  it('defaults to steady retention and shows the exam date only once chosen', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
     expect(screen.getByRole('dialog', { name: 'New course' }).parentElement?.parentElement).toBe(
       document.body,
     );
     expect(screen.getByRole('radio', { name: /Exam date/ })).not.toBeChecked();
-    expect(screen.getByRole('radio', { name: /Steady retention/ })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
     expect(screen.queryByRole('button', { name: 'Exam date and time' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -64,7 +79,7 @@ describe('NewCourseForm', () => {
   it('creates an exam-targeted course after that target is selected', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -81,26 +96,12 @@ describe('NewCourseForm', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course');
   });
 
-  it('does not create a named course until its scheduling target is chosen', () => {
-    render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
-      target: { value: 'Biology' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Choose an exam date or steady retention.');
-    expect(screen.getByRole('radio', { name: /Exam date/ })).toHaveFocus();
-    expect(mocks.createCourse).not.toHaveBeenCalled();
-  });
-
   it('creates a steady-retention course without fabricating an exam date', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Spanish' },
     });
-    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() =>
@@ -112,7 +113,7 @@ describe('NewCourseForm', () => {
 
   it('passes a changed wall-clock time without shifting its time zone', async () => {
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -140,7 +141,7 @@ describe('NewCourseForm', () => {
     });
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-02-28T17:00:00Z'));
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -161,7 +162,7 @@ describe('NewCourseForm', () => {
 
   it('does not submit while the date picker is handling keyboard input', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('Course name'), {
+    fireEvent.change(screen.getByLabelText('Course name'), {
       target: { value: 'Biology' },
     });
     fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
@@ -178,7 +179,7 @@ describe('NewCourseForm', () => {
   it('shows inline validation instead of silently ignoring a blank course', () => {
     render(<NewCourseForm onClose={vi.fn()} />);
 
-    const input = screen.getByPlaceholderText('Course name');
+    const input = screen.getByLabelText('Course name');
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(

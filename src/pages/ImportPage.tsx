@@ -1,11 +1,15 @@
-import { useRef, useState } from 'react';
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useEditorKeys } from '../hooks/dialogKeys';
 import { CardImportDialog } from '../components/import/CardImportDialog';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { ImportDestination, useImportDestination } from '../components/import/ImportDestination';
 import { importCardsToDestination } from '../db/cardImport';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
+import { StepSwap } from '../components/ui/StepSwap';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import {
   UploadIcon,
   CardsIcon,
@@ -14,6 +18,7 @@ import {
   ChevronLeftIcon,
 } from '../components/ui/icons';
 import './ImportPage.css';
+import { countOf } from '../utils/plural';
 
 type Source = 'lacuna' | 'anki' | 'text';
 const sources = [
@@ -23,119 +28,182 @@ const sources = [
 ] as const;
 
 export function ImportPage() {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState<Source | null>(null);
   const [file, setFile] = useState<File>();
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const pageRoot = useRef<HTMLDivElement>(null);
+  const sourceButtons = useRef<Partial<Record<Source, HTMLButtonElement | null>>>({});
+  const returnSource = useRef<Source | null>(null);
   const navigate = useNavigate();
   const { notify } = useToast();
   const draft = useImportDestination();
 
+  useLayoutEffect(() => {
+    if (source) {
+      // A fast return can revive an exiting form, so mount-only autofocus is insufficient.
+      const focusInput = () => {
+        const selector =
+          source === 'lacuna'
+            ? 'textarea[aria-label="Share link or code to import"]'
+            : source === 'anki'
+              ? '.card-import-package button'
+              : '#card-import-text';
+        const target = [...(pageRoot.current?.querySelectorAll<HTMLElement>(selector) ?? [])].find(
+          (element) => !element.closest('[inert]'),
+        );
+        target?.focus({ preventScroll: true });
+      };
+      if (multiplier === 0) {
+        focusInput();
+        return;
+      }
+      const frame = requestAnimationFrame(focusInput);
+      return () => cancelAnimationFrame(frame);
+    }
+    if (!returnSource.current) return;
+    sourceButtons.current[returnSource.current]?.focus({ preventScroll: true });
+    returnSource.current = null;
+  }, [source, multiplier]);
+
   function chooseFile(next: File | undefined) {
     if (!next) return;
     setFile(next);
-    setSource(
-      /\.lacuna$/i.test(next.name) ? 'lacuna' : /\.apkg$/i.test(next.name) ? 'anki' : 'text',
-    );
+    const nextSource = /\.lacuna$/i.test(next.name)
+      ? 'lacuna'
+      : /\.apkg$/i.test(next.name)
+        ? 'anki'
+        : 'text';
+    returnSource.current = nextSource;
+    setSource(nextSource);
   }
   function reset() {
     setSource(null);
     setFile(undefined);
   }
+  // Escape returns to the source list while nothing has been entered; the card import form
+  // claims its own keys first.
+  const keys = useEditorKeys({ onCancel: () => source && !busy && reset() });
 
   return (
-    <div className="import-page mx-auto max-w-6xl px-6 py-10 md:px-10">
-      <header className="mb-8">
-        <div className="mb-3 flex min-h-11 items-center">
-          {source && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={reset}
-              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink disabled:pointer-events-none disabled:opacity-40"
-            >
-              <ChevronLeftIcon width={16} height={16} />
-              Back
-            </button>
-          )}
-        </div>
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">Import</h1>
-      </header>
-      {!source ? (
-        <>
-          <div className="import-sources">
-            {sources.map(({ id, title, detail, icon: Icon }) => (
-              <button key={id} type="button" onClick={() => setSource(id)}>
-                <Icon width={24} height={24} />
-                <strong>{title}</strong>
-                <span>{detail}</span>
-              </button>
-            ))}
-          </div>
-          <div
-            className="import-drop"
-            data-dragging={dragging}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragging(false);
-              chooseFile(event.dataTransfer.files[0]);
-            }}
+    <div
+      ref={pageRoot}
+      className={`import-page ${PAGE_FRAME} py-10`}
+      style={{ '--import-motion-duration': `${200 * multiplier}ms` } as CSSProperties}
+      {...keys}
+    >
+      {/* Back shares the title's row, so the title sits where every page's does and
+          stays put as the steps change. */}
+      <header className="mb-8 flex items-start justify-between gap-4">
+        {/* At least the button's height, so the row does not grow when Back appears. */}
+        <h1 className="min-h-11 font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+          Import
+        </h1>
+        {source && (
+          <button
+            type="button"
+            disabled={busy}
+            aria-label="Back to import sources"
+            onClick={reset}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
-            <UploadIcon width={28} height={28} />
-            <h2>Drop a file here</h2>
-            <p>Lacuna, Anki, CSV, TSV, Markdown, JSON or text</p>
-            <input
-              ref={input}
-              type="file"
-              hidden
-              aria-label="Import file"
-              accept=".lacuna,.apkg,.csv,.tsv,.txt,.json,.md,.markdown"
-              onChange={(event) => {
-                chooseFile(event.target.files?.[0]);
-                event.target.value = '';
+            <ChevronLeftIcon width={16} height={16} />
+            All sources
+          </button>
+        )}
+      </header>
+      <StepSwap stepKey={source ?? 'sources'}>
+        {!source ? (
+          <>
+            <div className="import-sources">
+              {sources.map(({ id, title, detail, icon: Icon }, index) => (
+                <button
+                  key={id}
+                  type="button"
+                  autoFocus={index === 0}
+                  ref={(button) => {
+                    sourceButtons.current[id] = button;
+                  }}
+                  onClick={() => {
+                    returnSource.current = id;
+                    setSource(id);
+                  }}
+                >
+                  <Icon width={24} height={24} />
+                  <strong>{title}</strong>
+                  <span>{detail}</span>
+                </button>
+              ))}
+            </div>
+            <div
+              className="import-drop"
+              data-dragging={dragging}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
               }}
-            />
-            <Button variant="secondary" onClick={() => input.current?.click()}>
-              Choose file
-            </Button>
-          </div>
-        </>
-      ) : source === 'lacuna' ? (
-        <SharedCourseImport
-          onBusyChange={setBusy}
-          initialFile={file}
-          onImported={(id) => void navigate(`/course/${id}`)}
-        />
-      ) : (
-        <CardImportDialog
-          presentation="page"
-          initialFile={file}
-          preferPackage={source === 'anki'}
-          onBusyChange={setBusy}
-          onCancel={reset}
-          schedulingUnitId={
-            draft.destination?.kind === 'existing' ? draft.destination.schedulingUnitId : undefined
-          }
-          reviewOptions={<ImportDestination draft={draft} />}
-          canImport={!!draft.destination}
-          onImport={async (content) => {
-            if (!draft.destination) throw new Error('Choose a destination and study target.');
-            const result = await importCardsToDestination(draft.destination, content);
-            notify(`${result.count} cards imported.`, 'positive');
-            void navigate(
-              `/course/${result.courseId}${result.lesson ? `/lesson/${result.lesson.id}` : ''}`,
-            );
-          }}
-        />
-      )}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                chooseFile(event.dataTransfer.files[0]);
+              }}
+            >
+              <UploadIcon width={28} height={28} />
+              <h2>Drop a file here</h2>
+              <p>Lacuna, Anki, CSV, TSV, Markdown, JSON or text</p>
+              <input
+                ref={input}
+                type="file"
+                hidden
+                aria-label="Import file"
+                accept=".lacuna,.apkg,.csv,.tsv,.txt,.json,.md,.markdown"
+                onChange={(event) => {
+                  chooseFile(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+              <Button variant="primary" onClick={() => input.current?.click()}>
+                Choose file
+              </Button>
+            </div>
+          </>
+        ) : source === 'lacuna' ? (
+          <SharedCourseImport
+            onBusyChange={setBusy}
+            initialFile={file}
+            onImported={(id) => void navigate(`/course/${id}`)}
+          />
+        ) : (
+          <CardImportDialog
+            presentation="page"
+            initialFile={file}
+            preferPackage={source === 'anki'}
+            onBusyChange={setBusy}
+            onCancel={reset}
+            schedulingUnitId={
+              draft.destination?.kind === 'existing'
+                ? draft.destination.schedulingUnitId
+                : undefined
+            }
+            reviewOptions={<ImportDestination draft={draft} />}
+            canImport={!!draft.destination}
+            onImport={async (content) => {
+              if (!draft.destination) throw new Error('Choose a destination and study target.');
+              const result = await importCardsToDestination(draft.destination, content);
+              notify(`${countOf(result.count, 'card')} imported.`, 'positive');
+              void navigate(
+                `/course/${result.courseId}${result.lesson ? `/lesson/${result.lesson.id}` : ''}`,
+              );
+            }}
+          />
+        )}
+      </StepSwap>
     </div>
   );
 }

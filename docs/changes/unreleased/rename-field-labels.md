@@ -1,0 +1,1 @@
+- The course and lesson rename fields are announced as "Course name" and "Lesson name", capitalised like every other label.

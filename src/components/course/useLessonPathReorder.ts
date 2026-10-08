@@ -443,5 +443,15 @@ export function useLessonPathReorder({
     ],
   );
 
-  return { announcement, interactionFor, pending };
+  /** Moves a lesson one place, as Alt and the arrow keys do, for the lesson actions menu. */
+  const moveBy = useCallback(
+    (lessonId: string, delta: -1 | 1) => {
+      const targetIndex = orderedIds.indexOf(lessonId) + delta;
+      if (pending || targetIndex < 0 || targetIndex >= orderedIds.length) return;
+      void persistOrder(lessonId, targetIndex);
+    },
+    [orderedIds, pending, persistOrder],
+  );
+
+  return { announcement, interactionFor, moveBy, pending };
 }

@@ -1,0 +1,1 @@
+- Markdown fields (the card editor's Front and Back, notes and the other editors) show focus on their whole frame, like every other text field, instead of a ring drawn around the text area inside it.

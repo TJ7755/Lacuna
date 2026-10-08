@@ -1,21 +1,18 @@
 .study-transition {
   min-height: 100svh;
-  padding: 40px 24px;
+  padding: 0 0 40px;
   background: hsl(var(--paper));
 }
 .study-transition-main {
   --path-gutter: 74px;
-  max-width: 720px;
+  /* The 720px column plus its 24px gutters, now that the page itself has none. */
+  max-width: 768px;
+  padding: 0 24px;
   min-height: 70svh;
   margin: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-.study-transition-timer {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 24px;
 }
 .study-transition-completed,
 .study-transition-destination.has-next {
@@ -109,16 +106,13 @@
   align-items: center;
 }
 .study-transition-actions button {
-  /* Keep the shared Button hover scale from moving labels during the arrow reveal. */
-  transform: none !important;
   min-height: 52px;
-  padding: 12px;
+  padding: 12px 24px;
   font-size: 14px;
 }
 .study-transition-actions .study-transition-continue {
   min-width: 140px;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 /* Reserve the landing CTA's arrow space so neighbouring actions never move on hover. */
 .study-transition-arrow {
@@ -127,17 +121,13 @@
   width: 30px;
   flex: 0 0 30px;
 }
+/* The arrow always shows, so the label never sits off-centre; hover only nudges it. */
 .study-transition-arrow svg {
-  opacity: 0;
-  transform: translateX(-5px);
-  transition:
-    opacity calc(200ms * var(--step-motion)) ease,
-    transform calc(300ms * var(--step-motion)) ease;
+  transition: transform calc(300ms * var(--step-motion)) ease;
 }
 .study-transition-continue:hover .study-transition-arrow svg,
 .study-transition-continue:focus-visible .study-transition-arrow svg {
-  opacity: 1;
-  transform: translateX(0);
+  transform: translateX(3px);
 }
 @keyframes study-topic-settle {
   from {
@@ -182,7 +172,6 @@
   animation: none;
 }
 .study-transition[data-motion='off'] .study-transition-arrow svg {
-  visibility: hidden;
   transition: none;
 }
 @media (max-width: 540px) {
@@ -214,8 +203,8 @@
   .study-transition *::after {
     animation: none;
   }
+  /* The arrow stays: hiding it left its space empty and the label off-centre. */
   .study-transition-arrow svg {
-    visibility: hidden;
     transition: none;
   }
 }

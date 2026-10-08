@@ -92,7 +92,7 @@ export const CardContent = memo(function CardContent({
     const cueParagraphs = isFirst ? [] : body.split('\n\n');
     return (
       <div className={cn('grid h-full grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)]', className)}>
-        <div className="flex items-end justify-center pb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
+        <div className="flex items-end justify-center pb-3 text-sm text-ink-faint">
           <span>{headerText}</span>
         </div>
         {cueParagraphs.length > 0 ? (

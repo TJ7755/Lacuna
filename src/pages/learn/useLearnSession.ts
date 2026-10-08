@@ -1,3 +1,4 @@
+import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
@@ -463,10 +464,11 @@ export function useLearnSession({
     : isCourseScoped
       ? `/course/${courseId}`
       : '/';
+  const leaveFlow = useLeaveFlowWith(navigate, exitTo);
   const backOut = useCallback(() => {
     if (onFlowExit) onFlowExit();
-    else void navigate(exitTo);
-  }, [navigate, exitTo, onFlowExit]);
+    else leaveFlow();
+  }, [leaveFlow, onFlowExit]);
 
   const persistSimpleResume = useCallback(
     (outcomes: Map<string, SessionCardOutcome> = sessionCardOutcomesRef.current) => {
@@ -1324,6 +1326,11 @@ export function useLearnSession({
       if (firstStudyLessonId && firstStudyLessonName) {
         const lessonNotes = await listNotes(firstStudyLessonId);
         if (cancelled) return;
+        // Nothing to read: start the cards rather than show an empty page to dismiss.
+        if (lessonNotes.length === 0 && cards.length > 0) {
+          serveNextRef.current();
+          return;
+        }
         setLessonNotesScreen({ lessonName: firstStudyLessonName, notes: lessonNotes });
         setPhase('notes');
         return;

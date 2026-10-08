@@ -1,141 +1,90 @@
+/* One line beneath the study queue: it announces sharing without competing with the day's work. */
+.sharing-announcement-frame {
+  container: sharing-announcement / inline-size;
+}
 .sharing-announcement {
-  position: relative;
-  margin: 24px 32px 0;
-  border: 1px solid var(--color-line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 6px 6px 6px 14px;
   border-radius: 16px;
+  background: var(--color-accent-soft);
   color: var(--color-ink);
 }
-.sharing-announcement h2,
-.sharing-announcement p {
-  margin: 0;
-}
-.sharing-announcement p {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--color-ink-soft);
-}
-.sharing-announcement-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+.sharing-announcement-icon {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  color: inherit;
-  cursor: pointer;
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
 }
-.sharing-announcement-close:hover {
-  background: var(--color-line);
+.sharing-announcement p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.sharing-announcement p span {
+  color: var(--color-ink-soft);
 }
 .sharing-announcement-action {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  font-size: 13px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   text-decoration: none;
-}
-.sharing-announcement-action span {
-  font-size: 20px;
 }
 .sharing-announcement-action:hover {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.sharing-announcement {
+.sharing-announcement-close {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  overflow: hidden;
-  background: var(--color-accent-soft);
-  padding: 32px 40px;
-  gap: 24px;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--color-ink-soft);
+  cursor: pointer;
 }
-.sharing-announcement h2 {
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 1.08;
-  letter-spacing: -0.05em;
-  font-weight: 550;
-  margin: 12px 0;
-}
-.sharing-announcement p {
-  max-width: 330px;
-}
-.sharing-announcement .sharing-announcement-action {
-  margin-top: 20px;
-  padding: 9px 16px;
-  border-radius: 9px;
-  background: var(--color-ink);
-  color: var(--color-paper);
-}
-.sharing-announcement-art {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  min-height: 210px;
-}
-.sharing-announcement-sheet {
-  width: 205px;
-  padding: 24px;
-  transform: rotate(8deg);
-  background: var(--color-surface);
-  border: 1px solid var(--color-line-strong);
-  border-radius: 13px;
-  box-shadow:
-    -12px 12px 0 var(--color-accent-soft),
-    -13px 13px 0 var(--color-line-strong);
-}
-.sharing-announcement-sheet span {
-  font-size: 9px;
-  letter-spacing: 0.15em;
-}
-.sharing-announcement-sheet div {
-  height: 9px;
-  margin-top: 12px;
+.sharing-announcement-close:hover {
   background: var(--color-line);
-  border-radius: 4px;
-}
-.sharing-announcement-sheet div:nth-of-type(2) {
-  width: 75%;
-}
-.sharing-announcement-sheet div:nth-of-type(3) {
-  width: 50%;
-}
-.sharing-announcement-sheet strong {
-  display: block;
-  margin-top: 30px;
-  font-size: 17px;
-  letter-spacing: -0.04em;
-}
-.sharing-announcement-link {
-  position: absolute;
-  bottom: -8px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background: var(--color-ink);
-  color: var(--color-paper);
-  padding: 13px 18px;
-  border-radius: 30px;
-  font-size: 12px;
-  transform: rotate(-5deg);
-  white-space: nowrap;
+  color: var(--color-ink);
 }
 .sharing-announcement-close:focus-visible,
 .sharing-announcement-action:focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
-@media (max-width: 700px) {
-  .sharing-announcement {
-    margin: 16px 16px 0;
-    padding: 28px;
+/* The banner's own width decides what fits on one line, so the desktop sidebar's narrow
+   columns and phones alike drop the detail first, then the icon and the link's second word
+   (which stays in its accessible name). */
+@container sharing-announcement (max-width: 720px) {
+  .sharing-announcement p span {
+    display: none;
   }
-  .sharing-announcement-art {
-    min-height: 215px;
+}
+@container sharing-announcement (max-width: 440px) {
+  .sharing-announcement-icon {
+    display: none;
+  }
+  .sharing-announcement-action-detail {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

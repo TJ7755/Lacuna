@@ -7,16 +7,13 @@ for (const theme of ['light', 'dark'] as const) {
       await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
       await page.goto('/');
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-      const heading = page.getByRole('heading', { name: 'Courses', exact: true });
+      const heading = page.getByRole('heading', { name: 'Today', exact: true });
       await expect(heading).toBeVisible();
-      await expect(heading).toHaveCSS('font-family', /Instrument Sans/);
+      await expect(page.locator('main')).toHaveCSS('font-family', /Atkinson Hyperlegible Next/);
       await page.evaluate(() => document.fonts.ready);
-      expect(await page.evaluate(() => document.fonts.check('16px "Instrument Sans"'))).toBe(true);
-      await expect(heading.locator('xpath=ancestor::header')).toHaveCSS('border-top-width', '0px');
-      await expect(heading.locator('xpath=ancestor::header')).toHaveCSS(
-        'background-color',
-        'rgba(0, 0, 0, 0)',
-      );
+      expect(
+        await page.evaluate(() => document.fonts.check('16px "Atkinson Hyperlegible Next"')),
+      ).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
@@ -25,19 +22,19 @@ for (const theme of ['light', 'dark'] as const) {
         path: test.info().outputPath('courses.png'),
       });
       const dashboardUrl = page.url();
-      await page.getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
+      await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
       const course = page.getByRole('heading', {
         name: 'Welcome to Lacuna',
         exact: true,
         level: 1,
       });
       await expect(course).toBeVisible();
-      await expect(course).toHaveCSS('font-family', /Fraunces/);
-      await expect(course.locator('xpath=ancestor::header')).toHaveCSS('border-top-width', '0px');
-      await page.getByRole('button', { name: 'Author mode', exact: true }).click();
+      await expect(course).toHaveCSS('font-family', /Bricolage Grotesque/);
+      await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
       await page.getByRole('button', { name: 'Rename course', exact: true }).click();
-      await expect(page.getByRole('textbox', { name: 'course name', exact: true })).toBeFocused();
-      await page.getByRole('textbox', { name: 'course name', exact: true }).press('Escape');
+      await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toBeFocused();
+      await page.getByRole('textbox', { name: 'Course name', exact: true }).press('Escape');
       await expect(course).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
@@ -45,8 +42,8 @@ for (const theme of ['light', 'dark'] as const) {
       await page.screenshot({ animations: 'disabled', path: test.info().outputPath('course.png') });
       await page.goto(dashboardUrl);
       await page
-        .getByRole('button', { name: /Exam on .* Welcome to Lacuna/ })
-        .click({ button: 'right' });
+        .getByRole('button', { name: 'More for Welcome to Lacuna' })
+        .click();
       await page.getByRole('menuitem', { name: 'Archive', exact: true }).click();
       await page.getByRole('button', { name: 'Archive course', exact: true }).click();
       await expect(page.getByRole('dialog', { name: 'Archive Welcome to Lacuna?' })).toHaveCount(0);
@@ -65,7 +62,8 @@ for (const theme of ['light', 'dark'] as const) {
 test('an empty study session uses the minimal report with accessible details', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await page.getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/learn`);
   await expect(page.getByRole('heading', { name: 'Nice work' })).toBeVisible();

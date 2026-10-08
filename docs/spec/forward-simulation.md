@@ -45,4 +45,13 @@ DR = R_yes - R_no
 For a new card `R_no = 0`, so `DR = R_yes`. As a card's exam-day R approaches 1, `DR -> 0`.
 
 
+**Exam-day forecast** (`src/fsrs/courseForecast.ts`): the dashboard, course page, course
+analytics and sidebar ring show one figure per course, the mean `R_no` across its available
+core cards at the exam (or 28 days ahead without one). No future reviews are assumed, so an
+unstudied course reads 0%. The chart traces that figure back over the chosen window
+(`examDayHistory`): on each past day a card's stability is the `stabilityAfter` its latest
+review by then recorded, and from its latest stored review onwards the card's own state, so the
+line ends exactly on today's figure. The window (Settings → Dashboard → Forecast range: 14, 30 or
+90 days) puts today 60% across; the remainder holds only exam markers.
+
 [Specification index](../SPEC.md)

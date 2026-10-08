@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OcclusionEditor } from './OcclusionEditor';
 import type { Course, Occlusion } from '../db/types';
 
-let mockCourse: Course | undefined;
+let mockCourse: Course | null | undefined;
+let mockLesson: null | undefined;
 let mockOcclusion: Occlusion | null | undefined;
 const mockNotify = vi.fn();
 const createOcclusion = vi.fn().mockResolvedValue(undefined);
@@ -17,7 +18,7 @@ const resolveAssetUrl = vi.fn().mockResolvedValue('blob:diagram');
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
-  useLesson: () => undefined,
+  useLesson: () => mockLesson,
   useOcclusion: () => mockOcclusion,
 }));
 
@@ -67,11 +68,21 @@ const course: Course = {
   practiceMaxGap: 3,
 };
 
-function renderNew() {
+function renderNew(lessonMode = false) {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/occlusion/new']}>
+    <MemoryRouter
+      initialEntries={[
+        lessonMode
+          ? '/course/course-1/lesson/lesson-1/occlusion/new'
+          : '/course/course-1/occlusion/new',
+      ]}
+    >
       <Routes>
         <Route path="/course/:courseId/occlusion/new" element={<OcclusionEditor />} />
+        <Route
+          path="/course/:courseId/lesson/:lessonId/occlusion/new"
+          element={<OcclusionEditor />}
+        />
         <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
@@ -124,6 +135,7 @@ async function uploadDiagram() {
 
 beforeEach(() => {
   mockCourse = undefined;
+  mockLesson = undefined;
   mockOcclusion = undefined;
   mockNotify.mockClear();
   createOcclusion.mockClear();
@@ -137,6 +149,51 @@ beforeEach(() => {
 });
 
 describe('OcclusionEditor', () => {
+  it.each(['course', 'lesson', 'occlusion'] as const)(
+    'keeps the missing-%s state aligned and its Back target full-size',
+    (missing) => {
+      mockCourse = missing === 'course' ? null : course;
+      mockLesson = missing === 'lesson' ? null : undefined;
+      mockOcclusion = missing === 'occlusion' ? null : undefined;
+      const { container } =
+        missing === 'occlusion' ? renderEdit() : renderNew(missing === 'lesson');
+      expect(screen.getByText(`This ${missing} could not be found.`)).toBeInTheDocument();
+      expect(container.firstElementChild).toHaveClass('max-w-[1190px]', 'w-full');
+      const back = screen.getByRole('link');
+      expect(back).toHaveClass('min-h-11');
+      expect(back).toHaveAttribute(
+        'href',
+        missing === 'course'
+          ? '/'
+          : missing === 'lesson'
+            ? '/course/course-1'
+            : '/course/course-1/cards',
+      );
+    },
+  );
+  it('aligns with course pages and offers one full-size destination-aware Back link', () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    expect(container.firstElementChild).toHaveClass('max-w-[1190px]', 'w-full');
+    const back = screen.getByRole('link', { name: 'Back to Cards' });
+    expect(back).toHaveAttribute('href', '/course/course-1/cards');
+    expect(back).toHaveClass('min-h-11');
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
+  it('gives the occlusion name a visible label and keeps Tab in document order', () => {
+    mockCourse = course;
+    renderNew();
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    fireEvent(name, event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+  it('opens directly on the task without a decorative subtitle', () => {
+    mockCourse = course;
+    renderNew();
+    expect(screen.queryByText(/Mask parts of a diagram to test recall/)).not.toBeInTheDocument();
+  });
   it('shows a skeleton while loading', () => {
     renderNew();
     expect(screen.queryByText('New occlusion')).not.toBeInTheDocument();
@@ -233,6 +290,31 @@ describe('OcclusionEditor', () => {
       role: 'feature',
       pairedRegionId: calledRegions[0].id,
     });
+  });
+
+  it('keeps the editor controls in Tab order once complete and saves with Ctrl+Enter', async () => {
+    mockCourse = course;
+    const { container } = renderNew();
+    const name = screen.getByPlaceholderText('e.g. The plant cell');
+    expect(name).toHaveFocus();
+    await uploadDiagram();
+    drawBox(container, [40, 30], [200, 180]);
+    fireEvent.change(name, { target: { value: 'Plant cell' } });
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    fireEvent(name, tab);
+    expect(tab.defaultPrevented).toBe(false);
+    expect(name).toHaveFocus();
+    await act(async () => {
+      fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true });
+      await vi.waitFor(() => expect(createOcclusion).toHaveBeenCalled());
+    });
+  });
+
+  it('cancels a pristine new occlusion on Escape', async () => {
+    mockCourse = course;
+    renderNew();
+    fireEvent.keyDown(screen.getByPlaceholderText('e.g. The plant cell'), { key: 'Escape' });
+    await screen.findByText('Cards');
   });
 
   it('warns before replacing the diagram of an existing occlusion, and only regenerates on confirm', async () => {

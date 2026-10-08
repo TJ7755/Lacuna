@@ -103,7 +103,7 @@ describe('SectionRail', () => {
       );
     });
     const activeButton = screen.getByRole('button', { name: 'Section B' });
-    expect(activeButton).toHaveClass('text-accent');
+    expect(activeButton).toHaveAttribute('aria-current', 'true');
   });
 
   it('calls onNavigate when a desktop rail item is clicked', () => {
@@ -159,7 +159,7 @@ describe('SectionRail', () => {
     mockViewport(true);
     render(<Harness />);
     const rail = screen.getByRole('button', { name: 'Section B' }).closest('aside');
-    expect(rail).toHaveClass('w-56');
+    expect(rail).toHaveClass('w-[200px]');
     expect(rail).not.toHaveClass('w-64');
     expect(screen.queryByLabelText('Jump to section')).not.toBeInTheDocument();
   });
@@ -171,13 +171,12 @@ describe('SectionRail', () => {
     expect(screen.queryByText('On this page')).not.toBeInTheDocument();
   });
 
-  it('uses a modest desktop container without restoring the caption or heavy shadow', () => {
+  it('sits on the page without a card, a caption or a shadow behind it', () => {
     mockViewport(true);
     render(<Harness />);
 
     const surface = screen.getByRole('navigation').parentElement;
-    expect(surface).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
-    expect(surface).not.toHaveClass('shadow-xl');
+    expect(surface).not.toHaveClass('border', 'bg-surface', 'shadow-sm', 'shadow-xl');
   });
 
   it('renders only the mobile jumper below the desktop breakpoint', () => {

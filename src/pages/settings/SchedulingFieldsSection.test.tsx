@@ -11,9 +11,6 @@ function renderSection() {
       maxReviewsPerDay="200"
       onMaxReviewsPerDayChange={vi.fn()}
       onMaxReviewsPerDayBlur={vi.fn()}
-      retention={0.9}
-      onRetentionChange={vi.fn()}
-      onRetentionCommit={vi.fn()}
       enableFuzz={true}
       onEnableFuzzChange={vi.fn()}
       maxInterval="36500"
@@ -51,7 +48,7 @@ describe('SchedulingFieldsSection', () => {
     expect(disclosure).not.toHaveAttribute('open');
     expect(disclosure).not.toContainElement(screen.getByLabelText(/New cards per day/));
     expect(disclosure).not.toContainElement(screen.getByLabelText(/Daily review goal/));
-    expect(disclosure).toContainElement(screen.getByLabelText('Target retention'));
+    expect(screen.queryByLabelText('Target retention')).not.toBeInTheDocument();
     expect(disclosure).toContainElement(screen.getByLabelText(/Maximum interval/));
 
     fireEvent.click(summary!);

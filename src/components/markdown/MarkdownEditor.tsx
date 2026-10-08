@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type DragEvent, type Ref } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode, type Ref } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { modifierShortcutLabel } from '../../electron/runtime';
 
 interface MarkdownEditorProps {
   value: string;
@@ -27,6 +29,8 @@ interface MarkdownEditorProps {
   label?: string;
   /** Cloze preview mode for the live preview pane. */
   clozePreview?: 'front' | 'back' | 'none';
+  /** Leave out the side preview, for screens that already show their own preview. */
+  hidePreview?: boolean;
   onError?: (message: string) => void;
   /** Focus the textarea on mount (used by the quick-capture flow). */
   autoFocus?: boolean;
@@ -45,8 +49,10 @@ interface MarkdownEditorProps {
 }
 
 type ToolbarAction = {
-  label: string;
+  label: ReactNode;
   title: string;
+  /** Letter pressed with Cmd/Ctrl inside the editor. */
+  shortcut?: string;
   apply: (sel: Selection) => Replacement;
 };
 
@@ -94,6 +100,7 @@ export function MarkdownEditor({
   minRows = 6,
   label,
   clozePreview = 'none',
+  hidePreview = false,
   onError,
   autoFocus = false,
   inputRef,
@@ -255,8 +262,18 @@ export function MarkdownEditor({
   }
 
   const actions: ToolbarAction[] = [
-    { label: 'B', title: 'Bold', apply: (s) => wrap(s, '**', '**', 'bold text') },
-    { label: 'I', title: 'Italic', apply: (s) => wrap(s, '_', '_', 'italic text') },
+    {
+      label: <strong>B</strong>,
+      title: 'Bold',
+      shortcut: 'B',
+      apply: (s) => wrap(s, '**', '**', 'bold text'),
+    },
+    {
+      label: <em className="font-serif">I</em>,
+      title: 'Italic',
+      shortcut: 'I',
+      apply: (s) => wrap(s, '_', '_', 'italic text'),
+    },
     { label: 'H', title: 'Heading', apply: (s) => linePrefix(s, '## ', 'Heading') },
     { label: '•', title: 'Bullet list', apply: (s) => linePrefix(s, '- ', 'List item') },
     { label: '1.', title: 'Numbered list', apply: (s) => linePrefix(s, '1. ', 'List item') },
@@ -267,9 +284,10 @@ export function MarkdownEditor({
       apply: (s) => wrap(s, '```\n', '\n```', 'code'),
     },
     { label: 'Link', title: 'Link', apply: (s) => wrap(s, '[', '](https://)', 'text') },
-    { label: '$x$', title: 'Inline maths', apply: (s) => wrap(s, '$', '$', 'x^2') },
+    // Named in words: a teacher need not know the dollar-sign syntax to find maths.
+    { label: 'Maths', title: 'Inline maths', apply: (s) => wrap(s, '$', '$', 'x^2') },
     {
-      label: '$$',
+      label: 'Maths block',
       title: 'Block maths',
       apply: (s) => wrap(s, '$$\n', '\n$$', 'x = y'),
     },
@@ -345,11 +363,14 @@ export function MarkdownEditor({
   }
 
   const rows = Math.max(minRows, value.split('\n').length + 1);
+  const showsMathsPreview =
+    !hidePreview && layout !== 'split' && mobileTab === 'write' && /\$[^$\n]+\$/.test(value);
 
   return (
-    <div className="rounded-xl border border-line bg-surface">
+    // The whole field, toolbar included, marks focus in its text, as a plain input's border does.
+    <div className="rounded-xl border border-line bg-surface transition-colors has-[textarea:focus]:border-accent has-[textarea:focus]:ring-2 has-[textarea:focus]:ring-accent/20">
       {label && (
-        <div className="border-b border-line px-3 py-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+        <div className="border-b border-line px-3 py-2 text-sm text-ink-faint">
           {label}
         </div>
       )}
@@ -367,9 +388,14 @@ export function MarkdownEditor({
             <button
               key={a.title}
               type="button"
-              title={a.title}
+              aria-label={a.title}
+              title={a.shortcut ? `${a.title} (${modifierShortcutLabel(a.shortcut)})` : a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+              className={cn(
+                'min-h-11 min-w-11 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10',
+                typeof a.label === 'string' && /^[^A-Za-z]/.test(a.label) && 'font-mono',
+                typeof a.label !== 'string' && 'text-sm',
+              )}
             >
               {a.label}
             </button>
@@ -412,7 +438,7 @@ export function MarkdownEditor({
             type="button"
             title="Insert image"
             onClick={() => fileInputRef.current?.click()}
-            className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
           >
             <ImageIcon width={15} height={15} />
           </button>
@@ -427,11 +453,14 @@ export function MarkdownEditor({
         />
 
         {/* Mobile write/preview switch */}
-        <div className={cn('ml-auto flex gap-1', layout === 'split' && 'md:hidden')}>
+        <div
+          className={cn('ml-auto flex gap-1', layout === 'split' && 'md:hidden', hidePreview && 'hidden')}
+        >
           {(['write', 'preview'] as const).map((tab) => (
             <button
               key={tab}
               type="button"
+              aria-pressed={mobileTab === tab}
               onClick={() => setMobileTab(tab)}
               className={cn(
                 'min-h-11 rounded-md px-2 text-xs capitalize',
@@ -445,8 +474,13 @@ export function MarkdownEditor({
       </div>
 
       {/* Split: editor + live preview (stacked/tabbed on mobile) */}
-      <div className={cn('grid', layout === 'split' && 'md:grid-cols-2')}>
-        <div className={cn(layout === 'split' && 'md:block', mobileTab === 'preview' && 'hidden')}>
+      <div className={cn('grid', layout === 'split' && !hidePreview && 'md:grid-cols-2')}>
+        <div
+          className={cn(
+            layout === 'split' && 'md:block',
+            !hidePreview && mobileTab === 'preview' && 'hidden',
+          )}
+        >
           <textarea
             ref={setTextareaRef}
             autoFocus={autoFocus}
@@ -465,6 +499,15 @@ export function MarkdownEditor({
                 } else {
                   undo();
                 }
+                return;
+              }
+              const shortcut =
+                (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey
+                  ? actions.find((action) => action.shortcut?.toLowerCase() === e.key.toLowerCase())
+                  : undefined;
+              if (shortcut) {
+                e.preventDefault();
+                runAction(shortcut);
                 return;
               }
               if (e.ctrlKey && e.key.toLowerCase() === 'y') {
@@ -499,43 +542,55 @@ export function MarkdownEditor({
             spellCheck
             className={cn(
               'w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-ink',
-              'placeholder:text-ink-faint focus:outline-none',
+              'placeholder:text-ink-faint focus:outline-none focus-visible:shadow-none',
               dragOver && 'ring-2 ring-inset ring-accent/60',
             )}
           />
+          {/* Maths is written as $...$; show how it reads without leaving the Write tab. */}
+          <AnimatedDisclosure open={showsMathsPreview}>
+            <div
+              data-maths-preview=""
+              className="border-t border-line px-4 py-2 text-sm text-ink-soft"
+            >
+              <span className="mr-2 text-xs text-ink-faint">Preview</span>
+              <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
+            </div>
+          </AnimatedDisclosure>
         </div>
-        <div
-          className={cn(
-            'min-h-[8rem] border-line px-4 py-3',
-            layout === 'split' && 'md:border-l',
-            mobileTab === 'write' && (layout === 'split' ? 'hidden md:block' : 'hidden'),
-          )}
-        >
-          <AnimatePresence mode="sync">
-            {value.trim() ? (
-              <motion.div
-                key="preview"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * m }}
-              >
-                <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
-              </motion.div>
-            ) : (
-              <motion.p
-                key="placeholder"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * m }}
-                className="text-sm text-ink-faint"
-              >
-                Preview appears here.
-              </motion.p>
+        {!hidePreview && (
+          <div
+            className={cn(
+              'min-h-[8rem] border-line px-4 py-3',
+              layout === 'split' && 'md:border-l',
+              mobileTab === 'write' && (layout === 'split' ? 'hidden md:block' : 'hidden'),
             )}
-          </AnimatePresence>
-        </div>
+          >
+            <AnimatePresence mode="sync">
+              {value.trim() ? (
+                <motion.div
+                  key="preview"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 * m }}
+                >
+                  <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
+                </motion.div>
+              ) : (
+                <motion.p
+                  key="placeholder"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 * m }}
+                  className="text-sm text-ink-faint"
+                >
+                  Preview appears here.
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   );

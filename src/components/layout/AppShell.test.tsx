@@ -18,13 +18,11 @@ vi.mock('./Sidebar', () => ({
     toggleLabel = 'Toggle navigation',
     collapsed,
     aiAction,
-    onOpenPalette,
   }: {
     onToggleCollapsed: () => void;
     toggleLabel?: string;
     collapsed: boolean;
     aiAction?: { onClick: () => void; triggerRef: React.RefObject<HTMLButtonElement> };
-    onOpenPalette?: () => void;
   }) => (
     <aside data-collapsed={collapsed || undefined}>
       <button type="button" data-sidebar-close onClick={onToggleCollapsed} aria-label={toggleLabel}>
@@ -35,11 +33,7 @@ vi.mock('./Sidebar', () => ({
           AI
         </button>
       )}
-      {onOpenPalette && (
-        <button type="button" onClick={onOpenPalette}>
-          Quick search
-        </button>
-      )}
+      <a href="#/search">Search content</a>
     </aside>
   ),
 }));
@@ -54,7 +48,10 @@ vi.mock('./ErrorBoundary', () => ({
 vi.mock('../../state/useSearchData', () => ({
   useSearchData: () => ({ cards: [], courses: [], lessons: [], notes: [], questions: [] }),
 }));
-vi.mock('../ui/KeyHints', () => ({ KeyHints: () => null }));
+vi.mock('../ui/KeyHints', () => ({
+  KeyHints: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog" aria-label="Keyboard shortcuts" /> : null,
+}));
 vi.mock('./LandingTransition', () => ({ consumeLandingArrival: () => false }));
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
@@ -138,26 +135,36 @@ afterEach(() => {
 });
 
 describe('AppShell native commands', () => {
-  it('opens Lacuna Help when the Electron menu requests it', async () => {
-    let openHelp: () => void = () => {
-      throw new Error('Help listener was not installed');
+  function installMenu() {
+    let run: (command: 'help' | 'settings' | 'shortcuts') => void = () => {
+      throw new Error('Menu listener was not installed');
     };
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
       value: {
         isElectron: true,
         platform: 'darwin',
-        onOpenHelp: (callback: () => void) => {
-          openHelp = callback;
+        onMenuCommand: (callback: typeof run) => {
+          run = callback;
           return vi.fn();
         },
       },
     });
+    return (command: 'help' | 'settings' | 'shortcuts') => run(command);
+  }
+
+  it('opens Lacuna Help when the Electron menu requests it', async () => {
+    const run = installMenu();
     renderShell();
-
-    act(() => openHelp());
-
+    act(() => run('help'));
     expect(await screen.findByRole('heading', { name: 'Help' })).toBeInTheDocument();
+  });
+
+  it('opens the keyboard shortcuts panel from the Electron Help menu', async () => {
+    const run = installMenu();
+    renderShell();
+    act(() => run('shortcuts'));
+    expect(await screen.findByRole('dialog', { name: /keyboard shortcuts/i })).toBeInTheDocument();
   });
 });
 
@@ -182,6 +189,16 @@ describe('AppShell mobile navigation', () => {
       clientY: to.y,
     });
   }
+
+  it('offers keyboard users a first stop that skips the sidebar to the page', () => {
+    renderShell();
+    const skip = screen.getByRole('link', { name: 'Skip to content' });
+    const firstFocusable = document.querySelector<HTMLElement>('a[href], button, [tabindex="0"]');
+    expect(firstFocusable).toBe(skip);
+    fireEvent.click(skip);
+    const main = screen.getByRole('main');
+    expect(main).toHaveFocus();
+  });
 
   it('uses the fixed Lacuna colours for mobile branding', () => {
     renderShell();
@@ -272,12 +289,13 @@ describe('AppShell mobile navigation', () => {
     fireEvent.click(navigationTrigger);
 
     const navigation = screen.getByRole('dialog', { name: 'Navigation' });
-    const quickSearch = within(navigation).getByRole('button', { name: 'Quick search' });
+    const quickSearch = within(navigation).getByRole('link', { name: 'Search content' });
     quickSearch.focus();
-    fireEvent.click(quickSearch);
+    fireEvent.keyDown(quickSearch, { key: 'k', ctrlKey: true });
 
     const searchInput = await screen.findByRole('combobox');
     await waitFor(() => expect(searchInput).toHaveFocus());
+    expect(navigation).not.toBeInTheDocument();
     fireEvent.keyDown(searchInput, { key: 'Escape' });
 
     await waitFor(() => expect(navigationTrigger).toHaveFocus());
@@ -379,7 +397,7 @@ describe('AppShell AI workspace', () => {
     expect(capsule.parentElement).toHaveAttribute('inert');
   });
 
-  it('opens beside a forced navigation rail and restores focus when closed', async () => {
+  it('floats over the page without collapsing the rail, and restores focus when closed', async () => {
     vi.mocked(window.matchMedia).mockImplementation((query) => ({
       matches: query === '(min-width: 1024px)' || query === '(min-width: 1280px)',
       media: query,
@@ -397,13 +415,28 @@ describe('AppShell AI workspace', () => {
     fireEvent.click(trigger);
 
     expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
-    expect(trigger.closest('aside')).toHaveAttribute('data-collapsed', 'true');
+    expect(trigger.closest('aside')).not.toHaveAttribute('data-collapsed');
 
     const close = screen.getByRole('button', { name: 'Close AI' });
     close.focus();
     fireEvent.click(close);
     expect(screen.queryByLabelText('AI conversation')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it('closes to an Assistant pill that reopens the window and takes focus back', async () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Close AI' }));
+
+    const pill = screen.getByRole('button', { name: 'Assistant' });
+    pill.focus();
+    fireEvent.click(pill);
+    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Assistant' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
+    expect(screen.getByRole('button', { name: 'Assistant' })).toHaveFocus();
   });
 
   it('does not mount the AI control below the desktop breakpoint', () => {

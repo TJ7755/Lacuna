@@ -1,0 +1,3 @@
+- Replace the single-lesson course's row of stretched creation buttons with the shared Add menu, which sits in the lesson header beside Study; the new-lesson form opens in its own bounded area on single- and multi-lesson courses, and Escape returns focus to Add.
+- Name the two kinds of path practice consistently as Card practice and Practice questions.
+- Let menu triggers grow with enlarged text instead of clipping their label.

@@ -29,7 +29,7 @@ function paste(value = 'bonjour\thello\n{{c1::Paris}} is in France\t') {
 }
 async function review() {
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
-  await screen.findByRole('button', { name: 'Undo' });
+  await screen.findByRole('button', { name: 'Back' });
 }
 
 describe('CardImportDialog', () => {
@@ -48,7 +48,7 @@ describe('CardImportDialog', () => {
     await review();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Also create reverse' }));
     expect(screen.getByRole('button', { name: 'Import 2 cards' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
     expect(screen.getByLabelText('Lesson title')).toHaveValue('Greetings');
     expect(screen.getByLabelText('Format')).toHaveValue('tsv');
@@ -92,7 +92,7 @@ describe('CardImportDialog', () => {
     paste(Array.from({ length: 2501 }, (_, i) => `${i}\tanswer`).join('\n'));
     await review();
     fireEvent.click(screen.getByRole('checkbox'));
-    expect(screen.getByRole('button', { name: 'Import 5002 cards' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Import 5,002 cards' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('5,002');
   });
   it('keeps failures retryable and blocks closing or double submission while saving', async () => {
@@ -107,14 +107,14 @@ describe('CardImportDialog', () => {
     render(<CardImportDialog targetName="French" onCancel={onCancel} onImport={onImport} />);
     paste('Q\tA');
     await review();
-    fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
     fireEvent.click(screen.getByRole('button', { name: 'Importing…' }));
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onCancel).not.toHaveBeenCalled();
     expect(onImport).toHaveBeenCalledTimes(1);
     reject(new Error('Storage full'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Storage full');
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByLabelText('Paste your cards')).toHaveValue('Q\tA');
   });
   it('retains the Anki package through Undo and does not offer automatic reverses', async () => {
@@ -134,11 +134,23 @@ describe('CardImportDialog', () => {
     await screen.findByText('CARDS.APKG');
     await review();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     await screen.findByText('CARDS.APKG');
     await review();
-    fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
     await waitFor(() => expect(onImport).toHaveBeenCalledWith({ kind: 'apkg', result }, ''));
+  });
+  it('leaves the title and close to the Import page when shown on it', () => {
+    render(
+      <CardImportDialog
+        presentation="page"
+        targetName="French"
+        onCancel={vi.fn()}
+        onImport={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Close import' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Import cards' })).toHaveClass('sr-only');
   });
   it('wraps keyboard focus within the dialogue in both directions', () => {
     render(<CardImportDialog targetName="French" onCancel={vi.fn()} onImport={vi.fn()} />);
@@ -175,8 +187,8 @@ it('supports an inline review with destination validation and preserves input on
   paste('bonjour\thello');
   await review();
   expect(screen.getByText('Choose a destination')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(onImport).not.toHaveBeenCalled();
 });

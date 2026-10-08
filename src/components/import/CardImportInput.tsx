@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
+import { FileTextIcon, UploadIcon } from '../ui/icons';
 import type { useCardImportSource } from './useCardImportSource';
+import { countOf } from '../../utils/plural';
 
 export function CardImportInput({
   source,
@@ -33,7 +35,8 @@ export function CardImportInput({
           {preferPackage ? 'Anki package' : 'Paste your cards'}
         </label>
         <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
-          Upload a file <span aria-hidden="true">↗</span>
+          <UploadIcon width={14} height={14} />
+          Upload a file
         </button>
       </div>
       <input
@@ -49,6 +52,9 @@ export function CardImportInput({
       />
       {source.apkg ? (
         <div className="card-import-package">
+          <span className="card-import-package-icon" aria-hidden="true">
+            <FileTextIcon width={24} height={24} />
+          </span>
           <strong>{source.filename}</strong>
           <p>{source.apkg.cards.length} cards · Anki package</p>
           <p>Includes scheduling history and media.</p>
@@ -58,6 +64,9 @@ export function CardImportInput({
         </div>
       ) : preferPackage && !source.text ? (
         <div className="card-import-package">
+          <span className="card-import-package-icon" aria-hidden="true">
+            <UploadIcon width={24} height={24} />
+          </span>
           <strong>Drop an Anki package here</strong>
           <p>Import cards with their media and scheduling history.</p>
           <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
@@ -77,7 +86,7 @@ export function CardImportInput({
         <span>
           {source.reading
             ? 'Reading file…'
-            : `${source.apkg?.cards.length ?? source.result.cards.length} cards detected`}
+            : `${countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')} detected`}
         </span>
         <span>
           {source.apkg

@@ -2,6 +2,7 @@ import { m as motion } from 'motion/react';
 import type { Note } from '../../db/types';
 import { LessonNotesStudyView } from '../notes/LessonNotesStudyView';
 import { Button } from '../ui/Button';
+import { CloseIcon } from '../ui/icons';
 import { PomodoroTimer } from './PomodoroTimer';
 
 interface LessonNotesIntroProps {
@@ -28,17 +29,29 @@ export function LessonNotesIntro({
       className="flex min-h-screen flex-col bg-paper"
     >
       <header className="sticky top-0 z-10 border-b border-line bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 py-3 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))]">
-          <h1 className="min-w-0 truncate text-sm text-ink-faint">{lessonName}</h1>
-          <div className="flex shrink-0 items-center gap-1">
-            <PomodoroTimer />
-            <button
-              type="button"
+        {/* Learn's header geometry, as on the screen between steps: the controls share the
+            card's column and the timer stays in place when the first card opens. */}
+        <div className="mx-auto flex min-h-[84px] max-w-4xl items-center justify-between gap-2 py-2.5 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:gap-4">
+          {/* The same Exit as the study session it leads into, leading the row. */}
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onExit}
-              className="min-h-11 rounded-lg px-3 text-sm text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+              className="h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
             >
-              Exit
-            </button>
+              <CloseIcon width={16} height={16} aria-hidden="true" />
+              <span className="max-md:sr-only">Exit</span>
+            </Button>
+            <h1 className="min-w-0 truncate text-sm font-semibold text-ink">{lessonName}</h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 md:gap-4">
+            <div className="hidden min-[340px]:block">
+              <PomodoroTimer />
+            </div>
+            <span aria-hidden="true" className="w-11 shrink-0 max-md:hidden" />
+            <span aria-hidden="true" className="w-11 shrink-0" />
+            <span aria-hidden="true" className="w-11 shrink-0" />
           </div>
         </div>
       </header>

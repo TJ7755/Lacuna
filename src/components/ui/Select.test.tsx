@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { inputClassName } from './Field';
 import { Select } from './Select';
 
 describe('Select', () => {
@@ -51,5 +52,14 @@ describe('Select', () => {
     );
 
     expect(ref.current).toBe(screen.getByRole('combobox'));
+  });
+
+  it('shares the text input frame', () => {
+    render(<Select aria-label="Course" />);
+    const classes = screen.getByRole('combobox').className.split(' ');
+    for (const name of ['rounded-xl', 'border-[1.5px]', 'border-line', 'focus:border-accent']) {
+      expect(inputClassName.split(' ')).toContain(name);
+      expect(classes).toContain(name);
+    }
   });
 });

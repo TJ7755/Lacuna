@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { decodeShare, importSharePayload } from '../db/share';
+import { StrictMode } from 'react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
-import { SharePage } from './SharePage';
+import { defaultShareCourse, SharePage } from './SharePage';
 import { ShareLinkNeedsReplacementError } from '../shareLinks/publish';
+import { buildCourseShareCode } from '../db/share';
+import { publishCourse } from '../db/courseRepository';
 import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
 
@@ -40,8 +42,6 @@ vi.mock('../state/useCourseData', () => ({
   useCourses: () => mockCourses,
   useCourseSummaries: () => mockSummaries,
   useCourseCards: () => mockCourseCards,
-  useCourse: (courseId: string | undefined) =>
-    mockCourses?.find((course) => course.id === courseId) ?? null,
 }));
 
 vi.mock('../db/courseRepository', () => ({
@@ -57,50 +57,19 @@ vi.mock('../components/ui/Toast', () => ({
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => 0,
 }));
-
-let mockDecodedPayload: Record<string, unknown> = {};
 
 vi.mock('../db/share', () => ({
   buildCourseShareCode: vi.fn(() => Promise.resolve('LAC2-test-code')),
   buildCourseShareCodeQR: vi.fn(() => Promise.resolve('LAC2-qr-code')),
-  decodeShare: vi.fn(() => Promise.resolve(mockDecodedPayload)),
-  importSharePayload: vi.fn(() => Promise.resolve({ courses: 1, lessons: 1, cards: 2 })),
-  summariseShare: vi.fn(() => ({
-    kind: 'course' as const,
-    deckCount: 1,
-    cardCount: 2,
-    exportedAt: Date.now(),
-    deckNames: ['Test Lesson'],
-    omittedImages: false,
-    courseName: 'Test Course',
-    lessonCount: 1,
-    noteCount: 3,
-  })),
 }));
 
 const mockBuildCourseFile = vi.fn();
-const mockDecodeCourseFile = vi.fn();
-const mockWithCourseFileAssets = vi.fn((_file: unknown, callback: () => Promise<unknown>) => callback());
 vi.mock('../db/courseFile', () => ({
   buildCourseFile: (...args: unknown[]) => mockBuildCourseFile(...args),
-  decodeCourseFile: (...args: unknown[]) => mockDecodeCourseFile(...args),
-  withCourseFileAssets: (file: unknown, callback: () => Promise<unknown>) => mockWithCourseFileAssets(file, callback),
+  decodeCourseFile: vi.fn(),
   MAX_COURSE_FILE_BYTES: 100 * 1024 * 1024,
-}));
-
-let mockFindCourseForLineage: (() => Promise<Course | undefined>) | undefined;
-const mockMergeLineageUpdate = vi.fn();
-const mockImportLineageFirstTime = vi.fn();
-
-vi.mock('../db/mergeImport', () => ({
-  isLineagePayload: (payload: Record<string, unknown>) =>
-    payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number',
-  findCourseForLineage: () =>
-    mockFindCourseForLineage ? mockFindCourseForLineage() : Promise.resolve(undefined),
-  importLineageFirstTime: (...args: unknown[]) => mockImportLineageFirstTime(...args),
-  mergeLineageUpdate: (...args: unknown[]) => mockMergeLineageUpdate(...args),
 }));
 
 vi.mock('../db/export', () => ({
@@ -121,7 +90,6 @@ vi.mock('../shareLinks/publish', () => {
     publishShareLink: (...args: unknown[]) => mockPublishShareLink(...args),
     unpublishShareLink: (...args: unknown[]) => mockUnpublishShareLink(...args),
     ShareLinkNeedsReplacementError,
-    SHARE_PAYLOAD_MAX_BYTES: 4 * 1024 * 1024,
   };
 });
 
@@ -130,31 +98,9 @@ vi.mock('../shareLinks/credentials', () => ({
   readShareCredentials: (...args: unknown[]) => mockReadShareCredentials(...args),
 }));
 
-vi.mock('../components/ui/icons', () => ({
-  CheckIcon: () => <svg data-testid="check-icon" />,
-  DownloadIcon: () => <svg data-testid="download-icon" />,
-  ShareIcon: () => <svg data-testid="share-icon" />,
-  UploadIcon: () => <svg data-testid="upload-icon" />,
-  CardsIcon: () => <svg data-testid="cards-icon" />,
-  FileTextIcon: () => <svg data-testid="file-text-icon" />,
-  QrCodeIcon: () => <svg data-testid="qr-code-icon" />,
-  CameraIcon: () => <svg data-testid="camera-icon" />,
-  CloseIcon: () => <svg data-testid="close-icon" />,
-}));
-
 vi.mock('../components/ui/Button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    className,
-  }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-    disabled?: boolean;
-    className?: string;
-  }) => (
-    <button type="button" onClick={onClick} disabled={disabled} className={className} data-testid="button">
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
       {children}
     </button>
   ),
@@ -201,22 +147,46 @@ const mockSummary: CourseSummary = {
   reviewedTodayCount: 0,
 };
 
+function linked(shareId: string, revision: number, extra: Record<string, unknown> = {}): Course {
+  return {
+    ...mockCourse,
+    distribution: {
+      lineageId: 'lineage-1',
+      revision,
+      publishedAt: Date.now() - 60_000,
+      shareId,
+      ...extra,
+    },
+  } as Course;
+}
+
+function given(...courses: Course[]) {
+  mockCourses = courses;
+  mockSummaries = Object.fromEntries(courses.map((course) => [course.id, mockSummary]));
+}
+
+function otherWay(name: string) {
+  fireEvent.click(
+    within(screen.getByRole('group', { name: 'Other ways' })).getByRole('button', { name }),
+  );
+}
+
+function chooseCourse(name: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'Course to share' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: new RegExp(`^${name}`) }));
+}
+
 beforeEach(() => {
   Reflect.deleteProperty(window, 'electronAPI');
   mockNotify.mockClear();
-  vi.mocked(importSharePayload).mockClear();
   vi.mocked(downloadTextFile).mockClear();
+  vi.mocked(buildCourseShareCode).mockClear();
+  vi.mocked(publishCourse).mockClear();
   mockBuildCourseFile.mockReset();
-  mockDecodeCourseFile.mockReset();
-  mockWithCourseFileAssets.mockClear();
   mockCourses = undefined;
   mockSummaries = undefined;
   mockCourseCards = [];
-  mockDecodedPayload = {};
-  mockFindCourseForLineage = undefined;
   mockSearchParams = new URLSearchParams();
-  mockImportLineageFirstTime.mockReset();
-  mockMergeLineageUpdate.mockReset();
   mockPublishShareLink.mockReset();
   mockUnpublishShareLink.mockReset();
   mockReadShareCredentials.mockReset();
@@ -226,290 +196,263 @@ beforeEach(() => {
   });
 });
 
+describe('defaultShareCourse', () => {
+  const archived = { ...mockCourse, id: 'archived', archived: true };
+  const active = { ...mockCourse, id: 'active' };
+  const shared = linked('a'.repeat(32), 1);
+
+  it('prefers the requested course, then one already shared, then the first active one', () => {
+    expect(defaultShareCourse([archived, active, shared], 'active')?.id).toBe('active');
+    expect(defaultShareCourse([archived, active, shared], null)?.id).toBe(shared.id);
+    expect(defaultShareCourse([archived, active], 'missing')?.id).toBe('active');
+    expect(defaultShareCourse([archived], null)?.id).toBe('archived');
+    expect(defaultShareCourse([], null)).toBeUndefined();
+  });
+});
+
 describe('SharePage', () => {
-  it('preselects the requested course from a valid courseId query', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    mockSearchParams = new URLSearchParams(`courseId=${mockCourse.id}`);
-
-    render(<SharePage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Course file' }));
-    expect(screen.getByRole('button', { name: 'Save course file' })).toBeEnabled();
+  it('creates links after StrictMode replays the mount effect', async () => {
+    given(mockCourse);
+    mockPublishShareLink.mockResolvedValue({ shareId: 'a'.repeat(32), revision: 1 });
+    render(
+      <StrictMode>
+        <SharePage />
+      </StrictMode>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
+    expect(await screen.findByRole('textbox', { name: 'Share link' })).toBeInTheDocument();
   });
 
-  it('ignores a slow code read after a newer file preview', async () => {
-    let finish!: (payload: Awaited<ReturnType<typeof decodeShare>>) => void;
-    vi.mocked(decodeShare).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
-    const file = { payload: { v: 2 }, assets: [] };
-    mockDecodeCourseFile.mockResolvedValue(file);
+  it('generates share codes after StrictMode replays the mount effect', async () => {
+    given(mockCourse);
+    render(
+      <StrictMode>
+        <SharePage />
+      </StrictMode>,
+    );
+    otherWay('Share code');
+    fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
+    expect(await screen.findByRole('textbox', { name: 'Generated share code' })).toHaveValue(
+      'LAC2-test-code',
+    );
+  });
+  it('moves keyboard focus to the link after creating it', async () => {
+    given(mockCourse);
+    mockPublishShareLink.mockResolvedValue({ shareId: 'a'.repeat(32), revision: 1 });
     render(<SharePage />);
-    fireEvent.change(screen.getByLabelText('Share link or code to import'), { target: { value: 'LAC2-older' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
-    fireEvent.change(screen.getByLabelText('Course file to import'), {
-      target: { files: [new File(['contents'], 'Biology.lacuna')] },
-    });
-    await screen.findByText('Ready to import');
-    await act(async () => { finish({ v: 2 } as Awaited<ReturnType<typeof decodeShare>>); });
-    fireEvent.click(screen.getByText('Add to my courses'));
-    await waitFor(() => expect(mockWithCourseFileAssets).toHaveBeenCalledWith(file, expect.any(Function)));
+    const create = screen.getByRole('button', { name: 'Create share link' });
+    create.focus();
+    fireEvent.click(create);
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveFocus());
   });
 
-  it('ignores a slow file read after a newer code preview', async () => {
-    let finish!: (file: unknown) => void;
-    mockDecodeCourseFile.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  it('moves focus from a generated code action to its output', async () => {
+    given(mockCourse);
     render(<SharePage />);
-    fireEvent.change(screen.getByLabelText('Course file to import'), {
-      target: { files: [new File(['contents'], 'Biology.lacuna')] },
-    });
-    await waitFor(() => expect(mockDecodeCourseFile).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText('Share link or code to import'), { target: { value: 'LAC2-newer' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
-    await screen.findByText('Ready to import');
-    await act(async () => { finish({ payload: { v: 2 }, assets: [] }); });
-    fireEvent.click(screen.getByText('Add to my courses'));
-    await waitFor(() => expect(importSharePayload).toHaveBeenCalledWith(mockDecodedPayload));
-    expect(mockWithCourseFileAssets).not.toHaveBeenCalled();
+    otherWay('Share code');
+    const create = screen.getByRole('button', { name: 'Create share code' });
+    create.focus();
+    fireEvent.click(create);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveFocus(),
+    );
+  });
+  it('opens on a course with the share link as the one primary action', () => {
+    given(mockCourse);
+    render(<SharePage />);
+    expect(screen.getByRole('heading', { name: 'Share link' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create share link' })).toBeEnabled();
+    expect(screen.getByText('Test Course')).toBeInTheDocument();
+    // One course needs no picker, and the alternatives stay folded away.
+    expect(screen.queryByRole('button', { name: 'Course to share' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create share code' })).not.toBeInTheDocument();
   });
 
-  it('saves the selected course as a file', async () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    mockBuildCourseFile.mockResolvedValue('course file contents');
+  it('leaves receiving to the Import page', () => {
+    given(mockCourse);
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Course file'}));
-    const saveBtn = screen.getByRole('button', { name: 'Save course file' });
-    expect(saveBtn).toBeEnabled();
-    fireEvent.click(saveBtn);
-    await waitFor(() => expect(downloadTextFile).toHaveBeenCalledWith(
-      'course file contents', 'Test Course.lacuna', 'application/json',
-    ));
-    expect(mockBuildCourseFile).toHaveBeenCalledWith(mockCourse.id);
+    expect(screen.queryByText('Import a shared course')).not.toBeInTheDocument();
   });
 
-  it('previews a chosen course file without importing until confirmed', async () => {
-    const file = { format: 'lacuna-course', version: 1, payload: { v: 2 }, assets: [] };
-    mockDecodeCourseFile.mockResolvedValue(file);
+  it('opens on the requested course from a courseId query', () => {
+    const other = { ...mockCourse, id: 'course-2', name: 'Other Course' };
+    given(mockCourse, other);
+    mockSearchParams = new URLSearchParams('courseId=course-2');
     render(<SharePage />);
-    fireEvent.change(screen.getByLabelText('Course file to import'), {
-      target: { files: [new File(['contents'], 'Biology.lacuna')] },
-    });
-    await screen.findByText('Ready to import');
-    expect(mockDecodeCourseFile).toHaveBeenCalledWith('contents');
-    expect(importSharePayload).not.toHaveBeenCalled();
-    expect(mockWithCourseFileAssets).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Add to my courses'));
-    await waitFor(() => expect(mockWithCourseFileAssets).toHaveBeenCalledWith(file, expect.any(Function)));
-    expect(importSharePayload).toHaveBeenCalledWith(file.payload);
-    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive'));
-  });
-
-  it('clears an earlier preview when the next course file is corrupt', async () => {
-    mockDecodeCourseFile.mockResolvedValueOnce({ payload: { v: 2 }, assets: [] });
-    mockDecodeCourseFile.mockRejectedValueOnce(new Error('The course file contains corrupt media.'));
-    render(<SharePage />);
-    const input = screen.getByLabelText('Course file to import');
-    fireEvent.change(input, { target: { files: [new File(['contents'], 'Biology.lacuna')] } });
-    await screen.findByText('Ready to import');
-    fireEvent.change(input, { target: { files: [new File(['bad data'], 'Biology.lacuna')] } });
-    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('The course file contains corrupt media.', 'negative'));
-    expect(screen.queryByText('Ready to import')).not.toBeInTheDocument();
-    expect(importSharePayload).not.toHaveBeenCalled();
-  });
-
-  it('deep-links full recovery through the hash router and retains the section anchor', () => {
-    render(<SharePage />);
-
-    expect(screen.getByRole('heading', { name: 'Share' }).closest('header')).not.toHaveClass('bg-surface');
-    expect(screen.getByRole('heading', { name: 'Export a course' }).closest('section')).toHaveClass('bg-surface');
-    expect(screen.getByRole('link', { name: 'Open full backup and recovery' })).toHaveAttribute(
-      'href',
-      '#/settings#settings-export',
+    expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(
+      'Other Course',
     );
   });
 
-  it('renders loading skeleton when courses are loading', () => {
+  it('renders nothing but the frame while courses load', () => {
     render(<SharePage />);
-    expect(screen.getByTestId('download-icon')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Share' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Share link' })).not.toBeInTheDocument();
   });
 
-  it('renders empty state when no courses exist', () => {
-    mockCourses = [];
-    mockSummaries = {};
+  it('points to Today when there is nothing to share', () => {
+    given();
     render(<SharePage />);
-    expect(screen.getByText('No courses yet')).toBeInTheDocument();
-    expect(
-      screen.getByText('Create a course first, then come back here to share it with others.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Nothing to share yet' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create a course on Today' })).toHaveAttribute(
+      'href',
+      '#/',
+    );
   });
 
-  it('renders course list when courses exist', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+  it('saves the course as a file', async () => {
+    given(mockCourse);
+    mockBuildCourseFile.mockResolvedValue('course file contents');
     render(<SharePage />);
-    expect(screen.getByText('Test Course')).toBeInTheDocument();
-    expect(screen.getByText('1 lesson · 1 card')).toBeInTheDocument();
+    otherWay('Course file');
+    fireEvent.click(screen.getByRole('button', { name: 'Save course file' }));
+    await waitFor(() =>
+      expect(downloadTextFile).toHaveBeenCalledWith(
+        'course file contents',
+        'Test Course.lacuna',
+        'application/json',
+      ),
+    );
+    expect(mockBuildCourseFile).toHaveBeenCalledWith(mockCourse.id);
   });
 
-  it('selects a course when clicked, then offers methods', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    render(<SharePage />);
-    expect(screen.queryByRole('button', { name: 'Share code'})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(
-      screen.getByRole('button', { name: 'Share code'}),
-    ).not.toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Generate share code' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
-    expect(screen.getByRole('button', { name: 'Generate share code' })).not.toBeDisabled();
-  });
-
-  it('hides methods and actions until a course is selected', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    render(<SharePage />);
-    expect(screen.queryByRole('button', { name: 'Share code'})).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Generate share code' })).not.toBeInTheDocument();
-  });
-
-  it('shows one method panel at a time and restores hidden outputs', async () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+  it('opens one other way at a time, closes it on a second press, and keeps outputs', async () => {
+    given(mockCourse);
     mockCourseCards = [
       { conceptId: 'concept-export-card', front: 'Question', back: 'Answer' } as Card,
     ];
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
-    fireEvent.click(screen.getByText('Generate share code'));
-    await screen.findByRole('textbox', { name: 'Generated share code' });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Change method' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Plain text'}));
-    expect(screen.queryByRole('textbox', { name: 'Generated share code' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Export cards as plain text'));
-    await screen.findByRole('textbox', { name: 'Generated plain-text export' });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Change method' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
-    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue('LAC2-test-code');
-    expect(
-      screen.queryByRole('textbox', { name: 'Generated plain-text export' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('keeps generated outputs when reopening the course picker, then clears them for another course', async () => {
-    const otherCourse: Course = { ...mockCourse, id: 'course-2', name: 'Other Course' };
-    mockCourses = [mockCourse, otherCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary, [otherCourse.id]: mockSummary };
-    render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share code' }));
-    fireEvent.click(screen.getByText('Generate share code'));
+    otherWay('Share code');
+    expect(screen.getByRole('button', { name: 'Share code' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
     expect(await screen.findByRole('textbox', { name: 'Generated share code' })).toHaveValue(
       'LAC2-test-code',
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Change course' }));
-    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue(
-      'LAC2-test-code',
-    );
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue(
-      'LAC2-test-code',
+    otherWay('Plain text');
+    expect(screen.queryByRole('textbox', { name: 'Generated share code' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Export cards as plain text' }));
+    expect(screen.getByRole('textbox', { name: 'Generated plain-text export' })).toHaveValue(
+      'card front\tcard back',
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Change course' }));
-    fireEvent.click(screen.getByText('Other Course'));
+    otherWay('Share code');
+    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toHaveValue(
+      'LAC2-test-code',
+    );
+    otherWay('Share code');
     expect(screen.queryByRole('textbox', { name: 'Generated share code' })).not.toBeInTheDocument();
   });
 
-  it('highlights link creation from the announcement without publishing or selecting a course', () => {
-    mockCourses = [mockCourse];
+  it('creates a QR code', async () => {
+    given(mockCourse);
+    render(<SharePage />);
+    otherWay('QR code');
+    fireEvent.click(screen.getByRole('button', { name: 'Create QR code' }));
+    expect(await screen.findByTestId('qr-code')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'QR code text' })).toHaveValue('LAC2-qr-code');
+  });
+
+  it('keeps outputs for the same course and clears them for another', async () => {
+    const other = { ...mockCourse, id: 'course-2', name: 'Other Course' };
+    given(mockCourse, other);
+    render(<SharePage />);
+    otherWay('Share code');
+    fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
+    await screen.findByRole('textbox', { name: 'Generated share code' });
+
+    chooseCourse('Test Course');
+    expect(screen.getByRole('textbox', { name: 'Generated share code' })).toBeInTheDocument();
+
+    chooseCourse('Other Course');
+    expect(screen.queryByRole('textbox', { name: 'Generated share code' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(
+      'Other Course',
+    );
+  });
+
+  it('lists each course with its size in the picker', () => {
+    given(mockCourse, { ...mockCourse, id: 'course-2', name: 'Other Course' });
+    render(<SharePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Course to share' }));
+    expect(screen.getByRole('menuitem', { name: /^Test Course/ })).toHaveTextContent(
+      '1 lesson · 1 card',
+    );
+  });
+
+  it('rings link creation from the announcement without publishing', () => {
+    given(mockCourse);
     mockSearchParams = new URLSearchParams('highlight=share-link');
     render(<SharePage />);
-    expect(screen.queryByRole('button', { name: 'Create share link' })).not.toBeInTheDocument();
-    expect(mockPublishShareLink).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Test Course'));
-    const button = screen.getByRole('button', { name: 'Create share link' });
-    expect(button).toBeEnabled();
-    expect(button).toHaveClass('ring-2', 'ring-accent');
+    expect(screen.getByRole('button', { name: 'Create share link' })).toHaveClass(
+      'ring-2',
+      'ring-accent',
+    );
     expect(mockPublishShareLink).not.toHaveBeenCalled();
   });
 
-  it('does not highlight link creation on an ordinary visit', () => {
-    mockCourses = [mockCourse];
+  it('does not ring link creation on an ordinary visit', () => {
+    given(mockCourse);
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
-    expect(screen.getByRole('button', { name: 'Create share link' })).not.toHaveClass('ring-accent');
+    expect(screen.getByRole('button', { name: 'Create share link' })).not.toHaveClass(
+      'ring-accent',
+    );
   });
 
-  it.each([false, true])('creates a share link for the selected course (desktop: %s)', async (desktop) => {
-    Object.defineProperty(window, 'electronAPI', { configurable: true, value: { isElectron: desktop } });
+  it.each([false, true])('creates a share link for the course (desktop: %s)', async (desktop) => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: { isElectron: desktop },
+    });
     const shareId = 'a'.repeat(32);
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+    given(mockCourse);
     mockPublishShareLink.mockResolvedValue({ shareId, revision: 1, byteSize: 128 });
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
-    fireEvent.click(screen.getByText('Create share link'));
-    await screen.findByText('Share link · revision 1');
-    expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id);
-    expect(screen.getByLabelText('Share link')).toHaveValue(
+    fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
+    expect(await screen.findByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${desktop ? 'https://getlacuna.app' : window.location.origin}/#/s/${shareId}`,
     );
-    expect(
-      screen.getByText(/Send the link itself, or just the code after the final slash/),
-    ).toBeInTheDocument();
+    expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id);
+    expect(screen.getByText(/^Revision 1/)).toBeInTheDocument();
+    expect(screen.getByTestId('qr-code')).toBeInTheDocument();
+    expect(mockNotify).toHaveBeenCalledWith('Share link ready.', 'positive');
   });
 
-  it('restores the link panel when selecting a course that already has a link', async () => {
+  it('shows a live link for a course that already has one, without publishing', async () => {
     const shareId = 'c'.repeat(32);
-    const linked: Course = {
-      ...mockCourse,
-      distribution: {
-        lineageId: 'lineage-1',
-        revision: 3,
-        publishedAt: Date.now() - 60_000,
-        shareId,
-      },
-    };
-    mockCourses = [linked];
-    mockSummaries = { [linked.id]: mockSummary };
+    given(linked(shareId, 3));
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 3');
-    expect(screen.getByLabelText('Share link')).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${shareId}`,
     );
+    expect(screen.getByText(/^Revision 3 · updated/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update link' })).toBeInTheDocument();
     expect(mockPublishShareLink).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockReadShareCredentials).toHaveBeenCalledWith(shareId));
+  });
+
+  it('updates a live link in place', async () => {
+    const shareId = 'c'.repeat(32);
+    given(linked(shareId, 1));
+    mockPublishShareLink.mockResolvedValue({ shareId, revision: 2, byteSize: 128 });
+    render(<SharePage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
+    await screen.findByText(/^Revision 2/);
+    expect(mockNotify).toHaveBeenCalledWith('Link updated to revision 2.', 'positive');
   });
 
   it('stops sharing after inline confirmation', async () => {
-    const shareId = 'd'.repeat(32);
-    const linked: Course = {
-      ...mockCourse,
-      distribution: {
-        lineageId: 'lineage-1',
-        revision: 2,
-        publishedAt: Date.now() - 60_000,
-        shareId,
-      },
-    };
-    mockCourses = [linked];
-    mockSummaries = { [linked.id]: mockSummary };
+    given(linked('d'.repeat(32), 2));
     mockUnpublishShareLink.mockResolvedValue(undefined);
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 2');
     fireEvent.click(screen.getByRole('button', { name: 'Stop sharing' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, stop sharing' }));
-    await waitFor(() => expect(mockUnpublishShareLink).toHaveBeenCalledWith(linked.id));
-    await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
+    await waitFor(() => expect(mockUnpublishShareLink).toHaveBeenCalledWith(mockCourse.id));
+    expect(await screen.findByRole('button', { name: 'Create share link' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
     expect(mockNotify).toHaveBeenCalledWith(
       'Share link removed. Students keep their copies but will not receive updates.',
       'positive',
@@ -517,129 +460,67 @@ describe('SharePage', () => {
   });
 
   it('notifies when share link creation fails', async () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+    given(mockCourse);
     mockPublishShareLink.mockRejectedValue(new Error('Too large.'));
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
-    fireEvent.click(screen.getByText('Create share link'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
     await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Too large.', 'negative'));
-    expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
   });
 
-  it('shows the unmanaged box when the link was created elsewhere and replaces it on confirm', async () => {
-    const shareId = 'e'.repeat(32);
-    const linked: Course = {
-      ...mockCourse,
-      distribution: {
-        lineageId: 'lineage-1',
-        revision: 2,
-        publishedAt: Date.now() - 60_000,
-        shareId,
-      },
-    };
-    mockCourses = [linked];
-    mockSummaries = { [linked.id]: mockSummary };
+  it('offers to replace a link created on another device', async () => {
+    given(linked('e'.repeat(32), 2));
     mockReadShareCredentials.mockResolvedValue(null);
     const replacementId = 'f'.repeat(32);
     mockPublishShareLink.mockResolvedValue({ shareId: replacementId, revision: 2, byteSize: 128 });
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
     await screen.findByText(/created on another device/);
-    expect(
-      screen.getByText(/Publishing here creates a new link; the old link stays live until it expires/),
-    ).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, replace it' }));
     await waitFor(() =>
-      expect(mockPublishShareLink).toHaveBeenCalledWith(linked.id, { replaceLink: true }),
+      expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id, { replaceLink: true }),
     );
-    await screen.findByText('Share link · revision 2');
-    expect(screen.getByLabelText('Share link')).toHaveValue(
+    expect(await screen.findByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${replacementId}`,
     );
   });
 
-  it('surfaces the unmanaged state when publishing needs replacement', async () => {
-    const shareId = 'b'.repeat(32);
-    const linked: Course = {
-      ...mockCourse,
-      distribution: {
-        lineageId: 'lineage-1',
-        revision: 2,
-        publishedAt: Date.now() - 60_000,
-        shareId,
-      },
-    };
-    mockCourses = [linked];
-    mockSummaries = { [linked.id]: mockSummary };
+  it('switches to replacement when an update finds the link belongs elsewhere', async () => {
+    given(linked('b'.repeat(32), 2));
     mockPublishShareLink.mockRejectedValue(
       new ShareLinkNeedsReplacementError('This link was created on another device.'),
     );
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 2');
-    fireEvent.click(screen.getByText(/Republish link/));
+    fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
     await screen.findByText(/created on another device/);
-    await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
-    expect(mockNotify).toHaveBeenCalledWith(
-      'This link was created on another device.',
-      'negative',
-    );
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+    expect(mockNotify).toHaveBeenCalledWith('This link was created on another device.', 'negative');
   });
 
-  it('ignores a stale share-link completion after switching courses', async () => {
-    const courseA: Course = { ...mockCourse, id: 'course-a', name: 'Course A' };
-    const courseB: Course = { ...mockCourse, id: 'course-b', name: 'Course B' };
-    mockCourses = [courseA, courseB];
-    mockSummaries = { [courseA.id]: mockSummary, [courseB.id]: mockSummary };
+  it('ignores a link that finishes after switching course', async () => {
+    const courseA = { ...mockCourse, id: 'course-a', name: 'Course A' };
+    const courseB = { ...mockCourse, id: 'course-b', name: 'Course B' };
+    given(courseA, courseB);
     let resolvePublish!: (value: { shareId: string; revision: number; byteSize: number }) => void;
-    mockPublishShareLink.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolvePublish = resolve;
-      }),
-    );
+    mockPublishShareLink.mockReturnValueOnce(new Promise((resolve) => (resolvePublish = resolve)));
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Course A'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
-    fireEvent.click(screen.getByText('Create share link'));
-    fireEvent.click(screen.getByRole('button', { name: 'Change course' }));
-    fireEvent.click(screen.getByText('Course B'));
-    await act(async () => {
-      resolvePublish({ shareId: 'a'.repeat(32), revision: 1, byteSize: 128 });
-    });
-    await waitFor(() => expect(mockPublishShareLink).toHaveBeenCalledWith(courseA.id));
-    expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Share link · revision/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
+    chooseCourse('Course B');
+    await act(async () => resolvePublish({ shareId: 'a'.repeat(32), revision: 1, byteSize: 128 }));
+    expect(mockPublishShareLink).toHaveBeenCalledWith(courseA.id);
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
   });
 
-  it('shows the uploaded revision and a behind hint when the course has moved on', async () => {
-    const shareId = 'c'.repeat(32);
-    const linked = {
-      ...mockCourse,
-      distribution: {
-        lineageId: 'lineage-1',
-        revision: 5,
-        publishedAt: Date.now() - 60_000,
-        shareId,
-        shareRevision: 3,
-      },
-    } as unknown as Course;
-    mockCourses = [linked];
-    mockSummaries = { [linked.id]: mockSummary };
+  it('makes sending a newer revision the primary action when the link is behind', () => {
+    given(linked('c'.repeat(32), 5, { shareRevision: 3 }));
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 3');
-    expect(
-      screen.getByText(/The course is at revision 5 — republish the link to upload it\./),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/^Revision 3/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send revision 5' })).toBeInTheDocument();
   });
 
-  it('shows a media-placeholder warning and identifies affected cards', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+  it('warns that a code drops media and names the affected cards', () => {
+    given(mockCourse);
     mockCourseCards = [
       {
         id: 'media-card',
@@ -649,14 +530,16 @@ describe('SharePage', () => {
       } as Card,
     ];
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(screen.getByText(/This course contains media in 1 card/)).toBeInTheDocument();
+    expect(screen.queryByText(/won.t be included/)).not.toBeInTheDocument();
+    otherWay('Share code');
+    expect(screen.getByText(/Media in 1 card won.t be included/)).toBeInTheDocument();
     expect(screen.getByText('What is shown?')).toBeInTheDocument();
+    otherWay('Course file');
+    expect(screen.queryByText(/won.t be included/)).not.toBeInTheDocument();
   });
 
   it('counts an occlusion card as media even though its diagram is not in the card text', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+    given(mockCourse);
     mockCourseCards = [
       {
         id: 'occlusion-card',
@@ -667,236 +550,43 @@ describe('SharePage', () => {
       } as Card,
     ];
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(screen.getByText(/This course contains media in 1 card/)).toBeInTheDocument();
+    otherWay('QR code');
+    expect(screen.getByText(/Media in 1 card/)).toBeInTheDocument();
     expect(screen.getByText('Label 1 of 3 — Plant cell')).toBeInTheDocument();
   });
 
-  it('does not show the media-placeholder warning when the selected course has no media', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+  it('does not warn about media when the course has none', () => {
+    given(mockCourse);
     mockCourseCards = [
       { conceptId: 'concept-plain-card', front: 'Plain text', back: 'Answer' } as Card,
     ];
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(screen.queryByText(/This course contains media in/)).not.toBeInTheDocument();
+    otherWay('Share code');
+    expect(screen.queryByText(/Media in/)).not.toBeInTheDocument();
   });
 
-  it('shows import section with textarea', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
+  it('offers publishing for a course that has never been published', async () => {
+    given(mockCourse);
     render(<SharePage />);
-    expect(screen.getByText('Import a shared course')).toBeInTheDocument();
+    otherWay('Share code');
     expect(
-      screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
+      screen.getByText('Unpublished copies won’t receive your later edits.'),
     ).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('Paste a share link or code here (codes start with LAC)...'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Share link or code to import' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Publish course' }));
+    await waitFor(() => expect(publishCourse).toHaveBeenCalledWith(mockCourse.id));
   });
 
-  it('moves the import job into view and focuses it for an explicit import intent', async () => {
-    const scrollIntoView = vi.fn();
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    });
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    mockSearchParams = new URLSearchParams('intent=import');
-
-    render(<SharePage />);
-
-    const input = screen.getByRole('textbox', { name: 'Share link or code to import' });
-    await waitFor(() => expect(input).toHaveFocus());
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
-  });
-
-  it('names generated share and plain-text exports', async () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    mockCourseCards = [
-      { conceptId: 'concept-export-card', front: 'Question', back: 'Answer' } as Card,
-    ];
-    render(<SharePage />);
-
-    fireEvent.click(screen.getByText('Test Course'));
-    fireEvent.click(screen.getByRole('button', { name: 'Share code'}));
-    fireEvent.click(screen.getByText('Generate share code'));
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Generated share code' })).toBeInTheDocument(),
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Change method' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Plain text'}));
-    fireEvent.click(screen.getByText('Export cards as plain text'));
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Generated plain-text export' }),
-      ).toBeInTheDocument(),
-    );
-  });
-
-  it('shows the never-published publish state for a course with no distribution', () => {
-    mockCourses = [mockCourse];
-    mockSummaries = { [mockCourse.id]: mockSummary };
-    render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(
-      screen.getByText('Publishing lets students receive updates when you share a new code.'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Publish course')).toBeInTheDocument();
-    expect(screen.queryByText(/Revision/)).not.toBeInTheDocument();
-  });
-
-  it('shows the published state with revision and relative date for a published course', () => {
-    const published: Course = {
+  it('shows the published revision and refreshes an existing code on update', async () => {
+    given({
       ...mockCourse,
       distribution: { lineageId: 'lineage-1', revision: 3, publishedAt: Date.now() - 60_000 },
-    };
-    mockCourses = [published];
-    mockSummaries = { [published.id]: mockSummary };
+    });
     render(<SharePage />);
-    fireEvent.click(screen.getByText('Test Course'));
-    expect(screen.getByText(/Revision 3 · published/)).toBeInTheDocument();
-    expect(screen.getByText('Publish update')).toBeInTheDocument();
-  });
-
-  describe('decode-time merge routing (Arc 7 §7.5)', () => {
-    async function inspectCode() {
-      render(<SharePage />);
-      fireEvent.change(
-        screen.getByPlaceholderText('Paste a share link or code here (codes start with LAC)...'),
-        { target: { value: 'LAC2-some-code' } },
-      );
-      fireEvent.click(screen.getByText('Read code'));
-      await screen.findByRole('heading', { level: 3 });
-    }
-
-    it('a plain (non-distributed) import is unaffected', async () => {
-      mockDecodedPayload = { v: 2 };
-      await inspectCode();
-      expect(screen.getByText('Ready to import')).toBeInTheDocument();
-      expect(screen.getByText('Test Course').closest('p')).toHaveTextContent(
-        'Test Course — 1 lesson, 3 notes and 2 cards',
-      );
-      fireEvent.click(screen.getByText('Add to my courses'));
-      await waitFor(() => expect(mockNotify).toHaveBeenCalled());
-      expect(mockMergeLineageUpdate).not.toHaveBeenCalled();
-      expect(mockImportLineageFirstTime).not.toHaveBeenCalled();
-    });
-
-    it('preserves lineage tracking on the first import of a published course', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
-      mockImportLineageFirstTime.mockResolvedValue({
-        course: { ...mockCourse, id: 'shared-copy' },
-      });
-
-      await inspectCode();
-      fireEvent.click(screen.getByText('Add to my courses'));
-
-      await waitFor(() =>
-        expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload),
-      );
-      expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive');
-    });
-
-    it('routes to the merge importer when the payload lineage matches a local course', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
-      const distributedCourse: Course = {
-        ...mockCourse,
-        id: 'course-2',
-        name: 'My Copy',
-        distributedCopy: {
-          lineageId: 'lineage-1',
-          revision: 1,
-          locked: true,
-          autoAcceptUpdates: false,
-        },
-      };
-      mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
-      mockMergeLineageUpdate.mockResolvedValue({
-        createdLessons: 1,
-        createdNotes: 0,
-        createdCards: 2,
-        appliedUpdates: 0,
-        appliedRemovals: 0,
-        queuedForReview: false,
-        conflictCount: 0,
-      });
-
-      await inspectCode();
-      expect(screen.getByText('Course update')).toBeInTheDocument();
-      expect(screen.getByText('My Copy')).toBeInTheDocument();
-      expect(screen.getByText(/revision 1 → 2/)).toBeInTheDocument();
-
-      fireEvent.click(screen.getByText('Update course'));
-      await waitFor(() => expect(mockMergeLineageUpdate).toHaveBeenCalled());
-      expect(mockMergeLineageUpdate).toHaveBeenCalledWith('course-2', mockDecodedPayload);
-      await waitFor(() =>
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.stringContaining('Updated the course'),
-          'positive',
-        ),
-      );
-    });
-
-    it('reports queued changes from a merge that needs review', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
-      const distributedCourse: Course = {
-        ...mockCourse,
-        id: 'course-2',
-        name: 'My Copy',
-        distributedCopy: {
-          lineageId: 'lineage-1',
-          revision: 1,
-          locked: true,
-          autoAcceptUpdates: false,
-        },
-      };
-      mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
-      mockMergeLineageUpdate.mockResolvedValue({
-        createdLessons: 0,
-        createdNotes: 0,
-        createdCards: 0,
-        appliedUpdates: 0,
-        appliedRemovals: 0,
-        queuedForReview: true,
-        conflictCount: 2,
-      });
-
-      await inspectCode();
-      fireEvent.click(screen.getByText('Update course'));
-      await waitFor(() =>
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.stringContaining('2 changes are waiting for your review.'),
-          'positive',
-        ),
-      );
-    });
-
-    it('guards against re-importing a code whose revision is not newer than the local copy', async () => {
-      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
-      const distributedCourse: Course = {
-        ...mockCourse,
-        id: 'course-2',
-        name: 'My Copy',
-        distributedCopy: {
-          lineageId: 'lineage-1',
-          revision: 1,
-          locked: true,
-          autoAcceptUpdates: false,
-        },
-      };
-      mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
-
-      await inspectCode();
-      expect(screen.getByText(/You already have the latest version of/)).toBeInTheDocument();
-      expect(screen.queryByText('Update course')).not.toBeInTheDocument();
-      expect(screen.getByText('Close')).toBeInTheDocument();
-      expect(mockMergeLineageUpdate).not.toHaveBeenCalled();
-    });
+    otherWay('Share code');
+    expect(screen.getByText(/^Revision 3 · published/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Create share code' }));
+    await screen.findByRole('textbox', { name: 'Generated share code' });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish update' }));
+    await waitFor(() => expect(buildCourseShareCode).toHaveBeenCalledTimes(2));
   });
 });

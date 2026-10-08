@@ -45,16 +45,18 @@ test('slows both flip phases, follows live speed changes and skips reduced-motio
 }) => {
   await enterFreshLacuna(page);
   await createCourse(page, 'Flip timing');
-  await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill('Flip timing question');
   await page.getByRole('textbox', { name: 'Back' }).fill('Flip timing answer');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('[data-study-face="front"]')).toBeVisible();
 
   for (const [speed, phaseDuration] of [

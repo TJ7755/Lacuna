@@ -194,7 +194,7 @@ function ToastBar({
 
   return (
     <motion.div
-      layout
+      layout="position"
       initial={{ opacity: 0, x: 24, scale: 0.96 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{
@@ -236,7 +236,7 @@ function ToastBar({
             toast.onDismiss?.();
             onDismiss();
           }}
-          className="shrink-0 rounded-lg p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+          className="hit-target shrink-0 rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
           aria-label="Dismiss"
         >
           <CloseIcon width={14} height={14} />

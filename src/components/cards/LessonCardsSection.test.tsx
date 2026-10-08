@@ -59,6 +59,9 @@ vi.mock('./LinkCardsDialog', () => ({
   ),
 }));
 
+vi.mock('./AnswerModeControl', () => ({
+  LessonAnswerModeControl: () => <p>Answer by</p>,
+}));
 vi.mock('./CardList', () => ({
   CardList: ({
     initiallyImporting,
@@ -66,7 +69,9 @@ vi.mock('./CardList', () => ({
     linkedCardIds,
     onUnlinkCard,
     context,
+    onNewCard,
   }: {
+    onNewCard?: () => void;
     onLinkExisting?: () => void;
     linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
@@ -89,6 +94,11 @@ vi.mock('./CardList', () => ({
     return (
       <div>
         {initiallyImporting && <span data-testid="initially-importing">true</span>}
+        {onNewCard && (
+          <button type="button" onClick={onNewCard}>
+            New card
+          </button>
+        )}
         <button type="button" onClick={onLinkExisting}>
           Open linked-card picker
         </button>
@@ -173,6 +183,38 @@ beforeEach(() => {
 });
 
 describe('LessonCardsSection', () => {
+  it('offers only the other ways to add cards while the lesson is empty', () => {
+    const { rerender } = render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonName="Cells"
+        lessonCards={[]}
+        lessonSchedulingConfig={undefined}
+        onNavigate={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'More ways to add cards' })).toBeInTheDocument();
+    expect(screen.queryByText('Answer by')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New sequence' })).toBeInTheDocument();
+
+    rerender(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonName="Cells"
+        lessonCards={[card]}
+        lessonSchedulingConfig={deck}
+        onNavigate={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'Manage (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Answer by')).toBeInTheDocument();
+    // The lesson's card panel already leads with New card; Manage does not repeat it.
+    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
+  });
+
   it('prepares and opens the importer for an empty lesson', async () => {
     mockPreparedDeck = deck;
     render(

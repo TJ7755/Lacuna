@@ -3,25 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import { useLessons } from '../../state/useCourseData';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
+import { ChevronDownIcon } from '../ui/icons';
+import { cn } from '../ui/cn';
 
 /** Keep optional passes tucked beneath the scheduled study choices. */
 export function SimpleLearnOptions({
   courseId,
   initialLessonId = '',
+  className,
 }: {
   courseId: string;
   initialLessonId?: string;
+  className?: string;
 }) {
   const [lessonId, setLessonId] = useState(initialLessonId);
   const [expanded, setExpanded] = useState(false);
 
   return (
     <details
-      className="border-t border-line pt-2"
+      className={cn('border-t border-line pt-2', className)}
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary className="min-h-11 cursor-pointer rounded-lg py-3 text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-        Simple Learn
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-3 text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+        Practise until all correct
+        <ChevronDownIcon
+          width={16}
+          height={16}
+          aria-hidden="true"
+          className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        />
       </summary>
       {expanded && (
         <SimpleLearnFields courseId={courseId} lessonId={lessonId} onLessonChange={setLessonId} />
@@ -43,12 +53,10 @@ function SimpleLearnFields({
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-3 pb-2 pt-1">
-      <p className="text-sm text-ink-faint">
-        Repeat until every card is correct. Answers update your review schedule.
-      </p>
+      <p className="text-sm text-ink-faint">Answers update your review schedule.</p>
       <Select
         className="simple-learn-select w-full"
-        aria-label="Simple Learn scope"
+        aria-label="What to practise"
         value={lessonId}
         onChange={(event) => onLessonChange(event.target.value)}
         onKeyDown={(event) => {
@@ -78,7 +86,7 @@ function SimpleLearnFields({
           )
         }
       >
-        Start Simple Learn
+        Start practising
       </Button>
     </div>
   );

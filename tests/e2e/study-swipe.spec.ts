@@ -12,20 +12,22 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           await page.setViewportSize({ width: 1280, height: 900 });
           await enterFreshLacuna(page);
           await createCourse(page, 'Swipe regression');
-          await page.getByRole('button', { name: 'Author mode' }).click();
+          await page.getByRole('button', { name: 'Edit mode' }).click();
           for (const question of direction > 0
             ? ['Swipe question', 'Next question']
             : ['Swipe question']) {
-            await page.getByRole('button', { name: 'New card', exact: true }).click();
+            await page.getByRole('button', { name: 'New card', exact: true }).first().click();
             await page.getByRole('textbox', { name: 'Front' }).fill(question);
             await page.getByRole('textbox', { name: 'Back' }).fill('Swipe answer');
             await page.getByRole('button', { name: 'Add card', exact: true }).click();
             await expect(page).not.toHaveURL(/\/cards\/new$/);
           }
-          await page.getByRole('link', { name: 'Course', exact: true }).click();
+          await page
+            .getByRole('navigation', { name: 'Course sections' })
+            .getByRole('link', { name: 'Path', exact: true })
+            .click();
           await page.getByRole('button', { name: 'Study', exact: true }).click();
           await chooseScheduledStudy(page);
-          await page.getByRole('button', { name: 'Continue', exact: true }).click();
           await page.setViewportSize({ width, height: 900 });
           const front = page.locator('[data-study-face="front"]');
           await expect

@@ -129,7 +129,7 @@ describe('Settings', () => {
   it('updates the default Focus Mode preference', () => {
     render(<Settings />);
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in Focus Mode' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in focus mode' }));
 
     expect(setStartInFocusMode).toHaveBeenCalledWith(true);
   });
@@ -235,7 +235,7 @@ describe('Settings', () => {
       'Appearance & access',
       'Study behaviour',
       'Course defaults',
-      'Data safety',
+      'Your data',
       'Integrations',
     ]);
     expect(document.querySelectorAll('section[id^="settings-group-"]')).toHaveLength(5);
@@ -251,7 +251,12 @@ describe('Settings', () => {
       ],
       'settings-group-study': ['settings-study', 'settings-pomodoro'],
       'settings-group-course-defaults': ['settings-course-defaults'],
-      'settings-group-data': ['settings-sync', 'settings-export', 'settings-backups'],
+      'settings-group-data': [
+        'settings-backups',
+        'settings-data-links',
+        'settings-sync',
+        'settings-export',
+      ],
       'settings-group-integrations': ['settings-install', 'settings-ai'],
     };
 
@@ -268,7 +273,8 @@ describe('Settings', () => {
 
     const heading = screen.getByRole('heading', { level: 1, name: 'Settings' });
     const header = heading.closest('header');
-    const contentColumn = header?.parentElement;
+    // The title spans the page; the settings column sits beside the section rail below it.
+    const contentColumn = header?.nextElementSibling?.querySelector(':scope > .min-w-0');
 
     expect(screen.queryByText('Preferences')).not.toBeInTheDocument();
     expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
@@ -281,7 +287,8 @@ describe('Settings', () => {
     render(<Settings />);
 
     const appearance = document.getElementById('settings-appearance');
-    expect(appearance).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+    expect(appearance).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(appearance).not.toHaveClass('border');
   });
 
   it('keeps a consistent gap after every settings group', () => {

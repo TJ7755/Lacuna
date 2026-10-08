@@ -8,13 +8,14 @@ import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { usePendingMergeReview } from '../state/useCourseData';
+import { useCourseForecast } from '../state/ShellCourseData';
 import { useCourseStudyFlowRecords } from '../state/useCourseStudyFlowRecords';
 import { computeCourseSummaries } from '../state/courseSummaries';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
+import { buildPath, lessonEffectiveReleaseDates } from '../course/path';
 import { lessonCardMembership } from '../course/studyPools';
 import {
   currentAssessmentPracticeContext,
@@ -26,23 +27,25 @@ import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
-import { lockHintFor } from '../components/course/CoursePathSegment';
+import { lockHintFor } from '../components/course/lockHint';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
-import { HeaderStats } from '../components/course/HeaderStats';
-import { MS_PER_DAY } from '../fsrs/params';
 import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
-import { Button } from '../components/ui/Button';
-import { PlayIcon } from '../components/ui/icons';
+import { CourseStudyActions } from '../components/course/CourseStudyActions';
+import { CourseSummaryCard } from '../components/course/CourseSummaryCard';
+import { forecastStatus } from '../components/dashboard/ForecastChart';
+import { formatShortDate, startOfDay } from '../utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';
 import { isLessonAuthoringMode } from '../course/lessonViewMode';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 
 const LazyLessonView = lazy(() =>
   import('./LessonView').then((module) => ({ default: module.LessonView })),
@@ -55,6 +58,10 @@ interface PracticeNodeProgress {
   scopeVersion: string;
   assessment?: AssessmentPracticeOption;
 }
+
+
+// The course page's Other ways menu sits beside Study, so its session plan leaves them out.
+const PAGE_OFFERS_OTHER_WAYS = { otherWays: false };
 
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -106,6 +113,8 @@ export function CoursePath() {
     )[records.course.id];
   }, [records]);
   const pendingUpdate = usePendingMergeReview(courseId);
+  // The keep-to-schedule forecast, shared with Today and the sidebar.
+  const forecast = useCourseForecast(courseId);
   const archived = course?.archived === true;
   const authoring = course ? !archived && isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(
@@ -268,6 +277,16 @@ export function CoursePath() {
     [authoring, nodes, studyFlowSnapshot],
   );
 
+  // A one-lesson course renders LessonView inline, which owns S for its own Study action.
+  const inlineLesson =
+    lessons?.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set');
+  usePageShortcuts({
+    s:
+      dataLoaded && course && !archived && !inlineLesson
+        ? () => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)
+        : undefined,
+  });
+
   // Loading state — a skeleton while course/lesson data resolves.
   if (!dataLoaded) {
     return (
@@ -280,12 +299,11 @@ export function CoursePath() {
   // Course not found.
   if (course === null || summary === null) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+      <div className={`${SECTION_CARD_SURFACE_CLASS} relative overflow-hidden p-10`}>
         <div className="relative">
           <p className="mb-4 text-ink-soft">This course could not be found.</p>
           <Link to="/" className="text-accent underline">
-            Back to dashboard
+            Back to Today
           </Link>
         </div>
       </div>
@@ -338,33 +356,65 @@ export function CoursePath() {
     </AnimatePresence>
   );
 
+  const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
+  const dueCardCount = dueReviewCardIds?.size ?? 0;
+  const otherWays = [
+    {
+      // Named as in the session plan's Other ways, which offers the same session.
+      label: 'Only review due cards',
+      description: 'Skip new cards and lessons',
+      disabled: dueCardCount === 0,
+      onSelect: () => navigate(`/course/${courseId}/study?review=due`),
+    },
+    ...assessments
+      .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
+      .map((assessment) => ({
+        label: `Revise for ${assessment.name}`,
+        description: `Ready by ${formatShortDate(assessment.examDate as number, assessment.timeZone ?? course.timeZone)}`,
+        onSelect: () =>
+          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
+      })),
+  ];
+  // Course cards reviewed since the start of today fill the ring beside Study.
+  const todayStart = startOfDay(now, course.timeZone);
+  const doneToday = (courseCards ?? []).filter(
+    (card) => card.lastReviewed !== null && card.lastReviewed >= todayStart,
+  ).length;
+  const studyActions = (disabled = false) => (
+    <CourseStudyActions
+      dueCount={dueCardCount}
+      doneToday={doneToday}
+      disabled={disabled}
+      onStudy={() => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)}
+      otherWays={otherWays}
+    />
+  );
+
   // Single-lesson branch (addendum E): render the lesson view directly rather than
   // showing a one-item path. A question-set activity makes this a multi-step path.
   // No redirect — this is a rendering branch. The
   // course header (and its review entry point) is bypassed here, so a pending
   // merge review gets the same entry above the lesson.
-  if (lessons.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set')) {
+  if (inlineLesson) {
     return (
       <>
         {!archived && pendingUpdate && (
           <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
             <Link
               to={`/course/${courseId}/updates`}
-              className="inline-flex min-h-11 items-center rounded-lg bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+              className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
             >
               Review updates
             </Link>
           </div>
         )}
-        <Suspense
-          fallback={<Skeleton className="min-h-[50vh] rounded-2xl bg-ink/[0.03]" />}
-        >
+        <Suspense fallback={<Skeleton className="min-h-[50vh] rounded-2xl bg-ink/[0.03]" />}>
           <LazyLessonView
             courseId={courseId}
             lessonId={lessons[0].id}
-            showStudyNow={!archived}
-            onStudy={() => openStudySheet(courseId)}
-            practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
+            studyActions={archived ? undefined : studyActions}
+            onStudy={() => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)}
+            courseCardCount={courseCards?.length ?? 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
           />
@@ -377,23 +427,16 @@ export function CoursePath() {
   // Release-date map for the "locked" hint (see lockHintFor below) — only
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
-  // Course position (addendum J): counts non-extension lessons reached.
-  // This is pacing — it has nothing to do with mastery or FSRS retention.
-  const { reached, total } = pathPosition(visibleNodes);
 
-  // Header stats: nearest exam + urgency use the same maths as LessonView's
-  // (see courseHeaderStats); mastery is passed in from the course-level summary
-  // (extension-lesson cards already excluded there). The due count is the
-  // snapshot's, so it matches the Review due cards session it opens.
-  const { nearestExam, mastery } = courseHeaderStats(
+  // Summary figures: mastery is passed in from the course-level summary (extension-lesson
+  // cards already excluded there) and stands in for the forecast until it loads. The due
+  // count is the snapshot's, so it matches the Review due cards session it opens.
+  const { mastery } = courseHeaderStats(
     course,
     assessments,
     summary?.mastery ?? 0,
     now,
   );
-  const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
-  const dueCardCount = dueReviewCardIds?.size ?? 0;
-  const masteryPct = Math.round(mastery * 100);
 
   // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
@@ -404,74 +447,56 @@ export function CoursePath() {
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
+  const cardTotal = courseCards.length;
+  const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
+  const status = forecast ? forecastStatus(forecast) : undefined;
+  const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
-    <div className={`${COURSE_PAGE_FRAME} course-overview`}>
-      <CourseHeader
-        className="course-overview-header"
-        title={course.name}
-        onRename={
-          authoring
-            ? async (name) => {
-                try {
-                  await updateCourse(course.id, { name });
-                } catch (error) {
-                  notify(
-                    error instanceof Error ? error.message : 'Could not rename the course.',
-                    'negative',
-                  );
-                  throw error;
+    <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+      <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
+        <CourseHeader
+          className="min-w-0 flex-[1_1_320px]"
+          title={course.name}
+          onRename={
+            authoring
+              ? async (name) => {
+                  try {
+                    await updateCourse(course.id, { name });
+                  } catch (error) {
+                    notify(
+                      error instanceof Error ? error.message : 'Could not rename the course.',
+                      'negative',
+                    );
+                    throw error;
+                  }
                 }
-              }
-            : undefined
-        }
-        renameLabel="course"
-      >
-        <div className="course-header-actions">
-          <HeaderStats
-            compact
-            dueCount={dueCardCount}
-            masteryPct={masteryPct}
-            daysToExam={
-              nearestExam === undefined
-                ? undefined
-                : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
-            }
-            totalCards={courseCards.length}
-            unseenCount={
-              courseCards.filter((card) => card.lastReviewed === null || card.state === 0).length
-            }
-            lessonProgress={{ reached, total }}
-          />
-          {!archived && (
-            <div className="course-study-actions">
-              <Button variant="primary" onClick={() => openStudySheet(courseId)}>
-                <PlayIcon width={18} height={18} />
-                Study
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={dueCardCount === 0}
-                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
-              >
-                Review due cards
-              </Button>
-            </div>
-          )}
-        </div>
-      </CourseHeader>
-      <div className="course-progress-row">
-        <span>
-          {reached} / {total} lessons reached
-        </span>
-        {!archived && pendingUpdate && (
-          <Link to={`/course/${courseId}/updates`} className="text-accent underline">
-            Review updates
-          </Link>
+              : undefined
+          }
+          renameLabel="course"
+        />
+        {!archived && (
+studyActions()
         )}
       </div>
+      {!archived && pendingUpdate && (
+        <Link
+          to={`/course/${courseId}/updates`}
+          className="self-start rounded-full bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-ink"
+        >
+          Review updates
+        </Link>
+      )}
       {archived && <ArchivedCourseRestoreNotice />}
       <CourseOverview
+        summary={(cardClassName) => (
+          <CourseSummaryCard
+            className={cardClassName}
+            recallPct={forecastPct}
+            status={status ?? 'steady'}
+            cards={cardTotal}
+            lessons={lessonTotal}
+          />
+        )}
         courseId={course.id}
         nodes={visibleNodes}
         lessonCount={lessons.length}
@@ -481,6 +506,7 @@ export function CoursePath() {
         archived={archived}
         announcement={lessonReorder.announcement}
         reorderFor={lessonReorder.interactionFor}
+        onLessonMove={lessonReorder.moveBy}
         detailForLesson={detailForLesson}
         lockHint={(id) => lockHintFor(course, id, effectiveDates)}
         practiceProgress={practiceProgressByKey}

@@ -23,10 +23,11 @@ its navigation cannot drift from the rendered groups.
 - **Motion:** a **motion-speed** setting with three steps (**Slow**, **Normal** and
   **Fast**) that multiplies animation and transition durations in the app by a single value.
   It is persisted to `localStorage`; the separate `prefers-reduced-motion` preference disables
-  motion regardless of this setting. Overlay dialogs (new course, card edit, archive,
+  motion regardless of this setting. Overlay dialogs (card edit, archive,
   the mobile drawer, the Learn touch sheet) skip enter/exit when the multiplier is 0
   rather than playing a zero-duration keyframe. Expanding panels (share codes, import
-  previews, card-list choosers) fade; they do not animate `height` or `margin`.
+  previews, card-list choosers) fade. The New course surface grows from its trigger using the
+  same physical spring as course action menus and inline disclosures, with a separate content fade.
 - **Input mode** (v0.0.2): `auto` (default — initially uses the primary pointer, then follows mouse/keyboard
   or touch/pen activity), `touch`, or `keyboard`. The choice drives whether the
   app renders bottom sheets vs. dropdowns, shows or hides swipe hints, and swaps
@@ -47,11 +48,12 @@ its navigation cannot drift from the rendered groups.
   optimisation controls sit behind native **Advanced practice timing** or **Advanced scheduling**
   disclosures. Workload and session-goal fields remain visible.
 - **Sidebar:** show due counts (on by default), compact mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Dashboard, Review today, Search, Share, Analytics, Settings, Help). **Archived** is fixed
+  entry (Today, Search, Share, Progress, Settings, Help). Navigation names and visibility switches
+  stay on one row, with 44px ordering controls wrapping beneath them on narrow screens; enlarged
+  text must leave every control inside its row. **Archived** is fixed
   beneath the **Courses** heading and is not hideable or reorderable; archived courses never appear
-  in the ordinary course list. The rendered search
-  trigger is **Quick search** when the overlay is available and **Search content** when it must link
-  to the full page. Persisted
+  in the ordinary course list. The sidebar's search entry is named **Search content**, as the page
+  it opens; Ctrl/Cmd+K from it opens **Quick search**. Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
   dashboard's own course-ordering control (recent / ready to study / mastery / exam
   date / name / created) is a separate, dashboard-local setting
@@ -234,6 +236,11 @@ per-course on/off override for scheduling optimisation, a review-count gate, and
 **Optimise now** action that runs in a Web Worker with a progress bar, then shows the
 before/after log loss; applying takes a restore-point snapshot first and **Reset to
 defaults** is always available.
+
+Lesson rename, reorder and deletion failures use the existing negative notification.
+The editor or confirmation remains available for retry; failed writes do not dismiss it.
+Lesson names, editors and action groups wrap independently when narrow widths or
+enlarged text require more space, keeping both the name and keyboard controls usable.
 
 - **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
   through the existing `updateCourse` path as it's edited — there is no staged

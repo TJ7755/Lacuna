@@ -46,7 +46,7 @@ export function OcclusionRegionPane({
 
   return (
     <div className="flex min-w-0 flex-col border-t border-line min-[760px]:border-l min-[760px]:border-t-0">
-      <div className="flex items-center justify-between border-b border-line px-3 py-2 text-xs uppercase tracking-[0.1em] text-ink-faint">
+      <div className="flex items-center justify-between border-b border-line px-3 py-2 text-sm text-ink-faint">
         <span>Regions</span>
         <span>{regions.length}</span>
       </div>
@@ -66,11 +66,11 @@ export function OcclusionRegionPane({
                   onClick={() => onSelect(region.id)}
                   aria-current={current}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
+                    'flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm transition-colors',
                     current ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                   )}
                 >
-                  <span className="shrink-0 rounded border border-line-strong px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+                  <span className="shrink-0 rounded border border-line-strong px-1 py-0.5 text-xs text-ink-faint">
                     {region.role === 'label' ? 'lbl' : 'ftr'}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
@@ -82,7 +82,7 @@ export function OcclusionRegionPane({
                   type="button"
                   onClick={() => onDelete(region.id)}
                   aria-label={`Delete ${name}`}
-                  className="shrink-0 rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                  className="hit-target shrink-0 rounded-full p-1.5 text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                 >
                   <CloseIcon width={14} height={14} />
                 </button>
@@ -95,7 +95,7 @@ export function OcclusionRegionPane({
       {selected ? (
         <div className="flex flex-col gap-3 border-t border-line p-3">
           <div>
-            <div className="mb-1.5 text-[11px] uppercase tracking-[0.1em] text-ink-faint">Role</div>
+            <div className="mb-1.5 text-sm text-ink-faint">Role</div>
             <div className="flex gap-1.5">
               <RoleButton
                 label="Label box"
@@ -112,7 +112,7 @@ export function OcclusionRegionPane({
 
           {selected.role === 'feature' && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] uppercase tracking-[0.1em] text-ink-faint">Paired label</span>
+              <span className="text-sm text-ink-faint">Paired label</span>
               <select
                 value={selected.pairedRegionId ?? ''}
                 onChange={(e) => onUpdate(selected.id, { pairedRegionId: e.target.value || undefined })}
@@ -130,7 +130,7 @@ export function OcclusionRegionPane({
 
           {(selected.role === 'label' || !selected.pairedRegionId) && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] uppercase tracking-[0.1em] text-ink-faint">
+              <span className="text-sm text-ink-faint">
                 Answer text <span className="normal-case text-ink-faint/70">(optional)</span>
               </span>
               <input
@@ -144,7 +144,7 @@ export function OcclusionRegionPane({
           )}
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] uppercase tracking-[0.1em] text-ink-faint">
+            <span className="text-sm text-ink-faint">
               Note on back <span className="normal-case text-ink-faint/70">(optional)</span>
             </span>
             <input
@@ -173,7 +173,7 @@ function RoleButton({ label, active, onClick }: { label: string; active: boolean
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-11 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors',
         active
           ? 'border-accent bg-accent-soft text-accent-ink'
           : 'border-line text-ink-soft hover:border-line-strong hover:text-ink',

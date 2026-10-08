@@ -14,6 +14,12 @@ import {
 import { QuestionSetEditor } from './QuestionSetEditor';
 import { QuestionsPage } from './QuestionsPage';
 
+// The question bank fades in, which jsdom never completes; render it at rest.
+vi.mock('../state/motionSpeed', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  speedMultiplier: () => 0,
+}));
+
 vi.mock('../components/markdown/MarkdownEditor', () => ({
   MarkdownEditor: ({
     value,
@@ -79,6 +85,18 @@ describe('Paper question set authoring', () => {
     expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Edit Q1' })).toBeVisible();
   });
+  it('is keyboard-first: title focused, Ctrl+Enter continues, Escape steps back', async () => {
+    const course = await setup();
+    open(course.id);
+    const title = await screen.findByLabelText('Set title');
+    await waitFor(() => expect(title).toHaveFocus());
+    fireEvent.change(title, { target: { value: 'Cells' } });
+    fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true });
+    expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Q1' }));
+    fireEvent.keyDown(await screen.findByLabelText('Question text'), { key: 'Escape' });
+    expect(await screen.findByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+  });
   it('does not repeat the course name above Questions', async () => {
     const course = await setup();
     open(course.id, 'questions');
@@ -102,7 +120,7 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByRole('heading', { name: 'Individual questions' })).toBeVisible();
     expect(screen.queryByRole('heading', { name: 'Questions' })).not.toBeInTheDocument();
     expect(screen.getByText('Cell calculation')).toBeVisible();
-    fireEvent.click(screen.getByRole('link', { name: '← Question sets' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Question sets' }));
     expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
     expect(screen.queryByText('Cell calculation')).not.toBeInTheDocument();
   });
@@ -189,13 +207,18 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByText(/This course is read-only/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Set title')).not.toBeInTheDocument();
   });
-  it('shows local drafts only in Author mode and creates a real empty set', async () => {
+  it('shows local drafts only in Edit mode and creates a real empty set', async () => {
     const course = await setup();
     await db.courses.update(course.id, { lessonViewMode: 'study' });
     const view = open(course.id, 'questions');
     expect(await screen.findByText('No question sets yet')).toBeInTheDocument();
+    // Says what a question set is to someone who has never made one.
+    expect(screen.getByText('Exam-style questions with mark schemes.')).toBeInTheDocument();
     expect(screen.queryByText('Untitled set')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'New question set' })).not.toBeInTheDocument();
+    // The empty state still shows the way forward: the switch into Edit.
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Edit to write one' }));
+    expect(await screen.findByRole('button', { name: 'New question set' })).toBeInTheDocument();
     view.unmount();
     await db.courses.update(course.id, { lessonViewMode: 'edit' });
     open(course.id, 'questions');

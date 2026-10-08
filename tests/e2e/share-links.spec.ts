@@ -36,16 +36,16 @@ async function installShareRelay(
 
 async function openShare(page: Page, courseName: string): Promise<void> {
   await page
-    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('navigation', { name: 'More' })
     .getByRole('link', { name: 'Share', exact: true })
     .click();
-  await page.getByRole('button', { name: new RegExp(courseName) }).click();
+  await page.getByRole('button', { name: 'Course to share' }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^${courseName}`) }).click();
 }
 
 async function createShareLink(page: Page): Promise<string> {
-  await page.getByRole('button', { name: 'Share link', exact: true }).click();
   await page.getByRole('button', { name: 'Create share link' }).click();
-  await expect(page.getByText('Share link · revision 1')).toBeVisible();
+  await expect(page.getByText(/^Revision 1 ·/)).toBeVisible();
   const url = await page.getByRole('textbox', { name: 'Share link', exact: true }).inputValue();
   const code = url.split('/').pop() ?? '';
   expect(code).toMatch(/^[0-9a-f]{32}$/);
@@ -104,22 +104,22 @@ test('a share link imports a course and republishes update it', async ({ browser
   await expect(student.getByText(/Link biology —/)).toBeVisible();
   await student.getByRole('button', { name: 'Add to my courses' }).click();
   await student.goto('/#/');
-  await expect(student.getByRole('link', { name: 'Link biology', exact: true })).toBeVisible();
+  await expect(student.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Link biology', exact: true })).toBeVisible();
 
   // The teacher adds a card and republishes; the student's next dashboard
   // visit polls the manifest and merges the new revision.
   await addLessonCard(teacher, teacherCourseId!, 'Mitosis stages');
   await openShare(teacher, 'Link biology');
-  await expect(teacher.getByText('Share link · revision 1')).toBeVisible();
-  await teacher.getByRole('button', { name: /Republish link/ }).click();
-  await expect(teacher.getByText('Share link · revision 2')).toBeVisible();
+  await expect(teacher.getByText(/^Revision 1 ·/)).toBeVisible();
+  await teacher.getByRole('button', { name: 'Update link' }).click();
+  await expect(teacher.getByText(/^Revision 2 ·/)).toBeVisible();
 
   // Remount the dashboard past the hourly poll throttle so it picks up revision 2.
   await student.evaluate(() => localStorage.removeItem('lacuna.sharePollCheckedAt'));
   await student.reload();
-  await expect(student.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(student.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect.poll(() => readStudentRevision(student)).toBe(2);
-  await student.getByRole('link', { name: 'Link biology', exact: true }).click();
+  await student.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Link biology', exact: true }).click();
   const studentCourseId = /#\/course\/([^/]+)/.exec(student.url())?.[1];
   expect(studentCourseId).toBeTruthy();
   await student.goto(`/#/course/${studentCourseId}/cards`);
@@ -129,14 +129,16 @@ test('a share link imports a course and republishes update it', async ({ browser
   // applying silently; accepting it in review updates the student copy.
   await editOnlyCard(teacher, teacherCourseId!, 'Mitosis stages revised');
   await openShare(teacher, 'Link biology');
-  await teacher.getByRole('button', { name: /Republish link/ }).click();
-  await expect(teacher.getByText('Share link · revision 3')).toBeVisible();
+  await teacher.getByRole('button', { name: 'Update link' }).click();
+  await expect(teacher.getByText(/^Revision 3 ·/)).toBeVisible();
 
   await student.evaluate(() => localStorage.removeItem('lacuna.sharePollCheckedAt'));
   await student.goto('/#/');
-  // The flip card renders the badge on both faces while the back face stays
-  // aria-hidden, so target the visible instance explicitly.
-  await expect(student.locator('span:text-is("Update available"):visible')).toBeVisible();
+  await expect(
+    student
+      .getByRole('region', { name: 'Today, most urgent first' })
+      .getByText('Update available', { exact: true }),
+  ).toBeVisible();
   await student.goto(`/#/course/${studentCourseId}`);
   await student.getByRole('link', { name: 'Review updates' }).click();
   await student.getByRole('button', { name: 'Accept' }).first().click();

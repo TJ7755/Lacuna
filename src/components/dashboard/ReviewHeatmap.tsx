@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useRevealOnce } from '../analytics/useRevealOnce';
 import { m as motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import {
@@ -9,23 +10,27 @@ import {
 } from '../../fsrs/heatmap';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate, startOfDay } from '../../utils/datetime';
-import { motionTransition } from '../ui/motion';
+import { MOTION_EASING } from '../ui/motion';
 import type { Card } from '../../db/types';
 
-/** How many weeks of history the calendar shows. */
-const WEEKS = 26;
-const CELL_PX = 12;
-const GAP_PX = 3;
-const WEEK_STRIDE = CELL_PX + GAP_PX;
-const WEEKDAY_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+/** Historical default for consumers without a period selector. */
+const DEFAULT_DAYS = 26 * 7;
+/** Weekday names shown beside the grid, by Monday-indexed row. */
+const WEEKDAY_LABELS: Record<number, string> = { 0: 'Mon', 3: 'Thu', 6: 'Sun' };
+/** Longest the diagonal fade-in may take to sweep across the grid, in seconds. */
+const WAVE_SECONDS = 0.6;
 
 interface Cell {
   day: number;
   count: number;
-  future: boolean;
+  outsidePeriod: boolean;
 }
 
-export function clampTooltipLeft(cellRect: Pick<DOMRect, 'left' | 'width'>, tooltipWidth: number, viewportWidth: number) {
+export function clampTooltipLeft(
+  cellRect: Pick<DOMRect, 'left' | 'width'>,
+  tooltipWidth: number,
+  viewportWidth: number,
+) {
   const preferred = cellRect.left + cellRect.width / 2 - tooltipWidth / 2;
   return Math.min(Math.max(preferred, 8), Math.max(8, viewportWidth - tooltipWidth - 8));
 }
@@ -34,37 +39,41 @@ export function clampTooltipLeft(cellRect: Pick<DOMRect, 'left' | 'width'>, tool
  * A contribution-style review calendar (reviews per local day), theme-aware via the
  * accent colour. Built entirely from existing review logs; nothing is persisted.
  */
-export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: ReviewActivity }) {
+export function ReviewHeatmap({
+  cards,
+  activity,
+  days = DEFAULT_DAYS,
+}: {
+  cards: Card[];
+  activity?: ReviewActivity;
+  days?: number;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const compact = days <= 30;
+  const [sectionRef, revealed] = useRevealOnce<HTMLElement>(m === 0);
   const { columns, total, max, monthLabels } = useMemo(() => {
     const buckets = bucketReviewsByDay(reviewTimestamps(cards, activity));
     const today = startOfDay(Date.now());
+    const periodStart = addDays(today, 1 - days);
     // Monday-indexed weekday so weeks read left-to-right, Monday at the top.
-    const weekday = (new Date(today).getDay() + 6) % 7;
+    const weekday = (new Date(periodStart).getDay() + 6) % 7;
     // DST-safe: use date arithmetic instead of raw ms subtraction.
-    const gridEnd = (() => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + (6 - weekday));
-      return startOfDay(d.getTime());
-    })();
-    const gridStart = (() => {
-      const d = new Date(gridEnd);
-      d.setDate(d.getDate() - (WEEKS * 7 - 1));
-      return startOfDay(d.getTime());
-    })();
+    const gridStart = addDays(periodStart, -weekday);
+    const weeks = Math.ceil((days + weekday) / 7);
 
     const cols: Cell[][] = [];
     let maxCount = 0;
     let sum = 0;
-    for (let w = 0; w < WEEKS; w += 1) {
+    for (let w = 0; w < weeks; w += 1) {
       const col: Cell[] = [];
       for (let d = 0; d < 7; d += 1) {
         const day = addDays(gridStart, w * 7 + d);
-        const count = buckets.get(day) ?? 0;
+        const outsidePeriod = day < periodStart || day > today;
+        const count = outsidePeriod ? 0 : (buckets.get(day) ?? 0);
         maxCount = Math.max(maxCount, count);
         sum += count;
-        col.push({ day, count, future: day > today });
+        col.push({ day, count, outsidePeriod });
       }
       cols.push(col);
     }
@@ -73,7 +82,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
     const labels: { weekIndex: number; text: string }[] = [];
     let lastLabelWeek = -Infinity;
     for (let w = 0; w < cols.length; w += 1) {
-      const firstDay = new Date(cols[w][0].day);
+      const firstDay = new Date(Math.max(cols[w][0].day, periodStart));
       const prev = w > 0 ? new Date(cols[w - 1][0].day) : null;
       const isNewMonth = !prev || firstDay.getMonth() !== prev.getMonth();
       if (isNewMonth && w - lastLabelWeek >= 3) {
@@ -86,7 +95,7 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
     }
 
     return { columns: cols, total: sum, max: maxCount, monthLabels: labels };
-  }, [cards, activity]);
+  }, [cards, activity, days]);
 
   const navigableCells = useMemo(
     () =>
@@ -94,11 +103,16 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
         .flatMap((column, weekIndex) =>
           column.map((cell, dayIndex) => ({ cell, weekIndex, dayIndex })),
         )
-        .filter(({ cell }) => !cell.future),
+        .filter(({ cell }) => !cell.outsidePeriod),
     [columns],
   );
   const [activeDay, setActiveDay] = useState<number | null>(null);
-  const [tooltip, setTooltip] = useState<{ label: string; rect: DOMRect } | null>(null);
+  const effectiveActiveDay = navigableCells.some(({ cell }) => cell.day === activeDay)
+    ? activeDay
+    : navigableCells[0]?.cell.day;
+  const [tooltip, setTooltip] = useState<{ label: string; rect: DOMRect; period: number } | null>(
+    null,
+  );
   const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLSpanElement>(null);
@@ -115,12 +129,12 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
         typeof window === 'undefined' ? 0 : window.innerWidth,
       ),
     );
-  }, [tooltip]);
+  }, [tooltip, days]);
 
   // Five intensity bands, GitHub-style, expressed as accent opacity so they track
   // the chosen accent colour and the light/dark theme automatically.
   function cellStyle(cell: Cell): React.CSSProperties {
-    if (cell.future) return { visibility: 'hidden' };
+    if (cell.outsidePeriod) return { visibility: 'hidden' };
     if (cell.count === 0) return { background: 'hsl(var(--line) / 0.7)' };
     const band = max <= 1 ? 1 : Math.ceil((cell.count / max) * 4);
     const alpha = [0.25, 0.45, 0.65, 0.85, 1][Math.min(band, 4)];
@@ -129,20 +143,18 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
 
   function showTooltip(cell: Cell, target: HTMLElement) {
     const label = `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`;
-    setTooltip({ label, rect: target.getBoundingClientRect() });
+    setTooltip({ label, rect: target.getBoundingClientRect(), period: days });
   }
 
   function moveCell(key: string) {
-    const firstDay = navigableCells[0]?.cell.day;
-    const current = navigableCells.find(({ cell }) => cell.day === (activeDay ?? firstDay));
+    const current = navigableCells.find(({ cell }) => cell.day === effectiveActiveDay);
     if (!current) return;
     const horizontal = key === 'ArrowRight' || key === 'ArrowLeft';
-    const delta = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : key === 'ArrowDown' ? 1 : -1;
-    const target = navigableCells.find(
-      ({ weekIndex, dayIndex }) =>
-        weekIndex === current.weekIndex + (horizontal ? delta : 0) &&
-        dayIndex === current.dayIndex + (horizontal ? 0 : delta),
-    );
+    const delta =
+      key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : key === 'ArrowDown' ? 1 : -1;
+    // Vertical movement follows the next date even when Sunday ends a column.
+    const targetDay = addDays(current.cell.day, horizontal && !compact ? delta * 7 : delta);
+    const target = navigableCells.find(({ cell }) => cell.day === targetDay);
     if (!target) return;
     setActiveDay(target.cell.day);
     gridRef.current
@@ -150,109 +162,148 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
       ?.focus();
   }
 
+  const cellCount = columns.length * 7;
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28 * m, ease: [0.25, 0.1, 0.25, 1] }}
-      className="rounded-2xl border border-line bg-surface p-5"
+    <section
+      ref={sectionRef}
+      aria-label="Review activity"
+      className="rounded-3xl bg-surface p-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-6"
     >
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="font-display text-lg">Review activity</h2>
-        <span className="text-sm text-ink-faint">
-          {total} review{total === 1 ? '' : 's'} in the last {WEEKS} weeks
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight">When you studied</h2>
+        <span className="text-sm text-ink-soft tabular-nums">
+          {total} review{total === 1 ? '' : 's'} in {days} days
         </span>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <div className="flex flex-col gap-[3px] text-[10px] text-ink-faint sticky left-0 bg-surface z-10 pr-1 pt-[16px]">
-          {WEEKDAY_LABELS.map((label, i) => (
-            <span key={i} className="h-[12px] inline-flex items-center">
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="flex flex-col gap-[3px] relative">
-          {/* Month labels: absolutely positioned above the grid so they can be
-              wider than a single cell without overlapping adjacent columns. */}
-          <div className="absolute top-0 left-0 h-[14px] pointer-events-none">
-            {monthLabels.map((label) => (
+      <div className="overflow-x-auto pb-1">
+        <div
+          ref={gridRef}
+          role="grid"
+          aria-label={`Review activity over the last ${days} days`}
+          className={compact ? 'grid gap-[2px] sm:gap-[4px]' : 'grid gap-[4px]'}
+          style={{
+            gridTemplateColumns: compact
+              ? `repeat(${days}, minmax(0, 1fr))`
+              : `28px repeat(${columns.length}, minmax(0, 1fr))`,
+            // A daily strip fits a phone's card (30 days at 8px), so today is never scrolled away.
+            minWidth: compact ? days * 8 : Math.min(480, 28 + columns.length * 24),
+            maxWidth: compact ? undefined : 28 + columns.length * 32,
+          }}
+        >
+          {compact &&
+            navigableCells.map(({ cell }, index) => {
+              const last = index === days - 1;
+              // Every fifth day, plus today; a fifth day too near today would collide with it.
+              if (days > 7 && !last && (index % 5 !== 0 || index > days - 7)) return null;
+              const date = new Date(cell.day);
+              return (
+                <span
+                  key={cell.day}
+                  aria-hidden="true"
+                  className="whitespace-nowrap pb-1 text-xs leading-none text-ink-faint"
+                  style={{
+                    gridColumn: index + 1,
+                    gridRow: 1,
+                    justifySelf: index === days - 1 ? 'end' : 'start',
+                  }}
+                >
+                  {date.toLocaleDateString(
+                    'en-GB',
+                    days <= 7
+                      ? { weekday: 'short', day: 'numeric' }
+                      : { day: 'numeric', month: 'short' },
+                  )}
+                </span>
+              );
+            })}
+          {!compact &&
+            monthLabels.map((label) => (
               <span
                 key={label.weekIndex}
-                className="absolute text-[10px] text-ink-faint leading-[14px] whitespace-nowrap"
-                style={{ left: `${label.weekIndex * WEEK_STRIDE}px` }}
+                aria-hidden="true"
+                className="whitespace-nowrap pb-1 text-xs leading-none text-ink-faint"
+                style={{ gridColumn: label.weekIndex + 2, gridRow: 1 }}
               >
                 {label.text}
               </span>
             ))}
-          </div>
-          <div ref={gridRef} role="grid" aria-label="Review activity by day" className="flex gap-[3px] pt-[16px]">
-            {columns.map((col, w) => (
-              <motion.div
-                key={w}
-                role="presentation"
-                initial={{ opacity: 0, scaleY: 0.8 }}
-                animate={{ opacity: 1, scaleY: 1 }}
-                transition={{
-                  duration: 0.16 * m,
-                  delay: Math.min(w * 0.015, 0.3) * m,
-                  ease: [0.25, 0.1, 0.25, 1],
-                }}
-                className="flex flex-col gap-[3px] origin-top"
+          {!compact &&
+            Object.entries(WEEKDAY_LABELS).map(([row, text]) => (
+              <span
+                key={row}
+                aria-hidden="true"
+                className="flex items-center text-xs text-ink-faint"
+                style={{ gridColumn: 1, gridRow: Number(row) + 2 }}
               >
-                {col.map((cell) => (
-                  cell.future ? (
-                    <span
-                      key={cell.day}
-                      role="gridcell"
-                      aria-hidden="true"
-                      className="h-[12px] w-[12px] rounded-[2px] shrink-0"
-                      style={cellStyle(cell)}
-                    />
-                  ) : (
-                    (() => {
-                      const label = `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`;
-                      const active =
-                        activeDay === cell.day ||
-                        (activeDay === null && navigableCells[0]?.cell.day === cell.day);
-                      return (
-                        <motion.div
-                          key={cell.day}
-                          role="gridcell"
-                          aria-label={label}
-                          data-review-heatmap-cell={cell.day}
-                          tabIndex={active ? 0 : -1}
-                          onFocus={(event) => {
-                            setActiveDay(cell.day);
-                            showTooltip(cell, event.currentTarget);
-                          }}
-                          onBlur={() => setTooltip(null)}
-                          onMouseEnter={(event) => showTooltip(cell, event.currentTarget)}
-                          onMouseLeave={(event) => {
-                            if (document.activeElement !== event.currentTarget) setTooltip(null);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key.startsWith('Arrow')) {
-                              event.preventDefault();
-                              moveCell(event.key);
-                            }
-                          }}
-                          whileHover={m > 0 ? { scale: 1.18 } : undefined}
-                          whileFocus={m > 0 ? { scale: 1.18 } : undefined}
-                          whileTap={m > 0 ? { scale: 0.9 } : undefined}
-                          transition={motionTransition('feedback', m)}
-                          className="block h-[12px] w-[12px] rounded-[2px] outline-none transition-[box-shadow,transform] focus-visible:ring-2 focus-visible:ring-accent/70 motion-reduce:transition-none"
-                          style={cellStyle(cell)}
-                        />
-                      );
-                    })()
-                  )
-                ))}
-              </motion.div>
+                {text}
+              </span>
             ))}
-          </div>
+          {columns.flatMap((col, w) =>
+            col.map((cell, d) => {
+              const index = compact
+                ? navigableCells.findIndex(({ cell: candidate }) => candidate.day === cell.day)
+                : -1;
+              const placement = compact
+                ? { gridColumn: index + 1, gridRow: 2 }
+                : { gridColumn: w + 2, gridRow: d + 2 };
+              if (cell.outsidePeriod) {
+                if (compact) return null;
+                return (
+                  <span
+                    key={cell.day}
+                    role="gridcell"
+                    aria-hidden="true"
+                    className="aspect-square rounded-[4px]"
+                    style={{ ...placement, ...cellStyle(cell) }}
+                  />
+                );
+              }
+              const label = `${cell.count} review${cell.count === 1 ? '' : 's'} on ${formatDate(cell.day)}`;
+              const active = effectiveActiveDay === cell.day;
+              // A diagonal wave: the delay grows with distance from the top-left corner.
+              const delay = Math.min(((w + d) / cellCount) * WAVE_SECONDS * 4, WAVE_SECONDS) * m;
+              return (
+                <motion.div
+                  key={cell.day}
+                  role="gridcell"
+                  aria-label={label}
+                  data-review-heatmap-cell={cell.day}
+                  tabIndex={active ? 0 : -1}
+                  onFocus={(event) => {
+                    setActiveDay(cell.day);
+                    showTooltip(cell, event.currentTarget);
+                  }}
+                  onBlur={() => setTooltip(null)}
+                  onMouseEnter={(event) => showTooltip(cell, event.currentTarget)}
+                  onMouseLeave={(event) => {
+                    if (document.activeElement !== event.currentTarget) setTooltip(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key.startsWith('Arrow')) {
+                      event.preventDefault();
+                      moveCell(event.key);
+                    }
+                  }}
+                  initial={m > 0 ? { opacity: 0, scale: 0.5 } : false}
+                  animate={revealed ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
+                  whileHover={m > 0 ? { scale: compact ? 1.035 : 1.18 } : undefined}
+                  whileFocus={m > 0 ? { scale: compact ? 1.035 : 1.18 } : undefined}
+                  data-press=""
+                  whileTap={m > 0 ? { scale: 0.9 } : undefined}
+                  transition={{
+                    duration: 0.3 * m,
+                    delay,
+                    ease: MOTION_EASING.emphasised,
+                  }}
+                  className={`${compact ? 'h-9' : 'aspect-square'} rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-accent/70`}
+                  style={{ ...placement, ...cellStyle(cell) }}
+                />
+              );
+            }),
+          )}
         </div>
       </div>
-      {tooltip && typeof document !== 'undefined'
+      {tooltip?.period === days && typeof document !== 'undefined'
         ? createPortal(
             <span
               ref={tooltipRef}
@@ -271,12 +322,12 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
             document.body,
           )
         : null}
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-ink-faint">
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-xs text-ink-faint">
         <span>Less</span>
         {[0, 0.25, 0.45, 0.65, 1].map((alpha, i) => (
           <span
             key={i}
-            className="h-[10px] w-[10px] rounded-[2px]"
+            className="h-3 w-3 rounded-[3px]"
             style={{
               background: alpha === 0 ? 'hsl(var(--line) / 0.7)' : `hsl(var(--accent) / ${alpha})`,
             }}
@@ -284,6 +335,6 @@ export function ReviewHeatmap({ cards, activity }: { cards: Card[]; activity?: R
         ))}
         <span>More</span>
       </div>
-    </motion.section>
+    </section>
   );
 }

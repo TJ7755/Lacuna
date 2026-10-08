@@ -8,9 +8,11 @@ import { defaultExamDate } from '../utils/datetime';
 import { assetUrl, sha256Blob } from './assets';
 import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
+import {
+  SEED_ASSET_REPAIR_FLAG_KEY as ASSET_REPAIR_FLAG_KEY,
+  SEED_FLAG_KEY as FLAG_KEY,
+} from './seedFlags';
 
-const FLAG_KEY = 'lacuna-seeded';
-const ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v3';
 let seeding = false;
 const emptyStats = {
   runningMeanResponseTime: 0,

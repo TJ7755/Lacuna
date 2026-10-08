@@ -119,7 +119,7 @@ export function ItemStagingCandidateRow({
     <motion.article
       ref={articleRef}
       tabIndex={-1}
-      layout={motionMultiplier > 0 ? 'size' : undefined}
+      layout={motionMultiplier > 0 ? 'position' : undefined}
       transition={{ duration: 0.2 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         'rounded-2xl border p-4 md:p-5',
@@ -135,7 +135,7 @@ export function ItemStagingCandidateRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className="text-sm text-ink-faint">
               Question {candidate.index + 1}
             </span>
             <StatusPill tone={ready ? 'positive' : 'negative'}>
@@ -268,7 +268,7 @@ export function ItemStagingCandidateRow({
       </AnimatePresence>
 
       <AnimatedDisclosure open={revisionOpen && decision === 'staged'}>
-        <div className="mt-4 rounded-xl border border-line bg-surface-raised p-4">
+        <div className="mt-4 rounded-2xl bg-ink/[0.04] p-4">
           <label className="flex flex-col gap-2 text-sm text-ink-soft">
             What should change?
             <textarea

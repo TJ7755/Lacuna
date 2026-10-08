@@ -75,7 +75,7 @@ export async function createQuestionSetPracticeNode(
     await requireQuestionSetActivityReferences(courseId, questionSetId, afterLessonId);
     const now = Date.now();
     const node: QuestionSetPracticeNode = {
-      id: makeId(), courseId, type: 'question-set', name: 'Practice Qs',
+      id: makeId(), courseId, type: 'question-set', name: 'Practice questions',
       questionSetId, afterLessonId, createdAt: now, updatedAt: now,
     };
     await db.practiceNodes.add(node);

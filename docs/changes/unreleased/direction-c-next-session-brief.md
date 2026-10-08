@@ -1,0 +1,1 @@
+- Record the next Direction C session's priorities: expanded lesson controls, discoverable lesson management, consistent menus and outstanding verification.

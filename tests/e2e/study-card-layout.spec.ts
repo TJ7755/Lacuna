@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function cardHeight(card: Locator): Promise<number> {
   return card.locator('[data-study-face]').evaluate((face) => face.parentElement!.offsetHeight);
@@ -68,7 +68,7 @@ test('keeps both study-card faces at the larger height across viewport changes',
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
   await page.goto('/#/');
   await page.getByRole('button', { name: 'Study Stable card' }).click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await chooseScheduledStudy(page);
 
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
@@ -143,7 +143,7 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   const studyCourse = page.getByRole('button', { name: 'Study Monarchs' });
   await expect(studyCourse).toBeVisible();
   await studyCourse.click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await chooseScheduledStudy(page);
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
 
@@ -190,21 +190,23 @@ for (const width of [1280, 390]) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
     await createCourse(page, 'Typed alignment');
-    await page.getByRole('button', { name: 'Author mode' }).click();
-    await page.getByRole('button', { name: 'New card', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit mode' }).click();
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
     await page.getByRole('textbox', { name: 'Front' }).fill('Translate the phrase');
     await page.getByRole('textbox', { name: 'Back' }).fill('a lighter timetable');
     await page.getByLabel('Card answer mode', { exact: true }).selectOption('type');
     await page.getByRole('button', { name: 'Add card', exact: true }).click();
     await expect(page).not.toHaveURL(/\/cards\/new$/);
-    await page.getByRole('link', { name: 'Course', exact: true }).click();
+    await page
+      .getByRole('navigation', { name: 'Course sections' })
+      .getByRole('link', { name: 'Path', exact: true })
+      .click();
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     await page
       .getByRole('dialog', { name: 'Choose what to study' })
-      .getByRole('button', { name: /^(Start|Continue):/ })
+      .getByRole('button', { name: 'Start session' })
       .first()
       .click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.setViewportSize({ width, height: 900 });
     await page.getByPlaceholder('Type your answer…').fill('timetable');
     const card = page.locator('[data-study-card-id]').first();

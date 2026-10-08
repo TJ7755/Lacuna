@@ -1,0 +1,1 @@
+- Exclude generated Electron companion bundles from source linting, so preparing a desktop build does not introduce third-party bundle errors into the repository lint gate.

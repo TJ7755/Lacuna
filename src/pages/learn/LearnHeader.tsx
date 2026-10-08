@@ -1,3 +1,4 @@
+import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '../../db/types';
 import {
@@ -11,15 +12,17 @@ import {
   MoreIcon,
   PauseIcon,
   RestoreIcon,
+  CloseIcon,
 } from '../../components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
 import { cn } from '../../components/ui/cn';
+import { scaledSpring } from '../../components/ui/motion';
 import type { CardFilter } from '../../db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';
-import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
+import { countOf } from '../../utils/plural';
 
 function computeHeaderInfo({
   singleDeck,
@@ -47,7 +50,8 @@ function computeHeaderInfo({
   switch (mode) {
     case 'simple':
       return {
-        title: 'Simple Learn',
+        // Name what is being studied; the mode's own name is only a fallback.
+        title: unitDisplayName ?? 'Simple Learn',
         subtitle: tagPart,
       };
     case 'cram':
@@ -125,6 +129,8 @@ export function LearnHeader({
   onShowShortcuts,
   m,
   currentCardId,
+  canUndo = false,
+  onUndo,
 }: {
   mode: LearnModeType;
   plannedRevision: boolean;
@@ -157,6 +163,9 @@ export function LearnHeader({
   onShowShortcuts: () => void;
   m: number;
   currentCardId: string | null;
+  /** Phone undo control; renders only when the parent supplies onUndo. */
+  canUndo?: boolean;
+  onUndo?: () => void;
 }) {
   const info = computeHeaderInfo({
     singleDeck,
@@ -171,6 +180,12 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
+  // Position through the session, not the card's index: queues serve cards in their own order.
+  const sessionTotal = sessionCardIds.length;
+  const cardPosition =
+    currentCardId !== null && sessionTotal > 0 && !plannedRevision
+      ? `${Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)} of ${sessionTotal}`
+      : null;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 
   return (
@@ -181,37 +196,26 @@ export function LearnHeader({
       transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
       onPointerLeave={onPointerLeave}
       className={cn(
-        'left-0 right-0 top-0 z-20 border-b border-line bg-paper',
+        'left-0 right-0 top-0 z-20 bg-paper',
         'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
-      <div className="flex min-h-[72px] items-center gap-1 px-2 py-2.5 md:gap-5 md:px-6">
-        <button
-          type="button"
-          onClick={onOpenNav}
-          aria-label="Open navigation"
-          title="Open navigation"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-        >
-          <MenuIcon width={18} height={18} />
-        </button>
-
+      <div className="mx-auto flex min-h-[84px] w-full max-w-4xl items-center gap-2 px-6 py-2.5 md:gap-4">
         <div className="min-w-10 flex-1 overflow-hidden">
-          <h1
-            className="mb-1 truncate text-xs font-semibold text-ink md:text-sm"
-            title={info.title}
-          >
-            {info.title}
-          </h1>
-          {mode !== 'simple' && !plannedRevision && (
-            <div className="mb-1 flex flex-wrap justify-between gap-x-3 text-xs tabular text-ink-faint">
-              <span>{Math.round(displayedProgress * 100)}% complete</span>
-              <span>
+          <div className="mb-2 flex min-w-0 items-baseline gap-1 text-[13px] md:text-sm">
+            <h1 className="truncate font-bold text-ink" title={info.title}>
+              {info.title}
+            </h1>
+            {cardPosition && (
+              <span className="shrink-0 text-ink-soft tabular-nums">· {cardPosition}</span>
+            )}
+            {mode !== 'simple' && !plannedRevision && (
+              <span className="ml-auto hidden shrink-0 pl-3 text-ink-soft tabular-nums md:inline">
                 {Math.round(predictedRecall * 100)}% {forecastLabel(singleDeck)}
               </span>
-            </div>
-          )}
+            )}
+          </div>
           {info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
@@ -240,15 +244,36 @@ export function LearnHeader({
           <PomodoroTimer />
         </div>
 
+        <button
+          type="button"
+          onClick={onOpenNav}
+          aria-label="Open navigation"
+          title="Open navigation"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 max-md:hidden"
+        >
+          <MenuIcon width={18} height={18} />
+        </button>
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Card actions"
+            aria-expanded={menuOpen}
             title="Card actions"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className={cn(
+              'flex h-11 w-11 items-center justify-center rounded-full border transition-colors',
+              menuOpen
+                ? 'border-ink bg-ink text-paper'
+                : 'border-line-strong bg-surface text-ink hover:border-ink/40',
+            )}
           >
-            <MoreIcon width={18} height={18} />
+            <motion.span
+              className="inline-flex"
+              animate={{ rotate: menuOpen ? 90 : 0 }}
+              transition={{ duration: 0.28 * m, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <MoreIcon width={18} height={18} />
+            </motion.span>
           </button>
           <AnimatePresence>
             {menuOpen &&
@@ -268,11 +293,11 @@ export function LearnHeader({
                 />
               ) : (
                 <motion.div
-                  initial={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : false}
+                  initial={m > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : undefined}
-                  transition={{ duration: 0.12 * m }}
-                  className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
+                  transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
                 >
                   {current.sequenceItemId === undefined &&
                     current.occlusionRegionId === undefined && (
@@ -297,7 +322,7 @@ export function LearnHeader({
                     label="Suspend card"
                     onClick={onSuspend}
                   />
-                  <div className="border-t border-line" />
+                  <div className="mx-2 my-1.5 h-px bg-line" />
                   <MenuItem
                     icon={<FocusIcon width={16} height={16} />}
                     label={focusMode ? 'Leave focus mode' : 'Focus mode'}
@@ -330,19 +355,61 @@ export function LearnHeader({
           <button
             type="button"
             onClick={onToggleFocus}
-            aria-label="Exit Focus Mode"
-            title="Exit Focus Mode (F)"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
+            aria-label="Leave focus mode"
+            title="Leave focus mode (F)"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
           >
             <FocusIcon width={19} height={19} />
           </button>
         )}
 
-        <Button variant="ghost" size="sm" onClick={onExit}>
-          Exit
+        {onUndo && (
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo last answer"
+            title="Undo"
+            // Always laid out, disabled until there is an answer to undo, so the controls
+            // before it (the timer among them) never shift when the first answer lands.
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 disabled:opacity-40"
+          >
+            <UndoIcon width={18} height={18} />
+          </button>
+        )}
+
+        {/* One Exit for every width, leading the row: a pill with its label, and a
+            round icon button on a phone. */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onExit}
+          className="order-first h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
+        >
+          <CloseIcon width={16} height={16} aria-hidden="true" />
+          <span className="max-md:sr-only">Exit</span>
         </Button>
       </div>
     </motion.header>
+  );
+}
+
+function UndoIcon({ width, height }: { width: number; height: number }) {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </svg>
   );
 }
 
@@ -365,7 +432,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
     // This track is now the session's only progress indicator, so it carries the
     // accessible name and value that the removed counter ring used to provide.
     <div
-      className="h-2 w-full overflow-hidden rounded-full bg-ink/10"
+      className="h-[5px] w-full overflow-hidden rounded-full bg-ink/10 md:h-2"
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
@@ -375,7 +442,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
       <motion.div
         initial={false}
         animate={{ scaleX: progress }}
-        transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+        transition={scaledSpring(m, 220, 24)}
         className="h-full w-full origin-left rounded-full bg-accent"
       />
     </div>
@@ -415,7 +482,7 @@ function SessionSegments({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
-      title={`${cardIds.length} cards in this session`}
+      title={`${countOf(cardIds.length, 'card')} in this session`}
     >
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {progressAnnouncement}
@@ -463,7 +530,7 @@ function MenuItem({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full min-h-11 items-center gap-3 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+      className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
     >
       <span className="shrink-0 text-ink-faint">{icon}</span>
       {label}

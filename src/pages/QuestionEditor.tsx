@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -7,6 +8,7 @@ import {
   numericAnswerSpecIsValid,
 } from '../components/items/NumericAnswerEditor';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
+import { QuestionSegmented } from '../components/questions/QuestionSegmented';
 import { GeneratedQuestionConfiguration } from '../components/questions/GeneratedQuestionConfiguration';
 import { useCourseQuestionData, useQuestionRecord } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
@@ -39,11 +41,12 @@ import {
   type QuestionAnswerKind,
   useQuestionDraft,
 } from './questionDraft';
-import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
 
 const inputClass =
-  'min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20';
+  'min-h-12 w-full rounded-[14px] border-[1.5px] border-line-strong bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-ink';
+const labelClass = 'mb-2 block text-[13px] font-bold text-ink-soft';
+const cardClass =
+  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
 
 export function QuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
@@ -185,7 +188,7 @@ export function QuestionEditor() {
     return (
       <DelayedFallback>
         <div className="mx-auto max-w-4xl px-6 py-10">
-          <Skeleton className="h-12 w-72 rounded-xl" />
+          <Skeleton className="h-12 w-72 rounded-xl bg-ink/10" />
         </div>
       </DelayedFallback>
     );
@@ -198,7 +201,7 @@ export function QuestionEditor() {
   const saveLabel = saving ? 'Saving…' : editing ? 'Save Question' : 'Create Question';
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 pb-28 md:px-10">
+    <div className="mx-auto max-w-4xl px-6 py-8 pb-32 md:px-10">
       <NavigationGuard
         active={draft.shouldBlock}
         onAttempt={draft.flushDraft}
@@ -214,7 +217,7 @@ export function QuestionEditor() {
       </Link>
 
       <header className="mb-8">
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           {editing ? 'Edit Question' : 'Create a Question'}
         </h1>
       </header>
@@ -222,7 +225,7 @@ export function QuestionEditor() {
       {draft.draftPrompt && (
         <section
           role="status"
-          className="mb-8 flex flex-col gap-4 rounded-2xl border border-accent/30 bg-accent-soft p-5 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-8 flex flex-col gap-4 rounded-3xl bg-accent-soft p-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="text-sm text-ink">A saved draft from a previous session was found.</p>
           <div className="flex gap-2">
@@ -239,32 +242,24 @@ export function QuestionEditor() {
       <div className="space-y-8">
         {!editing && (
           <fieldset>
-            <legend className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <legend className={labelClass}>
               Question form
             </legend>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-ink/5 p-1">
-              {(['fixed', 'generated'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={kind === option}
-                  onClick={() => draft.update({ kind: option })}
-                  className={`min-h-11 rounded-lg px-4 text-sm transition ${
-                    kind === option
-                      ? 'bg-surface text-ink shadow-sm'
-                      : 'text-ink-soft hover:text-ink'
-                  }`}
-                >
-                  {option === 'fixed' ? 'Fixed problem' : 'Generated family'}
-                </button>
-              ))}
-            </div>
+            <QuestionSegmented
+              label="Question form"
+              value={kind}
+              onChange={(option) => draft.update({ kind: option })}
+              options={[
+                { value: 'fixed', label: 'Fixed problem' },
+                { value: 'generated', label: 'Generated family' },
+              ]}
+            />
           </fieldset>
         )}
 
-        <SectionCard compact className="grid gap-5 md:grid-cols-2 md:p-6">
+        <section className={`grid gap-5 p-6 md:grid-cols-2 md:p-7 ${cardClass}`}>
           <label className="block md:col-span-2">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className={labelClass}>
               Name
             </span>
             <input
@@ -276,7 +271,7 @@ export function QuestionEditor() {
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className={labelClass}>
               Lesson
             </span>
             <select
@@ -293,7 +288,7 @@ export function QuestionEditor() {
             </select>
           </label>
           <label className="block">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className={labelClass}>
               Primary skill practised
             </span>
             <select
@@ -318,7 +313,7 @@ export function QuestionEditor() {
             </select>
           </label>
           <div className="md:col-span-2">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className={labelClass}>
               Add a Concept
             </span>
             <div className="flex gap-2">
@@ -340,7 +335,7 @@ export function QuestionEditor() {
           </div>
           {data.concepts.filter((concept) => concept.id !== targetConceptId).length > 0 && (
             <fieldset className="md:col-span-2">
-              <legend className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <legend className={labelClass}>
                 Prerequisite Concepts
               </legend>
               <div className="flex flex-wrap gap-2">
@@ -360,10 +355,10 @@ export function QuestionEditor() {
                               : [...current.prerequisiteConceptIds, concept.id],
                           }))
                         }
-                        className={`min-h-11 rounded-lg border px-4 text-sm transition ${
+                        className={`min-h-11 rounded-full px-4 text-sm font-semibold transition ${
                           selected
-                            ? 'border-accent bg-accent-soft text-accent'
-                            : 'border-line-strong text-ink-soft hover:text-ink'
+                            ? 'bg-accent-soft text-accent-ink'
+                            : 'bg-ink/[0.06] text-ink-soft hover:text-ink'
                         }`}
                       >
                         {concept.name}
@@ -373,7 +368,7 @@ export function QuestionEditor() {
               </div>
             </fieldset>
           )}
-        </SectionCard>
+        </section>
 
         <StepSwap stepKey={kind} direction={kind === 'generated' ? 1 : -1} className="space-y-8">
           {kind === 'fixed' ? (
@@ -387,26 +382,18 @@ export function QuestionEditor() {
                 onError={(message) => notify(message, 'negative')}
               />
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+                <div className={labelClass}>
                   Answer type
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['numeric', 'working'] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      aria-pressed={answerKind === option}
-                      onClick={() => draft.update({ answerKind: option })}
-                      className={`min-h-11 rounded-lg border px-4 text-sm transition ${
-                        answerKind === option
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-line-strong text-ink-soft'
-                      }`}
-                    >
-                      {option === 'numeric' ? 'Numeric answer' : 'Show working'}
-                    </button>
-                  ))}
-                </div>
+                <QuestionSegmented
+                  label="Answer type"
+                  value={answerKind}
+                  onChange={(option) => draft.update({ answerKind: option })}
+                  options={[
+                    { value: 'numeric', label: 'Numeric answer' },
+                    { value: 'working', label: 'Show working' },
+                  ]}
+                />
               </div>
               <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
                 {answerKind === 'numeric' ? (
@@ -442,7 +429,7 @@ export function QuestionEditor() {
         </StepSwap>
 
         <section>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+          <div className={labelClass}>Tags</div>
           <TagInput
             tags={tags}
             onChange={(value) => draft.update({ tags: value })}
@@ -451,7 +438,7 @@ export function QuestionEditor() {
           />
         </section>
         {editing && (
-          <label className="flex min-h-11 items-center gap-3 text-sm text-ink-soft">
+          <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-ink-soft">
             <input
               type="checkbox"
               checked={suspended}
@@ -463,7 +450,7 @@ export function QuestionEditor() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-paper/90 px-6 py-4 backdrop-blur-xl sm:bottom-0">
+      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 bg-paper/90 px-6 py-4 backdrop-blur-xl sm:bottom-0">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           {editing ? (
             <ConfirmInlineSwap

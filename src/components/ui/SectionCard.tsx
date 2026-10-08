@@ -1,6 +1,9 @@
 import { createElement, type HTMLAttributes, type ReactNode, type Ref } from 'react';
 import { cn } from './cn';
 
+export const SECTION_CARD_SURFACE_CLASS =
+  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+
 type SectionCardProps = Omit<HTMLAttributes<HTMLElement>, 'className' | 'children'> & {
   ref?: Ref<HTMLElement>;
   /** The element to render; defaults to `section`. */
@@ -11,7 +14,7 @@ type SectionCardProps = Omit<HTMLAttributes<HTMLElement>, 'className' | 'childre
   children?: ReactNode;
 };
 
-/** The bordered surface card that groups a section of a page or settings screen. */
+/** The shared surface card that groups a section of a page or settings screen. */
 export function SectionCard({
   as = 'section',
   compact = false,
@@ -23,7 +26,7 @@ export function SectionCard({
     as,
     {
       ...props,
-      className: cn('rounded-2xl border border-line bg-surface', compact ? 'p-5' : 'p-6', className),
+      className: cn(SECTION_CARD_SURFACE_CLASS, compact ? 'p-5' : 'p-6', className),
     },
     children,
   );

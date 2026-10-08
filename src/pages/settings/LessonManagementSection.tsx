@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
@@ -7,6 +7,8 @@ import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons'
 import { useLessons } from '../../state/useCourseData';
 import { updateLesson, deleteLesson, reorderLessons } from '../../db/lessonRepository';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { useActionFocus } from '../../hooks/useActionFocus';
+import { useToast } from '../../components/ui/Toast';
 
 export interface LessonManagementSectionProps {
   courseId: string;
@@ -26,18 +28,32 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   const [nameDraft, setNameDraft] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteButtons = useRef(new Map<string, HTMLButtonElement>());
+  const renameOpener = useRef<HTMLElement | null>(null);
+  const { remember, restore } = useActionFocus();
+  const { notify } = useToast();
+
+  useEffect(() => {
+    if (!editingId) restore(renameOpener.current);
+  }, [editingId, restore]);
 
   function startEdit(id: string, currentName: string) {
+    renameOpener.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    remember();
     setEditingId(id);
     setNameDraft(currentName);
   }
 
   async function commitRename() {
-    if (editingId) {
-      const name = nameDraft.trim();
-      if (name) await updateLesson(editingId, { name });
+    try {
+      if (editingId) {
+        const name = nameDraft.trim();
+        if (name) await updateLesson(editingId, { name });
+      }
+      setEditingId(null);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not rename the lesson.', 'negative');
     }
-    setEditingId(null);
   }
 
   async function move(index: number, direction: -1 | 1) {
@@ -46,19 +62,24 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
     if (target < 0 || target >= lessons.length) return;
     const orderedIds = lessons.map((l) => l.id);
     [orderedIds[index], orderedIds[target]] = [orderedIds[target], orderedIds[index]];
-    await reorderLessons(courseId, orderedIds);
+    try {
+      await reorderLessons(courseId, orderedIds);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not reorder the lessons.', 'negative');
+    }
   }
 
   async function remove(id: string) {
-    await deleteLesson(id);
-    setConfirmDeleteId(null);
+    try {
+      await deleteLesson(id);
+      setConfirmDeleteId(null);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not delete the lesson.', 'negative');
+    }
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-ink-faint">
-        Lessons appear in order on the course path. Add, rename, reorder or remove them here.
-      </p>
       {lessons?.length === 0 && (
         <p className="text-xs text-ink-faint">This course has no lessons yet.</p>
       )}
@@ -67,33 +88,38 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           key={lesson.id}
           layout={multiplier > 0 ? 'position' : undefined}
           transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-lg border border-line bg-surface"
+          className="overflow-hidden rounded-2xl bg-ink/[0.03]"
         >
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="flex flex-col">
-                <button
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-2">
+              <div className="flex shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => void move(index, -1)}
                   disabled={index === 0}
                   aria-label={`Move ${lesson.name} up`}
-                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                  className="min-w-11 px-0"
                 >
                   <ChevronDownIcon width={14} height={14} className="rotate-180" />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => void move(index, 1)}
                   disabled={index === lessons.length - 1}
                   aria-label={`Move ${lesson.name} down`}
-                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                  className="min-w-11 px-0"
                 >
                   <ChevronDownIcon width={14} height={14} />
-                </button>
+                </Button>
               </div>
               {editingId === lesson.id ? (
                 <input
                   autoFocus
+                  aria-label="Lesson name"
                   value={nameDraft}
                   onChange={(e) => setNameDraft(e.target.value)}
                   onBlur={() => void commitRename()}
@@ -101,10 +127,10 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                     if (e.key === 'Enter') void commitRename();
                     if (e.key === 'Escape') setEditingId(null);
                   }}
-                  className="min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                  className="min-w-0 flex-[1_1_8rem] rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
                 />
               ) : (
-                <span className="truncate text-sm text-ink">
+                <span className="min-w-0 flex-[1_1_8rem] truncate text-sm text-ink">
                   {lesson.name}
                   {lesson.isExtension && (
                     <span className="ml-2 text-xs text-ink-faint">(extension)</span>
@@ -112,7 +138,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"

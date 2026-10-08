@@ -30,6 +30,13 @@ Preserve existing study data and treat desktop upgrades as live-user operations.
 study, authoring, backup, restore and sync on the intended devices, retaining the established
 migration regression suite and checking upgrades from the previous published release.
 
+## Direction C follow-up brief
+
+The prompter requested a [next-session brief](plans/direction-c-next-session.md)
+on 6 October 2026. First fix the stretched lesson creation controls, then assess
+discoverable lesson management, context menus and existing desktop menu commands.
+The brief records priorities, the decisions taken and their outcome.
+
 ## Feature freeze
 
 **Status:** in progress.

@@ -1,7 +1,7 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
 import {
   cardEditPath,
@@ -21,6 +21,11 @@ import { StudyDrawing } from '../ui/StudyDrawing';
 
 /** A single ordered list of navigation, Card and Question hits. */
 type PaletteHit = ScopedSearchResult | CourseContentHit;
+
+function PaletteResults(props: HTMLMotionProps<'ul'>) {
+  const present = useIsPresent();
+  return <motion.ul {...props} inert={!present} aria-hidden={!present || undefined} />;
+}
 
 /** Where a palette hit deep-links to. */
 function hitPath(hit: PaletteHit): string {
@@ -64,7 +69,8 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
     <>
       {parts.map((part, i) =>
         part.toLowerCase() === query.trim().toLowerCase() ? (
-          <mark key={i} className="rounded bg-accent/15 px-0.5 text-accent">
+          // No side padding: it would open a gap inside the matched word.
+          <mark key={i} className="rounded-sm bg-accent/15 text-accent-ink">
             {part}
           </mark>
         ) : (
@@ -219,7 +225,7 @@ function CommandPaletteDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.98 }}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl shadow-black/20 will-change-transform-opacity"
+            className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)] will-change-transform-opacity"
             onKeyDown={onKeyDown}
           >
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">
@@ -280,7 +286,7 @@ function CommandPaletteDialog({
                     Nothing matches &ldquo;{deferredQuery}&rdquo;.
                   </motion.p>
                 ) : (
-                  <motion.ul
+                  <PaletteResults
                     key="results"
                     id="palette-listbox"
                     role="listbox"
@@ -288,7 +294,9 @@ function CommandPaletteDialog({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.12 * m }}
-                    className="py-1"
+                    // Inset rounded rows, as in every other menu; 6px + 10px keeps the
+                    // text on the search field's 16px edge.
+                    className="p-1.5"
                   >
                     {results.map((hit, i) => {
                       const key =
@@ -317,7 +325,7 @@ function CommandPaletteDialog({
                             onMouseEnter={() => setActive(i)}
                             onClick={() => go(i)}
                             className={
-                              'flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-all duration-150 ' +
+                              'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-all duration-150 ' +
                               (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
                             }
                           >
@@ -394,7 +402,7 @@ function CommandPaletteDialog({
                         </motion.li>
                       );
                     })}
-                  </motion.ul>
+                  </PaletteResults>
                 )}
               </AnimatePresence>
             </div>

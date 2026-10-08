@@ -140,11 +140,6 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-ink-faint">
-        Place assessments on the path, then choose everything taught so far or an explicit set of
-        lessons. Assessments never lock later lessons.
-      </p>
-
       <AnimatePresence initial={false} mode="popLayout">
         {loaded &&
           assessments.map((assessment) => {
@@ -157,7 +152,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                 animate={motionMultiplier > 0 ? { opacity: 1, y: 0 } : undefined}
                 exit={motionMultiplier > 0 ? { opacity: 0, y: -4 } : undefined}
                 transition={motionTransition('feedback', motionMultiplier)}
-                className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+                className="flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.03] px-4 py-3"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm text-ink">
@@ -230,7 +225,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                 if (panel) editorPanels.current.set(editingId, panel);
                 else editorPanels.current.delete(editingId);
               }}
-              className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface px-4 py-4"
+              className="flex flex-col gap-4 rounded-2xl bg-ink/[0.04] px-4 py-4"
             >
               <AssessmentEditor
                 courseId={courseId}

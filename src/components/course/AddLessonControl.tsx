@@ -1,11 +1,14 @@
 import { LazyCardImportDialog as CardImportDialog } from '../import/LazyCardImportDialog';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import { createLesson } from '../../db/lessonRepository';
 import type { Lesson } from '../../db/types';
 import { Field, Input } from '../ui/Field';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
+import { countOf } from '../../utils/plural';
 
 /** Suggested name for the next lesson in a course (e.g. "Lesson 2"). */
 export function defaultLessonName(lessonCount: number): string {
@@ -38,6 +41,14 @@ export function AddLessonControl({
   const [name, setName] = useState(() => defaultLessonName(lessonCount));
   const [importingCards, setImportingCards] = useState(false);
   const [saving, setSaving] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const previouslyOpen = useRef(open);
+  useEffect(() => {
+    if (open && !importingCards) nameInput.current?.focus();
+    if (!open && previouslyOpen.current) trigger.current?.focus();
+    previouslyOpen.current = open;
+  }, [open, importingCards]);
 
   function startAdd() {
     setName(defaultLessonName(lessonCount));
@@ -45,6 +56,7 @@ export function AddLessonControl({
   }
 
   function cancel() {
+    if (saving) return;
     setOpen(false);
     setName(defaultLessonName(lessonCount));
     onCancel?.();
@@ -52,7 +64,7 @@ export function AddLessonControl({
 
   async function save() {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (saving || !trimmed) return;
     setSaving(true);
     try {
       const lesson = await createLesson(courseId, trimmed);
@@ -79,58 +91,72 @@ export function AddLessonControl({
           );
           setImportingCards(false);
           setOpen(false);
-          notify(`${result.count} cards imported.`, 'positive');
+          notify(`${countOf(result.count, 'card')} imported.`, 'positive');
           onCreated?.(result.lesson!);
         }}
       />
     );
 
-  if (open) {
-    return (
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3">
-        <Field label="Lesson name">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void save();
-              if (e.key === 'Escape') cancel();
-            }}
-            placeholder="e.g. Elasticity"
-            autoFocus
-            disabled={saving}
-            className="disabled:opacity-40"
-          />
-        </Field>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void save()}
-            disabled={saving || !name.trim()}
-          >
-            {saving ? 'Creating…' : 'Create lesson'}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setImportingCards(true)}
-            disabled={saving}
-          >
-            Import cards
-          </Button>
-          <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={startAdd} className="self-start">
-      <PlusIcon width={16} height={16} />
-      Add lesson
-    </Button>
+    <>
+      <div className="contents" inert={!open} aria-hidden={!open || undefined}>
+        <AnimatedDisclosure open={open}>
+          <div
+            onKeyDown={dialogKeyDown({
+              onCancel: cancel,
+              onSubmit: () => void save(),
+              enterSubmits: true,
+            })}
+            className="flex w-full flex-col gap-3 rounded-3xl bg-surface px-4 py-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
+          >
+            <Field label="Lesson name">
+              <Input
+                ref={nameInput}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Elasticity"
+                autoFocus
+                disabled={saving}
+                className="disabled:opacity-40"
+              />
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void save()}
+                disabled={saving || !name.trim()}
+              >
+                {saving ? 'Creating…' : 'Create lesson'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setImportingCards(true)}
+                disabled={saving}
+              >
+                Import cards
+              </Button>
+              <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </AnimatedDisclosure>
+      </div>
+      {/* A caller that supplies onCancel owns the trigger and the collapse. */}
+      {!open && !onCancel && (
+        <Button
+          ref={trigger}
+          variant="secondary"
+          size="sm"
+          onClick={startAdd}
+          className="self-start"
+        >
+          <PlusIcon width={16} height={16} />
+          Add lesson
+        </Button>
+      )}
+    </>
   );
 }

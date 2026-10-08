@@ -1,0 +1,3 @@
+- Every button now has a 44 by 44 pixel minimum, so icon-only buttons such as Rename and Delete in course settings are no longer 40 pixels wide.
+- Small pill toggles (exam objective, card preview side), the section jumper, the Insert image button, the tag box, the New course pill, the Today course names and the course forecast link all reach the 44 pixel target on a phone without changing how they look.
+- A new end-to-end test probes each control's real hit area on several phone pages, so a pseudo-element that widens a target counts and a border that eats into one does not.

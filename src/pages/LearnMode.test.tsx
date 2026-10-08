@@ -75,8 +75,11 @@ async function answerYesAndWaitForExposure(lessonId: string) {
   });
 }
 
+/** Leaves the notes screen; a lesson without notes opens on its first card instead. */
 async function continueFromNotes() {
-  fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+  const next = await screen.findAllByRole('button', { name: /^(continue|show answer)$/i });
+  const notesContinue = next.find((button) => /^continue$/i.test(button.textContent ?? ''));
+  if (notesContinue) fireEvent.click(notesContinue);
 }
 
 function studyFaceText(text: string | RegExp) {
@@ -117,7 +120,10 @@ describe('LearnMode course/lesson scope', () => {
       </ToastProvider></ThemeProvider>,
     );
     expect(await findStudyFaceText('Optional question')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+    // The header names the lesson; Simple Learn's own Yes/No grading shows the mode.
+    expect(screen.getByRole('heading', { name: 'Any time' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
+    expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
   });
 
   it('does not paint a focus ring on the programmatic study container', async () => {
@@ -874,7 +880,7 @@ describe('LearnMode course/lesson scope', () => {
 
     await continueFromNotes();
     expect(await screen.findByRole('button', { name: 'Show study controls' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Exit Focus Mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Leave focus mode' })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -968,7 +974,6 @@ describe('LearnMode course/lesson scope', () => {
       await screen.findByRole('progressbar', { name: 'Session progress' }),
     ).toHaveAttribute('aria-valuenow', '0');
     expect(screen.getByText(`${expected}% predicted readiness`)).toBeInTheDocument();
-    expect(screen.getByText('0% complete')).toBeInTheDocument();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
@@ -1544,7 +1549,7 @@ describe('LearnMode course/lesson scope', () => {
 
       await continueFromNotes();
       fireEvent.click(await screen.findByRole('button', { name: 'Show study controls' }));
-      const exitFocus = await screen.findByRole('button', { name: 'Exit Focus Mode' });
+      const exitFocus = await screen.findByRole('button', { name: 'Leave focus mode' });
       expect(exitFocus).not.toHaveClass('hidden');
 
       fireEvent.click(exitFocus);
@@ -1674,7 +1679,7 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     await findStudyFaceText(/cause$/);
     expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Industrial change' })).toBeInTheDocument();
     const firstServedId = document
       .querySelector('[data-study-card-id]')
       ?.getAttribute('data-study-card-id');

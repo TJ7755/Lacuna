@@ -9,11 +9,10 @@
 // one of the two ever mounts at a time — not two independently-styled,
 // always-mounted elements hidden via separate Tailwind breakpoint classes.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutGroup, m as motion, useMotionValue, useSpring } from 'motion/react';
+import { useCallback, useEffect, useState } from 'react';
+import { LayoutGroup, m as motion } from 'motion/react';
 import { cn } from './cn';
 import { ChevronDownIcon } from './icons';
-import { useIsTouchMode } from '../../state/inputMode';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 // Matches Tailwind's default `xl` breakpoint. Both SectionRail and
@@ -96,17 +95,17 @@ export function SectionRail({
   return (
     <aside
       aria-label="Page sections"
-      className={compact ? 'w-full shrink-0 xl:w-56' : 'w-56 shrink-0'}
+      className={compact ? 'w-full shrink-0 xl:w-[200px]' : 'w-[200px] shrink-0'}
     >
-      <div className="sticky top-24">
+      <div className="sticky top-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-sm"
+          className="relative"
         >
           <LayoutGroup>
-            <nav className="relative flex flex-col gap-1">
+            <nav className="relative flex flex-col gap-0.5">
               {sections.map((section, index) => (
                 <NavItem
                   key={section.id}
@@ -138,64 +137,33 @@ function NavItem({
   index: number;
   motionMultiplier: number;
 }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const bounds = useRef<DOMRect | null>(null);
-  const isTouchMode = useIsTouchMode();
-  const cursorFollowEnabled = motionMultiplier > 0 && !isTouchMode;
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 350, damping: 25 });
-  const springY = useSpring(mouseY, { stiffness: 350, damping: 25 });
-
   return (
     <motion.button
-      ref={ref}
       type="button"
       onClick={onClick}
-      onMouseEnter={() => {
-        if (cursorFollowEnabled && ref.current)
-          bounds.current = ref.current.getBoundingClientRect();
-      }}
-      onMouseMove={(event) => {
-        const rect = bounds.current;
-        if (!cursorFollowEnabled || !rect) return;
-        mouseX.set((event.clientX - (rect.left + rect.width / 2)) * 0.12);
-        mouseY.set((event.clientY - (rect.top + rect.height / 2)) * 0.12);
-      }}
-      onMouseLeave={() => {
-        bounds.current = null;
-        mouseX.set(0);
-        mouseY.set(0);
-      }}
-      style={{ x: cursorFollowEnabled ? springX : 0, y: cursorFollowEnabled ? springY : 0 }}
-      initial={{ opacity: 0, x: 16 }}
+      aria-current={active ? 'true' : undefined}
+      initial={motionMultiplier > 0 ? { opacity: 0, x: -8 } : false}
       animate={{ opacity: 1, x: 0 }}
-      transition={{
-        delay: 0.04 * index * motionMultiplier,
-        duration: 0.35 * motionMultiplier,
-        ease: [0.16, 1, 0.3, 1],
-      }}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
+      transition={{ delay: 0.04 * index * motionMultiplier, duration: 0.35 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      data-press=""
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        'relative flex items-center rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-150',
-        active ? 'text-accent' : 'text-ink-soft hover:text-ink',
+        'relative flex min-h-11 items-center rounded-xl px-3.5 text-left text-[15px] transition-colors duration-150',
+        active ? 'font-bold text-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
       )}
     >
       {active && (
         <motion.div
           layoutId="activePill"
-          className="absolute inset-0 rounded-lg bg-accent/10"
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        >
-          <motion.div
-            layoutId="activeBar"
-            className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          />
-        </motion.div>
+          className="absolute inset-0 rounded-xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.06)]"
+          transition={
+            motionMultiplier > 0
+              ? { type: 'spring', stiffness: 500, damping: 38 }
+              : { duration: 0 }
+          }
+        />
       )}
-      <span className="relative z-10 truncate font-medium">{section.label}</span>
+      <span className="relative z-10 truncate">{section.label}</span>
     </motion.button>
   );
 }
@@ -226,7 +194,7 @@ export function SectionRailMobileJumper({
   return (
     <div
       className={cn(
-        'sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-2 shadow-sm',
+        'sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-0.5 shadow-sm',
         className,
       )}
     >
@@ -235,7 +203,7 @@ export function SectionRailMobileJumper({
         <select
           value={activeSection}
           onChange={(event) => onNavigate(event.target.value)}
-          className="w-full appearance-none rounded-lg bg-transparent py-1.5 pl-2 pr-8 text-sm font-medium text-ink outline-none"
+          className="min-h-11 w-full appearance-none rounded-lg bg-transparent pl-3.5 pr-10 text-sm font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
@@ -244,7 +212,7 @@ export function SectionRailMobileJumper({
           ))}
         </select>
         <ChevronDownIcon
-          className="pointer-events-none absolute right-2 text-ink-faint"
+          className="pointer-events-none absolute right-3.5 text-ink-faint"
           width={16}
           height={16}
         />

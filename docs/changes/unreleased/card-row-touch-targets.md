@@ -1,0 +1,1 @@
+- The flag, edit and delete buttons on a card-list row are now 44 by 44 pixels; they were 32 pixels wide, below the spec's touch-target minimum.

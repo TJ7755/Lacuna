@@ -1,6 +1,7 @@
+import { useLeaveFlow } from '../utils/editorOrigin';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import {
@@ -42,7 +43,6 @@ function identityFor(courseId: string) {
 function CourseStudyFlowInner() {
   const { courseId } = useParams<{ courseId: string }>();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [flowIdentity, setFlowIdentity] = useState<ReturnType<typeof readActiveStudyFlow>>(() =>
     courseId ? identityFor(courseId) : null,
   );
@@ -76,10 +76,12 @@ function CourseStudyFlowInner() {
     setFlowIdentity(identityFor(courseId));
   }, [courseId]);
 
+  // Leaving Study returns to whichever page opened it (see utils/editorOrigin.ts).
+  const leaveFlow = useLeaveFlow(courseId ? `/course/${courseId}` : '/');
   const finishFlow = useCallback(() => {
     clearActiveStudyFlow();
-    void navigate(courseId ? `/course/${courseId}` : '/');
-  }, [courseId, navigate]);
+    leaveFlow();
+  }, [leaveFlow]);
 
   // The URL-seeded step is available on the first paint; the planner's next step
   // is not, because it arrives with `flow`. Derive it here rather than waiting
@@ -356,7 +358,7 @@ function CourseStudyFlowInner() {
         detail={
           flow?.decision.kind === 'empty'
             ? 'Add a lesson before starting this study flow.'
-            : 'There is no lesson or Practice work ready right now.'
+            : 'There is no lesson or practice ready right now.'
         }
         onExit={finishFlow}
       />

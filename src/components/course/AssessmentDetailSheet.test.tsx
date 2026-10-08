@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
 import { AssessmentDetailSheet, assessmentSheetTiming } from './AssessmentDetailSheet';
-import { CheckpointNode } from './CheckpointNode';
 import { MemoryRouter } from 'react-router-dom';
 
 const lesson: Lesson = {
@@ -58,13 +57,6 @@ describe('checkpoint assessment details', () => {
     expect(assessmentSheetTiming(0).sheet.duration).toBe(0);
   });
 
-  it('opens from an interactive checkpoint node', () => {
-    const onClick = vi.fn();
-    render(<CheckpointNode assessment={assessment} onClick={onClick} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Open checkpoint: Paper 1' }));
-    expect(onClick).toHaveBeenCalledOnce();
-  });
-
   it('shows identity, resolved scope, exclusions and exact-assessment revision action', () => {
     const onRevise = vi.fn();
     render(
@@ -83,7 +75,29 @@ describe('checkpoint assessment details', () => {
     expect(screen.getByText('Atoms')).toBeInTheDocument();
     expect(screen.getByText('What is a proton?')).toBeInTheDocument();
     expect(screen.getByText(/1 lesson · 0 cards/)).toBeInTheDocument();
+    expect(screen.queryByText('Scope is valid')).not.toBeInTheDocument();
+    expect(screen.queryByText('Needs author review')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Revise for Paper 1' }));
     expect(onRevise).toHaveBeenCalledOnce();
+  });
+
+  it('folds the kind into the date line and hides an empty exclusions list', () => {
+    render(
+      <MemoryRouter>
+        <AssessmentDetailSheet
+          assessment={{ ...assessment, excludedCardIds: [] }}
+          lessons={[lesson]}
+          cards={[card]}
+          links={[]}
+          onClose={vi.fn()}
+          onRevise={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Paper 1' }).nextElementSibling).toHaveTextContent(
+      /^Checkpoint · /,
+    );
+    expect(screen.queryByText('Exclusions')).not.toBeInTheDocument();
+    expect(screen.queryByText('None')).not.toBeInTheDocument();
   });
 });

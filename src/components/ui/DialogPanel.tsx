@@ -1,4 +1,4 @@
-import { m as motion } from 'motion/react';
+import { m as motion, useIsPresent } from 'motion/react';
 import type { ComponentProps, KeyboardEvent, ReactNode, RefObject } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
@@ -28,7 +28,7 @@ interface DialogPanelProps {
 }
 
 /**
- * A centred modal dialog: a fading overlay with a blurred backdrop and a paper panel
+ * A centred modal dialog: a fading overlay with a blurred backdrop and a card-surface panel
  * that springs into place. Motion follows the user's motion-speed setting.
  */
 export function DialogPanel({
@@ -44,9 +44,12 @@ export function DialogPanel({
 }: DialogPanelProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const present = useIsPresent();
   return (
     <motion.div
       ref={trapRef}
+      inert={!present}
+      aria-hidden={!present || undefined}
       className={cn('fixed inset-0 z-50 flex flex-col', overlayClassName)}
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
@@ -62,17 +65,14 @@ export function DialogPanel({
         initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
-        layout={layout && m > 0 ? 'size' : undefined}
+        layout={layout && m > 0 ? 'position' : undefined}
         transition={scaledSpring(m, 320, 30)}
         className={cn(
-          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20',
+          // Quick search's modal surface: borderless white, lifted by a soft ink shadow.
+          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]',
           className,
         )}
       >
-        <div
-          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
-          aria-hidden="true"
-        />
         {children}
       </motion.div>
     </motion.div>
@@ -99,7 +99,8 @@ export function DialogHeader({ title, description, onClose, closeLabel }: Dialog
         onClick={onClose}
         aria-label={closeLabel}
         title="Close (Esc)"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        data-dialog-close
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
         <CloseIcon width={18} height={18} />
       </button>

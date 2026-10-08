@@ -182,7 +182,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
   return (
     <div className="flex flex-col gap-5">
       {/* Eyebrow heading */}
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">{heading}</p>
+      <p className="text-sm font-medium text-ink-faint">{heading}</p>
 
       {/* Format grid — rounded-2xl cards with soft shadows per SPEC §3.4 */}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -205,7 +205,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
               'disabled:opacity-40 disabled:pointer-events-none',
             )}
           >
-            <div className="mt-0.5 rounded-xl border border-line bg-surface-raised p-2 text-ink-faint transition-all group-hover:border-accent/30 group-hover:bg-accent-soft/30 group-hover:text-accent">
+            <div className="mt-0.5 rounded-2xl bg-ink/[0.04] p-2 text-ink-faint transition-all group-hover:bg-accent-soft/30 group-hover:text-accent">
               {format.icon}
             </div>
             <div className="min-w-0 flex-1">

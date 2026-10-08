@@ -1,10 +1,9 @@
-// Shared course-level tab navigation — Path, Cards, Questions, Analytics,
-// Settings — rendered on all five course surfaces so any section is one
-// click from any other. Active tab is derived from the current route rather
-// than passed in, so it never drifts out of sync with the URL. Styling
-// reuses the segmented-control styling already established by
-// LessonViewModeToggle (rounded-lg border, bg-ink/5 track, active item on
-// bg-surface with a soft shadow).
+// Shared course-level tab navigation — Path, Cards, Questions, Progress, Settings —
+// rendered on every course surface so any section is one click from any
+// other. Active tab is derived from the current route rather than passed in,
+// so it never drifts out of sync with the URL. Styling matches the compact
+// PillToggleGroup used by LessonViewModeToggle beside it (a 44px pill track
+// on bg-ink/[0.06], the active item on bg-surface with a soft shadow).
 
 import { LayoutGroup, m as motion } from 'motion/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -13,7 +12,7 @@ import { prefetchRoute } from '../../routes/prefetch';
 import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
 import { useCourseTabSlider } from './useCourseTabSlider';
-import { COURSE_SECTIONS } from './courseSections';
+import { COURSE_SECTIONS, isCourseSectionCurrent } from './courseSections';
 
 export function CourseTabs({ courseId }: { courseId: string }) {
   const { pathname } = useLocation();
@@ -35,24 +34,20 @@ export function CourseTabs({ courseId }: { courseId: string }) {
       // Hidden below sm, where CourseSectionBar carries these same sections within
       // thumb reach instead. max-w-full with scroll is the last resort at large font
       // scales: the bar slides rather than wrapping its labels inside their tabs.
-      className="hidden h-9 touch-pan-y select-none max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg border border-line bg-ink/5 p-0.5 text-sm sm:inline-flex"
+      className="hidden h-11 touch-pan-y select-none max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-full bg-ink/[0.06] p-1 text-sm sm:inline-flex"
     >
       <LayoutGroup id={`course-tabs-${courseId}`}>
         {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {
           const to = `${base}${suffix}`;
-          // The Path tab (empty suffix) must match exactly so it doesn't stay
-          // "active" while on /cards, /questions, /analytics or /settings (all of which
-          // start with the same base path).
-          const active =
-            suffix === ''
-              ? pathname === to || pathname.startsWith(`${to}/lesson/`)
-              : pathname.startsWith(to);
+          const active = isCourseSectionCurrent(pathname, courseId, suffix);
           return (
             <Link
               key={label}
               to={to}
               draggable={false}
               onDragStart={(event) => event.preventDefault()}
+              // The held indicator is this control's own press feedback.
+              data-press=""
               aria-current={active ? 'page' : undefined}
               // The accessible name stays the full label at every width, so the shortened
               // mobile text is a visual abbreviation rather than a different control.
@@ -78,8 +73,9 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                 void navigate(`${base}${COURSE_SECTIONS[next].suffix}`);
               }}
               className={cn(
-                'relative flex h-full items-center whitespace-nowrap rounded-lg px-3 font-medium transition-colors',
-                active ? 'text-ink' : 'text-ink-faint hover:text-ink',
+                // The pseudo-element lifts the 36px pill to a 44px target, as PillToggleGroup's sm size does.
+                "relative flex h-full items-center whitespace-nowrap rounded-full px-4 font-semibold transition-colors before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']",
+                active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >
               {active && (
@@ -90,7 +86,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                   data-course-tab-indicator=""
                   aria-hidden="true"
                   transition={scaledSpring(multiplier, 320, 28)}
-                  className="absolute inset-0 rounded-lg bg-surface shadow-sm shadow-black/[0.04]"
+                  className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.08)]"
                 />
               )}
               <span className="relative z-10 sm:hidden">{short}</span>

@@ -6,9 +6,14 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+export interface StudySheetOptions {
+  /** False when the opener already offers Other ways beside its Study button. */
+  otherWays?: boolean;
+}
+
 interface StudySheetValue {
   /** Pass a course to open at its options, or nothing to ask which course first. */
-  openStudySheet: (courseId?: string | null) => void;
+  openStudySheet: (courseId?: string | null, options?: StudySheetOptions) => void;
 }
 
 const StudySheetContext = createContext<StudySheetValue | null>(null);
@@ -22,22 +27,32 @@ export function useStudySheet(): StudySheetValue {
 export function useStudySheetState(): {
   open: boolean;
   courseId: string | null;
+  otherWays: boolean;
   close: () => void;
   value: StudySheetValue;
 } {
-  const [state, setState] = useState<{ open: boolean; courseId: string | null }>({
+  const [state, setState] = useState<{
+    open: boolean;
+    courseId: string | null;
+    otherWays: boolean;
+  }>({
     open: false,
     courseId: null,
+    otherWays: true,
   });
 
-  const openStudySheet = useCallback((courseId?: string | null) => {
-    setState({ open: true, courseId: courseId ?? null });
+  const openStudySheet = useCallback((courseId?: string | null, options?: StudySheetOptions) => {
+    setState({ open: true, courseId: courseId ?? null, otherWays: options?.otherWays ?? true });
   }, []);
 
-  const close = useCallback(() => setState({ open: false, courseId: null }), []);
+  // Keeps otherWays as it was, so the closing sheet does not change while it leaves.
+  const close = useCallback(
+    () => setState((prev) => ({ ...prev, open: false, courseId: null })),
+    [],
+  );
   const value = useMemo(() => ({ openStudySheet }), [openStudySheet]);
 
-  return { open: state.open, courseId: state.courseId, close, value };
+  return { open: state.open, courseId: state.courseId, otherWays: state.otherWays, close, value };
 }
 
 export function StudySheetProvider({

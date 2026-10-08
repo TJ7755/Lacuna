@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const workflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/opencode.yml'),
   'utf8',
-);
+).replace(/\r\n/g, '\n');
 
 const condition = workflow.match(/ {4}if: \|\n((?: {6}.+\n)+)/)?.[1].trim() ?? '';
 const permits = new Function('github', 'contains', 'startsWith', `return ${condition};`) as (

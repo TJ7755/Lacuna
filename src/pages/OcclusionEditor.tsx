@@ -8,8 +8,9 @@
 // and the lesson-scoped course/:courseId/lesson/:lessonId/occlusion/new variant.
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEditorKeys } from '../hooks/dialogKeys';
+import { Link, useParams } from 'react-router-dom';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -33,10 +34,10 @@ import {
   updateOcclusion,
   type OcclusionSnapshot,
 } from '../db/occlusionRepository';
-import type { EditorOriginState } from '../utils/editorOrigin';
+import { useReturn } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 export function OcclusionEditor() {
   const { occlusionId, courseId, lessonId } = useParams<{
@@ -45,8 +46,6 @@ export function OcclusionEditor() {
     lessonId?: string;
   }>();
   const lessonMode = Boolean(lessonId);
-  const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -99,9 +98,12 @@ export function OcclusionEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/cards`;
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
 
   // A draft Occlusion built from current form state, purely so the pure generation
   // module (never re-implemented here) can compute the live card-count preview.
@@ -124,6 +126,12 @@ export function OcclusionEditor() {
   );
   const labelCount = regions.filter((r) => r.role === 'label').length;
   const featureCount = regions.length - labelCount;
+  const saveRef = useRef<HTMLButtonElement>(null);
+  const nameId = useId();
+  const editorKeys = useEditorKeys({
+    onCancel: returnTo.goBack,
+    onSubmit: () => void handleSave(),
+  });
 
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
@@ -137,29 +145,38 @@ export function OcclusionEditor() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          Back to Today
         </Link>
       </div>
     );
   }
   if (lessonMode && lesson === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
-          {courseId ? 'Back to course' : 'Back to dashboard'}
+        <Link
+          to={courseId ? `/course/${courseId}` : '/'}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          {courseId ? 'Back to course' : 'Back to Today'}
         </Link>
       </div>
     );
   }
   if (editing && occlusion === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This occlusion could not be found.</p>
-        <Link to={backPath} className="text-accent underline">
+        <Link
+          to={backPath}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
           Back to {backLabel}
         </Link>
       </div>
@@ -244,54 +261,41 @@ export function OcclusionEditor() {
         await createOcclusion(courseId, lessonId ?? null, name, assetHash, regions);
         notify('Occlusion added.', 'positive');
       }
-      void navigate(backPath);
+      returnTo.goBack();
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      {/* Breadcrumb */}
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-          {course?.name}
-        </Link>
-        <ChevronRight />
-        <Link to={backPath} className="transition-colors hover:text-ink">
-          {backLabel}
-        </Link>
-        <ChevronRight />
-        <span className="text-ink-soft">{editing ? 'Edit occlusion' : 'New occlusion'}</span>
-      </nav>
-
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`} {...editorKeys}>
       <div>
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+        <header className="relative mb-8">
           <div className="relative">
             <Link
-              to={backPath}
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+              {...returnTo.linkProps}
+              className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
-              Back
+              Back to {backLabel}
             </Link>
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
               {editing ? 'Edit occlusion' : 'New occlusion'}
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">
-              Mask parts of a diagram to test recall — one card per box, none of it typed by hand.
-            </p>
           </div>
         </header>
 
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Name</div>
+            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-faint">
+              Name
+            </label>
             <input
+              id={nameId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoFocus
               placeholder="e.g. The plant cell"
               className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
@@ -307,6 +311,7 @@ export function OcclusionEditor() {
               onToolChange={setTool}
               onRegionDrawn={addRegion}
               onSelectRegion={setSelectedRegionId}
+              onRegionChanged={updateRegion}
               onFileSelected={handleFileSelected}
               uploading={uploading}
               confirmingReplace={confirmingReplace}
@@ -342,7 +347,7 @@ export function OcclusionEditor() {
               snapshot={() => snapshotOcclusion(occlusion.id)}
               onDelete={() => deleteOcclusion(occlusion.id)}
               onRestore={(snap) => restoreOcclusion(snap as OcclusionSnapshot)}
-              onDeleted={() => navigate(backPath)}
+              onDeleted={returnTo.goBack}
             />
           )}
         </div>
@@ -355,10 +360,15 @@ export function OcclusionEditor() {
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
       >
         <div className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(backPath)}>
+          <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!canSave || saving}>
+          <Button
+            ref={saveRef}
+            variant="primary"
+            onClick={handleSave}
+            disabled={!canSave || saving}
+          >
             {editing ? 'Save changes' : 'Add occlusion'}
           </Button>
         </div>
@@ -369,20 +379,13 @@ export function OcclusionEditor() {
 
 function OcclusionEditorSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <Skeleton className="mb-6 h-4 w-24" />
-      <SectionCard as="div" className="mb-8">
-        <Skeleton className="mb-1 h-3 w-20" />
-        <Skeleton className="h-10 w-48" />
-      </SectionCard>
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
+      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
+      <Skeleton className="mb-8 h-10 w-48" />
       <div className="flex flex-col gap-5">
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
     </div>
   );
-}
-
-function ChevronRight() {
-  return <span className="text-ink-faint/60">/</span>;
 }

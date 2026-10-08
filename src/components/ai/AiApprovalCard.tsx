@@ -25,7 +25,7 @@ export function AiApprovalCard({
       className="mx-4 mb-4 rounded-xl border border-warning/40 bg-warning/10 p-4"
       aria-labelledby="ai-approval-title"
     >
-      <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-warning-fg">
+      <p className="mb-1 text-sm font-medium text-warning-fg">
         Permission required
       </p>
       <h2 id="ai-approval-title" className="font-display text-lg text-ink">

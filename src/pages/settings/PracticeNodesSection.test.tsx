@@ -26,7 +26,7 @@ describe('PracticeNodesSection', () => {
   it('does not link to an empty path editor', () => {
     render(<PracticeNodesSection courseId="course-1" />);
 
-    expect(screen.getByText('No manual practice nodes yet.')).toBeInTheDocument();
+    expect(screen.getByText('No card practice yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit on Path' })).not.toBeInTheDocument();
   });
 

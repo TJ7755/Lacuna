@@ -4,7 +4,12 @@ import type { Grade } from '../../db/types';
 import { Button } from '../../components/ui/Button';
 import { StepSwap } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
+import { cn } from '../../components/ui/cn';
 import type { Phase } from './types';
+
+// Thumb-zone grade buttons: tall, squarer than the pill buttons elsewhere, with the
+// press scale coming from Button itself.
+const GRADE_BUTTON = 'h-16 rounded-[20px] text-[17px]';
 
 export function TouchBottomSheet({
   phase,
@@ -28,7 +33,7 @@ export function TouchBottomSheet({
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed bottom-0 left-0 right-0 z-20 overflow-hidden rounded-t-3xl border-t border-line-strong bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/15"
+      className="fixed bottom-0 left-0 right-0 z-20 overflow-hidden bg-paper pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
     >
       <StepSwap
         stepKey={phase}
@@ -61,9 +66,9 @@ export function TouchBottomSheet({
             {gradingMode === 'manual' ? (
               <div className="grid w-full grid-cols-2 gap-3">
                 <Button
-                  variant="danger"
+                  variant="secondary"
                   size="lg"
-                  className="h-14 w-full"
+                  className={cn(GRADE_BUTTON, 'w-full border-[1.5px] border-ink bg-surface')}
                   onClick={() => {
                     hapticMedium();
                     void onAnswer(1, 'touch');
@@ -75,7 +80,7 @@ export function TouchBottomSheet({
                 <Button
                   variant="secondary"
                   size="lg"
-                  className="h-14 w-full"
+                  className={cn(GRADE_BUTTON, 'w-full')}
                   onClick={() => {
                     hapticLight();
                     void onAnswer(2, 'touch');
@@ -86,7 +91,7 @@ export function TouchBottomSheet({
                 <Button
                   variant="secondary"
                   size="lg"
-                  className="h-14 w-full"
+                  className={cn(GRADE_BUTTON, 'w-full')}
                   onClick={() => {
                     hapticLight();
                     void onAnswer(3, 'touch');
@@ -97,7 +102,7 @@ export function TouchBottomSheet({
                 <Button
                   variant="primary"
                   size="lg"
-                  className="h-14 w-full"
+                  className={cn(GRADE_BUTTON, 'w-full')}
                   onClick={() => {
                     hapticMedium();
                     void onAnswer(4, 'touch');
@@ -110,9 +115,9 @@ export function TouchBottomSheet({
             ) : (
               <div className="flex w-full gap-3">
                 <Button
-                  variant="danger"
+                  variant="secondary"
                   size="lg"
-                  className="h-14 flex-1"
+                  className={cn(GRADE_BUTTON, 'flex-1 border-[1.5px] border-ink bg-surface')}
                   onClick={() => {
                     hapticMedium();
                     void onAnswer(false, 'touch');
@@ -124,7 +129,7 @@ export function TouchBottomSheet({
                 <Button
                   variant="primary"
                   size="lg"
-                  className="h-14 flex-1"
+                  className={cn(GRADE_BUTTON, 'flex-1')}
                   onClick={() => {
                     hapticMedium();
                     void onAnswer(true, 'touch');

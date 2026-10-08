@@ -246,7 +246,7 @@ export function RevisionPlanSetup({
                       .map((window) => (
                         <div
                           key={window.id}
-                          className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+                          className="flex items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 py-3"
                         >
                           <span className="min-w-0 flex-1 text-sm text-ink">
                             {formatPlanDay(window.day)}
@@ -280,7 +280,7 @@ export function RevisionPlanSetup({
           <p className="mt-6 text-sm text-ink-faint">
             {revisionProjection.projectionMode === 'memory-model'
               ? 'Cards are prioritised by predicted assessment-day value when the model supports their history.'
-              : 'The memory model is unavailable. Cards use ordinary Practice ordering.'}
+              : 'The memory model is unavailable. Cards use ordinary practice ordering.'}
           </p>
           {error && <p className="mt-3 text-sm text-negative">{error}</p>}
           <Button variant="primary" size="lg" className="mt-6 w-full" onClick={() => void start()}>
@@ -309,8 +309,7 @@ function PlanShell({
   return (
     <div className="min-h-screen bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
       <main className="mx-auto max-w-xl">
-        <p className="text-sm uppercase tracking-[0.18em] text-ink-faint">Revision plan</p>
-        <h1 className="mt-2 font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
         {children}
         <Button variant="ghost" size="lg" className="mt-4 w-full" onClick={onExit}>
           Back

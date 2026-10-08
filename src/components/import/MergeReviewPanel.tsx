@@ -264,7 +264,7 @@ export function MergeReviewPanel() {
     return (
       <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
         {backLink}
-        <div className="rounded-2xl border border-line bg-surface p-10 text-center">
+        <div className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-10 text-center">
           <p className="text-sm text-ink-soft">This course is up to date. There is nothing to review.</p>
         </div>
       </div>
@@ -348,13 +348,13 @@ export function MergeReviewPanel() {
       )}
 
       {outstanding === 0 && (
-        <div className="rounded-2xl border border-line bg-surface p-10 text-center">
+        <div className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-10 text-center">
           <p className="text-sm text-ink-soft">Everything in this update has been reviewed.</p>
         </div>
       )}
 
       {outstanding > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-30 bg-paper/95 shadow-[0_-8px_24px_-16px_hsl(var(--ink)/0.25)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur">
           <div className="mx-auto flex max-w-3xl items-center justify-end gap-2 px-6 py-3 md:px-10">
             <Button variant="ghost" onClick={() => navigate(backTo)}>
               Review later
@@ -372,7 +372,7 @@ export function MergeReviewPanel() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-xs uppercase tracking-[0.16em] text-ink-faint">{title}</h2>
+      <h2 className="mb-3 text-sm text-ink-faint">{title}</h2>
       <ul className="space-y-2">{children}</ul>
     </section>
   );
@@ -401,11 +401,11 @@ function ReviewRow({
 }) {
   const showPreview = row.beforeLine !== '' || row.afterLine !== '';
   return (
-    <li className="rounded-xl border border-line bg-surface px-4 py-3">
+    <li className="rounded-2xl bg-paper px-4 py-3">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-ink-faint">{KIND_LABEL[row.kind]}</span>
+            <span className="text-sm text-ink-faint">{KIND_LABEL[row.kind]}</span>
             {onToggle && (
               <button
                 type="button"
@@ -435,13 +435,13 @@ function ReviewRow({
           {showPreview && expanded && (
             <div className="mt-2 space-y-3">
               <div>
-                <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-ink-faint">Current</p>
+                <p className="mb-1 text-sm text-ink-faint">Current</p>
                 <div className="text-sm text-ink-soft">
                   <MarkdownView source={row.beforeFull || '—'} />
                 </div>
               </div>
               <div>
-                <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-ink-faint">Incoming</p>
+                <p className="mb-1 text-sm text-ink-faint">Incoming</p>
                 <div className="text-sm text-ink">
                   <MarkdownView source={row.afterFull || '—'} />
                 </div>
@@ -455,7 +455,7 @@ function ReviewRow({
             type="button"
             onClick={primary.onClick}
             className={cn(
-              'min-h-11 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+              'min-h-11 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
               primary.emphasis ? 'text-accent hover:bg-accent/10' : 'text-ink-soft hover:bg-ink/5',
             )}
           >
@@ -465,7 +465,7 @@ function ReviewRow({
             type="button"
             onClick={secondary.onClick}
             className={cn(
-              'min-h-11 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+              'min-h-11 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
               secondary.emphasis ? 'text-accent hover:bg-accent/10' : 'text-ink-soft hover:bg-ink/5',
             )}
           >

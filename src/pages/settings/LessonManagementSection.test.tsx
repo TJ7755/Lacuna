@@ -12,6 +12,7 @@ vi.mock('../../state/useCourseData', () => ({
 const updateLesson = vi.fn().mockResolvedValue(undefined);
 const deleteLesson = vi.fn().mockResolvedValue(undefined);
 const reorderLessons = vi.fn().mockResolvedValue(undefined);
+const notify = vi.fn();
 const createLesson = vi.fn().mockResolvedValue({
   id: 'lesson-new',
   courseId: 'course-1',
@@ -30,7 +31,7 @@ vi.mock('../../db/lessonRepository', () => ({
 }));
 
 vi.mock('../../components/ui/Toast', () => ({
-  useToast: () => ({ notify: vi.fn() }),
+  useToast: () => ({ notify }),
 }));
 
 const lessonOne: Lesson = {
@@ -59,6 +60,7 @@ describe('LessonManagementSection', () => {
     deleteLesson.mockClear();
     reorderLessons.mockClear();
     createLesson.mockClear();
+    notify.mockClear();
   });
 
   it('lists lessons in order', () => {
@@ -71,6 +73,27 @@ describe('LessonManagementSection', () => {
     render(<LessonManagementSection courseId="course-1" />);
     fireEvent.click(screen.getByLabelText('Move Lesson one down'));
     expect(reorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']);
+  });
+
+  it('gives every reorder action a 44px target and visible keyboard focus', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    for (const button of screen.getAllByRole('button', { name: /^Move Lesson/ })) {
+      expect(button).toHaveClass('min-h-11', 'min-w-11');
+      expect(button).toHaveClass('focus-visible:ring-2');
+    }
+    expect(screen.getByRole('button', { name: 'Move Lesson one up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move Lesson two down' })).toBeDisabled();
+  });
+
+  it('names the inline editor and restores focus when Escape cancels it', () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    const trigger = screen.getByRole('button', { name: 'Rename Lesson one' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(trigger).toHaveFocus();
+    expect(updateLesson).not.toHaveBeenCalled();
   });
 
   it('deletes a lesson after confirmation', async () => {
@@ -137,4 +160,35 @@ describe('LessonManagementSection', () => {
       expect(screen.getByRole('button', { name: /add lesson/i })).toBeInTheDocument();
     });
   });
+
+  it.each(['rename', 'reorder', 'delete'] as const)(
+    'reports rejected %s writes and keeps the action retryable',
+    async (action) => {
+      const write =
+        action === 'rename' ? updateLesson : action === 'reorder' ? reorderLessons : deleteLesson;
+      write.mockRejectedValueOnce(new Error('Storage unavailable'));
+      render(<LessonManagementSection courseId="course-1" />);
+      let retry: HTMLElement;
+      if (action === 'rename') {
+        fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+        retry = screen.getByRole('textbox', { name: 'Lesson name' });
+        fireEvent.change(retry, { target: { value: 'Renamed lesson' } });
+        fireEvent.keyDown(retry, { key: 'Enter' });
+      } else if (action === 'reorder') {
+        retry = screen.getByRole('button', { name: 'Move Lesson one down' });
+        fireEvent.click(retry);
+      } else {
+        fireEvent.click(screen.getByRole('button', { name: 'Delete Lesson one' }));
+        retry = screen.getByRole('button', { name: 'Delete lesson' });
+        fireEvent.click(retry);
+      }
+      await vi.waitFor(() =>
+        expect(notify).toHaveBeenCalledWith('Storage unavailable', 'negative'),
+      );
+      expect(retry).toBeInTheDocument();
+      if (action === 'rename') fireEvent.keyDown(retry, { key: 'Enter' });
+      else fireEvent.click(retry);
+      await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(2));
+    },
+  );
 });

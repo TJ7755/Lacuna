@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
         }>;
         drafts: never[];
         legacy: number;
+        attemptsBySet: Map<string, unknown[]>;
         error: string;
       }
     | undefined,
@@ -40,6 +41,17 @@ vi.mock('../questions/questionSetDrafts', () => ({
   saveQuestionSetDraft: vi.fn(),
 }));
 vi.mock('../questions/questionSetRepository', () => ({ listQuestionSets: vi.fn() }));
+const startAttempt = vi.hoisted(() => vi.fn());
+vi.mock('../questions/questionSetAttemptRepository', () => ({
+  startQuestionSetAttempt: startAttempt,
+}));
+vi.mock('../questions/questionSetProgress', () => ({
+  questionSetProgress: (attempts: Array<{ score: number }>) => ({
+    history: attempts.map((attempt) => attempt.score),
+    latest: attempts.at(-1)?.score,
+    lastTriedAt: Date.now() - 3 * 86_400_000,
+  }),
+}));
 
 function Location() {
   const location = useLocation();
@@ -98,6 +110,7 @@ describe('QuestionsPage navigation', () => {
       ],
       drafts: [],
       legacy: 0,
+      attemptsBySet: new Map(),
       error: '',
     };
     renderLibrary();
@@ -149,6 +162,7 @@ describe('QuestionsPage navigation', () => {
       ],
       drafts: [],
       legacy: 0,
+      attemptsBySet: new Map(),
       error: '',
     };
     render(
@@ -168,5 +182,38 @@ describe('QuestionsPage navigation', () => {
 
     expect(await screen.findByRole('searchbox', { name: 'Search sets' })).toHaveValue('');
     expect(screen.getByLabelText('Current location')).toHaveTextContent('/course/course-2/questions');
+  });
+
+  it('scores each set and starts a Practice attempt from the list', async () => {
+    startAttempt.mockResolvedValue({ id: 'attempt-9' });
+    mocks.data = {
+      sets: [
+        { id: 'set-cells', courseId: 'course-1', title: 'Cell structure', lessonIds: [], assessmentIds: [], questions: [] },
+        { id: 'set-new', courseId: 'course-1', title: 'Osmosis', lessonIds: [], assessmentIds: [], questions: [] },
+      ],
+      drafts: [],
+      legacy: 0,
+      attemptsBySet: new Map([['set-cells', [{ score: 48 }, { score: 72 }]]]),
+      error: '',
+    };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions']}>
+        <Location />
+        <Routes>
+          <Route path="/course/:courseId/questions" element={<QuestionsPage />} />
+          <Route path="*" element={null} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('img', { name: 'Latest score 72%. Recent scores: 48%, 72%' })).toBeInTheDocument();
+    expect(screen.getByText(/last tried 3 days ago/)).toBeInTheDocument();
+    expect(screen.getByText(/not tried yet/)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Attempt' })[1]);
+    expect(startAttempt).toHaveBeenCalledWith('set-new', 'practice');
+    await waitFor(() =>
+      expect(screen.getByLabelText('Current location')).toHaveTextContent(
+        '/course/course-1/question-sets/set-new/attempts/attempt-9',
+      ),
+    );
   });
 });

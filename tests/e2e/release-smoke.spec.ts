@@ -1,19 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseScheduledStudy } from './fixtures/lacunaApp';
 
 async function openSeededDashboard(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
 test('first launch reaches the seeded dashboard', async ({ page }) => {
   await openSeededDashboard(page);
   await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
-  const searchButton = page.getByRole('button', { name: 'Quick search', exact: true });
-  await expect(searchButton).toHaveText('Quick search');
-  await expect(searchButton.locator('kbd')).toHaveCount(0);
+  await expect(
+    page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Search content' }),
+  ).toBeVisible();
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByRole('dialog', { name: 'Quick search' })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Search all content' })).toBeFocused();
@@ -27,7 +28,10 @@ test('creates a course with its first lesson', async ({ page }) => {
   await page.locator('label').filter({ hasText: /^Course name$/ }).click();
   await expect(nameInput).toBeFocused();
   await nameInput.fill('Browser smoke course');
-  await page.getByRole('radio', { name: /Steady retention/ }).click();
+  const steady = page.getByRole('radio', { name: /Steady retention/ });
+  await steady.focus();
+  await steady.press('Space');
+  await expect(steady).toBeChecked();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
@@ -36,7 +40,10 @@ test('creates a course with its first lesson', async ({ page }) => {
 test('keeps the New Course calendar visible and focused', async ({ page }) => {
   await openSeededDashboard(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
-  await page.getByRole('radio', { name: /Exam date/ }).click();
+  const examDate = page.getByRole('radio', { name: /Exam date/ });
+  await examDate.focus();
+  await examDate.press('Space');
+  await expect(examDate).toBeChecked();
   await page.getByRole('button', { name: 'Exam date and time' }).click();
 
   const calendar = page.getByRole('dialog', { name: 'Choose date and time' });
@@ -74,12 +81,11 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
   await openSeededDashboard(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
   await page.getByRole('button', { name: 'Core concepts & rendering' }).click();
-  await page.getByRole('button', { name: 'Open lesson', exact: true }).click();
   const navigation = page.getByRole('navigation', { name: 'Course sections' });
   await expect(navigation.getByRole('link', { name: 'Path' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Cards' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Questions' })).toBeVisible();
-  await expect(navigation.getByRole('link', { name: 'Analytics' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Progress' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Settings' })).toBeVisible();
 });
 
@@ -89,10 +95,7 @@ test('starts a real lesson study interaction', async ({ page }) => {
   // Exact, because the dashboard also carries "Study Choose a course" and a per-course
   // "Study <name>" control. Without it, strict mode matches all three.
   await page.getByRole('button', { name: 'Study', exact: true }).click();
-  await page
-    .getByRole('button', { name: /Start:|Continue:/ })
-    .first()
-    .click();
+  await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page
     .getByRole('button', { name: /Show answer/i })
@@ -121,11 +124,9 @@ test('starts a real lesson study interaction', async ({ page }) => {
 
 test('opens an archived course as read-only content', async ({ page }) => {
   await openSeededDashboard(page);
-  const courseCard = page
-    .locator('main')
-    .getByRole('button', { name: /Exam on .* Welcome to Lacuna/ });
+  const courseCard = page.getByRole('button', { name: 'More for Welcome to Lacuna' });
 
-  await courseCard.click({ button: 'right' });
+  await courseCard.click();
   await page.getByRole('menuitem', { name: 'Archive' }).click();
   await page.getByRole('button', { name: 'Archive course' }).click();
 
@@ -143,7 +144,7 @@ test('opens an archived course as read-only content', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Archived courses' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Course sections' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Study', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Author mode' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit mode' })).toHaveCount(0);
 
   const courseId = /#\/course\/([^/?]+)/.exec(page.url())?.[1];
   expect(courseId).toBeTruthy();
@@ -151,14 +152,13 @@ test('opens an archived course as read-only content', async ({ page }) => {
   await archivedLesson.focus();
   await expect(archivedLesson).toBeFocused();
   await archivedLesson.press('Enter');
-  await page.getByRole('button', { name: 'Open lesson', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Core concepts & rendering' })).toBeVisible();
   await expect(page.locator('[data-lesson-workspace-mode="study"]')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Author mode' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit mode' })).toHaveCount(0);
 
   await page.goto(`/#/course/${courseId}/cards`);
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/?$`));
-  await expect(page.getByRole('heading', { name: 'Course' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna' })).toBeVisible();
 });
 
 test('downloads a full backup from recovery settings', async ({ page }) => {

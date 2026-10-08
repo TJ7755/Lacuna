@@ -1,12 +1,19 @@
+import { Skeleton } from '../components/ui/Skeleton';
 // Course Cards — all cards in a course, organised by lesson, with an
-// "Unassigned" bucket for cards not yet assigned to a lesson.
+// "Unassigned" bucket for cards not yet assigned to a lesson. A toolbar searches and
+// filters across every bucket; selecting cards raises the floating bulk bar (CardList).
 // Route: /course/:courseId/cards
 // British English throughout.
 
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import {
+  COURSE_PAGE_FRAME,
+  COURSE_PAGE_HEADER,
+  COURSE_PAGE_TITLE,
+} from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMemo, useRef } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { originFrom } from '../utils/editorOrigin';
 import {
   useCourse,
   useLessons,
@@ -15,27 +22,66 @@ import {
   useSequences,
   useCourseBankBackingDecks,
 } from '../state/useCourseData';
-import { LessonAnswerModeControl } from '../components/cards/AnswerModeControl';
 import { CardList } from '../components/cards/CardList';
 import { courseCardListContext } from '../components/cards/cardListContext';
-import { FadeInView } from '../components/ui/FadeInView';
+import { m as motion } from 'motion/react';
+import { MOTION_EASING } from '../components/ui/motion';
 import { Button } from '../components/ui/Button';
-import { PlusIcon, SearchIcon } from '../components/ui/icons';
+import { MoreIcon, PlusIcon } from '../components/ui/icons';
+import { Menu } from '../components/ui/Menu';
+import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
+import { filterSessionCardPool, type CardFilter } from '../db/search';
+import { arrivalDelay } from './settings/SettingsUi';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
-import { Skeleton } from '../components/ui/Skeleton';
 
-// Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
-// duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
-// user opened it from here, so the back-link should return to Cards
-// rather than the lesson — see src/utils/editorOrigin.ts.
-function cardsOrigin(courseId: string) {
-  return { origin: { path: `/course/${courseId}/cards`, label: 'Cards' } };
+/**
+ * Navigate from Cards so the destination's Back returns here with the same search,
+ * filters and scroll position (see src/utils/editorOrigin.ts). Editing a lesson-owned
+ * card still uses the lesson-scoped route, so without this it would return to the lesson.
+ */
+function useCardsNavigate() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (to: string) => void navigate(to, { state: originFrom(location, 'Cards') });
+}
+
+function readFilters(value: string | null): ReadonlySet<CardFilter> {
+  const known = new Set<string>(CARD_FILTER_CHIPS.map((chip) => chip.value));
+  return new Set((value ?? '').split(',').filter((part): part is CardFilter => known.has(part)));
 }
 
 export function CardsPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const go = useCardsNavigate();
+  // Search and filters live in the URL, so returning from an editor restores them.
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
+  const filters = useMemo(() => readFilters(params.get('f')), [params]);
+  const setSearch = (value: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set('q', value);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
+  const setFilters = (value: ReadonlySet<CardFilter>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value.size) next.set('f', [...value].join(','));
+        else next.delete('f');
+        return next;
+      },
+      { replace: true },
+    );
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
 
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
@@ -49,12 +95,20 @@ export function CardsPage() {
     () => (lessons ?? []).map((lesson) => ({ id: lesson.id, name: lesson.name })),
     [lessons],
   );
-  const { byLesson, unassigned, lessonsWithCards } = useMemo(() => {
+  const filterCounts = useMemo(() => {
+    const counts = {} as Record<CardFilter, number>;
+    for (const chip of CARD_FILTER_CHIPS) {
+      counts[chip.value] = filterSessionCardPool(cards ?? [], { filters: [chip.value] }).length;
+    }
+    return counts;
+  }, [cards]);
+  const { byLesson, unassigned, lessonsWithCards, shownCount } = useMemo(() => {
     const availableLessons = lessons ?? [];
-    const availableCards = cards ?? [];
+    const availableCards = filterSessionCardPool(cards ?? [], { filters: [...filters] });
     const lessonIdSet = new Set(availableLessons.map((lesson) => lesson.id));
     const byLesson = new Map<string, Card[]>();
     const unassigned: Card[] = [];
+    let shownCount = 0;
     for (const card of availableCards) {
       if (
         query &&
@@ -63,6 +117,7 @@ export function CardsPage() {
       ) {
         continue;
       }
+      shownCount += 1;
       if (card.primaryLessonId && lessonIdSet.has(card.primaryLessonId)) {
         const bucket = byLesson.get(card.primaryLessonId) ?? [];
         bucket.push(card);
@@ -74,11 +129,17 @@ export function CardsPage() {
     return {
       byLesson,
       unassigned,
+      shownCount,
       lessonsWithCards: availableLessons.filter(
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, query]);
+  }, [cards, lessons, query, filters]);
+
+  usePageShortcuts({
+    '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,
+    n: courseId && course ? () => go(`/course/${courseId}/cards/new`) : undefined,
+  });
 
   if (
     course === undefined ||
@@ -98,7 +159,7 @@ export function CardsPage() {
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
         <Link to="/" className="text-accent underline">
-          Back to dashboard
+          Back to Today
         </Link>
       </div>
     );
@@ -106,70 +167,94 @@ export function CardsPage() {
 
   const isEmpty = cards.length === 0;
   const noMatches = !isEmpty && lessonsWithCards.length === 0 && unassigned.length === 0;
+  const hasCriteria = query !== '' || filters.size > 0;
+
+  function toggleFilter(filter: CardFilter) {
+    const next = new Set(filters);
+    if (next.has(filter)) next.delete(filter);
+    else next.add(filter);
+    setFilters(next);
+  }
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      {/* Header */}
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
-        <div>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Cards</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            {cards.length} card{cards.length === 1 ? '' : 's'} across {course.name}
-          </p>
-        </div>
-        <div
-          role="group"
-          aria-label="Add content"
-          className="flex flex-wrap items-center justify-end gap-2"
-        >
-          <span className="w-full text-right text-xs font-medium text-ink-faint">Add content</span>
-          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
-            <PlusIcon width={18} height={18} />
-            New sequence
-          </Button>
-          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
-            <PlusIcon width={18} height={18} />
-            New occlusion
-          </Button>
-          <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
+    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
+      <header className={COURSE_PAGE_HEADER}>
+        <h1 className={COURSE_PAGE_TITLE}>Cards</h1>
+        <div role="group" aria-label="Add content" className="flex flex-wrap items-center gap-2">
+          <Menu
+            label="More ways to add"
+            triggerWidth={44}
+            items={[
+              {
+                label: 'New sequence',
+                icon: <PlusIcon width={16} height={16} />,
+                onSelect: () => go(`/course/${courseId}/sequence/new`),
+              },
+              {
+                label: 'New occlusion',
+                icon: <PlusIcon width={16} height={16} />,
+                onSelect: () => go(`/course/${courseId}/occlusion/new`),
+              },
+            ]}
+          >
+            <MoreIcon width={18} height={18} />
+          </Menu>
+          <Button variant="primary" onClick={() => go(`/course/${courseId}/cards/new`)}>
             <PlusIcon width={18} height={18} />
             New card
           </Button>
         </div>
       </header>
 
-      {/* Search */}
       {!isEmpty && (
-        <div className="relative mb-8">
-          <SearchIcon
-            width={16}
-            height={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-          />
-          <input
-            type="search"
-            aria-label="Search all cards"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search all cards…"
-            className="w-full rounded-xl border border-line-strong bg-surface py-2.5 pl-10 pr-4 text-ink outline-none focus:border-accent"
+        <div className="mb-6">
+          <CardsToolbar
+            search={search}
+            searchRef={searchRef}
+            onSearch={setSearch}
+            filters={filters}
+            onToggleFilter={toggleFilter}
+            counts={filterCounts}
+            shown={shownCount}
           />
         </div>
       )}
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="text-sm text-ink-soft">This course has no cards yet.</p>
-          <p className="mt-2 text-xs text-ink-faint">Choose a content type above to begin.</p>
+        <div className={`${BUCKET_CLASS} py-16 text-center`}>
+          <p className="text-ink-soft">This course has no cards yet.</p>
         </div>
       ) : noMatches ? (
-        <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="text-sm text-ink-soft">No cards match &ldquo;{search}&rdquo;.</p>
+        <div className={`${BUCKET_CLASS} py-16 text-center`}>
+          <p className="text-ink-soft">
+            {search.trim() ? <>No cards match &ldquo;{search}&rdquo;.</> : 'No cards match.'}
+          </p>
+          {hasCriteria && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setFilters(new Set());
+              }}
+              className="mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            >
+              Clear search and filters
+            </button>
+          )}
         </div>
       ) : (
-        <div className="flex flex-col gap-10">
+        <div className={`${BUCKET_CLASS} flex flex-col`}>
           {lessonsWithCards.map((lesson, index) => (
-            <FadeInView key={lesson.id} delay={index * 0.04} y={12}>
+            <motion.div
+              key={lesson.id}
+              initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.45 * multiplier,
+                delay: arrivalDelay(index, multiplier),
+                ease: MOTION_EASING.emphasised,
+              }}
+            >
               <LessonBucket
                 courseId={courseId!}
                 lesson={lesson}
@@ -179,10 +264,18 @@ export function CardsPage() {
                 sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
                 occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
               />
-            </FadeInView>
+            </motion.div>
           ))}
           {unassigned.length > 0 && (
-            <FadeInView delay={lessonsWithCards.length * 0.04} y={12}>
+            <motion.div
+              initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.45 * multiplier,
+                delay: arrivalDelay(lessonsWithCards.length, multiplier),
+                ease: MOTION_EASING.emphasised,
+              }}
+            >
               <UnassignedBucket
                 courseId={courseId!}
                 courseName={course.name}
@@ -192,13 +285,20 @@ export function CardsPage() {
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
                 occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
               />
-            </FadeInView>
+            </motion.div>
           )}
         </div>
       )}
     </div>
   );
 }
+
+/** The course's cards share one borderless surface; lessons are divided within it. */
+const BUCKET_CLASS =
+  'rounded-3xl bg-surface p-4 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-5';
+
+/** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
+const LESSON_SECTION_CLASS = 'pt-2 [div+div>&]:mt-3 [div+div>&]:border-t [div+div>&]:border-line [div+div>&]:pt-5';
 
 interface AssignableLesson {
   id: string;
@@ -222,23 +322,25 @@ function LessonBucket({
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
-  const navigate = useNavigate();
+  const go = useCardsNavigate();
+  const heading = (
+    <div className="flex min-w-0 flex-1 items-center gap-1 px-1 max-sm:basis-full max-sm:justify-between">
+      <h2 className="min-w-0 font-display text-xl font-semibold tracking-tight">
+        {lesson.name} <span className="font-normal text-ink-faint">({cards.length})</span>
+      </h2>
+      <Link
+        to={`/course/${courseId}/lesson/${lesson.id}`}
+        className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+      >
+        Open lesson
+      </Link>
+    </div>
+  );
   return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-xl">
-          {lesson.name} <span className="text-ink-faint">({cards.length})</span>
-        </h2>
-        <Link
-          to={`/course/${courseId}/lesson/${lesson.id}`}
-          className="text-sm text-ink-faint transition-colors hover:text-ink"
-        >
-          Open lesson
-        </Link>
-      </div>
-      <LessonAnswerModeControl courseId={courseId} lessonId={lesson.id} />
-      {deck && (
+    <section className={LESSON_SECTION_CLASS}>
+      {deck ? (
         <CardList
+          heading={heading}
           cards={cards}
           context={courseCardListContext({
             schedulingConfig: deck,
@@ -247,37 +349,17 @@ function LessonBucket({
             importTargetName: lesson.name,
           })}
           hideHeader
+          stickyHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
-          onEditCard={(card) =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`, {
-              state: cardsOrigin(courseId),
-            })
-          }
-          onNewCard={() =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/new`, {
-              state: cardsOrigin(courseId),
-            })
-          }
-          onNewSequence={() =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/sequence/new`, {
-              state: cardsOrigin(courseId),
-            })
-          }
-          onNewOcclusion={() =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/occlusion/new`, {
-              state: cardsOrigin(courseId),
-            })
-          }
+          onEditCard={(card) => go(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)}
           sequences={sequences}
-          onEditSequence={(sequenceId) =>
-            navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)
-          }
+          onEditSequence={(sequenceId) => go(`/course/${courseId}/sequence/${sequenceId}/edit`)}
           occlusions={occlusions}
-          onEditOcclusion={(occlusionId) =>
-            navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)
-          }
+          onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
+      ) : (
+        <div className="mb-3">{heading}</div>
       )}
     </section>
   );
@@ -300,16 +382,17 @@ function UnassignedBucket({
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
-  const navigate = useNavigate();
+  const go = useCardsNavigate();
+  const heading = (
+    <h2 className="px-1 font-display text-xl font-semibold tracking-tight">
+      Unassigned <span className="font-normal text-ink-faint">({cards.length})</span>
+    </h2>
+  );
   return (
-    <section>
-      <div className="mb-4">
-        <h2 className="font-display text-xl">
-          Unassigned <span className="text-ink-faint">({cards.length})</span>
-        </h2>
-      </div>
-      {deck && (
+    <section className={LESSON_SECTION_CLASS}>
+      {deck ? (
         <CardList
+          heading={heading}
           cards={cards}
           context={courseCardListContext({
             schedulingConfig: deck,
@@ -318,21 +401,17 @@ function UnassignedBucket({
             importTargetName: courseName,
           })}
           hideHeader
+          stickyHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
-          onNewCard={() => navigate(`/course/${courseId}/cards/new`)}
-          onNewSequence={() => navigate(`/course/${courseId}/sequence/new`)}
-          onNewOcclusion={() => navigate(`/course/${courseId}/occlusion/new`)}
-          onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
+          onEditCard={(card) => go(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
-          onEditSequence={(sequenceId) =>
-            navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)
-          }
+          onEditSequence={(sequenceId) => go(`/course/${courseId}/sequence/${sequenceId}/edit`)}
           occlusions={occlusions}
-          onEditOcclusion={(occlusionId) =>
-            navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)
-          }
+          onEditOcclusion={(occlusionId) => go(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
+      ) : (
+        <div className="mb-3">{heading}</div>
       )}
     </section>
   );
@@ -340,16 +419,15 @@ function UnassignedBucket({
 
 function CardsPageSkeleton() {
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <Skeleton className="mb-6 h-4 w-24" />
-      <div className="mb-8 flex items-center justify-between">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-40 rounded-lg" />
+    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
+      <div className="mb-6 mt-6 flex items-center justify-between md:mt-8">
+        <Skeleton className="h-10 w-40 rounded-full bg-ink/10" />
+        <Skeleton className="h-11 w-40 rounded-full bg-ink/10" />
       </div>
-      <Skeleton className="mb-8 h-10 w-full rounded-xl" />
-      <div className="space-y-3">
+      <Skeleton className="mb-6 h-12 w-full max-w-sm rounded-full bg-ink/10" />
+      <div className="space-y-2 rounded-3xl bg-surface p-5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
+          <Skeleton key={i} className="h-14 rounded-2xl bg-ink/5" />
         ))}
       </div>
     </div>

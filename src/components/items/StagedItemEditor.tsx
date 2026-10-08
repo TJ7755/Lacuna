@@ -214,7 +214,7 @@ function FixtureEditor({
       ) : (
         <div className="mt-4 space-y-3">
           {fixtures.map((fixture, index) => (
-            <div key={fixture.id} className="rounded-xl border border-line bg-surface-raised p-4">
+            <div key={fixture.id} className="rounded-2xl bg-ink/[0.04] p-4">
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem]">
                 <label className="flex flex-col gap-2 text-sm text-ink-soft">
                   Sample answer {index + 1}

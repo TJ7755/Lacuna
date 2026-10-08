@@ -6,16 +6,16 @@ for (const width of [768, 1024, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     await enterFreshLacuna(page);
     await page.goto('/#/analytics');
-    await expect(page.getByRole('heading', { name: 'Forecast' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Workload ahead' })).toBeVisible();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '150%';
     });
     const forecast = page
       .locator('section')
-      .filter({ has: page.getByRole('heading', { name: 'Forecast', exact: true }) });
+      .filter({ has: page.getByRole('heading', { name: 'Workload ahead', exact: true }) });
     await forecast.getByText('View data', { exact: true }).focus();
     await page.keyboard.press('Enter');
-    const table = page.getByRole('table', { name: 'Forecast', exact: true });
+    const table = page.getByRole('table', { name: 'Workload ahead', exact: true });
     await expect(table).toBeVisible();
     await expect(table.getByRole('columnheader', { name: 'Due cards', exact: true })).toBeVisible();
     expect(
@@ -57,13 +57,14 @@ for (const width of [768, 1024]) {
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await enterFreshLacuna(page);
-    await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
-    await page.getByRole('button', { name: 'Author mode', exact: true }).click();
+    await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '150%';
     });
     const navigation = page.getByRole('navigation', { name: 'Course sections' });
-    for (const name of ['Cards', 'Questions', 'Analytics', 'Settings', 'Path']) {
+    for (const name of ['Cards', 'Questions', 'Settings', 'Path']) {
       await navigation.getByRole('link', { name, exact: true }).click();
       await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute(
         'aria-current',
@@ -89,16 +90,15 @@ for (const width of [768, 1024]) {
 test('mouse lesson dragging carries the lesson and moves its neighbour aside', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1200 });
   await enterFreshLacuna(page);
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
-  await page.getByRole('button', { name: 'Author mode', exact: true }).click();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   const lessons = page.locator('[aria-roledescription="sortable lesson"]');
   const first = lessons.nth(0);
   await first.scrollIntoViewIfNeeded();
   const firstName = await first.getAttribute('aria-label');
   const start = await first.boundingBox();
   const neighbour = await lessons.nth(1).boundingBox();
-  const label = first.locator('..').locator('.course-node-label');
-  const labelStart = await label.boundingBox();
   if (!start || !neighbour || !firstName) throw new Error('Lesson bounds missing');
   const x = start.x + start.width / 2;
   const y = start.y + start.height / 2;
@@ -112,9 +112,8 @@ test('mouse lesson dragging carries the lesson and moves its neighbour aside', a
   await expect
     .poll(async () => (await lessons.nth(1).boundingBox())!.y)
     .toBeLessThan(neighbour.y);
-  const labelHeld = await label.boundingBox();
-  expect(labelHeld!.x - labelStart!.x).toBeCloseTo(held!.x - start.x, 0);
-  expect(labelHeld!.y - labelStart!.y).toBeCloseTo(held!.y - start.y, 0);
+  // The lesson's name sits inside the row, so it travels with it.
+  await expect(first).toContainText(firstName.split(',')[0]);
   await page.mouse.up();
   await expect(lessons.nth(1)).toHaveAttribute('aria-label', firstName);
 });
@@ -164,7 +163,7 @@ test('populated analytics and rapid course navigation remain accessible', async 
     (window as unknown as { __lacunaLag: { reset(): void } }).__lacunaLag.reset();
   });
   for (let round = 0; round < 3; round++) {
-    for (const name of ['Cards', 'Questions', 'Settings', 'Analytics', 'Path']) {
+    for (const name of ['Cards', 'Questions', 'Settings', 'Path']) {
       await navigation.getByRole('link', { name, exact: true }).click();
       await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute(
         'aria-current',

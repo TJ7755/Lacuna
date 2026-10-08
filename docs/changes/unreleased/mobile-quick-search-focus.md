@@ -1,0 +1,1 @@
+- Make the quick-search keyboard shortcut replace the mobile navigation drawer and restore focus to its opener after closing.

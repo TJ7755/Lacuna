@@ -48,17 +48,22 @@ or choosing a file selects its import path automatically. The welcome import lin
 opens the same screen. Each selected import path uses the editors’ muted left-chevron Back control above
 the title. Its navigation row stays reserved on the chooser so the heading and content
 do not shift when moving between import paths. New course remains focused on creating an empty course.
+Source changes use the shared step crossfade. Back and an empty-form Escape return
+keyboard focus to the source that opened the form; motion honours the user's speed
+and reduced-motion setting.
+The initial paste or package step uses the full card width; destination choices
+and the preview share a two-column layout only when reviewing the import.
 
 The screen reuses the card import dialogue's input and review components inline.
-After reviewing content, choose a new course with an explicit study target, a new
+After reviewing content, choose a new course (Steady retention unless Exam date is chosen), a new
 lesson in an existing active course, or an existing lesson. Undo retains the content
 and destination settings. Confirmation imports through the existing atomic writer
 and opens the destination. Anki scheduling and media are preserved.
 
-Lacuna files and codes reuse the Share page's shared-course importer, including
+Lacuna files and codes use the shared-course importer (`SharedCourseImport`), including
 preview, media validation, QR scanning and published-course update matching. A
-successful import opens its course. The Share page retains the same component for
-existing entry points; backup restoration remains separate.
+successful import opens its course. The share-link route uses the same component;
+the Share page only sends. Backup restoration remains separate.
 
 ### Card import dialogue (`src/components/import/CardImportDialog.tsx`)
 
@@ -90,7 +95,7 @@ drag and drop, automatic format detection and a manual format override.
   persistence transaction, then scheduling/history and card records commit together.
   Failures preserve the draft for correction/retry. Closing and duplicate submissions
   are blocked during a write. Success closes the dialogue and confirms the card count.
-- Share codes use **Import → Lacuna course** or the Share page, preserving
+- Share codes use **Import → Lacuna course**, preserving
   lineage/update routing; full backup restoration remains a separate operation.
 
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
@@ -208,6 +213,23 @@ missing media and media whose SHA-256 hash does not match its bytes are rejected
 and course content commit together; a failed import leaves neither partial content nor
 new orphaned assets. Export refuses missing media instead of producing an incomplete file.
 
+### The Share page (`SharePage`, `src/components/share/`, `/share`)
+
+The page sends one course. It opens on the requested course (`?courseId=`), else
+one already being shared, else the first active course; a menu beside the title
+switches course when there is more than one. The share link is the default and
+the one primary action, because it carries media and updates in place. A course
+file, share code, QR code and plain text sit under **Other ways**, one open at a
+time; outputs survive switching between them and clear for another course. When
+a link's uploaded revision is behind the course, **Send revision n** becomes the
+primary action. Receiving lives on **Import → Lacuna course**.
+
+This applies the choice-architecture principles of structuring complex choices and
+providing feedback: one recommended route stays prominent, alternatives remain
+available, and results and revision status explain what an action produced. These
+are design principles, rather than a claim that this particular interface has been
+experimentally validated. See [Thaler, Sunstein and Balz, Choice Architecture](https://dl1.cuni.cz/pluginfile.php/958113/mod_resource/content/0/06%20Thaler%2C%20Sunstein%2C%20Balz%20%282012%29%20Choice%20Architecture.pdf).
+
 ### Share links (`relay/src/shares.ts`, `src/shareLinks/`, `/s/:code`)
 
 A hosted variant of the course file for classroom distribution. The teacher
@@ -286,7 +308,8 @@ never one person's scheduling progress or review history.
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
   not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
   for the recipient, and the study face falls back to each card's plain-text content. The
-  Share page names affected cards and directs users to **Save course file** to include media.
+  Share page's code, QR and text options name affected cards and point to a course file or the
+  share link to include media.
   This limitation applies to text/QR codes; course files and full backups carry the assets.
 - **What it omits:** personal FSRS memory state, Card review history, Question Attempts and Question
   scheduling state, plus suspended/buried/flag state on Cards.
@@ -431,7 +454,7 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   "no lineage, treat as new" fallback a pre-v18 course already takes on import.
 - **Review panel (`MergeReviewPanel`, `src/components/import/MergeReviewPanel.tsx`)** — a
   course-scoped `/course/:courseId/updates` route reached from a quiet accent **"Update
-  available"** badge on the dashboard course card (`CourseCard.tsx`) and a **"Review
+  available"** badge on the course's row on Today (`TodayQueue.tsx`) and a **"Review
   updates"** entry point in the `CoursePath` header, both shown iff a `pendingMergeReviews`
   row exists for the course. Renders three sections — Updates, Removals, Conflicts — each
   row offering the accept/reject action pair, plus a bottom bar with a bulk **Accept all**.

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { useToast } from '../../components/ui/Toast';
+import { SettingsCard } from './SettingsUi';
 
 export interface DangerZoneSectionProps {
   /** Singular label for the entity being deleted, e.g. "deck" or "course". */
@@ -60,8 +61,8 @@ export function DangerZoneSection({
   }
 
   return (
-    <section className="rounded-2xl border border-negative/30 bg-negative/5 p-6 shadow-sm shadow-negative/10">
-      <div className="mb-1 text-sm font-medium text-negative">Danger zone</div>
+    <SettingsCard>
+      <div className="mb-1 font-semibold text-negative">Danger zone</div>
       <p className="mb-4 text-sm text-ink-soft">{description}</p>
       {confirming ? (
         <ConfirmInline
@@ -75,6 +76,6 @@ export function DangerZoneSection({
           Delete {entityLabel}
         </Button>
       )}
-    </section>
+    </SettingsCard>
   );
 }

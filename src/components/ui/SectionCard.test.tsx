@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SectionCard } from './SectionCard';
 
 describe('SectionCard', () => {
-  it('renders a bordered surface section with the standard padding', () => {
+  it('renders a borderless surface section with the standard padding', () => {
     render(
       <SectionCard aria-label="Appearance" className="mb-8">
         Content
@@ -12,7 +12,9 @@ describe('SectionCard', () => {
     );
     const card = screen.getByRole('region', { name: 'Appearance' });
     expect(card.tagName).toBe('SECTION');
-    expect(card).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface', 'p-6', 'mb-8');
+    expect(card).toHaveClass('rounded-3xl', 'bg-surface', 'p-6', 'mb-8');
+    expect(card).not.toHaveClass('border');
+    expect(card.className).toContain('shadow-[');
     expect(card).toHaveTextContent('Content');
   });
 

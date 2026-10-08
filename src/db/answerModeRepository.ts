@@ -13,7 +13,7 @@ export async function setAuthoredAnswerMode(
   await db.transaction('rw', [db.courses, db.lessons, db.cards], async () => {
     const course = await db.courses.get(courseId);
     if (!course || course.archived || !isLessonAuthoringMode(course)) {
-      throw new Error('Switch to Author mode to change how cards are answered.');
+      throw new Error('Switch to Edit mode to change how cards are answered.');
     }
     if (answerMode !== undefined && answerMode !== 'reveal' && answerMode !== 'type') {
       throw new Error('Choose Reveal or Type.');

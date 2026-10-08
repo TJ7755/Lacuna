@@ -1,3 +1,5 @@
+import { SectionCard } from '../ui/SectionCard';
+import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
@@ -29,8 +31,6 @@ import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
 import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
 import { formatDate } from '../../utils/datetime';
-import { Skeleton } from '../ui/Skeleton';
-import { SectionCard } from '../ui/SectionCard';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -115,12 +115,10 @@ function describeMergeResult(result: MergeLineageResult): string {
 }
 
 export function SharedCourseImport({
-  importIntent = false,
   initialFile,
   onImported,
   onBusyChange,
 }: {
-  importIntent?: boolean;
   initialFile?: File;
   onImported?: (courseId: string) => void;
   onBusyChange?: (busy: boolean) => void;
@@ -130,8 +128,6 @@ export function SharedCourseImport({
   const [pending, setPending] = useState<PendingShareImport | null>(null);
   const inspectionGeneration = useRef(0);
   const [importing, setImporting] = useState(false);
-  const importSectionRef = useRef<HTMLElement>(null);
-  const importInputRef = useRef<HTMLTextAreaElement>(null);
   const [motionSpeed] = useMotionSpeed();
 
   const {
@@ -161,21 +157,6 @@ export function SharedCourseImport({
   });
 
   const m = speedMultiplier(motionSpeed);
-
-  // Welcome links carry an explicit import intent because the Share page opens
-  // with export controls. Move the existing import job into view and put the
-  // keyboard at its first actionable field once the lazy route has mounted.
-  useEffect(() => {
-    if (!importIntent) return;
-    const id = window.requestAnimationFrame(() => {
-      importSectionRef.current?.scrollIntoView({
-        behavior: m > 0 ? 'smooth' : 'auto',
-        block: 'start',
-      });
-      importInputRef.current?.focus({ preventScroll: true });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [importIntent, m]);
 
   useEffect(() => {
     if (!initialFile) return;
@@ -271,16 +252,21 @@ export function SharedCourseImport({
   }
 
   return (
-    <SectionCard ref={importSectionRef}>
-      <div className="mb-1 flex items-center gap-2">
+    <SectionCard
+      className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6"
+      onKeyDown={(event) => {
+        // Ctrl/Cmd+Enter does the next step: import once a course is read, otherwise read the code.
+        if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || event.defaultPrevented)
+          return;
+        event.preventDefault();
+        if (pending) void handleImport();
+        else if (input.trim() && !importing) void handleInspect();
+      }}
+    >
+      <div className="mb-5 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent" />
         <h2 className="font-display text-xl">Import a shared course</h2>
       </div>
-      <p className="mb-5 text-sm text-ink-soft">
-        Choose a course file, or paste a share link or code, then review it before
-        importing. Published course updates are matched to your existing copy.
-        All Lacuna share-code encodings (LAC0–LAC3) are supported.
-      </p>
 
       <CourseFileImportButton
         disabled={importing}
@@ -291,17 +277,17 @@ export function SharedCourseImport({
         }}
       />
 
-      <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
+      <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
         <textarea
-          ref={importInputRef}
           aria-label="Share link or code to import"
+          autoFocus
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
             beginInspection();
           }}
           rows={4}
-          placeholder="Paste a share link or code here (codes start with LAC)..."
+          placeholder="Paste a share link or code"
           className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
         />
       </div>
@@ -335,9 +321,9 @@ export function SharedCourseImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-5"
           >
-            <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
+            <div className="rounded-2xl bg-paper p-4">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                <span className="text-sm font-semibold text-ink-soft">
                   QR scanner
                 </span>
                 <Button
@@ -354,12 +340,9 @@ export function SharedCourseImport({
                 ref={scannerRef}
                 className="relative mx-auto aspect-square max-w-sm overflow-hidden rounded-lg bg-black"
               >
-                {!scanError && <Skeleton className="absolute inset-0" />}
+                {!scanError && <Skeleton className="absolute inset-0 bg-ink/10" />}
               </div>
               {scanError && <p className="mt-2 text-sm text-negative">{scanError}</p>}
-              <p className="mt-2 text-xs text-ink-faint">
-                Point your camera at a Lacuna QR code. The scanner will auto-detect it.
-              </p>
             </div>
           </motion.div>
         )}
@@ -374,7 +357,7 @@ export function SharedCourseImport({
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="mt-5"
           >
-            <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">
+            <div className="rounded-2xl bg-accent-soft/50 p-5">
               <h3 className="mb-2 font-display text-lg">
                 {pending.merge ? 'Course update' : 'Ready to import'}
               </h3>
@@ -421,7 +404,7 @@ export function SharedCourseImport({
                   {pending.summary.deckNames.map((name, i) => (
                     <li
                       key={`${name}-${i}`}
-                      className="rounded-lg border border-line bg-surface px-3 py-1 text-xs text-ink-soft"
+                      className="rounded-full bg-ink/[0.06] px-3 py-1 text-xs text-ink-soft"
                     >
                       {name}
                     </li>
@@ -429,7 +412,7 @@ export function SharedCourseImport({
                 </ul>
               )}
               {!pending.merge && pending.summary.omittedImages && (
-                <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft">
+                <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
                   This share code omitted media to keep the code small. Images and audio will appear
                   as placeholders after import. Use a full backup for an exact transfer.
                 </p>

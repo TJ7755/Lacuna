@@ -114,11 +114,32 @@ vi.mock('../state/useSearchData', () => ({
 }));
 
 describe('SearchPage', () => {
+  it('names the search field and avoids repeating its heading and typing instructions', () => {
+    render(<SearchPage />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('textbox', { name: 'Search content' })).toHaveFocus();
+    expect(screen.queryByRole('heading', { name: 'Search everything' })).not.toBeInTheDocument();
+  });
+
+  it('returns focus to the search field after clearing the filters', () => {
+    render(<SearchPage />, { wrapper: MemoryRouter });
+    fireEvent.click(screen.getByRole('button', { name: 'Due now' }));
+    const clear = screen.getByRole('button', { name: 'Clear' });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(screen.getByRole('textbox')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Due now' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
   it('identifies the full page as content search without advertising the quick-search shortcut', () => {
     render(<SearchPage />, { wrapper: MemoryRouter });
 
     expect(screen.getByRole('heading', { name: 'Search content' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Search content' }).closest('header')).not.toHaveClass('bg-surface');
+    expect(
+      screen.getByRole('heading', { name: 'Search content' }).closest('header'),
+    ).not.toHaveClass('bg-surface');
     expect(screen.queryByText('Library')).not.toBeInTheDocument();
     expect(screen.queryByText('Ctrl/Cmd+K')).not.toBeInTheDocument();
   });

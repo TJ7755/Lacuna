@@ -10,8 +10,31 @@
   font-display: swap;
 }
 
+/* The app's own faces, bundled so they work offline: Bricolage Grotesque for
+   display type and Atkinson Hyperlegible Next for reading. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('/fonts/BricolageGrotesque-Variable.ttf') format('truetype');
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('/fonts/AtkinsonHyperlegibleNext-Variable.ttf') format('truetype');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Short windows driven by a mouse or trackpad: navigation tightens so the whole
+   sidebar fits without scrolling. Touch screens keep full-size targets. */
+@custom-variant short (@media (max-height: 760px) and (pointer: fine));
 
 /* Native keyboard handling and top-layer placement, with Lacuna's colours.
    Browsers without customisable selects retain their platform picker. */
@@ -60,40 +83,47 @@
 }
 
 /*
- * "Quiet laboratory" palette. Light = warm off-white paper; dark = near-black charcoal.
- * A single warm amber accent carries every interactive and success state.
+ * Light = warm stone paper with white surfaces and navy ink; dark = deep blue-black.
+ * `--chrome` is the slightly darker ground behind the sidebar.
+ * A single warm amber accent carries every interactive and success state by default.
  * Defined as raw custom properties so they can switch with the `.dark` class, then
  * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
  */
 :root {
-  --paper: 38 33% 96%;
-  --surface: 40 30% 99%;
+  /* Native controls (scrollbars, select menus) and SVG images' prefers-color-scheme follow
+     the app's theme rather than the system's, which can differ when the theme is chosen. */
+  color-scheme: light;
+  --paper: 50 21% 95%;
+  --surface: 0 0% 100%;
   --surface-raised: 0 0% 100%;
-  --ink: 30 12% 14%;
-  --ink-soft: 30 8% 38%;
-  --ink-faint: 30 6% 42%;
-  --line: 34 14% 86%;
-  --line-strong: 34 12% 78%;
+  --chrome: 51 15% 91%;
+  --ink: 221 41% 12%;
+  --ink-soft: 220 17% 35%;
+  --ink-faint: 218 12% 42%;
+  --line: 52 12% 87%;
+  --line-strong: 69 9% 80%;
   --accent: 32 90% 48%;
   --accent-soft: 32 85% 92%;
   --accent-ink: 28 60% 24%;
   --accent-fg: 28 60% 14%;
-  --positive: 150 45% 38%;
-  --negative: 6 62% 48%;
-  --warning: 38 92% 50%;
-  --warning-fg: 32 70% 24%;
-  --grain-opacity: 0.025;
+  --positive: 150 60% 30%;
+  --negative: 4 77% 40%;
+  --warning: 28 76% 50%;
+  --warning-fg: 29 100% 32%;
+  --grain-opacity: 0;
 }
 
 .dark {
-  --paper: 30 8% 7%;
-  --surface: 30 7% 9%;
-  --surface-raised: 30 6% 12%;
-  --ink: 36 20% 92%;
-  --ink-soft: 34 10% 66%;
-  --ink-faint: 34 8% 60%;
-  --line: 30 6% 18%;
-  --line-strong: 30 6% 26%;
+  color-scheme: dark;
+  --paper: 220 23% 8%;
+  --surface: 221 21% 12%;
+  --surface-raised: 221 19% 15%;
+  --chrome: 220 22% 10%;
+  --ink: 222 26% 94%;
+  --ink-soft: 220 12% 72%;
+  --ink-faint: 220 10% 64%;
+  --line: 221 15% 19%;
+  --line-strong: 221 13% 27%;
   --accent: 34 92% 56%;
   --accent-soft: 32 40% 18%;
   --accent-ink: 36 90% 70%;
@@ -101,7 +131,7 @@
   --negative: 6 70% 62%;
   --warning: 38 92% 56%;
   --warning-fg: 36 90% 70%;
-  --grain-opacity: 0.04;
+  --grain-opacity: 0;
 }
 
 /*
@@ -131,6 +161,7 @@
   --color-paper: hsl(var(--paper));
   --color-surface: hsl(var(--surface));
   --color-surface-raised: hsl(var(--surface-raised));
+  --color-chrome: hsl(var(--chrome));
   --color-ink: hsl(var(--ink));
   --color-ink-soft: hsl(var(--ink-soft));
   --color-ink-faint: hsl(var(--ink-faint));
@@ -146,8 +177,8 @@
   --color-warning-fg: hsl(var(--warning-fg));
 
   --font-brand: 'Fraunces', 'Georgia', serif;
-  --font-display: 'Instrument Sans', sans-serif;
-  --font-body: 'Instrument Sans', sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Instrument Sans', sans-serif;
+  --font-body: 'Atkinson Hyperlegible Next', 'Instrument Sans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
@@ -210,8 +241,8 @@
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.025em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   ::selection {
@@ -272,6 +303,19 @@
 }
 
 @layer utilities {
+  /* A compact control keeps its look but takes a 44px target, centred on it. */
+  .hit-target {
+    position: relative;
+  }
+  .hit-target::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
   .text-balance {
     text-wrap: balance;
   }
@@ -284,6 +328,42 @@
   }
   .will-change-transform-opacity {
     will-change: transform, opacity;
+  }
+
+  /*
+   * Shadows at a scroller's hidden edges, for lists whose scrollbar is hidden. The chrome-coloured
+   * covers scroll with the content and hide each shadow once its edge is reached: no script.
+   */
+  .scroll-edge-shadows {
+    background:
+      linear-gradient(hsl(var(--chrome)) 40%, hsl(var(--chrome) / 0)) top / 100% 28px no-repeat local,
+      linear-gradient(hsl(var(--chrome) / 0), hsl(var(--chrome)) 60%) bottom / 100% 28px no-repeat
+        local,
+      radial-gradient(farthest-side at 50% 0, hsl(var(--ink) / 0.22), transparent) top / 100% 12px
+        no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, hsl(var(--ink) / 0.22), transparent) bottom / 100%
+        12px no-repeat scroll;
+  }
+
+  /* The shell's first Tab stop; hidden until it receives focus. */
+  .skip-link:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .skip-link:focus {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    border-radius: 9999px;
+    padding: 0.625rem 1rem;
+    background: hsl(var(--ink));
+    color: hsl(var(--paper));
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
   /* Electron titlebar drag regions. */
@@ -321,21 +401,6 @@
   .shadow-paper-hover:hover {
     box-shadow: 5px 5px 0px hsl(var(--line-strong));
     transform: translateY(-2px);
-  }
-
-  /* Subtle dot-grid background for hero sections and atmospheric panels. */
-  .bg-dot-grid {
-    background-image: radial-gradient(
-      hsl(var(--ink) / 0.08) 1px,
-      transparent 1px
-    );
-    background-size: 20px 20px;
-  }
-  .dark .bg-dot-grid {
-    background-image: radial-gradient(
-      hsl(var(--ink) / 0.12) 1px,
-      transparent 1px
-    );
   }
 
   /* Form-field shake animation for inline validation feedback. */
@@ -408,6 +473,10 @@
 .prose-lacuna > :first-child { margin-top: 0; }
 .prose-lacuna > :last-child { margin-bottom: 0; }
 .prose-lacuna p { margin: 0.6em 0; }
+/* Card-list previews: compact lines for text, while KaTeX keeps its own line height so a
+   fraction is shown whole rather than clipped. The height cap stops images growing a row. */
+.card-row-clamp { line-height: 1.25rem; }
+.card-row-clamp :not(.katex, .katex *) { line-height: inherit; }
 .prose-lacuna h1, .prose-lacuna h2, .prose-lacuna h3 { margin: 0.8em 0 0.4em; line-height: 1.2; }
 .prose-lacuna h1 { font-size: 1.5em; }
 .prose-lacuna h2 { font-size: 1.3em; }
@@ -451,6 +520,10 @@
   border-radius: 10px;
   border: 1px solid hsl(var(--line));
   margin: 0.6em 0;
+}
+/* A study face centres its text; images are blocks, so they need their own centring. */
+[data-study-face] .prose-lacuna img {
+  margin-inline: auto;
 }
 .prose-lacuna table {
   border-collapse: collapse;
@@ -560,13 +633,9 @@ pre.lacuna-mermaid[data-mermaid-error='true'] {
 .cloze-reveal {
   color: hsl(var(--accent-ink));
   font-weight: 600;
-  padding: 0.05em 0.3em;
-  border-radius: 4px;
   text-decoration: underline 0.16em hsl(var(--accent) / 0.55);
   text-decoration-skip-ink: auto;
   text-underline-offset: 0.18em;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 .cloze-reveal::selection {
   background-color: hsl(var(--accent) / 0.45);

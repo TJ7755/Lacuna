@@ -4,6 +4,7 @@
 // list. Mirrors LinkCardsDialog's modal shell (focus trap, Escape-to-close).
 
 import { useMemo, useState } from 'react';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { splitScript, type SplitScriptItem } from '../../db/scriptSplitter';
 import { makeId } from '../../db/schema';
@@ -61,13 +62,16 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
       trapRef={trapRef}
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-2xl"
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel,
+        onSubmit: () => {
+          if (!preview) {
+            if (raw.trim()) handleSplit();
+          } else if (preview.length > 0) {
+            handleConfirm();
+          }
+        },
+      })}
     >
       <DialogHeader
         title="Paste script"
@@ -130,7 +134,7 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
                       onClick={() => deletePreviewItem(item.id)}
                       title="Remove line"
                       aria-label={`Remove line ${i + 1}`}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                     >
                       <TrashIcon width={14} height={14} />
                     </button>

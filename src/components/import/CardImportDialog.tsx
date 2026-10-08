@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { dialogKeyDown, useEditorKeys } from '../../hooks/dialogKeys';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { checkDuplicatesBatch } from '../../db/cardRepository';
 import {
@@ -10,13 +11,16 @@ import {
   MAX_IMPORT_CARDS,
   type CardImportContent,
 } from '../../db/cardImport';
-import { CloseIcon } from '../ui/icons';
+import { ChevronLeftIcon, CloseIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
+import { CountUp } from '../ui/Celebration';
+import { ImportStepper } from './ImportStepper';
 import { useCardImportSource } from './useCardImportSource';
 import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
 import './CardImportDialog.css';
+import { countOf } from '../../utils/plural';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
@@ -140,16 +144,37 @@ export function CardImportDialog({
       onBusyChange?.(false);
     }
   }
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  // As a dialog it owns the keyboard (Escape cancels, Ctrl/Cmd+Enter continues or imports);
+  // as a page it leaves keys to the shell and only cancels while nothing has been entered.
+  const dialogKeys = dialogKeyDown({ onCancel: cancel, onSubmit: () => void confirm() });
+  const pageKeys = useEditorKeys({ onCancel: cancel, onSubmit: () => void confirm() });
+  useEffect(() => {
+    if (presentation !== 'page') return;
+    trapRef.current
+      ?.querySelector<HTMLElement>(titleLabel ? '#card-import-title' : '#card-import-text')
+      ?.focus();
+    // Only on first show: later focus belongs to the person.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const view = (
     <div
       ref={trapRef}
       className={presentation === 'dialog' ? 'card-import-overlay' : 'card-import-page'}
+      onInput={presentation === 'page' ? pageKeys.onInput : undefined}
+      onClick={presentation === 'page' ? pageKeys.onClick : undefined}
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && presentation === 'dialog') {
-          event.stopPropagation();
+        // Pasted data does not need Tab, so the last field hands focus to the primary action.
+        if (
+          event.key === 'Tab' &&
+          !event.shiftKey &&
+          (event.target as Element).id === 'card-import-text' &&
+          canContinue
+        ) {
           event.preventDefault();
-          cancel();
+          primaryRef.current?.focus();
         }
+        (presentation === 'dialog' ? dialogKeys : pageKeys.onKeyDown)(event);
       }}
     >
       {presentation === 'dialog' && <div className="card-import-backdrop" aria-hidden="true" />}
@@ -164,24 +189,25 @@ export function CardImportDialog({
         transition={{ type: 'spring', duration: 0.4 * m, bounce: 0 }}
       >
         <header className="card-import-header">
-          <h2 id="card-import-heading">Import cards</h2>
-          <ol className="card-import-steps" aria-label="Import progress">
-            <li aria-current={step === 'input' ? 'step' : undefined}>
-              <b>1</b> Add content
-            </li>
-            <li aria-current={step === 'review' ? 'step' : undefined}>
-              <b>2</b> Review cards
-            </li>
-          </ol>
-          <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
-            <CloseIcon width={18} height={18} />
-          </button>
+          {/* On the Import page, the page's own title and Back link already do these jobs. */}
+          <h2 id="card-import-heading" className={presentation === 'page' ? 'sr-only' : undefined}>
+            Import cards
+          </h2>
+          <ImportStepper step={step} />
+          {presentation === 'dialog' && (
+            <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
+              <CloseIcon width={18} height={18} />
+            </button>
+          )}
         </header>
         <div className="card-import-scroll">
           <StepSwap stepKey={step} direction={step === 'review' ? 1 : -1} moveFocus>
             <div className="card-import-body">
               <div className="card-import-options">
-                <h2 tabIndex={-1}>{step === 'input' ? 'Add content' : 'Review cards'}</h2>
+                {/* The stepper shows the step; this heading stays as the focus target. */}
+                <h2 tabIndex={-1} className="sr-only">
+                  {step === 'input' ? 'Add content' : 'Review cards'}
+                </h2>
                 {titleLabel ? (
                   <label className="card-import-title-label" htmlFor="card-import-title">
                     {titleLabel}
@@ -216,7 +242,9 @@ export function CardImportDialog({
                       </label>
                     )}
                     <div className="card-import-total">
-                      <strong>{count}</strong>
+                      <strong>
+                        <CountUp value={count} multiplier={m} duration={0.7} />
+                      </strong>
                       <span>
                         cards
                         {!source.apkg && (
@@ -226,20 +254,24 @@ export function CardImportDialog({
                         )}
                       </span>
                     </div>
-                    {!!duplicates && (
-                      <p className="card-import-notice">
-                        {duplicates} already exist. Importing will add copies.
-                      </p>
-                    )}
-                    {source.apkg && (
-                      <p className="card-import-notice">Anki scheduling and media are preserved.</p>
-                    )}
-                    {(source.apkg?.skippedCards ?? source.result.skipped) > 0 && (
-                      <p className="card-import-notice">
-                        {source.apkg?.skippedCards ?? source.result.skipped}{' '}
-                        {source.apkg ? 'unsupported cards' : 'rows'} skipped.
-                      </p>
-                    )}
+                    <div className="card-import-notices">
+                      {!!duplicates && (
+                        <p className="card-import-notice" data-tone="warning">
+                          {duplicates} already exist. Importing will add copies.
+                        </p>
+                      )}
+                      {source.apkg && (
+                        <p className="card-import-notice">
+                          Anki scheduling and media are preserved.
+                        </p>
+                      )}
+                      {(source.apkg?.skippedCards ?? source.result.skipped) > 0 && (
+                        <p className="card-import-notice">
+                          {source.apkg?.skippedCards ?? source.result.skipped}{' '}
+                          {source.apkg ? 'unsupported cards' : 'rows'} skipped.
+                        </p>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -273,7 +305,8 @@ export function CardImportDialog({
                   setStep('input');
                 }}
               >
-                Undo
+                <ChevronLeftIcon width={16} height={16} />
+                Back
               </Button>
             ) : (
               <Button variant="ghost" disabled={busy} onClick={cancel}>
@@ -286,11 +319,16 @@ export function CardImportDialog({
                 : `${cards.length} original${!source.apkg && reverse ? ` + ${eligible} reverse` : ''}`}
             </span>
             <Button
+              ref={primaryRef}
               variant="primary"
               disabled={!canContinue || busy || (step === 'review' && !canImport)}
               onClick={() => void confirm()}
             >
-              {busy ? 'Importing…' : step === 'input' ? 'Review cards' : `Import ${count} cards`}
+              {busy
+                ? 'Importing…'
+                : step === 'input'
+                  ? 'Review cards'
+                  : `Import ${countOf(count, 'card')}`}
               <span aria-hidden="true">→</span>
             </Button>
           </div>

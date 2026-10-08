@@ -1,0 +1,1 @@
+- On a phone, a lesson page keeps Path current in the bottom section bar, as the tab bar does on wider screens and the navigation spec requires; the two bars now share one rule.

@@ -10,6 +10,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { ChevronDownIcon } from '../ui/icons';
 import { collapse } from '../ui/motion';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { Note } from '../../db/types';
 
@@ -43,10 +44,10 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
 
   return (
     <section className={className}>
-      <h2 className="mb-4 font-display text-xl text-ink-soft">Notes</h2>
+      <h2 className="mb-4 font-display text-xl text-ink">Notes</h2>
 
       {sortedNotes.length > 0 ? (
-        <div className="flex flex-col divide-y divide-line rounded-xl border border-line">
+        <div className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col divide-y divide-line overflow-hidden`}>
           {sortedNotes.map((note) => {
             const isOpen = openNoteIds.has(note.id);
             return (
@@ -55,7 +56,7 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
                   type="button"
                   aria-expanded={isOpen}
                   onClick={() => toggleNoteOpen(note.id)}
-                  className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
+                  className="flex min-h-14 w-full items-center gap-2.5 px-6 py-3 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
                 >
                   <motion.span
                     animate={{ rotate: isOpen ? 0 : -90 }}
@@ -73,7 +74,7 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
                       {...collapse(m)}
                       className="overflow-hidden border-t border-line"
                     >
-                      <div className="px-5 py-4">
+                      <div className="px-6 pb-5 pt-4">
                         <AnnotatedNoteContent note={note} />
                       </div>
                     </motion.div>
@@ -84,7 +85,7 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
           })}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-line-strong py-12 text-center">
+        <div className={`${SECTION_CARD_SURFACE_CLASS} py-12 text-center`}>
           <p className="text-sm text-ink-soft">No notes yet.</p>
         </div>
       )}

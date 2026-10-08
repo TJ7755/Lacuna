@@ -1,0 +1,1 @@
+- Add a Lesson actions menu (Rename, Move up, Move down, Delete lesson) to each lesson on the course path and to the lesson heading in Edit mode, also opened by right-click, the context-menu key or Shift+F10. Deletion states what is removed and kept, then offers Undo.

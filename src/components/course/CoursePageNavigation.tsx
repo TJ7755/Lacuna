@@ -17,6 +17,10 @@ interface CoursePageNavigationProps {
   backLabel: string;
   archived?: boolean;
   trailing?: ReactNode;
+  /** Show the course name in place of the back link. */
+  identity?: { name: string };
+  /** Fade the identity out while the page's own title already names the course. */
+  identityHidden?: boolean;
   className?: string;
 }
 
@@ -32,6 +36,8 @@ export function CoursePageNavigation({
   backLabel,
   archived = false,
   trailing,
+  identity,
+  identityHidden = false,
   className,
 }: CoursePageNavigationProps) {
   const { notify } = useToast();
@@ -60,17 +66,33 @@ export function CoursePageNavigation({
     <div
       data-course-page-navigation=""
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+        // Sticks to the top while the course scrolls beneath a frosted band, so the
+        // sections stay in one place on every course surface.
+        'sticky top-0 z-20 -mx-3 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl bg-paper/85 px-3 py-1.5 backdrop-blur-md sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
         className,
       )}
     >
-      <Link
-        to={backTo}
-        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 justify-self-start text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        {backLabel}
-      </Link>
+      {identity && !archived ? (
+        <Link
+          to={`/course/${courseId}`}
+          aria-hidden={identityHidden || undefined}
+          tabIndex={identityHidden ? -1 : undefined}
+          className={cn(
+            'inline-flex min-h-11 min-w-0 max-w-full shrink items-center gap-2.5 justify-self-start font-bold max-sm:flex-1 text-ink transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none',
+            identityHidden && 'pointer-events-none translate-y-1 opacity-0',
+          )}
+        >
+          <span className="truncate">{identity.name}</span>
+        </Link>
+      ) : (
+        <Link
+          to={backTo}
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 justify-self-start text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          {backLabel}
+        </Link>
+      )}
 
       <div className="min-w-0 justify-self-center">
         {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId} />}

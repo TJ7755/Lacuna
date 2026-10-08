@@ -112,14 +112,10 @@ function FinalExamDecisionDialog({
         aria-labelledby="final-exam-decision-title"
         className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl"
       >
-        <p className="text-xs uppercase tracking-[0.18em] text-accent">Final exam passed</p>
-        <h2 id="final-exam-decision-title" className="mt-2 font-display text-3xl tracking-tight">
-          What should happen to {course.name}?
+        <h2 id="final-exam-decision-title" className="font-display text-3xl tracking-tight">
+          Final exam passed
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-          Archive it to remove it from active study, set another final exam, or keep revising on a
-          rolling maintenance schedule.
-        </p>
+        <p className="mt-2 text-ink-soft">What should happen to {course.name} now?</p>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <Button variant="ghost" onClick={onKeepRevising}>
             Keep revising

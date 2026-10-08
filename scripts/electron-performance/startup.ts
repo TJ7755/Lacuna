@@ -27,7 +27,7 @@ function installDashboardProbe() {
     const card = document.querySelector('main button h3');
     let opacity = 1;
     for (let node = card; node; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity);
-    if (heading?.textContent?.trim() === 'Courses' && card?.getClientRects().length && opacity >= 0.9) {
+    if (heading?.textContent?.trim() === 'Today' && card?.getClientRects().length && opacity >= 0.9) {
       requestAnimationFrame(() => requestAnimationFrame(() => {
         target.__dashboardReadyMs = performance.now();
       }));

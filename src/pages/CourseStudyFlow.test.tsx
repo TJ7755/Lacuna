@@ -202,6 +202,8 @@ function flow(
     snapshot: snapshot(practices),
     decision: { kind: 'step', step },
     generation,
+    lessonCardsById: new Map(),
+    meanReviewSeconds: 8,
   };
 }
 
@@ -215,6 +217,8 @@ function choiceFlow(
     snapshot: snapshot([], assessments),
     decision: { kind: 'choice', step, assessments },
     generation,
+    lessonCardsById: new Map(),
+    meanReviewSeconds: 8,
   };
 }
 
@@ -538,7 +542,8 @@ describe('CourseStudyFlow', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Finish for now' }));
 
     expect(localStorage.getItem('lacuna.activeStudyFlow')).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1');
+    // Opened directly, so it falls back to the course as a return.
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1', { state: { returning: true } });
   });
 
   it('moves through a manual Practice transition without leaving the conductor', async () => {

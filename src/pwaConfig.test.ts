@@ -4,9 +4,30 @@ import {
   collectAppShellScripts,
   collectAppShellStyles,
   collectOfflineCardsDependencies,
+  collectOfflineImportRoute,
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('precaches on-demand course actions and their static dependencies before first offline use', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/CourseActions-ACTIONS1.js', isEntry: false, imports: ['assets/action-ui-ACTION01.js'] },
+      { fileName: 'assets/action-ui-ACTION01.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/CourseActions-ACTIONS1.js', 'assets/action-ui-ACTION01.js']);
+  });
+  it('precaches the welcome-course seed that start-up loads on demand', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/seed-SEEDCHK1.js', isEntry: false, imports: [] },
+    ])).toContain('assets/seed-SEEDCHK1.js');
+  });
+  it('precaches the motion features that start-up loads straight after first paint', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/motionFeatures-MOTION01.js', isEntry: false, imports: ['assets/features-max-FEATMAX1.js'] },
+      { fileName: 'assets/features-max-FEATMAX1.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/motionFeatures-MOTION01.js', 'assets/features-max-FEATMAX1.js']);
+  });
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
     expect(pwaInjectRegister).toBeNull();
   });
@@ -125,6 +146,27 @@ describe('service-worker asset caching', () => {
     expect(collectOfflineCardsDependencies(chunks)).toEqual([
       'assets/cardCore-CORE0001.js',
       'assets/validation-VALID001.js',
+    ]);
+  });
+
+  it('precaches the Import route so a course file can be received on first use offline', () => {
+    const chunks = [
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
+      {
+        fileName: 'assets/ImportPage-IMPORT01.js',
+        isEntry: false,
+        imports: ['assets/shared-SHARED01.js', 'assets/courseFile-COURSE01.js'],
+        viteMetadata: { importedCss: new Set(['assets/ImportPage-IMPORT01.css']) },
+      },
+      { fileName: 'assets/courseFile-COURSE01.js', isEntry: false, imports: [] },
+      { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
+    ];
+
+    expect(collectOfflineImportRoute(chunks)).toEqual([
+      'assets/ImportPage-IMPORT01.js',
+      'assets/courseFile-COURSE01.js',
+      'assets/ImportPage-IMPORT01.css',
     ]);
   });
 

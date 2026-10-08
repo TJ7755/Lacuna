@@ -2,40 +2,39 @@ import { Button } from '../../components/ui/Button';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { cn } from '../../components/ui/cn';
 import { ChevronDownIcon, MenuIcon } from '../../components/ui/icons';
-import { Toggle } from '../../components/ui/Toggle';
 import { DEFAULT_NAV_ITEMS, useSidebarSettings } from '../../state/sidebarSettings';
-import { SectionCard } from '../../components/ui/SectionCard';
+import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingRow, SettingsCard } from './SettingsUi';
 
 export function SidebarSection() {
   const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
   const visibleCount = sidebarSettings.navItems.filter((item) => item.visible).length;
 
   return (
-    <SectionCard
-      id="settings-sidebar"
-      className="mb-8"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-sidebar">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <MenuIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Sidebar</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          Sidebar
+        </SettingsSectionHeading>
       </div>
-      <SettingToggle
-        title="Show course hover details"
-        checked={sidebarSettings.showDueCounts}
-        onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
-      />
-      <SettingToggle
-        bordered
-        title="Compact mode"
-        checked={sidebarSettings.compactMode}
-        onChange={(checked) => setSidebarSettings({ compactMode: checked })}
-      />
+      {/* The shared rows, so these labels and switches line up with every other card's. */}
+      <SettingRow label="Show course hover details">
+        <PillSwitch
+          checked={sidebarSettings.showDueCounts}
+          onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
+          ariaLabel="Show course hover details"
+        />
+      </SettingRow>
+      <SettingRow label="Compact mode">
+        <PillSwitch
+          checked={sidebarSettings.compactMode}
+          onChange={(checked) => setSidebarSettings({ compactMode: checked })}
+          ariaLabel="Compact mode"
+        />
+      </SettingRow>
 
-      <div className="mt-6 border-t border-line pt-5">
-        <div className="mb-1 text-sm">Primary navigation</div>
-        <p className="mb-4 text-sm text-ink-soft">
-          Reorder or hide the main nav items in the sidebar. At least one item must remain visible.
-        </p>
+      <div className="mt-3">
+        <div className="py-3 font-semibold text-ink">Primary navigation</div>
         <div className="flex flex-col gap-2">
           {sidebarSettings.navItems.map((item, index) => {
             const canMoveUp = index > 0;
@@ -45,9 +44,9 @@ export function SidebarSection() {
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-ink/[0.04] px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
               >
-                <div className="flex flex-col gap-0.5">
+                <div className="col-span-2 row-start-2 flex gap-0.5 sm:col-span-1 sm:col-start-1 sm:row-start-1">
                   <MoveButton
                     direction="up"
                     label={label}
@@ -71,18 +70,22 @@ export function SidebarSection() {
                     }}
                   />
                 </div>
-                <span className="flex-1 text-sm text-ink">{label}</span>
-                <Toggle
-                  checked={item.visible}
-                  disabled={!canHide}
-                  ariaLabel={`Show ${label}`}
-                  onChange={(checked) => {
-                    const next = sidebarSettings.navItems.map((navItem) =>
-                      navItem.id === item.id ? { ...navItem, visible: checked } : navItem,
-                    );
-                    setSidebarSettings({ navItems: next });
-                  }}
-                />
+                <span className="col-start-1 row-start-1 min-w-0 break-words text-sm text-ink sm:col-start-2">
+                  {label}
+                </span>
+                <div className="col-start-2 row-start-1 sm:col-start-3">
+                  <PillSwitch
+                    checked={item.visible}
+                    disabled={!canHide}
+                    ariaLabel={`Show ${label}`}
+                    onChange={(checked) => {
+                      const next = sidebarSettings.navItems.map((navItem) =>
+                        navItem.id === item.id ? { ...navItem, visible: checked } : navItem,
+                      );
+                      setSidebarSettings({ navItems: next });
+                    }}
+                  />
+                </div>
               </div>
             );
           })}
@@ -97,33 +100,7 @@ export function SidebarSection() {
           </Button>
         </div>
       </div>
-    </SectionCard>
-  );
-}
-
-function SettingToggle({
-  title,
-  checked,
-  onChange,
-  bordered = false,
-}: {
-  title: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  bordered?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'flex items-start justify-between gap-3',
-        bordered && 'mt-6 border-t border-line pt-5',
-      )}
-    >
-      <div className="min-w-0">
-        <div className="text-sm">{title}</div>
-      </div>
-      <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
-    </div>
+    </SettingsCard>
   );
 }
 
@@ -144,14 +121,14 @@ function MoveButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+        'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
         !disabled ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
       )}
       aria-label={`Move ${label} ${direction}`}
     >
       <ChevronDownIcon
-        width={12}
-        height={12}
+        width={16}
+        height={16}
         className={direction === 'up' ? 'rotate-180' : undefined}
       />
     </button>

@@ -48,6 +48,7 @@ learner may highlight source text and attach optional free-text annotations befo
 the card loop. Highlights and annotations persist on this device but are excluded from every
 portability format. The card loop then contains only lesson members without an exposure for
 that lesson, including both primary and explicitly linked cards.
+A lesson with cards but no notes starts directly on its first card.
 If the lesson has no cards, **Continue** records `LessonCompletion` and advances the path.
 Lesson authoring should favour fewer cards per pass and more lesson units where necessary;
 the aim is lower working-memory load, not less course content.
@@ -148,7 +149,7 @@ Authors choose **Reveal answers** or **Type answers** on a lesson's card section
 editor/creator and card-list selection controls offer **Use lesson setting**, **Reveal
 answer** and **Type answer**. `Card.answerMode` is an optional override; clearing it
 restores inheritance. Unconfigured lessons and unassigned cards default to reveal.
-These controls are available only in Author mode on editable, active courses.
+These controls are available only in Edit mode on editable, active courses.
 
 Lesson sessions use the active lesson's default (including linked cards); course-wide
 and daily reviews use the card's primary lesson. An explicit card override wins in every
@@ -313,15 +314,15 @@ criteria. Fixed Questions report first-presentation and repeat performance separ
 families report novel and repeated fingerprints separately. Shown, abandoned, undone,
 checker-withheld and unscored Attempts are explicit exclusions rather than fabricated failures.
 
-### Study mode (`src/state/studyMode.ts`)
+### View mode (`src/state/studyMode.ts`)
 
 Two modes reach Learn mode (ordinary sessions default to **FSRS**; lessons default to
 Simple mode). Course settings expose **Learn first**, enabled by default. Turning it off admits new cards from unlocked lessons directly into FSRS, with daily new-card pacing and no fabricated exposure or review records:
 
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
-- **Anytime Simple Learn:** the Study sheet has a collapsed Simple Learn option for the whole
-  course or a chosen lesson; lesson pages preselect their own lesson. Explicit `?mode=simple`
+- **Anytime Simple Learn:** the Study sheet has a collapsed **Practise until all correct** option
+  (Simple Learn) for the whole course or a chosen lesson; lesson pages preselect their own lesson. Explicit `?mode=simple`
   sessions include all cards in that scope regardless of introduction, due date, lesson lock,
   readiness or daily limits. Suspended and buried cards remain excluded; archived courses
   remain read-only. These optional passes record FSRS reviews but do not write lesson exposures,

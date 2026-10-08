@@ -1,6 +1,6 @@
+import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import type { UnlockMode } from '../../db/types';
-import { Field, Input } from '../../components/ui/Field';
 
 const MODES: { value: UnlockMode; label: string; description: string }[] = [
   {
@@ -51,17 +51,18 @@ export function UnlockModeSection({
 }: UnlockModeSectionProps) {
   return (
     <fieldset className="block text-sm text-ink-soft">
-      <legend className="mb-2 font-medium text-ink">Lesson unlocking</legend>
-      <div className="flex flex-col gap-2">
+      <legend className={`mb-2 ${fieldLabelClassName}`}>Lesson unlocking</legend>
+      <div className="flex flex-col">
         {MODES.map((mode) => (
-          <label key={mode.value} className="flex cursor-pointer items-start gap-2">
+          <label key={mode.value} className="flex min-h-11 cursor-pointer items-start gap-2 py-1.5">
+            {/* A plain input: the text-field primitive made each radio a full-width box. */}
             <input
               type="radio"
               name="unlockMode"
               value={mode.value}
               checked={unlockMode === mode.value}
               onChange={() => onUnlockModeChange(mode.value)}
-              className="mt-0.5 accent-accent"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
             />
             <span>
               <span className="block text-sm text-ink">{mode.label}</span>
@@ -79,15 +80,8 @@ export function UnlockModeSection({
             timeZone={timeZone}
             label="First lesson unlocks on"
           />
-          <Field
-            label="Days between lessons"
-            hint={
-              <>
-                Each lesson unlocks this many days after the previous one, starting from the date
-                above. Overriding one lesson&apos;s date on its own page cascades to the rest.
-              </>
-            }
-          >
+          <label className={fieldLabelClassName}>
+            Days between lessons
             <Input
               type="number"
               min={1}
@@ -96,7 +90,11 @@ export function UnlockModeSection({
               onChange={(e) => onIntervalDaysChange(Math.max(1, Number(e.target.value) || 1))}
               onBlur={onIntervalDaysBlur}
             />
-          </Field>
+            <span className={fieldHintClassName}>
+              Each lesson unlocks this many days after the previous one, starting from the date
+              above. Overriding one lesson&apos;s date on its own page cascades to the rest.
+            </span>
+          </label>
         </div>
       )}
     </fieldset>

@@ -1,0 +1,17 @@
+- Today leads with the courses to study, so Start is visible without scrolling; the exam-day forecast and week panel follow beneath. The day's total now reads "30 cards" rather than a bare number.
+- The exam-day forecast's time axis now ends at the furthest exam rather than at least a fortnight out, so a near exam no longer leaves half the chart empty. Long course names in its legend truncate instead of squeezing the title, and Today's minute estimates no longer wrap.
+- Progress: the exam-day score chart follows the 7/30/90-day period like its neighbours, chart axes size to their labels (100% was clipped to 00%), and View data aligns with each card's edge.
+- A lesson with cards but no notes now starts on its first card instead of an empty "No notes yet" page with a Continue button.
+- A long course name now truncates beside the course section tabs instead of running underneath them. Hovering a card row no longer shows the swipe tray's buttons through it, and each lesson group on Cards keeps Select and its add menu on the heading row.
+- The sidebar course list shades the edge that hides more courses, and Today's course names wrap to two lines on a phone rather than truncating.
+- Text editors name their controls in words ("Maths" rather than "$x$"; Bold and Italic for screen readers), take Ctrl/Cmd+B and Ctrl/Cmd+I, and show a live preview beneath the Write tab once the text contains maths. The question editor's image button lines up with its fields and "Use separate parts" reads as a button.
+- Every Study and Start action ends with the same forward arrow (the lesson page used a play icon before its label), and an empty notes card is headed Notes like the cards beside it.
+- Lesson names on the course path wrap to a second line on a phone instead of truncating, and the study header's navigation button shares the framed style of its neighbours.
+- Keyboard users get a Skip to content link as the first Tab stop, so reaching Start no longer means tabbing through every course in the sidebar.
+- An empty Questions page says what a question set is.
+- Progress fits a phone: the 30-day activity strip no longer scrolls today out of view (its last date labels no longer collide), and charts no longer push their cards past the screen edge.
+- On a phone, a long course name shares its row with View and Edit, and each lesson group on Cards gives its name a full row above Select.
+- Quick search highlights matches flush with the rest of the word ("Integration", not "Integ ration") and in the darker accent ink for contrast.
+- Help uses the current names (Card practice, Practice questions) and no longer says question sets never appear on the course path; an empty Archived page says where archiving happens.
+- An empty lesson in View mode offers Switch to Edit to add cards, as the Questions page already did.
+- First load is about 5.7 KB (gzipped) lighter: the welcome course's content now loads only while its seed or one-off asset repair is still pending, and the service worker precaches it for offline starts.

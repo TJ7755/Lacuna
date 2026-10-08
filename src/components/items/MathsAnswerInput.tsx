@@ -12,6 +12,7 @@ import {
 import { MarkdownView } from '../markdown/MarkdownView';
 import { cn } from '../ui/cn';
 import { expressionToTex, parseExpression } from '../../items/verify';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 interface MathsAnswerInputProps {
   value: string;
@@ -52,6 +53,8 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
     },
     forwardedRef,
   ) {
+    const [motionSpeed] = useMotionSpeed();
+    const multiplier = speedMultiplier(motionSpeed);
     const generatedId = useId();
     const inputId = `maths-answer-${generatedId}`;
     const labelId = `${inputId}-label`;
@@ -113,67 +116,62 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
     };
 
     return (
-      <div className={cn('space-y-3', className)}>
-        <div>
-          <label
-            id={labelId}
-            htmlFor={inputId}
-            className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint"
-          >
-            {label}
-          </label>
-          <div
-            className={cn(
-              'flex min-h-12 w-full items-stretch overflow-hidden rounded-xl border bg-surface shadow-sm transition-[border-color,box-shadow]',
-              parsed?.ok === false
-                ? 'border-negative focus-within:border-negative focus-within:ring-2 focus-within:ring-negative/20'
-                : 'border-line-strong focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20',
-            )}
-          >
-            <input
-              ref={setInputRef}
-              id={inputId}
-              type="text"
-              inputMode="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={value}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              disabled={disabled}
-              autoFocus={autoFocus}
-              aria-invalid={parsed?.ok === false || undefined}
-              aria-describedby={messageId}
-              className="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 font-mono text-base text-ink outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            {renderActivated && parsed?.ok ? (
-              <output
-                role="status"
-                aria-label={`Rendered answer: ${parsed.expression.source}`}
-                className="flex min-w-0 flex-1 items-center border-l border-line bg-surface-raised/70 px-4 py-2"
-              >
-                <MarkdownView
-                  source={`$$${expressionToTex(parsed.expression)}$$`}
-                  className="flex min-h-11 min-w-0 flex-1 items-center overflow-x-auto text-ink [&>p]:my-0"
-                />
-              </output>
-            ) : null}
-          </div>
-          <p
-            id={messageId}
-            className={cn(
-              'mt-2 min-h-5 text-sm',
-              parsed?.ok === false ? 'text-negative' : 'text-ink-faint',
-            )}
-          >
-            {parsed?.ok === false
-              ? parsed.error.message
-              : 'Use ordinary notation, such as 3/4, x^2 or sqrt(16).'}
-          </p>
+      <div className={cn('group', className)}>
+        <label id={labelId} htmlFor={inputId} className="mb-2 block text-sm font-medium text-ink-soft">
+          {label}
+        </label>
+        <div
+          className={cn(
+            'flex min-h-16 w-full items-stretch overflow-hidden rounded-2xl bg-ink/[0.04] transition-shadow focus-within:bg-ink/[0.06] focus-within:ring-2',
+            parsed?.ok === false ? 'focus-within:ring-negative/60' : 'focus-within:ring-accent/60',
+          )}
+        >
+          <input
+            ref={setInputRef}
+            id={inputId}
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            spellCheck={false}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled}
+            autoFocus={autoFocus}
+            aria-invalid={parsed?.ok === false || undefined}
+            aria-describedby={parsed?.ok === false ? messageId : undefined}
+            className="min-h-14 min-w-0 flex-1 border-0 bg-transparent px-5 py-3 font-display text-2xl font-medium tabular-nums tracking-tight text-ink outline-none placeholder:text-ink-faint disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          {renderActivated && parsed?.ok ? (
+            <output
+              role="status"
+              aria-label={`Rendered answer: ${parsed.expression.source}`}
+              className="flex min-w-0 flex-1 items-center bg-ink/[0.04] px-5 py-2"
+            >
+              <MarkdownView
+                source={`$$${expressionToTex(parsed.expression)}$$`}
+                className="flex min-h-11 min-w-0 flex-1 items-center overflow-x-auto text-ink [&>p]:my-0"
+              />
+            </output>
+          ) : null}
         </div>
+        {parsed?.ok === false && (
+          <p id={messageId} className="mt-2 px-1 text-sm text-negative">
+            {parsed.error.message}
+          </p>
+        )}
 
-        <div role="toolbar" aria-label="Maths symbols" className="flex flex-wrap gap-2">
+        {/* The chips are always in the DOM so keyboard users can reach them; they only
+            become visible (and clickable) while focus is inside the field or the palette. */}
+        <div
+          role="toolbar"
+          aria-label="Maths symbols"
+          className="pointer-events-none mt-3 flex -translate-y-1 flex-wrap gap-2 opacity-0 transition-[opacity,transform] group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100"
+          style={{
+            transitionDuration: `${0.2 * multiplier}s`,
+          }}
+        >
           {PALETTE.map((template) => (
             <button
               key={template.label}
@@ -183,7 +181,7 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
               disabled={disabled}
               onMouseDown={preserveInputSelection}
               onClick={() => insertTemplate(template)}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-line-strong bg-surface px-3 font-mono text-sm text-ink transition-colors hover:border-accent/60 hover:text-accent active:bg-accent-soft disabled:pointer-events-none disabled:opacity-40"
+              className="relative inline-flex h-9 min-w-11 items-center justify-center rounded-full bg-ink/[0.06] px-3.5 font-display text-sm font-medium text-ink transition-colors after:absolute after:-inset-y-1 after:inset-x-0 hover:bg-ink hover:text-paper active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40"
             >
               {template.symbol}
             </button>

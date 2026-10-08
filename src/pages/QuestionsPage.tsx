@@ -1,13 +1,19 @@
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import {
+  COURSE_PAGE_FRAME,
+  COURSE_PAGE_HEADER,
+  COURSE_PAGE_TITLE,
+} from '../components/course/coursePageLayout';
 import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQuestionSetAttempts';
 import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
+import { PlusIcon } from '../components/ui/icons';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
 import { useCourse } from '../state/useCourseData';
-import { resolveLessonViewMode } from '../course/lessonViewMode';
+import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
+import { updateCourse } from '../db/courseRepository';
 import {
   createEmptyQuestionSetDraft,
   listQuestionSetDrafts,
@@ -17,6 +23,15 @@ import { listQuestionSets } from '../questions/questionSetRepository';
 import { Button } from '../components/ui/Button';
 import { LegacyQuestionsPage } from './LegacyQuestionsPage';
 import { questionSetMarks } from '../components/question-sets/presentation';
+import { QuestionSetScore } from '../components/question-sets/QuestionSetScore';
+import { questionSetProgress, type QuestionSetProgress } from '../questions/questionSetProgress';
+import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
+import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
+import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import { countOf } from '../utils/plural';
+import { formatRelativeTime } from '../utils/datetime';
+
+const NO_PROGRESS: QuestionSetProgress = { history: [] };
 import '../components/question-sets/question-sets.css';
 
 export function QuestionsPage() {
@@ -38,17 +53,39 @@ export function QuestionsPage() {
   };
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [startingSetId, setStartingSetId] = useState<string | null>(null);
   const data = useLiveQuery(async () => {
     if (!courseId) return null;
     try {
-      const [sets, drafts, legacy] = await Promise.all([
+      const [sets, drafts, legacy, attemptRows] = await Promise.all([
         listQuestionSets(courseId),
         listQuestionSetDrafts(courseId),
         db.questions.where('courseId').equals(courseId).count(),
+        db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
       ]);
-      return { sets, drafts, legacy, error: '' };
+      const attemptsBySet = new Map<string, QuestionSetAttemptRecord[]>();
+      for (const row of attemptRows) {
+        // Scores are a summary: an attempt that cannot be read leaves its set unscored
+        // rather than hiding every set. The set's own page still reports it.
+        try {
+          const attempt = parseQuestionSetAttemptRecord(row);
+          attemptsBySet.set(attempt.questionSetId, [
+            ...(attemptsBySet.get(attempt.questionSetId) ?? []),
+            attempt,
+          ]);
+        } catch {
+          continue;
+        }
+      }
+      return { sets, drafts, legacy, attemptsBySet, error: '' };
     } catch (cause) {
-      return { sets: [], drafts: [], legacy: 0, error: String(cause) };
+      return {
+        sets: [],
+        drafts: [],
+        legacy: 0,
+        attemptsBySet: new Map<string, QuestionSetAttemptRecord[]>(),
+        error: String(cause),
+      };
     }
   }, [courseId]);
   const root = useQuestionSetScroll(
@@ -58,6 +95,14 @@ export function QuestionsPage() {
   if (!course || !data) return <p className="p-8 text-ink-soft">Loading Questions…</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
   const draftIds = new Set(data.drafts.map((d) => d.content.id));
+  const progress = new Map<string, QuestionSetProgress>();
+  for (const [setId, attempts] of data.attemptsBySet) {
+    try {
+      progress.set(setId, questionSetProgress(attempts));
+    } catch {
+      // A receipt that no longer validates cannot be scored; the set stays unscored.
+    }
+  }
   const rows = [
     ...data.drafts.filter(() => author).map((d) => ({ content: d.content, draft: true })),
     ...data.sets
@@ -79,17 +124,33 @@ export function QuestionsPage() {
       setCreating(false);
     }
   };
+  // Practice mode is the default; Paper is one tap further, on the set's own page.
+  const attempt = async (setId: string) => {
+    setStartingSetId(setId);
+    setError('');
+    try {
+      const started = await startQuestionSetAttempt(setId, 'practice');
+      await navigate(`/course/${course.id}/question-sets/${setId}/attempts/${started.id}`, {
+        state: origin,
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not start this attempt.');
+      setStartingSetId(null);
+    }
+  };
   if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
     <div ref={root} className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
+      <header className={COURSE_PAGE_HEADER}>
         <div>
-          <h1 tabIndex={-1} className="font-display text-4xl tracking-tight md:text-5xl">
+          <h1 tabIndex={-1} className={COURSE_PAGE_TITLE}>
             Questions
           </h1>
         </div>
         {author && (
           <Button variant="primary" onClick={() => void create()} disabled={creating}>
+            {/* Leads with + like New card and New course. */}
+            <PlusIcon width={16} height={16} />
             {creating ? 'Creating…' : 'New question set'}
           </Button>
         )}
@@ -113,21 +174,48 @@ export function QuestionsPage() {
       <section className="qs-set-list" aria-label="Question sets">
         {rows.map(({ content, draft }) => (
           <div className="qs-library-row" key={content.id}>
-            <Link
-              className="qs-set-row"
-              state={origin}
-              to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
-            >
-              <div>
+            <div className="qs-set-row qs-scored-row">
+              <Link
+                className="qs-scored-title"
+                state={origin}
+                to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
+              >
                 <h2>{content.title || 'Untitled set'}</h2>
                 <p>
-                  {content.questions.length}{' '}
-                  {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
-                  {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+                  {countOf(content.questions.length, 'question')} ·{' '}
+                  {countOf(questionSetMarks(content), 'mark')}
+                  {draft
+                    ? ' · Draft'
+                    : progress.get(content.id)?.lastTriedAt !== undefined
+                      ? ` · last tried ${formatRelativeTime(progress.get(content.id)!.lastTriedAt!)}`
+                      : ' · not tried yet'}
                 </p>
-              </div>
-              <span>{draft ? 'Draft' : author ? 'Edit →' : 'View →'}</span>
-            </Link>
+              </Link>
+              {!draft && <QuestionSetScore progress={progress.get(content.id) ?? NO_PROGRESS} />}
+              {author ? (
+                <span className="qs-scored-hint">{draft ? 'Draft' : 'Edit →'}</span>
+              ) : progress.get(content.id)?.open ? (
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    void navigate(
+                      `/course/${course.id}/question-sets/${content.id}/attempts/${progress.get(content.id)!.open!.id}`,
+                      { state: origin },
+                    )
+                  }
+                >
+                  Continue
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  disabled={course.archived || startingSetId !== null}
+                  onClick={() => void attempt(content.id)}
+                >
+                  {startingSetId === content.id ? 'Starting…' : 'Attempt'}
+                </Button>
+              )}
+            </div>
             {author && (
               <QuestionSetLibraryActions
                 courseId={course.id}
@@ -154,14 +242,22 @@ export function QuestionsPage() {
         {rows.length === 0 && (
           <div className="qs-empty">
             <h2>{search ? 'No matching sets' : 'No question sets yet'}</h2>
-            <p>
-              {search
-                ? 'Try a different search.'
-                : author
-                  ? 'Start with a question. Add marks and connections when you’re ready.'
-                  : 'Question sets shared with this course will appear here.'}
-            </p>
+            {search ? (
+              <p>Try a different search.</p>
+            ) : (
+              <p>Exam-style questions with mark schemes.</p>
+            )}
             {search && <button onClick={() => setSearch('')}>Clear search</button>}
+            {!search && !author && !course.archived && canEditLessons(course) && (
+              // View mode is read-only, so the way forward is the mode switch itself.
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => void updateCourse(course.id, { lessonViewMode: 'edit' })}
+              >
+                Switch to Edit to write one
+              </Button>
+            )}
           </div>
         )}
       </section>

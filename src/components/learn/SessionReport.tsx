@@ -3,6 +3,8 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useChartColours } from '../analytics/useChartColours';
+import { Burst, CountUp } from '../ui/Celebration';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import type { SessionSummary } from './types';
 import './SessionReport.css';
 
@@ -19,6 +21,8 @@ export function SessionReport({
   onContinue?: () => void;
 }) {
   const c = useChartColours();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const { events } = summary;
 
   // Retries are further answers to the same card, not more cards: count each card once,
@@ -52,7 +56,10 @@ export function SessionReport({
 
   return (
     <main className="session-report" aria-label="Session report">
-      <h1>
+      <h1 className="relative">
+        {total > 0 && (summary.reachedGoal || accuracy >= 80) && (
+          <Burst trigger="session" multiplier={m} count={26} spread={150} />
+        )}
         {summary.reachedGoal
           ? 'Goal reached.'
           : summary.timeLimitReached
@@ -71,12 +78,14 @@ export function SessionReport({
       <dl className="session-report-facts">
         <div>
           <dt>{cardCount === 1 ? 'Card reviewed' : 'Cards reviewed'}</dt>
-          <dd>{cardCount}</dd>
+          <dd>
+            <CountUp value={cardCount} multiplier={m} />
+          </dd>
         </div>
         <div>
           <dt>Accuracy</dt>
           <dd>
-            {accuracy}
+            <CountUp value={accuracy} multiplier={m} />
             <span>%</span>
           </dd>
         </div>
@@ -87,7 +96,15 @@ export function SessionReport({
           <span>{summary.objectiveLabel}</span>
           <span className="tabular-nums">
             {Math.round(summary.masteryBefore * 100)}% →{' '}
-            <strong>{Math.round(summary.masteryAfter * 100)}%</strong>
+            <strong>
+              <CountUp
+                value={Math.round(summary.masteryAfter * 100)}
+                from={Math.round(summary.masteryBefore * 100)}
+                multiplier={m}
+                duration={1.4}
+                suffix="%"
+              />
+            </strong>
           </span>
         </div>
         <ProgressBar
@@ -141,6 +158,7 @@ export function SessionReport({
                       width={32}
                     />
                     <Tooltip
+                      separator=": "
                       cursor={{ fill: c.line, opacity: 0.4 }}
                       contentStyle={{
                         background: c.surface,

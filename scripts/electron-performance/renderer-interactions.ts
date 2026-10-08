@@ -18,7 +18,7 @@ async function twoAnimationFrames(page: Page): Promise<void> {
 }
 
 export async function waitForSeededDashboard(page: Page): Promise<void> {
-  const dashboard = page.getByRole('heading', { name: 'Courses', exact: true });
+  const dashboard = page.getByRole('heading', { name: 'Today', exact: true });
   const openLacuna = page
     .getByRole('region', { name: 'Revision around your exam', exact: true })
     .getByRole('link', { name: 'Start revising', exact: true });
@@ -29,7 +29,8 @@ export async function waitForSeededDashboard(page: Page): Promise<void> {
   await dashboard.waitFor({ state: 'visible' });
   await page.waitForFunction(() => window.location.hash === '#/' || window.location.hash === '');
   await page
-    .getByRole('heading', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
     .first()
     .waitFor({ state: 'visible' });
   await twoAnimationFrames(page);
@@ -46,7 +47,7 @@ async function resetToSeededDashboard(page: Page): Promise<void> {
       window.location.hash = '#/';
     });
   }
-  await page.getByRole('heading', { name: 'Courses', exact: true }).waitFor({ state: 'visible' });
+  await page.getByRole('heading', { name: 'Today', exact: true }).waitFor({ state: 'visible' });
   const expandSidebar = page.getByRole('button', { name: 'Expand sidebar', exact: true });
   if (await expandSidebar.isVisible().catch(() => false)) {
     await expandSidebar.click();
@@ -55,7 +56,8 @@ async function resetToSeededDashboard(page: Page): Promise<void> {
       .waitFor({ state: 'visible' });
   }
   await page
-    .getByRole('heading', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
     .first()
     .waitFor({ state: 'visible' });
   await twoAnimationFrames(page);
@@ -151,7 +153,7 @@ async function installBrowserProbe(page: Page, scenario: InteractionScenario): P
 async function performInteraction(page: Page, scenario: InteractionScenario): Promise<void> {
   if (scenario === 'search') {
     await page
-      .getByRole('button', { name: /Quick search/ })
+      .getByRole('button', { name: /^Search/ })
       .first()
       .click();
     return;

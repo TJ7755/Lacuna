@@ -1,3 +1,4 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
@@ -10,8 +11,6 @@ import {
   parseShareManifest,
 } from '../shareLinks/client';
 import { confirmShareImport } from '../shareLinks/linkStore';
-import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
 
 type ShareLinkState =
   | { status: 'loading' }
@@ -124,7 +123,7 @@ export function ShareLinkPage() {
           <ShareLinkSkeleton />
         </DelayedFallback>
       ) : state.status === 'unavailable' ? (
-        <SectionCard>
+        <section className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
           <h2 className="mb-1 font-display text-xl">This link is unavailable</h2>
           <p className="mb-5 text-sm text-ink-soft">{state.message}</p>
           <div className="flex flex-wrap gap-2">
@@ -138,7 +137,7 @@ export function ShareLinkPage() {
               Back to Share
             </Link>
           </div>
-        </SectionCard>
+        </section>
       ) : state.status === 'ready' ? (
         <SharedCourseImport
           initialFile={state.file}
@@ -147,7 +146,7 @@ export function ShareLinkPage() {
           }}
         />
       ) : (
-        <SectionCard>
+        <section className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
           <h2 className="mb-1 font-display text-xl">This link is incomplete</h2>
           <p className="mb-5 text-sm text-ink-soft">{state.message}</p>
           <div className="flex flex-wrap gap-2">
@@ -161,7 +160,7 @@ export function ShareLinkPage() {
               Back to Share
             </Link>
           </div>
-        </SectionCard>
+        </section>
       )}
     </div>
   );
@@ -175,10 +174,10 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 
 function ShareLinkSkeleton() {
   return (
-    <SectionCard as="div">
-      <Skeleton className="mb-2 h-6 w-48 rounded-lg" />
-      <Skeleton className="mb-5 h-4 w-full rounded-lg" />
-      <Skeleton className="h-32 w-full rounded-xl" />
-    </SectionCard>
+    <div className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6">
+      <Skeleton className="mb-2 h-6 w-48 rounded-lg bg-ink/10" />
+      <Skeleton className="mb-5 h-4 w-full rounded-lg bg-ink/10" />
+      <Skeleton className="h-32 w-full rounded-xl bg-ink/10" />
+    </div>
   );
 }

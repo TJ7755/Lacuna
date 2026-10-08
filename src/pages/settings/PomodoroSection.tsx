@@ -1,13 +1,14 @@
+import { fieldLabelClassName, inputFrameClassName } from '../../components/ui/Field';
 import { useState } from 'react';
 import { ClockIcon } from '../../components/ui/icons';
-import { Toggle } from '../../components/ui/Toggle';
 import {
   loadPomodoroSettings,
   savePomodoroSettings,
   type PomodoroSettings,
 } from '../../hooks/usePomodoro';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
-import { SectionCard } from '../../components/ui/SectionCard';
+import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
+import { cn } from '../../components/ui/cn';
 
 export function PomodoroSection() {
   const [settings, setSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
@@ -18,13 +19,12 @@ export function PomodoroSection() {
   }
 
   return (
-    <SectionCard
-      id="settings-pomodoro"
-      className="mb-8"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-pomodoro">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <ClockIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">Pomodoro timer</SettingsSectionHeading>
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
+          Pomodoro timer
+        </SettingsSectionHeading>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <DurationInput
@@ -43,20 +43,17 @@ export function PomodoroSection() {
           onChange={(value) => update({ ...settings, longBreakMinutes: value })}
         />
       </div>
-      <div className="mt-5 flex items-start justify-between gap-3 border-t border-line pt-5">
+      <div className="mt-5 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">
-          <div className="text-sm">Auto-start breaks</div>
-          <p className="mt-1 text-sm text-ink-soft">
-            Automatically start the break timer when a focus session ends.
-          </p>
+          <div className="font-semibold text-ink">Auto-start breaks</div>
         </div>
-        <Toggle
+        <PillSwitch
           checked={settings.autoStartBreaks}
           onChange={(checked) => update({ ...settings, autoStartBreaks: checked })}
           ariaLabel="Auto-start breaks"
         />
       </div>
-    </SectionCard>
+    </SettingsCard>
   );
 }
 
@@ -70,7 +67,7 @@ function DurationInput({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="block text-sm text-ink-soft">
+    <label className={fieldLabelClassName}>
       {label}
       <div className="mt-2 flex items-center gap-2">
         <input
@@ -83,9 +80,9 @@ function DurationInput({
             const next = Number(event.target.value);
             if (!Number.isNaN(next)) onChange(Math.max(1, Math.min(120, next)));
           }}
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
+          className={`w-full ${inputFrameClassName}`}
         />
-        <span className="shrink-0 text-xs text-ink-faint">min</span>
+        <span className="shrink-0 text-xs font-normal text-ink-faint">min</span>
       </div>
     </label>
   );

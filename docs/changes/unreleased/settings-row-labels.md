@@ -1,0 +1,2 @@
+- Settings: every row label (the Sidebar, Session behaviour, Pomodoro and course-default cards) uses the same semibold label as Appearance and course settings, rather than a small regular one; the Sidebar card's navigation list sits in tinted wells instead of bordered boxes.
+- Switches no longer sit a few pixels high in a block container: the shared `Toggle` aligns to the top of its line instead of the text baseline.

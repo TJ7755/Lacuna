@@ -1,5 +1,5 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useSearchData } from '../state/useSearchData';
@@ -26,6 +26,8 @@ import {
 import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -76,6 +78,7 @@ export function SearchPage() {
   const questions = searchData?.questions;
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const searchInput = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
 
   const results = useMemo(
@@ -127,21 +130,25 @@ export function SearchPage() {
   const active = trimmed !== '' || filters.size > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
+    <div className={`${PAGE_FRAME} py-10 [&>*]:max-w-3xl`}>
       <header className="mb-10">
         <div className="relative">
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Search content</h1>
+          <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+            Search content
+          </h1>
         </div>
       </header>
 
       <div className="mb-6 flex items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3 shadow-sm transition-shadow focus-within:border-accent focus-within:shadow-md">
         <SearchIcon width={18} height={18} className="text-ink-faint" />
         <input
+          ref={searchInput}
+          aria-label="Search content"
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search courses, lessons, notes, cards and questions…"
-          className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
+          className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
         />
       </div>
 
@@ -155,13 +162,14 @@ export function SearchPage() {
               type="button"
               onClick={() => toggleFilter(chip.value)}
               aria-pressed={on}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
               transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
-              whileHover={{ y: -1, transition: { duration: 0.1 * m } }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={m > 0 ? { y: -1, transition: { duration: 0.1 * m } } : undefined}
+              data-press=""
+              whileTap={m > 0 ? { scale: 0.97 } : undefined}
               className={cn(
-                'rounded-lg border px-3 py-1 text-xs transition-colors',
+                'min-h-11 rounded-full border px-3 py-1 text-sm transition-colors',
                 on
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line text-ink-soft hover:border-line-strong',
@@ -174,11 +182,14 @@ export function SearchPage() {
         {filters.size > 0 && (
           <motion.button
             type="button"
-            onClick={() => setFilters(new Set())}
-            initial={{ opacity: 0 }}
+            onClick={() => {
+              setFilters(new Set());
+              searchInput.current?.focus();
+            }}
+            initial={m > 0 ? { opacity: 0 } : false}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.14 * m }}
-            className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:text-ink"
+            className="min-h-11 rounded-full px-3 py-1 text-sm text-ink-faint transition-colors hover:text-ink"
           >
             Clear
           </motion.button>
@@ -189,27 +200,16 @@ export function SearchPage() {
         <DelayedFallback>
           <SearchSkeleton />
         </DelayedFallback>
-      ) : !active ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
-          <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
-            <SearchIcon width={24} height={24} />
-          </div>
-          <h3 className="mb-2 font-display text-xl">Search everything</h3>
-          <p className="max-w-sm text-sm text-ink-soft">
-            Start typing to search courses, lessons, notes, cards and Questions, or pick a filter
-            above to browse due, new, flagged, suspended or leech Cards.
-          </p>
-        </div>
-      ) : results.length === 0 && courseResults.length === 0 && questionResults.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
+      ) : !active ? null : results.length === 0 &&
+        courseResults.length === 0 &&
+        questionResults.length === 0 ? (
+        <div
+          className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
+        >
           <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
             <CardsIcon width={24} height={24} />
           </div>
-          <h3 className="mb-2 font-display text-xl">Nothing matches</h3>
-          <p className="max-w-sm text-sm text-ink-soft">
-            Nothing matches{trimmed ? ` "${trimmed}"` : ' those filters'}. Try clearing your search
-            or filters.
-          </p>
+          <h2 className="font-display text-xl">Nothing matches</h2>
         </div>
       ) : (
         <>
@@ -230,12 +230,12 @@ export function SearchPage() {
                 <motion.button
                   key={`${hit.kind}-${key}`}
                   type="button"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
                   transition={{ duration: 0.16 * m }}
                   onClick={() => navigate(courseHitPath(hit))}
-                  whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                  className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
+                  whileHover={m > 0 ? { y: -3, transition: { duration: 0.12 * m } } : undefined}
+                  className={`${SECTION_CARD_SURFACE_CLASS} flex min-h-11 items-center gap-3 p-4 text-left transition-shadow hover:shadow-md`}
                 >
                   <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-accent-soft text-accent">
                     <HitIcon width={16} height={16} />
@@ -251,12 +251,12 @@ export function SearchPage() {
               <motion.button
                 key={`question-${hit.question.id}`}
                 type="button"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.16 * m }}
                 onClick={() => navigate(questionEditPath(hit.question))}
-                whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                className="flex min-w-0 flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
+                whileHover={m > 0 ? { y: -3, transition: { duration: 0.12 * m } } : undefined}
+                className={`${SECTION_CARD_SURFACE_CLASS} flex min-h-11 min-w-0 flex-col gap-1 p-4 text-left transition-shadow hover:shadow-md`}
               >
                 <span className="break-words text-sm text-ink">
                   {hit.question.kind === 'fixed'
@@ -270,7 +270,7 @@ export function SearchPage() {
                 )}
                 <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                   <span>{hit.contextName}</span>
-                  <span className="rounded-lg border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                  <span className="rounded-lg border border-line px-2 py-0.5 text-xs">
                     Question
                   </span>
                   {hit.question.kind === 'generated' && <span>Generated family</span>}
@@ -287,12 +287,12 @@ export function SearchPage() {
               <motion.button
                 key={hit.card.id}
                 type="button"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.16 * m }}
                 onClick={() => navigate(cardEditPath(hit.card))}
-                whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                className="flex min-w-0 flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
+                whileHover={m > 0 ? { y: -3, transition: { duration: 0.12 * m } } : undefined}
+                className={`${SECTION_CARD_SURFACE_CLASS} flex min-h-11 min-w-0 flex-col gap-1 p-4 text-left transition-shadow hover:shadow-md`}
               >
                 <span className="break-words text-sm text-ink">
                   {plainPreview(hit.card.front, 140) || '(empty front)'}
@@ -332,7 +332,7 @@ function SearchSkeleton() {
   return (
     <div className="space-y-2">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4">
+        <div key={i} className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col gap-1 p-4`}>
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="mt-1 h-3 w-24" />

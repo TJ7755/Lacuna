@@ -83,19 +83,19 @@ async function reviewText() {
 it('reviews before asking for a destination, retaining the draft on Undo and failure', async () => {
   open();
   await reviewText();
-  expect(screen.getByRole('button', { name: 'Import 1 cards' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'French basics' } });
-  fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+  expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(mocks.importCards).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
   expect(await screen.findByLabelText('Course title')).toHaveValue('French basics');
   mocks.importCards.mockRejectedValueOnce(new Error('Storage full'));
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Storage full');
   expect(screen.getByLabelText('Course title')).toHaveValue('French basics');
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course/lesson/new-lesson'),
   );
@@ -111,7 +111,7 @@ it('imports into an existing lesson without asking for a new study target', asyn
   fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'french' } });
   fireEvent.change(screen.getByLabelText('Lesson'), { target: { value: 'greetings' } });
   expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(
       { kind: 'existing', schedulingUnitId: 'greetings' },
@@ -155,7 +155,7 @@ it('creates a lesson in an existing course with the imported cards', async () =>
   await reviewText();
   fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'french' } });
   fireEvent.change(screen.getByLabelText('Lesson title'), { target: { value: 'Verbs' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(
       { kind: 'lesson', courseId: 'french', title: 'Verbs' },
@@ -176,7 +176,7 @@ it('reads a text file before configuring a new course with an exam target', asyn
   });
   fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
   expect(screen.getByRole('button', { name: 'Exam date and time' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 cards' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
   await waitFor(() =>
     expect(mocks.importCards).toHaveBeenCalledWith(
       {
@@ -196,7 +196,7 @@ it('reads a text file before configuring a new course with an exam target', asyn
 it('keeps the import chooser free of redundant course navigation', () => {
   open();
   expect(screen.queryByRole('link', { name: 'All courses' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Back to import sources' })).not.toBeInTheDocument();
 });
 
 it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
@@ -204,11 +204,40 @@ it.each(['Lacuna course', 'Anki deck', 'Text or spreadsheet'])(
   async (source) => {
     open();
     fireEvent.click(screen.getByRole('button', { name: new RegExp(source) }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to import sources' }));
     expect(screen.getByText('Drop a file here')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Back to import sources' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: new RegExp(source) })).toHaveFocus();
     expect(mocks.importCards).not.toHaveBeenCalled();
     expect(mocks.importShare).not.toHaveBeenCalled();
     expect(mocks.navigate).not.toHaveBeenCalled();
   },
 );
+
+it('is keyboard-first: focuses the paste field, Tab reaches the primary action, Ctrl+Enter continues', async () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  const paste = screen.getByLabelText('Paste your cards');
+  await waitFor(() => expect(paste).toHaveFocus());
+  fireEvent.change(paste, { target: { value: 'bonjour\thello' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Review cards' })).toBeEnabled());
+  fireEvent.keyDown(paste, { key: 'Tab' });
+  expect(screen.getByRole('button', { name: 'Review cards' })).toHaveFocus();
+  fireEvent.keyDown(paste, { key: 'Enter', ctrlKey: true });
+  expect(await screen.findByLabelText('Course title')).toBeInTheDocument();
+});
+
+it('Escape returns to the source list only while nothing has been typed', () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  const paste = screen.getByLabelText('Paste your cards');
+  fireEvent.input(paste, { target: { value: 'x' } });
+  fireEvent.keyDown(paste, { key: 'Escape' });
+  expect(screen.getByLabelText('Paste your cards')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  fireEvent.keyDown(screen.getByLabelText('Paste your cards'), { key: 'Escape' });
+  expect(screen.getByRole('button', { name: /Text or spreadsheet/ })).toBeInTheDocument();
+});

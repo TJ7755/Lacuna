@@ -77,7 +77,8 @@ describe('OptimisationPanel', () => {
     const disclosure = summary.closest('details');
 
     expect(disclosure).not.toHaveAttribute('open');
-    expect(screen.getByText('Advanced scheduling')).not.toBe(summary);
+    // No eyebrow label sits above the heading (visual design, typography).
+    expect(screen.queryByText('Advanced scheduling')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 3, name: 'Scheduling optimisation' }),
     ).toBeInTheDocument();

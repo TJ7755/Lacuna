@@ -17,7 +17,7 @@ const mount = () =>
 
 it('shows the chosen copy and remains visible across visits until dismissed', () => {
   const first = mount();
-  expect(screen.getByText('One link to share it all')).toBeTruthy();
+  expect(screen.getByText('One link to share it all.')).toBeTruthy();
   expect(screen.queryByText('Better, together')).toBeNull();
   first.unmount();
   const second = mount();

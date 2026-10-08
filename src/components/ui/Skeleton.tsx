@@ -1,9 +1,11 @@
+import type { CSSProperties } from 'react';
 import { cn } from './cn';
 
 interface SkeletonProps {
   /** Size, spacing and, where it differs from the default, shape or tone. */
   className?: string;
   as?: 'div' | 'span';
+  style?: CSSProperties;
 }
 
 /**
@@ -11,10 +13,11 @@ interface SkeletonProps {
  * `rounded` and `bg-ink/10`; a `rounded-*` or `bg-*` class in `className`
  * replaces the default rather than competing with it.
  */
-export function Skeleton({ className = '', as: Element = 'div' }: SkeletonProps) {
+export function Skeleton({ className = '', as: Element = 'div', style }: SkeletonProps) {
   return (
     <Element
       aria-hidden="true"
+      style={style}
       className={cn(
         className,
         'animate-pulse',

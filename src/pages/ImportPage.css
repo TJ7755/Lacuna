@@ -8,54 +8,102 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+  min-height: 44px;
   padding: 24px;
-  border: 1px solid hsl(var(--line));
-  border-radius: 18px;
+  border: 0;
+  border-radius: 24px;
   background: hsl(var(--surface));
+  box-shadow:
+    0 1px 2px hsl(var(--ink) / 0.05),
+    0 16px 40px -28px hsl(var(--ink) / 0.22);
   text-align: left;
   cursor: pointer;
+  transition:
+    transform var(--import-motion-duration) cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow var(--import-motion-duration);
 }
 .import-sources button:hover {
-  border-color: hsl(var(--accent));
-  background: hsl(var(--accent-soft));
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px hsl(var(--ink) / 0.06),
+    0 22px 44px -26px hsl(var(--ink) / 0.3);
+}
+.import-sources button:focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 3px;
 }
 .import-sources svg {
-  color: hsl(var(--accent));
+  box-sizing: content-box;
+  padding: 14px;
+  border-radius: 16px;
+  background: hsl(var(--accent-soft));
+  color: hsl(var(--accent-ink));
 }
 .import-sources strong {
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 .import-sources span,
 .import-drop p {
-  font-size: 13px;
+  font-size: 14px;
   color: hsl(var(--ink-soft));
 }
 .import-drop {
   margin-top: 24px;
-  padding: 56px 24px;
+  padding: 48px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  border: 1px dashed hsl(var(--line-strong));
-  border-radius: 18px;
+  gap: 14px;
+  border-radius: 24px;
+  background: hsl(var(--ink) / 0.04);
   text-align: center;
+  transition: background-color var(--import-motion-duration);
+}
+.import-drop > svg {
+  color: hsl(var(--ink-soft));
+  transition: transform var(--import-motion-duration) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .import-drop[data-dragging='true'] {
-  border-color: hsl(var(--accent));
   background: hsl(var(--accent-soft));
 }
+.import-drop[data-dragging='true'] > svg {
+  transform: translateY(-4px);
+}
 .import-drop h2 {
+  font-family: var(--font-display);
   font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 .card-import-page .card-import-dialog {
   width: 100%;
   height: auto;
   max-height: none;
-  box-shadow: none;
+  box-shadow:
+    0 1px 2px hsl(var(--ink) / 0.05),
+    0 16px 40px -28px hsl(var(--ink) / 0.22);
 }
 .card-import-page .card-import-scroll {
   overflow: visible;
+}
+/* The initial page step has no destination options; keep its focus heading out of flow. */
+.card-import-page
+  .card-import-body:has(.card-import-input):not(
+    :has(.card-import-title-label, .card-import-destination)
+  ) {
+  grid-template-columns: 1fr;
+}
+.card-import-page
+  .card-import-body:has(.card-import-input):not(
+    :has(.card-import-title-label, .card-import-destination)
+  )
+  > .card-import-options {
+  position: absolute;
+  padding: 0;
+  background: none;
 }
 .import-destination {
   display: flex;
@@ -66,21 +114,28 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 12px;
-}
-.import-destination select,
-.import-destination > label input {
-  width: 100%;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid hsl(var(--line));
-  border-radius: 10px;
-  background: hsl(var(--paper));
-  color: hsl(var(--ink));
   font-size: 14px;
+  font-weight: 700;
 }
 .import-destination fieldset > div {
   grid-template-columns: 1fr;
+}
+/* Soften the shared study-target picker inside the destination panel. */
+.import-destination fieldset label {
+  border: 0;
+  background: hsl(var(--surface));
+  box-shadow: 0 1px 2px hsl(var(--ink) / 0.06);
+  border-radius: 16px;
+}
+.import-destination fieldset label:has(input:checked) {
+  box-shadow: inset 0 0 0 2px hsl(var(--ink));
+}
+.import-destination legend {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: hsl(var(--ink));
 }
 @media (max-width: 700px) {
   .import-sources {
@@ -89,7 +144,7 @@
   }
   .import-sources button {
     display: grid;
-    grid-template-columns: 24px 1fr;
+    grid-template-columns: auto 1fr;
     column-gap: 16px;
     padding: 18px;
   }
@@ -101,5 +156,15 @@
   }
   .import-drop {
     padding: 32px 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .import-sources button,
+  .import-drop > svg {
+    transition: none;
+  }
+  .import-sources button:hover,
+  .import-drop[data-dragging='true'] > svg {
+    transform: none;
   }
 }

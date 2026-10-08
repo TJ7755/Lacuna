@@ -177,7 +177,7 @@ test('the launch cover replaces the outgoing landing fade', async ({ page }) => 
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page).toHaveURL(/#\/$/);
   await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   expect(
     await page.evaluate(
       () =>

@@ -424,4 +424,43 @@ describe('QuestionLearnMode', () => {
     expect(within(recovery).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(within(recovery).getByRole('button', { name: 'Exit' })).toBeInTheDocument();
   });
+
+  it('New numbers abandons the shown attempt and starts a fresh one with a new seed and attempt id', async () => {
+    const generated: QuestionDefinition = {
+      ...question(),
+      kind: 'generated',
+      generatorKey: 'integer-root-quadratic',
+      generatorVersion: 1,
+      generatorConfig: {
+        minimumRootMagnitude: 1,
+        maximumRootMagnitude: 2,
+        maximumLeadingCoefficient: 2,
+        allowRepeatedRoots: true,
+      },
+    };
+    mocks.data = { ...mocks.data!, questions: [generated] };
+    const resolve = vi.spyOn(questionGeneratorRegistry, 'resolve');
+
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    const first = mocks.start.mock.calls[0][0] as { attemptId: string };
+    const firstSeed = resolve.mock.calls[0][0].seed;
+    expect(mocks.abandon).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New numbers' }));
+
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));
+    const second = mocks.start.mock.calls[1][0] as { attemptId: string };
+    expect(mocks.abandon).toHaveBeenCalledTimes(1);
+    expect(mocks.abandon).toHaveBeenCalledWith(first.attemptId);
+    expect(second.attemptId).not.toBe(first.attemptId);
+    expect(resolve.mock.calls[1][0].seed).not.toBe(firstSeed);
+  });
 });

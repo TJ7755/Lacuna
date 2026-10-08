@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { TrashIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
-import { Toggle } from '../../components/ui/Toggle';
+import { PillSwitch } from './SettingsUi';
 import { aiEntityExists } from '../../ai/entityAvailability';
 import { SettingsSubsectionHeading } from './SettingsSectionHeading';
 
@@ -97,7 +97,7 @@ export function AiMemoryInspector({
   }
 
   return (
-    <div className="mt-6 border-t border-line pt-5">
+    <div className="mt-6">
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] sm:items-start">
         <div>
           <SettingsSubsectionHeading className="text-sm font-medium text-ink">
@@ -120,7 +120,7 @@ export function AiMemoryInspector({
             />
           </label>
           <div className="flex justify-end">
-            <Toggle
+            <PillSwitch
               checked={includeExpired}
               onChange={setIncludeExpired}
               label="Include expired"

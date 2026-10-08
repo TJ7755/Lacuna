@@ -72,6 +72,45 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.queryByText('No question attempts yet.')).not.toBeInTheDocument();
   });
 
+  it('sits on the shared card surface, empty or not, rather than ruled or outlined boxes', () => {
+    const empty: QuestionAnalytics = {
+      inventory: { total: 0, due: 0, unseen: 0, suspended: 0 },
+      fixed: {
+        definitionCount: 0,
+        presentedDefinitionCount: 0,
+        exposureCoverage: null,
+        firstPresentation: metric(0, 0, 0, 0),
+        repeat: metric(0, 0, 0, 0),
+      },
+      generated: {
+        definitionCount: 0,
+        presentationCount: 0,
+        uniqueVariantCount: 0,
+        repeatedPresentationCount: 0,
+        repeatRate: null,
+        novel: metric(0, 0, 0, 0),
+        repeated: metric(0, 0, 0, 0),
+      },
+      criteria: [],
+      checkerDisputeCount: 0,
+      excluded: { shown: 0, abandoned: 0, undone: 0, checkerWithheld: 0, unscored: 0 },
+    };
+    const { unmount } = render(<QuestionAnalyticsSection analytics={empty} />);
+    const message = screen.getByText('No question attempts yet.');
+    expect(message).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(message).not.toHaveClass('border-y');
+    unmount();
+
+    render(
+      <QuestionAnalyticsSection
+        analytics={{ ...empty, fixed: { ...empty.fixed, firstPresentation: metric(1, 1, 2, 2) } }}
+      />,
+    );
+    const card = screen.getByRole('table', { name: 'Question performance' }).closest('.rounded-3xl');
+    expect(card).not.toBeNull();
+    expect(card).not.toHaveClass('border');
+  });
+
   it('renders every evidence cohort, raw marks, exclusions and all versioned criteria', () => {
     const analytics: QuestionAnalytics = {
       inventory: { total: 4, due: 1, unseen: 1, suspended: 1 },
@@ -101,7 +140,7 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.getByText('Generated · novel variants')).toBeInTheDocument();
     expect(screen.getByText('Generated · repeated variants')).toBeInTheDocument();
     expect(screen.getByText('Recorded marks')).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: 'Question performance' }).parentElement?.parentElement).toHaveClass('bg-surface', 'rounded-2xl');
+    expect(screen.getByRole('table', { name: 'Question performance' }).parentElement?.parentElement).toHaveClass('bg-surface', 'rounded-3xl');
     expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
     expect(screen.getByText('Attempt details').closest('details')).not.toHaveAttribute('open');
     expect(screen.getByText('Unique variants seen').nextElementSibling).toHaveTextContent('2');

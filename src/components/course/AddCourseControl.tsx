@@ -1,19 +1,19 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { CardsIcon, FlagIcon, FileTextIcon, HelpIcon, PlusIcon } from '../ui/icons';
-
+import { Menu } from '../ui/Menu';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { expandingActionSpring } from '../ui/motion';
 
 export type CourseAddKind = 'lesson' | 'practice' | 'question-set' | 'checkpoint';
 
 const options = [
   { kind: 'lesson', name: 'Lesson', Icon: FileTextIcon },
-  { kind: 'practice', name: 'Practice', Icon: CardsIcon },
-  { kind: 'question-set', name: 'Practice Qs', Icon: HelpIcon },
+  { kind: 'practice', name: 'Card practice', Icon: CardsIcon },
+  { kind: 'question-set', name: 'Practice questions', Icon: HelpIcon },
   { kind: 'checkpoint', name: 'Checkpoint', Icon: FlagIcon },
 ] as const;
 
-/** The button and its choices share one surface, fixed to the button's own corner. */
+/** The shared action surface expands from the button's own corner. */
 export function AddCourseControl({
   onAdd,
   kinds,
@@ -21,112 +21,30 @@ export function AddCourseControl({
   onAdd: (kind: CourseAddKind) => void;
   kinds?: readonly CourseAddKind[];
 }) {
-  const visible = options.filter((option) => !kinds || kinds.includes(option.kind));
-  const [open, setOpen] = useState(false);
-  const container = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const optionsId = useId();
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
-  const reduced = multiplier === 0;
-  const transition = reduced
-    ? { duration: 0 }
-    : { type: 'spring' as const, visualDuration: 0.3 * multiplier, bounce: 0 };
-
-  useEffect(() => {
-    if (!open) return;
-    const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !container.current?.contains(event.target))
-        setOpen(false);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      setOpen(false);
-      trigger.current?.focus();
-    };
-    document.addEventListener('pointerdown', outside);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('pointerdown', outside);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [open]);
-
+  const visible = options.filter((option) => !kinds || kinds.includes(option.kind));
   return (
-    <div
-      ref={container}
-      className="course-add-control"
-      onBlur={(event) => {
-        if (
-          event.relatedTarget instanceof Node &&
-          !event.currentTarget.contains(event.relatedTarget)
-        )
-          setOpen(false);
-      }}
+    <Menu
+      label="Add"
+      items={visible.map(({ kind, name, Icon }) => ({
+        label: name,
+        icon: <Icon width={17} height={17} />,
+        onSelect: () => onAdd(kind),
+      }))}
     >
-      <motion.div
-        className={`course-add-surface ${open ? 'is-open' : ''}`}
-        // Animate this isolated surface's dimensions, never a scale inherited by its text.
-        initial={false}
-        animate={{ width: open ? 216 : 68, height: open ? 54 + 44 * visible.length : 44 }}
-        transition={transition}
-      >
-        <motion.button
-          ref={trigger}
-          className="course-button course-add-trigger"
-          type="button"
-          aria-expanded={open}
-          aria-controls={optionsId}
-          onClick={() => setOpen((value) => !value)}
-          whileTap={reduced ? undefined : { scale: 0.97 }}
-          transition={transition}
-        >
+      {(open) => (
+        <>
           <motion.span
             aria-hidden="true"
-            animate={{ rotate: open && !reduced ? 45 : 0 }}
-            transition={transition}
+            animate={{ rotate: open && multiplier > 0 ? 45 : 0 }}
+            transition={expandingActionSpring(multiplier)}
           >
             <PlusIcon width={15} height={15} />
           </motion.span>
           Add
-        </motion.button>
-        <div inert={!open} aria-hidden={!open || undefined}>
-          <AnimatePresence initial={false}>
-            {open && (
-              <motion.div
-                key="options"
-                id={optionsId}
-                role="group"
-                aria-label="Add to course"
-                className="course-add-options"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * multiplier }}
-              >
-                {visible.map(({ kind, name, Icon }) => (
-                  <motion.button
-                    key={name}
-                    type="button"
-                    className="course-button"
-                    whileTap={reduced ? undefined : { scale: 0.97 }}
-                    transition={transition}
-                    onClick={() => {
-                      setOpen(false);
-                      trigger.current?.focus();
-                      onAdd(kind);
-                    }}
-                  >
-                    <Icon width={17} height={17} />
-                    {name}
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
-    </div>
+        </>
+      )}
+    </Menu>
   );
 }

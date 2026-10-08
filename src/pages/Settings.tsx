@@ -1,9 +1,12 @@
-import { useEffect, type ReactNode } from 'react';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
+import { type ReactNode } from 'react';
+import { useSectionDeepLink } from '../hooks/useSectionDeepLink';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { AppearanceSection } from './settings/AppearanceSection';
 import { BackupsSection } from './settings/BackupsSection';
 import { DashboardSection } from './settings/DashboardSection';
+import { DataLinksSection } from './settings/DataLinksSection';
 import { DataPortabilitySection } from './settings/DataPortabilitySection';
 import { InputModeSection } from './settings/InputModeSection';
 import { InstallSection } from './settings/InstallSection';
@@ -16,6 +19,7 @@ import { CourseDefaultsSection, StudySection } from './settings/StudySection';
 import { SyncSection } from './settings/SyncSection';
 import { AiSection } from './settings/AiSection';
 import { SettingsHeadingLevelProvider } from './settings/SettingsSectionHeading';
+import { SettingsArrivalProvider } from './settings/SettingsUi';
 
 declare const __APP_VERSION__: string;
 
@@ -27,7 +31,7 @@ const SETTINGS_SECTIONS = [
   { id: 'settings-group-appearance', label: 'Appearance & access' },
   { id: 'settings-group-study', label: 'Study behaviour' },
   { id: 'settings-group-course-defaults', label: 'Course defaults' },
-  { id: 'settings-group-data', label: 'Data safety' },
+  { id: 'settings-group-data', label: 'Your data' },
   { id: 'settings-group-integrations', label: 'Integrations' },
 ];
 
@@ -48,102 +52,72 @@ const SETTINGS_ANCHOR_IDS = new Set([
   'settings-mcp',
   'settings-export',
   'settings-backups',
+  'settings-data-links',
 ]);
-
-function settingsAnchorId(hash: string): string | null {
-  const fragment = hash.slice(hash.lastIndexOf('#') + 1);
-  if (!fragment || fragment.startsWith('/')) return null;
-  try {
-    const id = decodeURIComponent(fragment);
-    return SETTINGS_ANCHOR_IDS.has(id) ? id : null;
-  } catch {
-    return null;
-  }
-}
 
 export function Settings() {
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
   const { activeSection, goToSection } = useSectionRail(SETTINGS_SECTIONS, motionMultiplier);
 
-  useEffect(() => {
-    function scrollToDeepLink() {
-      const id = settingsAnchorId(window.location.hash);
-      if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' });
-    }
-
-    scrollToDeepLink();
-    window.addEventListener('hashchange', scrollToDeepLink);
-    return () => window.removeEventListener('hashchange', scrollToDeepLink);
-  }, []);
+  useSectionDeepLink(SETTINGS_ANCHOR_IDS);
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-6 pb-10 pt-12 md:px-10 md:py-10">
-      <div className="min-w-0 flex-1">
-        <header className="mb-12 flex items-baseline justify-between gap-4 pt-2 md:pt-4">
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
-          <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
-        </header>
+    <div className={`${PAGE_FRAME} pb-12 pt-4 md:pt-2`}>
+      <header className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Settings</h1>
+        <p className="text-sm tabular text-ink-faint">Version {appVersion()}</p>
+      </header>
+      <div className="flex flex-row-reverse gap-8">
+        <div className="min-w-0 flex-1">
+          <SettingsArrivalProvider>
+            <SectionRailMobileJumper
+              sections={SETTINGS_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={goToSection}
+              label="Jump to settings group"
+            />
 
-        <SectionRailMobileJumper
+            <SettingsGroup id="settings-group-appearance" title="Appearance & access">
+              <AppearanceSection />
+              <InputModeSection />
+              <SidebarSection />
+              <DashboardSection />
+              <CourseHeaderSection />
+              <ShortcutsSection />
+            </SettingsGroup>
+
+            <SettingsGroup id="settings-group-study" title="Study behaviour">
+              <StudySection />
+              <PomodoroSection />
+            </SettingsGroup>
+
+            <SettingsGroup id="settings-group-course-defaults" title="Course defaults">
+              <CourseDefaultsSection />
+            </SettingsGroup>
+
+            <SettingsGroup id="settings-group-data" title="Your data">
+              <BackupsSection />
+              <DataLinksSection />
+              <SyncSection />
+              <DataPortabilitySection motionMultiplier={motionMultiplier} />
+            </SettingsGroup>
+
+            <SettingsGroup id="settings-group-integrations" title="Integrations">
+              <InstallSection />
+              <AiSection />
+              {window.electronAPI?.isElectron && <McpSection />}
+            </SettingsGroup>
+          </SettingsArrivalProvider>
+        </div>
+
+        <SectionRail
           sections={SETTINGS_SECTIONS}
           activeSection={activeSection}
           onNavigate={goToSection}
-          label="Jump to settings group"
+          motionMultiplier={motionMultiplier}
         />
-
-        <SettingsGroup
-          id="settings-group-appearance"
-          title="Appearance & access"
-        >
-          <AppearanceSection />
-          <InputModeSection />
-          <SidebarSection />
-          <DashboardSection />
-          <CourseHeaderSection />
-          <ShortcutsSection />
-        </SettingsGroup>
-
-        <SettingsGroup
-          id="settings-group-study"
-          title="Study behaviour"
-        >
-          <StudySection />
-          <PomodoroSection />
-        </SettingsGroup>
-
-        <SettingsGroup
-          id="settings-group-course-defaults"
-          title="Course defaults"
-        >
-          <CourseDefaultsSection />
-        </SettingsGroup>
-
-        <SettingsGroup
-          id="settings-group-data"
-          title="Data safety"
-        >
-          <SyncSection />
-          <DataPortabilitySection motionMultiplier={motionMultiplier} />
-          <BackupsSection />
-        </SettingsGroup>
-
-        <SettingsGroup
-          id="settings-group-integrations"
-          title="Integrations"
-        >
-          <InstallSection />
-          <AiSection />
-          {window.electronAPI?.isElectron && <McpSection />}
-        </SettingsGroup>
       </div>
-
-      <SectionRail
-        sections={SETTINGS_SECTIONS}
-        activeSection={activeSection}
-        onNavigate={goToSection}
-        motionMultiplier={motionMultiplier}
-      />
     </div>
   );
 }
@@ -165,11 +139,11 @@ function SettingsGroup({
       aria-labelledby={headingId}
       className="mb-8 scroll-mt-20 first:mt-0 [&>section]:scroll-mt-20"
     >
-      <div className="mb-5 border-b border-line pb-4">
-        <h2 id={headingId} className="font-display text-2xl tracking-tight">
-          {title}
-        </h2>
-      </div>
+      {/* The section rail already names the group on screen; the heading keeps
+          the outline for assistive technology. */}
+      <h2 id={headingId} className="sr-only">
+        {title}
+      </h2>
       <SettingsHeadingLevelProvider level={3}>{children}</SettingsHeadingLevelProvider>
     </section>
   );

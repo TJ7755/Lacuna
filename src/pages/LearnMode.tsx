@@ -1,6 +1,6 @@
 import { StudyControls } from './learn/StudyControls';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
@@ -28,6 +28,8 @@ import { LearnHeader } from './learn/LearnHeader';
 import { NavSidebar } from './learn/NavSidebar';
 import { FlipCard } from './learn/FlipCard';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './learn/StudyCardTransition';
+import { StreakCelebration, type StreakMoment } from './learn/StreakCelebration';
+import { isStreakMilestone, nextRun } from './learn/answerStreak';
 import { useStudyFocus } from './learn/useStudyFocus';
 import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
@@ -53,6 +55,10 @@ interface LearnModeProps {
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
+  // Consecutive correct answers, self-graded or machine-marked, for the milestone celebration.
+  const runRef = useRef(0);
+  const [streakMoment, setStreakMoment] = useState<StreakMoment | null>(null);
+  const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
   const undoInFlightRef = useRef(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -252,6 +258,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setMenuOpen(false);
     try {
       cardTransitionRef.current?.cancel();
+      runRef.current = 0;
+      setStreakMoment(null);
       await undoLast();
     } finally {
       undoInFlightRef.current = false;
@@ -272,6 +280,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             });
           }
         })();
+      {
+        const correct =
+          typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
+        runRef.current = nextRun(runRef.current, correct);
+        if (isStreakMilestone(runRef.current)) {
+          setStreakMoment({ run: runRef.current, key: Date.now() });
+        }
+      }
       // Machine-marked cards measure response time at submission, so keep that path immediate.
       if (typeof input === 'object' || !cardTransitionRef.current) commit();
       else
@@ -470,6 +486,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             <AnimatePresence>
               {(!focusMode || focusChromeVisible || menuOpen) && (
                 <LearnHeader
+                  canUndo={canUndo}
+                  onUndo={() => void undoWithTransitionCancel()}
                   key="learn-header"
                   mode={mode}
                   plannedRevision={plannedRevision}
@@ -533,6 +551,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   : 'pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12')
               }
             >
+              <StreakCelebration
+                moment={streakMoment}
+                multiplier={m}
+                onDone={clearStreakMoment}
+              />
               {current && (
                 <StudyCardTransition
                   key={current.id}

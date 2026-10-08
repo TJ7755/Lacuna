@@ -1,5 +1,8 @@
+import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { m as motion } from 'motion/react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { QuestionSessionHeader } from '../components/questions/QuestionSessionHeader';
 import { QuestionFeedback } from '../components/questions/QuestionFeedback';
 import {
   QuestionResponsePanel,
@@ -8,7 +11,6 @@ import {
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
-import { ChevronLeftIcon } from '../components/ui/icons';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 import { makeId } from '../db/schema';
@@ -22,8 +24,10 @@ import {
 } from '../questions/repository';
 import { selectQuestionSession } from '../questions/selection';
 import type { QuestionAttempt } from '../questions/types';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { useCourse } from '../state/useCourseData';
-import { Skeleton } from '../components/ui/Skeleton';
+import { MOTION_EASING } from '../components/ui/motion';
+import { ResultMark } from '../components/questions/ResultMark';
 
 export function QuestionLearnMode() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -38,12 +42,16 @@ export function QuestionLearnMode() {
   const [attempt, setAttempt] = useState<QuestionAttempt | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [startVersion, setStartVersion] = useState(0);
+  // Bumped when the learner asks for fresh numbers; part of the attempt id and generator seed.
+  const [rerollCount, setRerollCount] = useState(0);
   const activeAttemptRef = useRef<QuestionAttempt | null>(null);
   const abandonedAttemptIds = useRef(new Set<string>());
   const abandonWrites = useRef(new Map<string, Promise<void>>());
   const answerWriteRef = useRef<Promise<void> | null>(null);
   const [busy, setBusy] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
 
   const abandonAttemptOnce = useCallback(async (candidate: QuestionAttempt | null) => {
     if (candidate?.status !== 'shown' || abandonedAttemptIds.current.has(candidate.id)) return;
@@ -114,13 +122,13 @@ export function QuestionLearnMode() {
               generatorKey: question.generatorKey,
               generatorVersion: question.generatorVersion,
               configuration: question.generatorConfig,
-              seed: `${sessionId}:${index}:${question.id}`,
+              seed: `${sessionId}:${index}:${question.id}${rerollCount ? `:r${rerollCount}` : ''}`,
             })
           : undefined;
       return startQuestionAttempt({
         questionId: question.id,
         sessionId,
-        attemptId: `${sessionId}:${index}`,
+        attemptId: `${sessionId}:${index}${rerollCount ? `:r${rerollCount}` : ''}`,
         instance,
       });
     };
@@ -141,7 +149,7 @@ export function QuestionLearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [abandonAttemptOnce, attempt, index, question, questionIds, sessionId, startVersion]);
+  }, [abandonAttemptOnce, attempt, index, question, questionIds, rerollCount, sessionId, startVersion]);
 
   const submit = (answer: CheckedQuestionAnswer) => {
     if (!attempt || answerWriteRef.current) return;
@@ -199,6 +207,20 @@ export function QuestionLearnMode() {
     }
   };
 
+  const reroll = async () => {
+    if (!attempt || attempt.status !== 'shown' || busy) return;
+    setBusy(true);
+    try {
+      await abandonAttemptOnce(attempt);
+      setAttempt(null);
+      setRerollCount((count) => count + 1);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not draw new numbers.', 'negative');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const exit = () => exitGuardRef.current?.requestLeave();
 
   if (course === undefined || data === undefined || questionIds === null) {
@@ -218,9 +240,14 @@ export function QuestionLearnMode() {
   if (finished || questionIds.length === 0) {
     return (
       <main className="grid min-h-screen place-items-center bg-paper px-6 text-ink">
-        <section className="w-full max-w-lg rounded-3xl border border-line bg-surface px-7 py-12 text-center shadow-xl shadow-black/5">
-          <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Question practice</p>
-          <h1 className="mt-3 font-display text-4xl tracking-tight">
+        <motion.section
+          initial={multiplier > 0 ? { opacity: 0, y: 14, scale: 0.98 } : false}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.46 * multiplier, ease: MOTION_EASING.emphasised }}
+          className="flex w-full max-w-lg flex-col items-center rounded-[28px] bg-surface px-7 py-12 text-center shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
+        >
+          {questionIds.length > 0 && <ResultMark tone="right" className="mb-5 size-12" />}
+          <h1 className="font-display text-4xl font-semibold tracking-tight">
             {questionIds.length ? 'Session complete' : 'No Questions to practise'}
           </h1>
           <p className="mt-3 text-sm leading-6 text-ink-soft">
@@ -229,19 +256,19 @@ export function QuestionLearnMode() {
               : 'There are no eligible Questions in this selection.'}
           </p>
           <Button
-            className="mt-7"
+            className="mt-7 min-h-14 px-7 font-bold"
             variant="primary"
             onClick={() => navigate(`/course/${course.id}/questions`)}
           >
             Back to Questions
           </Button>
-        </section>
+        </motion.section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-paper px-4 py-5 text-ink md:px-8 md:py-7">
+    <main className="min-h-screen bg-paper px-4 pb-12 text-ink md:px-8">
       <SessionExitGuard
         ref={exitGuardRef}
         active={() => activeAttemptRef.current?.status === 'shown'}
@@ -251,42 +278,20 @@ export function QuestionLearnMode() {
         onConfirm={settleAnswerAndAbandon}
         onExplicitLeave={() => navigate(`/course/${courseId}/questions`)}
       />
-      <div className="mx-auto max-w-4xl">
-        <header className="mb-5 flex items-center justify-between gap-4">
-          <button
-            type="button"
-            onClick={exit}
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition hover:text-ink"
-          >
-            <ChevronLeftIcon width={16} height={16} />
-            Exit
-          </button>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">{course.name}</p>
-            <p className="mt-1 font-mono text-sm tabular-nums text-ink-soft">
-              {Math.min(answeredCount + 1, uniqueQuestionCount)} / {uniqueQuestionCount}
-            </p>
-          </div>
-        </header>
-        <div className="mb-6 h-1 overflow-hidden rounded-full bg-ink/10">
-          <div
-            className="h-full rounded-full bg-accent transition-[width] duration-300"
-            style={{
-              width: `${(answeredCount / uniqueQuestionCount) * 100}%`,
-            }}
-          />
-        </div>
+      <div className="mx-auto max-w-[1000px]">
+        <QuestionSessionHeader
+          completed={answeredCount}
+          total={uniqueQuestionCount}
+          onExit={exit}
+        />
 
         {startError ? (
           <section
             role="alert"
-            className="grid min-h-[30rem] place-items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center shadow-xl shadow-black/5"
+            className="grid min-h-[24rem] place-items-center rounded-[28px] bg-surface px-6 py-12 text-center shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
           >
             <div className="max-w-md">
-              <p className="text-xs uppercase tracking-[0.18em] text-negative">
-                Question unavailable
-              </p>
-              <h1 className="mt-3 font-display text-3xl tracking-tight">
+              <h1 className="font-display text-3xl font-semibold tracking-tight">
                 Could not start practice
               </h1>
               <p className="mt-3 text-sm leading-6 text-ink-soft">{startError}</p>
@@ -307,20 +312,33 @@ export function QuestionLearnMode() {
             </div>
           </section>
         ) : !attempt ? (
-          <Skeleton className="h-[30rem] rounded-3xl" />
-        ) : attempt.status === 'answered' ? (
-          <QuestionFeedback
-            attempt={attempt}
-            busy={busy}
-            onCorrection={(answer) => void correct({ ...answer, attemptId: attempt.id })}
-            onUndo={() => void undo()}
-            onNext={() => {
-              setAttempt(null);
-              setIndex((current) => current + 1);
-            }}
-          />
+          <Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />
         ) : (
-          <QuestionResponsePanel attempt={attempt} onSubmit={(answer) => void submit(answer)} />
+          <motion.div
+            key={`${attempt.id}:${attempt.status}`}
+            initial={multiplier > 0 ? { opacity: 0, y: 14, scale: 0.985 } : false}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4 * multiplier, ease: MOTION_EASING.emphasised }}
+          >
+            {attempt.status === 'answered' ? (
+              <QuestionFeedback
+                attempt={attempt}
+                busy={busy}
+                onCorrection={(answer) => void correct({ ...answer, attemptId: attempt.id })}
+                onUndo={() => void undo()}
+                onNext={() => {
+                  setAttempt(null);
+                  setIndex((current) => current + 1);
+                }}
+              />
+            ) : (
+              <QuestionResponsePanel
+                attempt={attempt}
+                onSubmit={(answer) => void submit(answer)}
+                onReroll={question?.kind === 'generated' ? () => void reroll() : undefined}
+              />
+            )}
+          </motion.div>
         )}
       </div>
     </main>
@@ -329,10 +347,10 @@ export function QuestionLearnMode() {
 
 function QuestionSessionSkeleton() {
   return (
-    <main className="min-h-screen bg-paper px-4 py-7">
-      <div className="mx-auto max-w-4xl">
-        <Skeleton className="mb-6 h-11 w-full rounded-xl" />
-        <Skeleton className="h-[30rem] rounded-3xl" />
+    <main className="min-h-screen bg-paper px-4 py-7 md:px-8">
+      <div className="mx-auto max-w-[1000px]">
+        <Skeleton className="mb-6 h-11 w-full rounded-xl bg-ink/10" />
+        <Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />
       </div>
     </main>
   );

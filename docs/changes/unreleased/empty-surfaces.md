@@ -1,0 +1,1 @@
+- The not-found page and the empty Archived page use the shared card surface; the first had kept an outlined, shadowed box and the second a ruled line under the title, and the not-found page's button loses its shadow like every primary button.

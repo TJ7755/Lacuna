@@ -1,0 +1,2 @@
+- Removed Search’s duplicated empty-screen heading and typing instructions, aligned result surfaces with the shared design, named its search field and enlarged filter targets. Clearing filters returns keyboard focus to the input, and reduced motion removes hover and press transforms.
+- Import source changes use the shared step animation, retain the header’s position and return focus to the chosen source on Back or empty-form Escape.

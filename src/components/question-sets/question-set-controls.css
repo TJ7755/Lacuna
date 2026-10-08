@@ -70,10 +70,9 @@
   display: flex;
   align-items: center;
   min-height: 44px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid hsl(var(--line));
-  background: hsl(var(--surface));
+  padding: 10px 16px;
+  border-radius: 9999px;
+  background: hsl(var(--ink) / 0.06);
   font-size: 14px;
 }
 .qs-choices input:checked + span {
@@ -100,8 +99,7 @@
 .qs-panel {
   position: relative;
   background: hsl(var(--paper));
-  border: 1px solid hsl(var(--line));
-  border-radius: 16px;
+  border-radius: 24px;
   width: min(720px, 100%);
   max-height: 88dvh;
   overflow: auto;
@@ -127,22 +125,21 @@
   gap: 16px;
   margin-top: 24px;
   padding: 16px 20px;
-  border: 1px solid hsl(var(--line));
-  border-radius: 16px;
+  border-radius: 24px;
   background: hsl(var(--surface));
   font-size: 14px;
+  box-shadow: var(--qs-card-shadow);
 }
 .qs-legacy-link span {
   color: hsl(var(--accent-ink));
 }
 .qs-step-tabs {
-  border-radius: 12px;
-  background: hsl(var(--ink) / 0.05);
+  border-radius: 9999px;
+  background: hsl(var(--ink) / 0.06);
   padding: 4px;
-}
-.qs-step-tabs button[aria-selected='true'] {
-  background: hsl(var(--accent-soft));
-  color: hsl(var(--accent-ink));
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
 }
 @media (max-width: 1279px) {
   .qs-editor {

@@ -26,6 +26,8 @@ interface SequenceItemRowProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onAddAfter: () => void;
+  /** Tab off the value editor, so the last row can hand focus straight to the save button. */
+  onTabForward?: () => void;
   inputRef: Ref<HTMLTextAreaElement>;
   invalid: boolean;
 }
@@ -43,6 +45,7 @@ export function SequenceItemRow({
   onMoveUp,
   onMoveDown,
   onAddAfter,
+  onTabForward,
   inputRef,
   invalid,
 }: SequenceItemRowProps) {
@@ -69,7 +72,7 @@ export function SequenceItemRow({
             onClick={onAddAfter}
             title={`Add ${itemTerm} below`}
             aria-label={`Add ${itemTerm} below ${itemTerm} ${index + 1}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-accent-soft hover:text-accent"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-accent-soft hover:text-accent"
           >
             <PlusIcon width={15} height={15} />
           </button>
@@ -80,7 +83,7 @@ export function SequenceItemRow({
             aria-label={`Move ${itemTerm} ${index + 1} up`}
             title="Move up"
             className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+              'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
               'disabled:pointer-events-none disabled:opacity-30',
             )}
           >
@@ -93,7 +96,7 @@ export function SequenceItemRow({
             aria-label={`Move ${itemTerm} ${index + 1} down`}
             title="Move down"
             className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+              'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
               'disabled:pointer-events-none disabled:opacity-30',
             )}
           >
@@ -104,7 +107,7 @@ export function SequenceItemRow({
             onClick={onDelete}
             aria-label={`Delete ${itemTerm} ${index + 1}`}
             title={`Delete ${itemTerm}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
           >
             <TrashIcon width={14} height={14} />
           </button>
@@ -155,8 +158,9 @@ export function SequenceItemRow({
         value={item.value}
         onChange={(value) => onChange({ value })}
         onModEnter={onAddAfter}
+        onTabForward={onTabForward}
         minRows={2}
-        placeholder={`${itemTermCapitalized} content. Markdown, maths and images are supported.`}
+        placeholder={`${itemTermCapitalized} content`}
       />
       {invalid && (
         <p id={errorId} role="alert" className="mt-2 text-sm text-negative">

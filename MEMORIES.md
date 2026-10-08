@@ -3,6 +3,18 @@
 Read [AGENTS.md](AGENTS.md) for working rules. Keep this file to facts an agent would
 otherwise get wrong; specialist detail belongs in [engineering notes](docs/maintenance/engineering-notes.md).
 
+## File assertions on Windows
+
+Git can check text files out with CRLF line endings on Windows. Normalise those
+line endings before format-sensitive file assertions; otherwise valid workflows
+fail their policy tests despite matching the committed content.
+
+## Persisted editing modes in browser tests
+
+Clicking Edit mode returns before the IndexedDB write and live-query update finish.
+Wait for an edit-only control to appear before testing authoring or its Tab order;
+otherwise keyboard navigation correctly follows the previous mode's controls.
+
 ## Live users and rollout
 
 Real beta users depend on Lacuna (confirmed 13 September 2026). Preserve their study data
@@ -98,11 +110,6 @@ Backup acceptance lives in the zod schemas (`backupValidation.ts`, `backupRecord
 required collections there; a new row variant (such as `question-set` practice nodes) needs a
 schema branch, or valid exports are rejected.
 
-## Course path rendering
-
-`CourseOverview` renders the course path and its companion detail. `PathNodeView` and
-`CoursePathSegment` are no longer mounted by any page, so path features added there never appear.
-
 ## Local Electron commands
 
 The T3 host can export `ELECTRON_RUN_AS_NODE=1`. Unset it for local Electron application
@@ -121,6 +128,11 @@ captures when authorised. A Retina viewport alone does not preserve Retina outpu
 Motion layout scaling on a shrinking container can magnify exiting children when
 `AnimatePresence` removes them from flow. For compact expanding controls, keep text
 at fixed dimensions and resize the isolated surface; verify text bounds mid-animation.
+
+Layout animation (`layout`, `layoutId`) needs motion's `domMax`; `domAnimation` silently
+skips it, which left every sliding pill jumping until October 2026. The app loads `domMax`
+asynchronously from `src/motionFeatures.ts`. `layout="size"` or bare `layout` scales the
+element's children, so a box containing text should use `layout="position"`.
 
 For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
 to viewport bounding boxes before comparing positions. Playwright can scroll a
@@ -226,6 +238,8 @@ app-shell precache from emitted imports and rerun cold offline Cards reload afte
 Workers must use the ID and share-codec utilities without importing database initialisation.
 Course-file operations must load with the Share route: deferring their module until the first
 button click breaks first-use export/import after the user goes offline.
+Deferred shell controls also need precaching: runtime caching only protects scripts already
+visited, so first-use offline course menus need their emitted dependency graph in the shell cache.
 
 Build-time prerendering of a hash-routed page needs a browser shim: the landing
 tree reads `window` and `localStorage` during render, so its server entry installs
@@ -268,8 +282,83 @@ A visible preview can stop delivering `requestAnimationFrame` callbacks while DO
 Motion transitions then appear frozen and screenshots can time out. Starting a T3 preview recording
 restored frame delivery during Questions review. Check frame delivery before treating this as an app
 animation defect, and stop the recording after verification.
+
+## Motion components keep their first callback ref
+
+A `motion.*` element calls only the ref callback it received on mount; a later ref is ignored.
+A row that mounts without a ref (Study mode) and gains one (Author mode) stays unregistered, so
+drag reordering silently half-works. Remount the element when its ref first becomes meaningful,
+for example with a `key` on the mode, or attach the ref to a plain element.
+
+## Interrupted exits can revive a view
+
+AnimatePresence can revive a keyed view during its exit without remounting it.
+Mount-only autofocus misses fast close/reopen actions; focus the incoming form
+when its active step changes, after departing controls become inert.
+
+## Card save feedback owns its navigation
+
+A saved card appears in the live list before the editor’s confirmation delay ends.
+Cancel that delayed return as the route starts exiting (`useIsPresent`), on unmount
+and on card-identity changes, including async saves that finish after departure; otherwise navigation to Settings can be redirected to Cards.
+
+## Controls with their own press motion must opt out of the global press dip
+
+`installPressFeedback` scales every pressable element on pointer-down unless it carries `data-press`. A control that animates its own press (Button, Menu, course tabs) needs `data-press`, otherwise the two scales multiply and cancel: the course tab's held expansion vanished this way.
+
+## Browser specs: choose visually hidden radios from the keyboard; find routes by route content
+
+Card-style radio groups use `sr-only` inputs, which Playwright cannot click; focus the radio and press Space, as `createCourse` does. Route markers live on `[data-route-content]` (two exist during a transition), not on `main`; scope with `main:has([data-route-content$="/cards"])`.
+
+## Stacked animated rows trap open menus and dialogs
+
+Each `motion.li` with a transform is its own stacking context, so a popover inside a row renders beneath later rows whatever its z-index. Lift the row while its menu is open (`has-[[aria-expanded=true]]:z-20`) and portal dialogs to `document.body`.
+
 ## PR description edits restart CI
 
 CI subscribes to the pull-request `edited` event so retargeted branches receive checks.
 Editing a PR description also restarts CI and cancels its current run. Finalise the
 review text before waiting for merge gates, rather than updating it mid-run.
+
+## Cloud-container browser runs
+
+The preinstalled Chromium (`/opt/pw-browsers/chromium`) is older than the repo's Playwright,
+so local runs need `launchOptions.executablePath` pointing at it, or symlinks from the expected
+`/opt/pw-browsers/chromium*-<revision>/` paths to it. A persistent profile keeps the service
+worker, which serves the previous build's assets; pass `serviceWorkers: 'block'` when reusing one. `offline-reload.spec.ts`
+launches its own browser and fails there with a Cache `match` TypeError on any revision; CI
+passes it. To screenshot populated states, seed through the repositories with
+`page.evaluate` on a Vite server without file watching: an HMR full reload mid-seed
+destroys the evaluation.
+
+## Initial JavaScript budget is nearly full
+
+`perf:check` caps first-load JavaScript at 280,000 gzipped bytes; after deferring the seed it
+stood at about 274,300 (7 October 2026). Asset hashes inside chunks move the figure by tens of
+bytes between builds. Prefer CSS utilities in `src/index.css` over hooks or long class strings
+in initial chunks, and add on-demand start-up chunks to the shell precache list.
+
+## Widening a hit area
+
+`line-clamp-*` sets `overflow: hidden`, so padding on a clamped element shows the clamped
+line, and a widening `::before` is clipped for clicks too. Make the link the flex box with
+`min-h-11` and clamp an inner span. A `border` on an `overflow-hidden` wrapper also eats
+into its button's target; an inset ring does not.
+
+## `cn` does not merge classes
+
+`components/ui/cn.ts` only joins strings: an override such as `mt-0` after `mt-2` wins or
+loses by Tailwind's stylesheet order, not by position. Use a class string without the
+conflicting utility (`inputFrameClassName` beside `inputClassName`) instead of overriding.
+
+## Theme-aware SVG images
+
+An SVG shown through `<img>` cannot read the app's CSS, but in Chromium its
+`prefers-color-scheme` follows the page's `color-scheme`, which `src/index.css` sets per theme.
+The Welcome course's seed drawings rely on this; keep `color-scheme` on `:root` and `.dark`.
+
+## Upgrades must not rewrite records
+
+CI's `windows-installed-upgrade` installs the last release, upgrades and asserts that courses,
+lessons, cards and reviews are byte-identical. A content repair that rewrites rows fails it;
+change what is displayed instead (`src/db/seedArtwork.ts` swaps seed drawings by asset hash).

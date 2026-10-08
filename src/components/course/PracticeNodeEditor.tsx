@@ -1,10 +1,11 @@
-// Modal editor for a manual practice node, opened from the path's Add practice
+// Modal editor for a manual practice node, opened from the path's Add card practice
 // action or an existing node's edit badge. Mirrors the chrome of CardEditOverlay.
 // Settings links back here instead of maintaining a competing management surface.
 //
 // British English throughout.
 
 import { useState } from 'react';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
@@ -48,7 +49,7 @@ export function PracticeNodeEditor({
 
   async function handleSave() {
     setSaving(true);
-    const name = draft.name.trim() || 'Practice';
+    const name = draft.name.trim() || 'Card practice';
     const opts = {
       position: draft.position,
       lessonIds: draft.lessonIds,
@@ -84,21 +85,20 @@ export function PracticeNodeEditor({
 
   return (
     <DialogPanel
-      label={node ? 'Edit manual practice' : 'Add manual practice'}
+      label={node ? 'Edit card practice' : 'Add card practice'}
       trapRef={trapRef}
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-md"
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        e.nativeEvent.stopImmediatePropagation();
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onCancel();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel,
+        onSubmit: () => {
+          if (!saving) void handleSave();
+        },
+        enterSubmits: true,
+      })}
     >
       <DialogHeader
-        title={node ? 'Edit practice' : 'Add practice'}
+        title={node ? 'Edit card practice' : 'Add card practice'}
         onClose={onCancel}
         closeLabel="Close editor"
       />

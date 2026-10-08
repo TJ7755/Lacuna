@@ -1,52 +1,77 @@
-import { ModalBackdrop } from '../components/ui/ModalBackdrop';
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
+import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
-import { StudySignals } from '../components/dashboard/StudySignals';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
-import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
+import { ErrorBoundary } from '../components/layout/ErrorBoundary';
+import {
+  ForecastChart,
+  forecastStatus,
+  type ForecastLine,
+} from '../components/dashboard/ForecastChart';
+import { WeekPanel } from '../components/dashboard/WeekPanel';
+import { TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
 import { Button } from '../components/ui/Button';
+import { useStudySheet } from '../components/learn/StudySheetContext';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { PlusIcon } from '../components/ui/icons';
-import { CourseCard } from '../components/course/CourseCard';
-import { NewCourseForm } from '../components/course/NewCourseForm';
+import { CardsIcon, ClockIcon } from '../components/ui/icons';
+import { CountUp } from '../components/ui/Celebration';
+import { MOTION_EASING } from '../components/ui/motion';
+import { NewCourseControl } from '../components/course/NewCourseControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { useDashboardSort } from '../state/dashboardSort';
+import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
+import { forecastWindow, useForecastRange } from '../state/forecastRange';
+import { useAllReviewHistory } from '../state/useData';
+import { weekSummary } from '../state/weekSummary';
 import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
-import { useFocusTrap } from '../hooks/useFocusTrap';
-import type { Course } from '../db/types';
-import { cardReviewTimestamps } from '../fsrs/heatmap';
-import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
+import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
-interface CourseMenuState {
-  course: Course;
-  position: { x: number; y: number };
-  trigger: HTMLButtonElement;
-}
-
-interface ArchiveTarget {
-  course: Course;
-  trigger: HTMLButtonElement;
-}
+// The course actions open on demand, so they stay out of the first-load bundle.
+const SharingAnnouncement = lazy(() =>
+  import('../components/layout/SharingAnnouncement').then((module) => ({
+    default: module.SharingAnnouncement,
+  })),
+);
+const CourseContextMenu = lazy(() =>
+  import('../components/dashboard/CourseActions').then((module) => ({
+    default: module.CourseContextMenu,
+  })),
+);
+const ArchiveCourseDialog = lazy(() =>
+  import('../components/dashboard/CourseActions').then((module) => ({
+    default: module.ArchiveCourseDialog,
+  })),
+);
 
 export function Dashboard() {
+  const frame = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const archiveFocus = useRef<{ courseId: string; index: number } | null>(null);
   const data = useCourseDashboardData();
   const courses = data?.courses;
   const summaries = data?.summaries;
   const stats = data?.stats;
-  const allCards = data?.allCards;
   const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
+  const { openStudySheet } = useStudySheet();
+  const location = useLocation();
   const [creatingCourse, setCreatingCourse] = useState(false);
-  const [dashboardSort] = useDashboardSort();
+  useEffect(() => {
+    if (location.state?.createCourse) {
+      setCreatingCourse(true);
+      void navigate('/', { replace: true, state: null });
+    }
+  }, [location.state, navigate]);
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   // Background check for teacher republishes of share-linked courses. The poll
   // module (with the merge importer and course-file decoder) loads on demand so
@@ -65,355 +90,253 @@ export function Dashboard() {
     };
   }, []);
 
-  // Active courses only (archived ones are hidden from the main grid), ordered per
-  // the "Choose how courses are ordered" dashboard setting.
-  const activeCourses = useMemo(() => {
-    const active = courses?.filter((c) => !c.archived);
-    if (!active) return undefined;
-    const sorted = [...active];
-    switch (dashboardSort) {
-      case 'ready':
-        sorted.sort(
-          (a, b) => (summaries?.[b.id]?.eligible ?? 0) - (summaries?.[a.id]?.eligible ?? 0),
-        );
-        break;
-      case 'mastery':
-        sorted.sort(
-          (a, b) => (summaries?.[a.id]?.mastery ?? 0) - (summaries?.[b.id]?.mastery ?? 0),
-        );
-        break;
-      case 'exam':
-        sorted.sort(
-          (a, b) =>
-            (a.examDate ?? Number.POSITIVE_INFINITY) - (b.examDate ?? Number.POSITIVE_INFINITY),
-        );
-        break;
-      case 'name':
-        sorted.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'created':
-        sorted.sort((a, b) => b.createdAt - a.createdAt);
-        break;
-      case 'recent':
-      default:
-        sorted.sort(
-          (a, b) => (b.lastInteractedAt ?? b.createdAt) - (a.lastInteractedAt ?? a.createdAt),
-        );
-        break;
-    }
-    return sorted;
-  }, [courses, summaries, dashboardSort]);
+  // Archived courses are hidden from the dashboard.
+  const activeCourses = useMemo(() => courses?.filter((c) => !c.archived), [courses]);
 
-  // Cards grouped by course, for the card hover detail modules.
-  const cardsByCourse = useMemo(() => {
-    const grouped: Record<string, typeof allCards> = {};
-    for (const card of allCards ?? []) {
-      if (card.courseId) (grouped[card.courseId] ??= []).push(card);
-    }
-    return grouped;
-  }, [allCards]);
+  // Forecasts come with the shared course data, cached per course.
+  const forecasts = data?.forecasts;
+
+  const today = stats?.forecast[0];
+  const rows = useMemo<QueueRow[] | undefined>(() => {
+    if (!activeCourses) return undefined;
+    const unordered = activeCourses.map((course) => {
+      const forecast = forecasts?.[course.id];
+      const slice = today?.byDeck.find((entry) => entry.sourceId === course.id);
+      const pending = pendingUpdateIds?.has(course.id) ?? false;
+      return {
+        id: course.id,
+        name: course.name,
+        examDate: course.examDate,
+        status: forecast ? forecastStatus(forecast) : course.examDate ? 'ahead' : 'steady',
+        due: summaries?.[course.id]?.eligible ?? 0,
+        minutes: slice?.minutes ?? 0,
+        href: pending ? `/course/${course.id}/updates` : `/course/${course.id}`,
+        hasPendingUpdate: pending,
+      } satisfies QueueRow & { examDate?: number };
+    });
+    return urgencyOrder(unordered, Date.now());
+  }, [activeCourses, forecasts, today, summaries, pendingUpdateIds]);
+
+  // The chart traces each forecast back over the chosen window, which needs graded
+  // review history; navigation's shared data carries only review timestamps.
+  const reviewHistory = useAllReviewHistory();
+  const [forecastRange] = useForecastRange();
+  const chartWindow = forecastWindow(forecastRange);
+  const histories = useMemo(() => {
+    if (!data || !forecasts || !reviewHistory) return undefined;
+    const now = Date.now();
+    return dashboardForecastHistories(
+      data.courses,
+      data.lessons,
+      data.allCards,
+      reviewHistory,
+      forecasts,
+      now - chartWindow.past * 86_400_000,
+      now,
+    );
+  }, [data, forecasts, reviewHistory, chartWindow.past]);
+  const lines = useMemo<ForecastLine[]>(
+    () =>
+      (rows ?? []).flatMap((row) => {
+        const forecast = forecasts?.[row.id];
+        const history = histories?.[row.id];
+        return forecast && history
+          ? [{ id: row.id, name: row.name, status: row.status, forecast, history }]
+          : [];
+      }),
+    [rows, forecasts, histories],
+  );
+
+  useLayoutEffect(() => {
+    const pending = archiveFocus.current;
+    if (!pending || archiveTarget || !rows || rows.some((row) => row.id === pending.courseId))
+      return;
+    archiveFocus.current = null;
+    const active = document.activeElement;
+    // Preserve focus if another action was chosen whilst the archive was pending.
+    if (active && active !== document.body && !active.closest('[data-course-archive-dialog]'))
+      return;
+    const next = rows[Math.min(pending.index, rows.length - 1)];
+    const target = next
+      ? Array.from(
+          frame.current?.querySelectorAll<HTMLButtonElement>('[data-course-menu-trigger]') ?? [],
+        ).find((button) => button.dataset.courseMenuTrigger === next.id)
+      : heading.current;
+    target?.focus({ preventScroll: true });
+  }, [archiveTarget, rows]);
+
+  const reviewActivity = data?.reviewActivity;
+  const week = useMemo(
+    () =>
+      reviewActivity ? weekSummary([...reviewActivity.values()].flat(), Date.now()) : undefined,
+    [reviewActivity],
+  );
+
+  const firstCourseId = rows?.[0]?.id;
+  usePageShortcuts({
+    s: firstCourseId ? () => openStudySheet(firstCourseId) : undefined,
+  });
+
+  const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
+  // A non-empty queue never reads as zero minutes.
+  const totalMinutes = Math.max(
+    totalCards > 0 ? 1 : 0,
+    Math.round(rows?.reduce((sum, row) => sum + row.minutes, 0) ?? 0),
+  );
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
-      {/* Page header */}
-      {/* On a phone the title and non-shrinking action share limited horizontal space.
-          Keep the side padding tight while giving the single-line heading balanced
-          vertical space at each breakpoint. */}
-      <header className="relative mb-8 py-5 md:mb-12 md:py-7">
-        <div className="relative flex items-center justify-between gap-3 md:gap-4">
-          <div className="min-w-0">
-            <h1 className="font-display text-3xl tracking-tight md:text-6xl">Courses</h1>
-          </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Button variant="secondary" onClick={() => navigate('/import')}>
-              Import
-            </Button>
-            {activeCourses && activeCourses.length > 0 && (
-              <Button
-                variant="primary"
-                onClick={() => setCreatingCourse(true)}
-                className="shrink-0 whitespace-nowrap"
-              >
-                <PlusIcon width={16} height={16} />
-                New course
-              </Button>
-            )}
-          </div>
+    <div ref={frame} className={`${PAGE_FRAME} py-6 sm:py-10`}>
+      <h1 ref={heading} tabIndex={-1} className="sr-only focus-visible:shadow-none">
+        Today
+      </h1>
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft sm:mb-6">
+        {rows && rows.length > 0 && (
+          <p
+            className="flex items-center gap-5 sm:gap-6"
+            aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'card' : 'cards'}, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`}
+          >
+            <span className="inline-flex items-center gap-2" aria-hidden="true">
+              <CardsIcon width={20} height={20} />
+              <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+                <CountUp value={totalCards} multiplier={m} />
+              </strong>
+              {totalCards === 1 ? 'card' : 'cards'}
+            </span>
+            <span className="inline-flex items-center gap-2" aria-hidden="true">
+              <ClockIcon width={20} height={20} />
+              <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+                <CountUp value={totalMinutes} multiplier={m} />
+              </strong>
+              min
+            </span>
+          </p>
+        )}
+        <div className="ml-auto flex shrink-0 gap-2">
+          <Button variant="ghost" onClick={() => navigate('/import')}>
+            Import
+          </Button>
+          <NewCourseControl open={creatingCourse} onOpenChange={setCreatingCourse} />
         </div>
-      </header>
-
-      <AnimatePresence>
-        {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
-      </AnimatePresence>
+      </div>
 
       <SyncStatus />
 
-      {/* Motivation strip: streak, reviews today, seven-day time forecast */}
-      {stats && activeCourses && activeCourses.length > 0 && (
-        <StudySignals stats={stats} courses={activeCourses} />
-      )}
-
-      {/* Course grid */}
-      {!activeCourses ? (
+      {!rows ? (
         <DelayedFallback>
           <CourseSkeleton />
         </DelayedFallback>
-      ) : activeCourses.length === 0 ? (
-        <EmptyState
-          hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
-          onCreateCourse={() => setCreatingCourse(true)}
-        />
+      ) : rows.length === 0 ? (
+        <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {activeCourses.map((course) => (
-            <div key={course.id} className="h-full">
-              <CourseCard
-                course={course}
-                summary={summaries?.[course.id]}
-                cards={cardsByCourse[course.id]}
-                reviewActivity={data?.reviewActivity}
-                hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
-                onClick={() =>
-                  navigate(
-                    pendingUpdateIds?.has(course.id)
-                      ? `/course/${course.id}/updates`
-                      : `/course/${course.id}`,
-                  )
-                }
-                onStudy={() => navigate(`/course/${course.id}/study`)}
-                onArchiveMenu={(position, trigger) => {
-                  setArchiveTarget(null);
-                  setCourseMenu({ course, position, trigger });
-                }}
-              />
-            </div>
-          ))}
+        <div className="flex flex-col gap-6">
+          {/* What to study leads; the forecast explains it underneath. */}
+          <TodayQueue
+            rows={rows}
+            openMenuId={courseMenu?.course.id}
+            multiplier={m}
+            onStudy={(id) => openStudySheet(id)}
+            onMenu={(id, position, trigger) => {
+              const course = activeCourses?.find((entry) => entry.id === id);
+              if (!course) return;
+              setArchiveTarget(null);
+              setCourseMenu({ course, position, trigger });
+            }}
+          />
+          {/* Below the queue, so the day's work is always the first thing on Today. */}
+          <ErrorBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <SharingAnnouncement />
+            </Suspense>
+          </ErrorBoundary>
+          {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
+            <motion.section
+              aria-label="Forecast and this week"
+              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
+              initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.5 * m, delay: 0.15 * m, ease: MOTION_EASING.emphasised }}
+            >
+              {lines.length > 0 && <ForecastChart
+                  lines={lines}
+                  now={Date.now()}
+                  past={chartWindow.past}
+                  future={chartWindow.future}
+                  multiplier={m}
+                />}
+              {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
+            </motion.section>
+          )}
         </div>
       )}
 
-      {/* Review activity heatmap */}
-      {allCards &&
-        allCards.some((c) => cardReviewTimestamps(c, data?.reviewActivity).length > 0) && (
-          <div className="mt-10">
-            <ReviewHeatmap cards={allCards} activity={data?.reviewActivity} />
-          </div>
-        )}
-
       {courseMenu && (
-        <CourseContextMenu
-          {...courseMenu}
-          onClose={(restoreFocus = true) => {
-            setCourseMenu(null);
-            if (restoreFocus) courseMenu.trigger.focus();
-          }}
-          onArchive={() => {
-            setCourseMenu(null);
-            setArchiveTarget({ course: courseMenu.course, trigger: courseMenu.trigger });
-          }}
-        />
+        <Suspense fallback={null}>
+          <CourseContextMenu
+            {...courseMenu}
+            onClose={(restoreFocus = true) => {
+              setCourseMenu(null);
+              if (restoreFocus) courseMenu.trigger.focus();
+            }}
+            onArchive={() => {
+              setCourseMenu(null);
+              setArchiveTarget({ course: courseMenu.course, trigger: courseMenu.trigger });
+            }}
+          />
+        </Suspense>
       )}
 
       <AnimatePresence>
         {archiveTarget && (
-          <ArchiveCourseDialog
-            course={archiveTarget.course}
-            onClose={() => {
-              setArchiveTarget(null);
-              archiveTarget.trigger.focus();
-            }}
-            onArchived={() => {
-              setArchiveTarget(null);
-              notify(`${archiveTarget.course.name} archived`, 'positive', {
-                actionLabel: 'Undo',
-                onAction: () => {
-                  void updateCourse(archiveTarget.course.id, { archived: false })
-                    .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
-                    .catch(() =>
-                      notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
-                    );
-                },
-              });
-            }}
-          />
+          <Suspense key="archive" fallback={null}>
+            <ArchiveCourseDialog
+              course={archiveTarget.course}
+              onClose={() => {
+                setArchiveTarget(null);
+                archiveTarget.trigger.focus();
+              }}
+              onArchived={() => {
+                archiveFocus.current = {
+                  courseId: archiveTarget.course.id,
+                  index: Math.max(
+                    0,
+                    rows?.findIndex((row) => row.id === archiveTarget.course.id) ?? 0,
+                  ),
+                };
+                setArchiveTarget(null);
+                notify(`${archiveTarget.course.name} archived`, 'positive', {
+                  actionLabel: 'Undo',
+                  onAction: () => {
+                    void updateCourse(archiveTarget.course.id, { archived: false })
+                      .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
+                      .catch(() =>
+                        notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
+                      );
+                  },
+                });
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function CourseContextMenu({
-  course,
-  position,
-  trigger: _trigger,
-  onClose,
-  onArchive,
-}: CourseMenuState & { onClose: (restoreFocus?: boolean) => void; onArchive: () => void }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [clampedPosition, setClampedPosition] = useState(position);
-
-  useLayoutEffect(() => {
-    const menu = menuRef.current;
-    if (!menu) return;
-    const gutter = 8;
-    setClampedPosition({
-      x: Math.max(gutter, Math.min(position.x, window.innerWidth - menu.offsetWidth - gutter)),
-      y: Math.max(gutter, Math.min(position.y, window.innerHeight - menu.offsetHeight - gutter)),
-    });
-    menu.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
-  }, [position]);
-
-  useEffect(() => {
-    const closeOutside = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) onClose(false);
-    };
-    window.addEventListener('pointerdown', closeOutside);
-    return () => window.removeEventListener('pointerdown', closeOutside);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      ref={menuRef}
-      role="menu"
-      aria-label={`Actions for ${course.name}`}
-      className="fixed z-[70] min-w-40 rounded-xl border border-line-strong bg-surface-raised p-1.5 shadow-xl shadow-black/15"
-      style={{ left: clampedPosition.x, top: clampedPosition.y }}
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          onClose();
-        }
-      }}
-    >
-      <button
-        type="button"
-        role="menuitem"
-        className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5 focus-visible:bg-ink/5 focus-visible:outline-none"
-        onClick={onArchive}
-      >
-        Archive
-      </button>
-    </div>,
-    document.body,
-  );
-}
-
-function ArchiveCourseDialog({
-  course,
-  onClose,
-  onArchived,
-}: {
-  course: Course;
-  onClose: () => void;
-  onArchived: () => void;
-}) {
-  const trapRef = useFocusTrap(true, {
-    autoFocusSelector: '[data-confirm-archive]',
-    returnFocus: false,
-  });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-
-  async function confirmArchive() {
-    setBusy(true);
-    setError(null);
-    try {
-      await updateCourse(course.id, { archived: true });
-      onArchived();
-    } catch {
-      setError('The course could not be archived. Nothing was changed.');
-      setBusy(false);
-    }
-  }
-
-  return createPortal(
-    <motion.div
-      ref={trapRef}
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
-      initial={m > 0 ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      exit={m > 0 ? { opacity: 0 } : undefined}
-      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      onKeyDown={(event) => {
-        event.stopPropagation();
-        if (event.key === 'Escape' && !busy) {
-          event.preventDefault();
-          onClose();
-        }
-      }}
-    >
-      <ModalBackdrop onClick={() => !busy && onClose()} />
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="archive-course-title"
-        aria-describedby="archive-course-description"
-        initial={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : false}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : undefined}
-        transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-line-strong bg-paper p-6 shadow-2xl shadow-black/20"
-      >
-        <h2 id="archive-course-title" className="font-display text-2xl">
-          Archive {course.name}?
-        </h2>
-        <p id="archive-course-description" className="mt-2 text-sm leading-relaxed text-ink-soft">
-          This removes the course from active study and the dashboard. Its lessons, cards and review
-          history are preserved.
-        </p>
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-negative">
-            {error}
-          </p>
-        )}
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            data-confirm-archive
-            onClick={() => void confirmArchive()}
-            disabled={busy}
-          >
-            {busy ? 'Archiving…' : 'Archive course'}
-          </Button>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
   );
 }
 
 function CourseSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <SectionCard as="div" compact key={i} className="flex h-full flex-col">
-          <Skeleton className="mb-1 h-3 w-20" />
-          <Skeleton className="mb-4 h-7 w-3/4" />
-          <div className="mt-auto">
-            <div className="mb-2 flex justify-between">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-4 w-12" />
-            </div>
-            <Skeleton className="h-2 w-full rounded-full" />
-          </div>
-        </SectionCard>
+    <div className="flex flex-col gap-6">
+      <Skeleton className="h-80 rounded-[28px] bg-surface" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="flex h-[68px] items-center gap-4 rounded-[18px] bg-surface px-5">
+          <div className="h-2.5 w-2.5 rounded-full bg-ink/10" />
+          <Skeleton className="h-5 w-40 rounded bg-ink/10" />
+        </div>
       ))}
     </div>
   );
 }
 
-function EmptyState({
-  hasArchivedCourses,
-  onCreateCourse,
-}: {
-  hasArchivedCourses: boolean;
-  onCreateCourse: () => void;
-}) {
+function EmptyState({ hasArchivedCourses }: { hasArchivedCourses: boolean }) {
   return (
     <div className="relative flex flex-col items-center justify-center px-4 py-20 text-center">
       <div className="relative flex flex-col items-center">
@@ -426,10 +349,6 @@ function EmptyState({
             ? 'Restore a course from Archived or start another one.'
             : 'Start a course to organise your lessons and cards.'}
         </p>
-        <Button variant="primary" onClick={onCreateCourse}>
-          <PlusIcon width={16} height={16} />
-          New course
-        </Button>
       </div>
     </div>
   );

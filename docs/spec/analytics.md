@@ -20,6 +20,11 @@
   same core. Card and Question results are visibly distinct and link to their respective editors,
   while course/lesson/note results link to their page.
   `plainPreview` strips Markdown/cloze/images for previews.
+  The input has an accessible name, filter controls meet the 44px target size and
+  clearing filters returns focus to the input. The initial screen uses its heading,
+  search field and filters without repeating typing instructions in another panel.
+  Its outer frame aligns with Share and Archived; the inner reading column remains
+  capped at `max-w-3xl`.
 - **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
   the search filter, but scheduling is never changed automatically.
 
@@ -36,13 +41,16 @@ Pure aggregates over stored history, in local time:
   study per day**, shown as a small bar sparkline with a "minutes to clear"
   total.
 - **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a
-  contribution-style calendar of reviews per **local** calendar day (a 26-week
-  grid), built from review logs and theme-aware via accent-opacity bands.
-  Expected by anyone arriving from Anki. The header carries the count and the
-  week range; a **month-name row** above the cells shows a short month label on
+  contribution-style calendar of reviews per **local** calendar day over the selected
+  7-, 30- or 90-day period, built from review logs and theme-aware via accent-opacity
+  bands. The header carries the matching count and day range. Seven- and 30-day
+  periods use a full-width daily strip with weekday or date labels and compact
+  fixed-height cells. Longer periods use a **month-name row** above the cells, with a short month label on
   the first column of each new month so the calendar is readable without a
-  separate legend. Weekday labels (Mon/Wed/Fri) line up exactly with their
-  cells.
+  separate legend. Weekday labels (Mon/Thu/Sun) line up exactly with their cells.
+  One calendar date enters the tab order; horizontal arrows follow consecutive dates
+  in a daily strip or consecutive weeks in a calendar. Vertical arrows move between dates, including
+  vertically across week boundaries. Changing period keeps a reachable tab stop.
 
 ### Per-card analysis (`CardAnalytics`)
 
@@ -60,8 +68,8 @@ to reveal a **forgetting curve** and **vital statistics** for that individual ca
 - **Grade distribution** — animated mini-bars for Again / Hard / Good / Easy
   counts.
 - Expansion is toggled by clicking the card row; only one card may be expanded
-  at a time. Hover still reveals the card back (desktop), while the expanded
-  panel captures click events so interacting with the chart does not collapse
+  at a time. The expanded panel leads with the row's Edit, Flag and Delete actions
+  (the only way to reach them on phones and touch screens) and captures click events so interacting with the chart does not collapse
   the view. The row is keyboard-accessible (`Enter`/`Space` toggles expansion).
 
 ### Course analytics (`/course/:courseId/analytics`, `src/components/analytics/CourseAnalytics.tsx`)
@@ -70,8 +78,8 @@ Theme-aware Recharts panels scoped to one course's **deduplicated card set** —
 pool `progressValue` and the course path's mastery figure use (a card shared across
 lessons is counted once):
 
-- **Predicted exam-day score** over time (area chart of the daily `SessionHistory`
-  trajectory).
+- The **exam-day forecast** chart above them (shared with Today; see
+  [forward simulation](forward-simulation.md)) carries the exam-day trend.
 - **Lesson breakdown** — a bar chart of mastery and completion percentage per lesson, with
   card count overlaid as a line.
 - **Card stability profile** (histogram of cards by stability range; new cards distinct).

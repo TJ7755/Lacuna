@@ -12,13 +12,17 @@ import {
   type CourseStudyFlowSnapshot,
 } from '../course/studyFlowSnapshot';
 import { planNextStudyStep, type StudyFlowDecision } from '../course/studyFlowPlanner';
-import type { Course } from '../db/types';
+import type { Card, Course } from '../db/types';
 
 interface CourseStudyFlowData {
   course: Course;
   snapshot: CourseStudyFlowSnapshot;
   decision: StudyFlowDecision;
   generation: number;
+  /** Each lesson's cards, for previewing what a lesson step involves. */
+  lessonCardsById: ReadonlyMap<string, Card[]>;
+  /** The course's mean seconds per review, for time estimates. */
+  meanReviewSeconds: number;
 }
 
 /** Loads one authoritative course snapshot for both preview and conductor decisions. */
@@ -88,6 +92,8 @@ export function useCourseStudyFlow(
       // Until the live query answers the new refresh key, `records` is the previous
       // read: label it with that read's key, or the conductor would plan from stale data.
       generation: records.generation,
+      lessonCardsById,
+      meanReviewSeconds,
     };
   }, [records]);
 }

@@ -95,6 +95,13 @@ export const EditIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** The forward arrow that ends every Study and Start action. */
+export const ArrowRightIcon = (p: IconProps) => (
+  <Icon width="16" height="16" strokeWidth="2.4" {...p}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Icon>
+);
+
 export const PlayIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M6 4l14 8-14 8V4z" />

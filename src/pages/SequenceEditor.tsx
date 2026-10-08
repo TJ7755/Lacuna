@@ -8,7 +8,8 @@
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEditorKeys } from '../hooks/dialogKeys';
+import { Link, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -32,10 +33,10 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/sequenceRepository';
-import type { EditorOriginState } from '../utils/editorOrigin';
+import { useReturn } from '../utils/editorOrigin';
 import type { SequenceItem, SequencePresetId } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 export function SequenceEditor() {
   const { sequenceId, courseId, lessonId } = useParams<{
@@ -44,8 +45,6 @@ export function SequenceEditor() {
     lessonId?: string;
   }>();
   const lessonMode = Boolean(lessonId);
-  const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -117,9 +116,12 @@ export function SequenceEditor() {
   // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
   // so origin state is the only signal that an edit was opened from a lesson —
   // absent on direct loads and hard refreshes, which fall back to the bank.
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
 
   // Distinct speakers seen across items, in order of first appearance, for the
   // "my speaker" picker — populated by whichever items already carry a speaker,
@@ -181,6 +183,12 @@ export function SequenceEditor() {
     }
   }
 
+  const saveRef = useRef<HTMLButtonElement>(null);
+  const editorKeys = useEditorKeys({
+    onCancel: returnTo.goBack,
+    onSubmit: () => void handleSave(),
+  });
+
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && sequence === undefined && !loaded)
@@ -193,29 +201,38 @@ export function SequenceEditor() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          Back to Today
         </Link>
       </div>
     );
   }
   if (lessonMode && lesson === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
-          {courseId ? 'Back to course' : 'Back to dashboard'}
+        <Link
+          to={courseId ? `/course/${courseId}` : '/'}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          {courseId ? 'Back to course' : 'Back to Today'}
         </Link>
       </div>
     );
   }
   if (editing && sequence === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
-        <Link to={backPath} className="text-accent underline">
+        <Link
+          to={backPath}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
           Back to {backLabel}
         </Link>
       </div>
@@ -370,51 +387,37 @@ export function SequenceEditor() {
         await createSequence(courseId, lessonId ?? null, name, items, opts);
         notify('Sequence added.', 'positive');
       }
-      void navigate(backPath);
+      returnTo.goBack();
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      {/* Breadcrumb */}
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-          {course?.name}
-        </Link>
-        <ChevronRight />
-        <Link to={backPath} className="transition-colors hover:text-ink">
-          {backLabel}
-        </Link>
-        <ChevronRight />
-        <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>
-      </nav>
-
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`} {...editorKeys}>
       <div>
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+        <header className="relative mb-8">
           <div className="relative">
             <Link
-              to={backPath}
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+              {...returnTo.linkProps}
+              className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
-              Back
+              Back to {backLabel}
             </Link>
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+            <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
               {editing ? 'Edit sequence' : 'New sequence'}
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">{preset.description}</p>
           </div>
         </header>
 
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Name</div>
+            <div className="mb-2 text-sm text-ink-faint">Name</div>
             <input
               id="sequence-name"
               aria-label="Sequence name"
+              autoFocus
               type="text"
               value={name}
               onChange={(e) => {
@@ -433,7 +436,7 @@ export function SequenceEditor() {
             )}
           </div>
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <div className="mb-2 text-sm text-ink-faint">
               Description <span className="normal-case text-ink-faint/70">(optional)</span>
             </div>
             <input
@@ -449,7 +452,7 @@ export function SequenceEditor() {
           {/* Preset */}
           {!editing ? (
             <div>
-              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Type</div>
+              <div className="mb-2 text-sm text-ink-faint">Type</div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {SEQUENCE_PRESETS.map((p) => (
                   <button
@@ -479,7 +482,7 @@ export function SequenceEditor() {
           {/* Chunks */}
           <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <div className="text-sm text-ink-faint">
                 {preset.terminology.chunkLabel}s{' '}
                 <span className="normal-case text-ink-faint/70">(optional)</span>
               </div>
@@ -516,7 +519,7 @@ export function SequenceEditor() {
                           type="button"
                           onClick={() => deleteChunkLabel(i)}
                           title="Delete chunk"
-                          className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                          className="hit-target rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                         >
                           Delete
                         </button>
@@ -586,7 +589,7 @@ export function SequenceEditor() {
           {/* Items */}
           <div>
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-              <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <div className="text-sm text-ink-faint">
                 {preset.terminology.itemPlural}{' '}
                 <span className="text-ink-faint/70">({items.length})</span>
               </div>
@@ -633,6 +636,9 @@ export function SequenceEditor() {
                       onMoveUp={() => moveItem(item.id, 'up')}
                       onMoveDown={() => moveItem(item.id, 'down')}
                       onAddAfter={() => addItem(item.id)}
+                      onTabForward={
+                        i === items.length - 1 ? () => saveRef.current?.focus() : undefined
+                      }
                       invalid={invalidItems.has(item.id)}
                       inputRef={(input) => {
                         if (input) itemInputs.current.set(item.id, input);
@@ -658,7 +664,7 @@ export function SequenceEditor() {
           {/* Preview */}
           <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">Preview</div>
+              <div className="text-sm text-ink-faint">Preview</div>
               <span
                 className={cn(
                   'rounded-lg px-3 py-1 text-sm font-medium',
@@ -694,7 +700,7 @@ export function SequenceEditor() {
               snapshot={() => snapshotSequence(sequence.id)}
               onDelete={() => deleteSequence(sequence.id)}
               onRestore={(snap) => restoreSequence(snap as SequenceSnapshot)}
-              onDeleted={() => navigate(backPath)}
+              onDeleted={returnTo.goBack}
             />
           )}
         </div>
@@ -707,7 +713,7 @@ export function SequenceEditor() {
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
       >
         <div className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(backPath)}>
+          <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
           {saveError && (
@@ -716,6 +722,7 @@ export function SequenceEditor() {
             </p>
           )}
           <Button
+            ref={saveRef}
             variant="primary"
             onClick={handleSave}
             disabled={saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}
@@ -740,12 +747,9 @@ export function SequenceEditor() {
 
 function SequenceEditorSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <Skeleton className="mb-6 h-4 w-24" />
-      <SectionCard as="div" className="mb-8">
-        <Skeleton className="mb-1 h-3 w-20" />
-        <Skeleton className="h-10 w-48" />
-      </SectionCard>
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
+      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
+      <Skeleton className="mb-8 h-10 w-48" />
       <div className="flex flex-col gap-5">
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-40 w-full rounded-lg" />
@@ -753,8 +757,4 @@ function SequenceEditorSkeleton() {
       </div>
     </div>
   );
-}
-
-function ChevronRight() {
-  return <span className="text-ink-faint/60">/</span>;
 }

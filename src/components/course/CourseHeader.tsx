@@ -1,9 +1,9 @@
 // Shared "course cockpit" header: schedule metadata, display title, and caller
-// content beneath — typically the HeaderStats row. Used by CoursePath
-// (full course) and, in a leaner form, LessonView.
+// content beneath — typically a line of course facts. Used by CoursePath;
+// LessonHeader carries the lesson-specific header.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 import { CalendarIcon, EditIcon } from '../ui/icons';
@@ -19,14 +19,14 @@ interface CourseHeaderProps {
   onRename?: (name: string) => void | Promise<void>;
   /** Entity noun used by the rename control and input label. */
   renameLabel?: 'course' | 'lesson';
-  /** Content under the title — typically the HeaderStats row. */
+  /** Content under the title — typically a line of course facts. */
   children?: ReactNode;
   className?: string;
 }
 
 /**
  * Frame for a course/lesson header: display title, schedule row, and
- * caller-supplied content beneath (the HeaderStats row), so the same frame serves
+ * caller-supplied content beneath (a line of course facts), so the same frame serves
  * both the CoursePath header and LessonView's leaner adoption.
  */
 export function CourseHeader({
@@ -44,9 +44,15 @@ export function CourseHeader({
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
   const titleInput = useRef<HTMLInputElement>(null);
+  const renameButton = useRef<HTMLButtonElement>(null);
+  const wasEditingTitle = useRef(false);
 
   useEffect(() => {
     if (!editingTitle) setTitleDraft(title);
+    if (wasEditingTitle.current && !editingTitle && document.activeElement === document.body) {
+      renameButton.current?.focus();
+    }
+    wasEditingTitle.current = editingTitle;
   }, [editingTitle, title]);
 
   function startRename() {
@@ -79,58 +85,58 @@ export function CourseHeader({
   }
 
   return (
-    <header className={cn('relative py-6 md:py-8', className)}>
+    <header
+      data-course-title={renameLabel === 'course' ? '' : undefined}
+      className={cn('relative', className)}
+    >
       <div className="relative">
-        <div className="mb-5 flex min-w-0 items-center gap-2">
-          <AnimatePresence initial={false} mode="popLayout">
-            {editingTitle ? (
-              <motion.input
-                key="title-input"
-                autoFocus
-                onFocus={(event) => event.currentTarget.select()}
-                ref={titleInput}
-                value={titleDraft}
-                onChange={(event) => setTitleDraft(event.target.value)}
-                onBlur={() => void commitRename()}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') void commitRename();
-                  if (event.key === 'Escape') cancelRename();
-                }}
-                aria-label={`${renameLabel} name`}
-                disabled={savingTitle}
-                layout={motionMultiplier > 0 ? 'size' : undefined}
-                initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                exit={motionMultiplier > 0 ? { opacity: 0, y: -3 } : undefined}
-                transition={motionTransition('feedback', motionMultiplier)}
-                className="min-w-0 flex-1 rounded-lg border border-accent bg-paper/70 px-2 py-1 font-display text-4xl tracking-tight text-ink outline-none md:text-5xl"
-              />
-            ) : (
-              <motion.h1
-                key="display-title"
-                onDoubleClick={startRename}
-                title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
-                layout={motionMultiplier > 0 ? 'size' : undefined}
-                initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                exit={motionMultiplier > 0 ? { opacity: 0, y: -3 } : undefined}
-                transition={motionTransition('feedback', motionMultiplier)}
-                className={cn(
-                  'min-w-0 break-words font-display text-4xl tracking-tight md:text-5xl',
-                  onRename && 'cursor-text',
-                )}
-              >
-                {title}
-              </motion.h1>
-            )}
-          </AnimatePresence>
+        <div className="mb-2.5 flex min-w-0 items-center gap-2">
+          {editingTitle ? (
+            <motion.input
+              key="title-input"
+              autoFocus
+              onFocus={(event) => event.currentTarget.select()}
+              ref={titleInput}
+              value={titleDraft}
+              onChange={(event) => setTitleDraft(event.target.value)}
+              onBlur={() => void commitRename()}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void commitRename();
+                if (event.key === 'Escape') cancelRename();
+              }}
+              aria-label={renameLabel === 'course' ? 'Course name' : 'Lesson name'}
+              disabled={savingTitle}
+              layout={motionMultiplier > 0 ? 'position' : undefined}
+              initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={motionTransition('feedback', motionMultiplier)}
+              className="min-w-0 flex-1 rounded-lg border border-accent bg-paper/70 px-2 py-1 font-display text-4xl tracking-tight text-ink outline-none md:text-5xl"
+            />
+          ) : (
+            <motion.h1
+              key="display-title"
+              onDoubleClick={startRename}
+              title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
+              layout={motionMultiplier > 0 ? 'position' : undefined}
+              initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={motionTransition('feedback', motionMultiplier)}
+              className={cn(
+                'min-w-0 break-words font-display text-4xl leading-[1.02] tracking-[-0.04em] md:text-[44px]',
+                onRename && 'cursor-text',
+              )}
+            >
+              {title}
+            </motion.h1>
+          )}
           {onRename && !editingTitle && (
             <button
+              ref={renameButton}
               type="button"
               onClick={startRename}
               aria-label={`Rename ${renameLabel}`}
               title={`Rename ${renameLabel}`}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <EditIcon width={17} height={17} />
             </button>

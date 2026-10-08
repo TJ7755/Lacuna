@@ -13,6 +13,7 @@ import {
   updateCourseAssessment,
 } from '../../db/assessmentRepository';
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
@@ -108,15 +109,15 @@ export function AssessmentEditorDialog({
       trapRef={trapRef}
       onBackdropClick={onCancel}
       className="max-h-[90vh] max-w-lg"
-      onKeyDown={(event) => {
-        if (event.key === 'Tab') return;
-        event.stopPropagation();
-        event.nativeEvent.stopImmediatePropagation();
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel,
+        onSubmit: () => {
+          if (!saving && assessmentDraftIsSaveable(courseId, kind, draft, lessons, cards, links)) {
+            void save();
+          }
+        },
+        enterSubmits: true,
+      })}
     >
       <DialogHeader
         title={assessment ? `Edit ${noun}` : 'Add checkpoint'}

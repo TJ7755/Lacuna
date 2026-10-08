@@ -1,0 +1,1 @@
+- A lesson's card list matches the Cards page: each row shows the card's kind and when it next comes up, an occlusion card shows its diagram, and an occlusion's cards stay together in region order. Fronts wrap to two lines on phones instead of cutting off after a few words.

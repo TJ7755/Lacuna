@@ -99,7 +99,7 @@ describe('QuestionSetPathEditor', () => {
       />,
     );
 
-    expect(await screen.findByRole('dialog', { name: 'Add Practice Qs' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Add practice questions' })).toBeInTheDocument();
     await screen.findByRole('radio', { name: 'Cell structure' });
     fireEvent.click(screen.getByRole('radio', { name: 'Cell structure' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Tissues' }));
@@ -123,7 +123,7 @@ describe('QuestionSetPathEditor', () => {
     const onClose = vi.fn();
     render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
 
-    expect(await screen.findByRole('dialog', { name: 'Edit Practice Qs' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Edit practice questions' })).toBeInTheDocument();
     await screen.findByRole('radio', { name: 'Cell structure' });
     const setSelect = screen.getByRole('radio', { name: 'Cell structure' });
     expect(setSelect).toBeChecked();

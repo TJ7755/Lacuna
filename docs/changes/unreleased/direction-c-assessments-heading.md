@@ -1,0 +1,1 @@
+- Course settings name the assessments card ("Assessments"), matching every other settings card and the Path's side panel.

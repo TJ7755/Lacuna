@@ -39,6 +39,11 @@ vi.mock('../../db/cardRepository', () => ({
   unsuspendCard: vi.fn(),
 }));
 
+// Occlusion thumbnails resolve their diagram from the asset store.
+vi.mock('../../db/assetCache', () => ({
+  resolveAssetUrl: () => Promise.resolve('blob:diagram'),
+}));
+
 vi.mock('../../fsrs/leech', () => ({
   isLeech: vi.fn(() => false),
 }));
@@ -188,6 +193,27 @@ describe('CardList', () => {
     expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
   });
 
+  it('tints a hovered row without letting the swipe tray show through', () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    const row = container.querySelector('[data-card-id]')!;
+    // Every background the row can take must be opaque, or the tray behind it shows.
+    const backgrounds = row.className.split(/\s+/).filter((name) => /(^|:)bg-/.test(name));
+    expect(backgrounds.length).toBeGreaterThan(0);
+    for (const name of backgrounds) expect(name).not.toContain('/');
+  });
+
+  it('hides the swipe tray while the row is at rest', () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    // Its tinted buttons showed through the row's rounded corners on every row.
+    expect(container.querySelector<HTMLElement>('[data-card-swipe-tray]')!.style.visibility).toBe(
+      'hidden',
+    );
+  });
+
   it('renders empty state when no cards', () => {
     const onNewCard = vi.fn();
     const onEditCard = vi.fn();
@@ -304,6 +330,20 @@ describe('CardList', () => {
     expect(screen.getByText('geography')).toBeInTheDocument();
   });
 
+  it('draws New card as a secondary action when its page already holds the primary one', () => {
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={mockContext}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+        quietNewCard
+      />,
+    );
+    // Button is mocked here and reflects its variant as an attribute.
+    expect(screen.getByRole('button', { name: 'New card' })).toHaveAttribute('variant', 'secondary');
+  });
+
   it('uses the Working badge for working-item cards stored as front/back cards', () => {
     const workingCard: Card = {
       ...mockCard,
@@ -312,7 +352,7 @@ describe('CardList', () => {
     render(<CardList cards={[workingCard]} context={mockContext} onEditCard={vi.fn()} />);
 
     expect(screen.getByText('Working')).toBeInTheDocument();
-    expect(screen.queryByText('Front / Back')).not.toBeInTheDocument();
+    expect(screen.queryByText('Front / back')).not.toBeInTheDocument();
   });
 
   it('shows select mode when Select button is clicked', () => {
@@ -632,7 +672,7 @@ describe('CardList', () => {
       );
       expect(screen.getByText('Sequence')).toBeInTheDocument();
       expect(screen.getAllByText('Sequence')).toHaveLength(1);
-      expect(screen.getAllByText('Front / Back')).toHaveLength(1);
+      expect(screen.getAllByText('Front / back')).toHaveLength(1);
 
       fireEvent.click(screen.getByText('Select'));
       // Only the ordinary card is selectable: "Select all" only ever selects it.
@@ -680,6 +720,23 @@ describe('CardList', () => {
       // Only the ordinary card is selectable: "Select all" only ever selects it.
       fireEvent.click(screen.getByText('Select all'));
       expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('previews an occlusion card as its diagram and answers with the region it asks about', async () => {
+      const { container } = render(
+        <CardList
+          cards={[occlusionCard]}
+          context={mockContext}
+          onEditCard={vi.fn()}
+          occlusions={[{ ...occlusion, regions: [{ ...occlusion.regions[0], answerText: 'Aorta' }] }]}
+        />,
+      );
+      expect(container.querySelector('[data-occlusion-thumbnail]')).not.toBeNull();
+      expect(container.querySelector('[data-card-answer]')).toHaveTextContent(/^Aorta$/);
+      // The stored fallback back repeats the front, so it is not what the row shows.
+      await waitFor(() =>
+        expect(container.querySelector('[data-card-answer]')).not.toHaveTextContent('Label 1 of 1'),
+      );
     });
   });
 });

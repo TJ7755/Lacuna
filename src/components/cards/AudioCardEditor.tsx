@@ -130,7 +130,7 @@ export function AudioCardEditor({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Audio</div>
+        <div className="mb-2 text-sm text-ink-faint">Audio</div>
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
           {previewUrl ? (
             <audio className="min-w-0 flex-1" src={previewUrl} controls preload="metadata" />
@@ -139,7 +139,7 @@ export function AudioCardEditor({
               Choose or record an audio clip.
             </span>
           )}
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
             <UploadIcon width={16} height={16} />
             {parsed ? 'Replace' : 'Choose file'}
             <input
@@ -166,7 +166,7 @@ export function AudioCardEditor({
       </div>
 
       <label>
-        <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+        <span className="mb-2 block text-sm text-ink-faint">
           Prompt (optional)
         </span>
         <textarea
@@ -182,7 +182,7 @@ export function AudioCardEditor({
       </label>
 
       <label>
-        <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+        <span className="mb-2 block text-sm text-ink-faint">
           Answer
         </span>
         <textarea

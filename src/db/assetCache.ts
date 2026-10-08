@@ -6,6 +6,7 @@
 
 import { db } from './schema';
 import { assetUrl, referencedAssetHashes, toBlob } from './assets';
+import { seedArtworkFor } from './seedArtwork';
 
 const MAX_SIZE = 200;
 
@@ -75,9 +76,14 @@ export async function resolveAssetUrl(hash: string): Promise<string | null> {
 
   const promise = (async () => {
     try {
-      const asset = await db.assets.get(hash);
-      if (!asset) return null;
-      const url = URL.createObjectURL(toBlob(asset.blob, asset.mimeType));
+      // The Welcome drawings show their themed versions; their stored bytes stay as seeded.
+      let blob = seedArtworkFor(hash);
+      if (!blob) {
+        const asset = await db.assets.get(hash);
+        if (!asset) return null;
+        blob = toBlob(asset.blob, asset.mimeType);
+      }
+      const url = URL.createObjectURL(blob);
       if (cache.size >= MAX_SIZE) evictOldest();
       cache.set(hash, url);
       addFront(hash);

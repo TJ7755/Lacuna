@@ -1,15 +1,20 @@
-import { AddQuestionSetPractice } from '../components/course/QuestionSetPathEditor';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { Skeleton } from '../components/ui/Skeleton';
+import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
-// Lesson view page — a study destination first, notes/cards second. The
-// second half renders in one of two workspace modes, resolved by
-// src/course/lessonViewMode.ts: Study (read-only notes, a cards summary) or
-// Author (full notes/cards CRUD), driven by the course's own
+// Lesson view page — a study destination first, notes/cards second. A header
+// (title, one meta line, a Study/Edit pill and the study action) sits above a large
+// reading card for the notes beside a compact "Cards in this lesson" list. The
+// workspace renders in one of two modes, resolved by src/course/lessonViewMode.ts:
+// View (read-only) or Edit (the same layout with edit controls faded in, and
+// the full card management section revealed beneath), driven by the course's own
 // Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
 // Also renderable inline by CoursePath when a course has exactly one lesson
 // (via optional courseId/lessonId props that take precedence over route params).
 // British English throughout.
 
+import { useRef, useState, type ReactNode } from 'react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { m as motion } from 'motion/react';
@@ -23,19 +28,22 @@ import {
   useCourseAssessments,
   useLessonBackingDeck,
 } from '../state/useCourseData';
-import { LessonNotesSection } from '../components/notes/LessonNotesSection';
-import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
+import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
-import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
-import { PlayIcon, PlusIcon } from '../components/ui/icons';
+import { LessonCardsList } from '../components/cards/LessonCardsList';
+import { learntCardCount } from '../components/cards/lessonCardRow';
+import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
+import { updateCourse } from '../db/courseRepository';
+import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
+import { riseIn } from '../components/course/riseIn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
+import { AddCourseControl } from '../components/course/AddCourseControl';
 import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
-import { CourseHeader } from '../components/course/CourseHeader';
-import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
-import { HeaderStats } from '../components/course/HeaderStats';
+import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
+import { lessonMetaParts } from '../course/lessonMeta';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import {
   canEditLessons,
@@ -43,16 +51,20 @@ import {
   resolveLessonViewMode,
 } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
-import { MS_PER_DAY } from '../fsrs/params';
-import { updateCourse } from '../db/courseRepository';
-import { updateLesson } from '../db/lessonRepository';
-import { formatDate } from '../utils/datetime';
+import { calendarDaysUntil } from '../utils/datetime';
+import { reorderLessons, updateLesson } from '../db/lessonRepository';
+import { moveLessonIds } from '../components/course/useLessonPathReorder';
+import {
+  focusAfterLessonDeletion,
+  LessonActionsMenu,
+  lessonContextMenu,
+} from '../components/course/LessonActionsMenu';
+import type { MenuHandle } from '../components/ui/Menu';
 import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
-import { StepSwap } from '../components/ui/StepSwap';
 import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
+import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
-import { Skeleton } from '../components/ui/Skeleton';
 
 interface LessonViewProps {
   /**
@@ -63,11 +75,15 @@ interface LessonViewProps {
   courseId?: string;
   /** Same precedence rule as courseId above. */
   lessonId?: string;
-  /** The single course-level Study action for the inline one-lesson course. */
-  showStudyNow?: boolean;
+  /**
+   * The course-level study actions for the inline one-lesson course, as on every course
+   * page; told whether there is anything to study yet.
+   */
+  studyActions?: (disabled: boolean) => ReactNode;
+  /** Opens the course's session plan (the S shortcut), with studyActions. */
   onStudy?: () => void;
-  /** Whether the inline one-lesson course has reached cards eligible for immediate practice. */
-  practiceNowEnabled?: boolean;
+  /** Cards anywhere in the inline one-lesson course, including its unassigned bank. */
+  courseCardCount?: number;
   /** Opens path-native manual-practice creation for an inline one-lesson course. */
   onAddPractice?: () => void;
   /** Opens path-native checkpoint creation for an inline one-lesson course. */
@@ -77,9 +93,9 @@ interface LessonViewProps {
 export function LessonView({
   courseId: courseIdProp,
   lessonId: lessonIdProp,
-  showStudyNow = false,
+  studyActions,
   onStudy,
-  practiceNowEnabled = false,
+  courseCardCount,
   onAddPractice,
   onAddCheckpoint,
 }: LessonViewProps) {
@@ -94,6 +110,14 @@ export function LessonView({
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
+  const [addingLesson, setAddingLesson] = useState(false);
+  const [addingQuestionSet, setAddingQuestionSet] = useState(false);
+  const addRef = useRef<HTMLDivElement>(null);
+  const lessonMenu = useRef<MenuHandle>(null);
+  const restoreAdd = () => {
+    setAddingLesson(false);
+    addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+  };
 
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
@@ -111,6 +135,34 @@ export function LessonView({
   // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
   // Card membership remains independent from the scheduling implementation.
   const lessonDeck = useLessonBackingDeck(courseId, lessonId);
+
+  const shortcutArchived = course?.archived === true;
+  // With no cards and no notes, the inline course's study flow has nothing to show.
+  const showStudyNow = studyActions !== undefined;
+  const nothingToStudy =
+    showStudyNow &&
+    (courseCardCount ?? 0) === 0 &&
+    lessonCards?.length === 0 &&
+    notes?.length === 0;
+  usePageShortcuts({
+    s:
+      shortcutArchived || nothingToStudy
+        ? undefined
+        : showStudyNow
+          ? onStudy
+          : !isInline && lessonCards && lessonCards.length > 0
+            ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
+            : undefined,
+    n:
+      courseId &&
+      lessonId &&
+      course &&
+      !shortcutArchived &&
+      isLessonAuthoringMode(course) &&
+      resolveLessonViewMode(course) === 'edit'
+        ? () => navigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)
+        : undefined,
+  });
 
   // Loading state.
   if (
@@ -132,16 +184,15 @@ export function LessonView({
   // Not found.
   if (lesson === null || course === null) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10">
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-        <div className="relative">
+      <div className={`${COURSE_PAGE_FRAME} py-8`}>
+        <div className="rounded-3xl bg-surface p-10 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]">
           <p className="mb-4 text-ink-soft">
             {lesson === null
               ? 'This lesson could not be found.'
               : 'This course could not be found.'}
           </p>
-          <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
-            {courseId ? 'Back to course' : 'Back to dashboard'}
+          <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent-ink underline">
+            {courseId ? 'Back to course' : 'Back to Today'}
           </Link>
         </div>
       </div>
@@ -152,9 +203,9 @@ export function LessonView({
   // for a single-lesson course (no path to navigate back to).
   const archived = course.archived === true;
   const backTo = archived ? '/archived' : isInline ? '/' : `/course/${courseId}`;
-  const backLabel = archived ? 'Archived courses' : isInline ? 'Dashboard' : 'Course';
+  const backLabel = archived ? 'Archived courses' : isInline ? 'Today' : 'Course';
 
-  // Header stats, scoped to this lesson's own cards (reusing the same FSRS
+  // Header figures, scoped to this lesson's own cards (reusing the same FSRS
   // helpers CoursePath uses at course scope — see CoursePath.tsx and
   // fsrs/eligibility.ts, fsrs/objective.ts).
   const now = Date.now();
@@ -164,164 +215,212 @@ export function LessonView({
   const dueReviewCardIds = studyFlow?.snapshot.dueReviewCardIds;
   const lessonDueCount = lessonCards.filter((card) => dueReviewCardIds?.has(card.id)).length;
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
+  const switchToEdit =
+    !archived && canEditLessons(course)
+      ? () =>
+          void updateCourse(course.id, { lessonViewMode: 'edit' }).catch(() => {
+            notify('Could not switch to Edit. Try again.', 'negative');
+          })
+      : undefined;
   const authoring = !archived && isLessonAuthoringMode(course);
+  const metaParts = lessonMetaParts({
+    learnt: learntCardCount(lessonCards),
+    total: lessonCards.length,
+    noteCount: notes.length,
+    dueCount: lessonDueCount,
+    daysToExam:
+      nearestExam === undefined
+        ? undefined
+        : Math.max(calendarDaysUntil(nearestExam, now), 0),
+  });
+  const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
+  const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
+
+  const addToPath =
+    isInline && courseId && authoring ? (
+      <div ref={addRef} role="group" aria-label="Add to path">
+        <AddCourseControl
+          kinds={[
+            'lesson',
+            ...(onAddPractice ? (['practice'] as const) : []),
+            'question-set',
+            ...(onAddCheckpoint ? (['checkpoint'] as const) : []),
+          ]}
+          onAdd={(kind) => {
+            if (kind === 'lesson') setAddingLesson(true);
+            else if (kind === 'practice') onAddPractice?.();
+            else if (kind === 'question-set') setAddingQuestionSet(true);
+            else onAddCheckpoint?.();
+          }}
+        />
+      </div>
+    ) : null;
 
   return (
-    <div className={`mx-auto max-w-4xl px-6 ${isInline ? 'pb-8' : 'py-8'} md:px-10`}>
-      {!isInline && <CoursePageNavigation
-        courseId={courseId ?? ''}
-        backTo={backTo}
-        backLabel={backLabel}
-        archived={archived}
-        className="mb-6"
-        trailing={
-          archived ? undefined : !canEditLessons(course) ? (
-            <Link
-              to={`/course/${courseId}/settings`}
-              className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
-            >
-              Authoring is locked for shared courses
-            </Link>
-          ) : (
-            <LessonViewModeToggle
-              mode={viewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
-          )
-        }
-      />}
-      {isInline && courseId && authoring && (
-        <div
-          role="group"
-          aria-label="Add to path"
-          className="mb-6 flex flex-wrap justify-end gap-2"
-        >
-          <AddLessonControl
-            courseId={courseId}
-            lessonCount={lessons.length}
-            onCreated={(createdLesson) =>
-              navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
-            }
-          />
-          {onAddPractice && (
-            <Button variant="secondary" size="sm" onClick={onAddPractice}>
-              <PlusIcon width={16} height={16} />
-              Add practice
-            </Button>
-          )}
-          <AddQuestionSetPractice courseId={courseId} afterLessonId={lesson.id} />
-          {onAddCheckpoint && (
-            <Button variant="secondary" size="sm" onClick={onAddCheckpoint}>
-              <PlusIcon width={16} height={16} />
-              Add checkpoint
-            </Button>
-          )}
-        </div>
+    <div className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}>
+      {!isInline && (
+        <CoursePageNavigation
+          courseId={courseId ?? ''}
+          course={course}
+          backTo={backTo}
+          backLabel={backLabel}
+          archived={archived}
+          identity={archived ? undefined : { name: course.name }}
+          className="mb-6"
+          trailing={
+            archived || canEditLessons(course) ? undefined : (
+              <Link
+                to={`/course/${courseId}/settings`}
+                className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
+              >
+                Authoring is locked for shared courses
+              </Link>
+            )
+          }
+        />
       )}
-
-      {/* Header — title, a row of labelled stat pills (HeaderStats), and the
-          Study action. */}
-      <CourseHeader
-        className="mb-8"
-        eyebrow={
-          nearestExam === undefined
-            ? 'Steady retention'
-            : `Exam ${formatDate(nearestExam, course.timeZone)}`
-        }
-        examUrgent={examUrgent}
-        title={lesson.name}
-        onRename={
-          authoring
-            ? async (name) => {
-                try {
-                  await updateLesson(lesson.id, { name });
-                } catch (error) {
-                  notify(
-                    error instanceof Error ? error.message : 'Could not rename the lesson.',
-                    'negative',
-                  );
-                  throw error;
-                }
-              }
-            : undefined
-        }
-        renameLabel="lesson"
-      >
-        <div>
-          <HeaderStats
-            dueCount={lessonDueCount}
-            masteryPct={Math.round(lessonMastery * 100)}
-            daysToExam={
-              nearestExam === undefined
-                ? undefined
-                : Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)
+      <div className="flex flex-col gap-6">
+        <motion.div {...riseIn(0, motionMultiplier)}>
+          <LessonHeader
+            title={lesson.name}
+            description={lesson.description || undefined}
+            meta={
+              <span className={examUrgent ? 'text-warning-fg' : undefined}>
+                {metaParts.join(' · ')}
+              </span>
             }
-            totalCards={lessonCards.length}
-            unseenCount={lessonCards.filter((c) => c.lastReviewed === null || c.state === 0).length}
-          />
-          {archived ? (
-            <ArchivedCourseRestoreNotice />
-          ) : showStudyNow ? (
-            <div className="mt-6 flex flex-wrap items-center gap-4">
+            onRename={
+              authoring
+                ? async (name) => {
+                    try {
+                      await updateLesson(lesson.id, { name });
+                    } catch (error) {
+                      notify(
+                        error instanceof Error ? error.message : 'Could not rename the lesson.',
+                        'negative',
+                      );
+                      throw error;
+                    }
+                  }
+                : undefined
+            }
+            actions={
+              authoring && courseId
+                ? (startRename) => (
+                    <LessonActionsMenu
+                      lesson={lesson}
+                      position={lessonPosition}
+                      count={lessons.length}
+                      handle={lessonMenu}
+                      onRename={startRename}
+                      onMove={(delta) => {
+                        const ids = lessons.map((candidate) => candidate.id);
+                        reorderLessons(
+                          courseId,
+                          moveLessonIds(ids, lesson.id, lessonPosition + delta),
+                        ).catch(() => notify('Lesson order could not be saved.', 'negative'));
+                      }}
+                      onDeleted={() => {
+                        if (!isInline) void navigate(`/course/${courseId}`);
+                        focusAfterLessonDeletion(['#course-path-heading', 'main h1']);
+                      }}
+                    />
+                  )
+                : undefined
+            }
+            contextMenu={authoring ? lessonContextMenu(() => lessonMenu.current) : undefined}
+          >
+            {archived ? (
+              <ArchivedCourseRestoreNotice />
+            ) : showStudyNow ? (
+              studyActions(nothingToStudy)
+            ) : isInline ? null : (
               <Button
                 variant="primary"
                 size="lg"
-                onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
+                disabled={lessonCards.length === 0}
+                onClick={() => navigate(lessonStudyPath)}
               >
-                <PlayIcon width={18} height={18} />
-                Study
+                {/* Named for its scope: course-level Study opens the session plan instead. */}
+                Study lesson
+                <ArrowRightIcon />
               </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                disabled={!practiceNowEnabled}
-                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
-              >
-                Review due cards
-              </Button>
-              {/* The due count already leads the stat pills above, so this line
-                only speaks when there is something the pills don't say. */}
-              {(lessonCards.length === 0 || lessonDueCount === 0) && (
-                <p className="text-sm text-ink-faint">
-                  {lessonCards.length === 0
-                    ? 'Add cards to begin studying.'
-                    : 'Nothing due right now.'}
-                </p>
-              )}
-            </div>
-          ) : null}
-        </div>
-      </CourseHeader>
-      {!archived && !isInline && (
-        <div className="mb-6">
-          <SimpleLearnOptions key={lesson.id} courseId={course.id} initialLessonId={lesson.id} />
-        </div>
-      )}
-      {lesson.description && <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Notes and cards. Demoted below the study CTA: a quieter, smaller-   */}
-      {/* heading section either way. In Author mode this is the full CRUD   */}
-      {/* editor (LessonNotesSection/LessonCardsSection); in Study mode it   */}
-      {/* is read-only content plus a cards summary — see                    */}
-      {/* src/course/lessonViewMode.ts for how the mode is resolved.         */}
-      {/* ------------------------------------------------------------------ */}
-      <motion.div
-        layout="size"
-        transition={{ duration: 0.22 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-        className="border-t border-line pt-8"
-        data-lesson-workspace-mode={viewMode}
-      >
-        <StepSwap
-          stepKey={viewMode}
-          direction={viewMode === 'edit' ? 1 : -1}
-          className="space-y-10"
-        >
-          {viewMode === 'edit' ? (
+            )}
+            {addToPath}
+          </LessonHeader>
+          {/* The due count already leads the meta line, so this only speaks when
+              there is something it does not say. */}
+          {!archived && showStudyNow && (lessonCards.length === 0 || lessonDueCount === 0) && (
+            <p className="mt-3 text-sm text-ink-faint">
+              {lessonCards.length === 0 ? 'Add cards to begin studying.' : 'Nothing due right now.'}
+            </p>
+          )}
+          {addToPath && courseId && (
             <>
-              {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}
+              <AnimatedDisclosure open={addingLesson}>
+                <div className="pt-4">
+                  <AddLessonControl
+                    initiallyOpen
+                    courseId={courseId}
+                    lessonCount={lessons.length}
+                    onCancel={restoreAdd}
+                    onCreated={(createdLesson) =>
+                      navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
+                    }
+                  />
+                </div>
+              </AnimatedDisclosure>
+              {addingQuestionSet && (
+                <div className="pt-4">
+                  <QuestionSetPathEditor
+                    courseId={courseId}
+                    afterLessonId={lesson.id}
+                    onClose={() => setAddingQuestionSet(false)}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </motion.div>
 
-              {courseId && lessonId && (
+        {/* Notes and cards. Edit mode fades the edit controls in place and reveals card
+            management beneath. View mode leaves out a lesson's empty notes, so its cards
+            take the width; Edit keeps the panel, where the first note is added. */}
+        <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
+          <motion.div {...riseIn(1, motionMultiplier)} className="flex flex-wrap items-start gap-6">
+            {lessonId && (viewMode === 'edit' || notes.length > 0) && (
+              <LessonNotesCard
+                lessonId={lessonId}
+                notes={notes}
+                editable={viewMode === 'edit'}
+                className="flex-[3_1_560px]"
+              />
+            )}
+            {courseId && lessonId && (
+              <LessonCardsList
+                courseId={courseId}
+                lessonId={lessonId}
+                cards={lessonCards}
+                editable={viewMode === 'edit'}
+                onNavigate={navigate}
+                onSwitchToEdit={switchToEdit}
+                className="flex-[2_1_340px]"
+                footer={
+                  !archived && !isInline ? (
+                    <SimpleLearnOptions
+                      key={lesson.id}
+                      courseId={course.id}
+                      initialLessonId={lesson.id}
+                    />
+                  ) : undefined
+                }
+              />
+            )}
+          </motion.div>
+
+          <AnimatedDisclosure open={viewMode === 'edit' && Boolean(courseId && lessonId)}>
+            {courseId && lessonId && (
+              <div className="rounded-3xl bg-surface p-6 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-8">
                 <LessonCardsSection
                   courseId={courseId}
                   lessonId={lessonId}
@@ -330,54 +429,27 @@ export function LessonView({
                   lessonSchedulingConfig={lessonDeck}
                   onNavigate={navigate}
                 />
-              )}
-            </>
-          ) : (
-            <>
-              <LessonNotesStudyView notes={notes} />
-              <LessonCardsSummary
-                cardCount={lessonCards.length}
-                dueCount={lessonDueCount}
-                masteryPct={Math.round(lessonMastery * 100)}
-              />
-            </>
-          )}
-        </StepSwap>
-        {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
-      </motion.div>
+              </div>
+            )}
+          </AnimatedDisclosure>
+          {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
+        </div>
+      </div>
     </div>
   );
 }
 
 function LessonViewSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 md:px-10">
-      <Skeleton className="mb-6 h-4 w-20" />
-      <div className="mb-8 flex flex-col gap-4 md:flex-row">
-        <Skeleton className="h-40 flex-1 rounded-2xl" />
-        <Skeleton className="h-40 rounded-2xl md:w-56" />
+    <div className={`${COURSE_PAGE_FRAME} py-8`}>
+      <Skeleton className="mb-6 h-11 w-24 rounded-full bg-ink/10" />
+      <div className="mb-6 flex flex-col gap-3">
+        <Skeleton className="h-11 w-72 max-w-full rounded-xl bg-ink/10" />
+        <Skeleton className="h-4 w-52 rounded bg-ink/10" />
       </div>
-      <div className="mb-10">
-        <div className="mb-4 flex items-center justify-between">
-          <Skeleton className="h-7 w-16" />
-          <Skeleton className="h-9 w-24 rounded-lg" />
-        </div>
-        <div className="space-y-px rounded-xl border border-line">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2 px-4 py-3">
-              <Skeleton className="h-4 w-4" />
-              <Skeleton className="h-4 flex-1" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div>
-        <Skeleton className="mb-4 h-7 w-20" />
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-6">
+        <Skeleton className="h-80 flex-[3_1_560px] rounded-3xl bg-ink/[0.06]" />
+        <Skeleton className="h-80 flex-[2_1_340px] rounded-3xl bg-ink/[0.06]" />
       </div>
     </div>
   );

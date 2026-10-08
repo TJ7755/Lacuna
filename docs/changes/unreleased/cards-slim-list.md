@@ -1,0 +1,4 @@
+- Cards: the list is redesigned as slim rows. Each shows the question, its answer beneath, and when the card next comes up (New, Due, Later today, Tomorrow, In N days), replacing the hover flip to the back and the stability figure.
+- Image-occlusion cards show their diagram with the asked region marked, and the region's answer, instead of the word "Occlusion" and a repeated question; they list in region order.
+- The Cards page holds every lesson in one panel, and on wider screens each lesson's heading stays in view while its cards scroll.
+- On phones the question takes the full width: Flag, Edit and Delete move into the opened row (and the swipe tray), instead of reserving space beside every card.

@@ -5,11 +5,13 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
+import { CourseStudyActions } from '../components/course/CourseStudyActions';
 import { ToastProvider } from '../components/ui/Toast';
 import type { Card, Course, Lesson, Note } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
+const mockOnStudy = vi.fn();
 const { mockCreateLesson, mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({
   mockCreateLesson: vi.fn(),
   mockUpdateCourse: vi.fn(),
@@ -148,6 +150,7 @@ function renderInline(
   showStudyNow = false,
   practiceNowEnabled = false,
   pathActions?: { onAddPractice: () => void; onAddCheckpoint: () => void },
+  courseCardCount = 1,
 ) {
   return render(
     <MemoryRouter initialEntries={['/course/course-1']}>
@@ -156,8 +159,27 @@ function renderInline(
         <LessonView
           courseId="course-1"
           lessonId="lesson-1"
-          showStudyNow={showStudyNow}
-          practiceNowEnabled={practiceNowEnabled}
+          studyActions={
+            showStudyNow
+              ? (disabled) => (
+                  <CourseStudyActions
+                    dueCount={0}
+                    doneToday={0}
+                    disabled={disabled}
+                    onStudy={mockOnStudy}
+                    otherWays={[
+                      {
+                        label: 'Only review due cards',
+                        disabled: !practiceNowEnabled,
+                        onSelect: () => mockNavigate('/course/course-1/study?review=due'),
+                      },
+                    ]}
+                  />
+                )
+              : undefined
+          }
+          onStudy={showStudyNow ? mockOnStudy : undefined}
+          courseCardCount={courseCardCount}
           onAddPractice={pathActions?.onAddPractice}
           onAddCheckpoint={pathActions?.onAddCheckpoint}
         />
@@ -167,6 +189,7 @@ function renderInline(
 }
 
 beforeEach(() => {
+  mockOnStudy.mockClear();
   mockDueReviewCardIds = new Set();
   mockLesson = lesson;
   mockCourse = course;
@@ -188,12 +211,21 @@ beforeEach(() => {
   mockUpdateLesson.mockResolvedValue(undefined);
 });
 
-describe('LessonView Study mode', () => {
+describe('LessonView View mode', () => {
+  it('offers the way into Edit when a lesson has no cards yet', async () => {
+    mockLessonCards = [];
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Edit to add cards' }));
+    await waitFor(() =>
+      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' }),
+    );
+  });
+
   it('preselects this lesson for an optional Simple Learn pass', async () => {
     renderPage();
-    fireEvent.click(screen.getByText('Simple Learn'));
-    expect(await screen.findByLabelText('Simple Learn scope')).toHaveValue(lesson.id);
-    fireEvent.click(screen.getByRole('button', { name: 'Start Simple Learn' }));
+    fireEvent.click(screen.getByText('Practise until all correct'));
+    expect(await screen.findByLabelText('What to practise')).toHaveValue(lesson.id);
+    fireEvent.click(screen.getByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenCalledWith(`/lesson/${lesson.id}/learn?mode=simple`);
   });
 
@@ -241,21 +273,20 @@ describe('LessonView Study mode', () => {
       '/archived',
     );
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Study/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     expect(container.querySelector('[data-lesson-workspace-mode="study"]')).not.toBeNull();
     expect(mockUpdateCourse).not.toHaveBeenCalled();
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 
-  it('offers the shared Author mode on a normal lesson route', () => {
+  it('offers the shared Edit mode on a normal lesson route', () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Author mode' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
 
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
     expect(screen.queryByRole('button', { name: 'Read' })).not.toBeInTheDocument();
@@ -276,16 +307,44 @@ describe('LessonView Study mode', () => {
     expect(screen.queryByLabelText('Course settings')).not.toBeInTheDocument();
   });
 
-  it('shows a cards summary instead of the editable card list', () => {
+  it('lists the lesson cards without edit controls', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
-    expect(screen.getByText('Total')).toBeInTheDocument();
-    expect(screen.getByText('Due')).toBeInTheDocument();
-    expect(screen.getByText('Mastery')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
+    expect(screen.getByText('front')).toBeInTheDocument();
+    expect(screen.getAllByText('Front / back').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('New').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Edit card' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
     expect(screen.queryByText('Add your first card')).not.toBeInTheDocument();
   });
 
-  it('keeps a locked distributed copy in Study mode across every lesson authoring gate', () => {
+  it('summarises learnt cards and notes on one line', () => {
+    mockLessonCards = [makeCard('a'), { ...makeCard('b'), state: 2, lastReviewed: 1 }];
+    renderPage();
+    expect(screen.getByText(/^1 of 2 cards learnt · 1 note/)).toBeInTheDocument();
+  });
+
+  it('starts the lesson from Study lesson, named apart from course-level Study', () => {
+    renderPage();
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Study lesson' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/lesson/lesson-1/learn');
+  });
+
+  it('turns several notes into tabs and switches between them', () => {
+    mockNotes = [note, { ...note, id: 'note-2', name: 'Second note', content: 'Other body', orderIndex: 1 }];
+    renderPage();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual(['A note', 'Second note']);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(tabs[1]);
+    expect(screen.getByRole('tab', { name: 'Second note' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('keeps a locked distributed copy in View mode across every lesson authoring gate', () => {
     mockCourse = {
       ...course,
       lessonViewMode: 'edit',
@@ -305,38 +364,59 @@ describe('LessonView Study mode', () => {
     expect(
       screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
     ).toHaveAttribute('href', '/course/course-1/settings');
-    expect(screen.queryByRole('button', { name: 'Author mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add practice' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add checkpoint' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
     expect(screen.getByText('A note')).toBeInTheDocument();
     expect(screen.queryByText('Add note')).not.toBeInTheDocument();
   });
 });
 
 describe('LessonView inline (single-lesson course) rendering', () => {
-  it('shows one generic course Study action', () => {
-    renderInline(true);
-
-    expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
-    // The due-review shortcut is the header's secondary action, not a second Study.
-    expect(screen.getAllByRole('button', { name: 'Review due cards' })).toHaveLength(1);
-  });
-
-  it('starts course-wide practice from the header when eligible', () => {
+  it('shows the course page\'s Study and Other ways, not a lesson-only pair', () => {
     renderInline(true, true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Review due cards' }));
-
+    expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
+    // Due reviews live in Other ways, as on a multi-lesson course page.
+    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Only review due cards/ }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
 
-  it('disables course-wide practice when no reached card is eligible', () => {
+  it('opens the session plan from Study', () => {
     renderInline(true);
-
-    expect(screen.getByRole('button', { name: 'Review due cards' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+    expect(mockOnStudy).toHaveBeenCalledTimes(1);
   });
+
+  it('leaves out an empty notes panel in View mode but keeps it in Edit', () => {
+    mockNotes = [];
+    const { unmount } = renderPage();
+    expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
+    unmount();
+
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
+  });
+
+  it('withholds Study only when the course has no cards and the lesson no notes', () => {
+    mockLessonCards = [];
+    mockNotes = [];
+    const { unmount } = renderInline(true, false, undefined, 0);
+    expect(screen.getByRole('button', { name: 'Study' })).toBeDisabled();
+    fireEvent.keyDown(window, { key: 's' });
+    expect(mockOnStudy).not.toHaveBeenCalled();
+    unmount();
+
+    mockNotes = [note];
+    renderInline(true, false, undefined, 0);
+    expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
+  });
+
 
   it('shows the course navigation with a Settings link', () => {
     renderInline();
@@ -344,7 +424,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(link).toHaveAttribute('href', '/course/course-1/settings');
   });
 
-  it('hides Add lesson in Study mode', () => {
+  it('hides Add lesson in View mode', () => {
     renderInline();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(mockCreateLesson).not.toHaveBeenCalled();
@@ -352,14 +432,14 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 });
 
 describe('LessonView title editing', () => {
-  it('hides the lesson rename control in Study mode', () => {
+  it('hides the lesson rename control in View mode', () => {
     renderPage();
-    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lesson actions/ })).not.toBeInTheDocument();
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 });
 
-describe('LessonView Author mode', () => {
+describe('LessonView Edit mode', () => {
   beforeEach(() => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
   });
@@ -371,15 +451,21 @@ describe('LessonView Author mode', () => {
     expect(container.querySelector('[data-lesson-workspace-mode="edit"]')).not.toBeNull();
   });
 
-  it('renders the editable cards section rather than the summary', () => {
+  it('shows edit controls on each card row and the management section', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
-    expect(screen.queryByText('Total')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Edit card' })).toHaveAttribute(
+      'href',
+      '/course/course-1/lesson/lesson-1/cards/card-1/edit',
+    );
+    expect(screen.getByRole('button', { name: 'New card' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Manage/ })).toBeInTheDocument();
   });
 
   it('opens a newly created lesson from the inline path', async () => {
     renderInline();
-    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
 
     await waitFor(() => {
@@ -393,8 +479,10 @@ describe('LessonView Author mode', () => {
     const onAddCheckpoint = vi.fn();
 
     renderInline(false, false, { onAddPractice, onAddCheckpoint });
-    fireEvent.click(screen.getByRole('button', { name: 'Add practice' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
 
     expect(onAddPractice).toHaveBeenCalledOnce();
     expect(onAddCheckpoint).toHaveBeenCalledOnce();
@@ -402,8 +490,9 @@ describe('LessonView Author mode', () => {
 
   it('renames the lesson from its header', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Rename lesson' }));
-    const input = screen.getByRole('textbox', { name: 'lesson name' });
+    fireEvent.click(screen.getByRole('button', { name: 'Lesson actions: Test lesson' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    const input = screen.getByRole('textbox', { name: 'Lesson name' });
     fireEvent.change(input, { target: { value: 'Renamed lesson' } });
     fireEvent.blur(input);
 

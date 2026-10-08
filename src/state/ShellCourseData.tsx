@@ -8,12 +8,16 @@ import { db } from '../db/schema';
 import type { Card, Course, Lesson } from '../db/types';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
+import { dashboardForecasts } from './dashboardForecasts';
+import type { CourseForecast } from '../fsrs/courseForecast';
 
 interface SidebarData {
   courses: Course[];
   lessons: Lesson[];
   summaries: Record<string, CourseSummary>;
   stats: StudyStats;
+  /** Keep-to-schedule exam-day forecasts per active course, cached per course. */
+  forecasts: Record<string, CourseForecast>;
 }
 
 interface CourseDashboardData extends SidebarData {
@@ -98,6 +102,7 @@ export function ShellCourseDataProvider({
         activity,
         schedulingByCourse,
       ),
+      forecasts: dashboardForecasts(courses, lessons, cards, now),
     };
 
     // Navigation retains derived figures. The dashboard also needs card projections
@@ -131,6 +136,7 @@ export function ShellCourseDataProvider({
           },
           activity,
         ),
+        forecasts: sidebar.forecasts,
         // Dashboard response-time calibration is course-based; navigation keeps
         // scheduling-unit pacing. Sharing the records must not conflate the two.
         stats: computeStudyStats(
@@ -156,6 +162,12 @@ function useShellCourseData() {
 
 export function useSidebarData(): SidebarData | undefined {
   return useShellCourseData()?.sidebar;
+}
+
+/** One course's keep-to-schedule forecast, or undefined outside the app shell. */
+export function useCourseForecast(courseId: string | undefined): CourseForecast | undefined {
+  const data = useContext(ShellCourseDataContext);
+  return courseId && data ? data.sidebar.forecasts[courseId] : undefined;
 }
 
 export function useCourseDashboardData(): CourseDashboardData | undefined {

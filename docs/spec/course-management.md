@@ -18,13 +18,17 @@
   course overview. Read-only course analytics remain available.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
-  notes-first teaching flow when it is the next available path step. In Author mode,
+  notes-first teaching flow when it is the next available path step. In Edit mode,
   **Link existing cards** opens a searchable course-card picker and adds selected ordinary
   cards (sequence-generated cards are excluded) as
   `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS
   state. Linked rows are labelled, excluded from destructive bulk selection, and use
   **Remove from lesson** instead of deleting the underlying shared card; removal also clears
   that lesson's exposure record.
+  While a lesson has no cards, its card panel's **New card** is the primary action and the
+  management section becomes **More ways to add cards** (sequence, occlusion, link, import)
+  without the answer-mode control. A one-lesson course with no cards and no notes disables
+  **Study** and its `S` shortcut, because the study flow would open an empty notes step.
 - **Cards** (`/course/:courseId/cards`) lists every direct-recall Card in a course regardless of
   lesson, sharing `CardList` with the lesson view's Card section. The old `/bank` route redirects
   here.
@@ -32,7 +36,14 @@
   their primary Concept, exposure and due state. It launches a ten-Question default session or an
   All due session. Due Questions come first, then unseen Questions; alternative primary Concepts
   are interleaved when available. This pool never consults the Card pool.
-- **Card list** (`CardList`) supports per-card edit, suspend/flag, and an explicit **Select**
+- **Card list** (`CardList`) shows each card as one row: up to two lines of question, one line
+  of answer, and when it next comes up (New, Due, Later today, Tomorrow, In N days, Suspended
+  or Buried, agreeing with the Due filter). An occlusion card shows its diagram, with the asked
+  region marked, and the region's answer. The Cards page holds every lesson in one panel, with
+  each lesson's heading kept below the course bar while its cards scroll (from the `sm`
+  breakpoint). On hover the schedule gives way to Flag, Edit and Delete; below `sm` and on touch
+  screens those actions live in the swipe tray and the expanded row instead.
+- The card list supports per-card edit, suspend/flag, and an explicit **Select**
   action for bulk selection; a tag-filter row scopes both the list and the study session.
   In multi-select mode the bulk toolbar offers **delete** (with an Undo toast that restores
   a snapshot), **move** to another lesson within the same course context, and

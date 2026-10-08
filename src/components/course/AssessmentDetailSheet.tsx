@@ -69,13 +69,11 @@ export function AssessmentDetailSheet({
       >
         <header className="flex items-start justify-between border-b border-line px-6 py-5">
           <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-ink-faint">
-              {assessment.kind === 'final' ? 'Final assessment' : 'Checkpoint'}
-            </p>
-            <h2 className="mt-1 font-display text-2xl">{assessment.name}</h2>
+            <h2 className="font-display text-2xl">{assessment.name}</h2>
             <p className="mt-1 text-sm text-ink-soft">
+              {assessment.kind === 'final' ? 'Final assessment' : 'Checkpoint'} ·{' '}
               {assessment.examDate === undefined
-                ? 'Steady retention'
+                ? 'steady retention'
                 : formatDateTime(assessment.examDate, assessment.timeZone)}
             </p>
           </div>
@@ -83,7 +81,7 @@ export function AssessmentDetailSheet({
             type="button"
             onClick={onClose}
             aria-label="Close assessment details"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
           >
             <CloseIcon width={18} height={18} />
           </button>
@@ -105,42 +103,30 @@ export function AssessmentDetailSheet({
             </ul>
           </section>
 
-          <section>
-            <h3 className="text-sm font-medium text-ink">Exclusions</h3>
-            {excludedNames.length ? (
+          {excludedNames.length > 0 && (
+            <section>
+              <h3 className="text-sm font-medium text-ink">Exclusions</h3>
               <ul className="mt-3 space-y-1 text-sm text-ink-soft">
                 {excludedNames.map((name, index) => (
                   <li key={`${assessment.excludedCardIds[index]}-${index}`}>{name}</li>
                 ))}
               </ul>
-            ) : (
-              <p className="mt-1 text-sm text-ink-faint">None</p>
-            )}
-          </section>
+            </section>
+          )}
 
-          <section>
-            <h3 className="text-sm font-medium text-ink">Validation</h3>
-            <p
-              className={
-                'mt-1 text-sm ' +
-                (resolved.validation.valid && !resolved.validation.needsAuthorConfirmation
-                  ? 'text-positive'
-                  : 'text-negative')
-              }
-            >
-              {resolved.validation.valid && !resolved.validation.needsAuthorConfirmation
-                ? 'Scope is valid'
-                : 'Needs author review'}
-            </p>
-            {resolved.validation.issues.map((issue) => (
-              <p
-                key={`${issue.code}-${issue.referenceId ?? ''}`}
-                className="mt-1 text-xs text-negative"
-              >
-                {issue.message}
-              </p>
-            ))}
-          </section>
+          {!(resolved.validation.valid && !resolved.validation.needsAuthorConfirmation) && (
+            <section>
+              <h3 className="text-sm font-medium text-ink">Needs author review</h3>
+              {resolved.validation.issues.map((issue) => (
+                <p
+                  key={`${issue.code}-${issue.referenceId ?? ''}`}
+                  className="mt-1 text-sm text-negative"
+                >
+                  {issue.message}
+                </p>
+              ))}
+            </section>
+          )}
         </div>
 
         <footer className="border-t border-line px-6 py-4">

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Card } from '../../db/types';
 import { clampTooltipLeft, ReviewHeatmap } from './ReviewHeatmap';
 
@@ -38,6 +38,71 @@ function makeCard(): Card {
 }
 
 describe('ReviewHeatmap', () => {
+  it.each([7, 30])('uses the available width for a compact %i-day strip', (days) => {
+    render(<ReviewHeatmap cards={[]} days={days} />);
+    const grid = screen.getByRole('grid');
+    expect(grid).toHaveStyle({ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` });
+    expect(grid.style.maxWidth).toBe('');
+    const cells = screen.getAllByRole('gridcell');
+    fireEvent.focus(cells[0]);
+    fireEvent.keyDown(cells[0], { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(cells[1]);
+    expect(cells[1]).toHaveStyle({ gridRow: '2' });
+  });
+
+  it('fits a 30-day strip on a phone and keeps its last date labels apart', () => {
+    render(<ReviewHeatmap cards={[]} days={30} />);
+    const grid = screen.getByRole('grid');
+    expect(parseInt(grid.style.minWidth, 10)).toBeLessThanOrEqual(240);
+    const columns = [...grid.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')]
+      .map((label) => Number(label.style.gridColumn))
+      .filter(Number.isFinite);
+    const [beforeLast, last] = columns.slice(-2);
+    expect(last).toBe(30);
+    expect(last - beforeLast).toBeGreaterThanOrEqual(7);
+  });
+
+  it('limits dates and totals to the selected calendar-day period', () => {
+    const card = makeCard();
+    const older = new Date(today);
+    older.setDate(older.getDate() - 8);
+    card.history.push({ ...card.history[0], timestamp: older.getTime() });
+    render(<ReviewHeatmap cards={[card]} days={7} />);
+    expect(screen.getAllByRole('gridcell')).toHaveLength(7);
+    expect(screen.getByText('1 review in 7 days')).toBeInTheDocument();
+  });
+
+  it('keeps one reachable tab stop when the period shrinks past the active date', () => {
+    const { rerender } = render(<ReviewHeatmap cards={[makeCard()]} days={90} />);
+    const oldest = screen.getAllByRole('gridcell')[0];
+    fireEvent.focus(oldest);
+    rerender(<ReviewHeatmap cards={[makeCard()]} days={7} />);
+    const cells = screen.getAllByRole('gridcell');
+    expect(cells).toHaveLength(7);
+    expect(cells.filter((cell) => cell.tabIndex === 0)).toHaveLength(1);
+    expect(screen.getByRole('grid')).toHaveAttribute(
+      'aria-label',
+      'Review activity over the last 7 days',
+    );
+    expect(document.body.querySelector('[role="tooltip"]')).not.toBeInTheDocument();
+  });
+
+  it('lets vertical arrow keys cross the week boundary in a short period', () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(new Date(2026, 9, 6, 12).getTime());
+    try {
+      render(<ReviewHeatmap cards={[]} days={7} />);
+      const cells = screen.getAllByRole('gridcell');
+      const sunday = cells[4];
+      fireEvent.focus(sunday);
+      fireEvent.keyDown(sunday, { key: 'ArrowDown' });
+      expect(document.activeElement).toBe(cells[5]);
+      fireEvent.keyDown(cells[5], { key: 'ArrowUp' });
+      expect(document.activeElement).toBe(sunday);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('clamps tooltip edges using its measured width', () => {
     expect(clampTooltipLeft({ left: 0, width: 12 }, 120, 800)).toBe(8);
     expect(clampTooltipLeft({ left: 794, width: 12 }, 120, 800)).toBe(672);
@@ -48,7 +113,9 @@ describe('ReviewHeatmap', () => {
 
     const cells = screen.getAllByRole('gridcell');
     expect(cells.filter((cell) => cell.tabIndex === 0)).toHaveLength(1);
-    const cell = cells.find((candidate) => candidate.getAttribute('aria-label')?.startsWith('1 review'));
+    const cell = cells.find((candidate) =>
+      candidate.getAttribute('aria-label')?.startsWith('1 review'),
+    );
     expect(cell).toBeDefined();
     if (!cell) return;
     expect(cell).toHaveAttribute('data-review-heatmap-cell');
@@ -61,7 +128,9 @@ describe('ReviewHeatmap', () => {
       cells[initialActive].getAttribute('aria-label') ?? '',
     );
     fireEvent.keyDown(cells[initialActive], { key: 'ArrowRight' });
-    const nextActive = screen.getAllByRole('gridcell').find((candidate) => candidate.tabIndex === 0);
+    const nextActive = screen
+      .getAllByRole('gridcell')
+      .find((candidate) => candidate.tabIndex === 0);
     expect(nextActive).not.toBe(cells[initialActive]);
     expect(document.body.querySelector('[role="tooltip"]')).toHaveTextContent(
       nextActive?.getAttribute('aria-label') ?? '',

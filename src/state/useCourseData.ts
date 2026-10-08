@@ -6,7 +6,6 @@ import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listReviewHistoryForCourse } from '../db/reviewHistoryRead';
-import { listCourseDailySessionHistory } from '../db/sessionHistoryRead';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type {
   Card,
@@ -20,7 +19,6 @@ import type {
   PendingMergeReview,
   PracticeNode,
   Sequence,
-  SessionHistoryEntry,
   SchedulingUnitRecord,
   UserPerformance,
 } from '../db/types';
@@ -282,17 +280,6 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
   return useLiveQuery(
     () =>
       courseId ? db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate') : [],
-    [courseId],
-  );
-}
-
-/** Session-history snapshots (predicted-retrievability trajectory) for a Course. */
-export function useCourseSessionHistory(
-  courseId: string | undefined,
-): SessionHistoryEntry[] | undefined {
-  return useLiveQuery(
-    () =>
-      courseId ? listCourseDailySessionHistory(courseId) : [],
     [courseId],
   );
 }

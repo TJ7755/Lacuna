@@ -1,14 +1,25 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { AiSession } from '../../ai/session/types';
 import { Button } from '../ui/Button';
-import { CloseIcon, SparklesIcon } from '../ui/icons';
+import { ChevronDownIcon, CloseIcon, SparklesIcon } from '../ui/icons';
+import type { AiWindowControls } from './AiFloatingWindow';
 import { AiApprovalCard } from './AiApprovalCard';
 import { AiComposer } from './AiComposer';
 import { AiConnectionState } from './AiConnectionState';
 import { AiConversation } from './AiConversation';
 import { isElectronRuntime } from '../../electron/runtime';
 
-export function AiPanel({ session, onClose }: { session: AiSession; onClose: () => void }) {
+export function AiPanel({
+  session,
+  onClose,
+  window: windowControls,
+}: {
+  session: AiSession;
+  onClose: () => void;
+  /** Present when the panel is the floating window: the header becomes its drag handle. */
+  window?: AiWindowControls;
+}) {
+  const minimised = windowControls?.minimised ?? false;
   const snapshot = useSyncExternalStore(
     session.subscribe,
     session.getSnapshot,
@@ -35,9 +46,9 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         ? 'Waiting for AI client'
         : connection.status === 'hosted'
           ? 'Built-in AI connected'
-        : connection.status === 'quiet'
-          ? 'Connection quiet'
-          : connection.client.name;
+          : connection.status === 'quiet'
+            ? 'Connection quiet'
+            : connection.client.name;
 
   useEffect(() => {
     if (connection.status === 'disconnected') closeRef.current?.focus();
@@ -55,11 +66,17 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   return (
     <aside
       aria-label="AI conversation"
-      className="flex h-full w-[400px] shrink-0 flex-col border-r border-line bg-paper"
+      className="flex h-full w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_24px_56px_-24px_hsl(var(--ink)/0.4)]"
     >
-      <header className="border-b border-line bg-surface px-4 py-3">
+      <header
+        {...windowControls?.handleProps}
+        title={windowControls ? 'Drag to move' : undefined}
+        className={`bg-surface px-4 py-3 ${
+          windowControls ? (windowControls.dragging ? 'cursor-grabbing' : 'cursor-grab') : ''
+        } touch-none select-none`}
+      >
         <div className="flex min-h-11 items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line bg-paper text-accent">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
             <SparklesIcon width={17} height={17} />
           </span>
           <div className="min-w-0 flex-1">
@@ -101,18 +118,34 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
               {stoppableRun.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
             </Button>
           )}
+          {windowControls && (
+            <button
+              type="button"
+              onClick={windowControls.onToggleMinimise}
+              aria-label={minimised ? 'Expand AI' : 'Minimise AI'}
+              aria-expanded={!minimised}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+            >
+              <ChevronDownIcon
+                width={18}
+                height={18}
+                className={`transition-transform ${minimised ? 'rotate-180' : ''}`}
+                style={{ transitionDuration: `${0.2 * windowControls.multiplier}s` }}
+              />
+            </button>
+          )}
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Close AI"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
           >
             <CloseIcon width={18} height={18} />
           </button>
         </div>
         {snapshot.activity && (
-          <div className="mt-2 flex items-start gap-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink-soft">
+          <div className="mt-2 flex items-start gap-2 rounded-2xl bg-paper px-3 py-2 text-xs text-ink-soft">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
             <div className="min-w-0">
               <p className="truncate">{snapshot.activity.summary}</p>
@@ -137,75 +170,80 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         </span>
       </header>
 
-      {disconnected && (
-        <AiConnectionState
-          pairing={connection.status === 'pairing' ? connection : null}
-          busy={connectionBusy}
-          error={
-            connectionError ??
-            (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
-          }
-          local={local}
-          hosted={hosted}
-          onConnectAccess={(credential) => {
-            if (!session.connectHosted) return;
-            setConnectionBusy(true);
-            setConnectionError(null);
-            void session.connectHosted(credential).then((result) => {
-              setConnectionBusy(false);
-              if (!result.ok) setConnectionError(result.error.message);
-            }).catch(() => {
-              setConnectionBusy(false);
-              setConnectionError('Built-in AI is unavailable. Try again later.');
-            });
-          }}
-          compact={!local && connection.status === 'disconnected' && snapshot.items.length > 0}
-          onStartPairing={() => {
-            setConnectionBusy(true);
-            setConnectionError(null);
-            void session.pair().then((result) => {
-              setConnectionBusy(false);
-              if (!result.ok) setConnectionError(result.error.message);
-            });
-          }}
-          onCancel={resetConnection}
-        />
-      )}
-
-      {(!disconnected || (connection.status === 'disconnected' && snapshot.items.length > 0)) && (
-        <AiConversation items={snapshot.items} />
-      )}
-
-      {stoppableRun && (
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-5 py-2 text-xs text-ink-soft"
-        >
-          <span
-            className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent"
-            aria-hidden="true"
+      <div className={minimised ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
+        {disconnected && (
+          <AiConnectionState
+            pairing={connection.status === 'pairing' ? connection : null}
+            busy={connectionBusy}
+            error={
+              connectionError ??
+              (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
+            }
+            local={local}
+            hosted={hosted}
+            onConnectAccess={(credential) => {
+              if (!session.connectHosted) return;
+              setConnectionBusy(true);
+              setConnectionError(null);
+              void session
+                .connectHosted(credential)
+                .then((result) => {
+                  setConnectionBusy(false);
+                  if (!result.ok) setConnectionError(result.error.message);
+                })
+                .catch(() => {
+                  setConnectionBusy(false);
+                  setConnectionError('Built-in AI is unavailable. Try again later.');
+                });
+            }}
+            compact={!local && connection.status === 'disconnected' && snapshot.items.length > 0}
+            onStartPairing={() => {
+              setConnectionBusy(true);
+              setConnectionError(null);
+              void session.pair().then((result) => {
+                setConnectionBusy(false);
+                if (!result.ok) setConnectionError(result.error.message);
+              });
+            }}
+            onCancel={resetConnection}
           />
-          {stoppableRun.status === 'stop_requested' ? 'Stopping response' : 'AI is responding'}
-        </div>
-      )}
+        )}
 
-      {!disconnected && snapshot.approval && (
-        <AiApprovalCard
-          approval={snapshot.approval}
+        {(!disconnected || (connection.status === 'disconnected' && snapshot.items.length > 0)) && (
+          <AiConversation items={snapshot.items} />
+        )}
+
+        {stoppableRun && (
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-5 py-2 text-xs text-ink-soft"
+          >
+            <span
+              className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent"
+              aria-hidden="true"
+            />
+            {stoppableRun.status === 'stop_requested' ? 'Stopping response' : 'AI is responding'}
+          </div>
+        )}
+
+        {!disconnected && snapshot.approval && (
+          <AiApprovalCard
+            approval={snapshot.approval}
+            session={session}
+            autoFocus={pendingApproval}
+          />
+        )}
+
+        <AiComposer
           session={session}
-          autoFocus={pendingApproval}
+          disabled={disconnected}
+          initialDraft={snapshot.draft}
+          queuedFollowUp={snapshot.queuedFollowUp}
+          autoFocus={!disconnected && !pendingApproval}
         />
-      )}
-
-      <AiComposer
-        session={session}
-        disabled={disconnected}
-        initialDraft={snapshot.draft}
-        queuedFollowUp={snapshot.queuedFollowUp}
-        autoFocus={!disconnected && !pendingApproval}
-      />
+      </div>
     </aside>
   );
 }

@@ -193,14 +193,18 @@ describe('SyncSection', () => {
   it('offers setup and joining when no channel is configured', async () => {
     render(<SyncSection />);
 
-    expect(await screen.findByRole('heading', { name: 'Device sync' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Another device' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pair this device' });
+    expect(dialog).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Set up sync' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Join another device' })).toBeInTheDocument();
-    expect(screen.getByText('No sync channel is configured on this device.')).toBeInTheDocument();
   });
 
   it('sets up the first device after confirming a strong passphrase', async () => {
     render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Advanced: use a private relay' }));
@@ -271,9 +275,7 @@ describe('SyncSection', () => {
 
     await waitFor(() => expect(deleteChannelMock).toHaveBeenCalledWith(state, credentials));
     expect(notify).not.toHaveBeenCalledWith('Enter a recovery passphrase.', 'negative');
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pair' })).toBeInTheDocument();
   });
 
   it('locking forgets the remembered copy and asks for the passphrase again', async () => {
@@ -309,14 +311,12 @@ describe('SyncSection', () => {
     render(<SyncSection />);
     await screen.findByText('Paired to a sync channel');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Unpair this device' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(screen.getByRole('button', { name: 'Unpair' }));
 
     await waitFor(() => expect(unpairMock).toHaveBeenCalledTimes(1));
     expect(deleteChannelMock).not.toHaveBeenCalled();
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pair' })).toBeInTheDocument();
   });
 
   it('requires the recovery passphrase before deleting the shared channel', async () => {
@@ -336,8 +336,6 @@ describe('SyncSection', () => {
     await waitFor(() =>
       expect(deleteChannelMock).toHaveBeenCalledWith(state, 'a long recovery phrase'),
     );
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pair' })).toBeInTheDocument();
   });
 });

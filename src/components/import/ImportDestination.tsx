@@ -9,7 +9,7 @@ export function useImportDestination() {
   const [courseId, setCourseId] = useState('');
   const [lessonId, setLessonId] = useState('');
   const [title, setTitle] = useState('');
-  const [mode, setMode] = useState<CourseSchedulingMode | null>(null);
+  const [mode, setMode] = useState<CourseSchedulingMode>('steady');
   const [examDate, setExamDate] = useState(defaultExamDate);
   const [validDate, setValidDate] = useState(true);
   const [timeZone] = useState(getLocalTimeZone);
@@ -27,7 +27,7 @@ export function useImportDestination() {
         : title.trim()
           ? { kind: 'lesson', title, courseId }
           : null
-    : title.trim() && mode && (mode !== 'exam' || (validDate && Number.isFinite(examDate)))
+    : title.trim() && (mode !== 'exam' || (validDate && Number.isFinite(examDate)))
       ? {
           kind: 'course',
           title,
