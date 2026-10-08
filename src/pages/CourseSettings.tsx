@@ -533,10 +533,12 @@ export function CourseSettings() {
                 headingLevel={3}
               />
 
-              <DetachCourseSection
-                courseId={course.id}
-                autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
-              />
+              {course.distributedCopy?.locked === true && (
+                <DetachCourseSection
+                  courseId={course.id}
+                  autoAcceptUpdates={course.distributedCopy.autoAcceptUpdates === true}
+                />
+              )}
 
               <div id="course-settings-danger" className="scroll-mt-24">
                 <DangerZoneSection

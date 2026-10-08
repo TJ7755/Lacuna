@@ -221,6 +221,23 @@ describe('CourseSettings', () => {
     expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
   });
 
+  it('offers detaching only on a locked shared copy', () => {
+    const { unmount } = renderPage();
+    expect(screen.queryByRole('heading', { name: 'Shared course' })).not.toBeInTheDocument();
+    unmount();
+    mockCourse = {
+      ...course,
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Shared course' })).toBeInTheDocument();
+  });
+
   it('edits the final date through the shared assessment editor', () => {
     mockCourse = {
       ...course,
@@ -307,7 +324,10 @@ describe('CourseSettings', () => {
   it('commits the exam objective immediately on change', () => {
     renderPage();
     const objective = screen.getByRole('group', { name: 'Exam objective' });
-    expect(within(objective).getByRole('button', { name: 'Most marks' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(objective).getByRole('button', { name: 'Most marks' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     fireEvent.click(within(objective).getByRole('button', { name: 'Secure topics' }));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
