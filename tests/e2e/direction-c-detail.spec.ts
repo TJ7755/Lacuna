@@ -206,3 +206,89 @@ test('a study face centres an image under its centred text', async ({ page }) =>
   });
   expect(Math.abs(offset)).toBeLessThanOrEqual(1);
 });
+
+test('the course tab pill glides between sections rather than jumping', async ({ page }) => {
+  // Reduced motion rightly moves the pill at once; this checks the full-motion glide, so it
+  // keeps the default preference from the first load.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await enterFreshLacuna(page);
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .click();
+  await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+  const course = new URL(page.url()).hash.slice(1);
+  // Visit Cards first: a route whose chunk is still loading mounts after the old bar has
+  // gone, so the pill has nothing to glide from on a cold first visit.
+  await page.goto(`/#${course}/cards`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Cards' })).toBeVisible();
+  await page.goto(`/#${course}/settings`);
+  const indicator = page.locator('[data-course-tab-indicator]');
+  await expect(indicator).toBeVisible();
+  // Relative to its track, since the page transition drifts the whole bar.
+  const x = () =>
+    indicator.evaluate(
+      (element) =>
+        element.getBoundingClientRect().x - element.closest('nav')!.getBoundingClientRect().x,
+    );
+  // Let the pill settle on Settings before moving it.
+  let from = await x();
+  await expect
+    .poll(async () => {
+      const previous = from;
+      from = await x();
+      return Math.abs(from - previous);
+    })
+    .toBeLessThan(0.5);
+  // Record every frame in the page: the spring settles in about 100 ms, quicker than a
+  // round trip per sample.
+  await page.evaluate(() => {
+    const track = window as unknown as { glide: number[] };
+    track.glide = [];
+    const started = performance.now();
+    const sample = () => {
+      const pill = document.querySelector('[data-course-tab-indicator]');
+      const nav = pill?.closest('nav');
+      if (pill && nav)
+        track.glide.push(pill.getBoundingClientRect().x - nav.getBoundingClientRect().x);
+      if (performance.now() - started < 1500) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Cards', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/cards$/);
+  await page.waitForTimeout(1600);
+  const positions = await page.evaluate(() => (window as unknown as { glide: number[] }).glide);
+  const to = positions.at(-1)!;
+  expect(Math.abs(to - from)).toBeGreaterThan(100);
+  // At least one sampled frame sits clearly between the two tabs.
+  expect(positions.some((x) => Math.min(Math.abs(x - from), Math.abs(x - to)) > 20)).toBe(true);
+});
+
+test('an inline confirmation swaps without scaling its text', async ({ page }) => {
+  await openWelcomeCourse(page, 1440);
+  await page.getByText('Core concepts & rendering', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
+  await page.getByTitle('Delete note').click();
+  const confirmation = page.getByText('Delete?', { exact: true });
+  let widest = 0;
+  for (let frame = 0; frame < 20; frame++) {
+    widest = Math.max(
+      widest,
+      await confirmation.evaluate((element) => {
+        let scale = 1;
+        for (let node: Element | null = element; node; node = node.parentElement) {
+          const matrix = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+          scale *= matrix.a;
+        }
+        return Math.abs(1 - scale);
+      }),
+    );
+    await page.waitForTimeout(16);
+  }
+  // The swap's own fade starts at 0.98; anything more is a layout squash.
+  expect(widest).toBeLessThanOrEqual(0.021);
+});

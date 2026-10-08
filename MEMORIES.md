@@ -129,6 +129,11 @@ Motion layout scaling on a shrinking container can magnify exiting children when
 `AnimatePresence` removes them from flow. For compact expanding controls, keep text
 at fixed dimensions and resize the isolated surface; verify text bounds mid-animation.
 
+Layout animation (`layout`, `layoutId`) needs motion's `domMax`; `domAnimation` silently
+skips it, which left every sliding pill jumping until October 2026. The app loads `domMax`
+asynchronously from `src/motionFeatures.ts`. `layout="size"` or bare `layout` scales the
+element's children, so a box containing text should use `layout="position"`.
+
 For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
 to viewport bounding boxes before comparing positions. Playwright can scroll a
 control into view while clicking, without changing the content's layout.

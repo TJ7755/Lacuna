@@ -248,7 +248,7 @@ export function BackupsSection() {
           ) : (
             <motion.ul
               key="restore-points"
-              layout={motionMultiplier > 0 ? 'size' : undefined}
+              layout={motionMultiplier > 0 ? 'position' : undefined}
               animate={{ opacity: 1, y: 0 }}
               exit={motionMultiplier > 0 ? { opacity: 0, y: -4 } : undefined}
               transition={motionTransition('feedback', motionMultiplier)}

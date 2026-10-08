@@ -147,7 +147,7 @@ export function ConfirmInlineSwap({
   return (
     <motion.div
       ref={rootRef}
-      layout="size"
+      layout="position"
       transition={inlineConfirmTiming(multiplier)}
       className={cn('inline-flex items-center', swapClassName)}
       onClickCapture={(event) => {

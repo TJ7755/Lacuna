@@ -106,7 +106,7 @@ export function CourseHeader({
               }}
               aria-label={renameLabel === 'course' ? 'Course name' : 'Lesson name'}
               disabled={savingTitle}
-              layout={motionMultiplier > 0 ? 'size' : undefined}
+              layout={motionMultiplier > 0 ? 'position' : undefined}
               initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={motionTransition('feedback', motionMultiplier)}
@@ -117,7 +117,7 @@ export function CourseHeader({
               key="display-title"
               onDoubleClick={startRename}
               title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
-              layout={motionMultiplier > 0 ? 'size' : undefined}
+              layout={motionMultiplier > 0 ? 'position' : undefined}
               initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={motionTransition('feedback', motionMultiplier)}

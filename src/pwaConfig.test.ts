@@ -21,6 +21,13 @@ describe('service-worker asset caching', () => {
       { fileName: 'assets/seed-SEEDCHK1.js', isEntry: false, imports: [] },
     ])).toContain('assets/seed-SEEDCHK1.js');
   });
+  it('precaches the motion features that start-up loads straight after first paint', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/motionFeatures-MOTION01.js', isEntry: false, imports: ['assets/features-max-FEATMAX1.js'] },
+      { fileName: 'assets/features-max-FEATMAX1.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/motionFeatures-MOTION01.js', 'assets/features-max-FEATMAX1.js']);
+  });
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
     expect(pwaInjectRegister).toBeNull();
   });

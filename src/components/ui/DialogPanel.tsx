@@ -65,7 +65,7 @@ export function DialogPanel({
         initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
-        layout={layout && m > 0 ? 'size' : undefined}
+        layout={layout && m > 0 ? 'position' : undefined}
         transition={scaledSpring(m, 320, 30)}
         className={cn(
           'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20',

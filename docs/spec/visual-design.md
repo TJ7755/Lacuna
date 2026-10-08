@@ -62,6 +62,10 @@ Shared conventions:
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
 - `LayoutGroup` coordinates reflow animations across sibling elements (e.g. Settings' and
   Help's active-tab underline).
+- Layout animation (`layout`, `layoutId`) comes from motion's `domMax` features, which the
+  app's `LazyMotion` loads asynchronously (`src/motionFeatures.ts`) straight after first paint.
+  Anything holding text animates with `layout="position"`, never `size`, so text is never
+  scaled mid-animation; only text-free indicators (the sliding pills) animate their size.
 
 - Celebration primitives (`components/ui/Celebration.tsx`): `CountUp` counts a figure up
   once (assistive technology reads only the final value) and `Burst` throws a short

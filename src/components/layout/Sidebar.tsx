@@ -611,7 +611,7 @@ export function Sidebar({
                   delay: Math.min(idx * 0.02, 0.15) * m,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                layout
+                layout="position"
               >
                 <CourseRow
                   courseId={course.id}

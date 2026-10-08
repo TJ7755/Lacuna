@@ -150,7 +150,7 @@ export function BatchAuthoringPromptDialog({
       </div>
 
       <motion.div
-        layout={multiplier > 0 ? 'size' : undefined}
+        layout={multiplier > 0 ? 'position' : undefined}
         transition={stepSwapTiming(multiplier)}
         className="relative overflow-y-auto"
       >

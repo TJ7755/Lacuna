@@ -233,7 +233,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
               return (
                 <motion.li
                   key={annotation.id}
-                  layout
+                  layout="position"
                   transition={transition}
                   className="rounded-2xl bg-ink/[0.04] px-3 py-3"
                 >

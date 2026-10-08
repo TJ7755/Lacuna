@@ -119,7 +119,7 @@ export function ItemStagingCandidateRow({
     <motion.article
       ref={articleRef}
       tabIndex={-1}
-      layout={motionMultiplier > 0 ? 'size' : undefined}
+      layout={motionMultiplier > 0 ? 'position' : undefined}
       transition={{ duration: 0.2 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         'rounded-2xl border p-4 md:p-5',
