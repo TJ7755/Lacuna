@@ -1,0 +1,1 @@
+- Course analytics: the Questions section sits on the shared card surface, empty or not, like the charts beneath it, instead of an outlined box or a ruled-off line.

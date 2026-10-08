@@ -1,4 +1,5 @@
 import type { QuestionAnalytics, QuestionPerformanceMetric } from '../../questions/analytics';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 
 function percent(value: number | null): string {
   return value === null ? '—' : `${Math.round(value * 100)}%`;
@@ -38,11 +39,11 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
       </h2>
 
       {analytics.inventory.total === 0 && !hasRetainedEvidence ? (
-        <div className="border-y border-line py-8 text-sm text-ink-soft">
+        <div className={`${SECTION_CARD_SURFACE_CLASS} px-6 py-8 text-sm text-ink-soft`}>
           No question attempts yet.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className={`${SECTION_CARD_SURFACE_CLASS} overflow-hidden`}>
           <div className="flex flex-col border-b border-line sm:flex-row sm:items-center">
             <div className="flex items-center justify-between gap-6 bg-accent-soft px-5 py-5 sm:flex-1 sm:px-6">
               <p className="text-sm text-ink-soft">Novel generated accuracy</p>
