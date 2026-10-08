@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../../components/ui/Field';
 import { ChevronDownIcon, FlameIcon } from '../../components/ui/icons';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
@@ -292,7 +293,7 @@ function NumberField({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="block text-sm text-ink-soft">
+    <label className={fieldLabelClassName}>
       {label}
       <div className="mt-2 flex items-center gap-2">
         <input
@@ -305,9 +306,9 @@ function NumberField({
             const next = Number(event.target.value);
             if (!Number.isNaN(next)) onChange(Math.max(min, Math.min(max, next)));
           }}
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
+          className={`w-full ${inputFrameClassName}`}
         />
-        <span className="shrink-0 text-xs text-ink-faint">{suffix}</span>
+        <span className="shrink-0 text-xs font-normal text-ink-faint">{suffix}</span>
       </div>
     </label>
   );

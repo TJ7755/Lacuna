@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../../components/ui/Field';
 import { useState } from 'react';
 import { ClockIcon } from '../../components/ui/icons';
 import {
@@ -66,7 +67,7 @@ function DurationInput({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="block text-sm text-ink-soft">
+    <label className={fieldLabelClassName}>
       {label}
       <div className="mt-2 flex items-center gap-2">
         <input
@@ -79,9 +80,9 @@ function DurationInput({
             const next = Number(event.target.value);
             if (!Number.isNaN(next)) onChange(Math.max(1, Math.min(120, next)));
           }}
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
+          className={`w-full ${inputFrameClassName}`}
         />
-        <span className="shrink-0 text-xs text-ink-faint">min</span>
+        <span className="shrink-0 text-xs font-normal text-ink-faint">min</span>
       </div>
     </label>
   );

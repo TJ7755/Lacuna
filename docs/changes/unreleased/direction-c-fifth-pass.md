@@ -7,3 +7,5 @@
 - Course settings' Scheduling optimisation card is headed like its neighbours, without the small "Advanced scheduling" label above it.
 - Progress: Workload ahead draws each day's due and new cards as stacked bars, so a course of all-new cards no longer spikes a line against the axis.
 - Course analytics: Lesson breakdown plots only mastery and completion; each lesson's card count moves to its tooltip ("Cell structure · 25 cards") instead of a dotted line on a hidden second scale. Chart tooltips list series in legend order rather than alphabetically.
+- Settings and course settings label every field one way, small semibold ink with a regular hint beneath, where some sections used grey regular labels and others semibold. Selects, the Pomodoro and threshold inputs share the text field's frame, and course settings' fields focus in the accent like the rest.
+- Progress: Course comparison's two pickers share one even row instead of each stretching to its longest course name and wrapping.

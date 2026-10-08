@@ -200,8 +200,10 @@ keyboard shortcuts on keyboard).
   soft layered ink shadow. Settings cards share its surface tokens; `DialogPanel`, `Input`
   and `Skeleton` retain the shared primitives throughout the redesign. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
 - Shared primitives in `src/components/ui/`: `Field` and `Input` for labelled form
-  controls (label, hint, error), `Skeleton` for loading placeholders, and `DialogPanel`
-  with `DialogHeader` for centred modal dialogs (overlay, backdrop, paper panel and a
+  controls (label, hint, error). A label above its control is small semibold ink
+  (`fieldLabelClassName`), its hint regular and faint; `Select` and inputs laid out in a row
+  share the input's frame (`inputFrameClassName`), focused in the accent. Also `Skeleton`
+  for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, paper panel and a
   44px close button).
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the

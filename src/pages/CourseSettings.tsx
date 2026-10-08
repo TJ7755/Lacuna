@@ -1,5 +1,5 @@
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
-import { Input } from '../components/ui/Field';
+import { Input, fieldLabelClassName } from '../components/ui/Field';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   COURSE_PAGE_FRAME,
@@ -50,9 +50,6 @@ const COURSE_SETTINGS_SECTIONS = [
   { id: 'course-settings-content', label: 'Content' },
   { id: 'course-settings-danger', label: 'Danger zone' },
 ];
-
-const FIELD_CLASS =
-  'mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 font-normal text-ink outline-none focus:border-ink';
 
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
@@ -312,32 +309,29 @@ export function CourseSettings() {
                   Goal and dates
                 </h2>
                 <div className="flex flex-col gap-5">
-                  <label className="block text-sm font-semibold text-ink">
+                  <label className={fieldLabelClassName}>
                     Course name
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={commitName}
-                      className={FIELD_CLASS}
                     />
                   </label>
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <label className="block text-sm font-semibold text-ink">
+                    <label className={fieldLabelClassName}>
                       Exam board
                       <Input
                         value={examBoard}
                         onChange={(e) => setExamBoard(e.target.value)}
                         onBlur={commitExamBoard}
-                        className={FIELD_CLASS}
                       />
                     </label>
-                    <label className="block text-sm font-semibold text-ink">
+                    <label className={fieldLabelClassName}>
                       Specification
                       <Input
                         value={specification}
                         onChange={(e) => setSpecification(e.target.value)}
                         onBlur={commitSpecification}
-                        className={FIELD_CLASS}
                       />
                     </label>
                   </div>

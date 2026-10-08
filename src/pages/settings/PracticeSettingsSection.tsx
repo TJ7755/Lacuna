@@ -1,4 +1,4 @@
-import { Input } from '../../components/ui/Field';
+import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
 import { ChevronDownIcon } from '../../components/ui/icons';
 
@@ -48,7 +48,7 @@ export function PracticeSettingsSection({
     <div className="flex flex-col gap-4">
       <div className="block text-sm text-ink-soft">
         <Toggle checked={autoPractice} onChange={onAutoPracticeChange} label="Auto-practice" />
-        <span className="mt-1 block text-xs text-ink-faint">
+        <span className={fieldHintClassName}>
           Automatically inserts practice nodes between lessons when the predicted time to clear your
           backlog crosses a threshold.
         </span>
@@ -72,7 +72,7 @@ export function PracticeSettingsSection({
         </summary>
 
         <div className="mt-4 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4">
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Threshold (exam not near)
             <Input
               type="number"
@@ -82,14 +82,13 @@ export function PracticeSettingsSection({
               value={practiceThresholdMinutesFar}
               onChange={(e) => onPracticeThresholdMinutesFarChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesFarBlur}
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Minutes-to-clear at which a practice node is triggered while the exam is not near.
             </span>
           </label>
 
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Threshold (exam near)
             <Input
               type="number"
@@ -99,15 +98,14 @@ export function PracticeSettingsSection({
               value={practiceThresholdMinutesNear}
               onChange={(e) => onPracticeThresholdMinutesNearChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesNearBlur}
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Minutes-to-clear at which a practice node is triggered once the exam is near (see the
               urgent window below). Typically lower than the far threshold.
             </span>
           </label>
 
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Urgent window
             <Input
               type="number"
@@ -117,14 +115,13 @@ export function PracticeSettingsSection({
               value={practiceUrgentWindowDays}
               onChange={(e) => onPracticeUrgentWindowDaysChange(e.target.value)}
               onBlur={onPracticeUrgentWindowDaysBlur}
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Days until the exam at or below which the &quot;exam near&quot; threshold applies.
             </span>
           </label>
 
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Maximum lesson gap
             <Input
               type="number"
@@ -134,9 +131,8 @@ export function PracticeSettingsSection({
               value={practiceMaxGap}
               onChange={(e) => onPracticeMaxGapChange(e.target.value)}
               onBlur={onPracticeMaxGapBlur}
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Backstop: forces a practice node after this many lessons without one, even if neither
               threshold above has been crossed.
             </span>

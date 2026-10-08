@@ -263,11 +263,13 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
       compactEmpty
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-3">
+        {/* Native selects size to their longest option, so each takes an even share of a
+            bounded row instead, stacking on a phone. */}
+        <div className="grid max-w-2xl gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-3">
           <Select
             value={courseAId}
             onChange={(e) => setCourseAId(e.target.value)}
-            className="min-w-[10rem]"
+            className="w-full min-w-0"
             aria-label="First course"
           >
             <option value="">Select a course…</option>
@@ -277,11 +279,11 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
               </option>
             ))}
           </Select>
-          <span className="self-center text-sm text-ink-faint">vs</span>
+          <span className="text-sm text-ink-faint">vs</span>
           <Select
             value={courseBId}
             onChange={(e) => setCourseBId(e.target.value)}
-            className="min-w-[10rem]"
+            className="w-full min-w-0"
             aria-label="Second course"
           >
             <option value="">Select a course…</option>

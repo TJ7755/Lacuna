@@ -1,3 +1,4 @@
+import { fieldLabelClassName } from '../../components/ui/Field';
 import { useAiSettings } from '../../ai/settings';
 import { SparklesIcon } from '../../components/ui/icons';
 import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
@@ -30,7 +31,7 @@ export function AiSection() {
       </p>
 
       <fieldset className="mb-6">
-        <legend className="mb-2 text-sm font-medium text-ink">AI connection</legend>
+        <legend className={`mb-2 ${fieldLabelClassName}`}>AI connection</legend>
         <div className="flex flex-wrap gap-2">
           {(
             [

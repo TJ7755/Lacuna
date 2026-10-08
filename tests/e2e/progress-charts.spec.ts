@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function chartCard(page: Page, title: string) {
   const heading = page.getByText(title, { exact: true }).first();
@@ -41,4 +41,20 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
   // Rows follow the legend's order rather than the alphabet.
   const text = (await tooltip.textContent()) ?? '';
   expect(text.indexOf('Mastery')).toBeLessThan(text.indexOf('Completion'));
+});
+
+test('Course comparison keeps its two pickers on one even row', async ({ page }) => {
+  await createCourse(
+    page,
+    'Introduction to the History of Western Political Thought and Its Modern Critics',
+  );
+  await page.goto('/#/analytics');
+  const first = page.getByRole('combobox', { name: 'First course' });
+  const second = page.getByRole('combobox', { name: 'Second course' });
+  await first.scrollIntoViewIfNeeded();
+  const a = (await first.boundingBox())!;
+  const b = (await second.boundingBox())!;
+  // Sized by their longest option, they split onto two rows of different widths.
+  expect(Math.abs(a.y - b.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(a.width - b.width)).toBeLessThanOrEqual(1);
 });

@@ -1,4 +1,4 @@
-import { Input } from '../../components/ui/Field';
+import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
 import { ChevronDownIcon } from '../../components/ui/icons';
 
@@ -79,7 +79,7 @@ export function SchedulingFieldsSection({
 }: SchedulingFieldsSectionProps) {
   return (
     <>
-      <label className="block text-sm text-ink-soft">
+      <label className={fieldLabelClassName}>
         New cards per day
         <Input
           type="number"
@@ -89,16 +89,15 @@ export function SchedulingFieldsSection({
           onChange={(e) => onNewCardsPerDayChange(e.target.value)}
           onBlur={onNewCardsPerDayBlur}
           placeholder="Unlimited"
-          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
-        <span className="mt-1 block text-xs text-ink-faint">
+        <span className={fieldHintClassName}>
           Caps how many never-seen cards a study session introduces each day, so a large course does
           not overwhelm you. Leave blank for unlimited. Reviews of cards you have already started
           are never capped.
         </span>
       </label>
 
-      <label className="block text-sm text-ink-soft">
+      <label className={fieldLabelClassName}>
         Maximum reviews per day
         <Input
           type="number"
@@ -108,15 +107,14 @@ export function SchedulingFieldsSection({
           onChange={(e) => onMaxReviewsPerDayChange(e.target.value)}
           onBlur={onMaxReviewsPerDayBlur}
           placeholder="Unlimited"
-          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
-        <span className="mt-1 block text-xs text-ink-faint">
+        <span className={fieldHintClassName}>
           Caps how many cards you can review in a single day for this course, including re-reviews
           of cards you have already started. Leave blank for unlimited.
         </span>
       </label>
 
-      <label className="block text-sm text-ink-soft">
+      <label className={fieldLabelClassName}>
         Daily review goal
         <Input
           type="number"
@@ -126,15 +124,14 @@ export function SchedulingFieldsSection({
           onChange={(e) => onDailyReviewGoalChange(e.target.value)}
           onBlur={onDailyReviewGoalBlur}
           placeholder="No goal"
-          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
-        <span className="mt-1 block text-xs text-ink-faint">
+        <span className={fieldHintClassName}>
           Target number of cards to review per day. When reached, the session ends with a
           &quot;Daily goal reached&quot; message. Leave blank for no goal.
         </span>
       </label>
 
-      <label className="block text-sm text-ink-soft">
+      <label className={fieldLabelClassName}>
         Session time limit
         <Input
           type="number"
@@ -144,9 +141,8 @@ export function SchedulingFieldsSection({
           onChange={(e) => onSessionTimeLimitChange(e.target.value)}
           onBlur={onSessionTimeLimitBlur}
           placeholder="No limit"
-          className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
         />
-        <span className="mt-1 block text-xs text-ink-faint">
+        <span className={fieldHintClassName}>
           Maximum number of minutes a single study session may run. When the limit is reached, the
           session ends gracefully. Leave blank for no limit.
         </span>
@@ -173,7 +169,7 @@ export function SchedulingFieldsSection({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="font-medium">Interval fuzz</div>
-                <span className="mt-1 block text-xs text-ink-faint">
+                <span className={fieldHintClassName}>
                   Adds a small random variation to scheduled intervals so cards do not cluster on
                   the same day. Recommended on.
                 </span>
@@ -182,7 +178,7 @@ export function SchedulingFieldsSection({
             </div>
           </div>
 
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Maximum interval
             <Input
               type="number"
@@ -192,39 +188,36 @@ export function SchedulingFieldsSection({
               onChange={(e) => onMaxIntervalChange(e.target.value)}
               onBlur={onMaxIntervalBlur}
               placeholder={maxIntervalPlaceholder}
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Caps the longest scheduled interval in days. Cards that would be scheduled beyond this
               limit are capped here instead. The default is 36,500 days (~100 years).
             </span>
           </label>
 
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Learning steps
             <Input
               value={learningSteps}
               onChange={(e) => onLearningStepsChange(e.target.value)}
               onBlur={onLearningStepsBlur}
               placeholder="e.g. 1m, 10m"
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Intervals for a new card before it graduates to review. Use values like 1m, 10m, 1d,
               1h separated by commas or spaces.
             </span>
           </label>
 
-          <label className="block text-sm text-ink-soft">
+          <label className={fieldLabelClassName}>
             Relearning steps
             <Input
               value={relearningSteps}
               onChange={(e) => onRelearningStepsChange(e.target.value)}
               onBlur={onRelearningStepsBlur}
               placeholder="e.g. 10m"
-              className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-xs text-ink-faint">
+            <span className={fieldHintClassName}>
               Intervals for a card after it lapses, before it returns to review. Use the same format
               as learning steps.
             </span>
@@ -233,7 +226,7 @@ export function SchedulingFieldsSection({
           <div className="block text-sm text-ink-soft">
             <div className="mb-2 font-medium">Leech detection</div>
             <div className="flex flex-col gap-3">
-              <label className="block text-sm text-ink-soft">
+              <label className={fieldLabelClassName}>
                 Leech threshold
                 <Input
                   type="number"
@@ -243,15 +236,16 @@ export function SchedulingFieldsSection({
                   onChange={(e) => onLeechThresholdChange(e.target.value)}
                   onBlur={onLeechThresholdBlur}
                   placeholder="8"
-                  className="mt-2 w-full rounded-xl border-[1.5px] border-line bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
                 />
-                <span className="mt-1 block text-xs text-ink-faint">
+                <span className={fieldHintClassName}>
                   Number of lapses (failed reviews) at which a card is treated as a leech. Leave
                   blank for the default of 8.
                 </span>
               </label>
               <fieldset className="block text-sm text-ink-soft">
-                <legend className="mb-2">When a card becomes a leech</legend>
+                <legend className={`mb-2 ${fieldLabelClassName}`}>
+                  When a card becomes a leech
+                </legend>
                 <div className="flex flex-col">
                   <label className="flex min-h-11 cursor-pointer items-center gap-2">
                     <input

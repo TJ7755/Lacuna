@@ -1,11 +1,11 @@
 import { forwardRef, type SelectHTMLAttributes } from 'react';
 import { cn } from './cn';
+import { inputFrameClassName } from './Field';
 
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
 
-const base =
-  'min-h-11 rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm text-ink ' +
-  'outline-none transition-colors focus:border-accent disabled:cursor-not-allowed disabled:opacity-60';
+// The same frame as a text input, at the compact text size.
+const base = `min-h-11 ${inputFrameClassName} text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60`;
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { className, ...rest },
