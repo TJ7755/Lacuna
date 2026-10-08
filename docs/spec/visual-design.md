@@ -197,14 +197,13 @@ keyboard shortcuts on keyboard).
   jumper. Persistent course navigation shows the course name only when the page's course
   heading is out of view, including headings loaded asynchronously.
 - Cards/sections: the shared `SectionCard` uses `rounded-3xl bg-surface p-5/6` with a
-  soft layered ink shadow. Settings cards share its surface tokens; `DialogPanel`, `Input`
-  and `Skeleton` retain the shared primitives throughout the redesign. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
+  soft layered ink shadow. Settings cards share its surface tokens, as does `DialogPanel`. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
 - Shared primitives in `src/components/ui/`: `Field` and `Input` for labelled form
   controls (label, hint, error). A label above its control is small semibold ink
   (`fieldLabelClassName`), its hint regular and faint; `Select` and inputs laid out in a row
   share the input's frame (`inputFrameClassName`), focused in the accent. Also `Skeleton`
-  for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, paper panel and a
-  44px close button).
+  for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, a
+  borderless card-surface panel like Quick search's, and a 44px close button).
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.

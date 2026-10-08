@@ -28,7 +28,7 @@ interface DialogPanelProps {
 }
 
 /**
- * A centred modal dialog: a fading overlay with a blurred backdrop and a paper panel
+ * A centred modal dialog: a fading overlay with a blurred backdrop and a card-surface panel
  * that springs into place. Motion follows the user's motion-speed setting.
  */
 export function DialogPanel({
@@ -68,7 +68,8 @@ export function DialogPanel({
         layout={layout && m > 0 ? 'position' : undefined}
         transition={scaledSpring(m, 320, 30)}
         className={cn(
-          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20',
+          // Quick search's modal surface: borderless white, lifted by a soft ink shadow.
+          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]',
           className,
         )}
       >

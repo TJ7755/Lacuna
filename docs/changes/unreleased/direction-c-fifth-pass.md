@@ -9,3 +9,4 @@
 - Course analytics: Lesson breakdown plots only mastery and completion; each lesson's card count moves to its tooltip ("Cell structure · 25 cards") instead of a dotted line on a hidden second scale. Chart tooltips list series in legend order rather than alphabetically.
 - Settings and course settings label every field one way, small semibold ink with a regular hint beneath, where some sections used grey regular labels and others semibold. Selects, the Pomodoro and threshold inputs share the text field's frame, and course settings' fields focus in the accent like the rest.
 - Progress: Course comparison's two pickers share one even row instead of each stretching to its longest course name and wrapping.
+- Dialogs (lesson deletion, card editing, assessments, linking cards and the rest) use the borderless card surface of Quick search instead of an outlined paper panel.
