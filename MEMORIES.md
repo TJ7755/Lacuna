@@ -356,3 +356,9 @@ conflicting utility (`inputFrameClassName` beside `inputClassName`) instead of o
 An SVG shown through `<img>` cannot read the app's CSS, but in Chromium its
 `prefers-color-scheme` follows the page's `color-scheme`, which `src/index.css` sets per theme.
 The Welcome course's seed drawings rely on this; keep `color-scheme` on `:root` and `.dark`.
+
+## Upgrades must not rewrite records
+
+CI's `windows-installed-upgrade` installs the last release, upgrades and asserts that courses,
+lessons, cards and reviews are byte-identical. A content repair that rewrites rows fails it;
+change what is displayed instead (`src/db/seedArtwork.ts` swaps seed drawings by asset hash).

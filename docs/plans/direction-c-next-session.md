@@ -202,7 +202,9 @@ Done, each with a test that fails on the previous head:
   (`fieldLabelClassName`) across Settings, course settings, the assessment editor and the new-course
   form, with selects and row inputs sharing the input frame (`inputFrameClassName`); dialogs use
   Quick search's borderless card surface; the Welcome diagrams follow the theme through
-  `color-scheme` and a v4 repair replaces both earlier versions in existing data.
+  `color-scheme`. A repair that rewrote existing cards failed CI's Windows upgrade check (an
+  upgrade must not change records), so `seedArtwork.ts` swaps every stored version for the themed
+  drawing when displayed instead, and the stored seed data stays exactly as on master.
 - **Study, one action:** Today's rows say Study and open the same session plan as the course page;
   a one-lesson course uses the course page's Study and Other ways (`CourseStudyActions`) instead of
   its own Review due cards button; a lesson page's direct action is named **Study lesson**, so
