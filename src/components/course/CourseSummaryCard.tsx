@@ -25,20 +25,18 @@ export function CourseSummaryCard({
   lessons: number;
 }) {
   const figures = [
-    { value: recallPct, unit: '%', label: 'Exam-day recall', tone: STATUS_TEXT[status] },
+    { value: `${recallPct}%`, label: 'Exam-day recall', tone: STATUS_TEXT[status] },
     { value: cards, label: cards === 1 ? 'Card' : 'Cards', tone: 'text-ink' },
     { value: lessons, label: lessons === 1 ? 'Lesson' : 'Lessons', tone: 'text-ink' },
   ];
+  // One plain layer: each figure at its natural width, so no label is cut or wrapped.
   return (
-    <section aria-label="Course summary" className={cn(className, 'flex px-5 py-5 md:px-7')}>
-      {figures.map((figure, index) => (
-        <div
-          key={figure.label}
-          className={cn(
-            'flex min-w-0 flex-1 flex-col gap-1',
-            index > 0 && 'border-l border-line pl-5 md:pl-7',
-          )}
-        >
+    <section
+      aria-label="Course summary"
+      className={cn(className, 'flex gap-8 px-5 py-5 md:gap-12 md:px-7')}
+    >
+      {figures.map((figure) => (
+        <div key={figure.label} className="flex flex-none flex-col gap-1">
           <span
             className={cn(
               'font-display text-[26px] font-semibold leading-none tabular-nums',
@@ -46,11 +44,8 @@ export function CourseSummaryCard({
             )}
           >
             {figure.value}
-            {figure.unit && (
-              <span className="ml-0.5 text-base font-medium text-ink-soft">{figure.unit}</span>
-            )}
           </span>
-          <span className="truncate text-sm text-ink-soft">{figure.label}</span>
+          <span className="whitespace-nowrap text-sm text-ink-soft">{figure.label}</span>
         </div>
       ))}
     </section>
