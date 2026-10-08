@@ -32,7 +32,7 @@ afterEach(() => {
 describe('Sidebar', () => {
   it('uses the Search destination consistently with the other navigation entries', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('link', { name: 'Search' })).toHaveAttribute('href', '/search');
+    expect(screen.getByRole('link', { name: 'Search content' })).toHaveAttribute('href', '/search');
     expect(screen.queryByRole('button', { name: /^Search/ })).not.toBeInTheDocument();
   });
 
@@ -142,14 +142,14 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute('href', '/');
   });
 
-  it('keeps Search as a route on macOS too', () => {
+  it('keeps Search content as a route on macOS too', () => {
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
       value: { platform: 'darwin', isElectron: true },
     });
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
-    const search = screen.getByRole('link', { name: 'Search' });
+    const search = screen.getByRole('link', { name: 'Search content' });
     expect(search.querySelector('kbd')).toBeNull();
     expect(search).toHaveAttribute('href', '/search');
   });

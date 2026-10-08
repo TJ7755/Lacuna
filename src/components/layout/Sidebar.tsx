@@ -49,7 +49,8 @@ interface SidebarProps {
 /** Display names for the primary entries; stored settings only carry order and visibility. */
 const NAV_LABELS: Record<string, string> = {
   dashboard: 'Today',
-  search: 'Search',
+  // The page's own name, as the Welcome course, shortcuts and Help call it.
+  search: 'Search content',
   analytics: 'Progress',
 };
 

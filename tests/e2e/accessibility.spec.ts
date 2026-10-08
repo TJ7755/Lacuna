@@ -9,7 +9,7 @@ import {
 test('opens quick search from the keyboard and restores focus on Escape', async ({ page }) => {
   await enterFreshLacuna(page);
 
-  const quickSearch = page.getByRole('link', { name: 'Search', exact: true });
+  const quickSearch = page.getByRole('link', { name: 'Search content', exact: true });
   await quickSearch.focus();
   const shortcut = await page.evaluate(() =>
     navigator.platform.startsWith('Mac') ? 'Meta+K' : 'Control+K',
@@ -36,7 +36,7 @@ test('opens quick search from the mobile drawer and restores its navigation trig
   await openNavigation.press('Enter');
   const searchLink = page
     .getByRole('complementary')
-    .getByRole('link', { name: 'Search', exact: true });
+    .getByRole('link', { name: 'Search content', exact: true });
   await searchLink.focus();
   const shortcut = await page.evaluate(() =>
     navigator.platform.startsWith('Mac') ? 'Meta+K' : 'Control+K',

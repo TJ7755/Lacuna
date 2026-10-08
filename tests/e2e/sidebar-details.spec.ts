@@ -11,7 +11,7 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   await expect(course).toHaveAccessibleName('Welcome to Lacuna');
   // Navigation entries all open destinations; quick search remains a global shortcut.
   await expect(sidebar.locator('kbd')).toHaveCount(0);
-  await expect(sidebar.getByRole('link', { name: 'Search', exact: true })).toHaveAttribute(
+  await expect(sidebar.getByRole('link', { name: 'Search content', exact: true })).toHaveAttribute(
     'href',
     '#/search',
   );

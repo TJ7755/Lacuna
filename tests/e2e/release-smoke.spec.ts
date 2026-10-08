@@ -13,7 +13,7 @@ test('first launch reaches the seeded dashboard', async ({ page }) => {
   await openSeededDashboard(page);
   await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
   await expect(
-    page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Search' }),
+    page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Search content' }),
   ).toBeVisible();
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByRole('dialog', { name: 'Quick search' })).toBeVisible();

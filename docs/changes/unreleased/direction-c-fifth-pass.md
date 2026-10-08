@@ -17,3 +17,4 @@
 - Link-styled buttons (Back to Today, Create a course on Today, the date picker's Done, the storage error's Reload) take the shared Button classes (`buttonClassName`). Reload had named a colour that does not exist and stood 36px tall.
 - New question set leads with + like New card and New course.
 - On a phone, a course path's lesson counts drop beneath the lesson name instead of squeezing it until words break mid-word ("Biologic al") in Edit mode.
+- The sidebar names its search entry **Search content**, as the page it opens, the Welcome course and the shortcuts sheet already did.

@@ -33,7 +33,7 @@ vi.mock('./Sidebar', () => ({
           AI
         </button>
       )}
-      <a href="#/search">Search</a>
+      <a href="#/search">Search content</a>
     </aside>
   ),
 }));
@@ -289,7 +289,7 @@ describe('AppShell mobile navigation', () => {
     fireEvent.click(navigationTrigger);
 
     const navigation = screen.getByRole('dialog', { name: 'Navigation' });
-    const quickSearch = within(navigation).getByRole('link', { name: 'Search' });
+    const quickSearch = within(navigation).getByRole('link', { name: 'Search content' });
     quickSearch.focus();
     fireEvent.keyDown(quickSearch, { key: 'k', ctrlKey: true });
 

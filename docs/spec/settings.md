@@ -52,9 +52,8 @@ its navigation cannot drift from the rendered groups.
   stay on one row, with 44px ordering controls wrapping beneath them on narrow screens; enlarged
   text must leave every control inside its row. **Archived** is fixed
   beneath the **Courses** heading and is not hideable or reorderable; archived courses never appear
-  in the ordinary course list. The rendered search
-  trigger is **Quick search** when the overlay is available and **Search content** when it must link
-  to the full page. Persisted
+  in the ordinary course list. The sidebar's search entry is named **Search content**, as the page
+  it opens; Ctrl/Cmd+K from it opens **Quick search**. Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
   dashboard's own course-ordering control (recent / ready to study / mastery / exam
   date / name / created) is a separate, dashboard-local setting
