@@ -15,3 +15,4 @@
 - The app declares its theme's colour scheme, so native scrollbars and select menus match a manually chosen theme rather than the system's.
 - Study works the same everywhere: Today's course rows say **Study** (not Start) and open the same session plan as the course page, with the same button styles; a one-lesson course offers the course page's Study and Other ways rather than its own Review due cards button; Other ways names due review **Only review due cards**, as the session plan does. Large buttons are 48px, level with the full-size menu beside them.
 - Link-styled buttons (Back to Today, Create a course on Today, the date picker's Done, the storage error's Reload) take the shared Button classes (`buttonClassName`). Reload had named a colour that does not exist and stood 36px tall.
+- New question set leads with + like New card and New course.

@@ -7,6 +7,7 @@ import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQ
 import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
+import { PlusIcon } from '../components/ui/icons';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
@@ -148,6 +149,8 @@ export function QuestionsPage() {
         </div>
         {author && (
           <Button variant="primary" onClick={() => void create()} disabled={creating}>
+            {/* Leads with + like New card and New course. */}
+            <PlusIcon width={16} height={16} />
             {creating ? 'Creating…' : 'New question set'}
           </Button>
         )}
