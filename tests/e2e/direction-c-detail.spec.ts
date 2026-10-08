@@ -59,6 +59,18 @@ test('the forecast title keeps to the top, level with the legend', async ({ page
   expect(Math.abs(title.y - legend.y)).toBeLessThanOrEqual(1);
 });
 
+test('path lesson names keep whole words on a phone in Edit mode', async ({ page }) => {
+  await openWelcomeCourse(page, 390);
+  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+  await expect(page.locator('button .line-clamp-2.font-bold').first()).toBeVisible();
+  // Squeezed beside the counts and the actions menu, names broke mid-word ("Biologic al").
+  const widths = await page
+    .locator('button .line-clamp-2.font-bold')
+    .evaluateAll((names) => names.map((name) => name.getBoundingClientRect().width));
+  expect(widths.length).toBeGreaterThan(0);
+  for (const width of widths) expect(width).toBeGreaterThanOrEqual(127);
+});
+
 test('the Cards header offers its other ways as a 44px round control', async ({ page }) => {
   const course = await openWelcomeCourse(page, 1440);
   await page.goto(`/#${course}/cards`);
