@@ -38,7 +38,7 @@ for (const width of [390, 1440]) {
     expect(target!.height).toBeGreaterThanOrEqual(44);
     await archive.press('Shift+Tab');
     await expect(archive).toBeHidden();
-    await expect(queue.getByRole('button', { name: 'Start Welcome to Lacuna' })).toBeFocused();
+    await expect(queue.getByRole('button', { name: 'Study Welcome to Lacuna' })).toBeFocused();
     await course.click({ button: 'right' });
     await expect(archive).toBeFocused();
     await archive.press('Escape');
