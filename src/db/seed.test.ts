@@ -15,6 +15,13 @@ const LEGACY_FORGETTING_CURVE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" wid
   <text x="305" y="40" font-size="9" fill="currentColor" opacity="0.6">0.90</text>
 </svg>`;
 
+const PANELLED_SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120">
+  <rect width="200" height="120" rx="10" fill="#1c1917"/>
+  <rect x="10" y="20" width="180" height="80" rx="6" fill="none" stroke="#a8a29e" stroke-width="1.5"/>
+  <circle cx="60" cy="55" r="14" fill="none" stroke="#d6d3d1" stroke-width="1.5"/>
+  <polyline points="90,90 115,60 140,80 175,40" fill="none" stroke="#fb923c" stroke-width="2"/>
+</svg>`;
+
 async function resetDatabase() {
   revokeAllCachedUrls();
   for (const table of db.tables) await table.clear();
@@ -98,7 +105,7 @@ describe('Welcome course seed assets', () => {
       ...illustratedCard!,
       back: illustratedCard!.back.replace(currentUrl, legacyUrl),
     });
-    localStorage.removeItem('lacuna-seed-assets-v3');
+    localStorage.removeItem('lacuna-seed-assets-v4');
 
     await seedIfFirstRun();
 
@@ -111,6 +118,31 @@ describe('Welcome course seed assets', () => {
     );
   });
 
+  it('replaces the dark-panelled seed artwork with drawings that follow the theme', async () => {
+    await seedIfFirstRun();
+    const card = (await db.cards.toArray()).find((row) =>
+      row.back.includes('![Sample embedded image]'),
+    )!;
+    const [currentHash] = referencedAssetHashes(card.back);
+    const panelledHash = await sha256Blob(
+      new Blob([PANELLED_SAMPLE_IMAGE_SVG], { type: 'image/svg+xml' }),
+    );
+    await db.cards.put({
+      ...card,
+      back: card.back.replace(assetUrl(currentHash), assetUrl(panelledHash)),
+    });
+    localStorage.removeItem('lacuna-seed-assets-v4');
+
+    await seedIfFirstRun();
+
+    const repaired = await db.cards.get(card.id);
+    expect(repaired?.back).not.toContain(assetUrl(panelledHash));
+    const [repairedHash] = referencedAssetHashes(repaired!.back);
+    const svg = new TextDecoder().decode((await db.assets.get(repairedHash))!.blob as Uint8Array);
+    expect(svg).not.toContain('#1c1917');
+    expect(svg).toContain('prefers-color-scheme: dark');
+  });
+
   it('repairs missing and Blob-backed seeded assets in an existing Welcome course', async () => {
     await seedIfFirstRun();
     const assets = await db.assets.toArray();
@@ -118,7 +150,7 @@ describe('Welcome course seed assets', () => {
 
     await db.assets.put({ ...assets[0], blob: new Blob(['broken']) });
     await db.assets.delete(assets[1].hash);
-    localStorage.removeItem('lacuna-seed-assets-v3');
+    localStorage.removeItem('lacuna-seed-assets-v4');
 
     await seedIfFirstRun();
 

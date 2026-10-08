@@ -90,6 +90,9 @@
  * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
  */
 :root {
+  /* Native controls (scrollbars, select menus) and SVG images' prefers-color-scheme follow
+     the app's theme rather than the system's, which can differ when the theme is chosen. */
+  color-scheme: light;
   --paper: 50 21% 95%;
   --surface: 0 0% 100%;
   --surface-raised: 0 0% 100%;
@@ -111,6 +114,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --paper: 220 23% 8%;
   --surface: 221 21% 12%;
   --surface-raised: 221 19% 15%;

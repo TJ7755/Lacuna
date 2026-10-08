@@ -11,3 +11,5 @@
 - Progress: Course comparison's two pickers share one even row instead of each stretching to its longest course name and wrapping.
 - Dialogs (lesson deletion, card editing, assessments, linking cards and the rest) use the borderless card surface of Quick search instead of an outlined paper panel.
 - Assessment, new-course and date fields follow the same label rule; the assessment editor's Coverage and lesson choices use the Settings choice chips instead of outlined orange buttons, and the date picker, course-name field and card search share the text field's frame.
+- The Welcome course's forgetting-curve and sample-image drawings follow the theme in the Direction C palette instead of sitting in fixed dark stone panels; a one-off repair (seed asset flag v4) moves existing Welcome cards from either earlier version to them. The 0.90 label no longer runs off the drawing's edge.
+- The app declares its theme's colour scheme, so native scrollbars and select menus match a manually chosen theme rather than the system's.

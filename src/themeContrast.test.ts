@@ -29,3 +29,15 @@ describe('readable secondary text', () => {
     }
   });
 });
+
+describe('colour scheme', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  // The seed drawings and native controls follow color-scheme, not the theme class.
+  it.each([
+    [':root', 'light'],
+    ['.dark', 'dark'],
+  ])('declares %s as %s', (theme, scheme) => {
+    const block = css.slice(css.indexOf(`${theme} {`)).split('}')[0];
+    expect(block).toContain(`color-scheme: ${scheme};`);
+  });
+});

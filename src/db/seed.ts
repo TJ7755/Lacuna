@@ -99,7 +99,8 @@ const LEGACY_SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="
   <polyline points="90,90 115,60 140,80 175,40" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
 </svg>`;
 
-const FORGETTING_CURVE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">
+/** The second version: fixed dark panels in the old stone palette, whatever the theme. */
+const PANELLED_FORGETTING_CURVE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">
   <rect width="320" height="160" rx="10" fill="#1c1917"/>
   <line x1="30" y1="130" x2="300" y2="130" stroke="#a8a29e" stroke-width="1" opacity="0.7"/>
   <line x1="30" y1="130" x2="30" y2="20" stroke="#a8a29e" stroke-width="1" opacity="0.7"/>
@@ -110,11 +111,45 @@ const FORGETTING_CURVE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="320
   <text x="305" y="40" font-size="9" fill="#e7e5e4">0.90</text>
 </svg>`;
 
-const SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120">
+const PANELLED_SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120">
   <rect width="200" height="120" rx="10" fill="#1c1917"/>
   <rect x="10" y="20" width="180" height="80" rx="6" fill="none" stroke="#a8a29e" stroke-width="1.5"/>
   <circle cx="60" cy="55" r="14" fill="none" stroke="#d6d3d1" stroke-width="1.5"/>
   <polyline points="90,90 115,60 140,80 175,40" fill="none" stroke="#fb923c" stroke-width="2"/>
+</svg>`;
+
+/*
+ * The current artwork has no panel and takes the Direction C palette (ink-faint, line-strong
+ * and the default amber accent) for each theme. An <img> cannot read the app's CSS, but its
+ * prefers-color-scheme follows the page's color-scheme, which index.css sets from the theme.
+ */
+const SEED_SVG_STYLE = `<style>
+    .axis { stroke: hsl(218 12% 42%); stroke-opacity: 0.45; }
+    .label { fill: hsl(218 12% 42%); font-family: system-ui, sans-serif; }
+    .accent { stroke: hsl(32 90% 48%); }
+    @media (prefers-color-scheme: dark) {
+      .axis { stroke: hsl(220 10% 64%); }
+      .label { fill: hsl(220 10% 64%); }
+      .accent { stroke: hsl(34 92% 56%); }
+    }
+  </style>`;
+
+const FORGETTING_CURVE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">
+  ${SEED_SVG_STYLE}
+  <line class="axis" x1="30" y1="130" x2="300" y2="130" stroke-width="1"/>
+  <line class="axis" x1="30" y1="130" x2="30" y2="20" stroke-width="1"/>
+  <text class="label" x="16" y="25" font-size="10">R</text>
+  <text class="label" x="16" y="135" font-size="10">t</text>
+  <path class="accent" d="M 30 30 Q 120 45 200 85 T 300 125" fill="none" stroke-width="2.5" stroke-linecap="round"/>
+  <line class="axis" x1="30" y1="45" x2="300" y2="45" stroke-width="1" stroke-dasharray="3,3"/>
+  <text class="label" x="276" y="40" font-size="9">0.90</text>
+</svg>`;
+
+const SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120">
+  ${SEED_SVG_STYLE}
+  <rect class="axis" x="10" y="20" width="180" height="80" rx="10" fill="none" stroke-width="1.5"/>
+  <circle class="axis" cx="60" cy="55" r="14" fill="none" stroke-width="1.5"/>
+  <polyline class="accent" points="90,90 115,60 140,80 175,40" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 async function repairSeededSvgAssets(): Promise<void> {
@@ -124,25 +159,27 @@ async function repairSeededSvgAssets(): Promise<void> {
     // localStorage may be unavailable; the idempotent database check still works.
   }
 
-  const repairInputs: ReadonlyArray<readonly [string, string, number, number]> = [
-    [LEGACY_FORGETTING_CURVE_SVG, FORGETTING_CURVE_SVG, 320, 160],
-    [LEGACY_SAMPLE_IMAGE_SVG, SAMPLE_IMAGE_SVG, 200, 120],
+  // Each current drawing replaces every earlier version of itself, oldest first.
+  const repairInputs: ReadonlyArray<readonly [readonly string[], string, number, number]> = [
+    [[LEGACY_FORGETTING_CURVE_SVG, PANELLED_FORGETTING_CURVE_SVG], FORGETTING_CURVE_SVG, 320, 160],
+    [[LEGACY_SAMPLE_IMAGE_SVG, PANELLED_SAMPLE_IMAGE_SVG], SAMPLE_IMAGE_SVG, 200, 120],
   ];
   const repairs = await Promise.all(
-    repairInputs.map(async ([legacySvg, currentSvg, width, height]) => ({
-      legacy: await prepareSvgAsset(legacySvg, width, height),
+    repairInputs.map(async ([legacySvgs, currentSvg, width, height]) => ({
+      legacyUrls: await Promise.all(
+        legacySvgs.map(async (svg) => (await prepareSvgAsset(svg, width, height)).url),
+      ),
       current: await prepareSvgAsset(currentSvg, width, height),
     })),
   );
 
-  for (const { legacy, current } of repairs) {
+  for (const { legacyUrls, current } of repairs) {
+    const mentions = (text: string, url: string) => text.includes(url);
     const cards = await db.cards
-      .filter(
-        (card) =>
-          card.front.includes(legacy.url) ||
-          card.back.includes(legacy.url) ||
-          card.front.includes(current.url) ||
-          card.back.includes(current.url),
+      .filter((card) =>
+        [...legacyUrls, current.url].some(
+          (url) => mentions(card.front, url) || mentions(card.back, url),
+        ),
       )
       .toArray();
     if (cards.length === 0) continue;
@@ -152,11 +189,13 @@ async function repairSeededSvgAssets(): Promise<void> {
       if (!stored || !(stored.blob instanceof Uint8Array)) await db.assets.put(current.record);
 
       const migrated = cards
-        .filter((card) => card.front.includes(legacy.url) || card.back.includes(legacy.url))
+        .filter((card) =>
+          legacyUrls.some((url) => mentions(card.front, url) || mentions(card.back, url)),
+        )
         .map((card) => ({
           ...card,
-          front: card.front.replaceAll(legacy.url, current.url),
-          back: card.back.replaceAll(legacy.url, current.url),
+          front: legacyUrls.reduce((text, url) => text.replaceAll(url, current.url), card.front),
+          back: legacyUrls.reduce((text, url) => text.replaceAll(url, current.url), card.back),
         }));
       if (migrated.length > 0) await db.cards.bulkPut(migrated);
     });

@@ -2,7 +2,7 @@
 // can tell whether seeding work remains without loading the course content or the database.
 
 export const SEED_FLAG_KEY = 'lacuna-seeded';
-export const SEED_ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v3';
+export const SEED_ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v4';
 
 /** True until the welcome course is seeded and its one-off asset repair has run. */
 export function seedWorkPending(): boolean {

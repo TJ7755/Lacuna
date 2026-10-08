@@ -89,7 +89,7 @@ describe('App initialisation', () => {
 
   it('skips the welcome-course seed once seeding and its asset repair are done', async () => {
     localStorage.setItem('lacuna-seeded', '1');
-    localStorage.setItem('lacuna-seed-assets-v3', '1');
+    localStorage.setItem('lacuna-seed-assets-v4', '1');
     try {
       render(<App />);
       await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
@@ -97,7 +97,7 @@ describe('App initialisation', () => {
       expect(dependencies.seedIfFirstRun).not.toHaveBeenCalled();
     } finally {
       localStorage.removeItem('lacuna-seeded');
-      localStorage.removeItem('lacuna-seed-assets-v3');
+      localStorage.removeItem('lacuna-seed-assets-v4');
     }
   });
 
