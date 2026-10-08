@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const height of [650, 900]) {
   test(`sidebar course and archive labels align without horizontal scrolling at ${height}px`, async ({
@@ -209,8 +209,8 @@ test('Today puts the study queue above the sharing announcement on a phone', asy
   await expect(banner).toBeVisible();
   const queueBox = (await queue.boundingBox())!;
   expect((await banner.boundingBox())!.y).toBeGreaterThanOrEqual(queueBox.y + queueBox.height);
-  // The first course's Start is on the first screen.
-  const start = (await queue.getByRole('button', { name: /^Start / }).first().boundingBox())!;
+  // The first course's Study is on the first screen.
+  const start = (await queue.getByRole('button', { name: /^Study / }).first().boundingBox())!;
   expect(start.y + start.height).toBeLessThanOrEqual(844);
 });
 
@@ -249,7 +249,8 @@ for (const width of [390, 1280]) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
     await page.getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('button', { name: /^Start Welcome to Lacuna/ }).click();
+      .getByRole('button', { name: /^Study Welcome to Lacuna/ }).click();
+    await chooseScheduledStudy(page);
     const timer = page.getByRole('button', { name: 'Pomodoro timer' });
     const progress = page.getByRole('main', { name: 'Study progress' });
     let inLearn: { x: number; y: number } | null = null;

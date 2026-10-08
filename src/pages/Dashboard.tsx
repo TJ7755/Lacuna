@@ -16,6 +16,7 @@ import {
 import { WeekPanel } from '../components/dashboard/WeekPanel';
 import { TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
 import { Button } from '../components/ui/Button';
+import { useStudySheet } from '../components/learn/StudySheetContext';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { CardsIcon, ClockIcon } from '../components/ui/icons';
 import { CountUp } from '../components/ui/Celebration';
@@ -55,6 +56,7 @@ export function Dashboard() {
   const stats = data?.stats;
   const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
+  const { openStudySheet } = useStudySheet();
   const location = useLocation();
   const [creatingCourse, setCreatingCourse] = useState(false);
   useEffect(() => {
@@ -151,7 +153,7 @@ export function Dashboard() {
 
   const firstCourseId = rows?.[0]?.id;
   usePageShortcuts({
-    s: firstCourseId ? () => navigate(`/course/${firstCourseId}/study`) : undefined,
+    s: firstCourseId ? () => openStudySheet(firstCourseId) : undefined,
   });
 
   const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
@@ -211,7 +213,7 @@ export function Dashboard() {
             rows={rows}
             openMenuId={courseMenu?.course.id}
             multiplier={m}
-            onStudy={(id) => navigate(`/course/${id}/study`)}
+            onStudy={(id) => openStudySheet(id)}
             onMenu={(id, position, trigger) => {
               const course = activeCourses?.find((entry) => entry.id === id);
               if (!course) return;

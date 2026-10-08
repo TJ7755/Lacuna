@@ -14,7 +14,7 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 // (via optional courseId/lessonId props that take precedence over route params).
 // British English throughout.
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { m as motion } from 'motion/react';
@@ -75,13 +75,15 @@ interface LessonViewProps {
   courseId?: string;
   /** Same precedence rule as courseId above. */
   lessonId?: string;
-  /** The single course-level Study action for the inline one-lesson course. */
-  showStudyNow?: boolean;
+  /**
+   * The course-level study actions for the inline one-lesson course, as on every course
+   * page; told whether there is anything to study yet.
+   */
+  studyActions?: (disabled: boolean) => ReactNode;
+  /** Opens the course's session plan (the S shortcut), with studyActions. */
   onStudy?: () => void;
   /** Cards anywhere in the inline one-lesson course, including its unassigned bank. */
   courseCardCount?: number;
-  /** Whether the inline one-lesson course has reached cards eligible for immediate practice. */
-  practiceNowEnabled?: boolean;
   /** Opens path-native manual-practice creation for an inline one-lesson course. */
   onAddPractice?: () => void;
   /** Opens path-native checkpoint creation for an inline one-lesson course. */
@@ -91,9 +93,8 @@ interface LessonViewProps {
 export function LessonView({
   courseId: courseIdProp,
   lessonId: lessonIdProp,
-  showStudyNow = false,
+  studyActions,
   onStudy,
-  practiceNowEnabled = false,
   courseCardCount,
   onAddPractice,
   onAddCheckpoint,
@@ -137,6 +138,7 @@ export function LessonView({
 
   const shortcutArchived = course?.archived === true;
   // With no cards and no notes, the inline course's study flow has nothing to show.
+  const showStudyNow = studyActions !== undefined;
   const nothingToStudy =
     showStudyNow &&
     (courseCardCount ?? 0) === 0 &&
@@ -147,7 +149,7 @@ export function LessonView({
       shortcutArchived || nothingToStudy
         ? undefined
         : showStudyNow
-          ? (onStudy ?? (() => navigate(`/course/${courseId}/study`)))
+          ? onStudy
           : !isInline && lessonCards && lessonCards.length > 0
             ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
             : undefined,
@@ -331,26 +333,7 @@ export function LessonView({
             {archived ? (
               <ArchivedCourseRestoreNotice />
             ) : showStudyNow ? (
-              <>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  disabled={nothingToStudy}
-                  onClick={onStudy ?? (() => navigate(`/course/${courseId}/study`))}
-                >
-                  Study
-                  <ArrowRightIcon />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="border-[1.5px] border-ink bg-transparent"
-                  disabled={!practiceNowEnabled}
-                  onClick={() => navigate(`/course/${courseId}/study?review=due`)}
-                >
-                  Review due cards
-                </Button>
-              </>
+              studyActions(nothingToStudy)
             ) : isInline ? null : (
               <Button
                 variant="primary"

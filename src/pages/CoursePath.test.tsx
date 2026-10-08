@@ -450,7 +450,7 @@ describe('CoursePath View mode', () => {
 
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Review due cards/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Only review due cards/ }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
@@ -534,12 +534,19 @@ describe('CoursePath View mode', () => {
     await waitFor(() => {
       expect(mockLessonViewProps).toHaveBeenCalledWith(
         expect.objectContaining({
-          practiceNowEnabled: true,
+          studyActions: expect.any(Function),
           onAddPractice: expect.any(Function),
           onAddCheckpoint: expect.any(Function),
         }),
       );
     });
+    // The inline course offers the course page's own actions, Review due cards included.
+    const props = mockLessonViewProps.mock.lastCall![0] as {
+      studyActions: (disabled: boolean) => React.ReactNode;
+    };
+    render(<MemoryRouter>{props.studyActions(false)}</MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    expect(screen.getByRole('menuitem', { name: /Only review due cards/ })).toBeEnabled();
   });
 
   it.each([1, 2])(
@@ -566,9 +573,8 @@ describe('CoursePath View mode', () => {
         await waitFor(() =>
           expect(mockLessonViewProps).toHaveBeenCalledWith(
             expect.objectContaining({
-              showStudyNow: true,
+              studyActions: expect.any(Function),
               onStudy: expect.any(Function),
-              practiceNowEnabled: false,
             }),
           ),
         );

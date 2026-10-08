@@ -33,9 +33,8 @@ import { useStudySheet } from '../components/learn/StudySheetContext';
 import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
-import { Button } from '../components/ui/Button';
-import { ArrowRightIcon, CalendarIcon, CardsIcon, GaugeIcon } from '../components/ui/icons';
-import { Menu } from '../components/ui/Menu';
+import { CourseStudyActions } from '../components/course/CourseStudyActions';
+import { CalendarIcon, CardsIcon, GaugeIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { forecastStatus } from '../components/dashboard/ForecastChart';
 import { formatDate, formatShortDate } from '../utils/datetime';
@@ -354,6 +353,34 @@ export function CoursePath() {
     </AnimatePresence>
   );
 
+  const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
+  const dueCardCount = dueReviewCardIds?.size ?? 0;
+  const otherWays = [
+    {
+      // Named as in the session plan's Other ways, which offers the same session.
+      label: 'Only review due cards',
+      description: 'Skip new cards and lessons',
+      disabled: dueCardCount === 0,
+      onSelect: () => navigate(`/course/${courseId}/study?review=due`),
+    },
+    ...assessments
+      .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
+      .map((assessment) => ({
+        label: `Revise for ${assessment.name}`,
+        description: `Ready by ${formatShortDate(assessment.examDate as number, assessment.timeZone ?? course.timeZone)}`,
+        onSelect: () =>
+          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
+      })),
+  ];
+  const studyActions = (disabled = false) => (
+    <CourseStudyActions
+      dueCount={dueCardCount}
+      disabled={disabled}
+      onStudy={() => openStudySheet(courseId)}
+      otherWays={otherWays}
+    />
+  );
+
   // Single-lesson branch (addendum E): render the lesson view directly rather than
   // showing a one-item path. A question-set activity makes this a multi-step path.
   // No redirect — this is a rendering branch. The
@@ -376,9 +403,8 @@ export function CoursePath() {
           <LazyLessonView
             courseId={courseId}
             lessonId={lessons[0].id}
-            showStudyNow={!archived}
+            studyActions={archived ? undefined : studyActions}
             onStudy={() => openStudySheet(courseId)}
-            practiceNowEnabled={(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0}
             courseCardCount={courseCards?.length ?? 0}
             onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
             onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
@@ -403,8 +429,6 @@ export function CoursePath() {
     summary?.mastery ?? 0,
     now,
   );
-  const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
-  const dueCardCount = dueReviewCardIds?.size ?? 0;
 
   // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
@@ -419,22 +443,6 @@ export function CoursePath() {
   const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
   const status = forecast ? forecastStatus(forecast) : undefined;
   const forecastPct = Math.round((forecast?.atEnd ?? mastery) * 100);
-  const otherWays = [
-    {
-      label: 'Review due cards',
-      description: 'Due reviews without waiting for the schedule',
-      disabled: dueCardCount === 0,
-      onSelect: () => navigate(`/course/${courseId}/study?review=due`),
-    },
-    ...assessments
-      .filter((assessment) => assessment.examDate !== undefined && assessment.examDate > now)
-      .map((assessment) => ({
-        label: `Revise for ${assessment.name}`,
-        description: `Ready by ${formatShortDate(assessment.examDate as number, assessment.timeZone ?? course.timeZone)}`,
-        onSelect: () =>
-          navigate(`/course/${courseId}/study?assessmentId=${encodeURIComponent(assessment.id)}`),
-      })),
-  ];
   return (
     <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
@@ -489,19 +497,7 @@ export function CoursePath() {
           </div>
         </CourseHeader>
         {!archived && (
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="primary"
-              className="min-h-12 px-[22px]"
-              onClick={() => openStudySheet(courseId)}
-            >
-              Study{dueCardCount > 0 ? ` ${dueCardCount}` : ''}
-              <ArrowRightIcon />
-            </Button>
-            <Menu label="Other ways to study" items={otherWays} chevron size="md">
-              Other ways
-            </Menu>
-          </div>
+studyActions()
         )}
       </div>
       {!archived && pendingUpdate && (

@@ -10,6 +10,10 @@ const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
 }));
 
 vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
+const mockOpenStudySheet = vi.fn();
+vi.mock('../components/learn/StudySheetContext', () => ({
+  useStudySheet: () => ({ openStudySheet: mockOpenStudySheet }),
+}));
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify }) }));
 
 vi.mock('react-router-dom', () => ({
@@ -259,22 +263,23 @@ describe('Dashboard', () => {
     expect(link).toHaveTextContent('Update available');
   });
 
-  it('starts the course study flow from the Start button', () => {
+  it('opens the course\'s session plan from Study, as the course page does', () => {
     setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
     render(<Dashboard />);
-    fireEvent.click(screen.getByRole('button', { name: 'Start Test Course' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
+    fireEvent.click(screen.getByRole('button', { name: 'Study Test Course' }));
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/course/course-1/study');
   });
 
-  it('shows Done for today and no Start button when nothing is due', () => {
+  it('shows Done for today and no Study button when nothing is due', () => {
     setCourseData([mockCourse, course('course-2', 'Busy Course')], {
       summaries: { 'course-1': summary(0), 'course-2': summary(2) },
     });
     render(<Dashboard />);
 
     expect(screen.getAllByText('Done for today')).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: 'Start Test Course' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start Busy Course' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Study Test Course' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Study Busy Course' })).toBeInTheDocument();
     // The row stays reachable and keeps its menu.
     expect(screen.getByRole('link', { name: 'Test Course' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'More for Test Course' })).toBeInTheDocument();

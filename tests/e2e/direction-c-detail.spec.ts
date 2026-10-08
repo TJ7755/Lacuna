@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function openWelcomeCourse(page: Page, width: number) {
   await page.setViewportSize({ width, height: 900 });
@@ -100,8 +100,9 @@ for (const width of [390, 1440]) {
     await enterFreshLacuna(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('button', { name: /^Start Welcome to Lacuna/ })
+      .getByRole('button', { name: /^Study Welcome to Lacuna/ })
       .click();
+    await chooseScheduledStudy(page);
     const timer = page.getByRole('button', { name: 'Pomodoro timer' });
     const exit = page.getByRole('button', { name: 'Exit', exact: true });
     const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
@@ -196,8 +197,9 @@ test('a study face centres an image under its centred text', async ({ page }) =>
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: /^Start Welcome to Lacuna/ })
+    .getByRole('button', { name: /^Study Welcome to Lacuna/ })
     .click();
+  await chooseScheduledStudy(page);
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   const face = page.locator('[data-study-face] .prose-lacuna').first();
   await expect(continueButton.or(face).first()).toBeVisible();

@@ -2,7 +2,7 @@ import { m as motion } from 'motion/react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRightIcon, CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
-import { cn } from '../ui/cn';
+import { Button } from '../ui/Button';
 import { MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
 import { STATUS_COLOUR, type ForecastStatus } from './ForecastChart';
@@ -121,20 +121,15 @@ export function TodayQueue({
                   <ClockIcon width={16} height={16} aria-hidden="true" />
                   {Math.max(1, Math.round(row.minutes))} min
                 </span>
-                <button
-                  type="button"
+                {/* Study opens the course's session plan, as Study does on the course page. */}
+                <Button
+                  variant={lead ? 'primary' : 'secondary'}
                   onClick={() => onStudy(row.id)}
-                  aria-label={`Start ${row.name}`}
-                  className={cn(
-                    'inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] px-4 font-bold sm:px-5 transition-colors',
-                    lead
-                      ? 'border-accent bg-accent text-accent-fg hover:brightness-105'
-                      : 'border-ink text-ink hover:bg-ink hover:text-paper',
-                  )}
+                  aria-label={`Study ${row.name}`}
                 >
-                  Start
-                  <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-0.5" />
-                </button>
+                  Study
+                  <ArrowRightIcon />
+                </Button>
               </>
             )}
             <button

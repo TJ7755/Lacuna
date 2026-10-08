@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function cardHeight(card: Locator): Promise<number> {
   return card.locator('[data-study-face]').evaluate((face) => face.parentElement!.offsetHeight);
@@ -67,7 +67,8 @@ test('keeps both study-card faces at the larger height across viewport changes',
   await page.getByRole('button', { name: 'Add card' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Start Stable card' }).click();
+  await page.getByRole('button', { name: 'Study Stable card' }).click();
+  await chooseScheduledStudy(page);
 
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
@@ -139,9 +140,10 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
 
   await page.goto('/#/');
-  const studyCourse = page.getByRole('button', { name: 'Start Monarchs' });
+  const studyCourse = page.getByRole('button', { name: 'Study Monarchs' });
   await expect(studyCourse).toBeVisible();
   await studyCourse.click();
+  await chooseScheduledStudy(page);
   const card = page.locator('[data-study-card-id]').first();
   await expect(card.locator('[data-study-face="front"]')).toBeVisible();
 

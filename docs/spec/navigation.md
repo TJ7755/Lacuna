@@ -286,8 +286,11 @@ correct. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
-generic choice and enters that exact scope. A secondary **Review due cards** action beside **Study**
-enters course-wide due review directly when any card is due. Once the curriculum is finished, the
+generic choice and enters that exact scope. Beside **Study**, an **Other ways** menu offers
+**Only review due cards** (course-wide due review, directly) and each upcoming assessment. Every
+course entry point is the same `CourseStudyActions` pair, a one-lesson course included, and
+Today's **Study** on a course row (and the S shortcut there) opens the same study sheet, so Study
+always previews the session before it starts. Once the curriculum is finished, the
 conductor's next step is that same due review, under the same name. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
 nodes remain editable on the path, and Edit mode exposes one **Add** menu (Lesson, Card practice,

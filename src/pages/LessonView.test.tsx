@@ -5,11 +5,13 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
+import { CourseStudyActions } from '../components/course/CourseStudyActions';
 import { ToastProvider } from '../components/ui/Toast';
 import type { Card, Course, Lesson, Note } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
+const mockOnStudy = vi.fn();
 const { mockCreateLesson, mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({
   mockCreateLesson: vi.fn(),
   mockUpdateCourse: vi.fn(),
@@ -157,8 +159,25 @@ function renderInline(
         <LessonView
           courseId="course-1"
           lessonId="lesson-1"
-          showStudyNow={showStudyNow}
-          practiceNowEnabled={practiceNowEnabled}
+          studyActions={
+            showStudyNow
+              ? (disabled) => (
+                  <CourseStudyActions
+                    dueCount={0}
+                    disabled={disabled}
+                    onStudy={mockOnStudy}
+                    otherWays={[
+                      {
+                        label: 'Only review due cards',
+                        disabled: !practiceNowEnabled,
+                        onSelect: () => mockNavigate('/course/course-1/study?review=due'),
+                      },
+                    ]}
+                  />
+                )
+              : undefined
+          }
+          onStudy={showStudyNow ? mockOnStudy : undefined}
           courseCardCount={courseCardCount}
           onAddPractice={pathActions?.onAddPractice}
           onAddCheckpoint={pathActions?.onAddCheckpoint}
@@ -169,6 +188,7 @@ function renderInline(
 }
 
 beforeEach(() => {
+  mockOnStudy.mockClear();
   mockDueReviewCardIds = new Set();
   mockLesson = lesson;
   mockCourse = course;
@@ -352,20 +372,21 @@ describe('LessonView View mode', () => {
 });
 
 describe('LessonView inline (single-lesson course) rendering', () => {
-  it('shows one generic course Study action', () => {
-    renderInline(true);
-
-    expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
-    // The due-review shortcut is the header's secondary action, not a second Study.
-    expect(screen.getAllByRole('button', { name: 'Review due cards' })).toHaveLength(1);
-  });
-
-  it('starts course-wide practice from the header when eligible', () => {
+  it('shows the course page\'s Study and Other ways, not a lesson-only pair', () => {
     renderInline(true, true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Review due cards' }));
-
+    expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
+    // Due reviews live in Other ways, as on a multi-lesson course page.
+    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Only review due cards/ }));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
+  });
+
+  it('opens the session plan from Study', () => {
+    renderInline(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+    expect(mockOnStudy).toHaveBeenCalledTimes(1);
   });
 
   it('leaves out an empty notes panel in View mode but keeps it in Edit', () => {
@@ -386,7 +407,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     const { unmount } = renderInline(true, false, undefined, 0);
     expect(screen.getByRole('button', { name: 'Study' })).toBeDisabled();
     fireEvent.keyDown(window, { key: 's' });
-    expect(mockNavigate).not.toHaveBeenCalledWith('/course/course-1/study');
+    expect(mockOnStudy).not.toHaveBeenCalled();
     unmount();
 
     mockNotes = [note];
@@ -394,11 +415,6 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
   });
 
-  it('disables course-wide practice when no reached card is eligible', () => {
-    renderInline(true);
-
-    expect(screen.getByRole('button', { name: 'Review due cards' })).toBeDisabled();
-  });
 
   it('shows the course navigation with a Settings link', () => {
     renderInline();
