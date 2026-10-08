@@ -18,6 +18,10 @@ describe('UnlockModeSection', () => {
     expect(screen.getByText('Semi-linear')).toBeInTheDocument();
     expect(screen.getByText('Linear')).toBeInTheDocument();
     expect(screen.queryByText('Days between lessons')).not.toBeInTheDocument();
+    // Radios keep their own size: the text-field classes stretched each into a wide box.
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio.className).not.toMatch(/\bw-full\b|\bpx-/);
+    }
   });
 
   it('shows cadence fields under linear mode', () => {

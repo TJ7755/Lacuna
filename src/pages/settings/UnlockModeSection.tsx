@@ -52,16 +52,20 @@ export function UnlockModeSection({
   return (
     <fieldset className="block text-sm text-ink-soft">
       <legend className="mb-2 font-medium text-ink">Lesson unlocking</legend>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col">
         {MODES.map((mode) => (
-          <label key={mode.value} className="flex cursor-pointer items-start gap-2">
-            <Input
+          <label
+            key={mode.value}
+            className="flex min-h-11 cursor-pointer items-start gap-2 py-1.5"
+          >
+            {/* A plain input: the text-field primitive made each radio a full-width box. */}
+            <input
               type="radio"
               name="unlockMode"
               value={mode.value}
               checked={unlockMode === mode.value}
               onChange={() => onUnlockModeChange(mode.value)}
-              className="mt-0.5 accent-accent"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
             />
             <span>
               <span className="block text-sm text-ink">{mode.label}</span>
