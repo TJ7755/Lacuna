@@ -143,3 +143,46 @@ Left for the prompter to decide:
   44 px would make the tag editor much taller. Backspace removes the last tag.
 - **Card question text for occlusions.** Rows read "Label 1 of 4 — Label the plant cell", the
   stored fallback text; a shorter generated title would need a data change.
+
+## Polish pass (8 October 2026, fourth session)
+
+Decisions from the prompter: push to this branch; the sharing announcement becomes the one-line
+version; tag chips stay compact; local Playwright screenshots are allowed; the pull request is
+not to be merged by an agent.
+
+Fixed, each with a test that fails on the previous head:
+
+- **CI:** the smoke and sync specs used the study sheet's old route buttons.
+- **Today:** the announcement is one line, measured by its own width (`@container`), so it never
+  wraps beside the desktop sidebar or on a phone; the forecast legend starts on its title edge.
+- **Course surfaces:** View/Edit matches the section tabs' 44px track; the Cards overflow menus
+  are the shared 44px round control; Lessons and Assessments headings share a line; the phone
+  section bar keeps Path current on a lesson, as the spec and the tab bar do.
+- **Cards and lessons:** row previews clamp by line, so a fraction is shown whole; cloze answers
+  lose padding that read as a space before punctuation; a lesson's card list renders maths.
+- **Study:** the header shares the card's column on notes, cards and between steps, so the timer
+  stays put; the Pomodoro timer, its panel and buttons are Direction C; images centre under
+  centred text; a wholly new lesson reads "5 new cards"; focus mode's exit is named as its menu
+  item is.
+- **Surfaces and controls:** about thirty squared buttons became pills, with a `hit-target`
+  utility for 44px targets on compact controls; Quick search, the sidebar hover card, Today's
+  course menu (and its inset rows), the 404, the empty Archived page, course analytics' Questions section and several
+  panels moved to the card, popover or well surfaces; Markdown fields show focus on the whole
+  frame; settings rows share one label style and switches sit centred; the Lesson breakdown's
+  axis labels no longer clip. Design rules now catch squared buttons and stray uses of Fraunces.
+- **Motion:** layout animation never ran (`domAnimation` omits it), so every sliding pill jumped.
+  `domMax` now loads asynchronously, at no first-load cost, and text-bearing layouts animate
+  position only.
+
+Left for the prompter:
+
+- **Seeded welcome diagrams** are hard-coded dark panels in the old stone palette. A repair
+  migration already rewrites them in existing data, so changing them needs another migration.
+- **Lesson breakdown** plots card counts against the percentage axis (on a hidden second axis);
+  bars for counts, or a separate small chart, would read more honestly.
+- **Workload ahead** draws day counts as a line, so a course of all-new cards spikes against the
+  axis; bars would suit daily counts.
+- **Field labels** above inputs (Pomodoro lengths) stay small and regular, while course settings'
+  are semibold; one rule for field labels across Settings would finish that consistency.
+- **Dialogs** keep `DialogPanel`'s outlined paper surface; it could move to the borderless card
+  surface in one place if wanted.
