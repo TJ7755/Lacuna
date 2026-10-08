@@ -49,6 +49,16 @@ test('the forecast legend starts on the chart title edge', async ({ page }) => {
   expect(Math.abs(dot.x - title.x)).toBeLessThanOrEqual(1);
 });
 
+test('the forecast title keeps to the top, level with the legend', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  const title = await box(page.getByRole('heading', { name: 'Exam-day forecast' }));
+  const legend = await box(page.getByRole('list', { name: 'Courses' }));
+  // Aligned to the legend's foot, the title fell further from the card's top with each row.
+  expect(Math.abs(title.y - legend.y)).toBeLessThanOrEqual(1);
+});
+
 test('the Cards header offers its other ways as a 44px round control', async ({ page }) => {
   const course = await openWelcomeCourse(page, 1440);
   await page.goto(`/#${course}/cards`);

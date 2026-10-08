@@ -155,8 +155,10 @@ export function ForecastChart({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-        <h2 id={titleId} className="shrink-0 font-display text-2xl">
+      {/* The title keeps to the top edge, level with the legend's first 44px row, however
+          many rows the legend wraps to. */}
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-6">
+        <h2 id={titleId} className="shrink-0 font-display text-2xl sm:py-1.5">
           Exam-day forecast
         </h2>
         <ul className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
