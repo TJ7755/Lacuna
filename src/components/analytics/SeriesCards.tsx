@@ -19,6 +19,15 @@ import type { PredictionAccuracyPoint } from '../../fsrs/calibration';
 
 const CHART_MARGIN = { top: 8, right: 12, bottom: 0, left: 0 };
 
+/**
+ * Lesson names on the slanted breakdown axis, cut to what its height shows. A longer
+ * name ran past the axis and was clipped mid-word; the tooltip and data table keep it whole.
+ */
+const LESSON_TICK_CHARS = 22;
+export function lessonTickLabel(name: string): string {
+  return name.length > LESSON_TICK_CHARS ? `${name.slice(0, LESSON_TICK_CHARS - 1).trimEnd()}…` : name;
+}
+
 /** Cards due and new cards per day for the next 30 days, stacked. */
 export function WorkloadForecastCard({
   forecast,
@@ -210,7 +219,8 @@ export function LessonBreakdownCard({ breakdown }: { breakdown: LessonBreakdownP
             interval={0}
             angle={-20}
             textAnchor="end"
-            height={50}
+            height={72}
+            tickFormatter={lessonTickLabel}
           />
           <YAxis yAxisId="pct" domain={[0, 100]} unit="%" {...s.yAxis} width={44} />
           <YAxis yAxisId="cards" orientation="right" allowDecimals={false} hide />

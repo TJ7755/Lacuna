@@ -1,0 +1,1 @@
+- Course analytics: the Lesson breakdown's slanted lesson names no longer run off the axis and lose their first words; long names end in an ellipsis, and the tooltip and data table keep them whole.
