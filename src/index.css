@@ -517,6 +517,10 @@
   border: 1px solid hsl(var(--line));
   margin: 0.6em 0;
 }
+/* A study face centres its text; images are blocks, so they need their own centring. */
+[data-study-face] .prose-lacuna img {
+  margin-inline: auto;
+}
 .prose-lacuna table {
   border-collapse: collapse;
   margin: 0;

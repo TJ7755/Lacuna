@@ -179,3 +179,30 @@ test('a switch sits centred in its settings row', async ({ page }) => {
   const knob = await box(toggle);
   expect(Math.abs(knob.y + knob.height / 2 - (row.y + row.height / 2))).toBeLessThanOrEqual(1);
 });
+
+test('a study face centres an image under its centred text', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('button', { name: /^Start Welcome to Lacuna/ })
+    .click();
+  const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
+  const face = page.locator('[data-study-face] .prose-lacuna').first();
+  await expect(continueButton.or(face).first()).toBeVisible();
+  if (await continueButton.isVisible()) await continueButton.click();
+  await expect(face).toBeVisible();
+  const offset = await face.evaluate(async (prose) => {
+    const image = document.createElement('img');
+    image.src =
+      'data:image/svg+xml,' +
+      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"/>');
+    prose.append(image);
+    await image.decode();
+    const outer = prose.getBoundingClientRect();
+    const inner = image.getBoundingClientRect();
+    return inner.left + inner.width / 2 - (outer.left + outer.width / 2);
+  });
+  expect(Math.abs(offset)).toBeLessThanOrEqual(1);
+});
