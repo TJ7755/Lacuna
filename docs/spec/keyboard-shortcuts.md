@@ -18,7 +18,9 @@
 | Learn                  | `F`                | Toggle focus mode                     |
 | Overlays               | `Esc`              | Close                                 |
 
-Single-key shortcuts are inert while a text field is focused. The `?` overlay can
+Single-key study shortcuts are inert while a text field or select is focused, during
+IME composition, and while Ctrl, Cmd or Alt is held. Shift still supports capital
+letters and punctuation bindings. The `?` overlay can
 also be opened from the "Keyboard shortcuts" item in the Learn mode 3-dot action
 menu.
 

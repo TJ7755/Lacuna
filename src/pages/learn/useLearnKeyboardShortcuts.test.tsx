@@ -75,3 +75,45 @@ describe('study keyboard ownership', () => {
     button.remove();
   });
 });
+
+it.each([
+  { key: 'y', ctrlKey: true },
+  { key: 'n', metaKey: true },
+  { key: 'ArrowRight', code: 'ArrowRight', altKey: true },
+  { key: 'u', ctrlKey: true },
+  { key: 'f', metaKey: true },
+  { key: 'ArrowUp', code: 'ArrowUp', ctrlKey: true },
+  { key: 'y', isComposing: true },
+])('leaves modified and composing study keys to their owner: %j', (event) => {
+  const callbacks = params();
+  renderHook(() => useLearnKeyboardShortcuts(callbacks));
+  fireEvent.keyDown(window, event);
+  expect(callbacks.answer).not.toHaveBeenCalled();
+  expect(callbacks.undoLast).not.toHaveBeenCalled();
+  expect(callbacks.setFocusMode).not.toHaveBeenCalled();
+  expect(callbacks.reveal).not.toHaveBeenCalled();
+});
+
+it.each(['ArrowLeft', 'ArrowRight', 'ArrowDown', 'y', 'n'])(
+  'leaves %s to a focused select',
+  (key) => {
+    const callbacks = params();
+    renderHook(() => useLearnKeyboardShortcuts(callbacks));
+    const select = document.createElement('select');
+    document.body.append(select);
+    try {
+      fireEvent.keyDown(select, { key, code: key });
+      expect(callbacks.answer).not.toHaveBeenCalled();
+      expect(callbacks.hide).not.toHaveBeenCalled();
+    } finally {
+      select.remove();
+    }
+  },
+);
+
+it('retains unmodified grading and shifted letter bindings', () => {
+  const callbacks = params();
+  renderHook(() => useLearnKeyboardShortcuts(callbacks));
+  fireEvent.keyDown(window, { key: 'Y', shiftKey: true });
+  expect(callbacks.answer).toHaveBeenCalledWith(true);
+});

@@ -76,13 +76,19 @@ export function useLearnKeyboardShortcuts({
 }: UseLearnKeyboardShortcutsParams) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.defaultPrevented || editing) return;
-      // While the user is typing into any input, textarea, or content-editable
+      if (
+        e.repeat || e.defaultPrevented || e.isComposing ||
+        e.ctrlKey || e.metaKey || e.altKey || editing
+      ) return;
+      // While the user is typing into any input, textarea, select, or content-editable
       // element, card shortcuts stay inert so keystrokes don't accidentally grade.
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
       ) {
         return;
       }
