@@ -269,7 +269,9 @@ it('uses the latest saved duration when accepting a pending break', () => {
   savePomodoroSettings({ workMinutes: 1 });
   const { result } = renderHook(() => usePomodoro());
   act(() => result.current.startFocus());
-  act(() => vi.advanceTimersByTime(60_000));
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
   savePomodoroSettings({ shortBreakMinutes: 8 });
   act(() => result.current.acceptBreak());
   expect(result.current.formattedTime).toBe('08:00');
@@ -284,7 +286,9 @@ it('starts fractional-minute phases with whole seconds in the countdown', () => 
   expect(result.current.secondsLeft).toBe(61);
   expect(result.current.formattedTime).toBe('01:01');
   expect(result.current.progress).toBe(0);
-  act(() => vi.advanceTimersByTime(1000));
+  act(() => {
+    vi.advanceTimersByTime(1000);
+  });
   expect(result.current.formattedTime).toBe('01:00');
 });
 
@@ -308,7 +312,9 @@ it('restores a pending break when focus expired before the closing page could ti
 it('keeps a paused countdown unchanged when the page closes later', () => {
   const first = renderHook(() => usePomodoro());
   act(() => first.result.current.startFocus());
-  act(() => vi.advanceTimersByTime(5_000));
+  act(() => {
+    vi.advanceTimersByTime(5_000);
+  });
   act(() => first.result.current.pause());
   act(() => {
     vi.setSystemTime(Date.now() + 65_000);
@@ -322,7 +328,9 @@ it('keeps a paused countdown unchanged when the page closes later', () => {
 it('keeps the active progress ring stable when another tab changes durations', () => {
   const { result } = renderHook(() => usePomodoro());
   act(() => result.current.startFocus());
-  act(() => vi.advanceTimersByTime(60_000));
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
   const progress = result.current.progress;
   act(() => {
     savePomodoroSettings({ workMinutes: 1 });
@@ -337,7 +345,9 @@ it('restores idle when a break expired before the closing page could tick', () =
   savePomodoroSettings({ workMinutes: 1, shortBreakMinutes: 1 });
   const first = renderHook(() => usePomodoro());
   act(() => first.result.current.startFocus());
-  act(() => vi.advanceTimersByTime(60_000));
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
   act(() => first.result.current.acceptBreak());
   act(() => {
     vi.setSystemTime(Date.now() + 90_000);

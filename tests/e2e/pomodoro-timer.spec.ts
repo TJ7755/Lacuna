@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 test('keeps timer focus in its popup and restores elapsed time after reload', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Timer regression');
   await page.getByRole('button', { name: 'Author mode' }).click();
@@ -20,7 +21,9 @@ test('keeps timer focus in its popup and restores elapsed time after reload', as
   await trigger.click();
   const popup = page.getByRole('dialog', { name: 'Pomodoro timer' });
   await expect(popup.getByRole('button', { name: 'Start', exact: true })).toBeFocused();
-  await page.clock.install();
+  const timerStart = new Date('2026-10-09T12:00:00Z');
+  await page.clock.install({ time: timerStart });
+  await page.clock.pauseAt(new Date(timerStart.getTime() + 1000));
   await popup.getByRole('button', { name: 'Start', exact: true }).click();
   await popup.getByRole('button', { name: 'Reset' }).focus();
   await page.keyboard.press('Tab');
@@ -28,7 +31,7 @@ test('keeps timer focus in its popup and restores elapsed time after reload', as
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Focus · 25:00' })).toBeFocused();
 
-  await page.clock.setSystemTime(Date.now() + 65_000);
+  await page.clock.setSystemTime(new Date(timerStart.getTime() + 66_000));
   await page.reload();
   await expect(page.getByRole('button', { name: 'Focus · 23:55' })).toBeVisible();
   await page.getByRole('button', { name: 'Focus · 23:55' }).click();
